@@ -62,6 +62,11 @@
     SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31))); \
     COMMON_FLAGS(dst);
 
+#define MUL_FLAGS              \
+    if (cpu->type == 7)        \
+        cpu->cpsr &= ~BIT(29); \
+    COMMON_FLAGS(RD);
+
 namespace interpreter_thumb
 {
 
@@ -252,9 +257,7 @@ void dpG4(interpreter::Cpu *cpu, uint32_t opcode) // ORR/MUL/BIC/MVN Rd,Rs
 
         case 0x1: // MUL
             RD *= RS;
-            if (cpu->type == 7)
-                cpu->cpsr &= ~BIT(29);
-            COMMON_FLAGS(RD);
+            MUL_FLAGS;
             return;
 
         case 0x2: // BIC

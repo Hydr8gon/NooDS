@@ -81,6 +81,12 @@ void ldrhPtip(interpreter::Cpu *cpu, uint32_t opcode) // LDRH Rd,[Rn],#i
     RN += SPEC_IMM;
 }
 
+void swp(interpreter::Cpu *cpu, uint32_t opcode) // SWP Rd,Rm,[Rn]
+{
+    RD = memory::read<uint32_t>(cpu, RN);
+    memory::write<uint32_t>(cpu, RN, RM);
+}
+
 void strhOfrm(interpreter::Cpu *cpu, uint32_t opcode) // STRH Rd,[Rn,-Rm]
 {
     memory::write<uint16_t>(cpu, RN - RM, RD);
@@ -101,6 +107,12 @@ void ldrhPrrm(interpreter::Cpu *cpu, uint32_t opcode) // LDRH Rd,[Rn,-Rm]!
 {
     RN -= RM;
     RD = memory::read<uint16_t>(cpu, RN);
+}
+
+void swpb(interpreter::Cpu *cpu, uint32_t opcode) // SWPB Rd,Rm,[Rn]
+{
+    RD = memory::read<uint8_t>(cpu, RN);
+    memory::write<uint8_t>(cpu, RN, RM);
 }
 
 void strhOfim(interpreter::Cpu *cpu, uint32_t opcode) // STRH Rd,[Rn,-#i]

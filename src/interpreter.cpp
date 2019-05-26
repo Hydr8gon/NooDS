@@ -362,7 +362,7 @@ void init()
     armInstructions[0x086] = interpreter_alu::addRri;
     armInstructions[0x087] = interpreter_alu::addRrr;
     armInstructions[0x088] = interpreter_alu::addLli;
-    armInstructions[0x089] = unknownArm;
+    armInstructions[0x089] = interpreter_alu::umull;
     armInstructions[0x08A] = interpreter_alu::addLri;
     armInstructions[0x08B] = interpreter_transfer::strhPtrp;
     armInstructions[0x08C] = interpreter_alu::addAri;
@@ -378,7 +378,7 @@ void init()
     armInstructions[0x096] = interpreter_alu::addsRri;
     armInstructions[0x097] = interpreter_alu::addsRrr;
     armInstructions[0x098] = interpreter_alu::addsLli;
-    armInstructions[0x099] = unknownArm;
+    armInstructions[0x099] = interpreter_alu::umulls;
     armInstructions[0x09A] = interpreter_alu::addsLri;
     armInstructions[0x09B] = interpreter_transfer::ldrhPtrp;
     armInstructions[0x09C] = interpreter_alu::addsAri;
@@ -394,7 +394,7 @@ void init()
     armInstructions[0x0A6] = interpreter_alu::adcRri;
     armInstructions[0x0A7] = interpreter_alu::adcRrr;
     armInstructions[0x0A8] = interpreter_alu::adcLli;
-    armInstructions[0x0A9] = unknownArm;
+    armInstructions[0x0A9] = interpreter_alu::umlal;
     armInstructions[0x0AA] = interpreter_alu::adcLri;
     armInstructions[0x0AB] = interpreter_transfer::strhPtrp;
     armInstructions[0x0AC] = interpreter_alu::adcAri;
@@ -410,7 +410,7 @@ void init()
     armInstructions[0x0B6] = interpreter_alu::adcsRri;
     armInstructions[0x0B7] = interpreter_alu::adcsRrr;
     armInstructions[0x0B8] = interpreter_alu::adcsLli;
-    armInstructions[0x0B9] = unknownArm;
+    armInstructions[0x0B9] = interpreter_alu::umlals;
     armInstructions[0x0BA] = interpreter_alu::adcsLri;
     armInstructions[0x0BB] = interpreter_transfer::ldrhPtrp;
     armInstructions[0x0BC] = interpreter_alu::adcsAri;
@@ -426,7 +426,7 @@ void init()
     armInstructions[0x0C6] = interpreter_alu::sbcRri;
     armInstructions[0x0C7] = interpreter_alu::sbcRrr;
     armInstructions[0x0C8] = interpreter_alu::sbcLli;
-    armInstructions[0x0C9] = unknownArm;
+    armInstructions[0x0C9] = interpreter_alu::smull;
     armInstructions[0x0CA] = interpreter_alu::sbcLri;
     armInstructions[0x0CB] = interpreter_transfer::strhPtip;
     armInstructions[0x0CC] = interpreter_alu::sbcAri;
@@ -442,7 +442,7 @@ void init()
     armInstructions[0x0D6] = interpreter_alu::sbcsRri;
     armInstructions[0x0D7] = interpreter_alu::sbcsRrr;
     armInstructions[0x0D8] = interpreter_alu::sbcsLli;
-    armInstructions[0x0D9] = unknownArm;
+    armInstructions[0x0D9] = interpreter_alu::smulls;
     armInstructions[0x0DA] = interpreter_alu::sbcsLri;
     armInstructions[0x0DB] = interpreter_transfer::ldrhPtip;
     armInstructions[0x0DC] = interpreter_alu::sbcsAri;
@@ -458,7 +458,7 @@ void init()
     armInstructions[0x0E6] = interpreter_alu::rscRri;
     armInstructions[0x0E7] = interpreter_alu::rscRrr;
     armInstructions[0x0E8] = interpreter_alu::rscLli;
-    armInstructions[0x0E9] = unknownArm;
+    armInstructions[0x0E9] = interpreter_alu::smlal;
     armInstructions[0x0EA] = interpreter_alu::rscLri;
     armInstructions[0x0EB] = interpreter_transfer::strhPtip;
     armInstructions[0x0EC] = interpreter_alu::rscAri;
@@ -474,7 +474,7 @@ void init()
     armInstructions[0x0F6] = interpreter_alu::rscsRri;
     armInstructions[0x0F7] = interpreter_alu::rscsRrr;
     armInstructions[0x0F8] = interpreter_alu::rscsLli;
-    armInstructions[0x0F9] = unknownArm;
+    armInstructions[0x0F9] = interpreter_alu::smlals;
     armInstructions[0x0FA] = interpreter_alu::rscsLri;
     armInstructions[0x0FB] = interpreter_transfer::ldrhPtip;
     armInstructions[0x0FC] = interpreter_alu::rscsAri;
@@ -490,7 +490,7 @@ void init()
     armInstructions[0x106] = unknownArm;
     armInstructions[0x107] = unknownArm;
     armInstructions[0x108] = unknownArm;
-    armInstructions[0x109] = unknownArm;
+    armInstructions[0x109] = interpreter_transfer::swp;
     armInstructions[0x10A] = unknownArm;
     armInstructions[0x10B] = interpreter_transfer::strhOfrm;
     armInstructions[0x10C] = unknownArm;
@@ -554,7 +554,7 @@ void init()
     armInstructions[0x146] = unknownArm;
     armInstructions[0x147] = unknownArm;
     armInstructions[0x148] = unknownArm;
-    armInstructions[0x149] = unknownArm;
+    armInstructions[0x149] = interpreter_transfer::swpb;
     armInstructions[0x14A] = unknownArm;
     armInstructions[0x14B] = interpreter_transfer::strhOfim;
     armInstructions[0x14C] = unknownArm;

@@ -114,6 +114,8 @@ void addArr(interpreter::Cpu *cpu, uint32_t opcode);
 void addRri(interpreter::Cpu *cpu, uint32_t opcode);
 void addRrr(interpreter::Cpu *cpu, uint32_t opcode);
 
+void umull(interpreter::Cpu *cpu, uint32_t opcode);
+
 void addsLli(interpreter::Cpu *cpu, uint32_t opcode);
 void addsLlr(interpreter::Cpu *cpu, uint32_t opcode);
 void addsLri(interpreter::Cpu *cpu, uint32_t opcode);
@@ -122,6 +124,8 @@ void addsAri(interpreter::Cpu *cpu, uint32_t opcode);
 void addsArr(interpreter::Cpu *cpu, uint32_t opcode);
 void addsRri(interpreter::Cpu *cpu, uint32_t opcode);
 void addsRrr(interpreter::Cpu *cpu, uint32_t opcode);
+
+void umulls(interpreter::Cpu *cpu, uint32_t opcode);
 
 void adcLli(interpreter::Cpu *cpu, uint32_t opcode);
 void adcLlr(interpreter::Cpu *cpu, uint32_t opcode);
@@ -132,6 +136,8 @@ void adcArr(interpreter::Cpu *cpu, uint32_t opcode);
 void adcRri(interpreter::Cpu *cpu, uint32_t opcode);
 void adcRrr(interpreter::Cpu *cpu, uint32_t opcode);
 
+void umlal(interpreter::Cpu *cpu, uint32_t opcode);
+
 void adcsLli(interpreter::Cpu *cpu, uint32_t opcode);
 void adcsLlr(interpreter::Cpu *cpu, uint32_t opcode);
 void adcsLri(interpreter::Cpu *cpu, uint32_t opcode);
@@ -140,6 +146,8 @@ void adcsAri(interpreter::Cpu *cpu, uint32_t opcode);
 void adcsArr(interpreter::Cpu *cpu, uint32_t opcode);
 void adcsRri(interpreter::Cpu *cpu, uint32_t opcode);
 void adcsRrr(interpreter::Cpu *cpu, uint32_t opcode);
+
+void umlals(interpreter::Cpu *cpu, uint32_t opcode);
 
 void sbcLli(interpreter::Cpu *cpu, uint32_t opcode);
 void sbcLlr(interpreter::Cpu *cpu, uint32_t opcode);
@@ -150,6 +158,8 @@ void sbcArr(interpreter::Cpu *cpu, uint32_t opcode);
 void sbcRri(interpreter::Cpu *cpu, uint32_t opcode);
 void sbcRrr(interpreter::Cpu *cpu, uint32_t opcode);
 
+void smull(interpreter::Cpu *cpu, uint32_t opcode);
+
 void sbcsLli(interpreter::Cpu *cpu, uint32_t opcode);
 void sbcsLlr(interpreter::Cpu *cpu, uint32_t opcode);
 void sbcsLri(interpreter::Cpu *cpu, uint32_t opcode);
@@ -158,6 +168,8 @@ void sbcsAri(interpreter::Cpu *cpu, uint32_t opcode);
 void sbcsArr(interpreter::Cpu *cpu, uint32_t opcode);
 void sbcsRri(interpreter::Cpu *cpu, uint32_t opcode);
 void sbcsRrr(interpreter::Cpu *cpu, uint32_t opcode);
+
+void smulls(interpreter::Cpu *cpu, uint32_t opcode);
 
 void rscLli(interpreter::Cpu *cpu, uint32_t opcode);
 void rscLlr(interpreter::Cpu *cpu, uint32_t opcode);
@@ -168,6 +180,8 @@ void rscArr(interpreter::Cpu *cpu, uint32_t opcode);
 void rscRri(interpreter::Cpu *cpu, uint32_t opcode);
 void rscRrr(interpreter::Cpu *cpu, uint32_t opcode);
 
+void smlal(interpreter::Cpu *cpu, uint32_t opcode);
+
 void rscsLli(interpreter::Cpu *cpu, uint32_t opcode);
 void rscsLlr(interpreter::Cpu *cpu, uint32_t opcode);
 void rscsLri(interpreter::Cpu *cpu, uint32_t opcode);
@@ -176,6 +190,8 @@ void rscsAri(interpreter::Cpu *cpu, uint32_t opcode);
 void rscsArr(interpreter::Cpu *cpu, uint32_t opcode);
 void rscsRri(interpreter::Cpu *cpu, uint32_t opcode);
 void rscsRrr(interpreter::Cpu *cpu, uint32_t opcode);
+
+void smlals(interpreter::Cpu *cpu, uint32_t opcode);
 
 void tstLli(interpreter::Cpu *cpu, uint32_t opcode);
 void tstLlr(interpreter::Cpu *cpu, uint32_t opcode);

@@ -37,11 +37,15 @@ void ldrhPtrp(interpreter::Cpu *cpu, uint32_t opcode);
 void strhPtip(interpreter::Cpu *cpu, uint32_t opcode);
 void ldrhPtip(interpreter::Cpu *cpu, uint32_t opcode);
 
+void swp(interpreter::Cpu *cpu, uint32_t opcode);
+
 void strhOfrm(interpreter::Cpu *cpu, uint32_t opcode);
 void ldrhOfrm(interpreter::Cpu *cpu, uint32_t opcode);
 
 void strhPrrm(interpreter::Cpu *cpu, uint32_t opcode);
 void ldrhPrrm(interpreter::Cpu *cpu, uint32_t opcode);
+
+void swpb(interpreter::Cpu *cpu, uint32_t opcode);
 
 void strhOfim(interpreter::Cpu *cpu, uint32_t opcode);
 void ldrhOfim(interpreter::Cpu *cpu, uint32_t opcode);
