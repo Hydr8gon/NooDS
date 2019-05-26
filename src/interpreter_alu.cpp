@@ -24,6 +24,8 @@
 
 #define RN (*cpu->registers[(opcode & 0x000F0000) >> 16])
 #define RD (*cpu->registers[(opcode & 0x0000F000) >> 12])
+#define RS (*cpu->registers[(opcode & 0x00000F00) >>  8])
+#define RM (*cpu->registers[(opcode & 0x0000000F)])
 
 #define LLI(carry) interpreter::lsl(cpu, *cpu->registers[(opcode & 0x0000000F)], (opcode & 0x00000F80) >> 7,                  carry)
 #define LLR(carry) interpreter::lsl(cpu, *cpu->registers[(opcode & 0x0000000F)], *cpu->registers[(opcode & 0x00000F00) >> 8], carry)
@@ -186,6 +188,24 @@
     RD = ~op2;                    \
     SPSR_FLAGS(COMMON_FLAGS(RD));
 
+#define MUL       \
+    RN = RM * RS;
+
+#define MULS                   \
+    RN = RM * RS;              \
+    if (cpu->type == 7)        \
+        cpu->cpsr &= ~BIT(29); \
+    COMMON_FLAGS(RN);
+
+#define MLA            \
+    RN = RM * RS + RD;
+
+#define MLAS                   \
+    RN = RM * RS + RD;         \
+    if (cpu->type == 7)        \
+        cpu->cpsr &= ~BIT(29); \
+    COMMON_FLAGS(RN);
+
 namespace interpreter_alu
 {
 
@@ -198,6 +218,8 @@ void andArr(interpreter::Cpu *cpu, uint32_t opcode) { AND(ARR(false)); } // AND 
 void andRri(interpreter::Cpu *cpu, uint32_t opcode) { AND(RRI(false)); } // AND Rd,Rn,Rm,ROR #i
 void andRrr(interpreter::Cpu *cpu, uint32_t opcode) { AND(RRR(false)); } // AND Rd,Rn,Rm,ROR Rs
 
+void mul(interpreter::Cpu *cpu, uint32_t opcode) { MUL; } // MUL Rd,Rm,Rs
+
 void andsLli(interpreter::Cpu *cpu, uint32_t opcode) { ANDS(LLI(true)); } // ANDS Rd,Rn,Rm,LSL #i
 void andsLlr(interpreter::Cpu *cpu, uint32_t opcode) { ANDS(LLR(true)); } // ANDS Rd,Rn,Rm,LSL Rs
 void andsLri(interpreter::Cpu *cpu, uint32_t opcode) { ANDS(LRI(true)); } // ANDS Rd,Rn,Rm,LSR #i
@@ -206,6 +228,8 @@ void andsAri(interpreter::Cpu *cpu, uint32_t opcode) { ANDS(ARI(true)); } // AND
 void andsArr(interpreter::Cpu *cpu, uint32_t opcode) { ANDS(ARR(true)); } // ANDS Rd,Rn,Rm,ASR Rs
 void andsRri(interpreter::Cpu *cpu, uint32_t opcode) { ANDS(RRI(true)); } // ANDS Rd,Rn,Rm,ROR #i
 void andsRrr(interpreter::Cpu *cpu, uint32_t opcode) { ANDS(RRR(true)); } // ANDS Rd,Rn,Rm,ROR Rs
+
+void muls(interpreter::Cpu *cpu, uint32_t opcode) { MULS; } // MULS Rd,Rm,Rs
 
 void eorLli(interpreter::Cpu *cpu, uint32_t opcode) { EOR(LLI(false)); } // EOR Rd,Rn,Rm,LSL #i
 void eorLlr(interpreter::Cpu *cpu, uint32_t opcode) { EOR(LLR(false)); } // EOR Rd,Rn,Rm,LSL Rs
@@ -216,6 +240,8 @@ void eorArr(interpreter::Cpu *cpu, uint32_t opcode) { EOR(ARR(false)); } // EOR 
 void eorRri(interpreter::Cpu *cpu, uint32_t opcode) { EOR(RRI(false)); } // EOR Rd,Rn,Rm,ROR #i
 void eorRrr(interpreter::Cpu *cpu, uint32_t opcode) { EOR(RRR(false)); } // EOR Rd,Rn,Rm,ROR Rs
 
+void mla(interpreter::Cpu *cpu, uint32_t opcode) { MLA; } // MLA Rd,Rm,Rs,Rn
+
 void eorsLli(interpreter::Cpu *cpu, uint32_t opcode) { EORS(LLI(true)); } // EORS Rd,Rn,Rm,LSL #i
 void eorsLlr(interpreter::Cpu *cpu, uint32_t opcode) { EORS(LLR(true)); } // EORS Rd,Rn,Rm,LSL Rs
 void eorsLri(interpreter::Cpu *cpu, uint32_t opcode) { EORS(LRI(true)); } // EORS Rd,Rn,Rm,LSR #i
@@ -224,6 +250,8 @@ void eorsAri(interpreter::Cpu *cpu, uint32_t opcode) { EORS(ARI(true)); } // EOR
 void eorsArr(interpreter::Cpu *cpu, uint32_t opcode) { EORS(ARR(true)); } // EORS Rd,Rn,Rm,ASR Rs
 void eorsRri(interpreter::Cpu *cpu, uint32_t opcode) { EORS(RRI(true)); } // EORS Rd,Rn,Rm,ROR #i
 void eorsRrr(interpreter::Cpu *cpu, uint32_t opcode) { EORS(RRR(true)); } // EORS Rd,Rn,Rm,ROR Rs
+
+void mlas(interpreter::Cpu *cpu, uint32_t opcode) { MLAS; } // MLAS Rd,Rm,Rs,Rn
 
 void subLli(interpreter::Cpu *cpu, uint32_t opcode) { SUB(LLI(false)); } // SUB Rd,Rn,Rm,LSL #i
 void subLlr(interpreter::Cpu *cpu, uint32_t opcode) { SUB(LLR(false)); } // SUB Rd,Rn,Rm,LSL Rs

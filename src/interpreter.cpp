@@ -234,7 +234,7 @@ void init()
     armInstructions[0x006] = interpreter_alu::andRri;
     armInstructions[0x007] = interpreter_alu::andRrr;
     armInstructions[0x008] = interpreter_alu::andLli;
-    armInstructions[0x009] = unknownArm;
+    armInstructions[0x009] = interpreter_alu::mul;
     armInstructions[0x00A] = interpreter_alu::andLri;
     armInstructions[0x00B] = interpreter_transfer::strhPtrm;
     armInstructions[0x00C] = interpreter_alu::andAri;
@@ -250,7 +250,7 @@ void init()
     armInstructions[0x016] = interpreter_alu::andsRri;
     armInstructions[0x017] = interpreter_alu::andsRrr;
     armInstructions[0x018] = interpreter_alu::andsLli;
-    armInstructions[0x019] = unknownArm;
+    armInstructions[0x019] = interpreter_alu::muls;
     armInstructions[0x01A] = interpreter_alu::andsLri;
     armInstructions[0x01B] = interpreter_transfer::ldrhPtrm;
     armInstructions[0x01C] = interpreter_alu::andsAri;
@@ -266,7 +266,7 @@ void init()
     armInstructions[0x026] = interpreter_alu::eorRri;
     armInstructions[0x027] = interpreter_alu::eorRrr;
     armInstructions[0x028] = interpreter_alu::eorLli;
-    armInstructions[0x029] = unknownArm;
+    armInstructions[0x029] = interpreter_alu::mla;
     armInstructions[0x02A] = interpreter_alu::eorLri;
     armInstructions[0x02B] = interpreter_transfer::strhPtrm;
     armInstructions[0x02C] = interpreter_alu::eorAri;
@@ -282,7 +282,7 @@ void init()
     armInstructions[0x036] = interpreter_alu::eorsRri;
     armInstructions[0x037] = interpreter_alu::eorsRrr;
     armInstructions[0x038] = interpreter_alu::eorsLli;
-    armInstructions[0x039] = unknownArm;
+    armInstructions[0x039] = interpreter_alu::mlas;
     armInstructions[0x03A] = interpreter_alu::eorsLri;
     armInstructions[0x03B] = interpreter_transfer::ldrhPtrm;
     armInstructions[0x03C] = interpreter_alu::eorsAri;
@@ -4545,7 +4545,7 @@ void init()
     thumbInstructions[0xDC] = interpreter_thumb::bgt;
     thumbInstructions[0xDD] = interpreter_thumb::ble;
     thumbInstructions[0xDE] = unknownThumb;
-    thumbInstructions[0xDF] = unknownThumb;
+    thumbInstructions[0xDF] = interpreter_thumb::swi;
     thumbInstructions[0xE0] = interpreter_thumb::b;
     thumbInstructions[0xE1] = interpreter_thumb::b;
     thumbInstructions[0xE2] = interpreter_thumb::b;

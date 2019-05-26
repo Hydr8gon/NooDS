@@ -563,6 +563,17 @@ void ble(interpreter::Cpu *cpu, uint32_t opcode) // BLE label
         *cpu->registers[15] += BCOND_OFFSET;
 }
 
+void swi(interpreter::Cpu *cpu, uint32_t opcode) // SWI #i
+{
+    uint32_t cpsr = cpu->cpsr;
+    setMode(cpu, 0x13);
+    *cpu->registers[14] = *cpu->registers[15] - 2;
+    *cpu->spsr = cpsr;
+    cpu->cpsr &= ~BIT(5);
+    cpu->cpsr |= BIT(7);
+    *cpu->registers[15] = ((cpu->type == 9) ? 0xFFFF0008 : 0x00000008);
+}
+
 void b(interpreter::Cpu *cpu, uint32_t opcode) // B label
 {
     *cpu->registers[15] += B_OFFSET;

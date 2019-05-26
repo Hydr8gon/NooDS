@@ -34,6 +34,8 @@ void andArr(interpreter::Cpu *cpu, uint32_t opcode);
 void andRri(interpreter::Cpu *cpu, uint32_t opcode);
 void andRrr(interpreter::Cpu *cpu, uint32_t opcode);
 
+void mul(interpreter::Cpu *cpu, uint32_t opcode);
+
 void andsLli(interpreter::Cpu *cpu, uint32_t opcode);
 void andsLlr(interpreter::Cpu *cpu, uint32_t opcode);
 void andsLri(interpreter::Cpu *cpu, uint32_t opcode);
@@ -42,6 +44,8 @@ void andsAri(interpreter::Cpu *cpu, uint32_t opcode);
 void andsArr(interpreter::Cpu *cpu, uint32_t opcode);
 void andsRri(interpreter::Cpu *cpu, uint32_t opcode);
 void andsRrr(interpreter::Cpu *cpu, uint32_t opcode);
+
+void muls(interpreter::Cpu *cpu, uint32_t opcode);
 
 void eorLli(interpreter::Cpu *cpu, uint32_t opcode);
 void eorLlr(interpreter::Cpu *cpu, uint32_t opcode);
@@ -52,6 +56,8 @@ void eorArr(interpreter::Cpu *cpu, uint32_t opcode);
 void eorRri(interpreter::Cpu *cpu, uint32_t opcode);
 void eorRrr(interpreter::Cpu *cpu, uint32_t opcode);
 
+void mla(interpreter::Cpu *cpu, uint32_t opcode);
+
 void eorsLli(interpreter::Cpu *cpu, uint32_t opcode);
 void eorsLlr(interpreter::Cpu *cpu, uint32_t opcode);
 void eorsLri(interpreter::Cpu *cpu, uint32_t opcode);
@@ -60,6 +66,8 @@ void eorsAri(interpreter::Cpu *cpu, uint32_t opcode);
 void eorsArr(interpreter::Cpu *cpu, uint32_t opcode);
 void eorsRri(interpreter::Cpu *cpu, uint32_t opcode);
 void eorsRrr(interpreter::Cpu *cpu, uint32_t opcode);
+
+void mlas(interpreter::Cpu *cpu, uint32_t opcode);
 
 void subLli(interpreter::Cpu *cpu, uint32_t opcode);
 void subLlr(interpreter::Cpu *cpu, uint32_t opcode);

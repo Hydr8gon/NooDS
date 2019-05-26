@@ -98,6 +98,8 @@ void blt(interpreter::Cpu *cpu, uint32_t opcode);
 void bgt(interpreter::Cpu *cpu, uint32_t opcode);
 void ble(interpreter::Cpu *cpu, uint32_t opcode);
 
+void swi(interpreter::Cpu *cpu, uint32_t opcode);
+
 void b      (interpreter::Cpu *cpu, uint32_t opcode);
 void blxOff (interpreter::Cpu *cpu, uint32_t opcode);
 void blSetup(interpreter::Cpu *cpu, uint32_t opcode);
