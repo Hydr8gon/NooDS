@@ -18,6 +18,7 @@
 */
 
 #include <cstdio>
+#include <cstring>
 #include <thread>
 #include "GL/glut.h"
 
@@ -56,8 +57,16 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    if (!core::loadRom(argv[1]))
+    if (strcmp(argv[1], "-v") != 0)
+    {
+        fclose(stdout);
+        if (!core::loadRom(argv[1]))
+            return 0;
+    }
+    else if (!core::loadRom(argv[2]))
+    {
         return 0;
+    }
 
     glutInit(&argc, argv);
     glutInitWindowSize(256, 192 * 2);
