@@ -18,7 +18,6 @@
 */
 
 #include <cstdio>
-#include <cstring>
 
 #include "core.h"
 #include "gpu.h"
@@ -57,7 +56,9 @@ bool init9(uint32_t romOffset, uint32_t entryAddress, uint32_t ramAddress, uint3
     fclose(file);
 
     // Load the code into memory
-    memcpy(arm9.memoryMap(ramAddress), &core::rom[romOffset], size);
+    for (int i = 0; i < size; i++)
+        memory::write<uint8_t>(&arm9, ramAddress + i, core::rom[romOffset + i]);
+
     printf("ARM9 ROM offset:    0x%X\n", romOffset);
     printf("ARM9 entry address: 0x%X\n", entryAddress);
     printf("ARM9 RAM address:   0x%X\n", ramAddress);
@@ -92,7 +93,9 @@ bool init7(uint32_t romOffset, uint32_t entryAddress, uint32_t ramAddress, uint3
     fclose(file);
 
     // Load the code into memory
-    memcpy(arm7.memoryMap(ramAddress), &core::rom[romOffset], size);
+    for (int i = 0; i < size; i++)
+        memory::write<uint8_t>(&arm7, ramAddress + i, core::rom[romOffset + i]);
+
     printf("ARM7 ROM offset:    0x%X\n", romOffset);
     printf("ARM7 entry address: 0x%X\n", entryAddress);
     printf("ARM7 RAM address:   0x%X\n", ramAddress);
