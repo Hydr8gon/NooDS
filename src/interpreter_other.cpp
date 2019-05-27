@@ -122,7 +122,7 @@ void swi(interpreter::Cpu *cpu, uint32_t opcode) // SWI #i
     *cpu->registers[14] = *cpu->registers[15] - 4;
     *cpu->spsr = cpsr;
     cpu->cpsr |= BIT(7);
-    *cpu->registers[15] = ((cpu->type == 9) ? 0xFFFF0008 : 0x00000008);
+    *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0x00000000) + 8;
 }
 
 }

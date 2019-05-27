@@ -88,9 +88,9 @@ void *vramMap(uint32_t address)
 
 void *memoryMap9(uint32_t address)
 {
-    if (address < cp15::itcmSize) // 32KB instruction TCM
+    if (cp15::itcmEnable && address < cp15::itcmSize) // 32KB instruction TCM
         return &instrTcm[address % 0x8000];
-    else if (address >= cp15::dtcmBase && address < cp15::dtcmBase + cp15::dtcmSize) // 16KB data TCM
+    else if (cp15::dtcmEnable && address >= cp15::dtcmBase && address < cp15::dtcmBase + cp15::dtcmSize) // 16KB data TCM
         return &dataTcm[(address - cp15::dtcmBase) % 0x4000];
     else if (address >= 0x2000000 && address < 0x3000000) // 4MB main RAM
         return &ram[(address - 0x2000000) % 0x400000];

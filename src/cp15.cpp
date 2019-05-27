@@ -21,19 +21,29 @@
 
 #include "cp15.h"
 
+#define BIT(i) (1 << i)
+
 namespace cp15
 {
 
-uint32_t dtcmBase = 0x27C0000;
-uint32_t dtcmSize = 0x4000;
-uint32_t itcmSize = 0x2000000;
+uint32_t exceptions = 0x00000000;
+bool     dtcmEnable = false;
+uint32_t dtcmBase   = 0x027C0000;
+uint32_t dtcmSize   = 0x00004000;
+bool     itcmEnable = false;
+uint32_t itcmSize   = 0x02000000;
 
-uint32_t dtcmReg;
-uint32_t itcmReg;
+uint32_t control = 0x00000078;
+uint32_t dtcmReg = 0x027C0005;
+uint32_t itcmReg = 0x00000010;
 
 uint32_t readRegister(uint8_t cn, uint8_t cm, uint8_t cp)
 {
-    if (cn == 9 && cm == 1 && cp == 0) // Data TCM size/base
+    if (cn == 1 && cm == 0 && cp == 0) // Control
+    {
+        return control;
+    }
+    else if (cn == 9 && cm == 1 && cp == 0) // Data TCM size/base
     {
         return dtcmReg;
     }
@@ -50,7 +60,21 @@ uint32_t readRegister(uint8_t cn, uint8_t cm, uint8_t cp)
 
 void writeRegister(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value)
 {
-    if (cn == 9 && cm == 1 && cp == 0) // Data TCM base/size
+    if (cn == 1 && cm == 0 && cp == 0) // Control
+    {
+        control = (control & ~0x000FF085) | (value & 0x000FF085);
+        exceptions = (control & BIT(13)) ? 0xFFFF0000 : 0x00000000;
+        dtcmEnable = (control & BIT(16));
+        itcmEnable = (control & BIT(18));
+        if (control & BIT(0))  printf("Unhandled request: Protection unit enable\n");
+        if (control & BIT(2))  printf("Unhandled request: Data cache enable\n");
+        if (control & BIT(7))  printf("Unhandled request: Big endian mode\n");
+        if (control & BIT(12)) printf("Unhandled request: Instruction cache enable\n");
+        if (control & BIT(15)) printf("Unhandled request: Pre-ARMv5 mode\n");
+        if (control & BIT(17)) printf("Unhandled request: DTCM load mode\n");
+        if (control & BIT(19)) printf("Unhandled request: ITCM load mode\n");
+    }
+    else if (cn == 9 && cm == 1 && cp == 0) // Data TCM base/size
     {
         uint8_t shift = (value & 0x0000003E) >> 1;
         if (shift < 3) // Min 4KB

@@ -18,6 +18,7 @@
 */
 
 #include "interpreter_thumb.h"
+#include "cp15.h"
 #include "memory.h"
 
 #define BIT(i) (1 << i)
@@ -574,7 +575,7 @@ void swi(interpreter::Cpu *cpu, uint32_t opcode) // SWI #i
     *cpu->spsr = cpsr;
     cpu->cpsr &= ~BIT(5);
     cpu->cpsr |= BIT(7);
-    *cpu->registers[15] = ((cpu->type == 9) ? 0xFFFF0008 : 0x00000008);
+    *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0x00000000) + 8;
 }
 
 void b(interpreter::Cpu *cpu, uint32_t opcode) // B label
