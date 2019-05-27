@@ -20,7 +20,12 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <unistd.h>
+#endif
 
 #include "gpu.h"
 #include "memory.h"
@@ -161,7 +166,13 @@ void drawDot()
         // Limit FPS to 60
         std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - timer;
         if (elapsed.count() < 1.0f / 60)
+        {
+#ifdef _WIN32
+            Sleep((1.0f / 60 - elapsed.count()) * 1000);
+#else
             usleep((1.0f / 60 - elapsed.count()) * 1000000);
+#endif
+        }
         timer = std::chrono::steady_clock::now();
     }
 }

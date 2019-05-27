@@ -24,6 +24,11 @@
 #include "../core.h"
 #include "../gpu.h"
 
+// This seems to be missing on Windows
+#ifdef _WIN32
+#define GL_UNSIGNED_INT_8_8_8_8 0x8035
+#endif
+
 void runCore()
 {
     while (true)
