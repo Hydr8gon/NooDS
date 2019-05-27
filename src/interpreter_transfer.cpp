@@ -18,9 +18,8 @@
 */
 
 #include "interpreter_transfer.h"
+#include "core.h"
 #include "memory.h"
-
-#define BIT(i) (1 << i)
 
 #define RN (*cpu->registers[(opcode & 0x000F0000) >> 16])
 #define RD (*cpu->registers[(opcode & 0x0000F000) >> 12])

@@ -20,9 +20,8 @@
 #include <cstdio>
 
 #include "memory.h"
+#include "core.h"
 #include "cp15.h"
-
-#define BIT(i) (1 << i)
 
 namespace memory
 {

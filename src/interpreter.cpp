@@ -20,14 +20,12 @@
 #include <cstdio>
 
 #include "interpreter.h"
+#include "core.h"
 #include "interpreter_alu.h"
-#include "interpreter_transfer.h"
 #include "interpreter_other.h"
 #include "interpreter_thumb.h"
+#include "interpreter_transfer.h"
 #include "memory.h"
-
-#define BIT(i) (1 << i)
-#define SET_FLAG(bit, cond) if (cond) cpu->cpsr |= BIT(bit); else cpu->cpsr &= ~BIT(bit);
 
 namespace interpreter
 {

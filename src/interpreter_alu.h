@@ -22,6 +22,37 @@
 
 #include "interpreter.h"
 
+#define SET_FLAG(bit, cond) if (cond) cpu->cpsr |= BIT(bit); else cpu->cpsr &= ~BIT(bit);
+
+#define COMMON_FLAGS(dst)        \
+    SET_FLAG(31, dst & BIT(31)); \
+    SET_FLAG(30, dst == 0);
+
+#define SUB_FLAGS(dst)                                                                      \
+    SET_FLAG(29, pre >= dst);                                                               \
+    SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31))); \
+    COMMON_FLAGS(dst);
+
+#define ADD_FLAGS(dst)                                                                      \
+    SET_FLAG(29, pre > dst);                                                                \
+    SET_FLAG(28, (add & BIT(31)) == (pre & BIT(31)) && (dst & BIT(31)) != (add & BIT(31))); \
+    COMMON_FLAGS(dst);
+
+#define ADC_FLAGS(dst)                                                                      \
+    SET_FLAG(29, pre > dst || (add == 0xFFFFFFFF && (cpu->cpsr & BIT(29))));                \
+    SET_FLAG(28, (add & BIT(31)) == (pre & BIT(31)) && (dst & BIT(31)) != (add & BIT(31))); \
+    COMMON_FLAGS(dst);
+
+#define SBC_FLAGS(dst)                                                                      \
+    SET_FLAG(29, pre >= dst && (sub != 0xFFFFFFFF || !(cpu->cpsr & BIT(29))));              \
+    SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31))); \
+    COMMON_FLAGS(dst);
+
+#define MUL_FLAGS(dst)         \
+    if (cpu->type == 7)        \
+        cpu->cpsr &= ~BIT(29); \
+    COMMON_FLAGS(dst);
+
 namespace interpreter_alu
 {
 

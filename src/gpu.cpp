@@ -28,9 +28,8 @@
 #endif
 
 #include "gpu.h"
+#include "core.h"
 #include "memory.h"
-
-#define BIT(i) (1 << i)
 
 namespace gpu
 {

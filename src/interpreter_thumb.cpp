@@ -18,11 +18,10 @@
 */
 
 #include "interpreter_thumb.h"
+#include "core.h"
 #include "cp15.h"
+#include "interpreter_alu.h"
 #include "memory.h"
-
-#define BIT(i) (1 << i)
-#define SET_FLAG(bit, cond) if (cond) cpu->cpsr |= BIT(bit); else cpu->cpsr &= ~BIT(bit);
 
 #define RN (*cpu->registers[(opcode & 0x000001C0) >> 6])
 #define RS (*cpu->registers[(opcode & 0x00000038) >> 3])
@@ -38,35 +37,6 @@
 #define BCOND_OFFSET (((opcode & 0x000000FF) << 1) | ((opcode & BIT(7))  ? 0xFFFFFE00 : 0))
 #define B_OFFSET     (((opcode & 0x000007FF) << 1) | ((opcode & BIT(10)) ? 0xFFFFF000 : 0))
 #define BL_OFFSET    ((opcode & 0x000007FF) << 1)
-
-#define COMMON_FLAGS(dst)        \
-    SET_FLAG(31, dst & BIT(31)); \
-    SET_FLAG(30, dst == 0);
-
-#define SUB_FLAGS(dst)                                                                      \
-    SET_FLAG(29, pre >= dst);                                                               \
-    SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31))); \
-    COMMON_FLAGS(dst);
-
-#define ADD_FLAGS(dst)                                                                      \
-    SET_FLAG(29, pre > dst);                                                                \
-    SET_FLAG(28, (add & BIT(31)) == (pre & BIT(31)) && (dst & BIT(31)) != (add & BIT(31))); \
-    COMMON_FLAGS(dst);
-
-#define ADC_FLAGS(dst)                                                                      \
-    SET_FLAG(29, pre > dst || (add == 0xFFFFFFFF && (cpu->cpsr & BIT(29))));                \
-    SET_FLAG(28, (add & BIT(31)) == (pre & BIT(31)) && (dst & BIT(31)) != (add & BIT(31))); \
-    COMMON_FLAGS(dst);
-
-#define SBC_FLAGS(dst)                                                                      \
-    SET_FLAG(29, pre >= dst && (sub != 0xFFFFFFFF || !(cpu->cpsr & BIT(29))));              \
-    SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31))); \
-    COMMON_FLAGS(dst);
-
-#define MUL_FLAGS              \
-    if (cpu->type == 7)        \
-        cpu->cpsr &= ~BIT(29); \
-    COMMON_FLAGS(RD);
 
 namespace interpreter_thumb
 {
@@ -258,7 +228,7 @@ void dpG4(interpreter::Cpu *cpu, uint32_t opcode) // ORR/MUL/BIC/MVN Rd,Rs
 
         case 0x1: // MUL
             RD *= RS;
-            MUL_FLAGS;
+            MUL_FLAGS(RD);
             return;
 
         case 0x2: // BIC

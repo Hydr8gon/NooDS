@@ -20,17 +20,16 @@
 #include <cstdio>
 
 #include "cp15.h"
-
-#define BIT(i) (1 << i)
+#include "core.h"
 
 namespace cp15
 {
 
 uint32_t exceptions = 0x00000000;
 bool     dtcmEnable = false;
+bool     itcmEnable = false;
 uint32_t dtcmBase   = 0x027C0000;
 uint32_t dtcmSize   = 0x00004000;
-bool     itcmEnable = false;
 uint32_t itcmSize   = 0x02000000;
 
 uint32_t control = 0x00000078;

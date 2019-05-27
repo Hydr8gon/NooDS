@@ -21,8 +21,8 @@
 #include <cstring>
 
 #include "core.h"
-#include "interpreter.h"
 #include "gpu.h"
+#include "interpreter.h"
 #include "memory.h"
 
 namespace core

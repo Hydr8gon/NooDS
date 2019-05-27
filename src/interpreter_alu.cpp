@@ -18,9 +18,7 @@
 */
 
 #include "interpreter_alu.h"
-
-#define BIT(i) (1 << i)
-#define SET_FLAG(bit, cond) if (cond) cpu->cpsr |= BIT(bit); else cpu->cpsr &= ~BIT(bit);
+#include "core.h"
 
 #define RN (*cpu->registers[(opcode & 0x000F0000) >> 16])
 #define RD (*cpu->registers[(opcode & 0x0000F000) >> 12])
@@ -36,35 +34,6 @@
 #define RRI(carry) interpreter::ror(cpu, *cpu->registers[(opcode & 0x0000000F)], (opcode & 0x00000F80) >> 7,                  carry)
 #define RRR(carry) interpreter::ror(cpu, *cpu->registers[(opcode & 0x0000000F)], *cpu->registers[(opcode & 0x00000F00) >> 8], carry)
 #define IMM(carry) interpreter::ror(cpu, opcode & 0x000000FF,                    (opcode & 0x00000F00) >> 7,                  carry)
-
-#define COMMON_FLAGS(dst)        \
-    SET_FLAG(31, dst & BIT(31)); \
-    SET_FLAG(30, dst == 0);
-
-#define SUB_FLAGS(dst)                                                                      \
-    SET_FLAG(29, pre >= dst);                                                               \
-    SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31))); \
-    COMMON_FLAGS(dst);
-
-#define ADD_FLAGS(dst)                                                                      \
-    SET_FLAG(29, pre > dst);                                                                \
-    SET_FLAG(28, (add & BIT(31)) == (pre & BIT(31)) && (dst & BIT(31)) != (add & BIT(31))); \
-    COMMON_FLAGS(dst);
-
-#define ADC_FLAGS(dst)                                                                      \
-    SET_FLAG(29, pre > dst || (add == 0xFFFFFFFF && (cpu->cpsr & BIT(29))));                \
-    SET_FLAG(28, (add & BIT(31)) == (pre & BIT(31)) && (dst & BIT(31)) != (add & BIT(31))); \
-    COMMON_FLAGS(dst);
-
-#define SBC_FLAGS(dst)                                                                      \
-    SET_FLAG(29, pre >= dst && (sub != 0xFFFFFFFF || !(cpu->cpsr & BIT(29))));              \
-    SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31))); \
-    COMMON_FLAGS(dst);
-
-#define MUL_FLAGS              \
-    if (cpu->type == 7)        \
-        cpu->cpsr &= ~BIT(29); \
-    COMMON_FLAGS(RN);
 
 #define SPSR_FLAGS(flags)                                   \
     if (((opcode & 0x0000F000) >> 12) == 15 && cpu->spsr)   \
@@ -198,14 +167,14 @@
 
 #define MULS      \
     RN = RM * RS; \
-    MUL_FLAGS;
+    MUL_FLAGS(RN);
 
 #define MLA            \
     RN = RM * RS + RD;
 
 #define MLAS           \
     RN = RM * RS + RD; \
-    MUL_FLAGS;
+    MUL_FLAGS(RN);
 
 #define UMULL                         \
     uint64_t res = (uint64_t)RM * RS; \
@@ -216,7 +185,7 @@
     uint64_t res = (uint64_t)RM * RS; \
     RN = res >> 32;                   \
     RD = res;                         \
-    MUL_FLAGS;
+    MUL_FLAGS(RN);
 
 #define UMLAL                                 \
     uint64_t res = ((uint64_t)RN << 32) | RD; \
@@ -229,7 +198,7 @@
     res += (uint64_t)RM * RS;                 \
     RN = res >> 32;                           \
     RD = res;                                 \
-    MUL_FLAGS;
+    MUL_FLAGS(RN);
 
 #define SMULL                                \
     int64_t res = (int64_t)RM * (int64_t)RS; \
@@ -240,7 +209,7 @@
     int64_t res = (int64_t)RM * (int64_t)RS; \
     RN = res >> 32;                          \
     RD = res;                                \
-    MUL_FLAGS;
+    MUL_FLAGS(RN);
 
 #define SMLAL                               \
     int64_t res = ((int64_t)RN << 32) | RD; \
@@ -253,7 +222,7 @@
     res += (int64_t)RM * (int32_t)RS;       \
     RN = res >> 32;                         \
     RD = res;                               \
-    MUL_FLAGS;
+    MUL_FLAGS(RN);
 
 namespace interpreter_alu
 {

@@ -18,9 +18,8 @@
 */
 
 #include "interpreter_other.h"
+#include "core.h"
 #include "cp15.h"
-
-#define BIT(i) (1 << i)
 
 #define RD (*cpu->registers[(opcode & 0x0000F000) >> 12])
 #define RM (*cpu->registers[(opcode & 0x0000000F)])
