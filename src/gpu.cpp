@@ -139,7 +139,7 @@ void drawDot()
         }
     }
 
-    if (memory::vcount == 192) // Start of V-Blank
+    if (memory::vcount == 192 && dot == 0) // Start of V-Blank
     {
         memory::dispstat |= BIT(0); // V-blank flag
         if (memory::dispstat & BIT(3)) // V-blank IRQ flag
