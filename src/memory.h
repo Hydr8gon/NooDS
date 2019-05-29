@@ -30,6 +30,10 @@ extern uint8_t vramB[0x20000];
 extern uint8_t vramC[0x20000];
 extern uint8_t vramD[0x20000];
 
+extern uint16_t ime9, ime7;
+extern uint32_t ie9,  ie7;
+extern uint32_t if9,  if7;
+
 extern uint32_t dispcntA;
 extern uint16_t dispstat;
 extern uint16_t vcount;

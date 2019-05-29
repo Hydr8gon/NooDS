@@ -118,7 +118,10 @@ void drawDot()
     {
         memory::dispstat |= BIT(1); // H-blank flag
         if (memory::dispstat & BIT(4)) // H-blank IRQ flag
-            printf("Unhandled H-blank IRQ\n");
+        {
+            interpreter::irq9(1);
+            interpreter::irq7(1);
+        }
     }
     else if (dot == 355) // End of scanline
     {
@@ -131,7 +134,10 @@ void drawDot()
         {
             memory::dispstat |= BIT(2); // V-counter flag
             if (memory::dispstat & BIT(5)) // V-counter IRQ flag
-                printf("Unhandled V-counter IRQ\n");
+            {
+                interpreter::irq9(2);
+                interpreter::irq7(2);
+            }
         }
         else if (memory::dispstat & BIT(2))
         {
@@ -143,7 +149,10 @@ void drawDot()
     {
         memory::dispstat |= BIT(0); // V-blank flag
         if (memory::dispstat & BIT(3)) // V-blank IRQ flag
-            printf("Unhandled V-blank IRQ\n");
+        {
+            interpreter::irq9(0);
+            interpreter::irq7(0);
+        }
     }
     else if (memory::vcount == 263) // End of frame
     {

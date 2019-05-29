@@ -21,7 +21,6 @@
 
 #include "core.h"
 #include "gpu.h"
-#include "interpreter.h"
 #include "memory.h"
 
 namespace core

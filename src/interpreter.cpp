@@ -21,6 +21,7 @@
 
 #include "interpreter.h"
 #include "core.h"
+#include "cp15.h"
 #include "interpreter_alu.h"
 #include "interpreter_other.h"
 #include "interpreter_thumb.h"
@@ -165,6 +166,36 @@ void setMode(Cpu *cpu, uint8_t mode)
     }
 
     cpu->cpsr = (cpu->cpsr & ~0x1F) | (mode & 0x1F);
+}
+
+void irq9(uint8_t type)
+{
+    if (!(core::arm9.cpsr & BIT(7)) && memory::ime9 && (memory::ie9 & BIT(type)))
+    {
+        memory::if9 |= BIT(type);
+        uint32_t cpsr = core::arm9.cpsr;
+        setMode(&core::arm9, 0x12);
+        *core::arm9.spsr = cpsr;
+        core::arm9.cpsr &= ~BIT(5);
+        core::arm9.cpsr |= BIT(7);
+        *core::arm9.registers[14] = *core::arm9.registers[15] - ((core::arm9.cpsr & BIT(5)) ? 2 : 4);
+        *core::arm9.registers[15] = cp15::exceptions + 0x18 + 8;
+    }
+}
+
+void irq7(uint8_t type)
+{
+    if (!(core::arm7.cpsr & BIT(7)) && memory::ime7 && (memory::ie7 & BIT(type)))
+    {
+        memory::if7 |= BIT(type);
+        uint32_t cpsr = core::arm7.cpsr;
+        setMode(&core::arm7, 0x12);
+        *core::arm7.spsr = cpsr;
+        core::arm7.cpsr &= ~BIT(5);
+        core::arm7.cpsr |= BIT(7);
+        *core::arm7.registers[14] = *core::arm7.registers[15] - ((core::arm7.cpsr & BIT(5)) ? 2 : 4);
+        *core::arm7.registers[15] = 0x00000018 + 8;
+    }
 }
 
 uint32_t lsl(Cpu *cpu, uint32_t value, uint8_t amount, bool carry)

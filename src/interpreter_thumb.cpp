@@ -541,11 +541,11 @@ void swi(interpreter::Cpu *cpu, uint32_t opcode) // SWI #i
 {
     uint32_t cpsr = cpu->cpsr;
     setMode(cpu, 0x13);
-    *cpu->registers[14] = *cpu->registers[15] - 2;
     *cpu->spsr = cpsr;
     cpu->cpsr &= ~BIT(5);
     cpu->cpsr |= BIT(7);
-    *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0x00000000) + 8;
+    *cpu->registers[14] = *cpu->registers[15] - 2;
+    *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0x00000000) + 0x08;
 }
 
 void b(interpreter::Cpu *cpu, uint32_t opcode) // B label

@@ -46,8 +46,10 @@ uint8_t vramH[0x8000];   //  32KB VRAM block H
 uint8_t vramI[0x4000];   //  16KB VRAM block I
 uint8_t oam[0x800];      //   2KB OAM
 
-uint16_t ipcsync9; // ARM9 IPC synchronize
-uint16_t ipcsync7; // ARM7 IPC synchronize
+uint16_t ipcsync9, ipcsync7; // IPC synchronize
+uint16_t ime9,     ime7;     // Interrupt master enable
+uint32_t ie9,      ie7;      // Interrupt enable
+uint32_t if9,      if7;      // Interrupt request flags
 
 uint32_t dispcntA; // 2D engine A LCD control
 uint16_t dispstat; // General LCD status
@@ -133,6 +135,15 @@ uint32_t ioReadMap9(uint32_t address)
         case 0x4000180: // IPCSYNC_9
             return ipcsync9;
 
+        case 0x4000208: // IME_9
+            return ime9;
+
+        case 0x4000210: // IE_9
+            return ie9;
+
+        case 0x4000214: // IF_9
+            return if9;
+
         case 0x4000304: // POWCNT1
             return powcnt1;
 
@@ -161,7 +172,19 @@ void ioWriteMap9(uint32_t address, uint32_t value)
             ipcsync9 = (ipcsync9 & 0x000F) | (value & 0x4F00);
             ipcsync7 = (ipcsync7 & 0x4F00) | ((value & 0x0F00) >> 8);
             if ((value & BIT(13)) && (ipcsync7 & BIT(14))) // Remote IRQ
-                printf("Unhandled IPCSYNC_9 IRQ\n");
+                interpreter::irq7(16);
+            break;
+
+        case 0x4000208: // IME_9
+            ime9 = value & BIT(0);
+            break;
+
+        case 0x4000210: // IE_9
+            ie9 = value & 0xFFFFFF7F;
+            break;
+
+        case 0x4000214: // IF_9
+            if9 &= ~value;
             break;
 
         case 0x4000304: // POWCNT1
@@ -191,6 +214,15 @@ uint32_t ioReadMap7(uint32_t address)
         case 0x4000180: // IPCSYNC_7
             return ipcsync7;
 
+        case 0x4000208: // IME_7
+            return ime7;
+
+        case 0x4000210: // IE_7
+            return ie7;
+
+        case 0x4000214: // IF_7
+            return if7;
+
         default:
             printf("Unknown ARM7 I/O read: 0x%X\n", address);
             return 0;
@@ -209,7 +241,19 @@ void ioWriteMap7(uint32_t address, uint32_t value)
             ipcsync7 = (ipcsync7 & 0x000F) | (value & 0x4F00);
             ipcsync9 = (ipcsync9 & 0x4F00) | ((value & 0x0F00) >> 8);
             if ((value & BIT(13)) && (ipcsync9 & BIT(14))) // Remote IRQ
-                printf("Unhandled IPCSYNC_7 IRQ\n");
+                interpreter::irq9(16);
+            break;
+
+        case 0x4000208: // IME_7
+            ime7 = value & BIT(0);
+            break;
+
+        case 0x4000210: // IE_7
+            ie7 = value;
+            break;
+
+        case 0x4000214: // IF_7
+            if7 &= ~value;
             break;
 
         default:

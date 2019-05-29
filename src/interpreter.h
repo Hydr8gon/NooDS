@@ -45,6 +45,8 @@ typedef struct
 
 void execute(Cpu *cpu);
 void setMode(Cpu *cpu, uint8_t mode);
+void irq9(uint8_t type);
+void irq7(uint8_t type);
 
 uint32_t lsl(Cpu *cpu, uint32_t value, uint8_t amount, bool carry);
 uint32_t lsr(Cpu *cpu, uint32_t value, uint8_t amount, bool carry);
