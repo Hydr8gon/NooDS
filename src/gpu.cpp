@@ -156,7 +156,7 @@ void drawDot()
     }
     else if (memory::vcount == 263) // End of frame
     {
-        memory::dispstat &= BIT(0); // V-blank flag
+        memory::dispstat &= ~BIT(0); // V-blank flag
         memory::vcount = 0;
 
         // Display the frame
