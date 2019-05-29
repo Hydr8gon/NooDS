@@ -557,7 +557,7 @@ void blxOff(interpreter::Cpu *cpu, uint32_t opcode) // BLX label
 {
     if (cpu->type == 9)
     {
-        uint32_t ret = (*cpu->registers[15] - 2) | 1;
+        uint32_t ret = *cpu->registers[15] - 1;
         *cpu->registers[15] = *cpu->registers[14] + BL_OFFSET;
         *cpu->registers[14] = ret;
         cpu->cpsr &= ~BIT(5);
@@ -571,7 +571,7 @@ void blSetup(interpreter::Cpu *cpu, uint32_t opcode) // BL/BLX label
 
 void blOff(interpreter::Cpu *cpu, uint32_t opcode) // BL label
 {
-    uint32_t ret = (*cpu->registers[15] - 2) | 1;
+    uint32_t ret = *cpu->registers[15] - 1;
     *cpu->registers[15] = *cpu->registers[14] + BL_OFFSET;
     *cpu->registers[14] = ret;
 }
