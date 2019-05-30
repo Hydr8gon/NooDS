@@ -187,41 +187,45 @@
     RD = res;                         \
     MUL_FLAGS(RN);
 
-#define UMLAL                                 \
-    uint64_t res = ((uint64_t)RN << 32) | RD; \
-    res += (uint64_t)RM * RS;                 \
-    RN = res >> 32;                           \
+#define UMLAL                         \
+    uint64_t res = (uint64_t)RM * RS; \
+    res += ((uint64_t)RN << 32) | RD; \
+    RN = res >> 32;                   \
     RD = res;
 
-#define UMLALS                                \
-    uint64_t res = ((uint64_t)RN << 32) | RD; \
-    res += (uint64_t)RM * RS;                 \
-    RN = res >> 32;                           \
-    RD = res;                                 \
+#define UMLALS                        \
+    uint64_t res = (uint64_t)RM * RS; \
+    res += ((uint64_t)RN << 32) | RD; \
+    RN = res >> 32;                   \
+    RD = res;                         \
     MUL_FLAGS(RN);
 
-#define SMULL                                \
-    int64_t res = (int64_t)RM * (int64_t)RS; \
-    RN = res >> 32;                          \
+#define SMULL                  \
+    int64_t res = (int32_t)RM; \
+    res *= (int32_t)RS;        \
+    RN = res >> 32;            \
     RD = res;
 
-#define SMULLS                               \
-    int64_t res = (int64_t)RM * (int64_t)RS; \
-    RN = res >> 32;                          \
-    RD = res;                                \
+#define SMULLS                 \
+    int64_t res = (int32_t)RM; \
+    res *= (int32_t)RS;        \
+    RN = res >> 32;            \
+    RD = res;                  \
     MUL_FLAGS(RN);
 
-#define SMLAL                               \
-    int64_t res = ((int64_t)RN << 32) | RD; \
-    res += (int64_t)RM * (int32_t)RS;       \
-    RN = res >> 32;                         \
+#define SMLAL                        \
+    int64_t res = (int32_t)RM;       \
+    res *= (int32_t)RS;              \
+    res += ((int64_t)RN << 32) | RD; \
+    RN = res >> 32;                  \
     RD = res;
 
-#define SMLALS                              \
-    int64_t res = ((int64_t)RN << 32) | RD; \
-    res += (int64_t)RM * (int32_t)RS;       \
-    RN = res >> 32;                         \
-    RD = res;                               \
+#define SMLALS                       \
+    int64_t res = (int32_t)RM;       \
+    res *= (int32_t)RS;              \
+    res += ((int64_t)RN << 32) | RD; \
+    RN = res >> 32;                  \
+    RD = res;                        \
     MUL_FLAGS(RN);
 
 namespace interpreter_alu
