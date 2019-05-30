@@ -256,6 +256,23 @@ void ioWriteMap7(uint32_t address, uint32_t value)
             if7 &= ~value;
             break;
 
+        case 0x4000301: // HALTCNT
+            switch ((value & 0xC0) >> 6)
+            {
+                case 0x1:
+                    printf("Unhandled request: GBA mode\n");
+                    break;
+
+                case 0x2:
+                    core::arm7.halt = true;
+                    break;
+
+                case 0x3:
+                    printf("Unhandled request: Sleep mode\n");
+                    break;
+            }
+            break;
+
         default:
             printf("Unknown ARM7 I/O write: 0x%X\n", address);
             break;

@@ -73,6 +73,14 @@ void writeRegister(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value)
         if (control & BIT(17)) printf("Unhandled request: DTCM load mode\n");
         if (control & BIT(19)) printf("Unhandled request: ITCM load mode\n");
     }
+    else if (cn == 7 && cm == 0 && cp == 4) // Wait for interrupt
+    {
+        core::arm9.halt = true;
+    }
+    else if (cn == 7 && cm == 8 && cp == 2) // Wait for interrupt (alternate)
+    {
+        core::arm9.halt = true;
+    }
     else if (cn == 9 && cm == 1 && cp == 0) // Data TCM base/size
     {
         uint8_t shift = (value & 0x0000003E) >> 1;

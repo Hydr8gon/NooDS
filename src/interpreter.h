@@ -37,6 +37,7 @@ typedef struct
     uint32_t registersIrq[2];
     uint32_t registersUnd[2];
     uint32_t spsrFiq, spsrSvc, spsrAbt, spsrIrq, spsrUnd;
+    bool halt;
     void *(*memoryMap)(uint32_t);
     uint32_t (*ioReadMap)(uint32_t);
     void (*ioWriteMap)(uint32_t, uint32_t);
