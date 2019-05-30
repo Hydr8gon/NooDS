@@ -46,6 +46,9 @@ uint8_t vramH[0x8000];   //  32KB VRAM block H
 uint8_t vramI[0x4000];   //  16KB VRAM block I
 uint8_t oam[0x800];      //   2KB OAM
 
+bool     vramEnables[9];
+uint32_t vramOffsets[9];
+
 uint16_t ipcsync9, ipcsync7; // IPC synchronize
 uint16_t ime9,     ime7;     // Interrupt master enable
 uint32_t ie9,      ie7;      // Interrupt enable
@@ -61,26 +64,24 @@ void *vramMap(uint32_t address)
 {
     if (address >= 0x5000000 && address < 0x6000000) // 2KB palettes
         return &palettes[(address - 0x5000000) % 0x800];
-    else if (address >= 0x6800000 && address < 0x6820000) // 128KB VRAM block A
-        return &vramA[(address - 0x6800000) % 0x20000];
-    else if (address >= 0x6820000 && address < 0x6840000) // 128KB VRAM block B
-        return &vramB[(address - 0x6820000) % 0x20000];
-    else if (address >= 0x6840000 && address < 0x6860000) // 128KB VRAM block C
-        return &vramC[(address - 0x6840000) % 0x20000];
-    else if (address >= 0x6860000 && address < 0x6880000) // 128KB VRAM block D
-        return &vramD[(address - 0x6860000) % 0x20000];
-    else if (address >= 0x6880000 && address < 0x6890000) // 64KB VRAM block E
-        return &vramE[(address - 0x6880000) % 0x10000];
-    else if (address >= 0x6890000 && address < 0x6894000) // 16KB VRAM block F
-        return &vramF[(address - 0x6890000) % 0x4000];
-    else if (address >= 0x6894000 && address < 0x6898000) // 16KB VRAM block G
-        return &vramG[(address - 0x6894000) % 0x4000];
-    else if (address >= 0x6898000 && address < 0x68A0000) // 32KB VRAM block H
-        return &vramH[(address - 0x6898000) % 0x8000];
-    else if (address >= 0x68A0000 && address < 0x68A4000) // 16KB VRAM block I
-        return &vramI[(address - 0x68A0000) % 0x4000];
-    else if (address >= 0x68A4000 && address < 0x7000000) // Mirror
-        return vramMap(address - 0x8A4000);
+    else if (vramEnables[0] && address >= vramOffsets[0] && address < vramOffsets[0] + 0x20000) // 128KB VRAM block A
+        return &vramA[(address - vramOffsets[0]) % 0x20000];
+    else if (vramEnables[1] && address >= vramOffsets[1] && address < vramOffsets[1] + 0x20000) // 128KB VRAM block B
+        return &vramB[(address - vramOffsets[1]) % 0x20000];
+    else if (vramEnables[2] && address >= vramOffsets[2] && address < vramOffsets[2] + 0x20000) // 128KB VRAM block C
+        return &vramC[(address - vramOffsets[2]) % 0x20000];
+    else if (vramEnables[3] && address >= vramOffsets[3] && address < vramOffsets[3] + 0x20000) // 128KB VRAM block D
+        return &vramD[(address - vramOffsets[3]) % 0x20000];
+    else if (vramEnables[4] && address >= vramOffsets[4] && address < vramOffsets[4] + 0x10000) // 64KB VRAM block E
+        return &vramE[(address - vramOffsets[4]) % 0x10000];
+    else if (vramEnables[5] && address >= vramOffsets[5] && address < vramOffsets[5] + 0x4000) // 16KB VRAM block F
+        return &vramF[(address - vramOffsets[5]) % 0x4000];
+    else if (vramEnables[6] && address >= vramOffsets[6] && address < vramOffsets[6] + 0x4000) // 16KB VRAM block G
+        return &vramG[(address - vramOffsets[6]) % 0x4000];
+    else if (vramEnables[7] && address >= vramOffsets[7] && address < vramOffsets[7] + 0x8000) // 32KB VRAM block H
+        return &vramH[(address - vramOffsets[7]) % 0x8000];
+    else if (vramEnables[8] && address >= vramOffsets[8] && address < vramOffsets[8] + 0x4000) // 16KB VRAM block I
+        return &vramI[(address - vramOffsets[8]) % 0x4000];
     else if (address >= 0x7000000 && address < 0x8000000) // 2KB OAM
         return &oam[(address - 0x7000000) % 0x800];
     else
@@ -185,6 +186,183 @@ void ioWriteMap9(uint32_t address, uint32_t value)
 
         case 0x4000214: // IF_9
             if9 &= ~value;
+            break;
+
+        case 0x4000240: // VRAMCNT_A
+            if (value & BIT(7))
+            {
+                vramEnables[0] = true;
+                uint8_t mst = (value & 0x03);
+                uint8_t offset = (value & 0x18) >> 3;
+                switch (mst) // MST
+                {
+                    case 0x0: vramOffsets[0] = 0x6800000;                               break;
+                    case 0x1: vramOffsets[0] = 0x6000000 + 0x20000 * offset;            break;
+                    case 0x2: vramOffsets[0] = 0x6400000 + 0x20000 * (offset & BIT(0)); break;
+                    default: vramEnables[0] = false; printf("Unknown VRAM A MST: %d\n", mst); break;
+                }
+            }
+            else
+            {
+                vramEnables[0] = false;
+            }
+            break;
+
+        case 0x4000241: // VRAMCNT_B
+            if (value & BIT(7))
+            {
+                vramEnables[1] = true;
+                uint8_t mst = (value & 0x03);
+                uint8_t offset = (value & 0x18) >> 3;
+                switch (mst)
+                {
+                    case 0x0: vramOffsets[1] = 0x6820000;                               break;
+                    case 0x1: vramOffsets[1] = 0x6000000 + 0x20000 * offset;            break;
+                    case 0x2: vramOffsets[1] = 0x6400000 + 0x20000 * (offset & BIT(0)); break;
+                    default: vramEnables[1] = false; printf("Unknown VRAM B MST: %d\n", mst); break;
+                }
+            }
+            else
+            {
+                vramEnables[1] = false;
+            }
+            break;
+
+        case 0x4000242: // VRAMCNT_C
+            if (value & BIT(7))
+            {
+                vramEnables[2] = true;
+                uint8_t mst = (value & 0x07);
+                uint8_t offset = (value & 0x18) >> 3;
+                switch (mst)
+                {
+                    case 0x0: vramOffsets[2] = 0x6840000;                    break;
+                    case 0x1: vramOffsets[2] = 0x6000000 + 0x20000 * offset; break;
+                    case 0x4: vramOffsets[2] = 0x6200000;                    break;
+                    default: vramEnables[2] = false; printf("Unknown VRAM C MST: %d\n", mst); break;
+                }
+            }
+            else
+            {
+                vramEnables[2] = false;
+            }
+            break;
+
+        case 0x4000243: // VRAMCNT_D
+            if (value & BIT(7))
+            {
+                vramEnables[3] = true;
+                uint8_t mst = (value & 0x07);
+                uint8_t offset = (value & 0x18) >> 3;
+                switch (mst)
+                {
+                    case 0x0: vramOffsets[3] = 0x6860000;                    break;
+                    case 0x1: vramOffsets[3] = 0x6000000 + 0x20000 * offset; break;
+                    case 0x4: vramOffsets[3] = 0x6600000;                    break;
+                    default: vramEnables[3] = false; printf("Unknown VRAM D MST: %d\n", mst); break;
+                }
+            }
+            else
+            {
+                vramEnables[3] = false;
+            }
+            break;
+
+        case 0x4000244: // VRAMCNT_E
+            if (value & BIT(7))
+            {
+                vramEnables[4] = true;
+                uint8_t mst = (value & 0x07);
+                uint8_t offset = (value & 0x18) >> 3;
+                switch (mst)
+                {
+                    case 0x0: vramOffsets[4] = 0x6880000;                    break;
+                    case 0x1: vramOffsets[4] = 0x6000000;                    break;
+                    case 0x2: vramOffsets[4] = 0x6400000;                    break;
+                    default: vramEnables[4] = false; printf("Unknown VRAM E MST: %d\n", mst); break;
+                }
+            }
+            else
+            {
+                vramEnables[4] = false;
+            }
+            break;
+
+        case 0x4000245: // VRAMCNT_F
+            if (value & BIT(7))
+            {
+                vramEnables[5] = true;
+                uint8_t mst = (value & 0x07);
+                uint8_t offset = (value & 0x18) >> 3;
+                switch (mst)
+                {
+                    case 0x0: vramOffsets[5] = 0x6890000;                                                           break;
+                    case 0x1: vramOffsets[5] = 0x6000000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
+                    case 0x2: vramOffsets[5] = 0x6400000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
+                    default: vramEnables[5] = false; printf("Unknown VRAM F MST: %d\n", mst); break;
+                }
+            }
+            else
+            {
+                vramEnables[5] = false;
+            }
+            break;
+
+        case 0x4000246: // VRAMCNT_G
+            if (value & BIT(7))
+            {
+                vramEnables[6] = true;
+                uint8_t mst = (value & 0x07);
+                uint8_t offset = (value & 0x18) >> 3;
+                switch (mst)
+                {
+                    case 0x0: vramOffsets[6] = 0x6894000;                                                           break;
+                    case 0x1: vramOffsets[6] = 0x6000000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
+                    case 0x2: vramOffsets[6] = 0x6400000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
+                    default: vramEnables[6] = false; printf("Unknown VRAM G MST: %d\n", mst); break;
+                }
+            }
+            else
+            {
+                vramEnables[6] = false;
+            }
+            break;
+
+        case 0x4000248: // VRAMCNT_H
+            if (value & BIT(7))
+            {
+                vramEnables[7] = true;
+                uint8_t mst = (value & 0x03);
+                switch (mst)
+                {
+                    case 0x0: vramOffsets[7] = 0x6898000; break;
+                    case 0x1: vramOffsets[7] = 0x6200000; break;
+                    default: vramEnables[7] = false; printf("Unknown VRAM H MST: %d\n", mst); break;
+                }
+            }
+            else
+            {
+                vramEnables[7] = false;
+            }
+            break;
+
+        case 0x4000249: // VRAMCNT_I
+            if (value & BIT(7))
+            {
+                vramEnables[8] = true;
+                uint8_t mst = (value & 0x03);
+                switch (mst)
+                {
+                    case 0x0: vramOffsets[8] = 0x68A0000; break;
+                    case 0x1: vramOffsets[8] = 0x6208000; break;
+                    case 0x2: vramOffsets[8] = 0x6600000; break;
+                    default: vramEnables[8] = false; printf("Unknown VRAM I MST: %d\n", mst); break;
+                }
+            }
+            else
+            {
+                vramEnables[8] = false;
+            }
             break;
 
         case 0x4000304: // POWCNT1
