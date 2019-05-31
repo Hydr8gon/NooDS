@@ -31,15 +31,9 @@ interpreter::Cpu arm9, arm7;
 
 bool init9(uint32_t romOffset, uint32_t entryAddress, uint32_t ramAddress, uint32_t size)
 {
-    // Prepare the CPU
+    // Set default values
     for (int i = 0; i < 16; i++)
         arm9.registers[i] = &arm9.registersUsr[i];
-    arm9.memoryMap = memory::memoryMap9;
-    arm9.ioReadMap = memory::ioReadMap9;
-    arm9.ioWriteMap = memory::ioWriteMap9;
-    arm9.type = 9;
-
-    // Set default values
     arm9.registersUsr[12] = entryAddress;
     arm9.registersUsr[14] = entryAddress;
     arm9.registersUsr[15] = entryAddress + 8;
@@ -47,12 +41,16 @@ bool init9(uint32_t romOffset, uint32_t entryAddress, uint32_t ramAddress, uint3
     arm9.registersIrq[0]  = 0x03003F80;
     arm9.registersSvc[0]  = 0x03003FC0;
     arm9.cpsr             = 0x000000DF;
+    arm9.type             = 9;
 
     // Load the BIOS into memory
     FILE *file = fopen("bios9.bin", "rb");
     if (!file) return false;
-    fread(arm9.memoryMap(0xFFFF0000), sizeof(uint8_t), 0x1000, file);
+    uint8_t bios[0x1000];
+    fread(bios, sizeof(uint8_t), 0x1000, file);
     fclose(file);
+    for (int i = 0; i < 0x1000; i++)
+        memory::write<uint8_t>(&arm9, 0xFFFF0000 + i, bios[i]);
 
     // Load the code into memory
     for (int i = 0; i < size; i++)
@@ -68,15 +66,9 @@ bool init9(uint32_t romOffset, uint32_t entryAddress, uint32_t ramAddress, uint3
 
 bool init7(uint32_t romOffset, uint32_t entryAddress, uint32_t ramAddress, uint32_t size)
 {
-    // Prepare the CPU
+    // Set default values
     for (int i = 0; i < 16; i++)
         arm7.registers[i] = &arm7.registersUsr[i];
-    arm7.memoryMap = memory::memoryMap7;
-    arm7.ioReadMap = memory::ioReadMap7;
-    arm7.ioWriteMap = memory::ioWriteMap7;
-    arm7.type = 7;
-
-    // Set default values
     arm7.registersUsr[12] = entryAddress;
     arm7.registersUsr[14] = entryAddress;
     arm7.registersUsr[15] = entryAddress + 8;
@@ -84,12 +76,16 @@ bool init7(uint32_t romOffset, uint32_t entryAddress, uint32_t ramAddress, uint3
     arm7.registersIrq[0]  = 0x0380FF80;
     arm7.registersSvc[0]  = 0x0380FFC0;
     arm7.cpsr             = 0x000000DF;
+    arm7.type             = 7;
 
     // Load the BIOS into memory
     FILE *file = fopen("bios7.bin", "rb");
     if (!file) return false;
-    fread(arm7.memoryMap(0x00000000), sizeof(uint8_t), 0x4000, file);
+    uint8_t bios[0x4000];
+    fread(bios, sizeof(uint8_t), 0x4000, file);
     fclose(file);
+    for (int i = 0; i < 0x4000; i++)
+        memory::write<uint8_t>(&arm7, 0x00000000 + i, bios[i]);
 
     // Load the code into memory
     for (int i = 0; i < size; i++)

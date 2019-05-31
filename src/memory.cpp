@@ -49,15 +49,15 @@ uint8_t oam[0x800];      //   2KB OAM
 bool     vramEnables[9];
 uint32_t vramOffsets[9];
 
-uint16_t ipcsync9, ipcsync7; // IPC synchronize
-uint16_t ime9,     ime7;     // Interrupt master enable
+uint32_t ipcsync9, ipcsync7; // IPC synchronize
+uint32_t ime9,     ime7;     // Interrupt master enable
 uint32_t ie9,      ie7;      // Interrupt enable
 uint32_t if9,      if7;      // Interrupt request flags
 
 uint32_t dispcntA; // 2D engine A LCD control
-uint16_t dispstat; // General LCD status
-uint16_t vcount;   // Vertical counter
-uint16_t powcnt1;  // Graphics power control
+uint32_t dispstat; // General LCD status
+uint32_t vcount;   // Vertical counter
+uint32_t powcnt1;  // Graphics power control
 uint32_t dispcntB; // 2D engine B LCD control
 
 void *vramMap(uint32_t address)
@@ -157,16 +157,16 @@ uint32_t ioReadMap9(uint32_t address)
     }
 }
 
-void ioWriteMap9(uint32_t address, uint32_t value)
+template <typename T> void ioWriteMap9(uint32_t address, T value)
 {
     switch (address)
     {
         case 0x4000000: // DISPCNT_A
-            dispcntA = value;
+            *(T*)&dispcntA = value;
             break;
 
         case 0x4000004: // DISPSTAT
-            dispstat = (value & 0xFFB8) | (dispstat & 0x0007);
+            *(T*)&dispstat = (value & 0xFFB8) | (dispstat & 0x0007);
             break;
 
         case 0x4000180: // IPCSYNC_9
@@ -181,11 +181,11 @@ void ioWriteMap9(uint32_t address, uint32_t value)
             break;
 
         case 0x4000210: // IE_9
-            ie9 = value & 0xFFFFFF7F;
+            *(T*)&ie9 = value & 0xFFFFFF7F;
             break;
 
         case 0x4000214: // IF_9
-            if9 &= ~value;
+            if9 &= ~((uint32_t)value);
             break;
 
         case 0x4000240: // VRAMCNT_A
@@ -366,11 +366,11 @@ void ioWriteMap9(uint32_t address, uint32_t value)
             break;
 
         case 0x4000304: // POWCNT1
-            powcnt1 = (value & 0x820F);
+            *(T*)&powcnt1 = (value & 0x820F);
             break;
 
         case 0x4001000: // DISPCNT_B
-            dispcntB = (value & 0xC0B3FFF7);
+            *(T*)&dispcntB = (value & 0xC0B3FFF7);
             break;
 
         default:
@@ -407,12 +407,12 @@ uint32_t ioReadMap7(uint32_t address)
     }
 }
 
-void ioWriteMap7(uint32_t address, uint32_t value)
+template <typename T> void ioWriteMap7(uint32_t address, T value)
 {
     switch (address)
     {
         case 0x4000004: // DISPSTAT
-            dispstat = (value & 0xFFB8) | (dispstat & 0x0007);
+            *(T*)&dispstat = (value & 0xFFB8) | (dispstat & 0x0007);
             break;
 
         case 0x4000180: // IPCSYNC_7
@@ -427,11 +427,11 @@ void ioWriteMap7(uint32_t address, uint32_t value)
             break;
 
         case 0x4000210: // IE_7
-            ie7 = value;
+            *(T*)&ie7 = value;
             break;
 
         case 0x4000214: // IF_7
-            if7 &= ~value;
+            if7 &= ~((uint32_t)value);
             break;
 
         case 0x4000301: // HALTCNT
@@ -462,17 +462,35 @@ template uint16_t read(interpreter::Cpu *cpu, uint32_t address);
 template uint32_t read(interpreter::Cpu *cpu, uint32_t address);
 template <typename T> T read(interpreter::Cpu *cpu, uint32_t address)
 {
-    if (address >= 0x4000000 && address < 0x5000000)
+    if (cpu->type == 9)
     {
-        return cpu->ioReadMap(address);
+        if (address >= 0x4000000 && address < 0x5000000)
+        {
+            return ioReadMap9(address);
+        }
+        else
+        {
+            T *src = (T*)memoryMap9(address);
+            if (src)
+                return *src;
+            else
+                printf("Unknown ARM9 memory read: 0x%X\n", address);
+        }
     }
     else
     {
-        T *src = (T*)cpu->memoryMap(address);
-        if (src)
-            return *src;
+        if (address >= 0x4000000 && address < 0x5000000)
+        {
+            return ioReadMap7(address);
+        }
         else
-            printf("Unknown ARM%d memory read: 0x%X\n", cpu->type, address);
+        {
+            T *src = (T*)memoryMap7(address);
+            if (src)
+                return *src;
+            else
+                printf("Unknown ARM7 memory read: 0x%X\n", address);
+        }
     }
 
     return 0;
@@ -483,17 +501,35 @@ template void write(interpreter::Cpu *cpu, uint32_t address, uint16_t value);
 template void write(interpreter::Cpu *cpu, uint32_t address, uint32_t value);
 template <typename T> void write(interpreter::Cpu *cpu, uint32_t address, T value)
 {
-    if (address >= 0x4000000 && address < 0x5000000)
+    if (cpu->type == 9)
     {
-        cpu->ioWriteMap(address, value);
+        if (address >= 0x4000000 && address < 0x5000000)
+        {
+            ioWriteMap9<T>(address, value);
+        }
+        else
+        {
+            T *dst = (T*)memoryMap9(address);
+            if (dst)
+                *dst = value;
+            else
+                printf("Unknown ARM9 memory write: 0x%X\n", address);
+        }
     }
     else
     {
-        T *dst = (T*)cpu->memoryMap(address);
-        if (dst)
-            *dst = value;
+        if (address >= 0x4000000 && address < 0x5000000)
+        {
+            ioWriteMap7<T>(address, value);
+        }
         else
-            printf("Unknown ARM%d memory write: 0x%X\n", cpu->type, address);
+        {
+            T *dst = (T*)memoryMap7(address);
+            if (dst)
+                *dst = value;
+            else
+                printf("Unknown ARM7 memory write: 0x%X\n", address);
+        }
     }
 }
 
