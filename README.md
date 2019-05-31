@@ -1,5 +1,5 @@
-# NoiDS
-A "noice" NDS emulator.
+# NooDS
+A (hopefully!) speedy NDS emulator.
 
 The goal of this project is to be a fast (and not necessarily accurate) Nintendo DS emulator. My hope is that it will at least be able to run well on the Nintendo Switch.
 

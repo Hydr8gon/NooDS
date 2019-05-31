@@ -1,4 +1,4 @@
-NAME	:= noids
+NAME	:= noods
 SOURCES := src src/desktop
 ARGS    := -O2
 LIBS    := -lpthread -lglut -lGL
