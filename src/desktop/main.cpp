@@ -27,7 +27,7 @@
 
 // This seems to be missing on Windows
 #ifdef _WIN32
-#define GL_UNSIGNED_INT_8_8_8_8 0x8035
+#define GL_UNSIGNED_SHORT_1_5_5_5_REV 0x8366
 #endif
 
 void runCore()
@@ -38,7 +38,7 @@ void runCore()
 
 void draw()
 {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 192 * 2, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, gpu::displayBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 192 * 2, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, gpu::displayBuffer);
     glBegin(GL_QUADS);
     glTexCoord2i(1, 1); glVertex2f( 1, -1);
     glTexCoord2i(0, 1); glVertex2f(-1, -1);

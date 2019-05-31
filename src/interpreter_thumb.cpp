@@ -23,20 +23,20 @@
 #include "interpreter_alu.h"
 #include "memory.h"
 
-#define RN (*cpu->registers[(opcode & 0x000001C0) >> 6])
-#define RS (*cpu->registers[(opcode & 0x00000038) >> 3])
-#define RD (*cpu->registers[(opcode & 0x00000007)])
+#define RN (*cpu->registers[(opcode & 0x01C0) >> 6])
+#define RS (*cpu->registers[(opcode & 0x0038) >> 3])
+#define RD (*cpu->registers[(opcode & 0x0007)])
 
-#define IMM3 ((opcode & 0x000001C0) >> 6)
-#define IMM5 ((opcode & 0x000007C0) >> 6)
-#define IMM8 (opcode & 0x000000FF)
-#define RD8  (*cpu->registers[(opcode & 0x00000700) >> 8])
-#define RS16 (*cpu->registers[(opcode & 0x00000078) >> 3])
-#define RD16 (*cpu->registers[((opcode & 0x00000080) >> 4) | (opcode & 0x7)])
+#define IMM3 ((opcode & 0x01C0) >> 6)
+#define IMM5 ((opcode & 0x07C0) >> 6)
+#define IMM8 (opcode & 0x00FF)
+#define RD8  (*cpu->registers[(opcode & 0x0700) >> 8])
+#define RS16 (*cpu->registers[(opcode & 0x0078) >> 3])
+#define RD16 (*cpu->registers[((opcode & 0x0080) >> 4) | (opcode & 0x7)])
 
-#define BCOND_OFFSET (((opcode & 0x000000FF) << 1) | ((opcode & BIT(7))  ? 0xFFFFFE00 : 0))
-#define B_OFFSET     (((opcode & 0x000007FF) << 1) | ((opcode & BIT(10)) ? 0xFFFFF000 : 0))
-#define BL_OFFSET    ((opcode & 0x000007FF) << 1)
+#define BCOND_OFFSET (((opcode & 0x00FF) << 1) | ((opcode & BIT(7))  ? 0xFFFFFE00 : 0))
+#define B_OFFSET     (((opcode & 0x07FF) << 1) | ((opcode & BIT(10)) ? 0xFFFFF000 : 0))
+#define BL_OFFSET    ((opcode & 0x07FF) << 1)
 
 namespace interpreter_thumb
 {

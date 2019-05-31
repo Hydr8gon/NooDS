@@ -25,7 +25,7 @@
 namespace gpu
 {
 
-extern uint32_t displayBuffer[256 * 192 * 2];
+extern uint16_t displayBuffer[256 * 192 * 2];
 
 void drawDot();
 

@@ -35,17 +35,9 @@ namespace gpu
 {
 
 uint16_t dot;
-uint32_t framebuffers[2][256 * 192];
-uint32_t displayBuffer[256 * 192 * 2];
+uint16_t framebuffers[2][256 * 192];
+uint16_t displayBuffer[256 * 192 * 2];
 std::chrono::steady_clock::time_point timer;
-
-uint32_t bgr5ToRgba8(uint16_t pixel)
-{
-    uint8_t r = ((pixel >>  0) & 0x1F) * 255 / 31;
-    uint8_t g = ((pixel >>  5) & 0x1F) * 255 / 31;
-    uint8_t b = ((pixel >> 10) & 0x1F) * 255 / 31;
-    return (r << 24) | (g << 16) | (b << 8) | 0xFF;
-}
 
 void drawDot()
 {
@@ -54,15 +46,15 @@ void drawDot()
     {
         if (!(memory::powcnt1 & BIT(0))) // LCDs disabled
         {
-            framebuffers[0][memory::vcount * 256 + dot] = 0x000000FF;
-            framebuffers[1][memory::vcount * 256 + dot] = 0x000000FF;
+            framebuffers[0][memory::vcount * 256 + dot] = 0x0000;
+            framebuffers[1][memory::vcount * 256 + dot] = 0x0000;
         }
         else
         {
             switch ((memory::dispcntA & 0x00030000) >> 16) // Engine A display Mode
             {
                 case 0x0: // Display off
-                    framebuffers[0][memory::vcount * 256 + dot] = 0xFFFFFFFF;
+                    framebuffers[0][memory::vcount * 256 + dot] = 0x7FFF;
                     break;
 
                 case 0x1: // Graphics display
@@ -71,26 +63,15 @@ void drawDot()
                     break;
 
                 case 0x2: // VRAM display
-                    uint16_t pixel;
+                    uint16_t *bank;
                     switch ((memory::dispcntA & 0x000C0000) >> 18) // VRAM block
                     {
-                        case 0x0: // A
-                            pixel = *(uint16_t*)&memory::vramA[(memory::vcount * 256 + dot) * 2];
-                            break;
-
-                        case 0x1: // B
-                            pixel = *(uint16_t*)&memory::vramB[(memory::vcount * 256 + dot) * 2];
-                            break;
-
-                        case 0x2: // C
-                            pixel = *(uint16_t*)&memory::vramC[(memory::vcount * 256 + dot) * 2];
-                            break;
-
-                        case 0x3: // D
-                            pixel = *(uint16_t*)&memory::vramD[(memory::vcount * 256 + dot) * 2];
-                            break;
+                        case 0x0: bank = (uint16_t*)memory::vramA; break;
+                        case 0x1: bank = (uint16_t*)memory::vramB; break;
+                        case 0x2: bank = (uint16_t*)memory::vramC; break;
+                        default:  bank = (uint16_t*)memory::vramD; break;
                     }
-                    framebuffers[0][memory::vcount * 256 + dot] = bgr5ToRgba8(pixel);
+                    framebuffers[0][memory::vcount * 256 + dot] = bank[memory::vcount * 256 + dot];
                     break;
 
                 case 0x3: // Main memory display
@@ -102,7 +83,7 @@ void drawDot()
             switch ((memory::dispcntB & 0x00030000) >> 16) // Engine B display Mode
             {
                 case 0x0: // Display off
-                    framebuffers[1][memory::vcount * 256 + dot] = 0xFFFFFFFF;
+                    framebuffers[1][memory::vcount * 256 + dot] = 0x7FFF;
                     break;
 
                 case 0x1: // Graphics display
@@ -126,8 +107,8 @@ void drawDot()
     else if (dot == 355) // End of scanline
     {
         memory::dispstat &= ~BIT(1); // H-blank flag
-        dot = 0;
         memory::vcount++;
+        dot = 0;
 
         // Check the V-counter
         if (memory::vcount == (memory::dispstat >> 8) | ((memory::dispstat & BIT(7)) << 1))
