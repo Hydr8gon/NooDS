@@ -29,7 +29,6 @@
 #define CM ((opcode & 0x0000000F))
 
 #define B_OFFSET (((opcode & 0x00FFFFFF) << 2) | ((opcode & BIT(23)) ? 0xFC000000 : 0))
-#define BX_DEST  (*cpu->registers[opcode & 0x0000000F])
 
 namespace interpreter_other
 {
@@ -52,7 +51,7 @@ void msrRc(interpreter::Cpu *cpu, uint32_t opcode) // MSR CPSR,Rm
 
 void bx(interpreter::Cpu *cpu, uint32_t opcode) // BX Rn
 {
-    *cpu->registers[15] = BX_DEST;
+    *cpu->registers[15] = RM;
     if (*cpu->registers[15] & BIT(0))
     {
         cpu->cpsr |= BIT(5);
@@ -65,7 +64,7 @@ void blx(interpreter::Cpu *cpu, uint32_t opcode) // BLX Rn
     if (cpu->type == 9)
     {
         *cpu->registers[14] = *cpu->registers[15] - 4;
-        *cpu->registers[15] = BX_DEST;
+        *cpu->registers[15] = RM;
         if (*cpu->registers[15] & BIT(0))
         {
             cpu->cpsr |= BIT(5);

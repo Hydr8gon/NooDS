@@ -124,36 +124,16 @@ uint32_t ioReadMap9(uint32_t address)
 {
     switch (address)
     {
-        case 0x4000000: // DISPCNT_A
-            return dispcntA;
-
-        case 0x4000004: // DISPSTAT
-            return dispstat;
-
-        case 0x4000006: // VCOUNT
-            return vcount;
-
-        case 0x4000180: // IPCSYNC_9
-            return ipcsync9;
-
-        case 0x4000208: // IME_9
-            return ime9;
-
-        case 0x4000210: // IE_9
-            return ie9;
-
-        case 0x4000214: // IF_9
-            return if9;
-
-        case 0x4000304: // POWCNT1
-            return powcnt1;
-
-        case 0x4001000: // DISPCNT_B
-            return dispcntB;
-
-        default:
-            printf("Unknown ARM9 I/O read: 0x%X\n", address);
-            return 0;
+        case 0x4000000: return dispcntA; // DISPCNT_A
+        case 0x4000004: return dispstat; // DISPSTAT
+        case 0x4000006: return vcount;   // VCOUNT
+        case 0x4000180: return ipcsync9; // IPCSYNC_9
+        case 0x4000208: return ime9;     // IME_9
+        case 0x4000210: return ie9;      // IE_9
+        case 0x4000214: return if9;      // IF_9
+        case 0x4000304: return powcnt1;  // POWCNT1
+        case 0x4001000: return dispcntB; // DISPCNT_B
+        default: printf("Unknown ARM9 I/O read: 0x%X\n", address); return 0;
     }
 }
 
@@ -189,12 +169,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
             break;
 
         case 0x4000240: // VRAMCNT_A
-            if (value & BIT(7))
+            vramEnables[0] = (value & BIT(7));
+            if (vramEnables[0])
             {
-                vramEnables[0] = true;
                 uint8_t mst = (value & 0x03);
                 uint8_t offset = (value & 0x18) >> 3;
-                switch (mst) // MST
+                switch (mst)
                 {
                     case 0x0: vramOffsets[0] = 0x6800000;                               break;
                     case 0x1: vramOffsets[0] = 0x6000000 + 0x20000 * offset;            break;
@@ -202,16 +182,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                     default: vramEnables[0] = false; printf("Unknown VRAM A MST: %d\n", mst); break;
                 }
             }
-            else
-            {
-                vramEnables[0] = false;
-            }
             break;
 
         case 0x4000241: // VRAMCNT_B
-            if (value & BIT(7))
+            vramEnables[1] = (value & BIT(7));
+            if (vramEnables[1])
             {
-                vramEnables[1] = true;
                 uint8_t mst = (value & 0x03);
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
@@ -222,16 +198,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                     default: vramEnables[1] = false; printf("Unknown VRAM B MST: %d\n", mst); break;
                 }
             }
-            else
-            {
-                vramEnables[1] = false;
-            }
             break;
 
         case 0x4000242: // VRAMCNT_C
-            if (value & BIT(7))
+            vramEnables[2] = (value & BIT(7));
+            if (vramEnables[2])
             {
-                vramEnables[2] = true;
                 uint8_t mst = (value & 0x07);
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
@@ -242,16 +214,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                     default: vramEnables[2] = false; printf("Unknown VRAM C MST: %d\n", mst); break;
                 }
             }
-            else
-            {
-                vramEnables[2] = false;
-            }
             break;
 
         case 0x4000243: // VRAMCNT_D
-            if (value & BIT(7))
+            vramEnables[3] = (value & BIT(7));
+            if (vramEnables[3])
             {
-                vramEnables[3] = true;
                 uint8_t mst = (value & 0x07);
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
@@ -262,18 +230,13 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                     default: vramEnables[3] = false; printf("Unknown VRAM D MST: %d\n", mst); break;
                 }
             }
-            else
-            {
-                vramEnables[3] = false;
-            }
             break;
 
         case 0x4000244: // VRAMCNT_E
-            if (value & BIT(7))
+            vramEnables[4] = (value & BIT(7));
+            if (vramEnables[4])
             {
-                vramEnables[4] = true;
                 uint8_t mst = (value & 0x07);
-                uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
                 {
                     case 0x0: vramOffsets[4] = 0x6880000;                    break;
@@ -282,16 +245,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                     default: vramEnables[4] = false; printf("Unknown VRAM E MST: %d\n", mst); break;
                 }
             }
-            else
-            {
-                vramEnables[4] = false;
-            }
             break;
 
         case 0x4000245: // VRAMCNT_F
-            if (value & BIT(7))
+            vramEnables[5] = (value & BIT(7));
+            if (vramEnables[5])
             {
-                vramEnables[5] = true;
                 uint8_t mst = (value & 0x07);
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
@@ -302,16 +261,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                     default: vramEnables[5] = false; printf("Unknown VRAM F MST: %d\n", mst); break;
                 }
             }
-            else
-            {
-                vramEnables[5] = false;
-            }
             break;
 
         case 0x4000246: // VRAMCNT_G
-            if (value & BIT(7))
+            vramEnables[6] = (value & BIT(7));
+            if (vramEnables[6])
             {
-                vramEnables[6] = true;
                 uint8_t mst = (value & 0x07);
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
@@ -322,16 +277,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                     default: vramEnables[6] = false; printf("Unknown VRAM G MST: %d\n", mst); break;
                 }
             }
-            else
-            {
-                vramEnables[6] = false;
-            }
             break;
 
         case 0x4000248: // VRAMCNT_H
-            if (value & BIT(7))
+            vramEnables[7] = (value & BIT(7));
+            if (vramEnables[7])
             {
-                vramEnables[7] = true;
                 uint8_t mst = (value & 0x03);
                 switch (mst)
                 {
@@ -340,16 +291,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                     default: vramEnables[7] = false; printf("Unknown VRAM H MST: %d\n", mst); break;
                 }
             }
-            else
-            {
-                vramEnables[7] = false;
-            }
             break;
 
         case 0x4000249: // VRAMCNT_I
-            if (value & BIT(7))
+            vramEnables[8] = (value & BIT(7));
+            if (vramEnables[8])
             {
-                vramEnables[8] = true;
                 uint8_t mst = (value & 0x03);
                 switch (mst)
                 {
@@ -358,10 +305,6 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                     case 0x2: vramOffsets[8] = 0x6600000; break;
                     default: vramEnables[8] = false; printf("Unknown VRAM I MST: %d\n", mst); break;
                 }
-            }
-            else
-            {
-                vramEnables[8] = false;
             }
             break;
 
@@ -383,27 +326,13 @@ uint32_t ioReadMap7(uint32_t address)
 {
     switch (address)
     {
-        case 0x4000004: // DISPSTAT
-            return dispstat;
-
-        case 0x4000006: // VCOUNT
-            return vcount;
-
-        case 0x4000180: // IPCSYNC_7
-            return ipcsync7;
-
-        case 0x4000208: // IME_7
-            return ime7;
-
-        case 0x4000210: // IE_7
-            return ie7;
-
-        case 0x4000214: // IF_7
-            return if7;
-
-        default:
-            printf("Unknown ARM7 I/O read: 0x%X\n", address);
-            return 0;
+        case 0x4000004: return dispstat; // DISPSTAT
+        case 0x4000006: return vcount;   // VCOUNT
+        case 0x4000180: return ipcsync7; // IPCSYNC_7
+        case 0x4000208: return ime7;     // IME_7
+        case 0x4000210: return ie7;      // IE_7
+        case 0x4000214: return if7;      // IF_7
+        default: printf("Unknown ARM7 I/O read: 0x%X\n", address); return 0;
     }
 }
 

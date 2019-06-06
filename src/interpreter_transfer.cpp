@@ -19,6 +19,7 @@
 
 #include "interpreter_transfer.h"
 #include "core.h"
+#include "interpreter_alu.h"
 #include "memory.h"
 
 #define RN (*cpu->registers[(opcode & 0x000F0000) >> 16])
@@ -26,7 +27,7 @@
 #define RM (*cpu->registers[(opcode & 0x0000000F)])
 
 #define SING_IMM (opcode & 0x00000FFF)
-#define SPEC_IMM (((opcode & 0x00000F00) >> 4) | (opcode & 0xF))
+#define SPEC_IMM (((opcode & 0x00000F00) >> 4) | (opcode & 0x0000000F))
 #define SHIFT    ((opcode & 0x00000F80) >> 7)
 
 #define THUMB_SWITCH                    \
@@ -198,7 +199,7 @@ void ldrPtim(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn],-#i
 {
     RD = memory::read<uint32_t>(cpu, RN);
     RN -= SING_IMM;
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void strbPtim(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn],-#i
@@ -223,7 +224,7 @@ void ldrPtip(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn],#i
 {
     RD = memory::read<uint32_t>(cpu, RN);
     RN += SING_IMM;
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void strbPtip(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn],#i
@@ -246,7 +247,7 @@ void strOfim(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,-#i]
 void ldrOfim(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,-#i]
 {
     RD = memory::read<uint32_t>(cpu, RN - SING_IMM);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void strbOfim(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,-#i]
@@ -269,7 +270,7 @@ void ldrPrim(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,-#i]!
 {
     RN -= SING_IMM;
     RD = memory::read<uint32_t>(cpu, RN);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void strbPrim(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,-#i]!
@@ -292,7 +293,7 @@ void strOfip(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,#i]
 void ldrOfip(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,#i]
 {
     RD = memory::read<uint32_t>(cpu, RN + SING_IMM);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void strbOfip(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,#i]
@@ -315,7 +316,7 @@ void ldrPrip(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,#i]!
 {
     RN += SING_IMM;
     RD = memory::read<uint32_t>(cpu, RN);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void strbPrip(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,#i]!
@@ -333,568 +334,568 @@ void ldrbPrip(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,#i]!
 void strPtrmll(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn],-Rm,LSL #i
 {
     memory::write<uint32_t>(cpu, RN, RD);
-    RN -= interpreter::lsl(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsl(RM, SHIFT);
 }
 
 void strPtrmlr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn],-Rm,LSR #i
 {
     memory::write<uint32_t>(cpu, RN, RD);
-    RN -= interpreter::lsr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsr(RM, SHIFT);
 }
 
 void strPtrmar(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn],-Rm,ASR #i
 {
     memory::write<uint32_t>(cpu, RN, RD);
-    RN -= interpreter::asr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::asr(RM, SHIFT);
 }
 
 void strPtrmrr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn],-Rm,ROR #i
 {
     memory::write<uint32_t>(cpu, RN, RD);
-    RN -= interpreter::ror(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::ror(RM, SHIFT);
 }
 
 void ldrPtrmll(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn],-Rm,LSL #i
 {
     RD = memory::read<uint32_t>(cpu, RN);
-    RN -= interpreter::lsl(cpu, RM, SHIFT, false);
-    THUMB_SWITCH;
+    RN -= interpreter_alu::lsl(RM, SHIFT);
+    THUMB_SWITCH
 }
 
 void ldrPtrmlr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn],-Rm,LSR #i
 {
     RD = memory::read<uint32_t>(cpu, RN);
-    RN -= interpreter::lsr(cpu, RM, SHIFT, false);
-    THUMB_SWITCH;
+    RN -= interpreter_alu::lsr(RM, SHIFT);
+    THUMB_SWITCH
 }
 
 void ldrPtrmar(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn],-Rm,ASR #i
 {
     RD = memory::read<uint32_t>(cpu, RN);
-    RN -= interpreter::asr(cpu, RM, SHIFT, false);
-    THUMB_SWITCH;
+    RN -= interpreter_alu::asr(RM, SHIFT);
+    THUMB_SWITCH
 }
 
 void ldrPtrmrr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn],-Rm,ROR #i
 {
     RD = memory::read<uint32_t>(cpu, RN);
-    RN -= interpreter::ror(cpu, RM, SHIFT, false);
-    THUMB_SWITCH;
+    RN -= interpreter_alu::ror(RM, SHIFT);
+    THUMB_SWITCH
 }
 
 void strbPtrmll(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn],-Rm,LSL #i
 {
     memory::write<uint8_t>(cpu, RN, RD);
-    RN -= interpreter::lsl(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsl(RM, SHIFT);
 }
 
 void strbPtrmlr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn],-Rm,LSR #i
 {
     memory::write<uint8_t>(cpu, RN, RD);
-    RN -= interpreter::lsr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsr(RM, SHIFT);
 }
 
 void strbPtrmar(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn],-Rm,ASR #i
 {
     memory::write<uint8_t>(cpu, RN, RD);
-    RN -= interpreter::asr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::asr(RM, SHIFT);
 }
 
 void strbPtrmrr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn],-Rm,ROR #i
 {
     memory::write<uint8_t>(cpu, RN, RD);
-    RN -= interpreter::ror(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::ror(RM, SHIFT);
 }
 
 void ldrbPtrmll(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn],-Rm,LSL #i
 {
     RD = memory::read<uint8_t>(cpu, RN);
-    RN -= interpreter::lsl(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsl(RM, SHIFT);
 }
 
 void ldrbPtrmlr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn],-Rm,LSR #i
 {
     RD = memory::read<uint8_t>(cpu, RN);
-    RN -= interpreter::lsr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsr(RM, SHIFT);
 }
 
 void ldrbPtrmar(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn],-Rm,ASR #i
 {
     RD = memory::read<uint8_t>(cpu, RN);
-    RN -= interpreter::asr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::asr(RM, SHIFT);
 }
 
 void ldrbPtrmrr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn],-Rm,ROR #i
 {
     RD = memory::read<uint8_t>(cpu, RN);
-    RN -= interpreter::ror(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::ror(RM, SHIFT);
 }
 
 void strPtrpll(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn],Rm,LSL #i
 {
     memory::write<uint32_t>(cpu, RN, RD);
-    RN += interpreter::lsl(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsl(RM, SHIFT);
 }
 
 void strPtrplr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn],Rm,LSR #i
 {
     memory::write<uint32_t>(cpu, RN, RD);
-    RN += interpreter::lsr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsr(RM, SHIFT);
 }
 
 void strPtrpar(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn],Rm,ASR #i
 {
     memory::write<uint32_t>(cpu, RN, RD);
-    RN += interpreter::asr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::asr(RM, SHIFT);
 }
 
 void strPtrprr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn],Rm,ROR #i
 {
     memory::write<uint32_t>(cpu, RN, RD);
-    RN += interpreter::ror(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::ror(RM, SHIFT);
 }
 
 void ldrPtrpll(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn],Rm,LSL #i
 {
     RD = memory::read<uint32_t>(cpu, RN);
-    RN += interpreter::lsl(cpu, RM, SHIFT, false);
-    THUMB_SWITCH;
+    RN += interpreter_alu::lsl(RM, SHIFT);
+    THUMB_SWITCH
 }
 
 void ldrPtrplr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn],Rm,LSR #i
 {
     RD = memory::read<uint32_t>(cpu, RN);
-    RN += interpreter::lsr(cpu, RM, SHIFT, false);
-    THUMB_SWITCH;
+    RN += interpreter_alu::lsr(RM, SHIFT);
+    THUMB_SWITCH
 }
 
 void ldrPtrpar(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn],Rm,ASR #i
 {
     RD = memory::read<uint32_t>(cpu, RN);
-    RN += interpreter::asr(cpu, RM, SHIFT, false);
-    THUMB_SWITCH;
+    RN += interpreter_alu::asr(RM, SHIFT);
+    THUMB_SWITCH
 }
 
 void ldrPtrprr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn],Rm,ROR #i
 {
     RD = memory::read<uint32_t>(cpu, RN);
-    RN += interpreter::ror(cpu, RM, SHIFT, false);
-    THUMB_SWITCH;
+    RN += interpreter_alu::ror(RM, SHIFT);
+    THUMB_SWITCH
 }
 
 void strbPtrpll(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn],Rm,LSL #i
 {
     memory::write<uint8_t>(cpu, RN, RD);
-    RN += interpreter::lsl(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsl(RM, SHIFT);
 }
 
 void strbPtrplr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn],Rm,LSR #i
 {
     memory::write<uint8_t>(cpu, RN, RD);
-    RN += interpreter::lsr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsr(RM, SHIFT);
 }
 
 void strbPtrpar(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn],Rm,ASR #i
 {
     memory::write<uint8_t>(cpu, RN, RD);
-    RN += interpreter::asr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::asr(RM, SHIFT);
 }
 
 void strbPtrprr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn],Rm,ROR #i
 {
     memory::write<uint8_t>(cpu, RN, RD);
-    RN += interpreter::ror(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::ror(RM, SHIFT);
 }
 
 void ldrbPtrpll(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn],Rm,LSL #i
 {
     RD = memory::read<uint8_t>(cpu, RN);
-    RN += interpreter::lsl(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsl(RM, SHIFT);
 }
 
 void ldrbPtrplr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn],Rm,LSR #i
 {
     RD = memory::read<uint8_t>(cpu, RN);
-    RN += interpreter::lsr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsr(RM, SHIFT);
 }
 
 void ldrbPtrpar(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn],Rm,ASR #i
 {
     RD = memory::read<uint8_t>(cpu, RN);
-    RN += interpreter::asr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::asr(RM, SHIFT);
 }
 
 void ldrbPtrprr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn],Rm,ROR #i
 {
     RD = memory::read<uint8_t>(cpu, RN);
-    RN += interpreter::ror(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::ror(RM, SHIFT);
 }
 
 void strOfrmll(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,-Rm,LSL #i]
 {
-    memory::write<uint32_t>(cpu, RN - interpreter::lsl(cpu, RM, SHIFT, false), RD);
+    memory::write<uint32_t>(cpu, RN - interpreter_alu::lsl(RM, SHIFT), RD);
 }
 
 void strOfrmlr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,-Rm,LSR #i]
 {
-    memory::write<uint32_t>(cpu, RN - interpreter::lsr(cpu, RM, SHIFT, false), RD);
+    memory::write<uint32_t>(cpu, RN - interpreter_alu::lsr(RM, SHIFT), RD);
 }
 
 void strOfrmar(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,-Rm,ASR #i]
 {
-    memory::write<uint32_t>(cpu, RN - interpreter::asr(cpu, RM, SHIFT, false), RD);
+    memory::write<uint32_t>(cpu, RN - interpreter_alu::asr(RM, SHIFT), RD);
 }
 
 void strOfrmrr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,-Rm,ROR #i]
 {
-    memory::write<uint32_t>(cpu, RN - interpreter::ror(cpu, RM, SHIFT, false), RD);
+    memory::write<uint32_t>(cpu, RN - interpreter_alu::ror(RM, SHIFT), RD);
 }
 
 void ldrOfrmll(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,-Rm,LSL #i]
 {
-    RD = memory::read<uint32_t>(cpu, RN - interpreter::lsl(cpu, RM, SHIFT, false));
-    THUMB_SWITCH;
+    RD = memory::read<uint32_t>(cpu, RN - interpreter_alu::lsl(RM, SHIFT));
+    THUMB_SWITCH
 }
 
 void ldrOfrmlr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,-Rm,LSR #i]
 {
-    RD = memory::read<uint32_t>(cpu, RN - interpreter::lsr(cpu, RM, SHIFT, false));
-    THUMB_SWITCH;
+    RD = memory::read<uint32_t>(cpu, RN - interpreter_alu::lsr(RM, SHIFT));
+    THUMB_SWITCH
 }
 
 void ldrOfrmar(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,-Rm,ASR #i]
 {
-    RD = memory::read<uint32_t>(cpu, RN - interpreter::asr(cpu, RM, SHIFT, false));
-    THUMB_SWITCH;
+    RD = memory::read<uint32_t>(cpu, RN - interpreter_alu::asr(RM, SHIFT));
+    THUMB_SWITCH
 }
 
 void ldrOfrmrr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,-Rm,ROR #i]
 {
-    RD = memory::read<uint32_t>(cpu, RN - interpreter::ror(cpu, RM, SHIFT, false));
-    THUMB_SWITCH;
+    RD = memory::read<uint32_t>(cpu, RN - interpreter_alu::ror(RM, SHIFT));
+    THUMB_SWITCH
 }
 
 void strPrrmll(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,-Rm,LSL #i]!
 {
-    RN -= interpreter::lsl(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsl(RM, SHIFT);
     memory::write<uint32_t>(cpu, RN, RD);
 }
 
 void strPrrmlr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,-Rm,LSR #i]!
 {
-    RN -= interpreter::lsr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsr(RM, SHIFT);
     memory::write<uint32_t>(cpu, RN, RD);
 }
 
 void strPrrmar(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,-Rm,ASR #i]!
 {
-    RN -= interpreter::asr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::asr(RM, SHIFT);
     memory::write<uint32_t>(cpu, RN, RD);
 }
 
 void strPrrmrr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,-Rm,ROR #i]!
 {
-    RN -= interpreter::ror(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::ror(RM, SHIFT);
     memory::write<uint32_t>(cpu, RN, RD);
 }
 
 void ldrPrrmll(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,-Rm,LSL #i]!
 {
-    RN -= interpreter::lsl(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsl(RM, SHIFT);
     RD = memory::read<uint32_t>(cpu, RN);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void ldrPrrmlr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,-Rm,LSR #i]!
 {
-    RN -= interpreter::lsr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsr(RM, SHIFT);
     RD = memory::read<uint32_t>(cpu, RN);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void ldrPrrmar(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,-Rm,ASR #i]!
 {
-    RN -= interpreter::asr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::asr(RM, SHIFT);
     RD = memory::read<uint32_t>(cpu, RN);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void ldrPrrmrr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,-Rm,ROR #i]!
 {
-    RN -= interpreter::ror(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::ror(RM, SHIFT);
     RD = memory::read<uint32_t>(cpu, RN);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void strbOfrmll(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,-Rm,LSL #i]
 {
-    memory::write<uint8_t>(cpu, RN - interpreter::lsl(cpu, RM, SHIFT, false), RD);
+    memory::write<uint8_t>(cpu, RN - interpreter_alu::lsl(RM, SHIFT), RD);
 }
 
 void strbOfrmlr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,-Rm,LSR #i]
 {
-    memory::write<uint8_t>(cpu, RN - interpreter::lsr(cpu, RM, SHIFT, false), RD);
+    memory::write<uint8_t>(cpu, RN - interpreter_alu::lsr(RM, SHIFT), RD);
 }
 
 void strbOfrmar(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,-Rm,ASR #i]
 {
-    memory::write<uint8_t>(cpu, RN - interpreter::asr(cpu, RM, SHIFT, false), RD);
+    memory::write<uint8_t>(cpu, RN - interpreter_alu::asr(RM, SHIFT), RD);
 }
 
 void strbOfrmrr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,-Rm,ROR #i]
 {
-    memory::write<uint8_t>(cpu, RN - interpreter::ror(cpu, RM, SHIFT, false), RD);
+    memory::write<uint8_t>(cpu, RN - interpreter_alu::ror(RM, SHIFT), RD);
 }
 
 void ldrbOfrmll(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,-Rm,LSL #i]
 {
-    RD = memory::read<uint8_t>(cpu, RN - interpreter::lsl(cpu, RM, SHIFT, false));
+    RD = memory::read<uint8_t>(cpu, RN - interpreter_alu::lsl(RM, SHIFT));
 }
 
 void ldrbOfrmlr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,-Rm,LSR #i]
 {
-    RD = memory::read<uint8_t>(cpu, RN - interpreter::lsr(cpu, RM, SHIFT, false));
+    RD = memory::read<uint8_t>(cpu, RN - interpreter_alu::lsr(RM, SHIFT));
 }
 
 void ldrbOfrmar(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,-Rm,ASR #i]
 {
-    RD = memory::read<uint8_t>(cpu, RN - interpreter::asr(cpu, RM, SHIFT, false));
+    RD = memory::read<uint8_t>(cpu, RN - interpreter_alu::asr(RM, SHIFT));
 }
 
 void ldrbOfrmrr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,-Rm,ROR #i]
 {
-    RD = memory::read<uint8_t>(cpu, RN - interpreter::ror(cpu, RM, SHIFT, false));
+    RD = memory::read<uint8_t>(cpu, RN - interpreter_alu::ror(RM, SHIFT));
 }
 
 void strbPrrmll(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,-Rm,LSL #i]!
 {
-    RN -= interpreter::lsl(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsl(RM, SHIFT);
     memory::write<uint8_t>(cpu, RN, RD);
 }
 
 void strbPrrmlr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,-Rm,LSR #i]!
 {
-    RN -= interpreter::lsr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsr(RM, SHIFT);
     memory::write<uint8_t>(cpu, RN, RD);
 }
 
 void strbPrrmar(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,-Rm,ASR #i]!
 {
-    RN -= interpreter::asr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::asr(RM, SHIFT);
     memory::write<uint8_t>(cpu, RN, RD);
 }
 
 void strbPrrmrr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,-Rm,ROR #i]!
 {
-    RN -= interpreter::ror(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::ror(RM, SHIFT);
     memory::write<uint8_t>(cpu, RN, RD);
 }
 
 void ldrbPrrmll(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,-Rm,LSL #i]!
 {
-    RN -= interpreter::lsl(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsl(RM, SHIFT);
     RD = memory::read<uint8_t>(cpu, RN);
 }
 
 void ldrbPrrmlr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,-Rm,LSR #i]!
 {
-    RN -= interpreter::lsr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::lsr(RM, SHIFT);
     RD = memory::read<uint8_t>(cpu, RN);
 }
 
 void ldrbPrrmar(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,-Rm,ASR #i]!
 {
-    RN -= interpreter::asr(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::asr(RM, SHIFT);
     RD = memory::read<uint8_t>(cpu, RN);
 }
 
 void ldrbPrrmrr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,-Rm,ROR #i]!
 {
-    RN -= interpreter::ror(cpu, RM, SHIFT, false);
+    RN -= interpreter_alu::ror(RM, SHIFT);
     RD = memory::read<uint8_t>(cpu, RN);
 }
 
 void strOfrpll(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,Rm,LSL #i]
 {
-    memory::write<uint32_t>(cpu, RN + interpreter::lsl(cpu, RM, SHIFT, false), RD);
+    memory::write<uint32_t>(cpu, RN + interpreter_alu::lsl(RM, SHIFT), RD);
 }
 
 void strOfrplr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,Rm,LSR #i]
 {
-    memory::write<uint32_t>(cpu, RN + interpreter::lsr(cpu, RM, SHIFT, false), RD);
+    memory::write<uint32_t>(cpu, RN + interpreter_alu::lsr(RM, SHIFT), RD);
 }
 
 void strOfrpar(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,Rm,ASR #i]
 {
-    memory::write<uint32_t>(cpu, RN + interpreter::asr(cpu, RM, SHIFT, false), RD);
+    memory::write<uint32_t>(cpu, RN + interpreter_alu::asr(RM, SHIFT), RD);
 }
 
 void strOfrprr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,Rm,ROR #i]
 {
-    memory::write<uint32_t>(cpu, RN + interpreter::ror(cpu, RM, SHIFT, false), RD);
+    memory::write<uint32_t>(cpu, RN + interpreter_alu::ror(RM, SHIFT), RD);
 }
 
 void ldrOfrpll(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,Rm,LSL #i]
 {
-    RD = memory::read<uint32_t>(cpu, RN + interpreter::lsl(cpu, RM, SHIFT, false));
-    THUMB_SWITCH;
+    RD = memory::read<uint32_t>(cpu, RN + interpreter_alu::lsl(RM, SHIFT));
+    THUMB_SWITCH
 }
 
 void ldrOfrplr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,Rm,LSR #i]
 {
-    RD = memory::read<uint32_t>(cpu, RN + interpreter::lsr(cpu, RM, SHIFT, false));
-    THUMB_SWITCH;
+    RD = memory::read<uint32_t>(cpu, RN + interpreter_alu::lsr(RM, SHIFT));
+    THUMB_SWITCH
 }
 
 void ldrOfrpar(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,Rm,ASR #i]
 {
-    RD = memory::read<uint32_t>(cpu, RN + interpreter::asr(cpu, RM, SHIFT, false));
-    THUMB_SWITCH;
+    RD = memory::read<uint32_t>(cpu, RN + interpreter_alu::asr(RM, SHIFT));
+    THUMB_SWITCH
 }
 
 void ldrOfrprr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,Rm,ROR #i]
 {
-    RD = memory::read<uint32_t>(cpu, RN + interpreter::ror(cpu, RM, SHIFT, false));
-    THUMB_SWITCH;
+    RD = memory::read<uint32_t>(cpu, RN + interpreter_alu::ror(RM, SHIFT));
+    THUMB_SWITCH
 }
 
 void strPrrpll(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,Rm,LSL #i]!
 {
-    RN += interpreter::lsl(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsl(RM, SHIFT);
     memory::write<uint32_t>(cpu, RN, RD);
 }
 
 void strPrrplr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,Rm,LSR #i]!
 {
-    RN += interpreter::lsr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsr(RM, SHIFT);
     memory::write<uint32_t>(cpu, RN, RD);
 }
 
 void strPrrpar(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,Rm,ASR #i]!
 {
-    RN += interpreter::asr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::asr(RM, SHIFT);
     memory::write<uint32_t>(cpu, RN, RD);
 }
 
 void strPrrprr(interpreter::Cpu *cpu, uint32_t opcode) // STR Rd,[Rn,Rm,ROR #i]!
 {
-    RN += interpreter::ror(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::ror(RM, SHIFT);
     memory::write<uint32_t>(cpu, RN, RD);
 }
 
 void ldrPrrpll(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,Rm,LSL #i]!
 {
-    RN += interpreter::lsl(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsl(RM, SHIFT);
     RD = memory::read<uint32_t>(cpu, RN);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void ldrPrrplr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,Rm,LSR #i]!
 {
-    RN += interpreter::lsr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsr(RM, SHIFT);
     RD = memory::read<uint32_t>(cpu, RN);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void ldrPrrpar(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,Rm,ASR #i]!
 {
-    RN += interpreter::asr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::asr(RM, SHIFT);
     RD = memory::read<uint32_t>(cpu, RN);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void ldrPrrprr(interpreter::Cpu *cpu, uint32_t opcode) // LDR Rd,[Rn,Rm,ROR #i]!
 {
-    RN += interpreter::ror(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::ror(RM, SHIFT);
     RD = memory::read<uint32_t>(cpu, RN);
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void strbOfrpll(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,Rm,LSL #i]
 {
-    memory::write<uint8_t>(cpu, RN + interpreter::lsl(cpu, RM, SHIFT, false), RD);
+    memory::write<uint8_t>(cpu, RN + interpreter_alu::lsl(RM, SHIFT), RD);
 }
 
 void strbOfrplr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,Rm,LSR #i]
 {
-    memory::write<uint8_t>(cpu, RN + interpreter::lsr(cpu, RM, SHIFT, false), RD);
+    memory::write<uint8_t>(cpu, RN + interpreter_alu::lsr(RM, SHIFT), RD);
 }
 
 void strbOfrpar(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,Rm,ASR #i]
 {
-    memory::write<uint8_t>(cpu, RN + interpreter::asr(cpu, RM, SHIFT, false), RD);
+    memory::write<uint8_t>(cpu, RN + interpreter_alu::asr(RM, SHIFT), RD);
 }
 
 void strbOfrprr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,Rm,ROR #i]
 {
-    memory::write<uint8_t>(cpu, RN + interpreter::ror(cpu, RM, SHIFT, false), RD);
+    memory::write<uint8_t>(cpu, RN + interpreter_alu::ror(RM, SHIFT), RD);
 }
 
 void ldrbOfrpll(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,Rm,LSL #i]
 {
-    RD = memory::read<uint8_t>(cpu, RN + interpreter::lsl(cpu, RM, SHIFT, false));
+    RD = memory::read<uint8_t>(cpu, RN + interpreter_alu::lsl(RM, SHIFT));
 }
 
 void ldrbOfrplr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,Rm,LSR #i]
 {
-    RD = memory::read<uint8_t>(cpu, RN + interpreter::lsr(cpu, RM, SHIFT, false));
+    RD = memory::read<uint8_t>(cpu, RN + interpreter_alu::lsr(RM, SHIFT));
 }
 
 void ldrbOfrpar(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,Rm,ASR #i]
 {
-    RD = memory::read<uint8_t>(cpu, RN + interpreter::asr(cpu, RM, SHIFT, false));
+    RD = memory::read<uint8_t>(cpu, RN + interpreter_alu::asr(RM, SHIFT));
 }
 
 void ldrbOfrprr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,Rm,ROR #i]
 {
-    RD = memory::read<uint8_t>(cpu, RN + interpreter::ror(cpu, RM, SHIFT, false));
+    RD = memory::read<uint8_t>(cpu, RN + interpreter_alu::ror(RM, SHIFT));
 }
 
 void strbPrrpll(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,Rm,LSL #i]!
 {
-    RN += interpreter::lsl(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsl(RM, SHIFT);
     memory::write<uint8_t>(cpu, RN, RD);
 }
 
 void strbPrrplr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,Rm,LSR #i]!
 {
-    RN += interpreter::lsr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsr(RM, SHIFT);
     memory::write<uint8_t>(cpu, RN, RD);
 }
 
 void strbPrrpar(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,Rm,ASR #i]!
 {
-    RN += interpreter::asr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::asr(RM, SHIFT);
     memory::write<uint8_t>(cpu, RN, RD);
 }
 
 void strbPrrprr(interpreter::Cpu *cpu, uint32_t opcode) // STRB Rd,[Rn,Rm,ROR #i]!
 {
-    RN += interpreter::ror(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::ror(RM, SHIFT);
     memory::write<uint8_t>(cpu, RN, RD);
 }
 
 void ldrbPrrpll(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,Rm,LSL #i]!
 {
-    RN += interpreter::lsl(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsl(RM, SHIFT);
     RD = memory::read<uint8_t>(cpu, RN);
 }
 
 void ldrbPrrplr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,Rm,LSR #i]!
 {
-    RN += interpreter::lsr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::lsr(RM, SHIFT);
     RD = memory::read<uint8_t>(cpu, RN);
 }
 
 void ldrbPrrpar(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,Rm,ASR #i]!
 {
-    RN += interpreter::asr(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::asr(RM, SHIFT);
     RD = memory::read<uint8_t>(cpu, RN);
 }
 
 void ldrbPrrprr(interpreter::Cpu *cpu, uint32_t opcode) // LDRB Rd,[Rn,Rm,ROR #i]!
 {
-    RN += interpreter::ror(cpu, RM, SHIFT, false);
+    RN += interpreter_alu::ror(RM, SHIFT);
     RD = memory::read<uint8_t>(cpu, RN);
 }
 
@@ -922,7 +923,7 @@ void ldmda(interpreter::Cpu *cpu, uint32_t opcode) // LDMDA Rn,<Rlist>
             address -= 4;
         }
     }
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void stmdaW(interpreter::Cpu *cpu, uint32_t opcode) // STMDA Rn!,<Rlist>
@@ -947,7 +948,7 @@ void ldmdaW(interpreter::Cpu *cpu, uint32_t opcode) // LDMDA Rn!,<Rlist>
             RN -= 4;
         }
     }
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void stmia(interpreter::Cpu *cpu, uint32_t opcode) // STMIA Rn,<Rlist>
@@ -974,7 +975,7 @@ void ldmia(interpreter::Cpu *cpu, uint32_t opcode) // LDMIA Rn,<Rlist>
             address += 4;
         }
     }
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void stmiaW(interpreter::Cpu *cpu, uint32_t opcode) // STMIA Rn!,<Rlist>
@@ -999,7 +1000,7 @@ void ldmiaW(interpreter::Cpu *cpu, uint32_t opcode) // LDMIA Rn!,<Rlist>
             RN += 4;
         }
     }
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void stmdb(interpreter::Cpu *cpu, uint32_t opcode) // STMDB Rn,<Rlist>
@@ -1026,7 +1027,7 @@ void ldmdb(interpreter::Cpu *cpu, uint32_t opcode) // LDMDB Rn,<Rlist>
             *cpu->registers[i] = memory::read<uint32_t>(cpu, address);
         }
     }
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void stmdbW(interpreter::Cpu *cpu, uint32_t opcode) // STMDB Rn!,<Rlist>
@@ -1051,7 +1052,7 @@ void ldmdbW(interpreter::Cpu *cpu, uint32_t opcode) // LDMDB Rn!,<Rlist>
             *cpu->registers[i] = memory::read<uint32_t>(cpu, RN);
         }
     }
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void stmib(interpreter::Cpu *cpu, uint32_t opcode) // STMIB Rn,<Rlist>
@@ -1078,7 +1079,7 @@ void ldmib(interpreter::Cpu *cpu, uint32_t opcode) // LDMIB Rn,<Rlist>
             *cpu->registers[i] = memory::read<uint32_t>(cpu, address);
         }
     }
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 void stmibW(interpreter::Cpu *cpu, uint32_t opcode) // STMIB Rn!,<Rlist>
@@ -1103,7 +1104,7 @@ void ldmibW(interpreter::Cpu *cpu, uint32_t opcode) // LDMIB Rn!,<Rlist>
             *cpu->registers[i] = memory::read<uint32_t>(cpu, RN);
         }
     }
-    THUMB_SWITCH;
+    THUMB_SWITCH
 }
 
 }

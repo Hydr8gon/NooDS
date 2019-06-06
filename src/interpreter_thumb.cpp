@@ -23,6 +23,8 @@
 #include "interpreter_alu.h"
 #include "memory.h"
 
+#define SET_FLAG(bit, cond) if (cond) cpu->cpsr |= BIT(bit); else cpu->cpsr &= ~BIT(bit);
+
 #define RN (*cpu->registers[(opcode & 0x01C0) >> 6])
 #define RS (*cpu->registers[(opcode & 0x0038) >> 3])
 #define RD (*cpu->registers[(opcode & 0x0007)])
@@ -38,24 +40,53 @@
 #define B_OFFSET     (((opcode & 0x07FF) << 1) | ((opcode & BIT(10)) ? 0xFFFFF000 : 0))
 #define BL_OFFSET    ((opcode & 0x07FF) << 1)
 
+#define COMMON_FLAGS(dst)        \
+    SET_FLAG(31, dst & BIT(31)); \
+    SET_FLAG(30, dst == 0);
+
+#define SUB_FLAGS(dst)                                                                      \
+    COMMON_FLAGS(dst);                                                                      \
+    SET_FLAG(29, pre >= dst);                                                               \
+    SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31)));
+
+#define ADD_FLAGS(dst)                                                                      \
+    COMMON_FLAGS(dst);                                                                      \
+    SET_FLAG(29, pre > dst);                                                                \
+    SET_FLAG(28, (add & BIT(31)) == (pre & BIT(31)) && (dst & BIT(31)) != (add & BIT(31)));
+
+#define ADC_FLAGS(dst)                                                                      \
+    COMMON_FLAGS(dst);                                                                      \
+    SET_FLAG(29, pre > dst || (add == 0xFFFFFFFF && (cpu->cpsr & BIT(29))));                \
+    SET_FLAG(28, (add & BIT(31)) == (pre & BIT(31)) && (dst & BIT(31)) != (add & BIT(31)));
+
+#define SBC_FLAGS(dst)                                                                      \
+    COMMON_FLAGS(dst);                                                                      \
+    SET_FLAG(29, pre >= dst && (sub != 0xFFFFFFFF || (cpu->cpsr & BIT(29))));               \
+    SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31)));
+
+#define MUL_FLAGS(dst)         \
+    COMMON_FLAGS(dst);         \
+    if (cpu->type == 7)        \
+        cpu->cpsr &= ~BIT(29);
+
 namespace interpreter_thumb
 {
 
 void lslImm5(interpreter::Cpu *cpu, uint32_t opcode) // LSL Rd,Rs,#i
 {
-    RD = interpreter::lsl(cpu, RS, IMM5, true);
+    RD = interpreter_alu::lsls(cpu, RS, IMM5);
     COMMON_FLAGS(RD);
 }
 
 void lsrImm5(interpreter::Cpu *cpu, uint32_t opcode) // LSR Rd,Rs,#i
 {
-    RD = interpreter::lsr(cpu, RS, IMM5, true);
+    RD = interpreter_alu::lsrs(cpu, RS, IMM5);
     COMMON_FLAGS(RD);
 }
 
 void asrImm5(interpreter::Cpu *cpu, uint32_t opcode) // ASR Rd,Rs,#i
 {
-    RD = interpreter::asr(cpu, RS, IMM5, true);
+    RD = interpreter_alu::asrs(cpu, RS, IMM5);
     COMMON_FLAGS(RD);
 }
 
@@ -136,12 +167,12 @@ void dpG1(interpreter::Cpu *cpu, uint32_t opcode) // AND/EOR/LSL/LSR Rd,Rs
             return;
 
         case 0x2: // LSL
-            RD = interpreter::lsl(cpu, RD, RS & 0xFF, true);
+            RD = interpreter_alu::lsls(cpu, RD, RS);
             COMMON_FLAGS(RD);
             return;
 
         case 0x3: // LSR
-            RD = interpreter::lsr(cpu, RD, RS & 0xFF, true);
+            RD = interpreter_alu::lsrs(cpu, RD, RS);
             COMMON_FLAGS(RD);
             return;
     }
@@ -152,7 +183,7 @@ void dpG2(interpreter::Cpu *cpu, uint32_t opcode) // ASR/ADC/SBC/ROR Rd,Rs
     switch ((opcode & 0xC0) >> 6)
     {
         case 0x0: // ASR
-            RD = interpreter::asr(cpu, RD, RS & 0xFF, true);
+            RD = interpreter_alu::asrs(cpu, RD, RS);
             COMMON_FLAGS(RD);
             return;
 
@@ -175,7 +206,7 @@ void dpG2(interpreter::Cpu *cpu, uint32_t opcode) // ASR/ADC/SBC/ROR Rd,Rs
             return;
 
         case 0x3: // ROR
-            RD = interpreter::ror(cpu, RD, RS & 0xFF, true);
+            RD = interpreter_alu::rors(cpu, RD, RS);
             COMMON_FLAGS(RD);
             return;
     }

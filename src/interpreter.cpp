@@ -54,10 +54,8 @@ bool condition(Cpu *cpu, uint32_t opcode)
         case 0xC: return !(cpu->cpsr & BIT(30)) &&  (cpu->cpsr & BIT(31)) == (cpu->cpsr & BIT(28)) << 3; // GT
         case 0xD: return  (cpu->cpsr & BIT(30)) ||  (cpu->cpsr & BIT(31)) != (cpu->cpsr & BIT(28)) << 3; // LE
         case 0xE: return true;                                                                           // AL
+        default: printf("Unknown ARM%d ARM opcode: 0x%X\n", cpu->type, opcode); return false;
     }
-
-    printf("Unknown ARM%d ARM opcode: 0x%X\n", cpu->type, opcode);
-    return false;
 }
 
 void execute(Cpu *cpu)
@@ -207,50 +205,6 @@ void irq7(uint8_t type)
         }
         core::arm7.halt = false;
     }
-}
-
-uint32_t lsl(Cpu *cpu, uint32_t value, uint8_t amount, bool carry)
-{
-    for (int i = 0; i < amount; i++)
-    {
-        if (carry) SET_FLAG(29, value & BIT(31));
-        value <<= 1;
-    }
-
-    return value;
-}
-
-uint32_t lsr(Cpu *cpu, uint32_t value, uint8_t amount, bool carry)
-{
-    for (int i = 0; i < amount; i++)
-    {
-        if (carry) SET_FLAG(29, value & BIT(0));
-        value >>= 1;
-    }
-
-    return value;
-}
-
-uint32_t asr(Cpu *cpu, uint32_t value, uint8_t amount, bool carry)
-{
-    for (int i = 0; i < amount; i++)
-    {
-        if (carry) SET_FLAG(29, value & BIT(0));
-        value = (value & BIT(31)) | (value >> 1);
-    }
-
-    return value;
-}
-
-uint32_t ror(Cpu *cpu, uint32_t value, uint8_t amount, bool carry)
-{
-    for (int i = 0; i < amount; i++)
-    {
-        if (carry) SET_FLAG(29, value & BIT(0));
-        value = (value << 31) | (value >> 1);
-    }
-
-    return value;
 }
 
 void unknownArm(Cpu *cpu, uint32_t opcode)

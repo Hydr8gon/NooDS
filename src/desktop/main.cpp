@@ -25,7 +25,7 @@
 #include "../core.h"
 #include "../gpu.h"
 
-// This seems to be missing on Windows
+// Just do this instead of including glext.h
 #ifdef _WIN32
 #define GL_UNSIGNED_SHORT_1_5_5_5_REV 0x8366
 #endif
