@@ -10,3 +10,5 @@ Right now there's only a barebones build for Windows and Linux. To build on Linu
 You probably won't be able to run anything on this yet! If you still want to try it, you'll need BIOS files, named "bios7.bin" and "bios9.bin", placed in the same directory as the executable. There's no ROM selector, so you'll have to specify a ROM by launching from the terminal.
 
 I hope some people will find some use for this project as it matures. If anything it's at least helping me grow my skills as a programmer. Let's have some fun with this :)
+
+Also check out [the official NooDS Discord server](https://discord.gg/JbNz7y4), where we can chat and do other fun stuff!
