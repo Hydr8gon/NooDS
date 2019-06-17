@@ -386,6 +386,8 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
     }
 }
 
+template int8_t   read(interpreter::Cpu *cpu, uint32_t address);
+template int16_t  read(interpreter::Cpu *cpu, uint32_t address);
 template uint8_t  read(interpreter::Cpu *cpu, uint32_t address);
 template uint16_t read(interpreter::Cpu *cpu, uint32_t address);
 template uint32_t read(interpreter::Cpu *cpu, uint32_t address);

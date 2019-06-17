@@ -25,16 +25,6 @@
 namespace interpreter_alu
 {
 
-uint32_t lsl(uint32_t value, uint8_t amount);
-uint32_t lsr(uint32_t value, uint8_t amount);
-uint32_t asr(uint32_t value, uint8_t amount);
-uint32_t ror(uint32_t value, uint8_t amount);
-
-uint32_t lsls(interpreter::Cpu *cpu, uint32_t value, uint8_t amount);
-uint32_t lsrs(interpreter::Cpu *cpu, uint32_t value, uint8_t amount);
-uint32_t asrs(interpreter::Cpu *cpu, uint32_t value, uint8_t amount);
-uint32_t rors(interpreter::Cpu *cpu, uint32_t value, uint8_t amount);
-
 void andLli(interpreter::Cpu *cpu, uint32_t opcode);
 void andLlr(interpreter::Cpu *cpu, uint32_t opcode);
 void andLri(interpreter::Cpu *cpu, uint32_t opcode);
@@ -339,6 +329,38 @@ void bicImm (interpreter::Cpu *cpu, uint32_t opcode);
 void bicsImm(interpreter::Cpu *cpu, uint32_t opcode);
 void mvnImm (interpreter::Cpu *cpu, uint32_t opcode);
 void mvnsImm(interpreter::Cpu *cpu, uint32_t opcode);
+
+}
+
+namespace interpreter_alu_thumb
+{
+
+void lslImm5(interpreter::Cpu *cpu, uint32_t opcode);
+void lsrImm5(interpreter::Cpu *cpu, uint32_t opcode);
+void asrImm5(interpreter::Cpu *cpu, uint32_t opcode);
+
+void addReg (interpreter::Cpu *cpu, uint32_t opcode);
+void subReg (interpreter::Cpu *cpu, uint32_t opcode);
+void addImm3(interpreter::Cpu *cpu, uint32_t opcode);
+void subImm3(interpreter::Cpu *cpu, uint32_t opcode);
+
+void movImm8(interpreter::Cpu *cpu, uint32_t opcode);
+void cmpImm8(interpreter::Cpu *cpu, uint32_t opcode);
+void addImm8(interpreter::Cpu *cpu, uint32_t opcode);
+void subImm8(interpreter::Cpu *cpu, uint32_t opcode);
+
+void dpG1(interpreter::Cpu *cpu, uint32_t opcode);
+void dpG2(interpreter::Cpu *cpu, uint32_t opcode);
+void dpG3(interpreter::Cpu *cpu, uint32_t opcode);
+void dpG4(interpreter::Cpu *cpu, uint32_t opcode);
+
+void addH(interpreter::Cpu *cpu, uint32_t opcode);
+void cmpH(interpreter::Cpu *cpu, uint32_t opcode);
+void movH(interpreter::Cpu *cpu, uint32_t opcode);
+
+void addPc   (interpreter::Cpu *cpu, uint32_t opcode);
+void addSp   (interpreter::Cpu *cpu, uint32_t opcode);
+void addSpImm(interpreter::Cpu *cpu, uint32_t opcode);
 
 }
 

@@ -25,45 +25,69 @@
 namespace interpreter_transfer
 {
 
-void strhPtrm(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhPtrm(interpreter::Cpu *cpu, uint32_t opcode);
+void strhPtrm (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhPtrm (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbPtrm(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshPtrm(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhPtim(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhPtim(interpreter::Cpu *cpu, uint32_t opcode);
+void strhPtim (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhPtim (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbPtim(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshPtim(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhPtrp(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhPtrp(interpreter::Cpu *cpu, uint32_t opcode);
+void strhPtrp (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhPtrp (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbPtrp(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshPtrp(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhPtip(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhPtip(interpreter::Cpu *cpu, uint32_t opcode);
+void strhPtip (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhPtip (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbPtip(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshPtip(interpreter::Cpu *cpu, uint32_t opcode);
 
 void swp(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhOfrm(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhOfrm(interpreter::Cpu *cpu, uint32_t opcode);
+void strhOfrm (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhOfrm (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbOfrm(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshOfrm(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhPrrm(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhPrrm(interpreter::Cpu *cpu, uint32_t opcode);
+void strhPrrm (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhPrrm (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbPrrm(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshPrrm(interpreter::Cpu *cpu, uint32_t opcode);
 
 void swpb(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhOfim(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhOfim(interpreter::Cpu *cpu, uint32_t opcode);
+void strhOfim (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhOfim (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbOfim(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshOfim(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhPrim(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhPrim(interpreter::Cpu *cpu, uint32_t opcode);
+void strhPrim (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhPrim (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbPrim(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshPrim(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhOfrp(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhOfrp(interpreter::Cpu *cpu, uint32_t opcode);
+void strhOfrp (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhOfrp (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbOfrp(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshOfrp(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhPrrp(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhPrrp(interpreter::Cpu *cpu, uint32_t opcode);
+void strhPrrp (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhPrrp (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbPrrp(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshPrrp(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhOfip(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhOfip(interpreter::Cpu *cpu, uint32_t opcode);
+void strhOfip (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhOfip (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbOfip(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshOfip(interpreter::Cpu *cpu, uint32_t opcode);
 
-void strhPrip(interpreter::Cpu *cpu, uint32_t opcode);
-void ldrhPrip(interpreter::Cpu *cpu, uint32_t opcode);
+void strhPrip (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhPrip (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbPrip(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshPrip(interpreter::Cpu *cpu, uint32_t opcode);
 
 void strPtim (interpreter::Cpu *cpu, uint32_t opcode);
 void ldrPtim (interpreter::Cpu *cpu, uint32_t opcode);
@@ -222,6 +246,42 @@ void stmib (interpreter::Cpu *cpu, uint32_t opcode);
 void ldmib (interpreter::Cpu *cpu, uint32_t opcode);
 void stmibW(interpreter::Cpu *cpu, uint32_t opcode);
 void ldmibW(interpreter::Cpu *cpu, uint32_t opcode);
+
+}
+
+namespace interpreter_transfer_thumb
+{
+
+void ldrPc(interpreter::Cpu *cpu, uint32_t opcode);
+
+void strReg  (interpreter::Cpu *cpu, uint32_t opcode);
+void strhReg (interpreter::Cpu *cpu, uint32_t opcode);
+void strbReg (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrsbReg(interpreter::Cpu *cpu, uint32_t opcode);
+
+void ldrReg  (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhReg (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrbReg (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrshReg(interpreter::Cpu *cpu, uint32_t opcode);
+
+void strImm5 (interpreter::Cpu *cpu, uint32_t opcode);
+void ldrImm5 (interpreter::Cpu *cpu, uint32_t opcode);
+void strbImm5(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrbImm5(interpreter::Cpu *cpu, uint32_t opcode);
+void strhImm5(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrhImm5(interpreter::Cpu *cpu, uint32_t opcode);
+
+void strSp(interpreter::Cpu *cpu, uint32_t opcode);
+void ldrSp(interpreter::Cpu *cpu, uint32_t opcode);
+
+void push  (interpreter::Cpu *cpu, uint32_t opcode);
+void pushLr(interpreter::Cpu *cpu, uint32_t opcode);
+
+void pop   (interpreter::Cpu *cpu, uint32_t opcode);
+void popPc (interpreter::Cpu *cpu, uint32_t opcode);
+
+void stmia(interpreter::Cpu *cpu, uint32_t opcode);
+void ldmia(interpreter::Cpu *cpu, uint32_t opcode);
 
 }
 

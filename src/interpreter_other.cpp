@@ -26,9 +26,14 @@
 
 #define CN ((opcode & 0x000F0000) >> 16)
 #define CP ((opcode & 0x000000E0) >> 5)
-#define CM ((opcode & 0x0000000F))
+#define CM (opcode & 0x0000000F)
 
 #define B_OFFSET (((opcode & 0x00FFFFFF) << 2) | ((opcode & BIT(23)) ? 0xFC000000 : 0))
+
+#define BCOND_OFFSET_THUMB (((opcode & 0x00FF) << 1) | ((opcode & BIT(7))  ? 0xFFFFFE00 : 0))
+#define B_OFFSET_THUMB     (((opcode & 0x07FF) << 1) | ((opcode & BIT(10)) ? 0xFFFFF000 : 0))
+#define BL_OFFSET_THUMB    ((opcode & 0x07FF) << 1)
+#define BX_OFFSET_THUMB    (*cpu->registers[(opcode & 0x0078) >> 3])
 
 namespace interpreter_other
 {
@@ -84,9 +89,9 @@ void msrRs(interpreter::Cpu *cpu, uint32_t opcode) // MSR SPSR,Rm
     if (cpu->spsr)
     {
         if (opcode & BIT(19))
-            *cpu->spsr = (cpu->cpsr & ~0xFF000000) | (RM & 0xFF000000);
+            *cpu->spsr = (*cpu->spsr & ~0xFF000000) | (RM & 0xFF000000);
         if (opcode & BIT(16))
-            *cpu->spsr = (cpu->cpsr & ~0x000000FF) | (RM & 0x000000FF);
+            *cpu->spsr = (*cpu->spsr & ~0x000000FF) | (RM & 0x000000FF);
     }
 }
 
@@ -121,6 +126,146 @@ void swi(interpreter::Cpu *cpu, uint32_t opcode) // SWI #i
     cpu->cpsr |= BIT(7);
     *cpu->registers[14] = *cpu->registers[15] - 4;
     *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0x00000000) + 0x08;
+}
+
+}
+
+namespace interpreter_other_thumb
+{
+
+void bxReg(interpreter::Cpu *cpu, uint32_t opcode) // BX/BLX Rs
+{
+    if (!(opcode & BIT(7)) || cpu->type == 9)
+    {
+        if (opcode & BIT(7))
+            *cpu->registers[14] = *cpu->registers[15] - 1;
+        *cpu->registers[15] = BX_OFFSET_THUMB & ~BIT(0);
+        if (!(BX_OFFSET_THUMB & BIT(0)))
+            cpu->cpsr &= ~BIT(5);
+    }
+}
+
+void beq(interpreter::Cpu *cpu, uint32_t opcode) // BEQ label
+{
+    if (cpu->cpsr & BIT(30))
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bne(interpreter::Cpu *cpu, uint32_t opcode) // BNE label
+{
+    if (!(cpu->cpsr & BIT(30)))
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bcs(interpreter::Cpu *cpu, uint32_t opcode) // BCS label
+{
+    if (cpu->cpsr & BIT(29))
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bcc(interpreter::Cpu *cpu, uint32_t opcode) // BCC label
+{
+    if (!(cpu->cpsr & BIT(29)))
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bmi(interpreter::Cpu *cpu, uint32_t opcode) // BMI label
+{
+    if (cpu->cpsr & BIT(31))
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bpl(interpreter::Cpu *cpu, uint32_t opcode) // BPL label
+{
+    if (!(cpu->cpsr & BIT(31)))
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bvs(interpreter::Cpu *cpu, uint32_t opcode) // BVS label
+{
+    if (cpu->cpsr & BIT(28))
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bvc(interpreter::Cpu *cpu, uint32_t opcode) // BVC label
+{
+    if (!(cpu->cpsr & BIT(28)))
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bhi(interpreter::Cpu *cpu, uint32_t opcode) // BHI label
+{
+    if ((cpu->cpsr & BIT(29)) && !(cpu->cpsr & BIT(30)))
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bls(interpreter::Cpu *cpu, uint32_t opcode) // BLS label
+{
+    if (!(cpu->cpsr & BIT(29)) || (cpu->cpsr & BIT(30)))
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bge(interpreter::Cpu *cpu, uint32_t opcode) // BGE label
+{
+    if ((cpu->cpsr & BIT(31)) == (cpu->cpsr & BIT(28)) << 3)
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void blt(interpreter::Cpu *cpu, uint32_t opcode) // BLT label
+{
+    if ((cpu->cpsr & BIT(31)) != (cpu->cpsr & BIT(28)) << 3)
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void bgt(interpreter::Cpu *cpu, uint32_t opcode) // BGT label
+{
+    if (!(cpu->cpsr & BIT(30)) && (cpu->cpsr & BIT(31)) == (cpu->cpsr & BIT(28)) << 3)
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void ble(interpreter::Cpu *cpu, uint32_t opcode) // BLE label
+{
+    if ((cpu->cpsr & BIT(30)) || (cpu->cpsr & BIT(31)) != (cpu->cpsr & BIT(28)) << 3)
+        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+}
+
+void swi(interpreter::Cpu *cpu, uint32_t opcode) // SWI #i
+{
+    uint32_t cpsr = cpu->cpsr;
+    setMode(cpu, 0x13);
+    *cpu->spsr = cpsr;
+    cpu->cpsr &= ~BIT(5);
+    cpu->cpsr |= BIT(7);
+    *cpu->registers[14] = *cpu->registers[15] - 2;
+    *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0x00000000) + 0x08;
+}
+
+void b(interpreter::Cpu *cpu, uint32_t opcode) // B label
+{
+    *cpu->registers[15] += B_OFFSET_THUMB;
+}
+
+void blxOff(interpreter::Cpu *cpu, uint32_t opcode) // BLX label
+{
+    if (cpu->type == 9)
+    {
+        uint32_t ret = *cpu->registers[15] - 1;
+        *cpu->registers[15] = *cpu->registers[14] + BL_OFFSET_THUMB;
+        *cpu->registers[14] = ret;
+        cpu->cpsr &= ~BIT(5);
+    }
+}
+
+void blSetup(interpreter::Cpu *cpu, uint32_t opcode) // BL/BLX label
+{
+    *cpu->registers[14] = *cpu->registers[15] + (B_OFFSET_THUMB << 11);
+}
+
+void blOff(interpreter::Cpu *cpu, uint32_t opcode) // BL label
+{
+    uint32_t ret = *cpu->registers[15] - 1;
+    *cpu->registers[15] = *cpu->registers[14] + BL_OFFSET_THUMB;
+    *cpu->registers[14] = ret;
 }
 
 }

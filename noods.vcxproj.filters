@@ -36,9 +36,6 @@
     <ClCompile Include="src\interpreter_other.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\interpreter_thumb.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\interpreter_transfer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -63,9 +60,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\interpreter_other.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\interpreter_thumb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\interpreter_transfer.h">

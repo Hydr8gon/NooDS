@@ -44,4 +44,33 @@ void swi(interpreter::Cpu *cpu, uint32_t opcode);
 
 }
 
+namespace interpreter_other_thumb
+{
+
+void bxReg(interpreter::Cpu *cpu, uint32_t opcode);
+
+void beq(interpreter::Cpu *cpu, uint32_t opcode);
+void bne(interpreter::Cpu *cpu, uint32_t opcode);
+void bcs(interpreter::Cpu *cpu, uint32_t opcode);
+void bcc(interpreter::Cpu *cpu, uint32_t opcode);
+void bmi(interpreter::Cpu *cpu, uint32_t opcode);
+void bpl(interpreter::Cpu *cpu, uint32_t opcode);
+void bvs(interpreter::Cpu *cpu, uint32_t opcode);
+void bvc(interpreter::Cpu *cpu, uint32_t opcode);
+void bhi(interpreter::Cpu *cpu, uint32_t opcode);
+void bls(interpreter::Cpu *cpu, uint32_t opcode);
+void bge(interpreter::Cpu *cpu, uint32_t opcode);
+void blt(interpreter::Cpu *cpu, uint32_t opcode);
+void bgt(interpreter::Cpu *cpu, uint32_t opcode);
+void ble(interpreter::Cpu *cpu, uint32_t opcode);
+
+void swi(interpreter::Cpu *cpu, uint32_t opcode);
+
+void b      (interpreter::Cpu *cpu, uint32_t opcode);
+void blxOff (interpreter::Cpu *cpu, uint32_t opcode);
+void blSetup(interpreter::Cpu *cpu, uint32_t opcode);
+void blOff  (interpreter::Cpu *cpu, uint32_t opcode);
+
+}
+
 #endif // INTERPRETER_OTHER_H

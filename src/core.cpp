@@ -137,9 +137,9 @@ void runDot()
 {
     for (int i = 0; i < 6; i++)
     {
-        if (i % 1 == 0)
+        if (i % 1 == 0 && !arm9.halt)
             interpreter::execute(&arm9);
-        if (i % 2 == 0)
+        if (i % 2 == 0 && !arm7.halt)
             interpreter::execute(&arm7);
         if (i % 6 == 0)
             gpu::drawDot();
