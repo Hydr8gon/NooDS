@@ -146,4 +146,14 @@ void runDot()
     }
 }
 
+void pressKey(uint8_t key)
+{
+    memory::keyinput &= ~BIT(key);
+}
+
+void releaseKey(uint8_t key)
+{
+    memory::keyinput |= BIT(key);
+}
+
 }

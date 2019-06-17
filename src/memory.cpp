@@ -49,6 +49,8 @@ uint8_t oam[0x800];      //   2KB OAM
 bool     vramEnables[9];
 uint32_t vramOffsets[9];
 
+uint32_t keyinput = 0x03FF;
+
 uint32_t ipcsync9, ipcsync7; // IPC synchronize
 uint32_t ime9,     ime7;     // Interrupt master enable
 uint32_t ie9,      ie7;      // Interrupt enable
@@ -127,6 +129,7 @@ uint32_t ioReadMap9(uint32_t address)
         case 0x4000000: return dispcntA; // DISPCNT_A
         case 0x4000004: return dispstat; // DISPSTAT
         case 0x4000006: return vcount;   // VCOUNT
+        case 0x4000130: return keyinput; // KEYINPUT
         case 0x4000180: return ipcsync9; // IPCSYNC_9
         case 0x4000208: return ime9;     // IME_9
         case 0x4000210: return ie9;      // IE_9
@@ -328,6 +331,7 @@ uint32_t ioReadMap7(uint32_t address)
     {
         case 0x4000004: return dispstat; // DISPSTAT
         case 0x4000006: return vcount;   // VCOUNT
+        case 0x4000130: return keyinput; // KEYINPUT
         case 0x4000180: return ipcsync7; // IPCSYNC_7
         case 0x4000208: return ime7;     // IME_7
         case 0x4000210: return ie7;      // IE_7

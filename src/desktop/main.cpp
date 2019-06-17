@@ -30,6 +30,8 @@
 #define GL_UNSIGNED_SHORT_1_5_5_5_REV 0x8366
 #endif
 
+const char keyMap[] = { 'l', 'k', 'g', 'h', 'd', 'a', 'w', 's', 'p', 'q' };
+
 void runCore()
 {
     while (true)
@@ -47,6 +49,24 @@ void draw()
     glEnd();
     glFlush();
     glutPostRedisplay();
+}
+
+void keyDown(unsigned char key, int x, int y)
+{
+    for (int i = 0; i < 10; i++)
+    {
+        if (key == keyMap[i])
+            core::pressKey(i);
+    }
+}
+
+void keyUp(unsigned char key, int x, int y)
+{
+    for (int i = 0; i < 10; i++)
+    {
+        if (key == keyMap[i])
+            core::releaseKey(i);
+    }
 }
 
 int main(int argc, char **argv)
@@ -79,8 +99,11 @@ int main(int argc, char **argv)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    std::thread core(runCore);
     glutDisplayFunc(draw);
+    glutKeyboardFunc(keyDown);
+    glutKeyboardUpFunc(keyUp);
+
+    std::thread core(runCore);
     glutMainLoop();
 
     return 0;
