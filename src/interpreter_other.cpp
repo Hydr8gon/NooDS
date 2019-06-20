@@ -97,13 +97,13 @@ void msrRs(interpreter::Cpu *cpu, uint32_t opcode) // MSR SPSR,Rm
 
 void b(interpreter::Cpu *cpu, uint32_t opcode) // B label
 {
-    *cpu->registers[15] += B_OFFSET;
+    *cpu->registers[15] += B_OFFSET | BIT(0);
 }
 
 void bl(interpreter::Cpu *cpu, uint32_t opcode) // BL label
 {
     *cpu->registers[14] = *cpu->registers[15] - 4;
-    *cpu->registers[15] += B_OFFSET;
+    *cpu->registers[15] += B_OFFSET | BIT(0);
 }
 
 void mcr(interpreter::Cpu *cpu, uint32_t opcode) // MCR Pn,<cpopc>,Rd,Cn,Cm,<cp>
@@ -148,85 +148,85 @@ void bxReg(interpreter::Cpu *cpu, uint32_t opcode) // BX/BLX Rs
 void beq(interpreter::Cpu *cpu, uint32_t opcode) // BEQ label
 {
     if (cpu->cpsr & BIT(30))
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bne(interpreter::Cpu *cpu, uint32_t opcode) // BNE label
 {
     if (!(cpu->cpsr & BIT(30)))
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bcs(interpreter::Cpu *cpu, uint32_t opcode) // BCS label
 {
     if (cpu->cpsr & BIT(29))
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bcc(interpreter::Cpu *cpu, uint32_t opcode) // BCC label
 {
     if (!(cpu->cpsr & BIT(29)))
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bmi(interpreter::Cpu *cpu, uint32_t opcode) // BMI label
 {
     if (cpu->cpsr & BIT(31))
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bpl(interpreter::Cpu *cpu, uint32_t opcode) // BPL label
 {
     if (!(cpu->cpsr & BIT(31)))
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bvs(interpreter::Cpu *cpu, uint32_t opcode) // BVS label
 {
     if (cpu->cpsr & BIT(28))
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bvc(interpreter::Cpu *cpu, uint32_t opcode) // BVC label
 {
     if (!(cpu->cpsr & BIT(28)))
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bhi(interpreter::Cpu *cpu, uint32_t opcode) // BHI label
 {
     if ((cpu->cpsr & BIT(29)) && !(cpu->cpsr & BIT(30)))
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bls(interpreter::Cpu *cpu, uint32_t opcode) // BLS label
 {
     if (!(cpu->cpsr & BIT(29)) || (cpu->cpsr & BIT(30)))
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bge(interpreter::Cpu *cpu, uint32_t opcode) // BGE label
 {
     if ((cpu->cpsr & BIT(31)) == (cpu->cpsr & BIT(28)) << 3)
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void blt(interpreter::Cpu *cpu, uint32_t opcode) // BLT label
 {
     if ((cpu->cpsr & BIT(31)) != (cpu->cpsr & BIT(28)) << 3)
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bgt(interpreter::Cpu *cpu, uint32_t opcode) // BGT label
 {
     if (!(cpu->cpsr & BIT(30)) && (cpu->cpsr & BIT(31)) == (cpu->cpsr & BIT(28)) << 3)
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void ble(interpreter::Cpu *cpu, uint32_t opcode) // BLE label
 {
     if ((cpu->cpsr & BIT(30)) || (cpu->cpsr & BIT(31)) != (cpu->cpsr & BIT(28)) << 3)
-        *cpu->registers[15] += BCOND_OFFSET_THUMB;
+        *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void swi(interpreter::Cpu *cpu, uint32_t opcode) // SWI #i
@@ -242,7 +242,7 @@ void swi(interpreter::Cpu *cpu, uint32_t opcode) // SWI #i
 
 void b(interpreter::Cpu *cpu, uint32_t opcode) // B label
 {
-    *cpu->registers[15] += B_OFFSET_THUMB;
+    *cpu->registers[15] += B_OFFSET_THUMB | BIT(0);
 }
 
 void blxOff(interpreter::Cpu *cpu, uint32_t opcode) // BLX label

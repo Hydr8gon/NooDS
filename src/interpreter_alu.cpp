@@ -511,14 +511,14 @@ void mvnsImm(interpreter::Cpu *cpu, uint32_t opcode) { ROR_FLAGS(IMM, IMM_SHIFT)
 namespace interpreter_alu_thumb
 {
 
-void lslImm5(interpreter::Cpu *cpu, uint32_t opcode) { MOV(RD_THUMB, LSL(RS_THUMB, SHIFT_THUMB)) COMMON_FLAGS(RD_THUMB) } // LSL Rd,Rs,#i
-void lsrImm5(interpreter::Cpu *cpu, uint32_t opcode) { MOV(RD_THUMB, LSR(RS_THUMB, SHIFT_THUMB)) COMMON_FLAGS(RD_THUMB) } // LSR Rd,Rs,#i
-void asrImm5(interpreter::Cpu *cpu, uint32_t opcode) { MOV(RD_THUMB, ASR(RS_THUMB, SHIFT_THUMB)) COMMON_FLAGS(RD_THUMB) } // ASR Rd,Rs,#i
+void lslImm5(interpreter::Cpu *cpu, uint32_t opcode) { LSL_FLAGS(RS_THUMB, SHIFT_THUMB) MOV(RD_THUMB, LSL(RS_THUMB, SHIFT_THUMB)) COMMON_FLAGS(RD_THUMB) } // LSL Rd,Rs,#i
+void lsrImm5(interpreter::Cpu *cpu, uint32_t opcode) { LSR_FLAGS(RS_THUMB, SHIFT_THUMB) MOV(RD_THUMB, LSR(RS_THUMB, SHIFT_THUMB)) COMMON_FLAGS(RD_THUMB) } // LSR Rd,Rs,#i
+void asrImm5(interpreter::Cpu *cpu, uint32_t opcode) { ASR_FLAGS(RS_THUMB, SHIFT_THUMB) MOV(RD_THUMB, ASR(RS_THUMB, SHIFT_THUMB)) COMMON_FLAGS(RD_THUMB) } // ASR Rd,Rs,#i
 
 void addReg (interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD_THUMB, RS_THUMB, RN_THUMB)   ADD_FLAGS(RD_THUMB) } // ADD Rd,Rs,Rn
 void subReg (interpreter::Cpu *cpu, uint32_t opcode) { SUB(RD_THUMB, RS_THUMB, RN_THUMB)   SUB_FLAGS(RD_THUMB) } // SUB Rd,Rs,Rn
 void addImm3(interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD_THUMB, RS_THUMB, IMM3_THUMB) ADD_FLAGS(RD_THUMB) } // ADD Rd,Rs,#i
-void subImm3(interpreter::Cpu *cpu, uint32_t opcode) { SUB(RD_THUMB, RD_THUMB, IMM3_THUMB) SUB_FLAGS(RD_THUMB) } // SUB Rd,Rs,#i
+void subImm3(interpreter::Cpu *cpu, uint32_t opcode) { SUB(RD_THUMB, RS_THUMB, IMM3_THUMB) SUB_FLAGS(RD_THUMB) } // SUB Rd,Rs,#i
 
 void movImm8(interpreter::Cpu *cpu, uint32_t opcode) { MOV(RD8_THUMB,            IMM8_THUMB) COMMON_FLAGS(RD8_THUMB) } // MOV Rd,#i
 void cmpImm8(interpreter::Cpu *cpu, uint32_t opcode) { CMP(RD8_THUMB,            IMM8_THUMB)                         } // CMP Rd,#i
@@ -529,10 +529,10 @@ void dpG1(interpreter::Cpu *cpu, uint32_t opcode)
 {
     switch (DP_SWITCH)
     {
-        case 0x0: { AND(RD_THUMB, RD_THUMB, RS_THUMB)      COMMON_FLAGS(RD_THUMB) } return; // AND Rd,Rs
-        case 0x1: { EOR(RD_THUMB, RD_THUMB, RS_THUMB)      COMMON_FLAGS(RD_THUMB) } return; // EOR Rd,Rs
-        case 0x2: { MOV(RD_THUMB, LSL(RD_THUMB, RS_THUMB)) COMMON_FLAGS(RD_THUMB) } return; // LSL Rd,Rs
-        case 0x3: { MOV(RD_THUMB, LSR(RD_THUMB, RS_THUMB)) COMMON_FLAGS(RD_THUMB) } return; // LSR Rd,Rs
+        case 0x0: {                               AND(RD_THUMB, RD_THUMB, RS_THUMB)      COMMON_FLAGS(RD_THUMB) } return; // AND Rd,Rs
+        case 0x1: {                               EOR(RD_THUMB, RD_THUMB, RS_THUMB)      COMMON_FLAGS(RD_THUMB) } return; // EOR Rd,Rs
+        case 0x2: { LSL_FLAGS(RD_THUMB, RS_THUMB) MOV(RD_THUMB, LSL(RD_THUMB, RS_THUMB)) COMMON_FLAGS(RD_THUMB) } return; // LSL Rd,Rs
+        case 0x3: { LSR_FLAGS(RD_THUMB, RS_THUMB) MOV(RD_THUMB, LSR(RD_THUMB, RS_THUMB)) COMMON_FLAGS(RD_THUMB) } return; // LSR Rd,Rs
     }
 }
 
@@ -540,10 +540,10 @@ void dpG2(interpreter::Cpu *cpu, uint32_t opcode)
 {
     switch (DP_SWITCH)
     {
-        case 0x0: { MOV(RD_THUMB, ASR(RD_THUMB, RS_THUMB)) COMMON_FLAGS(RD_THUMB) } return; // ASR Rd,Rs
-        case 0x1: { ADC(RD_THUMB, RD_THUMB, RS_THUMB)         ADC_FLAGS(RD_THUMB) } return; // ADC Rd,Rs
-        case 0x2: { SBC(RD_THUMB, RD_THUMB, RS_THUMB)         SBC_FLAGS(RD_THUMB) } return; // SBC Rd,Rs
-        case 0x3: { MOV(RD_THUMB, ROR(RD_THUMB, RS_THUMB)) COMMON_FLAGS(RD_THUMB) } return; // ROR Rd,Rs
+        case 0x0: { ASR_FLAGS(RD_THUMB, RS_THUMB) MOV(RD_THUMB, ASR(RD_THUMB, RS_THUMB)) COMMON_FLAGS(RD_THUMB) } return; // ASR Rd,Rs
+        case 0x1: {                               ADC(RD_THUMB, RD_THUMB, RS_THUMB)         ADC_FLAGS(RD_THUMB) } return; // ADC Rd,Rs
+        case 0x2: {                               SBC(RD_THUMB, RD_THUMB, RS_THUMB)         SBC_FLAGS(RD_THUMB) } return; // SBC Rd,Rs
+        case 0x3: { ROR_FLAGS(RD_THUMB, RS_THUMB) MOV(RD_THUMB, ROR(RD_THUMB, RS_THUMB)) COMMON_FLAGS(RD_THUMB) } return; // ROR Rd,Rs
     }
 }
 

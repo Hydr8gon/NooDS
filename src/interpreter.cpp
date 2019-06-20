@@ -67,10 +67,11 @@ void execute(Cpu *cpu)
 
         // Adjust the program counter to fake pipelining
         if (!(cpu->cpsr & BIT(5)))
-            *cpu->registers[15] += 6;
+            *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 8;
         else if (programCounter != *cpu->registers[15] - 4)
-            *cpu->registers[15] += 2;
-        *cpu->registers[15] += 2;
+            *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 4;
+        else
+            *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 2;
     }
     else // ARM mode
     {
@@ -81,8 +82,9 @@ void execute(Cpu *cpu)
 
         // Adjust the program counter to fake pipelining
         if (programCounter != *cpu->registers[15] - 8 && !(cpu->cpsr & BIT(5)))
-            *cpu->registers[15] += 4;
-        *cpu->registers[15] += 4;
+            *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 8;
+        else
+            *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 4;
     }
 }
 
