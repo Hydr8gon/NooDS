@@ -22,7 +22,6 @@
 #include "memory.h"
 #include "core.h"
 #include "cp15.h"
-#include "gpu.h"
 
 namespace memory
 {
@@ -57,9 +56,13 @@ uint32_t ime9,     ime7;     // Interrupt master enable
 uint32_t ie9,      ie7;      // Interrupt enable
 uint32_t if9,      if7;      // Interrupt request flags
 
+uint32_t dispcntA;  // Engine A display control
 uint32_t dispstat;  // General LCD status
+uint32_t bgcntA[4]; // Engine A background control
 uint32_t vcount;    // Vertical counter
 uint32_t powcnt1;   // Graphics power control
+uint32_t dispcntB;  // Engine B display control
+uint32_t bgcntB[4]; // Engine B background control
 
 void *vramMap(uint32_t address)
 {
@@ -125,24 +128,24 @@ uint32_t ioReadMap9(uint32_t address)
 {
     switch (address)
     {
-        case 0x4000000: return gpu::engineA.dispcnt;  // DISPCNT_A
-        case 0x4000004: return dispstat;              // DISPSTAT
-        case 0x4000008: return gpu::engineA.bgcnt[0]; // BG0CNT_A
-        case 0x400000A: return gpu::engineA.bgcnt[1]; // BG1CNT_A
-        case 0x400000C: return gpu::engineA.bgcnt[2]; // BG2CNT_A
-        case 0x400000E: return gpu::engineA.bgcnt[3]; // BG3CNT_A
-        case 0x4000006: return vcount;                // VCOUNT
-        case 0x4000130: return keyinput;              // KEYINPUT
-        case 0x4000180: return ipcsync9;              // IPCSYNC_9
-        case 0x4000208: return ime9;                  // IME_9
-        case 0x4000210: return ie9;                   // IE_9
-        case 0x4000214: return if9;                   // IF_9
-        case 0x4000304: return powcnt1;               // POWCNT1
-        case 0x4001000: return gpu::engineB.dispcnt;  // DISPCNT_B
-        case 0x4001008: return gpu::engineB.bgcnt[0]; // BG0CNT_B
-        case 0x400100A: return gpu::engineB.bgcnt[1]; // BG1CNT_B
-        case 0x400100C: return gpu::engineB.bgcnt[2]; // BG2CNT_B
-        case 0x400100E: return gpu::engineB.bgcnt[3]; // BG3CNT_B
+        case 0x4000000: return dispcntA;  // DISPCNT_A
+        case 0x4000004: return dispstat;  // DISPSTAT
+        case 0x4000008: return bgcntA[0]; // BG0CNT_A
+        case 0x400000A: return bgcntA[1]; // BG1CNT_A
+        case 0x400000C: return bgcntA[2]; // BG2CNT_A
+        case 0x400000E: return bgcntA[3]; // BG3CNT_A
+        case 0x4000006: return vcount;    // VCOUNT
+        case 0x4000130: return keyinput;  // KEYINPUT
+        case 0x4000180: return ipcsync9;  // IPCSYNC_9
+        case 0x4000208: return ime9;      // IME_9
+        case 0x4000210: return ie9;       // IE_9
+        case 0x4000214: return if9;       // IF_9
+        case 0x4000304: return powcnt1;   // POWCNT1
+        case 0x4001000: return dispcntB;  // DISPCNT_B
+        case 0x4001008: return bgcntB[0]; // BG0CNT_B
+        case 0x400100A: return bgcntB[1]; // BG1CNT_B
+        case 0x400100C: return bgcntB[2]; // BG2CNT_B
+        case 0x400100E: return bgcntB[3]; // BG3CNT_B
         default: printf("Unknown ARM9 I/O read: 0x%X\n", address); return 0;
     }
 }
@@ -152,7 +155,7 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
     switch (address)
     {
         case 0x4000000: // DISPCNT_A
-            *(T*)&gpu::engineA.dispcnt = value;
+            *(T*)&dispcntA = value;
             break;
 
         case 0x4000004: // DISPSTAT
@@ -160,19 +163,19 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
             break;
 
         case 0x4000008: // BG0CNT_A
-            *(T*)&gpu::engineA.bgcnt[0] = value & 0xFFFF;
+            *(T*)&bgcntA[0] = value & 0xFFFF;
             break;
 
         case 0x400000A: // BG1CNT_A
-            *(T*)&gpu::engineA.bgcnt[1] = value & 0xFFFF;
+            *(T*)&bgcntA[1] = value & 0xFFFF;
             break;
 
         case 0x400000C: // BG2CNT_A
-            *(T*)&gpu::engineA.bgcnt[2] = value & 0xFFFF;
+            *(T*)&bgcntA[2] = value & 0xFFFF;
             break;
 
         case 0x400000E: // BG3CNT_A
-            *(T*)&gpu::engineA.bgcnt[3] = value & 0xFFFF;
+            *(T*)&bgcntA[3] = value & 0xFFFF;
             break;
 
         case 0x4000180: // IPCSYNC_9
@@ -339,23 +342,23 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
             break;
 
         case 0x4001000: // DISPCNT_B
-            *(T*)&gpu::engineB.dispcnt = (value & 0xC0B1FFF7);
+            *(T*)&dispcntB = (value & 0xC0B1FFF7);
             break;
 
         case 0x4001008: // BG0CNT_B
-            *(T*)&gpu::engineB.bgcnt[0] = value & 0xFFFF;
+            *(T*)&bgcntB[0] = value & 0xFFFF;
             break;
 
         case 0x400100A: // BG1CNT_B
-            *(T*)&gpu::engineB.bgcnt[1] = value & 0xFFFF;
+            *(T*)&bgcntB[1] = value & 0xFFFF;
             break;
 
         case 0x400100C: // BG2CNT_B
-            *(T*)&gpu::engineB.bgcnt[2] = value & 0xFFFF;
+            *(T*)&bgcntB[2] = value & 0xFFFF;
             break;
 
         case 0x400100E: // BG3CNT_B
-            *(T*)&gpu::engineB.bgcnt[3] = value & 0xFFFF;
+            *(T*)&bgcntB[3] = value & 0xFFFF;
             break;
 
         default:

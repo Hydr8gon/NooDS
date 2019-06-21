@@ -36,9 +36,15 @@ extern uint32_t ime9, ime7;
 extern uint32_t ie9,  ie7;
 extern uint32_t if9,  if7;
 
+extern uint32_t dispcntA;
 extern uint32_t dispstat;
+extern uint32_t bgcntA[4];
 extern uint32_t vcount;
 extern uint32_t powcnt1;
+extern uint32_t dispcntB;
+extern uint32_t bgcntB[4];
+
+void *vramMap(uint32_t address);
 
 template <typename T> T read(interpreter::Cpu *cpu, uint32_t address);
 template <typename T> void write(interpreter::Cpu *cpu, uint32_t address, T value);

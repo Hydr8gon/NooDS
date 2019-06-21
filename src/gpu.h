@@ -25,19 +25,11 @@
 namespace gpu
 {
 
-typedef struct
-{
-    uint32_t dispcnt;
-    uint32_t bgcnt[4];
-    uint16_t bgBuffers[4][256 * 192];
-    uint16_t framebuffer[256 * 192];
-} Engine;
-
-extern Engine engineA, engineB;
-
 extern uint16_t displayBuffer[256 * 192 * 2];
 
 void runDot();
+
+void init();
 
 }
 

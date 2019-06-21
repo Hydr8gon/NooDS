@@ -34,6 +34,15 @@
 namespace gpu
 {
 
+typedef struct
+{
+    uint32_t *dispcnt;
+    uint32_t *bgcnt;
+    uint32_t bgVram;
+    uint16_t bgBuffers[4][256 * 192];
+    uint16_t framebuffer[256 * 192];
+} Engine;
+
 Engine engineA, engineB;
 
 uint16_t dot;
@@ -52,65 +61,73 @@ void drawAffine(Engine *engine, uint8_t bg, uint16_t pixel)
 
 void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
 {
-    engine->bgBuffers[bg][pixel] = 0xCDEF; // Placeholder
+    if ((engine->bgcnt[bg] & BIT(7)) && (engine->bgcnt[bg] & BIT(2))) // Direct color bitmap
+    {
+        uint32_t base = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x4000;
+        engine->bgBuffers[bg][pixel] = *(uint16_t*)memory::vramMap(engine->bgVram + base + pixel * 2);
+    }
+    else
+    {
+        engine->bgBuffers[bg][pixel] = 0xCDEF; // Placeholder
+    }
 }
 
 void drawDot(Engine *engine)
 {
     uint16_t pixel = memory::vcount * 256 + dot;
-    switch ((engine->dispcnt & 0x00030000) >> 16) // Display mode
+    switch ((*engine->dispcnt & 0x00030000) >> 16) // Display mode
     {
         case 0x0: // Display off
             engine->framebuffer[pixel] = 0xFFFF;
             break;
 
         case 0x1: // Graphics display
-            switch (engine->dispcnt & 0x00000007) // BG mode
+            switch (*engine->dispcnt & 0x00000007) // BG mode
             {
                 case 0x0:
-                    if (engine->dispcnt & BIT(8))  drawText(engine, 0, pixel);
-                    if (engine->dispcnt & BIT(9))  drawText(engine, 1, pixel);
-                    if (engine->dispcnt & BIT(10)) drawText(engine, 2, pixel);
-                    if (engine->dispcnt & BIT(11)) drawText(engine, 3, pixel);
+                    if (*engine->dispcnt & BIT(8))  drawText(engine, 0, pixel);
+                    if (*engine->dispcnt & BIT(9))  drawText(engine, 1, pixel);
+                    if (*engine->dispcnt & BIT(10)) drawText(engine, 2, pixel);
+                    if (*engine->dispcnt & BIT(11)) drawText(engine, 3, pixel);
                     break;
 
                 case 0x1:
-                    if (engine->dispcnt & BIT(8))  drawText  (engine, 0, pixel);
-                    if (engine->dispcnt & BIT(9))  drawText  (engine, 1, pixel);
-                    if (engine->dispcnt & BIT(10)) drawText  (engine, 2, pixel);
-                    if (engine->dispcnt & BIT(11)) drawAffine(engine, 3, pixel);
+                    if (*engine->dispcnt & BIT(8))  drawText  (engine, 0, pixel);
+                    if (*engine->dispcnt & BIT(9))  drawText  (engine, 1, pixel);
+                    if (*engine->dispcnt & BIT(10)) drawText  (engine, 2, pixel);
+                    if (*engine->dispcnt & BIT(11)) drawAffine(engine, 3, pixel);
                     break;
 
                 case 0x2:
-                    if (engine->dispcnt & BIT(8))  drawText  (engine, 0, pixel);
-                    if (engine->dispcnt & BIT(9))  drawText  (engine, 1, pixel);
-                    if (engine->dispcnt & BIT(10)) drawAffine(engine, 2, pixel);
-                    if (engine->dispcnt & BIT(11)) drawAffine(engine, 3, pixel);
+                    if (*engine->dispcnt & BIT(8))  drawText  (engine, 0, pixel);
+                    if (*engine->dispcnt & BIT(9))  drawText  (engine, 1, pixel);
+                    if (*engine->dispcnt & BIT(10)) drawAffine(engine, 2, pixel);
+                    if (*engine->dispcnt & BIT(11)) drawAffine(engine, 3, pixel);
                     break;
 
                 case 0x3:
-                    if (engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
-                    if (engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
-                    if (engine->dispcnt & BIT(10)) drawText    (engine, 2, pixel);
-                    if (engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
+                    if (*engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
+                    if (*engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
+                    if (*engine->dispcnt & BIT(10)) drawText    (engine, 2, pixel);
+                    if (*engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
                     break;
 
                 case 0x4:
-                    if (engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
-                    if (engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
-                    if (engine->dispcnt & BIT(10)) drawAffine  (engine, 2, pixel);
-                    if (engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
+                    if (*engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
+                    if (*engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
+                    if (*engine->dispcnt & BIT(10)) drawAffine  (engine, 2, pixel);
+                    if (*engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
                     break;
 
                 case 0x5:
-                    if (engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
-                    if (engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
-                    if (engine->dispcnt & BIT(10)) drawExtended(engine, 2, pixel);
-                    if (engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
+                    if (*engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
+                    if (*engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
+                    if (*engine->dispcnt & BIT(10)) drawExtended(engine, 2, pixel);
+                    if (*engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
                     break;
 
                 default:
-                    printf("Unknown BG mode: %d\n", (engine->dispcnt & 0x00000007));
+                    printf("Unknown BG mode: %d\n", (*engine->dispcnt & 0x00000007));
                     break;
             }
 
@@ -119,7 +136,7 @@ void drawDot(Engine *engine)
             {
                 for (int j = 0; j < 4; j++)
                 {
-                    if ((engine->dispcnt & BIT(8 + j)) && (engine->bgcnt[j] & 0x0003) == i)
+                    if ((*engine->dispcnt & BIT(8 + j)) && (engine->bgcnt[j] & 0x0003) == i)
                     {
                         engine->framebuffer[pixel] = engine->bgBuffers[j][pixel];
                         if (engine->framebuffer[pixel] & BIT(15))
@@ -132,7 +149,7 @@ void drawDot(Engine *engine)
             break;
 
         case 0x2: // VRAM display
-            switch ((engine->dispcnt & 0x000C0000) >> 18) // VRAM block
+            switch ((*engine->dispcnt & 0x000C0000) >> 18) // VRAM block
             {
                 case 0x0: engine->framebuffer[pixel] = ((uint16_t*)memory::vramA)[pixel]; break;
                 case 0x1: engine->framebuffer[pixel] = ((uint16_t*)memory::vramB)[pixel]; break;
@@ -143,7 +160,7 @@ void drawDot(Engine *engine)
 
         case 0x3: // Main memory display
             printf("Unsupported display mode: main memory\n");
-            engine->dispcnt &= ~0x00030000;
+            *engine->dispcnt &= ~0x00030000;
             break;
     }
 }
@@ -234,6 +251,17 @@ void runDot()
         }
         timer = std::chrono::steady_clock::now();
     }
+}
+
+void init()
+{
+    engineA.dispcnt = &memory::dispcntA;
+    engineA.bgcnt   = memory::bgcntA;
+    engineA.bgVram  = 0x6000000;
+
+    engineB.dispcnt = &memory::dispcntB;
+    engineB.bgcnt   = memory::bgcntB;
+    engineB.bgVram  = 0x6200000;
 }
 
 }

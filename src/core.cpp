@@ -129,6 +129,7 @@ bool loadRom(char *filename)
     }
 
     interpreter::init();
+    gpu::init();
 
     return true;
 }
