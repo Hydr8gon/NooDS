@@ -34,64 +34,127 @@
 namespace gpu
 {
 
+Engine engineA, engineB;
+
 uint16_t dot;
-uint16_t framebuffers[2][256 * 192];
 uint16_t displayBuffer[256 * 192 * 2];
 std::chrono::steady_clock::time_point timer;
 
-void drawDot()
+void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
+{
+    engine->bgBuffers[bg][pixel] = 0xFEDC; // Placeholder
+}
+
+void drawAffine(Engine *engine, uint8_t bg, uint16_t pixel)
+{
+    engine->bgBuffers[bg][pixel] = 0xBAAB; // Placeholder
+}
+
+void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
+{
+    engine->bgBuffers[bg][pixel] = 0xCDEF; // Placeholder
+}
+
+void drawDot(Engine *engine)
+{
+    uint16_t pixel = memory::vcount * 256 + dot;
+    switch ((engine->dispcnt & 0x00030000) >> 16) // Display mode
+    {
+        case 0x0: // Display off
+            engine->framebuffer[pixel] = 0xFFFF;
+            break;
+
+        case 0x1: // Graphics display
+            switch (engine->dispcnt & 0x00000007) // BG mode
+            {
+                case 0x0:
+                    if (engine->dispcnt & BIT(8))  drawText(engine, 0, pixel);
+                    if (engine->dispcnt & BIT(9))  drawText(engine, 1, pixel);
+                    if (engine->dispcnt & BIT(10)) drawText(engine, 2, pixel);
+                    if (engine->dispcnt & BIT(11)) drawText(engine, 3, pixel);
+                    break;
+
+                case 0x1:
+                    if (engine->dispcnt & BIT(8))  drawText  (engine, 0, pixel);
+                    if (engine->dispcnt & BIT(9))  drawText  (engine, 1, pixel);
+                    if (engine->dispcnt & BIT(10)) drawText  (engine, 2, pixel);
+                    if (engine->dispcnt & BIT(11)) drawAffine(engine, 3, pixel);
+                    break;
+
+                case 0x2:
+                    if (engine->dispcnt & BIT(8))  drawText  (engine, 0, pixel);
+                    if (engine->dispcnt & BIT(9))  drawText  (engine, 1, pixel);
+                    if (engine->dispcnt & BIT(10)) drawAffine(engine, 2, pixel);
+                    if (engine->dispcnt & BIT(11)) drawAffine(engine, 3, pixel);
+                    break;
+
+                case 0x3:
+                    if (engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
+                    if (engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
+                    if (engine->dispcnt & BIT(10)) drawText    (engine, 2, pixel);
+                    if (engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
+                    break;
+
+                case 0x4:
+                    if (engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
+                    if (engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
+                    if (engine->dispcnt & BIT(10)) drawAffine  (engine, 2, pixel);
+                    if (engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
+                    break;
+
+                case 0x5:
+                    if (engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
+                    if (engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
+                    if (engine->dispcnt & BIT(10)) drawExtended(engine, 2, pixel);
+                    if (engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
+                    break;
+
+                default:
+                    printf("Unknown BG mode: %d\n", (engine->dispcnt & 0x00000007));
+                    break;
+            }
+
+            // Draw the pixel from the highest priority background
+            for (int i = 0; i < 4; i++)
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    if ((engine->dispcnt & BIT(8 + j)) && (engine->bgcnt[j] & 0x0003) == i)
+                    {
+                        engine->framebuffer[pixel] = engine->bgBuffers[j][pixel];
+                        if (engine->framebuffer[pixel] & BIT(15))
+                            return;
+                    }
+                }
+            }
+
+            engine->framebuffer[pixel] = 0x0000;
+            break;
+
+        case 0x2: // VRAM display
+            switch ((engine->dispcnt & 0x000C0000) >> 18) // VRAM block
+            {
+                case 0x0: engine->framebuffer[pixel] = ((uint16_t*)memory::vramA)[pixel]; break;
+                case 0x1: engine->framebuffer[pixel] = ((uint16_t*)memory::vramB)[pixel]; break;
+                case 0x2: engine->framebuffer[pixel] = ((uint16_t*)memory::vramC)[pixel]; break;
+                default:  engine->framebuffer[pixel] = ((uint16_t*)memory::vramD)[pixel]; break;
+            }
+            break;
+
+        case 0x3: // Main memory display
+            printf("Unsupported display mode: main memory\n");
+            engine->dispcnt &= ~0x00030000;
+            break;
+    }
+}
+
+void runDot()
 {
     // Draw a pixel
     if (dot < 256 && memory::vcount < 192)
     {
-        if (!(memory::powcnt1 & BIT(0))) // LCDs disabled
-        {
-            framebuffers[0][memory::vcount * 256 + dot] = 0x0000;
-            framebuffers[1][memory::vcount * 256 + dot] = 0x0000;
-        }
-        else
-        {
-            switch ((memory::dispcntA & 0x00030000) >> 16) // Engine A display Mode
-            {
-                case 0x0: // Display off
-                    framebuffers[0][memory::vcount * 256 + dot] = 0x7FFF;
-                    break;
-
-                case 0x1: // Graphics display
-                    printf("Unsupported engine A graphics mode: graphics\n");
-                    memory::dispcntA &= ~0x00030000;
-                    break;
-
-                case 0x2: // VRAM display
-                    uint16_t *bank;
-                    switch ((memory::dispcntA & 0x000C0000) >> 18) // VRAM block
-                    {
-                        case 0x0: bank = (uint16_t*)memory::vramA; break;
-                        case 0x1: bank = (uint16_t*)memory::vramB; break;
-                        case 0x2: bank = (uint16_t*)memory::vramC; break;
-                        default:  bank = (uint16_t*)memory::vramD; break;
-                    }
-                    framebuffers[0][memory::vcount * 256 + dot] = bank[memory::vcount * 256 + dot];
-                    break;
-
-                case 0x3: // Main memory display
-                    printf("Unsupported engine A graphics mode: main memory\n");
-                    memory::dispcntA &= ~0x00030000;
-                    break;
-            }
-
-            switch ((memory::dispcntB & 0x00030000) >> 16) // Engine B display Mode
-            {
-                case 0x0: // Display off
-                    framebuffers[1][memory::vcount * 256 + dot] = 0x7FFF;
-                    break;
-
-                case 0x1: // Graphics display
-                    printf("Unsupported engine B graphics mode: graphics\n");
-                    memory::dispcntB &= ~0x00030000;
-                    break;
-            }
-        }
+        drawDot(&engineA);
+        drawDot(&engineB);
     }
 
     dot++;
@@ -141,15 +204,22 @@ void drawDot()
         memory::vcount = 0;
 
         // Display the frame
-        if (memory::powcnt1 & BIT(15))
+        if (memory::powcnt1 & BIT(0))
         {
-            memcpy(&displayBuffer[0],         &framebuffers[0], sizeof(framebuffers[1]));
-            memcpy(&displayBuffer[256 * 192], &framebuffers[1], sizeof(framebuffers[0]));
+            if (memory::powcnt1 & BIT(15))
+            {
+                memcpy(&displayBuffer[0],         engineA.framebuffer, sizeof(engineA.framebuffer));
+                memcpy(&displayBuffer[256 * 192], engineB.framebuffer, sizeof(engineB.framebuffer));
+            }
+            else
+            {
+                memcpy(&displayBuffer[0],         engineB.framebuffer, sizeof(engineB.framebuffer));
+                memcpy(&displayBuffer[256 * 192], engineA.framebuffer, sizeof(engineA.framebuffer));
+            }
         }
         else
         {
-            memcpy(&displayBuffer[0],         &framebuffers[1], sizeof(framebuffers[1]));
-            memcpy(&displayBuffer[256 * 192], &framebuffers[0], sizeof(framebuffers[0]));
+            memset(displayBuffer, 0, sizeof(displayBuffer));
         }
 
         // Limit FPS to 60

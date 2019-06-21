@@ -142,7 +142,7 @@ void runDot()
         if (i % 2 == 0 && !arm7.halt)
             interpreter::execute(&arm7);
         if (i % 6 == 0)
-            gpu::drawDot();
+            gpu::runDot();
     }
 }
 
