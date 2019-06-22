@@ -64,7 +64,9 @@ void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
     if ((engine->bgcnt[bg] & BIT(7)) && (engine->bgcnt[bg] & BIT(2))) // Direct color bitmap
     {
         uint32_t base = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x4000;
-        engine->bgBuffers[bg][pixel] = *(uint16_t*)memory::vramMap(engine->bgVram + base + pixel * 2);
+        uint16_t *color = (uint16_t*)memory::vramMap(engine->bgVram + base + pixel * 2);
+        if (color)
+            engine->bgBuffers[bg][pixel] = *color;
     }
     else
     {

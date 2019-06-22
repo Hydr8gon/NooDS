@@ -54,6 +54,11 @@ uint16_t wramOffset7 = 0x0000; uint16_t wramSize7 = 0x8000;
 bool     vramEnables[9];
 uint32_t vramBases[9];
 
+uint32_t dmasad9[4], dmasad7[4]; // DMA source addresss
+uint32_t dmadad9[4], dmadad7[4]; // DMA destination address
+uint32_t dmacnt9[4], dmacnt7[4]; // DMA control
+uint32_t dmafill[4];             // DMA fill data
+
 uint32_t keyinput = 0x03FF; // Key status
 uint32_t extkeyin = 0x007F; // Key X/Y input
 
@@ -71,6 +76,59 @@ uint32_t vcount;    // Vertical counter
 uint32_t powcnt1;   // Graphics power control
 uint32_t dispcntB;  // Engine B display control
 uint32_t bgcntB[4]; // Engine B background control
+
+void dmaTransfer(interpreter::Cpu *cpu, uint32_t dmasad, uint32_t dmadad, uint32_t *dmacnt)
+{
+    uint8_t mode = (*dmacnt & 0x38000000) >> 27;
+
+    if (mode == 0) // Start immediately
+    {
+        uint8_t dstAddrCnt = (*dmacnt & 0x00600000) >> 21;
+        uint8_t srcAddrCnt = (*dmacnt & 0x01800000) >> 23;
+        uint32_t size = (*dmacnt & 0x001FFFFF);
+
+        if (*dmacnt & BIT(26)) // 32-bit
+        {
+            for (int i = 0; i < size; i++)
+            {
+                write<uint32_t>(cpu, dmadad, read<uint32_t>(cpu, dmasad));
+
+                if (dstAddrCnt == 0 || dstAddrCnt == 3) // Destination increment
+                    dmadad += 4;
+                else if (dstAddrCnt == 1) // Destination decrement
+                    dmadad -= 4;
+
+                if (srcAddrCnt == 0) // Source increment
+                    dmasad += 4;
+                else if (srcAddrCnt == 1) // Source decrement
+                    dmasad -= 4;
+            }
+        }
+        else // 16-bit
+        {
+            for (int i = 0; i < size; i++)
+            {
+                write<uint16_t>(cpu, dmadad, read<uint16_t>(cpu, dmasad));
+
+                if (dstAddrCnt == 0 || dstAddrCnt == 3) // Destination increment
+                    dmadad += 2;
+                else if (dstAddrCnt == 1) // Destination decrement
+                    dmadad -= 2;
+
+                if (srcAddrCnt == 0) // Source increment
+                    dmasad += 2;
+                else if (srcAddrCnt == 1) // Source decrement
+                    dmasad -= 2;
+            }
+        }
+    }
+    else
+    {
+        printf("Unknown ARM%d DMA transfer mode: %d\n", cpu->type, mode);
+    }
+
+    *dmacnt &= ~BIT(31);
+}
 
 void *vramMap(uint32_t address)
 {
@@ -144,25 +202,41 @@ uint32_t ioReadMap9(uint32_t address)
 {
     switch (address)
     {
-        case 0x4000000: return dispcntA;  // DISPCNT_A
-        case 0x4000004: return dispstat;  // DISPSTAT
-        case 0x4000008: return bgcntA[0]; // BG0CNT_A
-        case 0x400000A: return bgcntA[1]; // BG1CNT_A
-        case 0x400000C: return bgcntA[2]; // BG2CNT_A
-        case 0x400000E: return bgcntA[3]; // BG3CNT_A
-        case 0x4000006: return vcount;    // VCOUNT
-        case 0x4000130: return keyinput;  // KEYINPUT
-        case 0x4000180: return ipcsync9;  // IPCSYNC_9
-        case 0x4000208: return ime9;      // IME_9
-        case 0x4000210: return ie9;       // IE_9
-        case 0x4000214: return if9;       // IF_9
-        case 0x4000247: return wramcnt;   // WRAMCNT
-        case 0x4000304: return powcnt1;   // POWCNT1
-        case 0x4001000: return dispcntB;  // DISPCNT_B
-        case 0x4001008: return bgcntB[0]; // BG0CNT_B
-        case 0x400100A: return bgcntB[1]; // BG1CNT_B
-        case 0x400100C: return bgcntB[2]; // BG2CNT_B
-        case 0x400100E: return bgcntB[3]; // BG3CNT_B
+        case 0x4000000: return dispcntA;   // DISPCNT_A
+        case 0x4000004: return dispstat;   // DISPSTAT
+        case 0x4000008: return bgcntA[0];  // BG0CNT_A
+        case 0x400000A: return bgcntA[1];  // BG1CNT_A
+        case 0x400000C: return bgcntA[2];  // BG2CNT_A
+        case 0x400000E: return bgcntA[3];  // BG3CNT_A
+        case 0x4000006: return vcount;     // VCOUNT
+        case 0x40000B0: return dmasad9[0]; // DMA0SAD_9
+        case 0x40000B4: return dmadad9[0]; // DMA0DAD_9
+        case 0x40000B8: return dmacnt9[0]; // DMA0CNT_9
+        case 0x40000BC: return dmasad9[1]; // DMA1SAD_9
+        case 0x40000C0: return dmadad9[1]; // DMA1DAD_9
+        case 0x40000C4: return dmacnt9[1]; // DMA1CNT_9
+        case 0x40000C8: return dmasad9[2]; // DMA2SAD_9
+        case 0x40000CC: return dmadad9[2]; // DMA2DAD_9
+        case 0x40000D0: return dmacnt9[2]; // DMA2CNT_9
+        case 0x40000D4: return dmasad9[3]; // DMA3SAD_9
+        case 0x40000D8: return dmadad9[3]; // DMA3DAD_9
+        case 0x40000DC: return dmacnt9[3]; // DMA3CNT_9
+        case 0x40000E0: return dmafill[0]; // DMA0FILL
+        case 0x40000E4: return dmafill[1]; // DMA1FILL
+        case 0x40000E8: return dmafill[2]; // DMA2FILL
+        case 0x40000EC: return dmafill[3]; // DMA3FILL
+        case 0x4000130: return keyinput;   // KEYINPUT
+        case 0x4000180: return ipcsync9;   // IPCSYNC_9
+        case 0x4000208: return ime9;       // IME_9
+        case 0x4000210: return ie9;        // IE_9
+        case 0x4000214: return if9;        // IF_9
+        case 0x4000247: return wramcnt;    // WRAMCNT
+        case 0x4000304: return powcnt1;    // POWCNT1
+        case 0x4001000: return dispcntB;   // DISPCNT_B
+        case 0x4001008: return bgcntB[0];  // BG0CNT_B
+        case 0x400100A: return bgcntB[1];  // BG1CNT_B
+        case 0x400100C: return bgcntB[2];  // BG2CNT_B
+        case 0x400100E: return bgcntB[3];  // BG3CNT_B
         default: printf("Unknown ARM9 I/O read: 0x%X\n", address); return 0;
     }
 }
@@ -193,6 +267,78 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
 
         case 0x400000E: // BG3CNT_A
             *(T*)&bgcntA[3] = value & 0xFFFF;
+            break;
+
+        case 0x40000B0: // DMA0SAD_9
+            *(T*)&dmasad9[0] = value & 0x0FFFFFFF;
+            break;
+
+        case 0x40000B4: // DMA0DAD_9
+            *(T*)&dmadad9[0] = value & 0x0FFFFFFF;
+            break;
+
+        case 0x40000B8: // DMA0CNT_9
+            *(T*)&dmacnt9[0] = value;
+            if (dmacnt9[0] & BIT(31))
+                dmaTransfer(&core::arm9, dmasad9[0], dmadad9[0], &dmacnt9[0]);
+            break;
+
+        case 0x40000BC: // DMA1SAD_9
+            *(T*)&dmasad9[1] = value & 0x0FFFFFFF;
+            break;
+
+        case 0x40000C0: // DMA1DAD_9
+            *(T*)&dmadad9[1] = value & 0x0FFFFFFF;
+            break;
+
+        case 0x40000C4: // DMA1CNT_9
+            *(T*)&dmacnt9[1] = value;
+            if (dmacnt9[1] & BIT(31))
+                dmaTransfer(&core::arm9, dmasad9[1], dmadad9[1], &dmacnt9[1]);
+            break;
+
+        case 0x40000C8: // DMA2SAD_9
+            *(T*)&dmasad9[2] = value & 0x0FFFFFFF;
+            break;
+
+        case 0x40000CC: // DMA2DAD_9
+            *(T*)&dmadad9[2] = value & 0x0FFFFFFF;
+            break;
+
+        case 0x40000D0: // DMA2CNT_9
+            *(T*)&dmacnt9[2] = value;
+            if (dmacnt9[2] & BIT(31))
+                dmaTransfer(&core::arm9, dmasad9[2], dmadad9[2], &dmacnt9[2]);
+            break;
+
+        case 0x40000D4: // DMA3SAD_9
+            *(T*)&dmasad9[3] = value & 0x0FFFFFFF;
+            break;
+
+        case 0x40000D8: // DMA3DAD_9
+            *(T*)&dmadad9[3] = value & 0x0FFFFFFF;
+            break;
+
+        case 0x40000DC: // DMA3CNT_9
+            *(T*)&dmacnt9[3] = value;
+            if (dmacnt9[3] & BIT(31))
+                dmaTransfer(&core::arm9, dmasad9[3], dmadad9[3], &dmacnt9[3]);
+            break;
+
+        case 0x40000E0: // DMA0FILL
+            *(T*)&dmafill[0] = value;
+            break;
+
+        case 0x40000E4: // DMA1FILL
+            *(T*)&dmafill[1] = value;
+            break;
+
+        case 0x40000E8: // DMA2FILL
+            *(T*)&dmafill[2] = value;
+            break;
+
+        case 0x40000EC: // DMA3FILL
+            *(T*)&dmafill[3] = value;
             break;
 
         case 0x4000180: // IPCSYNC_9
@@ -399,15 +545,27 @@ uint32_t ioReadMap7(uint32_t address)
 {
     switch (address)
     {
-        case 0x4000004: return dispstat; // DISPSTAT
-        case 0x4000006: return vcount;   // VCOUNT
-        case 0x4000130: return keyinput; // KEYINPUT
-        case 0x4000136: return extkeyin; // EXTKEYIN
-        case 0x4000180: return ipcsync7; // IPCSYNC_7
-        case 0x4000208: return ime7;     // IME_7
-        case 0x4000210: return ie7;      // IE_7
-        case 0x4000214: return if7;      // IF_7
-        case 0x4000241: return wramcnt;  // WRAMSTAT
+        case 0x4000004: return dispstat;   // DISPSTAT
+        case 0x4000006: return vcount;     // VCOUNT
+        case 0x40000B0: return dmasad7[0]; // DMA0SAD_7
+        case 0x40000B4: return dmadad7[0]; // DMA0DAD_7
+        case 0x40000B8: return dmacnt7[0]; // DMA0CNT_7
+        case 0x40000BC: return dmasad7[1]; // DMA1SAD_7
+        case 0x40000C0: return dmadad7[1]; // DMA1DAD_7
+        case 0x40000C4: return dmacnt7[1]; // DMA1CNT_7
+        case 0x40000C8: return dmasad7[2]; // DMA2SAD_7
+        case 0x40000CC: return dmadad7[2]; // DMA2DAD_7
+        case 0x40000D0: return dmacnt7[2]; // DMA2CNT_7
+        case 0x40000D4: return dmasad7[3]; // DMA3SAD_7
+        case 0x40000D8: return dmadad7[3]; // DMA3DAD_7
+        case 0x40000DC: return dmacnt7[3]; // DMA3CNT_7
+        case 0x4000130: return keyinput;   // KEYINPUT
+        case 0x4000136: return extkeyin;   // EXTKEYIN
+        case 0x4000180: return ipcsync7;   // IPCSYNC_7
+        case 0x4000208: return ime7;       // IME_7
+        case 0x4000210: return ie7;        // IE_7
+        case 0x4000214: return if7;        // IF_7
+        case 0x4000241: return wramcnt;    // WRAMSTAT
         default: printf("Unknown ARM7 I/O read: 0x%X\n", address); return 0;
     }
 }
@@ -418,6 +576,62 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
     {
         case 0x4000004: // DISPSTAT
             *(T*)&dispstat = (value & 0xFFB8) | (dispstat & 0x0007);
+            break;
+
+        case 0x40000B0: // DMA0SAD_7
+            *(T*)&dmasad7[0] = value & 0x07FFFFFF;
+            break;
+
+        case 0x40000B4: // DMA0DAD_7
+            *(T*)&dmadad7[0] = value & 0x07FFFFFF;
+            break;
+
+        case 0x40000B8: // DMA0CNT_7
+            *(T*)&dmacnt7[0] = value & 0xF7E03FFF;
+            if (dmacnt7[0] & BIT(31))
+                dmaTransfer(&core::arm7, dmasad7[0], dmadad7[0], &dmacnt7[0]);
+            break;
+
+        case 0x40000BC: // DMA1SAD_7
+            *(T*)&dmasad7[1] = value & 0x07FFFFFF;
+            break;
+
+        case 0x40000C0: // DMA1DAD_7
+            *(T*)&dmadad7[1] = value & 0x07FFFFFF;
+            break;
+
+        case 0x40000C4: // DMA1CNT_7
+            *(T*)&dmacnt7[1] = value & 0xF7E03FFF;
+            if (dmacnt7[1] & BIT(31))
+                dmaTransfer(&core::arm7, dmasad7[1], dmadad7[1], &dmacnt7[1]);
+            break;
+
+        case 0x40000C8: // DMA2SAD_7
+            *(T*)&dmasad7[2] = value & 0x07FFFFFF;
+            break;
+
+        case 0x40000CC: // DMA2DAD_7
+            *(T*)&dmadad7[2] = value & 0x07FFFFFF;
+            break;
+
+        case 0x40000D0: // DMA2CNT_7
+            *(T*)&dmacnt7[2] = value & 0xF7E03FFF;
+            if (dmacnt7[2] & BIT(31))
+                dmaTransfer(&core::arm7, dmasad7[2], dmadad7[2], &dmacnt7[2]);
+            break;
+
+        case 0x40000D4: // DMA3SAD_7
+            *(T*)&dmasad7[3] = value & 0x07FFFFFF;
+            break;
+
+        case 0x40000D8: // DMA3DAD_7
+            *(T*)&dmadad7[3] = value & 0x07FFFFFF;
+            break;
+
+        case 0x40000DC: // DMA3CNT_7
+            *(T*)&dmacnt7[3] = value & 0xF7E0FFFF;
+            if (dmacnt7[3] & BIT(31))
+                dmaTransfer(&core::arm7, dmasad7[3], dmadad7[3], &dmacnt7[3]);
             break;
 
         case 0x4000180: // IPCSYNC_7
@@ -442,17 +656,9 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
         case 0x4000301: // HALTCNT
             switch ((value & 0xC0) >> 6)
             {
-                case 0x1:
-                    printf("Unhandled request: GBA mode\n");
-                    break;
-
-                case 0x2:
-                    core::arm7.halt = true;
-                    break;
-
-                case 0x3:
-                    printf("Unhandled request: Sleep mode\n");
-                    break;
+                case 0x1: printf("Unhandled request: GBA mode\n"); break;
+                case 0x2: core::arm7.halt = true; break;
+                case 0x3: printf("Unhandled request: Sleep mode\n"); break;
             }
             break;
 
