@@ -31,6 +31,7 @@ extern uint8_t vramC[0x20000];
 extern uint8_t vramD[0x20000];
 
 extern uint32_t keyinput;
+extern uint32_t extkeyin;
 
 extern uint32_t ime9, ime7;
 extern uint32_t ie9,  ie7;

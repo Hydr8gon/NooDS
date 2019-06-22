@@ -34,7 +34,8 @@ uint8_t bios9[0x8000];    // 32KB ARM9 BIOS
 uint8_t bios7[0x4000];    // 16KB ARM7 BIOS
 uint8_t wram7[0x10000];   // 64KB ARM7 WRAM
 
-uint8_t palettes[0x800]; //   2KB palettes
+uint8_t paletteA[0x400]; //   1KB engine A palette
+uint8_t paletteB[0x400]; //   1KB engine B palette
 uint8_t vramA[0x20000];  // 128KB VRAM block A
 uint8_t vramB[0x20000];  // 128KB VRAM block B
 uint8_t vramC[0x20000];  // 128KB VRAM block C
@@ -44,17 +45,24 @@ uint8_t vramF[0x4000];   //  16KB VRAM block F
 uint8_t vramG[0x4000];   //  16KB VRAM block G
 uint8_t vramH[0x8000];   //  32KB VRAM block H
 uint8_t vramI[0x4000];   //  16KB VRAM block I
-uint8_t oam[0x800];      //   2KB OAM
+uint8_t oamA[0x400];     //   1KB engine A OAM
+uint8_t oamB[0x400];     //   1KB engine B OAM
+
+uint16_t wramOffset9 = 0x0000; uint16_t wramSize9 = 0x0000;
+uint16_t wramOffset7 = 0x0000; uint16_t wramSize7 = 0x8000;
 
 bool     vramEnables[9];
-uint32_t vramOffsets[9];
+uint32_t vramBases[9];
 
 uint32_t keyinput = 0x03FF; // Key status
+uint32_t extkeyin = 0x007F; // Key X/Y input
 
 uint32_t ipcsync9, ipcsync7; // IPC synchronize
 uint32_t ime9,     ime7;     // Interrupt master enable
 uint32_t ie9,      ie7;      // Interrupt enable
 uint32_t if9,      if7;      // Interrupt request flags
+
+uint32_t wramcnt = 0x03; // WRAM bank control
 
 uint32_t dispcntA;  // Engine A display control
 uint32_t dispstat;  // General LCD status
@@ -66,28 +74,36 @@ uint32_t bgcntB[4]; // Engine B background control
 
 void *vramMap(uint32_t address)
 {
-    if (address >= 0x5000000 && address < 0x6000000) // 2KB palettes
-        return &palettes[(address - 0x5000000) % 0x800];
-    else if (vramEnables[0] && address >= vramOffsets[0] && address < vramOffsets[0] + 0x20000) // 128KB VRAM block A
-        return &vramA[(address - vramOffsets[0]) % 0x20000];
-    else if (vramEnables[1] && address >= vramOffsets[1] && address < vramOffsets[1] + 0x20000) // 128KB VRAM block B
-        return &vramB[(address - vramOffsets[1]) % 0x20000];
-    else if (vramEnables[2] && address >= vramOffsets[2] && address < vramOffsets[2] + 0x20000) // 128KB VRAM block C
-        return &vramC[(address - vramOffsets[2]) % 0x20000];
-    else if (vramEnables[3] && address >= vramOffsets[3] && address < vramOffsets[3] + 0x20000) // 128KB VRAM block D
-        return &vramD[(address - vramOffsets[3]) % 0x20000];
-    else if (vramEnables[4] && address >= vramOffsets[4] && address < vramOffsets[4] + 0x10000) // 64KB VRAM block E
-        return &vramE[(address - vramOffsets[4]) % 0x10000];
-    else if (vramEnables[5] && address >= vramOffsets[5] && address < vramOffsets[5] + 0x4000) // 16KB VRAM block F
-        return &vramF[(address - vramOffsets[5]) % 0x4000];
-    else if (vramEnables[6] && address >= vramOffsets[6] && address < vramOffsets[6] + 0x4000) // 16KB VRAM block G
-        return &vramG[(address - vramOffsets[6]) % 0x4000];
-    else if (vramEnables[7] && address >= vramOffsets[7] && address < vramOffsets[7] + 0x8000) // 32KB VRAM block H
-        return &vramH[(address - vramOffsets[7]) % 0x8000];
-    else if (vramEnables[8] && address >= vramOffsets[8] && address < vramOffsets[8] + 0x4000) // 16KB VRAM block I
-        return &vramI[(address - vramOffsets[8]) % 0x4000];
-    else if (address >= 0x7000000 && address < 0x8000000) // 2KB OAM
-        return &oam[(address - 0x7000000) % 0x800];
+    if (address >= 0x5000000 && address < 0x5000400) // 1KB engine A palette
+        return &paletteA[address - 0x5000000];
+    else if (address >= 0x5000400 && address < 0x5000800) // 1KB engine B palette
+        return &paletteB[address - 0x5000400];
+    else if (address >= 0x5000800 && address < 0x6000000) // Palette mirror
+        return vramMap(0x5000000 + address % 0x800);
+    else if (vramEnables[0] && address >= vramBases[0] && address < vramBases[0] + 0x20000) // 128KB VRAM block A
+        return &vramA[address - vramBases[0]];
+    else if (vramEnables[1] && address >= vramBases[1] && address < vramBases[1] + 0x20000) // 128KB VRAM block B
+        return &vramB[address - vramBases[1]];
+    else if (vramEnables[2] && address >= vramBases[2] && address < vramBases[2] + 0x20000) // 128KB VRAM block C
+        return &vramC[address - vramBases[2]];
+    else if (vramEnables[3] && address >= vramBases[3] && address < vramBases[3] + 0x20000) // 128KB VRAM block D
+        return &vramD[address - vramBases[3]];
+    else if (vramEnables[4] && address >= vramBases[4] && address < vramBases[4] + 0x10000) // 64KB VRAM block E
+        return &vramE[address - vramBases[4]];
+    else if (vramEnables[5] && address >= vramBases[5] && address < vramBases[5] + 0x4000) // 16KB VRAM block F
+        return &vramF[address - vramBases[5]];
+    else if (vramEnables[6] && address >= vramBases[6] && address < vramBases[6] + 0x4000) // 16KB VRAM block G
+        return &vramG[address - vramBases[6]];
+    else if (vramEnables[7] && address >= vramBases[7] && address < vramBases[7] + 0x8000) // 32KB VRAM block H
+        return &vramH[address - vramBases[7]];
+    else if (vramEnables[8] && address >= vramBases[8] && address < vramBases[8] + 0x4000) // 16KB VRAM block I
+        return &vramI[address - vramBases[8]];
+    else if (address >= 0x7000000 && address < 0x7000400) // 1KB engine A OAM
+        return &oamA[address - 0x7000000];
+    else if (address >= 0x7000400 && address < 0x7000800) // 1KB engine B OAM
+        return &oamB[address - 0x7000400];
+    else if (address >= 0x7000800 && address < 0x8000000) // OAM mirror
+        return vramMap(0x7000000 + address % 0x800);
     else
         return nullptr;
 }
@@ -99,9 +115,9 @@ void *memoryMap9(uint32_t address)
     else if (cp15::dtcmEnable && address >= cp15::dtcmBase && address < cp15::dtcmBase + cp15::dtcmSize) // 16KB data TCM
         return &dataTcm[(address - cp15::dtcmBase) % 0x4000];
     else if (address >= 0x2000000 && address < 0x3000000) // 4MB main RAM
-        return &ram[(address - 0x2000000) % 0x400000];
-    else if (address >= 0x3000000 && address < 0x4000000) // 32KB shared WRAM
-        return &wram[(address - 0x3000000) % 0x8000];
+        return &ram[address % 0x400000];
+    else if (address >= 0x3000000 && address < 0x4000000 && wramSize9 != 0) // 32KB shared WRAM
+        return &wram[wramOffset9 + address % wramSize9];
     else if (address >= 0x5000000 && address < 0x8000000) // VRAM
         return vramMap(address);
     else if (address >= 0xFFFF0000 && address < 0xFFFF8000) // 32KB ARM9 BIOS
@@ -115,11 +131,11 @@ void *memoryMap7(uint32_t address)
     if (address < 0x4000) // 16KB ARM7 BIOS
         return &bios7[address];
     else if (address >= 0x2000000 && address < 0x3000000) // 4MB main RAM
-        return &ram[(address - 0x2000000) % 0x400000];
-    else if (address >= 0x3000000 && address < 0x3800000) // 32KB shared WRAM
-        return &wram[(address - 0x3000000) % 0x8000];
-    else if (address >= 0x3800000 && address < 0x4000000) // 64KB ARM7 WRAM
-        return &wram7[(address - 0x3800000) % 0x10000];
+        return &ram[address % 0x400000];
+    else if (address >= 0x3000000 && address < 0x3800000 && wramSize7 != 0) // 32KB shared WRAM
+        return &wram[wramOffset7 + address % wramSize7];
+    else if (address >= 0x3000000 && address < 0x4000000) // 64KB ARM7 WRAM
+        return &wram7[address % 0x10000];
     else
         return nullptr;
 }
@@ -140,6 +156,7 @@ uint32_t ioReadMap9(uint32_t address)
         case 0x4000208: return ime9;      // IME_9
         case 0x4000210: return ie9;       // IE_9
         case 0x4000214: return if9;       // IF_9
+        case 0x4000247: return wramcnt;   // WRAMCNT
         case 0x4000304: return powcnt1;   // POWCNT1
         case 0x4001000: return dispcntB;  // DISPCNT_B
         case 0x4001008: return bgcntB[0]; // BG0CNT_B
@@ -205,9 +222,9 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramOffsets[0] = 0x6800000;                               break;
-                    case 0x1: vramOffsets[0] = 0x6000000 + 0x20000 * offset;            break;
-                    case 0x2: vramOffsets[0] = 0x6400000 + 0x20000 * (offset & BIT(0)); break;
+                    case 0x0: vramBases[0] = 0x6800000;                               break;
+                    case 0x1: vramBases[0] = 0x6000000 + 0x20000 * offset;            break;
+                    case 0x2: vramBases[0] = 0x6400000 + 0x20000 * (offset & BIT(0)); break;
                     default: vramEnables[0] = false; printf("Unknown VRAM A MST: %d\n", mst); break;
                 }
             }
@@ -221,9 +238,9 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramOffsets[1] = 0x6820000;                               break;
-                    case 0x1: vramOffsets[1] = 0x6000000 + 0x20000 * offset;            break;
-                    case 0x2: vramOffsets[1] = 0x6400000 + 0x20000 * (offset & BIT(0)); break;
+                    case 0x0: vramBases[1] = 0x6820000;                               break;
+                    case 0x1: vramBases[1] = 0x6000000 + 0x20000 * offset;            break;
+                    case 0x2: vramBases[1] = 0x6400000 + 0x20000 * (offset & BIT(0)); break;
                     default: vramEnables[1] = false; printf("Unknown VRAM B MST: %d\n", mst); break;
                 }
             }
@@ -237,9 +254,9 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramOffsets[2] = 0x6840000;                    break;
-                    case 0x1: vramOffsets[2] = 0x6000000 + 0x20000 * offset; break;
-                    case 0x4: vramOffsets[2] = 0x6200000;                    break;
+                    case 0x0: vramBases[2] = 0x6840000;                    break;
+                    case 0x1: vramBases[2] = 0x6000000 + 0x20000 * offset; break;
+                    case 0x4: vramBases[2] = 0x6200000;                    break;
                     default: vramEnables[2] = false; printf("Unknown VRAM C MST: %d\n", mst); break;
                 }
             }
@@ -253,9 +270,9 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramOffsets[3] = 0x6860000;                    break;
-                    case 0x1: vramOffsets[3] = 0x6000000 + 0x20000 * offset; break;
-                    case 0x4: vramOffsets[3] = 0x6600000;                    break;
+                    case 0x0: vramBases[3] = 0x6860000;                    break;
+                    case 0x1: vramBases[3] = 0x6000000 + 0x20000 * offset; break;
+                    case 0x4: vramBases[3] = 0x6600000;                    break;
                     default: vramEnables[3] = false; printf("Unknown VRAM D MST: %d\n", mst); break;
                 }
             }
@@ -268,9 +285,9 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t mst = (value & 0x07);
                 switch (mst)
                 {
-                    case 0x0: vramOffsets[4] = 0x6880000;                    break;
-                    case 0x1: vramOffsets[4] = 0x6000000;                    break;
-                    case 0x2: vramOffsets[4] = 0x6400000;                    break;
+                    case 0x0: vramBases[4] = 0x6880000;                    break;
+                    case 0x1: vramBases[4] = 0x6000000;                    break;
+                    case 0x2: vramBases[4] = 0x6400000;                    break;
                     default: vramEnables[4] = false; printf("Unknown VRAM E MST: %d\n", mst); break;
                 }
             }
@@ -284,9 +301,9 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramOffsets[5] = 0x6890000;                                                           break;
-                    case 0x1: vramOffsets[5] = 0x6000000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
-                    case 0x2: vramOffsets[5] = 0x6400000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
+                    case 0x0: vramBases[5] = 0x6890000;                                                           break;
+                    case 0x1: vramBases[5] = 0x6000000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
+                    case 0x2: vramBases[5] = 0x6400000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
                     default: vramEnables[5] = false; printf("Unknown VRAM F MST: %d\n", mst); break;
                 }
             }
@@ -300,11 +317,22 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t offset = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramOffsets[6] = 0x6894000;                                                           break;
-                    case 0x1: vramOffsets[6] = 0x6000000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
-                    case 0x2: vramOffsets[6] = 0x6400000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
+                    case 0x0: vramBases[6] = 0x6894000;                                                           break;
+                    case 0x1: vramBases[6] = 0x6000000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
+                    case 0x2: vramBases[6] = 0x6400000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
                     default: vramEnables[6] = false; printf("Unknown VRAM G MST: %d\n", mst); break;
                 }
+            }
+            break;
+
+        case 0x4000247: // WRAMCNT
+            *(T*)&wramcnt = value & 0x03;
+            switch (wramcnt)
+            {
+                case 0x0: wramOffset9 = 0x0000; wramSize9 = 0x8000; wramOffset7 = 0x0000; wramSize7 = 0x0000; break;
+                case 0x1: wramOffset9 = 0x4000; wramSize9 = 0x4000; wramOffset7 = 0x0000; wramSize7 = 0x4000; break;
+                case 0x2: wramOffset9 = 0x0000; wramSize9 = 0x4000; wramOffset7 = 0x4000; wramSize7 = 0x4000; break;
+                case 0x3: wramOffset9 = 0x0000; wramSize9 = 0x0000; wramOffset7 = 0x0000; wramSize7 = 0x8000; break;
             }
             break;
 
@@ -315,8 +343,8 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t mst = (value & 0x03);
                 switch (mst)
                 {
-                    case 0x0: vramOffsets[7] = 0x6898000; break;
-                    case 0x1: vramOffsets[7] = 0x6200000; break;
+                    case 0x0: vramBases[7] = 0x6898000; break;
+                    case 0x1: vramBases[7] = 0x6200000; break;
                     default: vramEnables[7] = false; printf("Unknown VRAM H MST: %d\n", mst); break;
                 }
             }
@@ -329,9 +357,9 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t mst = (value & 0x03);
                 switch (mst)
                 {
-                    case 0x0: vramOffsets[8] = 0x68A0000; break;
-                    case 0x1: vramOffsets[8] = 0x6208000; break;
-                    case 0x2: vramOffsets[8] = 0x6600000; break;
+                    case 0x0: vramBases[8] = 0x68A0000; break;
+                    case 0x1: vramBases[8] = 0x6208000; break;
+                    case 0x2: vramBases[8] = 0x6600000; break;
                     default: vramEnables[8] = false; printf("Unknown VRAM I MST: %d\n", mst); break;
                 }
             }
@@ -374,10 +402,12 @@ uint32_t ioReadMap7(uint32_t address)
         case 0x4000004: return dispstat; // DISPSTAT
         case 0x4000006: return vcount;   // VCOUNT
         case 0x4000130: return keyinput; // KEYINPUT
+        case 0x4000136: return extkeyin; // EXTKEYIN
         case 0x4000180: return ipcsync7; // IPCSYNC_7
         case 0x4000208: return ime7;     // IME_7
         case 0x4000210: return ie7;      // IE_7
         case 0x4000214: return if7;      // IF_7
+        case 0x4000241: return wramcnt;  // WRAMSTAT
         default: printf("Unknown ARM7 I/O read: 0x%X\n", address); return 0;
     }
 }

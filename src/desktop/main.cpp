@@ -30,7 +30,7 @@
 #define GL_UNSIGNED_SHORT_1_5_5_5_REV 0x8366
 #endif
 
-const char keyMap[] = { 'l', 'k', 'g', 'h', 'd', 'a', 'w', 's', 'p', 'q' };
+const char keyMap[] = { 'l', 'k', 'g', 'h', 'd', 'a', 'w', 's', 'p', 'q', 'o', 'i' };
 
 void runCore()
 {

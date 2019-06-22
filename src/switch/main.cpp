@@ -22,7 +22,7 @@
 #include "../core.h"
 #include "../gpu.h"
 
-const u32 keyMap[] = { KEY_A, KEY_B, KEY_MINUS, KEY_PLUS, KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN, KEY_R, KEY_L };
+const u32 keyMap[] = { KEY_A, KEY_B, KEY_MINUS, KEY_PLUS, KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN, KEY_R, KEY_L, KEY_X, KEY_Y };
 
 u32 bgr5ToRgba8(u16 color)
 {

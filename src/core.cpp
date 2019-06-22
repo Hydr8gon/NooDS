@@ -149,12 +149,18 @@ void runDot()
 
 void pressKey(uint8_t key)
 {
-    memory::keyinput &= ~BIT(key);
+    if (key < 10)
+        memory::keyinput &= ~BIT(key);
+    else if (key < 12)
+        memory::extkeyin &= ~BIT(key - 10);
 }
 
 void releaseKey(uint8_t key)
 {
-    memory::keyinput |= BIT(key);
+    if (key < 10)
+        memory::keyinput |= BIT(key);
+    else if (key < 12)
+        memory::extkeyin |= BIT(key - 10);
 }
 
 }
