@@ -35,7 +35,7 @@ const char keyMap[] = { 'l', 'k', 'g', 'h', 'd', 'a', 'w', 's', 'p', 'q', 'o', '
 void runCore()
 {
     while (true)
-        core::runDot();
+        core::runScanline();
 }
 
 void draw()

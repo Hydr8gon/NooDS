@@ -35,7 +35,7 @@ u32 bgr5ToRgba8(u16 color)
 void runCore(void *args)
 {
     while (true)
-        core::runDot();
+        core::runScanline();
 }
 
 int main(int argc, char **argv)

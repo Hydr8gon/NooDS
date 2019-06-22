@@ -27,7 +27,8 @@ namespace gpu
 
 extern uint16_t displayBuffer[256 * 192 * 2];
 
-void runDot();
+void scanline256();
+void scanline355();
 
 void init();
 

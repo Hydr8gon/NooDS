@@ -31,7 +31,7 @@ extern interpreter::Cpu arm9, arm7;
 
 bool loadRom(char *filename);
 
-void runDot();
+void runScanline();
 void pressKey(uint8_t key);
 void releaseKey(uint8_t key);
 

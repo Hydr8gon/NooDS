@@ -44,19 +44,17 @@ typedef struct
 } Engine;
 
 Engine engineA, engineB;
-
-uint16_t dot;
 uint16_t displayBuffer[256 * 192 * 2];
 std::chrono::steady_clock::time_point timer;
 
 void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 {
-    engine->bgBuffers[bg][pixel] = 0xFEDC; // Placeholder
+    memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
 }
 
 void drawAffine(Engine *engine, uint8_t bg, uint16_t pixel)
 {
-    engine->bgBuffers[bg][pixel] = 0xBAAB; // Placeholder
+    memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
 }
 
 void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
@@ -64,23 +62,25 @@ void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
     if ((engine->bgcnt[bg] & BIT(7)) && (engine->bgcnt[bg] & BIT(2))) // Direct color bitmap
     {
         uint32_t base = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x4000;
-        uint16_t *color = (uint16_t*)memory::vramMap(engine->bgVram + base + pixel * 2);
-        if (color)
-            engine->bgBuffers[bg][pixel] = *color;
+        uint16_t *line = (uint16_t*)memory::vramMap(engine->bgVram + base + pixel * sizeof(uint16_t));
+        if (line)
+        {
+            memcpy(&engine->bgBuffers[bg][pixel], line, 256 * sizeof(uint16_t));
+            return;
+        }
     }
-    else
-    {
-        engine->bgBuffers[bg][pixel] = 0xCDEF; // Placeholder
-    }
+
+    memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
 }
 
-void drawDot(Engine *engine)
+void drawScanline(Engine *engine)
 {
-    uint16_t pixel = memory::vcount * 256 + dot;
+    uint16_t pixel = memory::vcount * 256;
+
     switch ((*engine->dispcnt & 0x00030000) >> 16) // Display mode
     {
         case 0x0: // Display off
-            engine->framebuffer[pixel] = 0xFFFF;
+            memset(&engine->framebuffer[pixel], 0xFF, 256 * sizeof(uint16_t));
             break;
 
         case 0x1: // Graphics display
@@ -133,30 +133,33 @@ void drawDot(Engine *engine)
                     break;
             }
 
-            // Draw the pixel from the highest priority background
-            for (int i = 0; i < 4; i++)
+            // Draw the pixels from the highest priority background
+            for (int i = 0; i < 256; i++)
             {
+                engine->framebuffer[pixel + i] = 0x0000;
                 for (int j = 0; j < 4; j++)
                 {
-                    if ((*engine->dispcnt & BIT(8 + j)) && (engine->bgcnt[j] & 0x0003) == i)
+                    for (int k = 0; k < 4; k++)
                     {
-                        engine->framebuffer[pixel] = engine->bgBuffers[j][pixel];
-                        if (engine->framebuffer[pixel] & BIT(15))
-                            return;
+                        if ((engine->bgcnt[k] & 0x0003) == j && (*engine->dispcnt & BIT(8 + k)) && (engine->bgBuffers[k][pixel + i] & BIT(15)))
+                        {
+                            engine->framebuffer[pixel + i] = engine->bgBuffers[k][pixel + i];
+                            break;
+                        }
                     }
+                    if (engine->framebuffer[pixel + i])
+                        break;
                 }
             }
-
-            engine->framebuffer[pixel] = 0x0000;
             break;
 
         case 0x2: // VRAM display
             switch ((*engine->dispcnt & 0x000C0000) >> 18) // VRAM block
             {
-                case 0x0: engine->framebuffer[pixel] = ((uint16_t*)memory::vramA)[pixel]; break;
-                case 0x1: engine->framebuffer[pixel] = ((uint16_t*)memory::vramB)[pixel]; break;
-                case 0x2: engine->framebuffer[pixel] = ((uint16_t*)memory::vramC)[pixel]; break;
-                default:  engine->framebuffer[pixel] = ((uint16_t*)memory::vramD)[pixel]; break;
+                case 0x0: memcpy(&engine->framebuffer[pixel], &memory::vramA[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
+                case 0x1: memcpy(&engine->framebuffer[pixel], &memory::vramB[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
+                case 0x2: memcpy(&engine->framebuffer[pixel], &memory::vramC[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
+                default:  memcpy(&engine->framebuffer[pixel], &memory::vramD[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
             }
             break;
 
@@ -167,48 +170,46 @@ void drawDot(Engine *engine)
     }
 }
 
-void runDot()
+void scanline256()
 {
-    // Draw a pixel
-    if (dot < 256 && memory::vcount < 192)
+    // Draw a scanline
+    if (memory::vcount < 192)
     {
-        drawDot(&engineA);
-        drawDot(&engineB);
+        drawScanline(&engineA);
+        drawScanline(&engineB);
     }
 
-    dot++;
-    if (dot == 256) // Start of H-blank
+    // Start H-blank
+    memory::dispstat |= BIT(1); // H-blank flag
+    if (memory::dispstat & BIT(4)) // H-blank IRQ flag
     {
-        memory::dispstat |= BIT(1); // H-blank flag
-        if (memory::dispstat & BIT(4)) // H-blank IRQ flag
+        interpreter::irq9(1);
+        interpreter::irq7(1);
+    }
+}
+
+void scanline355()
+{
+    // End H-blank
+    memory::dispstat &= ~BIT(1); // H-blank flag
+    memory::vcount++;
+
+    // Check the V-counter
+    if (memory::vcount == (memory::dispstat >> 8) | ((memory::dispstat & BIT(7)) << 1))
+    {
+        memory::dispstat |= BIT(2); // V-counter flag
+        if (memory::dispstat & BIT(5)) // V-counter IRQ flag
         {
-            interpreter::irq9(1);
-            interpreter::irq7(1);
+            interpreter::irq9(2);
+            interpreter::irq7(2);
         }
     }
-    else if (dot == 355) // End of scanline
+    else if (memory::dispstat & BIT(2))
     {
-        memory::dispstat &= ~BIT(1); // H-blank flag
-        memory::vcount++;
-        dot = 0;
-
-        // Check the V-counter
-        if (memory::vcount == (memory::dispstat >> 8) | ((memory::dispstat & BIT(7)) << 1))
-        {
-            memory::dispstat |= BIT(2); // V-counter flag
-            if (memory::dispstat & BIT(5)) // V-counter IRQ flag
-            {
-                interpreter::irq9(2);
-                interpreter::irq7(2);
-            }
-        }
-        else if (memory::dispstat & BIT(2))
-        {
-            memory::dispstat &= ~BIT(2); // V-counter flag
-        }
+        memory::dispstat &= ~BIT(2); // V-counter flag
     }
 
-    if (memory::vcount == 192 && dot == 0) // Start of V-Blank
+    if (memory::vcount == 192) // Start of V-Blank
     {
         memory::dispstat |= BIT(0); // V-blank flag
         if (memory::dispstat & BIT(3)) // V-blank IRQ flag

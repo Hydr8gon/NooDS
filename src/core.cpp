@@ -134,17 +134,18 @@ bool loadRom(char *filename)
     return true;
 }
 
-void runDot()
+void runScanline()
 {
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 355 * 6; i++)
     {
-        if (i % 1 == 0 && !arm9.halt)
+        if (!arm9.halt)
             interpreter::execute(&arm9);
         if (i % 2 == 0 && !arm7.halt)
             interpreter::execute(&arm7);
-        if (i % 6 == 0)
-            gpu::runDot();
+        if (i == 256 * 6)
+            gpu::scanline256();
     }
+    gpu::scanline355();
 }
 
 void pressKey(uint8_t key)
