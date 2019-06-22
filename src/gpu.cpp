@@ -38,6 +38,7 @@ typedef struct
 {
     uint32_t *dispcnt;
     uint32_t *bgcnt;
+    uint16_t *palette;
     uint32_t bgVram;
     uint16_t bgBuffers[4][256 * 192];
     uint16_t framebuffer[256 * 192];
@@ -49,7 +50,44 @@ std::chrono::steady_clock::time_point timer;
 
 void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 {
-    memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
+    if (bg == 0 && *engine->dispcnt & BIT(3)) // 3D
+    {
+        memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
+        return;
+    }
+
+    uint32_t screenBase = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x800  + ((*engine->dispcnt & 0x38000000) >> 27) * 0x10000;
+    uint32_t charBase   = ((engine->bgcnt[bg] & 0x003C) >> 2) * 0x4000 + ((*engine->dispcnt & 0x07000000) >> 24) * 0x10000;
+    for (int i = 0; i < 256 / 2; i++)
+    {
+        uint16_t *tile = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + ((memory::vcount / 8) * 32 + i / 4) * sizeof(uint16_t));
+        if (tile)
+        {
+            if (engine->bgcnt[bg] & BIT(7)) // 8-bit
+            {
+                uint16_t *index = (uint16_t*)memory::vramMap(engine->bgVram + charBase + ((*tile & 0x03FF) * 32 + (memory::vcount % 8) * 4 + i % 4) * 2);
+                if (index)
+                {
+                    engine->bgBuffers[bg][pixel + i * 2]     = engine->palette[*index & 0x007F]        | ((*index & 0x007F) ? BIT(15) : 0);
+                    engine->bgBuffers[bg][pixel + i * 2 + 1] = engine->palette[(*index & 0x7F00) >> 8] | ((*index & 0x7F00) ? BIT(15) : 0);
+                    continue;
+                }
+            }
+            else // 4-bit
+            {
+                uint8_t *index = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (*tile & 0x03FF) * 32 + (memory::vcount % 8) * 4 + i % 4);
+                if (index)
+                {
+                    uint8_t palette = ((*tile & 0xF000) >> 12) * 0x10;
+                    engine->bgBuffers[bg][pixel + i * 2]     = engine->palette[palette + (*index & 0x0F)]        | ((*index & 0x0F) ? BIT(15) : 0);
+                    engine->bgBuffers[bg][pixel + i * 2 + 1] = engine->palette[palette + ((*index & 0xF0) >> 4)] | ((*index & 0xF0) ? BIT(15) : 0);
+                    continue;
+                }
+            }
+        }
+        engine->bgBuffers[bg][pixel + i * 2]     = 0;
+        engine->bgBuffers[bg][pixel + i * 2 + 1] = 0;
+    }
 }
 
 void drawAffine(Engine *engine, uint8_t bg, uint16_t pixel)
@@ -61,8 +99,8 @@ void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
 {
     if ((engine->bgcnt[bg] & BIT(7)) && (engine->bgcnt[bg] & BIT(2))) // Direct color bitmap
     {
-        uint32_t base = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x4000;
-        uint16_t *line = (uint16_t*)memory::vramMap(engine->bgVram + base + pixel * sizeof(uint16_t));
+        uint32_t screenBase = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x4000;
+        uint16_t *line = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + pixel * sizeof(uint16_t));
         if (line)
         {
             memcpy(&engine->bgBuffers[bg][pixel], line, 256 * sizeof(uint16_t));
@@ -260,10 +298,12 @@ void init()
 {
     engineA.dispcnt = &memory::dispcntA;
     engineA.bgcnt   = memory::bgcntA;
+    engineA.palette = (uint16_t*)memory::paletteA;
     engineA.bgVram  = 0x6000000;
 
     engineB.dispcnt = &memory::dispcntB;
     engineB.bgcnt   = memory::bgcntB;
+    engineB.palette = (uint16_t*)memory::paletteB;
     engineB.bgVram  = 0x6200000;
 }
 

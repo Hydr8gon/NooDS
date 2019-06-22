@@ -25,6 +25,8 @@
 namespace memory
 {
 
+extern uint8_t paletteA[0x400];
+extern uint8_t paletteB[0x400];
 extern uint8_t vramA[0x20000];
 extern uint8_t vramB[0x20000];
 extern uint8_t vramC[0x20000];
