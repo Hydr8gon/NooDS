@@ -58,35 +58,39 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 
     uint32_t screenBase = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x800  + ((*engine->dispcnt & 0x38000000) >> 27) * 0x10000;
     uint32_t charBase   = ((engine->bgcnt[bg] & 0x003C) >> 2) * 0x4000 + ((*engine->dispcnt & 0x07000000) >> 24) * 0x10000;
-    for (int i = 0; i < 256 / 2; i++)
+    uint16_t *tiles = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + ((memory::vcount / 8) * 32) * sizeof(uint16_t));
+    if (tiles)
     {
-        uint16_t *tile = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + ((memory::vcount / 8) * 32 + i / 4) * sizeof(uint16_t));
-        if (tile)
+        if (engine->bgcnt[bg] & BIT(7)) // 8-bit
         {
-            if (engine->bgcnt[bg] & BIT(7)) // 8-bit
+            for (int i = 0; i < 32; i++)
             {
-                uint16_t *index = (uint16_t*)memory::vramMap(engine->bgVram + charBase + ((*tile & 0x03FF) * 32 + (memory::vcount % 8) * 4 + i % 4) * 2);
-                if (index)
+                uint8_t *sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 64 + (memory::vcount % 8) * 8);
+                if (sprite)
                 {
-                    engine->bgBuffers[bg][pixel + i * 2]     = engine->palette[*index & 0x007F]        | ((*index & 0x007F) ? BIT(15) : 0);
-                    engine->bgBuffers[bg][pixel + i * 2 + 1] = engine->palette[(*index & 0x7F00) >> 8] | ((*index & 0x7F00) ? BIT(15) : 0);
-                    continue;
+                    for (int j = 0; j < 8; j++)
+                        engine->bgBuffers[bg][pixel + j] = engine->palette[sprite[j]] | (sprite[j] ? BIT(15) : 0);
                 }
-            }
-            else // 4-bit
-            {
-                uint8_t *index = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (*tile & 0x03FF) * 32 + (memory::vcount % 8) * 4 + i % 4);
-                if (index)
-                {
-                    uint8_t palette = ((*tile & 0xF000) >> 12) * 0x10;
-                    engine->bgBuffers[bg][pixel + i * 2]     = engine->palette[palette + (*index & 0x0F)]        | ((*index & 0x0F) ? BIT(15) : 0);
-                    engine->bgBuffers[bg][pixel + i * 2 + 1] = engine->palette[palette + ((*index & 0xF0) >> 4)] | ((*index & 0xF0) ? BIT(15) : 0);
-                    continue;
-                }
+                pixel += 8;
             }
         }
-        engine->bgBuffers[bg][pixel + i * 2]     = 0;
-        engine->bgBuffers[bg][pixel + i * 2 + 1] = 0;
+        else // 4-bit
+        {
+            for (int i = 0; i < 32; i++)
+            {
+                uint8_t *sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 32 + (memory::vcount % 8) * 4);
+                if (sprite)
+                {
+                    uint8_t palette = ((tiles[i] & 0xF000) >> 12) * 0x10;
+                    for (int j = 0; j < 4; j++)
+                    {
+                        engine->bgBuffers[bg][pixel + j * 2]     = engine->palette[palette + (sprite[j] & 0x0F)]        | ((sprite[j] & 0x0F) ? BIT(15) : 0);
+                        engine->bgBuffers[bg][pixel + j * 2 + 1] = engine->palette[palette + ((sprite[j] & 0xF0) >> 4)] | ((sprite[j] & 0xF0) ? BIT(15) : 0);
+                    }
+                }
+                pixel += 8;
+            }
+        }
     }
 }
 
@@ -97,18 +101,29 @@ void drawAffine(Engine *engine, uint8_t bg, uint16_t pixel)
 
 void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
 {
-    if ((engine->bgcnt[bg] & BIT(7)) && (engine->bgcnt[bg] & BIT(2))) // Direct color bitmap
+    if (engine->bgcnt[bg] & BIT(7))
     {
         uint32_t screenBase = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x4000;
-        uint16_t *line = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + pixel * sizeof(uint16_t));
-        if (line)
+        if (engine->bgcnt[bg] & BIT(2)) // Direct color bitmap
         {
-            memcpy(&engine->bgBuffers[bg][pixel], line, 256 * sizeof(uint16_t));
-            return;
+            uint16_t *line = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + pixel * sizeof(uint16_t));
+            if (line)
+                memcpy(&engine->bgBuffers[bg][pixel], line, 256 * sizeof(uint16_t));
+        }
+        else if (engine->bgcnt[bg] & BIT(7)) // 256 color bitmap
+        {
+            uint8_t *line = (uint8_t*)memory::vramMap(engine->bgVram + screenBase + pixel);
+            if (line)
+            {
+                for (int i = 0; i < 256; i++)
+                    engine->bgBuffers[bg][pixel + i] = engine->palette[line[i]] | ((line[i]) ? BIT(15) : 0);
+            }
         }
     }
-
-    memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
+    else
+    {
+        memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
+    }
 }
 
 void drawScanline(Engine *engine)
