@@ -79,7 +79,11 @@ int main(int argc, char **argv)
 
     if (strcmp(argv[1], "-v") != 0)
     {
+#ifdef _WIN32
+        FreeConsole();
+#else
         fclose(stdout);
+#endif
         if (!core::loadRom(argv[1]))
             return 0;
     }
