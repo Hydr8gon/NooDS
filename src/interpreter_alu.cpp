@@ -44,7 +44,7 @@
 #define RDH_THUMB (*cpu->registers[(opcode & 0x0007) | ((opcode & 0x0080) >> 4)])
 
 #define IMM3_THUMB  ((opcode & 0x01C0) >> 6)
-#define IMM7_THUMB  ((opcode & BIT(7)) ? -(opcode & 0x007F) : (opcode & 0x007F))
+#define IMM7_THUMB  ((opcode & BIT(7)) ? (0 - (opcode & 0x007F)) : (opcode & 0x007F))
 #define IMM8_THUMB  (opcode & 0x00FF)
 #define SHIFT_THUMB ((opcode & 0x07C0) >> 6)
 #define DP_SWITCH   ((opcode & 0x00C0) >> 6)
