@@ -65,13 +65,6 @@ void writeRegister(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value)
         exceptions = (control & BIT(13)) ? 0xFFFF0000 : 0x00000000;
         dtcmEnable = (control & BIT(16));
         itcmEnable = (control & BIT(18));
-        if (control & BIT(0))  printf("Unhandled request: Protection unit enable\n");
-        if (control & BIT(2))  printf("Unhandled request: Data cache enable\n");
-        if (control & BIT(7))  printf("Unhandled request: Big endian mode\n");
-        if (control & BIT(12)) printf("Unhandled request: Instruction cache enable\n");
-        if (control & BIT(15)) printf("Unhandled request: Pre-ARMv5 mode\n");
-        if (control & BIT(17)) printf("Unhandled request: DTCM load mode\n");
-        if (control & BIT(19)) printf("Unhandled request: ITCM load mode\n");
     }
     else if ((cn == 7 && cm == 0 && cp == 4) || (cn == 7 && cm == 8 && cp == 2)) // Wait for interrupt
     {

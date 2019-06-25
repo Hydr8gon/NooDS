@@ -59,19 +59,29 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
     uint32_t screenBase = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x800  + ((*engine->dispcnt & 0x38000000) >> 27) * 0x10000;
     uint32_t charBase   = ((engine->bgcnt[bg] & 0x003C) >> 2) * 0x4000 + ((*engine->dispcnt & 0x07000000) >> 24) * 0x10000;
     uint16_t *tiles = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + ((memory::vcount / 8) * 32) * sizeof(uint16_t));
+
     if (tiles)
     {
         if (engine->bgcnt[bg] & BIT(7)) // 8-bit
         {
-            for (int i = 0; i < 32; i++)
+            uint16_t *palette;
+            if (*engine->dispcnt & BIT(30)) // Extended palette
+                palette = memory::extPalettes[bg + ((bg < 2 && (engine->bgcnt[bg] & BIT(13))) ? 2 : 0)];
+            else // Standard palette
+                palette = engine->palette;
+
+            if (palette)
             {
-                uint8_t *sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 64 + (memory::vcount % 8) * 8);
-                if (sprite)
+                for (int i = 0; i < 32; i++)
                 {
-                    for (int j = 0; j < 8; j++)
-                        engine->bgBuffers[bg][pixel + j] = engine->palette[sprite[j]] | (sprite[j] ? BIT(15) : 0);
+                    uint8_t *sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 64 + (memory::vcount % 8) * 8);
+                    if (sprite)
+                    {
+                        for (int j = 0; j < 8; j++)
+                            engine->bgBuffers[bg][pixel + j] = palette[sprite[j]] | (sprite[j] ? BIT(15) : 0);
+                    }
+                    pixel += 8;
                 }
-                pixel += 8;
             }
         }
         else // 4-bit

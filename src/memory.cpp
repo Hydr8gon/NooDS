@@ -51,8 +51,10 @@ uint8_t oamB[0x400];     //   1KB engine B OAM
 uint16_t wramOffset9 = 0x0000; uint16_t wramSize9 = 0x0000;
 uint16_t wramOffset7 = 0x0000; uint16_t wramSize7 = 0x8000;
 
-bool     vramEnables[9];
+bool     vramMapped[9];
 uint32_t vramBases[9];
+
+uint16_t *extPalettes[6];
 
 uint32_t dmasad9[4], dmasad7[4]; // DMA source addresss
 uint32_t dmadad9[4], dmadad7[4]; // DMA destination address
@@ -80,13 +82,11 @@ uint32_t bgcntB[4]; // Engine B background control
 void dmaTransfer(interpreter::Cpu *cpu, uint32_t dmasad, uint32_t dmadad, uint32_t *dmacnt)
 {
     uint8_t mode = (*dmacnt & 0x38000000) >> 27;
-
     if (mode == 0) // Start immediately
     {
         uint8_t dstAddrCnt = (*dmacnt & 0x00600000) >> 21;
         uint8_t srcAddrCnt = (*dmacnt & 0x01800000) >> 23;
         uint32_t size = (*dmacnt & 0x001FFFFF);
-
         if (*dmacnt & BIT(26)) // 32-bit
         {
             for (int i = 0; i < size; i++)
@@ -138,23 +138,23 @@ void *vramMap(uint32_t address)
         return &paletteB[address - 0x5000400];
     else if (address >= 0x5000800 && address < 0x6000000) // Palette mirror
         return vramMap(0x5000000 + address % 0x800);
-    else if (vramEnables[0] && address >= vramBases[0] && address < vramBases[0] + 0x20000) // 128KB VRAM block A
+    else if (vramMapped[0] && address >= vramBases[0] && address < vramBases[0] + 0x20000) // 128KB VRAM block A
         return &vramA[address - vramBases[0]];
-    else if (vramEnables[1] && address >= vramBases[1] && address < vramBases[1] + 0x20000) // 128KB VRAM block B
+    else if (vramMapped[1] && address >= vramBases[1] && address < vramBases[1] + 0x20000) // 128KB VRAM block B
         return &vramB[address - vramBases[1]];
-    else if (vramEnables[2] && address >= vramBases[2] && address < vramBases[2] + 0x20000) // 128KB VRAM block C
+    else if (vramMapped[2] && address >= vramBases[2] && address < vramBases[2] + 0x20000) // 128KB VRAM block C
         return &vramC[address - vramBases[2]];
-    else if (vramEnables[3] && address >= vramBases[3] && address < vramBases[3] + 0x20000) // 128KB VRAM block D
+    else if (vramMapped[3] && address >= vramBases[3] && address < vramBases[3] + 0x20000) // 128KB VRAM block D
         return &vramD[address - vramBases[3]];
-    else if (vramEnables[4] && address >= vramBases[4] && address < vramBases[4] + 0x10000) // 64KB VRAM block E
+    else if (vramMapped[4] && address >= vramBases[4] && address < vramBases[4] + 0x10000) // 64KB VRAM block E
         return &vramE[address - vramBases[4]];
-    else if (vramEnables[5] && address >= vramBases[5] && address < vramBases[5] + 0x4000) // 16KB VRAM block F
+    else if (vramMapped[5] && address >= vramBases[5] && address < vramBases[5] + 0x4000) // 16KB VRAM block F
         return &vramF[address - vramBases[5]];
-    else if (vramEnables[6] && address >= vramBases[6] && address < vramBases[6] + 0x4000) // 16KB VRAM block G
+    else if (vramMapped[6] && address >= vramBases[6] && address < vramBases[6] + 0x4000) // 16KB VRAM block G
         return &vramG[address - vramBases[6]];
-    else if (vramEnables[7] && address >= vramBases[7] && address < vramBases[7] + 0x8000) // 32KB VRAM block H
+    else if (vramMapped[7] && address >= vramBases[7] && address < vramBases[7] + 0x8000) // 32KB VRAM block H
         return &vramH[address - vramBases[7]];
-    else if (vramEnables[8] && address >= vramBases[8] && address < vramBases[8] + 0x4000) // 16KB VRAM block I
+    else if (vramMapped[8] && address >= vramBases[8] && address < vramBases[8] + 0x4000) // 16KB VRAM block I
         return &vramI[address - vramBases[8]];
     else if (address >= 0x7000000 && address < 0x7000400) // 1KB engine A OAM
         return &oamA[address - 0x7000000];
@@ -361,118 +361,151 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
             break;
 
         case 0x4000240: // VRAMCNT_A
-            vramEnables[0] = (value & BIT(7));
-            if (vramEnables[0])
+            if (value & BIT(7))
             {
                 uint8_t mst = (value & 0x03);
-                uint8_t offset = (value & 0x18) >> 3;
+                uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramBases[0] = 0x6800000;                               break;
-                    case 0x1: vramBases[0] = 0x6000000 + 0x20000 * offset;            break;
-                    case 0x2: vramBases[0] = 0x6400000 + 0x20000 * (offset & BIT(0)); break;
-                    default: vramEnables[0] = false; printf("Unknown VRAM A MST: %d\n", mst); break;
+                    case 0x0: vramMapped[0] = true; vramBases[0] = 0x6800000;                            break;
+                    case 0x1: vramMapped[0] = true; vramBases[0] = 0x6000000 + 0x20000 * ofs;            break;
+                    case 0x2: vramMapped[0] = true; vramBases[0] = 0x6400000 + 0x20000 * (ofs & BIT(0)); break;
+                    case 0x3: vramMapped[0] = false; extPalettes[ofs] = (uint16_t*)vramA;               break;
                 }
+            }
+            else
+            {
+                vramMapped[0] = false;
             }
             break;
 
         case 0x4000241: // VRAMCNT_B
-            vramEnables[1] = (value & BIT(7));
-            if (vramEnables[1])
+            if (value & BIT(7))
             {
                 uint8_t mst = (value & 0x03);
-                uint8_t offset = (value & 0x18) >> 3;
+                uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramBases[1] = 0x6820000;                               break;
-                    case 0x1: vramBases[1] = 0x6000000 + 0x20000 * offset;            break;
-                    case 0x2: vramBases[1] = 0x6400000 + 0x20000 * (offset & BIT(0)); break;
-                    default: vramEnables[1] = false; printf("Unknown VRAM B MST: %d\n", mst); break;
+                    case 0x0: vramMapped[1] = true; vramBases[1] = 0x6820000;                            break;
+                    case 0x1: vramMapped[1] = true; vramBases[1] = 0x6000000 + 0x20000 * ofs;            break;
+                    case 0x2: vramMapped[1] = true; vramBases[1] = 0x6400000 + 0x20000 * (ofs & BIT(0)); break;
+                    case 0x3: vramMapped[1] = false; extPalettes[ofs] = (uint16_t*)vramB;               break;
                 }
+            }
+            else
+            {
+                vramMapped[1] = false;
             }
             break;
 
         case 0x4000242: // VRAMCNT_C
-            vramEnables[2] = (value & BIT(7));
-            if (vramEnables[2])
+            if (value & BIT(7))
             {
                 uint8_t mst = (value & 0x07);
-                uint8_t offset = (value & 0x18) >> 3;
+                uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramBases[2] = 0x6840000;                    break;
-                    case 0x1: vramBases[2] = 0x6000000 + 0x20000 * offset; break;
-                    case 0x4: vramBases[2] = 0x6200000;                    break;
-                    default: vramEnables[2] = false; printf("Unknown VRAM C MST: %d\n", mst); break;
+                    case 0x0: vramMapped[2] = true; vramBases[2] = 0x6840000;                            break;
+                    case 0x1: vramMapped[2] = true; vramBases[2] = 0x6000000 + 0x20000 * ofs;            break;
+                    case 0x2: vramMapped[2] = true; vramBases[2] = 0x6000000 + 0x20000 * (ofs & BIT(0)); break;
+                    case 0x4: vramMapped[2] = true; vramBases[2] = 0x6200000;                            break;
+                    case 0x3: vramMapped[2] = false; extPalettes[ofs] = (uint16_t*)vramC;               break;
+                    default:  vramMapped[2] = false;                                                     break;
                 }
+            }
+            else
+            {
+                vramMapped[2] = false;
             }
             break;
 
         case 0x4000243: // VRAMCNT_D
-            vramEnables[3] = (value & BIT(7));
-            if (vramEnables[3])
+            if (value & BIT(7))
             {
                 uint8_t mst = (value & 0x07);
-                uint8_t offset = (value & 0x18) >> 3;
+                uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramBases[3] = 0x6860000;                    break;
-                    case 0x1: vramBases[3] = 0x6000000 + 0x20000 * offset; break;
-                    case 0x4: vramBases[3] = 0x6600000;                    break;
-                    default: vramEnables[3] = false; printf("Unknown VRAM D MST: %d\n", mst); break;
+                    case 0x0: vramMapped[3] = true; vramBases[3] = 0x6860000;                            break;
+                    case 0x1: vramMapped[3] = true; vramBases[3] = 0x6000000 + 0x20000 * ofs;            break;
+                    case 0x2: vramMapped[3] = true; vramBases[3] = 0x6000000 + 0x20000 * (ofs & BIT(0)); break;
+                    case 0x4: vramMapped[3] = true; vramBases[3] = 0x6600000;                            break;
+                    case 0x3: vramMapped[3] = false; extPalettes[ofs] = (uint16_t*)vramD;               break;
+                    default:  vramMapped[3] = false;                                                     break;
                 }
+            }
+            else
+            {
+                vramMapped[3] = false;
             }
             break;
 
         case 0x4000244: // VRAMCNT_E
-            vramEnables[4] = (value & BIT(7));
-            if (vramEnables[4])
+            if (value & BIT(7))
             {
                 uint8_t mst = (value & 0x07);
                 switch (mst)
                 {
-                    case 0x0: vramBases[4] = 0x6880000;                    break;
-                    case 0x1: vramBases[4] = 0x6000000;                    break;
-                    case 0x2: vramBases[4] = 0x6400000;                    break;
-                    default: vramEnables[4] = false; printf("Unknown VRAM E MST: %d\n", mst); break;
+                    case 0x0: vramMapped[4] = true; vramBases[4] = 0x6880000;                                                      break;
+                    case 0x1: vramMapped[4] = true; vramBases[4] = 0x6000000;                                                      break;
+                    case 0x2: vramMapped[4] = true; vramBases[4] = 0x6400000;                                                      break;
+                    case 0x3: vramMapped[4] = false; for (int i = 0; i < 4; i++) extPalettes[i] = (uint16_t*)vramE;                break;
+                    case 0x4: vramMapped[4] = false; for (int i = 0; i < 4; i++) extPalettes[i] = (uint16_t*)(vramE + 0x2000 * i); break;
+                    default:  vramMapped[4] = false;                                                                               break;
                 }
+            }
+            else
+            {
+                vramMapped[4] = false;
             }
             break;
 
         case 0x4000245: // VRAMCNT_F
-            vramEnables[5] = (value & BIT(7));
-            if (vramEnables[5])
+            if (value & BIT(7))
             {
                 uint8_t mst = (value & 0x07);
-                uint8_t offset = (value & 0x18) >> 3;
+                uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramBases[5] = 0x6890000;                                                           break;
-                    case 0x1: vramBases[5] = 0x6000000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
-                    case 0x2: vramBases[5] = 0x6400000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
-                    default: vramEnables[5] = false; printf("Unknown VRAM F MST: %d\n", mst); break;
+                    case 0x0: vramMapped[5] = true; vramBases[5] = 0x6890000;                                                                           break;
+                    case 0x1: vramMapped[5] = true; vramBases[5] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                       break;
+                    case 0x2: vramMapped[5] = true; vramBases[5] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                       break;
+                    case 0x3: vramMapped[5] = false; extPalettes[(ofs & BIT(0)) + (ofs & BIT(1)) * 2] = (uint16_t*)vramF;                               break;
+                    case 0x4: vramMapped[5] = false; for (int i = 0; i < 2; i++) extPalettes[(ofs & BIT(0)) * 2 + i] = (uint16_t*)(vramF + 0x4000 * i); break;
+                    case 0x5: vramMapped[5] = false; extPalettes[0] = (uint16_t*)vramF;                                                                 break;
+                    default:  vramMapped[5] = false;                                                                                                    break;
                 }
+            }
+            else
+            {
+                vramMapped[5] = false;
             }
             break;
 
         case 0x4000246: // VRAMCNT_G
-            vramEnables[6] = (value & BIT(7));
-            if (vramEnables[6])
+            if (value & BIT(7))
             {
                 uint8_t mst = (value & 0x07);
-                uint8_t offset = (value & 0x18) >> 3;
+                uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramBases[6] = 0x6894000;                                                           break;
-                    case 0x1: vramBases[6] = 0x6000000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
-                    case 0x2: vramBases[6] = 0x6400000 + 0x8000 * (offset & BIT(1)) + 0x4000 * (offset & BIT(0)); break;
-                    default: vramEnables[6] = false; printf("Unknown VRAM G MST: %d\n", mst); break;
+                    case 0x0: vramMapped[6] = true; vramBases[6] = 0x6894000;                                                                           break;
+                    case 0x1: vramMapped[6] = true; vramBases[6] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                       break;
+                    case 0x2: vramMapped[6] = true; vramBases[6] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                       break;
+                    case 0x3: vramMapped[6] = false; extPalettes[(ofs & BIT(0)) + (ofs & BIT(1)) * 2] = (uint16_t*)vramG;                               break;
+                    case 0x4: vramMapped[6] = false; for (int i = 0; i < 2; i++) extPalettes[(ofs & BIT(0)) * 2 + i] = (uint16_t*)(vramG + 0x4000 * i); break;
+                    case 0x5: vramMapped[6] = false; extPalettes[0] = (uint16_t*)vramG;                                                                 break;
+                    default:  vramMapped[6] = false;                                                                                                    break;
                 }
+            }
+            else
+            {
+                vramMapped[6] = false;
             }
             break;
 
         case 0x4000247: // WRAMCNT
-            *(T*)&wramcnt = value & 0x03;
+            wramcnt = value & 0x03;
             switch (wramcnt)
             {
                 case 0x0: wramOffset9 = 0x0000; wramSize9 = 0x8000; wramOffset7 = 0x0000; wramSize7 = 0x0000; break;
@@ -483,31 +516,39 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
             break;
 
         case 0x4000248: // VRAMCNT_H
-            vramEnables[7] = (value & BIT(7));
-            if (vramEnables[7])
+            if (value & BIT(7))
             {
                 uint8_t mst = (value & 0x03);
                 switch (mst)
                 {
-                    case 0x0: vramBases[7] = 0x6898000; break;
-                    case 0x1: vramBases[7] = 0x6200000; break;
-                    default: vramEnables[7] = false; printf("Unknown VRAM H MST: %d\n", mst); break;
+                    case 0x0: vramMapped[7] = true; vramBases[7] = 0x6898000;                                                       break;
+                    case 0x1: vramMapped[7] = true; vramBases[7] = 0x6200000;                                                       break;
+                    case 0x2: vramMapped[7] = false; for (int i = 0; i < 4; i++) extPalettes[i] = (uint16_t*)(vramH +  0x2000 * i); break;
+                    default:  vramMapped[7] = false;                                                                                break;
                 }
+            }
+            else
+            {
+                vramMapped[7] = false;
             }
             break;
 
         case 0x4000249: // VRAMCNT_I
-            vramEnables[8] = (value & BIT(7));
-            if (vramEnables[8])
+            if (value & BIT(7))
             {
                 uint8_t mst = (value & 0x03);
                 switch (mst)
                 {
-                    case 0x0: vramBases[8] = 0x68A0000; break;
-                    case 0x1: vramBases[8] = 0x6208000; break;
-                    case 0x2: vramBases[8] = 0x6600000; break;
-                    default: vramEnables[8] = false; printf("Unknown VRAM I MST: %d\n", mst); break;
+                    case 0x0: vramMapped[8] = true; vramBases[8] = 0x68A0000;           break;
+                    case 0x1: vramMapped[8] = true; vramBases[8] = 0x6208000;           break;
+                    case 0x2: vramMapped[8] = true; vramBases[8] = 0x6600000;           break;
+                    case 0x3: vramMapped[8] = false; extPalettes[0] = (uint16_t*)vramI; break;
+                    default:  vramMapped[8] = false;                                    break;
                 }
+            }
+            else
+            {
+                vramMapped[8] = false;
             }
             break;
 
@@ -687,7 +728,7 @@ template <typename T> T read(interpreter::Cpu *cpu, uint32_t address)
             if (src)
                 return *src;
             else
-                printf("Unknown ARM9 memory read: 0x%X\n", address);
+                printf("Unmapped ARM9 memory read: 0x%X\n", address);
         }
     }
     else
@@ -702,7 +743,7 @@ template <typename T> T read(interpreter::Cpu *cpu, uint32_t address)
             if (src)
                 return *src;
             else
-                printf("Unknown ARM7 memory read: 0x%X\n", address);
+                printf("Unmapped ARM7 memory read: 0x%X\n", address);
         }
     }
 
@@ -726,7 +767,7 @@ template <typename T> void write(interpreter::Cpu *cpu, uint32_t address, T valu
             if (dst)
                 *dst = value;
             else
-                printf("Unknown ARM9 memory write: 0x%X\n", address);
+                printf("Unmapped ARM9 memory write: 0x%X\n", address);
         }
     }
     else
@@ -741,7 +782,7 @@ template <typename T> void write(interpreter::Cpu *cpu, uint32_t address, T valu
             if (dst)
                 *dst = value;
             else
-                printf("Unknown ARM7 memory write: 0x%X\n", address);
+                printf("Unmapped ARM7 memory write: 0x%X\n", address);
         }
     }
 }
