@@ -32,7 +32,8 @@ extern uint8_t vramB[0x20000];
 extern uint8_t vramC[0x20000];
 extern uint8_t vramD[0x20000];
 
-extern uint16_t *extPalettes[6];
+extern uint16_t *extPalettesA[6];
+extern uint16_t *extPalettesB[4];
 
 extern uint32_t keyinput;
 extern uint32_t extkeyin;

@@ -39,6 +39,7 @@ typedef struct
     uint32_t *dispcnt;
     uint32_t *bgcnt;
     uint16_t *palette;
+    uint16_t **extPalettes;
     uint32_t bgVram;
     uint16_t bgBuffers[4][256 * 192];
     uint16_t framebuffer[256 * 192];
@@ -66,7 +67,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
         {
             uint16_t *palette;
             if (*engine->dispcnt & BIT(30)) // Extended palette
-                palette = memory::extPalettes[bg + ((bg < 2 && (engine->bgcnt[bg] & BIT(13))) ? 2 : 0)];
+                palette = engine->extPalettes[bg + ((bg < 2 && (engine->bgcnt[bg] & BIT(13))) ? 2 : 0)];
             else // Standard palette
                 palette = engine->palette;
 
@@ -324,11 +325,13 @@ void init()
     engineA.dispcnt = &memory::dispcntA;
     engineA.bgcnt   = memory::bgcntA;
     engineA.palette = (uint16_t*)memory::paletteA;
+    engineA.extPalettes = memory::extPalettesA;
     engineA.bgVram  = 0x6000000;
 
     engineB.dispcnt = &memory::dispcntB;
     engineB.bgcnt   = memory::bgcntB;
     engineB.palette = (uint16_t*)memory::paletteB;
+    engineB.extPalettes = memory::extPalettesB;
     engineB.bgVram  = 0x6200000;
 }
 

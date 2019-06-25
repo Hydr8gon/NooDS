@@ -54,7 +54,8 @@ uint16_t wramOffset7 = 0x0000; uint16_t wramSize7 = 0x8000;
 bool     vramMapped[9];
 uint32_t vramBases[9];
 
-uint16_t *extPalettes[6];
+uint16_t *extPalettesA[6];
+uint16_t *extPalettesB[4];
 
 uint32_t dmasad9[4], dmasad7[4]; // DMA source addresss
 uint32_t dmadad9[4], dmadad7[4]; // DMA destination address
@@ -87,6 +88,7 @@ void dmaTransfer(interpreter::Cpu *cpu, uint32_t dmasad, uint32_t dmadad, uint32
         uint8_t dstAddrCnt = (*dmacnt & 0x00600000) >> 21;
         uint8_t srcAddrCnt = (*dmacnt & 0x01800000) >> 23;
         uint32_t size = (*dmacnt & 0x001FFFFF);
+
         if (*dmacnt & BIT(26)) // 32-bit
         {
             for (int i = 0; i < size; i++)
@@ -367,10 +369,10 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramMapped[0] = true; vramBases[0] = 0x6800000;                            break;
-                    case 0x1: vramMapped[0] = true; vramBases[0] = 0x6000000 + 0x20000 * ofs;            break;
-                    case 0x2: vramMapped[0] = true; vramBases[0] = 0x6400000 + 0x20000 * (ofs & BIT(0)); break;
-                    case 0x3: vramMapped[0] = false; extPalettes[ofs] = (uint16_t*)vramA;               break;
+                    case 0x0: vramMapped[0] = true; vramBases[0] = 0x6800000;                             break;
+                    case 0x1: vramMapped[0] = true; vramBases[0] = 0x6000000 + 0x20000 * ofs;             break;
+                    case 0x2: vramMapped[0] = true; vramBases[0] = 0x6400000 + 0x20000 * (ofs & BIT(0));  break;
+                    case 0x3: vramMapped[0] = false; extPalettesA[ofs] = (uint16_t*)vramA;                break;
                 }
             }
             else
@@ -386,10 +388,10 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramMapped[1] = true; vramBases[1] = 0x6820000;                            break;
-                    case 0x1: vramMapped[1] = true; vramBases[1] = 0x6000000 + 0x20000 * ofs;            break;
-                    case 0x2: vramMapped[1] = true; vramBases[1] = 0x6400000 + 0x20000 * (ofs & BIT(0)); break;
-                    case 0x3: vramMapped[1] = false; extPalettes[ofs] = (uint16_t*)vramB;               break;
+                    case 0x0: vramMapped[1] = true; vramBases[1] = 0x6820000;                             break;
+                    case 0x1: vramMapped[1] = true; vramBases[1] = 0x6000000 + 0x20000 * ofs;             break;
+                    case 0x2: vramMapped[1] = true; vramBases[1] = 0x6400000 + 0x20000 * (ofs & BIT(0));  break;
+                    case 0x3: vramMapped[1] = false; extPalettesA[ofs] = (uint16_t*)vramB;                break;
                 }
             }
             else
@@ -405,12 +407,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramMapped[2] = true; vramBases[2] = 0x6840000;                            break;
-                    case 0x1: vramMapped[2] = true; vramBases[2] = 0x6000000 + 0x20000 * ofs;            break;
-                    case 0x2: vramMapped[2] = true; vramBases[2] = 0x6000000 + 0x20000 * (ofs & BIT(0)); break;
-                    case 0x4: vramMapped[2] = true; vramBases[2] = 0x6200000;                            break;
-                    case 0x3: vramMapped[2] = false; extPalettes[ofs] = (uint16_t*)vramC;               break;
-                    default:  vramMapped[2] = false;                                                     break;
+                    case 0x0: vramMapped[2] = true; vramBases[2] = 0x6840000;                             break;
+                    case 0x1: vramMapped[2] = true; vramBases[2] = 0x6000000 + 0x20000 * ofs;             break;
+                    case 0x2: vramMapped[2] = true; vramBases[2] = 0x6000000 + 0x20000 * (ofs & BIT(0));  break;
+                    case 0x4: vramMapped[2] = true; vramBases[2] = 0x6200000;                             break;
+                    case 0x3: vramMapped[2] = false; extPalettesA[ofs] = (uint16_t*)vramC;                break;
+                    default:  vramMapped[2] = false;                                                      break;
                 }
             }
             else
@@ -426,12 +428,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramMapped[3] = true; vramBases[3] = 0x6860000;                            break;
-                    case 0x1: vramMapped[3] = true; vramBases[3] = 0x6000000 + 0x20000 * ofs;            break;
-                    case 0x2: vramMapped[3] = true; vramBases[3] = 0x6000000 + 0x20000 * (ofs & BIT(0)); break;
-                    case 0x4: vramMapped[3] = true; vramBases[3] = 0x6600000;                            break;
-                    case 0x3: vramMapped[3] = false; extPalettes[ofs] = (uint16_t*)vramD;               break;
-                    default:  vramMapped[3] = false;                                                     break;
+                    case 0x0: vramMapped[3] = true; vramBases[3] = 0x6860000;                             break;
+                    case 0x1: vramMapped[3] = true; vramBases[3] = 0x6000000 + 0x20000 * ofs;             break;
+                    case 0x2: vramMapped[3] = true; vramBases[3] = 0x6000000 + 0x20000 * (ofs & BIT(0));  break;
+                    case 0x4: vramMapped[3] = true; vramBases[3] = 0x6600000;                             break;
+                    case 0x3: vramMapped[3] = false; extPalettesA[ofs] = (uint16_t*)vramD;                break;
+                    default:  vramMapped[3] = false;                                                      break;
                 }
             }
             else
@@ -446,12 +448,12 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t mst = (value & 0x07);
                 switch (mst)
                 {
-                    case 0x0: vramMapped[4] = true; vramBases[4] = 0x6880000;                                                      break;
-                    case 0x1: vramMapped[4] = true; vramBases[4] = 0x6000000;                                                      break;
-                    case 0x2: vramMapped[4] = true; vramBases[4] = 0x6400000;                                                      break;
-                    case 0x3: vramMapped[4] = false; for (int i = 0; i < 4; i++) extPalettes[i] = (uint16_t*)vramE;                break;
-                    case 0x4: vramMapped[4] = false; for (int i = 0; i < 4; i++) extPalettes[i] = (uint16_t*)(vramE + 0x2000 * i); break;
-                    default:  vramMapped[4] = false;                                                                               break;
+                    case 0x0: vramMapped[4] = true; vramBases[4] = 0x6880000;                                                       break;
+                    case 0x1: vramMapped[4] = true; vramBases[4] = 0x6000000;                                                       break;
+                    case 0x2: vramMapped[4] = true; vramBases[4] = 0x6400000;                                                       break;
+                    case 0x3: vramMapped[4] = false; for (int i = 0; i < 4; i++) extPalettesA[i] = (uint16_t*)vramE;                break;
+                    case 0x4: vramMapped[4] = false; for (int i = 0; i < 4; i++) extPalettesA[i] = (uint16_t*)(vramE + 0x2000 * i); break;
+                    default:  vramMapped[4] = false;                                                                                break;
                 }
             }
             else
@@ -467,13 +469,13 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramMapped[5] = true; vramBases[5] = 0x6890000;                                                                           break;
-                    case 0x1: vramMapped[5] = true; vramBases[5] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                       break;
-                    case 0x2: vramMapped[5] = true; vramBases[5] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                       break;
-                    case 0x3: vramMapped[5] = false; extPalettes[(ofs & BIT(0)) + (ofs & BIT(1)) * 2] = (uint16_t*)vramF;                               break;
-                    case 0x4: vramMapped[5] = false; for (int i = 0; i < 2; i++) extPalettes[(ofs & BIT(0)) * 2 + i] = (uint16_t*)(vramF + 0x4000 * i); break;
-                    case 0x5: vramMapped[5] = false; extPalettes[0] = (uint16_t*)vramF;                                                                 break;
-                    default:  vramMapped[5] = false;                                                                                                    break;
+                    case 0x0: vramMapped[5] = true; vramBases[5] = 0x6890000;                                                                            break;
+                    case 0x1: vramMapped[5] = true; vramBases[5] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
+                    case 0x2: vramMapped[5] = true; vramBases[5] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
+                    case 0x3: vramMapped[5] = false; extPalettesA[(ofs & BIT(0)) + (ofs & BIT(1)) * 2] = (uint16_t*)vramF;                               break;
+                    case 0x4: vramMapped[5] = false; for (int i = 0; i < 2; i++) extPalettesA[(ofs & BIT(0)) * 2 + i] = (uint16_t*)(vramF + 0x4000 * i); break;
+                    case 0x5: vramMapped[5] = false; extPalettesA[0] = (uint16_t*)vramF;                                                                 break;
+                    default:  vramMapped[5] = false;                                                                                                     break;
                 }
             }
             else
@@ -489,13 +491,13 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t ofs = (value & 0x18) >> 3;
                 switch (mst)
                 {
-                    case 0x0: vramMapped[6] = true; vramBases[6] = 0x6894000;                                                                           break;
-                    case 0x1: vramMapped[6] = true; vramBases[6] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                       break;
-                    case 0x2: vramMapped[6] = true; vramBases[6] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                       break;
-                    case 0x3: vramMapped[6] = false; extPalettes[(ofs & BIT(0)) + (ofs & BIT(1)) * 2] = (uint16_t*)vramG;                               break;
-                    case 0x4: vramMapped[6] = false; for (int i = 0; i < 2; i++) extPalettes[(ofs & BIT(0)) * 2 + i] = (uint16_t*)(vramG + 0x4000 * i); break;
-                    case 0x5: vramMapped[6] = false; extPalettes[0] = (uint16_t*)vramG;                                                                 break;
-                    default:  vramMapped[6] = false;                                                                                                    break;
+                    case 0x0: vramMapped[6] = true; vramBases[6] = 0x6894000;                                                                            break;
+                    case 0x1: vramMapped[6] = true; vramBases[6] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
+                    case 0x2: vramMapped[6] = true; vramBases[6] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
+                    case 0x3: vramMapped[6] = false; extPalettesA[(ofs & BIT(0)) + (ofs & BIT(1)) * 2] = (uint16_t*)vramG;                               break;
+                    case 0x4: vramMapped[6] = false; for (int i = 0; i < 2; i++) extPalettesA[(ofs & BIT(0)) * 2 + i] = (uint16_t*)(vramG + 0x4000 * i); break;
+                    case 0x5: vramMapped[6] = false; extPalettesA[0] = (uint16_t*)vramG;                                                                 break;
+                    default:  vramMapped[6] = false;                                                                                                     break;
                 }
             }
             else
@@ -521,10 +523,10 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t mst = (value & 0x03);
                 switch (mst)
                 {
-                    case 0x0: vramMapped[7] = true; vramBases[7] = 0x6898000;                                                       break;
-                    case 0x1: vramMapped[7] = true; vramBases[7] = 0x6200000;                                                       break;
-                    case 0x2: vramMapped[7] = false; for (int i = 0; i < 4; i++) extPalettes[i] = (uint16_t*)(vramH +  0x2000 * i); break;
-                    default:  vramMapped[7] = false;                                                                                break;
+                    case 0x0: vramMapped[7] = true; vramBases[7] = 0x6898000;                                                        break;
+                    case 0x1: vramMapped[7] = true; vramBases[7] = 0x6200000;                                                        break;
+                    case 0x2: vramMapped[7] = false; for (int i = 0; i < 4; i++) extPalettesB[i] = (uint16_t*)(vramH +  0x2000 * i); break;
+                    default:  vramMapped[7] = false;                                                                                 break;
                 }
             }
             else
@@ -539,11 +541,11 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t mst = (value & 0x03);
                 switch (mst)
                 {
-                    case 0x0: vramMapped[8] = true; vramBases[8] = 0x68A0000;           break;
-                    case 0x1: vramMapped[8] = true; vramBases[8] = 0x6208000;           break;
-                    case 0x2: vramMapped[8] = true; vramBases[8] = 0x6600000;           break;
-                    case 0x3: vramMapped[8] = false; extPalettes[0] = (uint16_t*)vramI; break;
-                    default:  vramMapped[8] = false;                                    break;
+                    case 0x0: vramMapped[8] = true; vramBases[8] = 0x68A0000;            break;
+                    case 0x1: vramMapped[8] = true; vramBases[8] = 0x6208000;            break;
+                    case 0x2: vramMapped[8] = true; vramBases[8] = 0x6600000;            break;
+                    case 0x3: vramMapped[8] = false; extPalettesB[0] = (uint16_t*)vramI; break;
+                    default:  vramMapped[8] = false;                                     break;
                 }
             }
             else
