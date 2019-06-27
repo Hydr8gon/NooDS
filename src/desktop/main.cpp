@@ -17,98 +17,197 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <cstdio>
-#include <cstring>
 #include <thread>
-#include "GL/glut.h"
+#include <wx/wx.h>
+#include <wx/rawbmp.h>
 
 #include "../core.h"
 #include "../gpu.h"
 
-// Just do this instead of including glext.h
-#ifdef _WIN32
-#define GL_UNSIGNED_SHORT_1_5_5_5_REV 0x8366
-#endif
+const char keyMap[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
 
-const char keyMap[] = { 'l', 'k', 'g', 'h', 'd', 'a', 'w', 's', 'p', 'q', 'o', 'i' };
+std::thread *coreThread;
+bool running;
 
 void runCore()
 {
-    while (true)
+    while (running)
         core::runScanline();
 }
 
-void draw()
+class DisplayPanel: public wxPanel
 {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 192 * 2, 0, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, gpu::displayBuffer);
-    glBegin(GL_QUADS);
-    glTexCoord2i(1, 1); glVertex2f( 1, -1);
-    glTexCoord2i(0, 1); glVertex2f(-1, -1);
-    glTexCoord2i(0, 0); glVertex2f(-1,  1);
-    glTexCoord2i(1, 0); glVertex2f( 1,  1);
-    glEnd();
-    glFlush();
-    glutPostRedisplay();
+public:
+    DisplayPanel(wxFrame *parent);
+    void draw(bool clear);
+
+private:
+    int x, y;
+    float scale;
+    void resize(wxSizeEvent &event);
+    void pressKey(wxKeyEvent &event);
+    void releaseKey(wxKeyEvent &event);
+    wxDECLARE_EVENT_TABLE();
+};
+
+class NooDS: public wxApp
+{
+private:
+    DisplayPanel *panel;
+    bool OnInit();
+    void requestDraw(wxIdleEvent &event);
+};
+
+class EmuFrame: public wxFrame
+{
+public:
+    EmuFrame();
+
+private:
+    void openRom(wxCommandEvent &event);
+    void exit(wxCommandEvent &event);
+    wxDECLARE_EVENT_TABLE();
+};
+
+wxIMPLEMENT_APP(NooDS);
+
+wxBEGIN_EVENT_TABLE(EmuFrame, wxFrame)
+EVT_MENU(0,         EmuFrame::openRom)
+EVT_MENU(wxID_EXIT, EmuFrame::exit)
+wxEND_EVENT_TABLE()
+
+wxBEGIN_EVENT_TABLE(DisplayPanel, wxPanel)
+EVT_SIZE(DisplayPanel::resize)
+EVT_KEY_DOWN(DisplayPanel::pressKey)
+EVT_KEY_UP(DisplayPanel::releaseKey)
+wxEND_EVENT_TABLE()
+
+bool NooDS::OnInit()
+{
+#ifndef _WIN32
+    if (argc == 1 || argv[1] != "-v")
+        fclose(stdout);
+#endif
+
+    EmuFrame *frame = new EmuFrame();
+    panel = new DisplayPanel(frame);
+    wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
+    sizer->Add(panel, 1, wxEXPAND);     
+    frame->SetSizer(sizer);
+    Connect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(NooDS::requestDraw));
+    return true;
 }
 
-void keyDown(unsigned char key, int x, int y)
+void NooDS::requestDraw(wxIdleEvent &event)
+{
+    panel->draw(false);
+    event.RequestMore();
+}
+
+EmuFrame::EmuFrame(): wxFrame(NULL, wxID_ANY, "NooDS", wxPoint(50, 50), wxSize(256, 192 * 2), wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS)
+{
+    wxMenu *fileMenu = new wxMenu();
+    fileMenu->Append(0, "&Open ROM");
+    fileMenu->AppendSeparator();
+    fileMenu->Append(wxID_EXIT);
+
+    wxMenuBar *menuBar = new wxMenuBar();
+    menuBar->Append(fileMenu, "&File");
+    SetMenuBar(menuBar);
+
+    SetClientSize(wxSize(256, 192 * 2));
+    SetMinSize(GetSize());
+    Centre();
+    Show(true);
+}
+
+void EmuFrame::openRom(wxCommandEvent &event)
+{
+    wxFileDialog romSelect(this, "Open ROM File", "", "", "NDS ROM files (*.nds)|*.nds", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (romSelect.ShowModal() == wxID_CANCEL)
+        return;
+
+    if (coreThread)
+    {
+        running = false;
+        coreThread->join();
+        delete coreThread;
+    }
+
+    char path[1024];
+    strncpy(path, (const char*)romSelect.GetPath().mb_str(wxConvUTF8), 1023);
+    if (!core::loadRom(path))
+    {
+        wxMessageBox("ROM loading failed. Make sure you have BIOS files named bios9.bin and bios7.bin placed in the same directory as the emulator.");
+        return;
+    }
+
+    running = true;
+    coreThread = new std::thread(runCore);
+}
+
+void EmuFrame::exit(wxCommandEvent &event)
+{
+    Close(true);
+}
+
+
+DisplayPanel::DisplayPanel(wxFrame *parent): wxPanel(parent)
+{
+    SetSize(256, 192 * 2);
+    SetFocus();
+}
+
+void DisplayPanel::draw(bool clear)
+{
+    wxBitmap bmp(256, 192 * 2, 24);
+    wxNativePixelData data(bmp);
+    wxNativePixelData::Iterator iter(data);
+
+    for (int y = 0; y < 192 * 2; y++)
+    {
+        wxNativePixelData::Iterator pixel = iter;
+        for (int x = 0; x < 256; x++, pixel++)
+        {
+            uint16_t color = gpu::displayBuffer[y * 256 + x];
+            pixel.Red()   = ((color >>  0) & 0x1F) * 255 / 31;
+            pixel.Green() = ((color >>  5) & 0x1F) * 255 / 31;
+            pixel.Blue()  = ((color >> 10) & 0x1F) * 255 / 31;
+        }
+        iter.OffsetY(data, 1);
+    }
+
+    wxClientDC dc(this);
+    if (clear) dc.Clear();
+    dc.SetUserScale(scale, scale);
+    dc.DrawBitmap(bmp, wxPoint(x, y));
+}
+
+void DisplayPanel::resize(wxSizeEvent &event)
+{
+    wxSize size = GetSize();
+    float ratio = 256.0f / (192 * 2);
+    float window = (float)GetSize().x / GetSize().y;
+    scale = ((ratio >= window) ? (float)size.x / 256 : (float)size.y / (192 * 2));
+    x = ((float)size.x / scale - 256)     / 2;
+    y = ((float)size.y / scale - 192 * 2) / 2;
+    draw(true);
+}
+
+void DisplayPanel::pressKey(wxKeyEvent &event)
 {
     for (int i = 0; i < 10; i++)
     {
-        if (key == keyMap[i])
+        if (event.GetKeyCode() == keyMap[i])
             core::pressKey(i);
     }
 }
 
-void keyUp(unsigned char key, int x, int y)
+void DisplayPanel::releaseKey(wxKeyEvent &event)
 {
     for (int i = 0; i < 10; i++)
     {
-        if (key == keyMap[i])
+        if (event.GetKeyCode() == keyMap[i])
             core::releaseKey(i);
     }
-}
-
-int main(int argc, char **argv)
-{
-    if (argc < 2)
-    {
-        printf("Please specify a ROM to load.\n");
-        return 0;
-    }
-
-    if (strcmp(argv[1], "-v") != 0)
-    {
-#ifdef _WIN32
-        FreeConsole();
-#else
-        fclose(stdout);
-#endif
-        if (!core::loadRom(argv[1]))
-            return 0;
-    }
-    else if (!core::loadRom(argv[2]))
-    {
-        return 0;
-    }
-
-    glutInit(&argc, argv);
-    glutInitWindowSize(256, 192 * 2);
-    glutCreateWindow("NooDS");
-    glEnable(GL_TEXTURE_2D);
-
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glutDisplayFunc(draw);
-    glutKeyboardFunc(keyDown);
-    glutKeyboardUpFunc(keyUp);
-
-    std::thread core(runCore);
-    glutMainLoop();
-
-    return 0;
 }

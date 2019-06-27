@@ -25,16 +25,15 @@
 namespace cp15
 {
 
-uint32_t exceptions = 0x00000000;
-bool     dtcmEnable = false;
-bool     itcmEnable = false;
-uint32_t dtcmBase   = 0x027C0000;
-uint32_t dtcmSize   = 0x00004000;
-uint32_t itcmSize   = 0x02000000;
+uint32_t exceptions;
+bool dtcmEnable;
+bool itcmEnable;
+uint32_t dtcmBase, dtcmSize;
+uint32_t itcmSize;
 
-uint32_t control = 0x00000078;
-uint32_t dtcmReg = 0x027C0005;
-uint32_t itcmReg = 0x00000010;
+uint32_t control;
+uint32_t dtcmReg;
+uint32_t itcmReg;
 
 uint32_t readRegister(uint8_t cn, uint8_t cm, uint8_t cp)
 {

@@ -55,6 +55,8 @@ void *vramMap(uint32_t address);
 template <typename T> T read(interpreter::Cpu *cpu, uint32_t address);
 template <typename T> void write(interpreter::Cpu *cpu, uint32_t address, T value);
 
+void init();
+
 }
 
 #endif // MEMORY_H

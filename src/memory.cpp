@@ -18,6 +18,7 @@
 */
 
 #include <cstdio>
+#include <cstring>
 
 #include "memory.h"
 #include "core.h"
@@ -48,8 +49,8 @@ uint8_t vramI[0x4000];   //  16KB VRAM block I
 uint8_t oamA[0x400];     //   1KB engine A OAM
 uint8_t oamB[0x400];     //   1KB engine B OAM
 
-uint16_t wramOffset9 = 0x0000; uint16_t wramSize9 = 0x0000;
-uint16_t wramOffset7 = 0x0000; uint16_t wramSize7 = 0x8000;
+uint16_t wramOffset9; uint16_t wramSize9;
+uint16_t wramOffset7; uint16_t wramSize7;
 
 bool     vramMapped[9];
 uint32_t vramBases[9];
@@ -62,15 +63,15 @@ uint32_t dmadad9[4], dmadad7[4]; // DMA destination address
 uint32_t dmacnt9[4], dmacnt7[4]; // DMA control
 uint32_t dmafill[4];             // DMA fill data
 
-uint32_t keyinput = 0x03FF; // Key status
-uint32_t extkeyin = 0x007F; // Key X/Y input
+uint32_t keyinput; // Key status
+uint32_t extkeyin; // Key X/Y input
 
 uint32_t ipcsync9, ipcsync7; // IPC synchronize
 uint32_t ime9,     ime7;     // Interrupt master enable
 uint32_t ie9,      ie7;      // Interrupt enable
 uint32_t if9,      if7;      // Interrupt request flags
 
-uint32_t wramcnt = 0x03; // WRAM bank control
+uint32_t wramcnt; // WRAM bank control
 
 uint32_t dispcntA;  // Engine A display control
 uint32_t dispstat;  // General LCD status
@@ -523,10 +524,10 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
                 uint8_t mst = (value & 0x03);
                 switch (mst)
                 {
-                    case 0x0: vramMapped[7] = true; vramBases[7] = 0x6898000;                                                        break;
-                    case 0x1: vramMapped[7] = true; vramBases[7] = 0x6200000;                                                        break;
-                    case 0x2: vramMapped[7] = false; for (int i = 0; i < 4; i++) extPalettesB[i] = (uint16_t*)(vramH +  0x2000 * i); break;
-                    default:  vramMapped[7] = false;                                                                                 break;
+                    case 0x0: vramMapped[7] = true; vramBases[7] = 0x6898000;                                                       break;
+                    case 0x1: vramMapped[7] = true; vramBases[7] = 0x6200000;                                                       break;
+                    case 0x2: vramMapped[7] = false; for (int i = 0; i < 4; i++) extPalettesB[i] = (uint16_t*)(vramH + 0x2000 * i); break;
+                    default:  vramMapped[7] = false;                                                                                break;
                 }
             }
             else
@@ -697,12 +698,8 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
             break;
 
         case 0x4000301: // HALTCNT
-            switch ((value & 0xC0) >> 6)
-            {
-                case 0x1: printf("Unhandled request: GBA mode\n"); break;
-                case 0x2: core::arm7.halt = true; break;
-                case 0x3: printf("Unhandled request: Sleep mode\n"); break;
-            }
+            if (((value & 0xC0) >> 6) == 0x2)
+                core::arm7.halt = true;
             break;
 
         default:
@@ -787,6 +784,68 @@ template <typename T> void write(interpreter::Cpu *cpu, uint32_t address, T valu
                 printf("Unmapped ARM7 memory write: 0x%X\n", address);
         }
     }
+}
+
+void init()
+{
+    memset(ram,      0, sizeof(ram));
+    memset(wram,     0, sizeof(wram));
+    memset(instrTcm, 0, sizeof(instrTcm));
+    memset(dataTcm,  0, sizeof(dataTcm));
+    memset(bios9,    0, sizeof(bios9));
+    memset(bios7,    0, sizeof(bios7));
+    memset(wram7,    0, sizeof(wram7));
+
+    memset(paletteA, 0, sizeof(paletteA));
+    memset(paletteB, 0, sizeof(paletteB));
+    memset(vramA,    0, sizeof(vramA));
+    memset(vramB,    0, sizeof(vramB));
+    memset(vramC,    0, sizeof(vramC));
+    memset(vramD,    0, sizeof(vramD));
+    memset(vramE,    0, sizeof(vramE));
+    memset(vramF,    0, sizeof(vramF));
+    memset(vramG,    0, sizeof(vramG));
+    memset(vramH,    0, sizeof(vramH));
+    memset(vramI,    0, sizeof(vramI));
+    memset(oamA,     0, sizeof(oamA));
+    memset(oamB,     0, sizeof(oamB));
+
+    memset(vramMapped,   0, sizeof(vramMapped));
+    memset(extPalettesA, 0, sizeof(extPalettesA));
+    memset(extPalettesB, 0, sizeof(extPalettesB));
+
+    memset(dmasad9, 0, sizeof(dmasad9));
+    memset(dmasad7, 0, sizeof(dmasad7));
+    memset(dmadad9, 0, sizeof(dmadad9));
+    memset(dmadad7, 0, sizeof(dmadad7));
+    memset(dmacnt9, 0, sizeof(dmacnt9));
+    memset(dmacnt7, 0, sizeof(dmacnt7));
+    memset(dmafill, 0, sizeof(dmafill));
+
+    keyinput = 0x03FF;
+    extkeyin = 0x007F;
+
+    ipcsync9 = 0;
+    ipcsync7 = 0;
+    ime9     = 0;
+    ime7     = 0;
+    ie9      = 0;
+    ie7      = 0;
+    if9      = 0;
+    if7      = 0;
+
+    dispcntA = 0;
+    dispstat = 0;
+    vcount   = 0;
+    powcnt1  = 0;
+    dispcntB = 0;
+    memset(bgcntA, 0, sizeof(bgcntA));
+    memset(bgcntB, 0, sizeof(bgcntB));
+
+    ioWriteMap9<uint8_t>(0x4000247, 0x03);
+    cp15::writeRegister(1, 0, 0, 0x00000078);
+    cp15::writeRegister(9, 1, 0, 0x027C0005);
+    cp15::writeRegister(9, 1, 1, 0x00000010);
 }
 
 }

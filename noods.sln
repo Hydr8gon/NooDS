@@ -7,16 +7,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "noods", "noods.vcxproj", "{
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x64 = Debug|x64
-		Debug|x86 = Debug|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7C458C8A-3D93-4680-B061-12F7D11BC515}.Debug|x64.ActiveCfg = Debug|x64
-		{7C458C8A-3D93-4680-B061-12F7D11BC515}.Debug|x64.Build.0 = Debug|x64
-		{7C458C8A-3D93-4680-B061-12F7D11BC515}.Debug|x86.ActiveCfg = Debug|Win32
-		{7C458C8A-3D93-4680-B061-12F7D11BC515}.Debug|x86.Build.0 = Debug|Win32
 		{7C458C8A-3D93-4680-B061-12F7D11BC515}.Release|x64.ActiveCfg = Release|x64
 		{7C458C8A-3D93-4680-B061-12F7D11BC515}.Release|x64.Build.0 = Release|x64
 		{7C458C8A-3D93-4680-B061-12F7D11BC515}.Release|x86.ActiveCfg = Release|Win32

@@ -659,7 +659,7 @@ void init()
     armInstructions[0x1B7] = interpreter_alu::movsRrr;
     armInstructions[0x1B8] = interpreter_alu::movsLli;
     armInstructions[0x1B9] = unknownArm;
-    armInstructions[0x1BA] = interpreter_alu::movsLlr;
+    armInstructions[0x1BA] = interpreter_alu::movsLri;
     armInstructions[0x1BB] = interpreter_transfer::ldrhPrrp;
     armInstructions[0x1BC] = interpreter_alu::movsAri;
     armInstructions[0x1BD] = interpreter_transfer::ldrsbPrrp;
