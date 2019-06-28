@@ -45,10 +45,14 @@ extern uint32_t if9,  if7;
 extern uint32_t dispcntA;
 extern uint32_t dispstat;
 extern uint32_t bgcntA[4];
+extern uint32_t bghofsA[4];
+extern uint32_t bgvofsA[4];
 extern uint32_t vcount;
 extern uint32_t powcnt1;
 extern uint32_t dispcntB;
 extern uint32_t bgcntB[4];
+extern uint32_t bghofsB[4];
+extern uint32_t bgvofsB[4];
 
 void *vramMap(uint32_t address);
 

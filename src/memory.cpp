@@ -73,13 +73,17 @@ uint32_t if9,      if7;      // Interrupt request flags
 
 uint32_t wramcnt; // WRAM bank control
 
-uint32_t dispcntA;  // Engine A display control
-uint32_t dispstat;  // General LCD status
-uint32_t bgcntA[4]; // Engine A background control
-uint32_t vcount;    // Vertical counter
-uint32_t powcnt1;   // Graphics power control
-uint32_t dispcntB;  // Engine B display control
-uint32_t bgcntB[4]; // Engine B background control
+uint32_t dispcntA;   // Engine A display control
+uint32_t dispstat;   // General LCD status
+uint32_t bgcntA[4];  // Engine A background control
+uint32_t bghofsA[4]; // Engine A background X offset
+uint32_t bgvofsA[4]; // Engine A background Y offset
+uint32_t vcount;     // Vertical counter
+uint32_t powcnt1;    // Graphics power control
+uint32_t dispcntB;   // Engine B display control
+uint32_t bgcntB[4];  // Engine B background control
+uint32_t bghofsB[4]; // Engine B background X offset
+uint32_t bgvofsB[4]; // Engine B background Y offset
 
 void dmaTransfer(interpreter::Cpu *cpu, uint32_t dmasad, uint32_t dmadad, uint32_t *dmacnt)
 {
@@ -270,6 +274,38 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
 
         case 0x400000E: // BG3CNT_A
             *(T*)&bgcntA[3] = value & 0xFFFF;
+            break;
+
+        case 0x4000010: // BG0HOFS_A
+            *(T*)&bghofsA[0] = value & 0x01FF;
+            break;
+
+        case 0x4000012: // BG0VOFS_A
+            *(T*)&bgvofsA[0] = value & 0x01FF;
+            break;
+
+        case 0x4000014: // BG1HOFS_A
+            *(T*)&bghofsA[1] = value & 0x01FF;
+            break;
+
+        case 0x4000016: // BG1VOFS_A
+            *(T*)&bgvofsA[1] = value & 0x01FF;
+            break;
+
+        case 0x4000018: // BG2HOFS_A
+            *(T*)&bghofsA[2] = value & 0x01FF;
+            break;
+
+        case 0x400001A: // BG2VOFS_A
+            *(T*)&bgvofsA[2] = value & 0x01FF;
+            break;
+
+        case 0x400001C: // BG3HOFS_A
+            *(T*)&bghofsA[3] = value & 0x01FF;
+            break;
+
+        case 0x400001E: // BG3VOFS_A
+            *(T*)&bgvofsA[3] = value & 0x01FF;
             break;
 
         case 0x40000B0: // DMA0SAD_9
@@ -579,6 +615,38 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
             *(T*)&bgcntB[3] = value & 0xFFFF;
             break;
 
+        case 0x4001010: // BG0HOFS_B
+            *(T*)&bghofsB[0] = value & 0x01FF;
+            break;
+
+        case 0x4001012: // BG0VOFS_B
+            *(T*)&bgvofsB[0] = value & 0x01FF;
+            break;
+
+        case 0x4001014: // BG1HOFS_B
+            *(T*)&bghofsB[1] = value & 0x01FF;
+            break;
+
+        case 0x4001016: // BG1VOFS_B
+            *(T*)&bgvofsB[1] = value & 0x01FF;
+            break;
+
+        case 0x4001018: // BG2HOFS_B
+            *(T*)&bghofsB[2] = value & 0x01FF;
+            break;
+
+        case 0x400101A: // BG2VOFS_B
+            *(T*)&bgvofsB[2] = value & 0x01FF;
+            break;
+
+        case 0x400101C: // BG3HOFS_B
+            *(T*)&bghofsB[3] = value & 0x01FF;
+            break;
+
+        case 0x400101E: // BG3VOFS_B
+            *(T*)&bgvofsB[3] = value & 0x01FF;
+            break;
+
         default:
             printf("Unknown ARM9 I/O write: 0x%X\n", address);
             break;
@@ -610,7 +678,7 @@ uint32_t ioReadMap7(uint32_t address)
         case 0x4000210: return ie7;        // IE_7
         case 0x4000214: return if7;        // IF_7
         case 0x4000241: return wramcnt;    // WRAMSTAT
-        default: printf("Unknown ARM7 I/O read: 0x%X\n", address); return 0;
+        default: /*printf("Unknown ARM7 I/O read: 0x%X\n", address);*/ return 0;
     }
 }
 
@@ -703,7 +771,7 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
             break;
 
         default:
-            printf("Unknown ARM7 I/O write: 0x%X\n", address);
+            //printf("Unknown ARM7 I/O write: 0x%X\n", address);
             break;
     }
 }

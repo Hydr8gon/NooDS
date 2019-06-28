@@ -38,6 +38,8 @@ typedef struct
 {
     uint32_t *dispcnt;
     uint32_t *bgcnt;
+    uint32_t *bghofs;
+    uint32_t *bgvofs;
     uint16_t *palette;
     uint16_t **extPalettes;
     uint32_t bgVram;
@@ -59,10 +61,14 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 
     uint32_t screenBase = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x800  + ((*engine->dispcnt & 0x38000000) >> 27) * 0x10000;
     uint32_t charBase   = ((engine->bgcnt[bg] & 0x003C) >> 2) * 0x4000 + ((*engine->dispcnt & 0x07000000) >> 24) * 0x10000;
-    uint16_t *tiles = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + ((memory::vcount / 8) * 32) * sizeof(uint16_t));
+    uint16_t yOffset = memory::vcount + engine->bgvofs[bg];
+    uint16_t *tiles = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + ((yOffset / 8) % 32) * 32 * sizeof(uint16_t));
 
     if (tiles)
     {
+        if ((engine->bgcnt[bg] & BIT(15)) && yOffset >= 256 && yOffset / 8 < 512)
+            tiles += 0x400;
+
         if (engine->bgcnt[bg] & BIT(7)) // 8-bit
         {
             uint16_t *palette;
@@ -73,25 +79,39 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 
             if (palette)
             {
-                for (int i = 0; i < 32; i++)
+                uint16_t start = pixel;
+                for (int i = 0; i <= 32; i++)
                 {
+                    uint16_t xOffset = engine->bghofs[bg] + i * 8;
+                    uint16_t *tile = &tiles[(xOffset / 8) % 32];
+                    if ((engine->bgcnt[bg] & BIT(14)) && xOffset >= 256 && xOffset < 512)
+                        tile += 0x400;
+
                     uint8_t *sprite;
-                    if (tiles[i] & BIT(11)) // Vertical flip
-                        sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 64 + (7 - memory::vcount % 8) * 8);
+                    if (*tile & BIT(11)) // Vertical flip
+                        sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (*tile & 0x03FF) * 64 + (7 - yOffset % 8) * 8);
                     else
-                        sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 64 + (memory::vcount % 8) * 8);
+                        sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (*tile & 0x03FF) * 64 + (yOffset % 8) * 8);
 
                     if (sprite)
                     {
-                        if (tiles[i] & BIT(10)) // Horizontal flip
+                        if (*tile & BIT(10)) // Horizontal flip
                         {
                             for (int j = 0; j < 8; j++)
-                                engine->bgBuffers[bg][pixel + 7 - j] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
+                            {
+                                int32_t p = pixel + 7 - j - (xOffset % 8);
+                                if (p >= start && p < start + 256)
+                                    engine->bgBuffers[bg][p] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
+                            }
                         }
                         else
                         {
                             for (int j = 0; j < 8; j++)
-                                engine->bgBuffers[bg][pixel + j] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
+                            {
+                                int32_t p = pixel + j - (xOffset % 8);
+                                if (p >= start && p < start + 256)
+                                    engine->bgBuffers[bg][p] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
+                            }
                         }
                     }
                     pixel += 8;
@@ -100,31 +120,45 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
         }
         else // 4-bit
         {
+            uint16_t start = pixel;
             for (int i = 0; i < 32; i++)
             {
+                uint16_t xOffset = engine->bghofs[bg] + i * 8;
+                uint16_t *tile = &tiles[(xOffset / 8) % 32];
+                if ((engine->bgcnt[bg] & BIT(14)) && xOffset >= 256 && xOffset < 512)
+                    tile += 0x400;
+
                 uint8_t *sprite;
                 if (tiles[i] & BIT(11)) // Vertical flip
-                    sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 32 + (7 - memory::vcount % 8) * 4);
+                    sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (*tile & 0x03FF) * 32 + (7 - yOffset % 8) * 4);
                 else
-                    sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 32 + (memory::vcount % 8) * 4);
+                    sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (*tile & 0x03FF) * 32 + (yOffset % 8) * 4);
 
                 if (sprite)
                 {
-                    uint8_t palette = ((tiles[i] & 0xF000) >> 12) * 0x10;
-                    if (tiles[i] & BIT(10)) // Horizontal flip
+                    uint16_t *palette = &engine->palette[((tiles[i] & 0xF000) >> 12) * 0x10];
+                    if (*tile & BIT(10)) // Horizontal flip
                     {
                         for (int j = 0; j < 4; j++)
                         {
-                            engine->bgBuffers[bg][pixel + 7 - j * 2] = ((sprite[j] & 0x0F) ? (engine->palette[palette + (sprite[j] & 0x0F)]        | BIT(15)) : 0);
-                            engine->bgBuffers[bg][pixel + 6 - j * 2] = ((sprite[j] & 0xF0) ? (engine->palette[palette + ((sprite[j] & 0xF0) >> 4)] | BIT(15)) : 0);
+                            int32_t p = pixel + 7 - j * 2 - (xOffset % 8);
+                            if (p >= start && p < start + 256)
+                                engine->bgBuffers[bg][p] = ((sprite[j] & 0x0F) ? (palette[sprite[j] & 0x0F] | BIT(15)) : 0);
+                            p--;
+                            if (p >= start && p < start + 256)
+                                engine->bgBuffers[bg][p] = ((sprite[j] & 0xF0) ? (palette[(sprite[j] & 0xF0) >> 4] | BIT(15)) : 0);
                         }
                     }
                     else
                     {
                         for (int j = 0; j < 4; j++)
                         {
-                            engine->bgBuffers[bg][pixel + j * 2]     = ((sprite[j] & 0x0F) ? (engine->palette[palette + (sprite[j] & 0x0F)]        | BIT(15)) : 0);
-                            engine->bgBuffers[bg][pixel + j * 2 + 1] = ((sprite[j] & 0xF0) ? (engine->palette[palette + ((sprite[j] & 0xF0) >> 4)] | BIT(15)) : 0);
+                            int32_t p = pixel + j * 2 - (xOffset % 8);
+                            if (p >= start && p < start + 256)
+                                engine->bgBuffers[bg][p] = ((sprite[j] & 0x0F) ? (palette[sprite[j] & 0x0F] | BIT(15)) : 0);
+                            p++;
+                            if (p >= start && p < start + 256)
+                                engine->bgBuffers[bg][p] = ((sprite[j] & 0xF0) ? (palette[(sprite[j] & 0xF0) >> 4] | BIT(15)) : 0);
                         }
                     }
                 }
@@ -353,12 +387,16 @@ void init()
 {
     engineA.dispcnt = &memory::dispcntA;
     engineA.bgcnt   = memory::bgcntA;
+    engineA.bghofs  = memory::bghofsA;
+    engineA.bgvofs  = memory::bgvofsA;
     engineA.palette = (uint16_t*)memory::paletteA;
     engineA.extPalettes = memory::extPalettesA;
     engineA.bgVram  = 0x6000000;
 
     engineB.dispcnt = &memory::dispcntB;
     engineB.bgcnt   = memory::bgcntB;
+    engineB.bghofs  = memory::bghofsB;
+    engineB.bgvofs  = memory::bgvofsB;
     engineB.palette = (uint16_t*)memory::paletteB;
     engineB.extPalettes = memory::extPalettesB;
     engineB.bgVram  = 0x6200000;
