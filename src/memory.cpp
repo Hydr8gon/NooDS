@@ -207,11 +207,11 @@ uint32_t ioReadMap9(uint32_t address)
     {
         case 0x4000000: return dispcntA;   // DISPCNT_A
         case 0x4000004: return dispstat;   // DISPSTAT
+        case 0x4000006: return vcount;     // VCOUNT
         case 0x4000008: return bgcntA[0];  // BG0CNT_A
         case 0x400000A: return bgcntA[1];  // BG1CNT_A
         case 0x400000C: return bgcntA[2];  // BG2CNT_A
         case 0x400000E: return bgcntA[3];  // BG3CNT_A
-        case 0x4000006: return vcount;     // VCOUNT
         case 0x40000B0: return dmasad9[0]; // DMA0SAD_9
         case 0x40000B4: return dmadad9[0]; // DMA0DAD_9
         case 0x40000B8: return dmacnt9[0]; // DMA0CNT_9

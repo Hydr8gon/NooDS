@@ -75,11 +75,24 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
             {
                 for (int i = 0; i < 32; i++)
                 {
-                    uint8_t *sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 64 + (memory::vcount % 8) * 8);
+                    uint8_t *sprite;
+                    if (tiles[i] & BIT(11)) // Vertical flip
+                        sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 64 + (7 - memory::vcount % 8) * 8);
+                    else
+                        sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 64 + (memory::vcount % 8) * 8);
+
                     if (sprite)
                     {
-                        for (int j = 0; j < 8; j++)
-                            engine->bgBuffers[bg][pixel + j] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
+                        if (tiles[i] & BIT(10)) // Horizontal flip
+                        {
+                            for (int j = 0; j < 8; j++)
+                                engine->bgBuffers[bg][pixel + 7 - j] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
+                        }
+                        else
+                        {
+                            for (int j = 0; j < 8; j++)
+                                engine->bgBuffers[bg][pixel + j] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
+                        }
                     }
                     pixel += 8;
                 }
@@ -89,14 +102,30 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
         {
             for (int i = 0; i < 32; i++)
             {
-                uint8_t *sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 32 + (memory::vcount % 8) * 4);
+                uint8_t *sprite;
+                if (tiles[i] & BIT(11)) // Vertical flip
+                    sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 32 + (7 - memory::vcount % 8) * 4);
+                else
+                    sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (tiles[i] & 0x03FF) * 32 + (memory::vcount % 8) * 4);
+
                 if (sprite)
                 {
                     uint8_t palette = ((tiles[i] & 0xF000) >> 12) * 0x10;
-                    for (int j = 0; j < 4; j++)
+                    if (tiles[i] & BIT(10)) // Horizontal flip
                     {
-                        engine->bgBuffers[bg][pixel + j * 2]     = ((sprite[j] & 0x0F) ? (engine->palette[palette + (sprite[j] & 0x0F)]        | BIT(15)) : 0);
-                        engine->bgBuffers[bg][pixel + j * 2 + 1] = ((sprite[j] & 0xF0) ? (engine->palette[palette + ((sprite[j] & 0xF0) >> 4)] | BIT(15)) : 0);
+                        for (int j = 0; j < 4; j++)
+                        {
+                            engine->bgBuffers[bg][pixel + 7 - j * 2] = ((sprite[j] & 0x0F) ? (engine->palette[palette + (sprite[j] & 0x0F)]        | BIT(15)) : 0);
+                            engine->bgBuffers[bg][pixel + 6 - j * 2] = ((sprite[j] & 0xF0) ? (engine->palette[palette + ((sprite[j] & 0xF0) >> 4)] | BIT(15)) : 0);
+                        }
+                    }
+                    else
+                    {
+                        for (int j = 0; j < 4; j++)
+                        {
+                            engine->bgBuffers[bg][pixel + j * 2]     = ((sprite[j] & 0x0F) ? (engine->palette[palette + (sprite[j] & 0x0F)]        | BIT(15)) : 0);
+                            engine->bgBuffers[bg][pixel + j * 2 + 1] = ((sprite[j] & 0xF0) ? (engine->palette[palette + ((sprite[j] & 0xF0) >> 4)] | BIT(15)) : 0);
+                        }
                     }
                 }
                 pixel += 8;
