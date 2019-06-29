@@ -678,7 +678,7 @@ uint32_t ioReadMap7(uint32_t address)
         case 0x4000210: return ie7;        // IE_7
         case 0x4000214: return if7;        // IF_7
         case 0x4000241: return wramcnt;    // WRAMSTAT
-        default: /*printf("Unknown ARM7 I/O read: 0x%X\n", address);*/ return 0;
+        default: printf("Unknown ARM7 I/O read: 0x%X\n", address); return 0;
     }
 }
 
@@ -771,7 +771,7 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
             break;
 
         default:
-            //printf("Unknown ARM7 I/O write: 0x%X\n", address);
+            printf("Unknown ARM7 I/O write: 0x%X\n", address);
             break;
     }
 }

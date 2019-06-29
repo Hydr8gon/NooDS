@@ -66,10 +66,10 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 
     if (tiles)
     {
-        if ((engine->bgcnt[bg] & BIT(15)) && yOffset >= 256 && yOffset / 8 < 512)
-            tiles += 0x400;
+        if ((engine->bgcnt[bg] & BIT(15)) && yOffset >= 256 && yOffset < 512)
+            tiles += (engine->bgcnt[bg] & BIT(14)) ? 0x800 : 0x400;
 
-        if (engine->bgcnt[bg] & BIT(7)) // 8-bit
+        if (engine->bgcnt[bg] & BIT(7)) // 8-bit tiles
         {
             uint16_t *palette;
             if (*engine->dispcnt & BIT(30)) // Extended palette
@@ -99,7 +99,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
                         {
                             for (int j = 0; j < 8; j++)
                             {
-                                int32_t p = pixel + 7 - j - (xOffset % 8);
+                                int32_t p = pixel - (xOffset % 8) + 7 - j;
                                 if (p >= start && p < start + 256)
                                     engine->bgBuffers[bg][p] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
                             }
@@ -108,7 +108,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
                         {
                             for (int j = 0; j < 8; j++)
                             {
-                                int32_t p = pixel + j - (xOffset % 8);
+                                int32_t p = pixel - (xOffset % 8) + j;
                                 if (p >= start && p < start + 256)
                                     engine->bgBuffers[bg][p] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
                             }
@@ -118,7 +118,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
                 }
             }
         }
-        else // 4-bit
+        else // 4-bit tiles
         {
             uint16_t start = pixel;
             for (int i = 0; i < 32; i++)
@@ -141,7 +141,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
                     {
                         for (int j = 0; j < 4; j++)
                         {
-                            int32_t p = pixel + 7 - j * 2 - (xOffset % 8);
+                            int32_t p = pixel - (xOffset % 8) + 7 - j * 2;
                             if (p >= start && p < start + 256)
                                 engine->bgBuffers[bg][p] = ((sprite[j] & 0x0F) ? (palette[sprite[j] & 0x0F] | BIT(15)) : 0);
                             p--;
@@ -153,7 +153,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
                     {
                         for (int j = 0; j < 4; j++)
                         {
-                            int32_t p = pixel + j * 2 - (xOffset % 8);
+                            int32_t p = pixel - (xOffset % 8) + j * 2;
                             if (p >= start && p < start + 256)
                                 engine->bgBuffers[bg][p] = ((sprite[j] & 0x0F) ? (palette[sprite[j] & 0x0F] | BIT(15)) : 0);
                             p++;

@@ -28,6 +28,8 @@
 #define CP ((opcode & 0x000000E0) >> 5)
 #define CM (opcode & 0x0000000F)
 
+#define MSR_IMM (((opcode & 0x000000FF) << (32 - ((opcode & 0x00000F00) >> 7))) | ((opcode & 0x000000FF) >> ((opcode & 0x00000F00) >> 7)))
+
 #define B_OFFSET (((opcode & 0x00FFFFFF) << 2) | ((opcode & BIT(23)) ? 0xFC000000 : 0))
 
 #define BCOND_OFFSET_THUMB (((opcode & 0x00FF) << 1) | ((opcode & BIT(7))  ? 0xFFFFFE00 : 0))
@@ -92,6 +94,30 @@ void msrRs(interpreter::Cpu *cpu, uint32_t opcode) // MSR SPSR,Rm
             *cpu->spsr = (*cpu->spsr & ~0xFF000000) | (RM & 0xFF000000);
         if (opcode & BIT(16))
             *cpu->spsr = (*cpu->spsr & ~0x000000FF) | (RM & 0x000000FF);
+    }
+}
+
+void msrIc(interpreter::Cpu *cpu, uint32_t opcode) // MSR CPSR,#i
+{
+    uint32_t value = MSR_IMM;
+    if (opcode & BIT(19))
+        cpu->cpsr = (cpu->cpsr & ~0xFF000000) | (value & 0xFF000000);
+    if ((opcode & BIT(16)) && (cpu->cpsr & 0x0000001F) != 0x10)
+    {
+        cpu->cpsr = (cpu->cpsr & ~0x000000E0) | (value & 0x000000E0);
+        interpreter::setMode(cpu, RM & 0x0000001F);
+    }
+}
+
+void msrIs(interpreter::Cpu *cpu, uint32_t opcode) // MSR SPSR,#i
+{
+    if (cpu->spsr)
+    {
+        uint32_t value = MSR_IMM;
+        if (opcode & BIT(19))
+            *cpu->spsr = (*cpu->spsr & ~0xFF000000) | (value & 0xFF000000);
+        if (opcode & BIT(16))
+            *cpu->spsr = (*cpu->spsr & ~0x000000FF) | (value & 0x000000FF);
     }
 }
 

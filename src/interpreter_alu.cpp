@@ -44,9 +44,9 @@
 #define RDH_THUMB (*cpu->registers[(opcode & 0x0007) | ((opcode & 0x0080) >> 4)])
 
 #define IMM3_THUMB  ((opcode & 0x01C0) >> 6)
+#define IMM5_THUMB  ((opcode & 0x07C0) >> 6)
 #define IMM7_THUMB  ((opcode & BIT(7)) ? (0 - (opcode & 0x007F)) : (opcode & 0x007F))
 #define IMM8_THUMB  (opcode & 0x00FF)
-#define SHIFT_THUMB ((opcode & 0x07C0) >> 6)
 #define DP_SWITCH   ((opcode & 0x00C0) >> 6)
 
 #define AND(op0, op1, op2) \
@@ -511,9 +511,9 @@ void mvnsImm(interpreter::Cpu *cpu, uint32_t opcode) { ROR_FLAGS(IMM, IMM_SHIFT)
 namespace interpreter_alu_thumb
 {
 
-void lslImm5(interpreter::Cpu *cpu, uint32_t opcode) { LSL_FLAGS(RS_THUMB, SHIFT_THUMB) MOV(RD_THUMB, LSL(RS_THUMB, SHIFT_THUMB)) COMMON_FLAGS(RD_THUMB) } // LSL Rd,Rs,#i
-void lsrImm5(interpreter::Cpu *cpu, uint32_t opcode) { LSR_FLAGS(RS_THUMB, SHIFT_THUMB) MOV(RD_THUMB, LSR(RS_THUMB, SHIFT_THUMB)) COMMON_FLAGS(RD_THUMB) } // LSR Rd,Rs,#i
-void asrImm5(interpreter::Cpu *cpu, uint32_t opcode) { ASR_FLAGS(RS_THUMB, SHIFT_THUMB) MOV(RD_THUMB, ASR(RS_THUMB, SHIFT_THUMB)) COMMON_FLAGS(RD_THUMB) } // ASR Rd,Rs,#i
+void lslImm5(interpreter::Cpu *cpu, uint32_t opcode) { LSL_FLAGS(RS_THUMB, IMM5_THUMB) MOV(RD_THUMB, LSL(RS_THUMB, IMM5_THUMB)) COMMON_FLAGS(RD_THUMB) } // LSL Rd,Rs,#i
+void lsrImm5(interpreter::Cpu *cpu, uint32_t opcode) { LSR_FLAGS(RS_THUMB, IMM5_THUMB) MOV(RD_THUMB, LSR(RS_THUMB, IMM5_THUMB)) COMMON_FLAGS(RD_THUMB) } // LSR Rd,Rs,#i
+void asrImm5(interpreter::Cpu *cpu, uint32_t opcode) { ASR_FLAGS(RS_THUMB, IMM5_THUMB) MOV(RD_THUMB, ASR(RS_THUMB, IMM5_THUMB)) COMMON_FLAGS(RD_THUMB) } // ASR Rd,Rs,#i
 
 void addReg (interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD_THUMB, RS_THUMB, RN_THUMB)   ADD_FLAGS(RD_THUMB) } // ADD Rd,Rs,Rn
 void subReg (interpreter::Cpu *cpu, uint32_t opcode) { SUB(RD_THUMB, RS_THUMB, RN_THUMB)   SUB_FLAGS(RD_THUMB) } // SUB Rd,Rs,Rn
@@ -551,10 +551,10 @@ void dpG3(interpreter::Cpu *cpu, uint32_t opcode)
 {
     switch (DP_SWITCH)
     {
-        case 0x0: { TST(RD_THUMB,    RS_THUMB)                        } return; // TST Rd,Rs
-        case 0x1: { SUB(RD_THUMB, 0, RS_THUMB) COMMON_FLAGS(RD_THUMB) } return; // NEG Rd,Rs
-        case 0x2: { CMP(RD_THUMB,    RS_THUMB)                        } return; // CMP Rd,Rs
-        case 0x3: { CMN(RD_THUMB,    RS_THUMB)                        } return; // CMN Rd,Rs
+        case 0x0: { TST(RD_THUMB,    RS_THUMB)                     } return; // TST Rd,Rs
+        case 0x1: { SUB(RD_THUMB, 0, RS_THUMB) SUB_FLAGS(RD_THUMB) } return; // NEG Rd,Rs
+        case 0x2: { CMP(RD_THUMB,    RS_THUMB)                     } return; // CMP Rd,Rs
+        case 0x3: { CMN(RD_THUMB,    RS_THUMB)                     } return; // CMN Rd,Rs
     }
 }
 

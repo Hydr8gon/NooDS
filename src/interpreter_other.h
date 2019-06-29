@@ -34,6 +34,9 @@ void blx(interpreter::Cpu *cpu, uint32_t opcode);
 void mrsRs(interpreter::Cpu *cpu, uint32_t opcode);
 void msrRs(interpreter::Cpu *cpu, uint32_t opcode);
 
+void msrIc(interpreter::Cpu *cpu, uint32_t opcode);
+void msrIs(interpreter::Cpu *cpu, uint32_t opcode);
+
 void b (interpreter::Cpu *cpu, uint32_t opcode);
 void bl(interpreter::Cpu *cpu, uint32_t opcode);
 
