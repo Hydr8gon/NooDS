@@ -30,9 +30,9 @@
 #define SHIFT    ((opcode & 0x00000F80) >> 7)
 
 #define LSL (RM << SHIFT)
-#define LSR (RM >> SHIFT)
-#define ASR ((int32_t)RM >> SHIFT)
-#define ROR ((RM << (32 - SHIFT % 32)) | (RM >> (SHIFT % 32)))
+#define LSR (SHIFT ? (RM >> SHIFT) : 0)
+#define ASR (SHIFT ? ((int32_t)RM >> SHIFT) : ((RM & BIT(31)) ? 0xFFFFFFFF : 0))
+#define ROR (SHIFT ? ((RM << (32 - SHIFT)) | (RM >> SHIFT)) : (((cpu->cpsr & BIT(29)) << 2) | (RM >> 1)))
 
 #define RO_THUMB  (*cpu->registers[(opcode & 0x01C0) >> 6])
 #define RB_THUMB  (*cpu->registers[(opcode & 0x0038) >> 3])

@@ -22,7 +22,7 @@
 
 #include "interpreter.h"
 
-#define BIT(i) (1 << i)
+#define BIT(i) (1 << (i))
 
 namespace core
 {
