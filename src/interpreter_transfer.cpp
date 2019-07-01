@@ -43,12 +43,14 @@
 #define IMM8_THUMB (opcode & 0x00FF)
 
 #define STR_PT(type, sign, op0, op1, op2) \
+    uint32_t offset = op2;                \
     memory::write<type>(cpu, op1, op0);   \
-    op1 = op1 sign op2;
+    op1 = op1 sign offset;
 
 #define LDR_PT(type, sign, op0, op1, op2) \
+    uint32_t offset = op2;                \
     op0 = memory::read<type>(cpu, op1);   \
-    op1 = op1 sign op2;
+    op1 = op1 sign offset;
 
 #define STR_OF(type, sign, op0, op1, op2)        \
     memory::write<type>(cpu, op1 sign op2, op0);
@@ -90,26 +92,6 @@
         }                                                              \
     }
 
-#define STMDA_W(op0, range)                                        \
-    for (int i = range; i >= 0; i--)                               \
-    {                                                              \
-        if (opcode & BIT(i))                                       \
-        {                                                          \
-            memory::write<uint32_t>(cpu, op0, *cpu->registers[i]); \
-            op0 -= 4;                                              \
-        }                                                          \
-    }
-
-#define LDMDA_W(op0, range)                                        \
-    for (int i = range; i >= 0; i--)                               \
-    {                                                              \
-        if (opcode & BIT(i))                                       \
-        {                                                          \
-            *cpu->registers[i] = memory::read<uint32_t>(cpu, op0); \
-            op0 -= 4;                                              \
-        }                                                          \
-    }
-
 #define STMIA(op0, range)                                              \
     uint32_t address = op0;                                            \
     for (int i = 0; i <= range; i++)                                   \
@@ -130,26 +112,6 @@
             *cpu->registers[i] = memory::read<uint32_t>(cpu, address); \
             address += 4;                                              \
         }                                                              \
-    }
-
-#define STMIA_W(op0, range)                                        \
-    for (int i = 0; i <= range; i++)                               \
-    {                                                              \
-        if (opcode & BIT(i))                                       \
-        {                                                          \
-            memory::write<uint32_t>(cpu, op0, *cpu->registers[i]); \
-            op0 += 4;                                              \
-        }                                                          \
-    }
-
-#define LDMIA_W(op0, range)                                        \
-    for (int i = 0; i <= range; i++)                               \
-    {                                                              \
-        if (opcode & BIT(i))                                       \
-        {                                                          \
-            *cpu->registers[i] = memory::read<uint32_t>(cpu, op0); \
-            op0 += 4;                                              \
-        }                                                          \
     }
 
 #define STMDB(op0, range)                                              \
@@ -174,26 +136,6 @@
         }                                                              \
     }
 
-#define STMDB_W(op0, range)                                        \
-    for (int i = range; i >= 0; i--)                               \
-    {                                                              \
-        if (opcode & BIT(i))                                       \
-        {                                                          \
-            op0 -= 4;                                              \
-            memory::write<uint32_t>(cpu, op0, *cpu->registers[i]); \
-        }                                                          \
-    }
-
-#define LDMDB_W(op0, range)                                        \
-    for (int i = range; i >= 0; i--)                               \
-    {                                                              \
-        if (opcode & BIT(i))                                       \
-        {                                                          \
-            op0 -= 4;                                              \
-            *cpu->registers[i] = memory::read<uint32_t>(cpu, op0); \
-        }                                                          \
-    }
-
 #define STMIB(op0, range)                                              \
     uint32_t address = op0;                                            \
     for (int i = 0; i <= range; i++)                                   \
@@ -216,25 +158,33 @@
         }                                                              \
     }
 
-#define STMIB_W(op0, range)                                        \
-    for (int i = 0; i <= range; i++)                               \
-    {                                                              \
-        if (opcode & BIT(i))                                       \
-        {                                                          \
-            op0 += 4;                                              \
-            memory::write<uint32_t>(cpu, op0, *cpu->registers[i]); \
-        }                                                          \
+#define PUSH_LR                                                        \
+    uint32_t address = *cpu->registers[13] - 4;                        \
+    memory::write<uint32_t>(cpu, address, *cpu->registers[14]);        \
+    for (int i = 7; i >= 0; i--)                                       \
+    {                                                                  \
+        if (opcode & BIT(i))                                           \
+        {                                                              \
+            address -= 4;                                              \
+            memory::write<uint32_t>(cpu, address, *cpu->registers[i]); \
+        }                                                              \
     }
 
-#define LDMIB_W(op0, range)                                        \
-    for (int i = 0; i <= range; i++)                               \
-    {                                                              \
-        if (opcode & BIT(i))                                       \
-        {                                                          \
-            op0 += 4;                                              \
-            *cpu->registers[i] = memory::read<uint32_t>(cpu, op0); \
-        }                                                          \
-    }
+#define POP_PC                                                         \
+    uint32_t address = *cpu->registers[13];                            \
+    for (int i = 0; i <= 7; i++)                                       \
+    {                                                                  \
+        if (opcode & BIT(i))                                           \
+        {                                                              \
+            *cpu->registers[i] = memory::read<uint32_t>(cpu, address); \
+            address += 4;                                              \
+        }                                                              \
+    }                                                                  \
+    *cpu->registers[15] = memory::read<uint32_t>(cpu, address);        \
+    address += 4;
+
+#define WRITEBACK(op0) \
+    op0 = address;
 
 #define THUMB_SWITCH                                      \
     if (cpu->type == 9 && (*cpu->registers[15] & BIT(0))) \
@@ -457,25 +407,25 @@ void ldrbPrrplr(interpreter::Cpu *cpu, uint32_t opcode) { LDR_PR(uint8_t, +, RD,
 void ldrbPrrpar(interpreter::Cpu *cpu, uint32_t opcode) { LDR_PR(uint8_t, +, RD, RN, ASR) THUMB_SWITCH } // LDRB Rd,[Rn,Rm,ASR #i]!
 void ldrbPrrprr(interpreter::Cpu *cpu, uint32_t opcode) { LDR_PR(uint8_t, +, RD, RN, ROR) THUMB_SWITCH } // LDRB Rd,[Rn,Rm,ROR #i]!
 
-void stmda (interpreter::Cpu *cpu, uint32_t opcode) { STMDA  (RN, 15)              } // STMDA Rn,<Rlist>
-void ldmda (interpreter::Cpu *cpu, uint32_t opcode) { LDMDA  (RN, 15) THUMB_SWITCH } // LDMDA Rn,<Rlist>
-void stmdaW(interpreter::Cpu *cpu, uint32_t opcode) { STMDA_W(RN, 15)              } // STMDA Rn!,<Rlist>
-void ldmdaW(interpreter::Cpu *cpu, uint32_t opcode) { LDMDA_W(RN, 15) THUMB_SWITCH } // LDMDA Rn!,<Rlist>
+void stmda (interpreter::Cpu *cpu, uint32_t opcode) { STMDA(RN, 15)                            } // STMDA Rn,<Rlist>
+void ldmda (interpreter::Cpu *cpu, uint32_t opcode) { LDMDA(RN, 15)               THUMB_SWITCH } // LDMDA Rn,<Rlist>
+void stmdaW(interpreter::Cpu *cpu, uint32_t opcode) { STMDA(RN, 15) WRITEBACK(RN)              } // STMDA Rn!,<Rlist>
+void ldmdaW(interpreter::Cpu *cpu, uint32_t opcode) { LDMDA(RN, 15) WRITEBACK(RN) THUMB_SWITCH } // LDMDA Rn!,<Rlist>
 
-void stmia (interpreter::Cpu *cpu, uint32_t opcode) { STMIA  (RN, 15)              } // STMIA Rn,<Rlist>
-void ldmia (interpreter::Cpu *cpu, uint32_t opcode) { LDMIA  (RN, 15) THUMB_SWITCH } // LDMIA Rn,<Rlist>
-void stmiaW(interpreter::Cpu *cpu, uint32_t opcode) { STMIA_W(RN, 15)              } // STMIA Rn!,<Rlist>
-void ldmiaW(interpreter::Cpu *cpu, uint32_t opcode) { LDMIA_W(RN, 15) THUMB_SWITCH } // LDMIA Rn!,<Rlist>
+void stmia (interpreter::Cpu *cpu, uint32_t opcode) { STMIA(RN, 15)                            } // STMIA Rn,<Rlist>
+void ldmia (interpreter::Cpu *cpu, uint32_t opcode) { LDMIA(RN, 15)               THUMB_SWITCH } // LDMIA Rn,<Rlist>
+void stmiaW(interpreter::Cpu *cpu, uint32_t opcode) { STMIA(RN, 15) WRITEBACK(RN)              } // STMIA Rn!,<Rlist>
+void ldmiaW(interpreter::Cpu *cpu, uint32_t opcode) { LDMIA(RN, 15) WRITEBACK(RN) THUMB_SWITCH } // LDMIA Rn!,<Rlist>
 
-void stmdb (interpreter::Cpu *cpu, uint32_t opcode) { STMDB  (RN, 15)              } // STMDB Rn,<Rlist>
-void ldmdb (interpreter::Cpu *cpu, uint32_t opcode) { LDMDB  (RN, 15) THUMB_SWITCH } // LDMDB Rn,<Rlist>
-void stmdbW(interpreter::Cpu *cpu, uint32_t opcode) { STMDB_W(RN, 15)              } // STMDB Rn!,<Rlist>
-void ldmdbW(interpreter::Cpu *cpu, uint32_t opcode) { LDMDB_W(RN, 15) THUMB_SWITCH } // LDMDB Rn!,<Rlist>
+void stmdb (interpreter::Cpu *cpu, uint32_t opcode) { STMDB(RN, 15)                            } // STMDB Rn,<Rlist>
+void ldmdb (interpreter::Cpu *cpu, uint32_t opcode) { LDMDB(RN, 15)               THUMB_SWITCH } // LDMDB Rn,<Rlist>
+void stmdbW(interpreter::Cpu *cpu, uint32_t opcode) { STMDB(RN, 15) WRITEBACK(RN)              } // STMDB Rn!,<Rlist>
+void ldmdbW(interpreter::Cpu *cpu, uint32_t opcode) { LDMDB(RN, 15) WRITEBACK(RN) THUMB_SWITCH } // LDMDB Rn!,<Rlist>
 
-void stmib (interpreter::Cpu *cpu, uint32_t opcode) { STMIB  (RN, 15)              } // STMIB Rn,<Rlist>
-void ldmib (interpreter::Cpu *cpu, uint32_t opcode) { LDMIB  (RN, 15) THUMB_SWITCH } // LDMIB Rn,<Rlist>
-void stmibW(interpreter::Cpu *cpu, uint32_t opcode) { STMIB_W(RN, 15)              } // STMIB Rn!,<Rlist>
-void ldmibW(interpreter::Cpu *cpu, uint32_t opcode) { LDMIB_W(RN, 15) THUMB_SWITCH } // LDMIB Rn!,<Rlist>
+void stmib (interpreter::Cpu *cpu, uint32_t opcode) { STMIB(RN, 15)                            } // STMIB Rn,<Rlist>
+void ldmib (interpreter::Cpu *cpu, uint32_t opcode) { LDMIB(RN, 15)               THUMB_SWITCH } // LDMIB Rn,<Rlist>
+void stmibW(interpreter::Cpu *cpu, uint32_t opcode) { STMIB(RN, 15) WRITEBACK(RN)              } // STMIB Rn!,<Rlist>
+void ldmibW(interpreter::Cpu *cpu, uint32_t opcode) { LDMIB(RN, 15) WRITEBACK(RN) THUMB_SWITCH } // LDMIB Rn!,<Rlist>
 
 }
 
@@ -504,13 +454,13 @@ void ldrhImm5(interpreter::Cpu *cpu, uint32_t opcode) { LDR_OF(uint16_t, +, RD_T
 void strSp(interpreter::Cpu *cpu, uint32_t opcode) { STR_OF(uint32_t, +, RD8_THUMB, *cpu->registers[13], (IMM8_THUMB << 2)) } // STR Rd,[SP,#i]
 void ldrSp(interpreter::Cpu *cpu, uint32_t opcode) { LDR_OF(uint32_t, +, RD8_THUMB, *cpu->registers[13], (IMM8_THUMB << 2)) } // LDR Rd,[SP,#i]
 
-void push  (interpreter::Cpu *cpu, uint32_t opcode) {                                                                   STMDB_W(*cpu->registers[13], 7) } // PUSH <Rlist>
-void pushLr(interpreter::Cpu *cpu, uint32_t opcode) { STR_PR(uint32_t, +, *cpu->registers[14], *cpu->registers[13], -4) STMDB_W(*cpu->registers[13], 7) } // PUSH <Rlist>,LR
+void push  (interpreter::Cpu *cpu, uint32_t opcode) { STMDB(*cpu->registers[13], 7) WRITEBACK(*cpu->registers[13]) } // PUSH <Rlist>
+void pushLr(interpreter::Cpu *cpu, uint32_t opcode) { PUSH_LR                       WRITEBACK(*cpu->registers[13]) } // PUSH <Rlist>,LR
 
-void pop  (interpreter::Cpu *cpu, uint32_t opcode) { LDMIA_W(*cpu->registers[13], 7)                                                                             } // POP <Rlist>
-void popPc(interpreter::Cpu *cpu, uint32_t opcode) { LDMIA_W(*cpu->registers[13], 7) LDR_PT(uint32_t, +, *cpu->registers[15], *cpu->registers[13], 4) ARM_SWITCH } // POP <Rlist>,PC
+void pop  (interpreter::Cpu *cpu, uint32_t opcode) { LDMIA(*cpu->registers[13], 7) WRITEBACK(*cpu->registers[13])            } // POP <Rlist>
+void popPc(interpreter::Cpu *cpu, uint32_t opcode) { POP_PC                        WRITEBACK(*cpu->registers[13]) ARM_SWITCH } // POP <Rlist>,PC
 
-void stmia(interpreter::Cpu *cpu, uint32_t opcode) { STMIA_W(RD8_THUMB, 7) } // STMIA Rb!,<Rlist>
-void ldmia(interpreter::Cpu *cpu, uint32_t opcode) { LDMIA_W(RD8_THUMB, 7) } // LDMIA Rb!,<Rlist>
+void stmia(interpreter::Cpu *cpu, uint32_t opcode) { STMIA(RD8_THUMB, 7) WRITEBACK(RD8_THUMB) } // STMIA Rb!,<Rlist>
+void ldmia(interpreter::Cpu *cpu, uint32_t opcode) { LDMIA(RD8_THUMB, 7) WRITEBACK(RD8_THUMB) } // LDMIA Rb!,<Rlist>
 
 }
