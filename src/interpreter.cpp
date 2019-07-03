@@ -179,7 +179,7 @@ void irq9(uint8_t type)
             *core::arm9.spsr = cpsr;
             core::arm9.cpsr &= ~BIT(5);
             core::arm9.cpsr |= BIT(7);
-            *core::arm9.registers[14] = *core::arm9.registers[15] - ((core::arm9.cpsr & BIT(5)) ? 2 : 4);
+            *core::arm9.registers[14] = *core::arm9.registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
             *core::arm9.registers[15] = cp15::exceptions + 0x18 + 8;
         }
         core::arm9.halt = false;
@@ -198,7 +198,7 @@ void irq7(uint8_t type)
             *core::arm7.spsr = cpsr;
             core::arm7.cpsr &= ~BIT(5);
             core::arm7.cpsr |= BIT(7);
-            *core::arm7.registers[14] = *core::arm7.registers[15] - ((core::arm7.cpsr & BIT(5)) ? 2 : 4);
+            *core::arm7.registers[14] = *core::arm7.registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
             *core::arm7.registers[15] = 0x00000018 + 8;
         }
         core::arm7.halt = false;
