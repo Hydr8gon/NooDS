@@ -55,7 +55,12 @@ bool condition(Cpu *cpu, uint32_t opcode)
         case 0xC: return !(cpu->cpsr & BIT(30)) &&  (cpu->cpsr & BIT(31)) == (cpu->cpsr & BIT(28)) << 3; // GT
         case 0xD: return  (cpu->cpsr & BIT(30)) ||  (cpu->cpsr & BIT(31)) != (cpu->cpsr & BIT(28)) << 3; // LE
         case 0xE: return true;                                                                           // AL
-        default: printf("Unknown ARM%d ARM opcode: 0x%X\n", cpu->type, opcode); return false;
+
+        default: // Reserved
+            if (((opcode & 0x0F000000) >> 24) == 0xA || ((opcode & 0x0F000000) >> 24) == 0xB)
+                return true;
+            printf("Unknown ARM%d ARM opcode: 0x%X\n", cpu->type, opcode);
+            return false;
     }
 }
 

@@ -35,6 +35,8 @@ extern uint32_t itcmSize;
 uint32_t readRegister(uint8_t cn, uint8_t cm, uint8_t cp);
 void writeRegister(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value);
 
+void init();
+
 }
 
 #endif // CP15_H

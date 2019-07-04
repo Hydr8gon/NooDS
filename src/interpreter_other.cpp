@@ -21,6 +21,8 @@
 #include "core.h"
 #include "cp15.h"
 
+#define CONDITION ((opcode & 0xF0000000) >> 28)
+
 #define RD (*cpu->registers[(opcode & 0x0000F000) >> 12])
 #define RM (*cpu->registers[(opcode & 0x0000000F)])
 
@@ -60,10 +62,7 @@ void bx(interpreter::Cpu *cpu, uint32_t opcode) // BX Rn
 {
     *cpu->registers[15] = RM;
     if (*cpu->registers[15] & BIT(0))
-    {
         cpu->cpsr |= BIT(5);
-        *cpu->registers[15] &= ~BIT(0);
-    }
 }
 
 void blx(interpreter::Cpu *cpu, uint32_t opcode) // BLX Rn
@@ -73,10 +72,7 @@ void blx(interpreter::Cpu *cpu, uint32_t opcode) // BLX Rn
         *cpu->registers[14] = *cpu->registers[15] - 4;
         *cpu->registers[15] = RM;
         if (*cpu->registers[15] & BIT(0))
-        {
             cpu->cpsr |= BIT(5);
-            *cpu->registers[15] &= ~BIT(0);
-        }
     }
 }
 
@@ -121,15 +117,39 @@ void msrIs(interpreter::Cpu *cpu, uint32_t opcode) // MSR SPSR,#i
     }
 }
 
-void b(interpreter::Cpu *cpu, uint32_t opcode) // B label
+void b(interpreter::Cpu *cpu, uint32_t opcode)
 {
-    *cpu->registers[15] += B_OFFSET | BIT(0);
+    if (CONDITION == 0xF) // BLX label
+    {
+        if (cpu->type == 9)
+        {
+            *cpu->registers[14] = *cpu->registers[15] - 4;
+            *cpu->registers[15] += B_OFFSET | BIT(0);
+            cpu->cpsr |= BIT(5);
+        }
+    }
+    else // B label
+    {
+        *cpu->registers[15] += B_OFFSET | BIT(0);
+    }
 }
 
-void bl(interpreter::Cpu *cpu, uint32_t opcode) // BL label
+void bl(interpreter::Cpu *cpu, uint32_t opcode)
 {
-    *cpu->registers[14] = *cpu->registers[15] - 4;
-    *cpu->registers[15] += B_OFFSET | BIT(0);
+    if (CONDITION == 0xF) // BLX label
+    {
+        if (cpu->type == 9)
+        {
+            *cpu->registers[14] = *cpu->registers[15] - 4;
+            *cpu->registers[15] += (B_OFFSET + 2) | BIT(0);
+            cpu->cpsr |= BIT(5);
+        }
+    }
+    else // BL label
+    {
+        *cpu->registers[14] = *cpu->registers[15] - 4;
+        *cpu->registers[15] += B_OFFSET | BIT(0);
+    }
 }
 
 void mcr(interpreter::Cpu *cpu, uint32_t opcode) // MCR Pn,<cpopc>,Rd,Cn,Cm,<cp>
@@ -165,8 +185,8 @@ void bxReg(interpreter::Cpu *cpu, uint32_t opcode) // BX/BLX Rs
     {
         if (opcode & BIT(7))
             *cpu->registers[14] = *cpu->registers[15] - 1;
-        *cpu->registers[15] = BX_OFFSET_THUMB & ~BIT(0);
-        if (!(BX_OFFSET_THUMB & BIT(0)))
+        *cpu->registers[15] = BX_OFFSET_THUMB;
+        if (!(*cpu->registers[15] & BIT(0)))
             cpu->cpsr &= ~BIT(5);
     }
 }
@@ -276,7 +296,7 @@ void blxOff(interpreter::Cpu *cpu, uint32_t opcode) // BLX label
     if (cpu->type == 9)
     {
         uint32_t ret = *cpu->registers[15] - 1;
-        *cpu->registers[15] = *cpu->registers[14] + BL_OFFSET_THUMB;
+        *cpu->registers[15] = (*cpu->registers[14] & ~BIT(1)) + BL_OFFSET_THUMB;
         *cpu->registers[14] = ret;
         cpu->cpsr &= ~BIT(5);
     }

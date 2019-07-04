@@ -28,6 +28,9 @@ namespace memory
 extern uint8_t firmware[0x40000];
 extern uint8_t *rom;
 
+extern uint8_t bios9[0x8000];
+extern uint8_t bios7[0x4000];
+
 extern uint8_t paletteA[0x400];
 extern uint8_t paletteB[0x400];
 extern uint8_t vramA[0x20000];
