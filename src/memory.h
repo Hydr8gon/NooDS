@@ -25,6 +25,9 @@
 namespace memory
 {
 
+extern uint8_t firmware[0x40000];
+extern uint8_t *rom;
+
 extern uint8_t paletteA[0x400];
 extern uint8_t paletteB[0x400];
 extern uint8_t vramA[0x20000];

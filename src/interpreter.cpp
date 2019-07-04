@@ -30,6 +30,8 @@
 namespace interpreter
 {
 
+Cpu arm9, arm7;
+
 typedef void (*Instruction)(Cpu*, uint32_t);
 Instruction armInstructions[0x1000];
 Instruction thumbInstructions[0x100];
@@ -171,18 +173,18 @@ void irq9(uint8_t type)
 {
     if (memory::ime9 && (memory::ie9 & BIT(type)))
     {
-        if (!(core::arm9.cpsr & BIT(7)))
+        if (!(arm9.cpsr & BIT(7)))
         {
             memory::if9 |= BIT(type);
-            uint32_t cpsr = core::arm9.cpsr;
-            setMode(&core::arm9, 0x12);
-            *core::arm9.spsr = cpsr;
-            core::arm9.cpsr &= ~BIT(5);
-            core::arm9.cpsr |= BIT(7);
-            *core::arm9.registers[14] = *core::arm9.registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
-            *core::arm9.registers[15] = cp15::exceptions + 0x18 + 8;
+            uint32_t cpsr = arm9.cpsr;
+            setMode(&arm9, 0x12);
+            *arm9.spsr = cpsr;
+            arm9.cpsr &= ~BIT(5);
+            arm9.cpsr |= BIT(7);
+            *arm9.registers[14] = *arm9.registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
+            *arm9.registers[15] = cp15::exceptions + 0x18 + 8;
         }
-        core::arm9.halt = false;
+        arm9.halt = false;
     }
 }
 
@@ -190,18 +192,18 @@ void irq7(uint8_t type)
 {
     if (memory::ie7 & BIT(type))
     {
-        if (!(core::arm7.cpsr & BIT(7)) && memory::ime7)
+        if (!(arm7.cpsr & BIT(7)) && memory::ime7)
         {
             memory::if7 |= BIT(type);
-            uint32_t cpsr = core::arm7.cpsr;
-            setMode(&core::arm7, 0x12);
-            *core::arm7.spsr = cpsr;
-            core::arm7.cpsr &= ~BIT(5);
-            core::arm7.cpsr |= BIT(7);
-            *core::arm7.registers[14] = *core::arm7.registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
-            *core::arm7.registers[15] = 0x00000018 + 8;
+            uint32_t cpsr = arm7.cpsr;
+            setMode(&arm7, 0x12);
+            *arm7.spsr = cpsr;
+            arm7.cpsr &= ~BIT(5);
+            arm7.cpsr |= BIT(7);
+            *arm7.registers[14] = *arm7.registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
+            *arm7.registers[15] = 0x00000018 + 8;
         }
-        core::arm7.halt = false;
+        arm7.halt = false;
     }
 }
 

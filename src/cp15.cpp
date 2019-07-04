@@ -21,6 +21,7 @@
 
 #include "cp15.h"
 #include "core.h"
+#include "interpreter.h"
 
 namespace cp15
 {
@@ -67,7 +68,7 @@ void writeRegister(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value)
     }
     else if ((cn == 7 && cm == 0 && cp == 4) || (cn == 7 && cm == 8 && cp == 2)) // Wait for interrupt
     {
-        core::arm9.halt = true;
+        interpreter::arm9.halt = true;
     }
     else if (cn == 9 && cm == 1 && cp == 0) // Data TCM base/size
     {

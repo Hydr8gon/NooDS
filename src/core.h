@@ -20,15 +20,14 @@
 #ifndef CORE_H
 #define CORE_H
 
-#include "interpreter.h"
+#include <cstdint>
 
 #define BIT(i) (1 << (i))
 
 namespace core
 {
 
-extern interpreter::Cpu arm9, arm7;
-
+bool init();
 bool loadRom(char *filename);
 
 void runScanline();

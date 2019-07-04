@@ -65,6 +65,7 @@ public:
 
 private:
     void openRom(wxCommandEvent &event);
+    void bootFirmware(wxCommandEvent &event);
     void exit(wxCommandEvent &event);
     wxDECLARE_EVENT_TABLE();
 };
@@ -73,6 +74,7 @@ wxIMPLEMENT_APP(NooDS);
 
 wxBEGIN_EVENT_TABLE(EmuFrame, wxFrame)
 EVT_MENU(0,         EmuFrame::openRom)
+EVT_MENU(1,         EmuFrame::bootFirmware)
 EVT_MENU(wxID_EXIT, EmuFrame::exit)
 wxEND_EVENT_TABLE()
 
@@ -108,6 +110,7 @@ EmuFrame::EmuFrame(): wxFrame(NULL, wxID_ANY, "NooDS", wxPoint(50, 50), wxSize(2
 {
     wxMenu *fileMenu = new wxMenu();
     fileMenu->Append(0, "&Open ROM");
+    fileMenu->Append(1, "&Boot Firmware");
     fileMenu->AppendSeparator();
     fileMenu->Append(wxID_EXIT);
 
@@ -134,11 +137,38 @@ void EmuFrame::openRom(wxCommandEvent &event)
         delete coreThread;
     }
 
+    if (!core::init())
+    {
+        wxMessageBox("Initialization failed. Make sure you have BIOS files named 'bios9.bin' and 'bios7.bin' "
+                     "and a firmware file named 'firmware.bin' placed in the same directory as the emulator.");
+        return;
+    }
+
     char path[1024];
     strncpy(path, (const char*)romSelect.GetPath().mb_str(wxConvUTF8), 1023);
     if (!core::loadRom(path))
     {
-        wxMessageBox("ROM loading failed. Make sure you have BIOS files named bios9.bin and bios7.bin placed in the same directory as the emulator.");
+        wxMessageBox("ROM loading failed. Make sure the file is accessible.");
+        return;
+    }
+
+    running = true;
+    coreThread = new std::thread(runCore);
+}
+
+void EmuFrame::bootFirmware(wxCommandEvent &event)
+{
+    if (coreThread)
+    {
+        running = false;
+        coreThread->join();
+        delete coreThread;
+    }
+
+    if (!core::init())
+    {
+        wxMessageBox("Initialization failed. Make sure you have BIOS files named 'bios9.bin' and 'bios7.bin' "
+                     "and a firmware file named 'firmware.bin' placed in the same directory as the emulator.");
         return;
     }
 
@@ -196,7 +226,7 @@ void DisplayPanel::resize(wxSizeEvent &event)
 
 void DisplayPanel::pressKey(wxKeyEvent &event)
 {
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 12; i++)
     {
         if (event.GetKeyCode() == keyMap[i])
             core::pressKey(i);
@@ -205,7 +235,7 @@ void DisplayPanel::pressKey(wxKeyEvent &event)
 
 void DisplayPanel::releaseKey(wxKeyEvent &event)
 {
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 12; i++)
     {
         if (event.GetKeyCode() == keyMap[i])
             core::releaseKey(i);

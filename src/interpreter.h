@@ -41,6 +41,8 @@ typedef struct
     uint8_t type;
 } Cpu;
 
+extern Cpu arm9, arm7;
+
 void execute(Cpu *cpu);
 void setMode(Cpu *cpu, uint8_t mode);
 void irq9(uint8_t type);

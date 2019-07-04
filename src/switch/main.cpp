@@ -40,8 +40,8 @@ void runCore(void *args)
 
 int main(int argc, char **argv)
 {
-    if (!core::loadRom((char*)"rom.nds"))
-        return 0;
+    if (!core::init()) return 0;
+    core::loadRom((char*)"rom.nds");
 
     ClkrstSession cpuSession;
     clkrstInitialize();
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
         hidScanInput();
         u32 pressed = hidKeysDown(CONTROLLER_P1_AUTO);
         u32 released = hidKeysUp(CONTROLLER_P1_AUTO);
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 12; i++)
         {
             if (pressed & keyMap[i])
                 core::pressKey(i);

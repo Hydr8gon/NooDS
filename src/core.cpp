@@ -21,39 +21,61 @@
 #include <cstring>
 
 #include "core.h"
+#include "cp15.h"
+#include "interpreter.h"
 #include "gpu.h"
 #include "memory.h"
 
 namespace core
 {
 
-interpreter::Cpu arm9, arm7;
-
-void init(uint32_t entry9, uint32_t entry7)
+bool init()
 {
-    memset(&arm9, 0, sizeof(arm9));
-    for (int i = 0; i < 16; i++)
-        arm9.registers[i] = &arm9.registersUsr[i];
-    arm9.registersUsr[12] = entry9;
-    arm9.registersUsr[14] = entry9;
-    arm9.registersUsr[15] = entry9 + 8;
-    arm9.registersUsr[13] = 0x03002F7C;
-    arm9.registersIrq[0]  = 0x03003F80;
-    arm9.registersSvc[0]  = 0x03003FC0;
-    arm9.cpsr             = 0x000000DF;
-    arm9.type             = 9;
+    interpreter::init();
+    gpu::init();
+    memory::init();
 
-    memset(&arm7, 0, sizeof(arm9));
+    // Reset the ARM9
+    memset(&interpreter::arm9, 0, sizeof(interpreter::arm9));
     for (int i = 0; i < 16; i++)
-        arm7.registers[i] = &arm7.registersUsr[i];
-    arm7.registersUsr[12] = entry7;
-    arm7.registersUsr[14] = entry7;
-    arm7.registersUsr[15] = entry7 + 8;
-    arm7.registersUsr[13] = 0x0380FD80;
-    arm7.registersIrq[0]  = 0x0380FF80;
-    arm7.registersSvc[0]  = 0x0380FFC0;
-    arm7.cpsr             = 0x000000DF;
-    arm7.type             = 7;
+        interpreter::arm9.registers[i] = &interpreter::arm9.registersUsr[i];
+    interpreter::arm9.registersUsr[15] = 0xFFFF0000 + 8;
+    interpreter::arm9.cpsr             = 0x00000010;
+    interpreter::arm9.type             = 9;
+
+    // Reset the ARM7
+    memset(&interpreter::arm7, 0, sizeof(interpreter::arm7));
+    for (int i = 0; i < 16; i++)
+        interpreter::arm7.registers[i] = &interpreter::arm7.registersUsr[i];
+    interpreter::arm7.registersUsr[15] = 0x00000000 + 8;
+    interpreter::arm7.cpsr             = 0x00000010;
+    interpreter::arm7.type             = 7;
+
+    // Load the ARM9 BIOS
+    FILE *bios9File = fopen("bios9.bin", "rb");
+    if (!bios9File) return false;
+    uint8_t bios9[0x1000];
+    fread(bios9, sizeof(uint8_t), 0x1000, bios9File);
+    fclose(bios9File);
+    for (int i = 0; i < 0x1000; i++)
+        memory::write<uint8_t>(&interpreter::arm9, 0xFFFF0000 + i, bios9[i]);
+
+    // Load the ARM7 BIOS
+    FILE *bios7File = fopen("bios7.bin", "rb");
+    if (!bios7File) return false;
+    uint8_t bios7[0x4000];
+    fread(bios7, sizeof(uint8_t), 0x4000, bios7File);
+    fclose(bios7File);
+    for (int i = 0; i < 0x4000; i++)
+        memory::write<uint8_t>(&interpreter::arm7, 0x00000000 + i, bios7[i]);
+
+    // Load the firmware
+    FILE *firmwareFile = fopen("firmware.bin", "rb");
+    if (!firmwareFile) return false;
+    fread(memory::firmware, sizeof(uint8_t), 0x40000, firmwareFile);
+    fclose(firmwareFile);
+
+    return true;
 }
 
 bool loadRom(char *filename)
@@ -63,41 +85,39 @@ bool loadRom(char *filename)
     if (!romFile) return false;
     fseek(romFile, 0, SEEK_END);
     int size = ftell(romFile);
-    uint8_t *rom = new uint8_t[size];
+    if (memory::rom) delete[] memory::rom;
+    memory::rom = new uint8_t[size];
     fseek(romFile, 0, SEEK_SET);
-    fread(rom, sizeof(uint8_t), size, romFile);
+    fread(memory::rom, sizeof(uint8_t), size, romFile);
     fclose(romFile);
+    for (int i = 0; i < *(uint32_t*)&memory::rom[0x2C]; i++)
+        memory::write<uint8_t>(&interpreter::arm9, *(uint32_t*)&memory::rom[0x28] + i, memory::rom[*(uint32_t*)&memory::rom[0x20] + i]);
+    for (int i = 0; i < *(uint32_t*)&memory::rom[0x3C]; i++)
+        memory::write<uint8_t>(&interpreter::arm7, *(uint32_t*)&memory::rom[0x38] + i, memory::rom[*(uint32_t*)&memory::rom[0x30] + i]);
 
-    // Load the ARM9 BIOS
-    FILE *bios9File = fopen("bios9.bin", "rb");
-    if (!bios9File) return false;
-    uint8_t bios9[0x1000];
-    fread(bios9, sizeof(uint8_t), 0x1000, bios9File);
-    fclose(bios9File);
+    // Set ARM9 boot values
+    interpreter::arm9.registersUsr[12] = *(uint32_t*)&memory::rom[0x24];
+    interpreter::arm9.registersUsr[13] = 0x03002F7C;
+    interpreter::arm9.registersUsr[14] = *(uint32_t*)&memory::rom[0x24];
+    interpreter::arm9.registersUsr[15] = *(uint32_t*)&memory::rom[0x24] + 8;
+    interpreter::arm9.registersIrq[0]  = 0x03003F80;
+    interpreter::arm9.registersSvc[0]  = 0x03003FC0;
+    interpreter::arm9.cpsr             = 0x000000DF;
 
-    // Load the ARM7 BIOS
-    FILE *bios7File = fopen("bios7.bin", "rb");
-    if (!bios7File) return false;
-    uint8_t bios7[0x4000];
-    fread(bios7, sizeof(uint8_t), 0x4000, bios7File);
-    fclose(bios7File);
+    // Set ARM7 boot values
+    interpreter::arm7.registersUsr[12] = *(uint32_t*)&memory::rom[0x34];
+    interpreter::arm7.registersUsr[13] = 0x0380FD80;
+    interpreter::arm7.registersUsr[14] = *(uint32_t*)&memory::rom[0x34];
+    interpreter::arm7.registersUsr[15] = *(uint32_t*)&memory::rom[0x34] + 8;
+    interpreter::arm7.registersIrq[0]  = 0x0380FF80;
+    interpreter::arm7.registersSvc[0]  = 0x0380FFC0;
+    interpreter::arm7.cpsr             = 0x000000DF;
 
-    // Initialize the system
-    init(*(uint32_t*)&rom[0x24], *(uint32_t*)&rom[0x34]);
-    interpreter::init();
-    gpu::init();
-    memory::init();
-
-    // Write the program to memory
-    for (int i = 0; i < *(uint32_t*)&rom[0x2C]; i++)
-        memory::write<uint8_t>(&arm9, *(uint32_t*)&rom[0x28] + i, rom[*(uint32_t*)&rom[0x20] + i]);
-    for (int i = 0; i < *(uint32_t*)&rom[0x3C]; i++)
-        memory::write<uint8_t>(&arm7, *(uint32_t*)&rom[0x38] + i, rom[*(uint32_t*)&rom[0x30] + i]);
-    for (int i = 0; i < 0x1000; i++)
-        memory::write<uint8_t>(&arm9, 0xFFFF0000 + i, bios9[i]);
-    for (int i = 0; i < 0x4000; i++)
-        memory::write<uint8_t>(&arm7, 0x00000000 + i, bios7[i]);
-    delete[] rom;
+    // Set memory boot values
+    memory::write<uint8_t>(&interpreter::arm9, 0x4000247, 0x03);
+    cp15::writeRegister(1, 0, 0, 0x00000078);
+    cp15::writeRegister(9, 1, 0, 0x027C0005);
+    cp15::writeRegister(9, 1, 1, 0x00000010);
 
     return true;
 }
@@ -106,10 +126,10 @@ void runScanline()
 {
     for (int i = 0; i < 355 * 6; i++)
     {
-        if (!arm9.halt)
-            interpreter::execute(&arm9);
-        if (i % 2 == 0 && !arm7.halt)
-            interpreter::execute(&arm7);
+        if (!interpreter::arm9.halt)
+            interpreter::execute(&interpreter::arm9);
+        if (i % 2 == 0 && !interpreter::arm7.halt)
+            interpreter::execute(&interpreter::arm7);
         if (i == 256 * 6)
             gpu::scanline256();
     }

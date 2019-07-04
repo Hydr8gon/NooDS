@@ -27,6 +27,9 @@
 namespace memory
 {
 
+uint8_t firmware[0x40000];
+uint8_t *rom;
+
 uint8_t ram[0x400000];    //  4MB main RAM
 uint8_t wram[0x8000];     // 32KB shared WRAM
 uint8_t instrTcm[0x8000]; // 32KB instruction TCM
@@ -319,7 +322,7 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
         case 0x40000B8: // DMA0CNT_9
             *(T*)&dmacnt9[0] = value;
             if (dmacnt9[0] & BIT(31))
-                dmaTransfer(&core::arm9, dmasad9[0], dmadad9[0], &dmacnt9[0]);
+                dmaTransfer(&interpreter::arm9, dmasad9[0], dmadad9[0], &dmacnt9[0]);
             break;
 
         case 0x40000BC: // DMA1SAD_9
@@ -333,7 +336,7 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
         case 0x40000C4: // DMA1CNT_9
             *(T*)&dmacnt9[1] = value;
             if (dmacnt9[1] & BIT(31))
-                dmaTransfer(&core::arm9, dmasad9[1], dmadad9[1], &dmacnt9[1]);
+                dmaTransfer(&interpreter::arm9, dmasad9[1], dmadad9[1], &dmacnt9[1]);
             break;
 
         case 0x40000C8: // DMA2SAD_9
@@ -347,7 +350,7 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
         case 0x40000D0: // DMA2CNT_9
             *(T*)&dmacnt9[2] = value;
             if (dmacnt9[2] & BIT(31))
-                dmaTransfer(&core::arm9, dmasad9[2], dmadad9[2], &dmacnt9[2]);
+                dmaTransfer(&interpreter::arm9, dmasad9[2], dmadad9[2], &dmacnt9[2]);
             break;
 
         case 0x40000D4: // DMA3SAD_9
@@ -361,7 +364,7 @@ template <typename T> void ioWriteMap9(uint32_t address, T value)
         case 0x40000DC: // DMA3CNT_9
             *(T*)&dmacnt9[3] = value;
             if (dmacnt9[3] & BIT(31))
-                dmaTransfer(&core::arm9, dmasad9[3], dmadad9[3], &dmacnt9[3]);
+                dmaTransfer(&interpreter::arm9, dmasad9[3], dmadad9[3], &dmacnt9[3]);
             break;
 
         case 0x40000E0: // DMA0FILL
@@ -701,7 +704,7 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
         case 0x40000B8: // DMA0CNT_7
             *(T*)&dmacnt7[0] = value & 0xF7E03FFF;
             if (dmacnt7[0] & BIT(31))
-                dmaTransfer(&core::arm7, dmasad7[0], dmadad7[0], &dmacnt7[0]);
+                dmaTransfer(&interpreter::arm7, dmasad7[0], dmadad7[0], &dmacnt7[0]);
             break;
 
         case 0x40000BC: // DMA1SAD_7
@@ -715,7 +718,7 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
         case 0x40000C4: // DMA1CNT_7
             *(T*)&dmacnt7[1] = value & 0xF7E03FFF;
             if (dmacnt7[1] & BIT(31))
-                dmaTransfer(&core::arm7, dmasad7[1], dmadad7[1], &dmacnt7[1]);
+                dmaTransfer(&interpreter::arm7, dmasad7[1], dmadad7[1], &dmacnt7[1]);
             break;
 
         case 0x40000C8: // DMA2SAD_7
@@ -729,7 +732,7 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
         case 0x40000D0: // DMA2CNT_7
             *(T*)&dmacnt7[2] = value & 0xF7E03FFF;
             if (dmacnt7[2] & BIT(31))
-                dmaTransfer(&core::arm7, dmasad7[2], dmadad7[2], &dmacnt7[2]);
+                dmaTransfer(&interpreter::arm7, dmasad7[2], dmadad7[2], &dmacnt7[2]);
             break;
 
         case 0x40000D4: // DMA3SAD_7
@@ -743,7 +746,7 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
         case 0x40000DC: // DMA3CNT_7
             *(T*)&dmacnt7[3] = value & 0xF7E0FFFF;
             if (dmacnt7[3] & BIT(31))
-                dmaTransfer(&core::arm7, dmasad7[3], dmadad7[3], &dmacnt7[3]);
+                dmaTransfer(&interpreter::arm7, dmasad7[3], dmadad7[3], &dmacnt7[3]);
             break;
 
         case 0x4000180: // IPCSYNC_7
@@ -767,7 +770,7 @@ template <typename T> void ioWriteMap7(uint32_t address, T value)
 
         case 0x4000301: // HALTCNT
             if (((value & 0xC0) >> 6) == 0x2)
-                core::arm7.halt = true;
+                interpreter::arm7.halt = true;
             break;
 
         default:
@@ -893,14 +896,10 @@ void init()
     keyinput = 0x03FF;
     extkeyin = 0x007F;
 
-    ipcsync9 = 0;
-    ipcsync7 = 0;
-    ime9     = 0;
-    ime7     = 0;
-    ie9      = 0;
-    ie7      = 0;
-    if9      = 0;
-    if7      = 0;
+    ipcsync9 = ipcsync7 = 0;
+    ime9     = ime7     = 0;
+    ie9      = ie7      = 0;
+    if9      = if7      = 0;
 
     dispcntA = 0;
     dispstat = 0;
@@ -909,11 +908,6 @@ void init()
     dispcntB = 0;
     memset(bgcntA, 0, sizeof(bgcntA));
     memset(bgcntB, 0, sizeof(bgcntB));
-
-    ioWriteMap9<uint8_t>(0x4000247, 0x03);
-    cp15::writeRegister(1, 0, 0, 0x00000078);
-    cp15::writeRegister(9, 1, 0, 0x027C0005);
-    cp15::writeRegister(9, 1, 1, 0x00000010);
 }
 
 }
