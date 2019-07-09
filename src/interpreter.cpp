@@ -176,11 +176,11 @@ void setMode(Cpu *cpu, uint8_t mode)
 
 void irq9(uint8_t type)
 {
-    if (memory::ime9 && (memory::ie9 & BIT(type)))
+    if (*memory::ime9 && (*memory::ie9 & BIT(type)))
     {
         if (!(arm9.cpsr & BIT(7)))
         {
-            memory::if9 |= BIT(type);
+            *memory::if9 |= BIT(type);
             uint32_t cpsr = arm9.cpsr;
             setMode(&arm9, 0x12);
             *arm9.spsr = cpsr;
@@ -195,11 +195,11 @@ void irq9(uint8_t type)
 
 void irq7(uint8_t type)
 {
-    if (memory::ie7 & BIT(type))
+    if (*memory::ie7 & BIT(type))
     {
-        if (!(arm7.cpsr & BIT(7)) && memory::ime7)
+        if (!(arm7.cpsr & BIT(7)) && *memory::ime7)
         {
-            memory::if7 |= BIT(type);
+            *memory::if7 |= BIT(type);
             uint32_t cpsr = arm7.cpsr;
             setMode(&arm7, 0x12);
             *arm7.spsr = cpsr;

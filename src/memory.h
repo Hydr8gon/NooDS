@@ -41,24 +41,30 @@ extern uint8_t vramD[0x20000];
 extern uint16_t *extPalettesA[6];
 extern uint16_t *extPalettesB[4];
 
-extern uint32_t keyinput;
-extern uint32_t extkeyin;
+extern uint16_t *dispstat;
+extern uint16_t *vcount;
+extern uint16_t *powcnt1;
 
-extern uint32_t ime9, ime7;
-extern uint32_t ie9,  ie7;
-extern uint32_t if9,  if7;
+extern uint32_t *dispcntA, *dispcntB;
+extern uint16_t *bg0cntA,  *bg0cntB;
+extern uint16_t *bg1cntA,  *bg1cntB;
+extern uint16_t *bg2cntA,  *bg2cntB;
+extern uint16_t *bg3cntA,  *bg3cntB;
+extern uint16_t *bg0hofsA, *bg0hofsB;
+extern uint16_t *bg0vofsA, *bg0vofsB;
+extern uint16_t *bg1hofsA, *bg1hofsB;
+extern uint16_t *bg1vofsA, *bg1vofsB;
+extern uint16_t *bg2hofsA, *bg2hofsB;
+extern uint16_t *bg2vofsA, *bg2vofsB;
+extern uint16_t *bg3hofsA, *bg3hofsB;
+extern uint16_t *bg3vofsA, *bg3vofsB;
 
-extern uint32_t dispcntA;
-extern uint32_t dispstat;
-extern uint32_t bgcntA[4];
-extern uint32_t bghofsA[4];
-extern uint32_t bgvofsA[4];
-extern uint32_t vcount;
-extern uint32_t powcnt1;
-extern uint32_t dispcntB;
-extern uint32_t bgcntB[4];
-extern uint32_t bghofsB[4];
-extern uint32_t bgvofsB[4];
+extern uint16_t *keyinput;
+extern uint16_t *extkeyin;
+
+extern uint16_t *ime9, *ime7;
+extern uint32_t *ie9,  *ie7;
+extern uint32_t *if9,  *if7;
 
 void *vramMap(uint32_t address);
 

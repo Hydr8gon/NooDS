@@ -61,32 +61,47 @@ uint32_t vramBases[9];
 uint16_t *extPalettesA[6];
 uint16_t *extPalettesB[4];
 
-uint32_t dmasad9[4], dmasad7[4]; // DMA source addresss
-uint32_t dmadad9[4], dmadad7[4]; // DMA destination address
-uint32_t dmacnt9[4], dmacnt7[4]; // DMA control
-uint32_t dmafill[4];             // DMA fill data
+uint8_t ioData9[0x2000], ioMask9[0x2000], ioWriteMask9[0x2000];
+uint8_t ioData7[0x2000], ioMask7[0x2000], ioWriteMask7[0x2000];
 
-uint32_t keyinput; // Key status
-uint32_t extkeyin; // Key X/Y input
+uint16_t *dispstat = (uint16_t*)&ioData9[0x004];
+uint16_t *vcount   = (uint16_t*)&ioData9[0x006];
+uint16_t *powcnt1  = (uint16_t*)&ioData9[0x304];
 
-uint32_t ipcsync9, ipcsync7; // IPC synchronize
-uint32_t ime9,     ime7;     // Interrupt master enable
-uint32_t ie9,      ie7;      // Interrupt enable
-uint32_t if9,      if7;      // Interrupt request flags
+uint32_t *dispcntA = (uint32_t*)&ioData9[0x000], *dispcntB = (uint32_t*)&ioData9[0x1000];
+uint16_t *bg0cntA  = (uint16_t*)&ioData9[0x008], *bg0cntB  = (uint16_t*)&ioData9[0x1008];
+uint16_t *bg1cntA  = (uint16_t*)&ioData9[0x00A], *bg1cntB  = (uint16_t*)&ioData9[0x100A];
+uint16_t *bg2cntA  = (uint16_t*)&ioData9[0x00C], *bg2cntB  = (uint16_t*)&ioData9[0x100C];
+uint16_t *bg3cntA  = (uint16_t*)&ioData9[0x00E], *bg3cntB  = (uint16_t*)&ioData9[0x100E];
+uint16_t *bg0hofsA = (uint16_t*)&ioData9[0x010], *bg0hofsB = (uint16_t*)&ioData9[0x1010];
+uint16_t *bg0vofsA = (uint16_t*)&ioData9[0x012], *bg0vofsB = (uint16_t*)&ioData9[0x1012];
+uint16_t *bg1hofsA = (uint16_t*)&ioData9[0x014], *bg1hofsB = (uint16_t*)&ioData9[0x1014];
+uint16_t *bg1vofsA = (uint16_t*)&ioData9[0x016], *bg1vofsB = (uint16_t*)&ioData9[0x1016];
+uint16_t *bg2hofsA = (uint16_t*)&ioData9[0x018], *bg2hofsB = (uint16_t*)&ioData9[0x1018];
+uint16_t *bg2vofsA = (uint16_t*)&ioData9[0x01A], *bg2vofsB = (uint16_t*)&ioData9[0x101A];
+uint16_t *bg3hofsA = (uint16_t*)&ioData9[0x01C], *bg3hofsB = (uint16_t*)&ioData9[0x101C];
+uint16_t *bg3vofsA = (uint16_t*)&ioData9[0x01E], *bg3vofsB = (uint16_t*)&ioData9[0x101E];
 
-uint32_t wramcnt; // WRAM bank control
+uint32_t *dma0sad9 = (uint32_t*)&ioData9[0x0B0], *dma0sad7 = (uint32_t*)&ioData7[0x0B0];
+uint32_t *dma0dad9 = (uint32_t*)&ioData9[0x0B4], *dma0dad7 = (uint32_t*)&ioData7[0x0B4];
+uint32_t *dma0cnt9 = (uint32_t*)&ioData9[0x0B8], *dma0cnt7 = (uint32_t*)&ioData7[0x0B8];
+uint32_t *dma1sad9 = (uint32_t*)&ioData9[0x0BC], *dma1sad7 = (uint32_t*)&ioData7[0x0BC];
+uint32_t *dma1dad9 = (uint32_t*)&ioData9[0x0C0], *dma1dad7 = (uint32_t*)&ioData7[0x0C0];
+uint32_t *dma1cnt9 = (uint32_t*)&ioData9[0x0C4], *dma1cnt7 = (uint32_t*)&ioData7[0x0C4];
+uint32_t *dma2sad9 = (uint32_t*)&ioData9[0x0C8], *dma2sad7 = (uint32_t*)&ioData7[0x0C8];
+uint32_t *dma2dad9 = (uint32_t*)&ioData9[0x0CC], *dma2dad7 = (uint32_t*)&ioData7[0x0CC];
+uint32_t *dma2cnt9 = (uint32_t*)&ioData9[0x0D0], *dma2cnt7 = (uint32_t*)&ioData7[0x0D0];
+uint32_t *dma3sad9 = (uint32_t*)&ioData9[0x0D4], *dma3sad7 = (uint32_t*)&ioData7[0x0D4];
+uint32_t *dma3dad9 = (uint32_t*)&ioData9[0x0D8], *dma3dad7 = (uint32_t*)&ioData7[0x0D8];
+uint32_t *dma3cnt9 = (uint32_t*)&ioData9[0x0DC], *dma3cnt7 = (uint32_t*)&ioData7[0x0DC];
 
-uint32_t dispcntA;   // Engine A display control
-uint32_t dispstat;   // General LCD status
-uint32_t bgcntA[4];  // Engine A background control
-uint32_t bghofsA[4]; // Engine A background X offset
-uint32_t bgvofsA[4]; // Engine A background Y offset
-uint32_t vcount;     // Vertical counter
-uint32_t powcnt1;    // Graphics power control
-uint32_t dispcntB;   // Engine B display control
-uint32_t bgcntB[4];  // Engine B background control
-uint32_t bghofsB[4]; // Engine B background X offset
-uint32_t bgvofsB[4]; // Engine B background Y offset
+uint16_t *keyinput = (uint16_t*)&ioData9[0x130];
+uint16_t *extkeyin = (uint16_t*)&ioData7[0x136];
+
+uint16_t *ipcsync9 = (uint16_t*)&ioData9[0x180], *ipcsync7 = (uint16_t*)&ioData7[0x180];
+uint16_t *ime9     = (uint16_t*)&ioData9[0x208], *ime7     = (uint16_t*)&ioData7[0x208];
+uint32_t *ie9      = (uint32_t*)&ioData9[0x210], *ie7      = (uint32_t*)&ioData7[0x210];
+uint32_t *if9      = (uint32_t*)&ioData9[0x214], *if7      = (uint32_t*)&ioData7[0x214];
 
 void dmaTransfer(interpreter::Cpu *cpu, uint32_t dmasad, uint32_t dmadad, uint32_t *dmacnt)
 {
@@ -208,574 +223,341 @@ void *memoryMap7(uint32_t address)
         return nullptr;
 }
 
-uint32_t ioReadMap9(uint32_t address)
+template <typename T> T ioRead9(uint32_t address)
 {
-    switch (address)
+    uint16_t ioAddr = address - 0x4000000;
+
+    if (ioAddr >= sizeof(ioMask9) || !ioMask9[ioAddr])
     {
-        case 0x4000000: return dispcntA;   // DISPCNT_A
-        case 0x4000004: return dispstat;   // DISPSTAT
-        case 0x4000006: return vcount;     // VCOUNT
-        case 0x4000008: return bgcntA[0];  // BG0CNT_A
-        case 0x400000A: return bgcntA[1];  // BG1CNT_A
-        case 0x400000C: return bgcntA[2];  // BG2CNT_A
-        case 0x400000E: return bgcntA[3];  // BG3CNT_A
-        case 0x40000B0: return dmasad9[0]; // DMA0SAD_9
-        case 0x40000B4: return dmadad9[0]; // DMA0DAD_9
-        case 0x40000B8: return dmacnt9[0]; // DMA0CNT_9
-        case 0x40000BC: return dmasad9[1]; // DMA1SAD_9
-        case 0x40000C0: return dmadad9[1]; // DMA1DAD_9
-        case 0x40000C4: return dmacnt9[1]; // DMA1CNT_9
-        case 0x40000C8: return dmasad9[2]; // DMA2SAD_9
-        case 0x40000CC: return dmadad9[2]; // DMA2DAD_9
-        case 0x40000D0: return dmacnt9[2]; // DMA2CNT_9
-        case 0x40000D4: return dmasad9[3]; // DMA3SAD_9
-        case 0x40000D8: return dmadad9[3]; // DMA3DAD_9
-        case 0x40000DC: return dmacnt9[3]; // DMA3CNT_9
-        case 0x40000E0: return dmafill[0]; // DMA0FILL
-        case 0x40000E4: return dmafill[1]; // DMA1FILL
-        case 0x40000E8: return dmafill[2]; // DMA2FILL
-        case 0x40000EC: return dmafill[3]; // DMA3FILL
-        case 0x4000130: return keyinput;   // KEYINPUT
-        case 0x4000180: return ipcsync9;   // IPCSYNC_9
-        case 0x4000208: return ime9;       // IME_9
-        case 0x4000210: return ie9;        // IE_9
-        case 0x4000214: return if9;        // IF_9
-        case 0x4000247: return wramcnt;    // WRAMCNT
-        case 0x4000304: return powcnt1;    // POWCNT1
-        case 0x4001000: return dispcntB;   // DISPCNT_B
-        case 0x4001008: return bgcntB[0];  // BG0CNT_B
-        case 0x400100A: return bgcntB[1];  // BG1CNT_B
-        case 0x400100C: return bgcntB[2];  // BG2CNT_B
-        case 0x400100E: return bgcntB[3];  // BG3CNT_B
-        default: printf("Unknown ARM9 I/O read: 0x%X\n", address); return 0;
+        printf("Unknown ARM9 I/O read: 0x%X\n", address);
+        return 0;
+    }
+
+    return *(T*)&ioData9[ioAddr];
+}
+
+template <typename T> void ioWrite9(uint32_t address, T value)
+{
+    uint16_t ioAddr = address - 0x4000000;
+
+    if (ioAddr >= sizeof(ioMask9) || !ioMask9[ioAddr])
+    {
+        printf("Unknown ARM9 I/O write: 0x%X\n", address);
+        return;
+    }
+
+    *(T*)&ioData9[ioAddr] &= ~(*(T*)&ioWriteMask9[ioAddr]);
+    *(T*)&ioData9[ioAddr] |= (value & *(T*)&ioWriteMask9[ioAddr]);
+
+    for (int i = 0; i < sizeof(T); i++)
+    {
+        switch (ioAddr + i)
+        {
+            case 0x0BB: // DMA0CNT_9
+                if (((uint8_t*)&value)[i] & BIT(7))
+                    dmaTransfer(&interpreter::arm9, *dma0sad9, *dma0dad9, dma0cnt9);
+                break;
+
+            case 0x0C7: // DMA1CNT_9
+                if (((uint8_t*)&value)[i] & BIT(7))
+                    dmaTransfer(&interpreter::arm9, *dma1sad9, *dma1dad9, dma1cnt9);
+                break;
+
+            case 0x0D3: // DMA2CNT_9
+                if (((uint8_t*)&value)[i] & BIT(7))
+                    dmaTransfer(&interpreter::arm9, *dma2sad9, *dma2dad9, dma2cnt9);
+                break;
+
+            case 0x0DF: // DMA3CNT_9
+                if (((uint8_t*)&value)[i] & BIT(7))
+                    dmaTransfer(&interpreter::arm9, *dma3sad9, *dma3dad9, dma3cnt9);
+                break;
+
+            case 0x181: // IPCSYNC_9
+                ((uint8_t*)ipcsync7)[0] = (((uint8_t*)&value)[i] & 0x0F);
+                if ((((uint8_t*)&value)[i] & BIT(5)) && (*ipcsync7 & BIT(14))) // Remote IRQ
+                    interpreter::irq7(16);
+                break;
+
+            case 0x214: case 0x215: case 0x216: case 0x217: // IF_9
+                ioData9[ioAddr + i] &= ~((uint8_t*)&value)[i];
+                break;
+
+            case 0x240: // VRAMCNT_A
+                if (((uint8_t*)&value)[i] & BIT(7))
+                {
+                    uint8_t mst = (((uint8_t*)&value)[i] & 0x03);
+                    uint8_t ofs = (((uint8_t*)&value)[i] & 0x18) >> 3;
+                    switch (mst)
+                    {
+                        case 0x0: vramMapped[0] = true; vramBases[0] = 0x6800000;                            break;
+                        case 0x1: vramMapped[0] = true; vramBases[0] = 0x6000000 + 0x20000 * ofs;            break;
+                        case 0x2: vramMapped[0] = true; vramBases[0] = 0x6400000 + 0x20000 * (ofs & BIT(0)); break;
+                        case 0x3: vramMapped[0] = false; extPalettesA[ofs] = (uint16_t*)vramA;               break;
+                    }
+                }
+                else
+                {
+                    vramMapped[0] = false;
+                }
+                break;
+
+            case 0x241: // VRAMCNT_B
+                if (((uint8_t*)&value)[i] & BIT(7))
+                {
+                    uint8_t mst = (((uint8_t*)&value)[i] & 0x03);
+                    uint8_t ofs = (((uint8_t*)&value)[i] & 0x18) >> 3;
+                    switch (mst)
+                    {
+                        case 0x0: vramMapped[1] = true; vramBases[1] = 0x6820000;                            break;
+                        case 0x1: vramMapped[1] = true; vramBases[1] = 0x6000000 + 0x20000 * ofs;            break;
+                        case 0x2: vramMapped[1] = true; vramBases[1] = 0x6400000 + 0x20000 * (ofs & BIT(0)); break;
+                        case 0x3: vramMapped[1] = false; extPalettesA[ofs] = (uint16_t*)vramB;               break;
+                    }
+                }
+                else
+                {
+                    vramMapped[1] = false;
+                }
+                break;
+
+            case 0x242: // VRAMCNT_C
+                if (((uint8_t*)&value)[i] & BIT(7))
+                {
+                    uint8_t mst = (((uint8_t*)&value)[i] & 0x07);
+                    uint8_t ofs = (((uint8_t*)&value)[i] & 0x18) >> 3;
+                    switch (mst)
+                    {
+                        case 0x0: vramMapped[2] = true; vramBases[2] = 0x6840000;                 break;
+                        case 0x1: vramMapped[2] = true; vramBases[2] = 0x6000000 + 0x20000 * ofs; break;
+                        case 0x3: vramMapped[2] = false; extPalettesA[ofs] = (uint16_t*)vramC;    break;
+                        case 0x4: vramMapped[2] = true; vramBases[2] = 0x6200000;                 break;
+                        default:  vramMapped[2] = false;                                          break;
+                    }
+                }
+                else
+                {
+                    vramMapped[2] = false;
+                }
+                break;
+
+            case 0x243: // VRAMCNT_D
+                if (((uint8_t*)&value)[i] & BIT(7))
+                {
+                    uint8_t mst = (((uint8_t*)&value)[i] & 0x07);
+                    uint8_t ofs = (((uint8_t*)&value)[i] & 0x18) >> 3;
+                    switch (mst)
+                    {
+                        case 0x0: vramMapped[3] = true; vramBases[3] = 0x6860000;                 break;
+                        case 0x1: vramMapped[3] = true; vramBases[3] = 0x6000000 + 0x20000 * ofs; break;
+                        case 0x3: vramMapped[3] = false; extPalettesA[ofs] = (uint16_t*)vramD;    break;
+                        case 0x4: vramMapped[3] = true; vramBases[3] = 0x6600000;                 break;
+                        default:  vramMapped[3] = false;                                          break;
+                    }
+                }
+                else
+                {
+                    vramMapped[3] = false;
+                }
+                break;
+
+            case 0x244: // VRAMCNT_E
+                if (((uint8_t*)&value)[i] & BIT(7))
+                {
+                    uint8_t mst = (((uint8_t*)&value)[i] & 0x07);
+                    switch (mst)
+                    {
+                        case 0x0: vramMapped[4] = true; vramBases[4] = 0x6880000;                                                       break;
+                        case 0x1: vramMapped[4] = true; vramBases[4] = 0x6000000;                                                       break;
+                        case 0x2: vramMapped[4] = true; vramBases[4] = 0x6400000;                                                       break;
+                        case 0x3: vramMapped[4] = false; for (int i = 0; i < 4; i++) extPalettesA[i] = (uint16_t*)vramE;                break;
+                        case 0x4: vramMapped[4] = false; for (int i = 0; i < 4; i++) extPalettesA[i] = (uint16_t*)(vramE + 0x2000 * i); break;
+                        default:  vramMapped[4] = false;                                                                                break;
+                    }
+                }
+                else
+                {
+                    vramMapped[4] = false;
+                }
+                break;
+
+            case 0x245: // VRAMCNT_F
+                if (((uint8_t*)&value)[i] & BIT(7))
+                {
+                    uint8_t mst = (((uint8_t*)&value)[i] & 0x07);
+                    uint8_t ofs = (((uint8_t*)&value)[i] & 0x18) >> 3;
+                    switch (mst)
+                    {
+                        case 0x0: vramMapped[5] = true; vramBases[5] = 0x6890000;                                                                            break;
+                        case 0x1: vramMapped[5] = true; vramBases[5] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
+                        case 0x2: vramMapped[5] = true; vramBases[5] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
+                        case 0x3: vramMapped[5] = false; extPalettesA[(ofs & BIT(0)) + (ofs & BIT(1)) * 2] = (uint16_t*)vramF;                               break;
+                        case 0x4: vramMapped[5] = false; for (int i = 0; i < 2; i++) extPalettesA[(ofs & BIT(0)) * 2 + i] = (uint16_t*)(vramF + 0x4000 * i); break;
+                        case 0x5: vramMapped[5] = false; extPalettesA[0] = (uint16_t*)vramF;                                                                 break;
+                        default:  vramMapped[5] = false;                                                                                                     break;
+                    }
+                }
+                else
+                {
+                    vramMapped[5] = false;
+                }
+                break;
+
+            case 0x246: // VRAMCNT_G
+                if (((uint8_t*)&value)[i] & BIT(7))
+                {
+                    uint8_t mst = (((uint8_t*)&value)[i] & 0x07);
+                    uint8_t ofs = (((uint8_t*)&value)[i] & 0x18) >> 3;
+                    switch (mst)
+                    {
+                        case 0x0: vramMapped[6] = true; vramBases[6] = 0x6894000;                                                                            break;
+                        case 0x1: vramMapped[6] = true; vramBases[6] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
+                        case 0x2: vramMapped[6] = true; vramBases[6] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
+                        case 0x3: vramMapped[6] = false; extPalettesA[(ofs & BIT(0)) + (ofs & BIT(1)) * 2] = (uint16_t*)vramG;                               break;
+                        case 0x4: vramMapped[6] = false; for (int i = 0; i < 2; i++) extPalettesA[(ofs & BIT(0)) * 2 + i] = (uint16_t*)(vramG + 0x4000 * i); break;
+                        case 0x5: vramMapped[6] = false; extPalettesA[0] = (uint16_t*)vramG;                                                                 break;
+                        default:  vramMapped[6] = false;                                                                                                     break;
+                    }
+                }
+                else
+                {
+                    vramMapped[6] = false;
+                }
+                break;
+
+            case 0x247: // WRAMCNT
+                switch (((uint8_t*)&value)[i] & 0x03)
+                {
+                    case 0x0: wramOffset9 = 0x0000; wramSize9 = 0x8000; wramOffset7 = 0x0000; wramSize7 = 0x0000; break;
+                    case 0x1: wramOffset9 = 0x4000; wramSize9 = 0x4000; wramOffset7 = 0x0000; wramSize7 = 0x4000; break;
+                    case 0x2: wramOffset9 = 0x0000; wramSize9 = 0x4000; wramOffset7 = 0x4000; wramSize7 = 0x4000; break;
+                    case 0x3: wramOffset9 = 0x0000; wramSize9 = 0x0000; wramOffset7 = 0x0000; wramSize7 = 0x8000; break;
+                }
+                break;
+
+            case 0x248: // VRAMCNT_H
+                if (((uint8_t*)&value)[i] & BIT(7))
+                {
+                    uint8_t mst = (((uint8_t*)&value)[i] & 0x03);
+                    switch (mst)
+                    {
+                        case 0x0: vramMapped[7] = true; vramBases[7] = 0x6898000;                                                       break;
+                        case 0x1: vramMapped[7] = true; vramBases[7] = 0x6200000;                                                       break;
+                        case 0x2: vramMapped[7] = false; for (int i = 0; i < 4; i++) extPalettesB[i] = (uint16_t*)(vramH + 0x2000 * i); break;
+                        default:  vramMapped[7] = false;                                                                                break;
+                    }
+                }
+                else
+                {
+                    vramMapped[7] = false;
+                }
+                break;
+
+            case 0x249: // VRAMCNT_I
+                if (((uint8_t*)&value)[i] & BIT(7))
+                {
+                    uint8_t mst = (((uint8_t*)&value)[i] & 0x03);
+                    switch (mst)
+                    {
+                        case 0x0: vramMapped[8] = true; vramBases[8] = 0x68A0000;            break;
+                        case 0x1: vramMapped[8] = true; vramBases[8] = 0x6208000;            break;
+                        case 0x2: vramMapped[8] = true; vramBases[8] = 0x6600000;            break;
+                        case 0x3: vramMapped[8] = false; extPalettesB[0] = (uint16_t*)vramI; break;
+                        default:  vramMapped[8] = false;                                     break;
+                    }
+                }
+                else
+                {
+                    vramMapped[8] = false;
+                }
+                break;
+        }
     }
 }
 
-template <typename T> void ioWriteMap9(uint32_t address, T value)
+template <typename T> T ioRead7(uint32_t address)
 {
-    switch (address)
+    uint16_t ioAddr = address - 0x4000000;
+
+    if (ioAddr >= sizeof(ioMask7) || !ioMask7[ioAddr])
     {
-        case 0x4000000: // DISPCNT_A
-            *(T*)&dispcntA = value;
-            break;
-
-        case 0x4000004: // DISPSTAT
-            *(T*)&dispstat = (value & 0xFFB8) | (dispstat & 0x0007);
-            break;
-
-        case 0x4000008: // BG0CNT_A
-            *(T*)&bgcntA[0] = value & 0xFFFF;
-            break;
-
-        case 0x400000A: // BG1CNT_A
-            *(T*)&bgcntA[1] = value & 0xFFFF;
-            break;
-
-        case 0x400000C: // BG2CNT_A
-            *(T*)&bgcntA[2] = value & 0xFFFF;
-            break;
-
-        case 0x400000E: // BG3CNT_A
-            *(T*)&bgcntA[3] = value & 0xFFFF;
-            break;
-
-        case 0x4000010: // BG0HOFS_A
-            *(T*)&bghofsA[0] = value & 0x01FF;
-            break;
-
-        case 0x4000012: // BG0VOFS_A
-            *(T*)&bgvofsA[0] = value & 0x01FF;
-            break;
-
-        case 0x4000014: // BG1HOFS_A
-            *(T*)&bghofsA[1] = value & 0x01FF;
-            break;
-
-        case 0x4000016: // BG1VOFS_A
-            *(T*)&bgvofsA[1] = value & 0x01FF;
-            break;
-
-        case 0x4000018: // BG2HOFS_A
-            *(T*)&bghofsA[2] = value & 0x01FF;
-            break;
-
-        case 0x400001A: // BG2VOFS_A
-            *(T*)&bgvofsA[2] = value & 0x01FF;
-            break;
-
-        case 0x400001C: // BG3HOFS_A
-            *(T*)&bghofsA[3] = value & 0x01FF;
-            break;
-
-        case 0x400001E: // BG3VOFS_A
-            *(T*)&bgvofsA[3] = value & 0x01FF;
-            break;
-
-        case 0x40000B0: // DMA0SAD_9
-            *(T*)&dmasad9[0] = value & 0x0FFFFFFF;
-            break;
-
-        case 0x40000B4: // DMA0DAD_9
-            *(T*)&dmadad9[0] = value & 0x0FFFFFFF;
-            break;
-
-        case 0x40000B8: // DMA0CNT_9
-            *(T*)&dmacnt9[0] = value;
-            if (dmacnt9[0] & BIT(31))
-                dmaTransfer(&interpreter::arm9, dmasad9[0], dmadad9[0], &dmacnt9[0]);
-            break;
-
-        case 0x40000BC: // DMA1SAD_9
-            *(T*)&dmasad9[1] = value & 0x0FFFFFFF;
-            break;
-
-        case 0x40000C0: // DMA1DAD_9
-            *(T*)&dmadad9[1] = value & 0x0FFFFFFF;
-            break;
-
-        case 0x40000C4: // DMA1CNT_9
-            *(T*)&dmacnt9[1] = value;
-            if (dmacnt9[1] & BIT(31))
-                dmaTransfer(&interpreter::arm9, dmasad9[1], dmadad9[1], &dmacnt9[1]);
-            break;
-
-        case 0x40000C8: // DMA2SAD_9
-            *(T*)&dmasad9[2] = value & 0x0FFFFFFF;
-            break;
-
-        case 0x40000CC: // DMA2DAD_9
-            *(T*)&dmadad9[2] = value & 0x0FFFFFFF;
-            break;
-
-        case 0x40000D0: // DMA2CNT_9
-            *(T*)&dmacnt9[2] = value;
-            if (dmacnt9[2] & BIT(31))
-                dmaTransfer(&interpreter::arm9, dmasad9[2], dmadad9[2], &dmacnt9[2]);
-            break;
-
-        case 0x40000D4: // DMA3SAD_9
-            *(T*)&dmasad9[3] = value & 0x0FFFFFFF;
-            break;
-
-        case 0x40000D8: // DMA3DAD_9
-            *(T*)&dmadad9[3] = value & 0x0FFFFFFF;
-            break;
-
-        case 0x40000DC: // DMA3CNT_9
-            *(T*)&dmacnt9[3] = value;
-            if (dmacnt9[3] & BIT(31))
-                dmaTransfer(&interpreter::arm9, dmasad9[3], dmadad9[3], &dmacnt9[3]);
-            break;
-
-        case 0x40000E0: // DMA0FILL
-            *(T*)&dmafill[0] = value;
-            break;
-
-        case 0x40000E4: // DMA1FILL
-            *(T*)&dmafill[1] = value;
-            break;
-
-        case 0x40000E8: // DMA2FILL
-            *(T*)&dmafill[2] = value;
-            break;
-
-        case 0x40000EC: // DMA3FILL
-            *(T*)&dmafill[3] = value;
-            break;
-
-        case 0x4000180: // IPCSYNC_9
-            ipcsync9 = (ipcsync9 & 0x000F) | (value & 0x4F00);
-            ipcsync7 = (ipcsync7 & 0x4F00) | ((value & 0x0F00) >> 8);
-            if ((value & BIT(13)) && (ipcsync7 & BIT(14))) // Remote IRQ
-                interpreter::irq7(16);
-            break;
-
-        case 0x4000208: // IME_9
-            ime9 = value & BIT(0);
-            break;
-
-        case 0x4000210: // IE_9
-            *(T*)&ie9 = value & 0xFFFFFF7F;
-            break;
-
-        case 0x4000214: // IF_9
-            if9 &= ~((uint32_t)value);
-            break;
-
-        case 0x4000240: // VRAMCNT_A
-            if (value & BIT(7))
-            {
-                uint8_t mst = (value & 0x03);
-                uint8_t ofs = (value & 0x18) >> 3;
-                switch (mst)
-                {
-                    case 0x0: vramMapped[0] = true; vramBases[0] = 0x6800000;                             break;
-                    case 0x1: vramMapped[0] = true; vramBases[0] = 0x6000000 + 0x20000 * ofs;             break;
-                    case 0x2: vramMapped[0] = true; vramBases[0] = 0x6400000 + 0x20000 * (ofs & BIT(0));  break;
-                    case 0x3: vramMapped[0] = false; extPalettesA[ofs] = (uint16_t*)vramA;                break;
-                }
-            }
-            else
-            {
-                vramMapped[0] = false;
-            }
-            break;
-
-        case 0x4000241: // VRAMCNT_B
-            if (value & BIT(7))
-            {
-                uint8_t mst = (value & 0x03);
-                uint8_t ofs = (value & 0x18) >> 3;
-                switch (mst)
-                {
-                    case 0x0: vramMapped[1] = true; vramBases[1] = 0x6820000;                             break;
-                    case 0x1: vramMapped[1] = true; vramBases[1] = 0x6000000 + 0x20000 * ofs;             break;
-                    case 0x2: vramMapped[1] = true; vramBases[1] = 0x6400000 + 0x20000 * (ofs & BIT(0));  break;
-                    case 0x3: vramMapped[1] = false; extPalettesA[ofs] = (uint16_t*)vramB;                break;
-                }
-            }
-            else
-            {
-                vramMapped[1] = false;
-            }
-            break;
-
-        case 0x4000242: // VRAMCNT_C
-            if (value & BIT(7))
-            {
-                uint8_t mst = (value & 0x07);
-                uint8_t ofs = (value & 0x18) >> 3;
-                switch (mst)
-                {
-                    case 0x0: vramMapped[2] = true; vramBases[2] = 0x6840000;                             break;
-                    case 0x1: vramMapped[2] = true; vramBases[2] = 0x6000000 + 0x20000 * ofs;             break;
-                    case 0x2: vramMapped[2] = true; vramBases[2] = 0x6000000 + 0x20000 * (ofs & BIT(0));  break;
-                    case 0x4: vramMapped[2] = true; vramBases[2] = 0x6200000;                             break;
-                    case 0x3: vramMapped[2] = false; extPalettesA[ofs] = (uint16_t*)vramC;                break;
-                    default:  vramMapped[2] = false;                                                      break;
-                }
-            }
-            else
-            {
-                vramMapped[2] = false;
-            }
-            break;
-
-        case 0x4000243: // VRAMCNT_D
-            if (value & BIT(7))
-            {
-                uint8_t mst = (value & 0x07);
-                uint8_t ofs = (value & 0x18) >> 3;
-                switch (mst)
-                {
-                    case 0x0: vramMapped[3] = true; vramBases[3] = 0x6860000;                             break;
-                    case 0x1: vramMapped[3] = true; vramBases[3] = 0x6000000 + 0x20000 * ofs;             break;
-                    case 0x2: vramMapped[3] = true; vramBases[3] = 0x6000000 + 0x20000 * (ofs & BIT(0));  break;
-                    case 0x4: vramMapped[3] = true; vramBases[3] = 0x6600000;                             break;
-                    case 0x3: vramMapped[3] = false; extPalettesA[ofs] = (uint16_t*)vramD;                break;
-                    default:  vramMapped[3] = false;                                                      break;
-                }
-            }
-            else
-            {
-                vramMapped[3] = false;
-            }
-            break;
-
-        case 0x4000244: // VRAMCNT_E
-            if (value & BIT(7))
-            {
-                uint8_t mst = (value & 0x07);
-                switch (mst)
-                {
-                    case 0x0: vramMapped[4] = true; vramBases[4] = 0x6880000;                                                       break;
-                    case 0x1: vramMapped[4] = true; vramBases[4] = 0x6000000;                                                       break;
-                    case 0x2: vramMapped[4] = true; vramBases[4] = 0x6400000;                                                       break;
-                    case 0x3: vramMapped[4] = false; for (int i = 0; i < 4; i++) extPalettesA[i] = (uint16_t*)vramE;                break;
-                    case 0x4: vramMapped[4] = false; for (int i = 0; i < 4; i++) extPalettesA[i] = (uint16_t*)(vramE + 0x2000 * i); break;
-                    default:  vramMapped[4] = false;                                                                                break;
-                }
-            }
-            else
-            {
-                vramMapped[4] = false;
-            }
-            break;
-
-        case 0x4000245: // VRAMCNT_F
-            if (value & BIT(7))
-            {
-                uint8_t mst = (value & 0x07);
-                uint8_t ofs = (value & 0x18) >> 3;
-                switch (mst)
-                {
-                    case 0x0: vramMapped[5] = true; vramBases[5] = 0x6890000;                                                                            break;
-                    case 0x1: vramMapped[5] = true; vramBases[5] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
-                    case 0x2: vramMapped[5] = true; vramBases[5] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
-                    case 0x3: vramMapped[5] = false; extPalettesA[(ofs & BIT(0)) + (ofs & BIT(1)) * 2] = (uint16_t*)vramF;                               break;
-                    case 0x4: vramMapped[5] = false; for (int i = 0; i < 2; i++) extPalettesA[(ofs & BIT(0)) * 2 + i] = (uint16_t*)(vramF + 0x4000 * i); break;
-                    case 0x5: vramMapped[5] = false; extPalettesA[0] = (uint16_t*)vramF;                                                                 break;
-                    default:  vramMapped[5] = false;                                                                                                     break;
-                }
-            }
-            else
-            {
-                vramMapped[5] = false;
-            }
-            break;
-
-        case 0x4000246: // VRAMCNT_G
-            if (value & BIT(7))
-            {
-                uint8_t mst = (value & 0x07);
-                uint8_t ofs = (value & 0x18) >> 3;
-                switch (mst)
-                {
-                    case 0x0: vramMapped[6] = true; vramBases[6] = 0x6894000;                                                                            break;
-                    case 0x1: vramMapped[6] = true; vramBases[6] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
-                    case 0x2: vramMapped[6] = true; vramBases[6] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0));                        break;
-                    case 0x3: vramMapped[6] = false; extPalettesA[(ofs & BIT(0)) + (ofs & BIT(1)) * 2] = (uint16_t*)vramG;                               break;
-                    case 0x4: vramMapped[6] = false; for (int i = 0; i < 2; i++) extPalettesA[(ofs & BIT(0)) * 2 + i] = (uint16_t*)(vramG + 0x4000 * i); break;
-                    case 0x5: vramMapped[6] = false; extPalettesA[0] = (uint16_t*)vramG;                                                                 break;
-                    default:  vramMapped[6] = false;                                                                                                     break;
-                }
-            }
-            else
-            {
-                vramMapped[6] = false;
-            }
-            break;
-
-        case 0x4000247: // WRAMCNT
-            wramcnt = value & 0x03;
-            switch (wramcnt)
-            {
-                case 0x0: wramOffset9 = 0x0000; wramSize9 = 0x8000; wramOffset7 = 0x0000; wramSize7 = 0x0000; break;
-                case 0x1: wramOffset9 = 0x4000; wramSize9 = 0x4000; wramOffset7 = 0x0000; wramSize7 = 0x4000; break;
-                case 0x2: wramOffset9 = 0x0000; wramSize9 = 0x4000; wramOffset7 = 0x4000; wramSize7 = 0x4000; break;
-                case 0x3: wramOffset9 = 0x0000; wramSize9 = 0x0000; wramOffset7 = 0x0000; wramSize7 = 0x8000; break;
-            }
-            break;
-
-        case 0x4000248: // VRAMCNT_H
-            if (value & BIT(7))
-            {
-                uint8_t mst = (value & 0x03);
-                switch (mst)
-                {
-                    case 0x0: vramMapped[7] = true; vramBases[7] = 0x6898000;                                                       break;
-                    case 0x1: vramMapped[7] = true; vramBases[7] = 0x6200000;                                                       break;
-                    case 0x2: vramMapped[7] = false; for (int i = 0; i < 4; i++) extPalettesB[i] = (uint16_t*)(vramH + 0x2000 * i); break;
-                    default:  vramMapped[7] = false;                                                                                break;
-                }
-            }
-            else
-            {
-                vramMapped[7] = false;
-            }
-            break;
-
-        case 0x4000249: // VRAMCNT_I
-            if (value & BIT(7))
-            {
-                uint8_t mst = (value & 0x03);
-                switch (mst)
-                {
-                    case 0x0: vramMapped[8] = true; vramBases[8] = 0x68A0000;            break;
-                    case 0x1: vramMapped[8] = true; vramBases[8] = 0x6208000;            break;
-                    case 0x2: vramMapped[8] = true; vramBases[8] = 0x6600000;            break;
-                    case 0x3: vramMapped[8] = false; extPalettesB[0] = (uint16_t*)vramI; break;
-                    default:  vramMapped[8] = false;                                     break;
-                }
-            }
-            else
-            {
-                vramMapped[8] = false;
-            }
-            break;
-
-        case 0x4000304: // POWCNT1
-            *(T*)&powcnt1 = (value & 0x820F);
-            break;
-
-        case 0x4001000: // DISPCNT_B
-            *(T*)&dispcntB = (value & 0xC0B1FFF7);
-            break;
-
-        case 0x4001008: // BG0CNT_B
-            *(T*)&bgcntB[0] = value & 0xFFFF;
-            break;
-
-        case 0x400100A: // BG1CNT_B
-            *(T*)&bgcntB[1] = value & 0xFFFF;
-            break;
-
-        case 0x400100C: // BG2CNT_B
-            *(T*)&bgcntB[2] = value & 0xFFFF;
-            break;
-
-        case 0x400100E: // BG3CNT_B
-            *(T*)&bgcntB[3] = value & 0xFFFF;
-            break;
-
-        case 0x4001010: // BG0HOFS_B
-            *(T*)&bghofsB[0] = value & 0x01FF;
-            break;
-
-        case 0x4001012: // BG0VOFS_B
-            *(T*)&bgvofsB[0] = value & 0x01FF;
-            break;
-
-        case 0x4001014: // BG1HOFS_B
-            *(T*)&bghofsB[1] = value & 0x01FF;
-            break;
-
-        case 0x4001016: // BG1VOFS_B
-            *(T*)&bgvofsB[1] = value & 0x01FF;
-            break;
-
-        case 0x4001018: // BG2HOFS_B
-            *(T*)&bghofsB[2] = value & 0x01FF;
-            break;
-
-        case 0x400101A: // BG2VOFS_B
-            *(T*)&bgvofsB[2] = value & 0x01FF;
-            break;
-
-        case 0x400101C: // BG3HOFS_B
-            *(T*)&bghofsB[3] = value & 0x01FF;
-            break;
-
-        case 0x400101E: // BG3VOFS_B
-            *(T*)&bgvofsB[3] = value & 0x01FF;
-            break;
-
-        default:
-            printf("Unknown ARM9 I/O write: 0x%X\n", address);
-            break;
+        printf("Unknown ARM7 I/O read: 0x%X\n", address);
+        return 0;
     }
+
+    for (int i = 0; i < sizeof(T); i++)
+    {
+        switch (ioAddr + i)
+        {
+            case 0x004: case 0x005: // DISPSTAT
+            case 0x006: case 0x007: // VCOUNT
+            case 0x130:             // KEYINPUT
+                ioData7[ioAddr + i] = ioData9[ioAddr + i];
+                break;
+        }
+    }
+
+    return *(T*)&ioData7[ioAddr];
 }
 
-uint32_t ioReadMap7(uint32_t address)
+
+template <typename T> void ioWrite7(uint32_t address, T value)
 {
-    switch (address)
+    uint16_t ioAddr = address - 0x4000000;
+
+    if (ioAddr >= sizeof(ioMask7) || !ioMask7[ioAddr])
     {
-        case 0x4000004: return dispstat;   // DISPSTAT
-        case 0x4000006: return vcount;     // VCOUNT
-        case 0x40000B0: return dmasad7[0]; // DMA0SAD_7
-        case 0x40000B4: return dmadad7[0]; // DMA0DAD_7
-        case 0x40000B8: return dmacnt7[0]; // DMA0CNT_7
-        case 0x40000BC: return dmasad7[1]; // DMA1SAD_7
-        case 0x40000C0: return dmadad7[1]; // DMA1DAD_7
-        case 0x40000C4: return dmacnt7[1]; // DMA1CNT_7
-        case 0x40000C8: return dmasad7[2]; // DMA2SAD_7
-        case 0x40000CC: return dmadad7[2]; // DMA2DAD_7
-        case 0x40000D0: return dmacnt7[2]; // DMA2CNT_7
-        case 0x40000D4: return dmasad7[3]; // DMA3SAD_7
-        case 0x40000D8: return dmadad7[3]; // DMA3DAD_7
-        case 0x40000DC: return dmacnt7[3]; // DMA3CNT_7
-        case 0x4000130: return keyinput;   // KEYINPUT
-        case 0x4000136: return extkeyin;   // EXTKEYIN
-        case 0x4000180: return ipcsync7;   // IPCSYNC_7
-        case 0x4000208: return ime7;       // IME_7
-        case 0x4000210: return ie7;        // IE_7
-        case 0x4000214: return if7;        // IF_7
-        case 0x4000241: return wramcnt;    // WRAMSTAT
-        default: printf("Unknown ARM7 I/O read: 0x%X\n", address); return 0;
+        printf("Unknown ARM7 I/O write: 0x%X\n", address);
+        return;
     }
-}
 
-template <typename T> void ioWriteMap7(uint32_t address, T value)
-{
-    switch (address)
+    *(T*)&ioData7[ioAddr] &= ~(*(T*)&ioWriteMask7[ioAddr]);
+    *(T*)&ioData7[ioAddr] |= (value & *(T*)&ioWriteMask7[ioAddr]);
+
+    for (int i = 0; i < sizeof(T); i++)
     {
-        case 0x4000004: // DISPSTAT
-            *(T*)&dispstat = (value & 0xFFB8) | (dispstat & 0x0007);
-            break;
+        switch (ioAddr + i)
+        {
+            case 0x004: case 0x005: // DISPSTAT
+                ioData9[ioAddr + i] &= ~ioWriteMask9[ioAddr + i];
+                ioData9[ioAddr + i] |= (((uint8_t*)&value)[i] & ioWriteMask9[ioAddr + i]);
+                break;
 
-        case 0x40000B0: // DMA0SAD_7
-            *(T*)&dmasad7[0] = value & 0x07FFFFFF;
-            break;
+            case 0x0BB: // DMA0CNT_7
+                if (((uint8_t*)&value)[i] & BIT(7))
+                    dmaTransfer(&interpreter::arm7, *dma0sad7, *dma0dad7, dma0cnt7);
+                break;
 
-        case 0x40000B4: // DMA0DAD_7
-            *(T*)&dmadad7[0] = value & 0x07FFFFFF;
-            break;
+            case 0x0C7: // DMA1CNT_7
+                if (((uint8_t*)&value)[i] & BIT(7))
+                    dmaTransfer(&interpreter::arm7, *dma1sad7, *dma1dad7, dma1cnt7);
+                break;
 
-        case 0x40000B8: // DMA0CNT_7
-            *(T*)&dmacnt7[0] = value & 0xF7E03FFF;
-            if (dmacnt7[0] & BIT(31))
-                dmaTransfer(&interpreter::arm7, dmasad7[0], dmadad7[0], &dmacnt7[0]);
-            break;
+            case 0x0D3: // DMA2CNT_7
+                if (((uint8_t*)&value)[i] & BIT(7))
+                    dmaTransfer(&interpreter::arm7, *dma2sad7, *dma2dad7, dma2cnt7);
+                break;
 
-        case 0x40000BC: // DMA1SAD_7
-            *(T*)&dmasad7[1] = value & 0x07FFFFFF;
-            break;
+            case 0x0DF: // DMA3CNT_7
+                if (((uint8_t*)&value)[i] & BIT(7))
+                    dmaTransfer(&interpreter::arm7, *dma3sad7, *dma3dad7, dma3cnt7);
+                break;
 
-        case 0x40000C0: // DMA1DAD_7
-            *(T*)&dmadad7[1] = value & 0x07FFFFFF;
-            break;
+            case 0x181: // IPCSYNC_7
+                ((uint8_t*)ipcsync9)[0] = (((uint8_t*)&value)[i] & 0x0F);
+                if ((((uint8_t*)&value)[i] & BIT(5)) && (*ipcsync9 & BIT(14))) // Remote IRQ
+                    interpreter::irq9(16);
+                break;
 
-        case 0x40000C4: // DMA1CNT_7
-            *(T*)&dmacnt7[1] = value & 0xF7E03FFF;
-            if (dmacnt7[1] & BIT(31))
-                dmaTransfer(&interpreter::arm7, dmasad7[1], dmadad7[1], &dmacnt7[1]);
-            break;
+            case 0x214: case 0x215: case 0x216: case 0x217: // IF_7
+                ioData7[ioAddr + i] &= ~((uint8_t*)&value)[i];
+                break;
 
-        case 0x40000C8: // DMA2SAD_7
-            *(T*)&dmasad7[2] = value & 0x07FFFFFF;
-            break;
-
-        case 0x40000CC: // DMA2DAD_7
-            *(T*)&dmadad7[2] = value & 0x07FFFFFF;
-            break;
-
-        case 0x40000D0: // DMA2CNT_7
-            *(T*)&dmacnt7[2] = value & 0xF7E03FFF;
-            if (dmacnt7[2] & BIT(31))
-                dmaTransfer(&interpreter::arm7, dmasad7[2], dmadad7[2], &dmacnt7[2]);
-            break;
-
-        case 0x40000D4: // DMA3SAD_7
-            *(T*)&dmasad7[3] = value & 0x07FFFFFF;
-            break;
-
-        case 0x40000D8: // DMA3DAD_7
-            *(T*)&dmadad7[3] = value & 0x07FFFFFF;
-            break;
-
-        case 0x40000DC: // DMA3CNT_7
-            *(T*)&dmacnt7[3] = value & 0xF7E0FFFF;
-            if (dmacnt7[3] & BIT(31))
-                dmaTransfer(&interpreter::arm7, dmasad7[3], dmadad7[3], &dmacnt7[3]);
-            break;
-
-        case 0x4000180: // IPCSYNC_7
-            ipcsync7 = (ipcsync7 & 0x000F) | (value & 0x4F00);
-            ipcsync9 = (ipcsync9 & 0x4F00) | ((value & 0x0F00) >> 8);
-            if ((value & BIT(13)) && (ipcsync9 & BIT(14))) // Remote IRQ
-                interpreter::irq9(16);
-            break;
-
-        case 0x4000208: // IME_7
-            ime7 = value & BIT(0);
-            break;
-
-        case 0x4000210: // IE_7
-            *(T*)&ie7 = value;
-            break;
-
-        case 0x4000214: // IF_7
-            if7 &= ~((uint32_t)value);
-            break;
-
-        case 0x4000301: // HALTCNT
-            if (((value & 0xC0) >> 6) == 0x2)
-                interpreter::arm7.halt = true;
-            break;
-
-        default:
-            printf("Unknown ARM7 I/O write: 0x%X\n", address);
-            break;
+            case 0x301: // HALTCNT
+                if (((value & 0xC0) >> 6) == 0x2)
+                    interpreter::arm7.halt = true;
+                break;
+        }
     }
 }
 
@@ -788,9 +570,9 @@ template <typename T> T read(interpreter::Cpu *cpu, uint32_t address)
 {
     if (cpu->type == 9)
     {
-        if (address >= 0x4000000 && address < 0x5000000)
+        if (address >= 0x4000000 && address < 0x5000000) // I/O registers
         {
-            return ioReadMap9(address);
+            return ioRead9<T>(address);
         }
         else
         {
@@ -803,9 +585,9 @@ template <typename T> T read(interpreter::Cpu *cpu, uint32_t address)
     }
     else
     {
-        if (address >= 0x4000000 && address < 0x5000000)
+        if (address >= 0x4000000 && address < 0x5000000) // I/O registers
         {
-            return ioReadMap7(address);
+            return ioRead7<T>(address);
         }
         else
         {
@@ -827,9 +609,9 @@ template <typename T> void write(interpreter::Cpu *cpu, uint32_t address, T valu
 {
     if (cpu->type == 9)
     {
-        if (address >= 0x4000000 && address < 0x5000000)
+        if (address >= 0x4000000 && address < 0x5000000) // I/O registers
         {
-            ioWriteMap9<T>(address, value);
+            ioWrite9<T>(address, value);
         }
         else
         {
@@ -842,9 +624,9 @@ template <typename T> void write(interpreter::Cpu *cpu, uint32_t address, T valu
     }
     else
     {
-        if (address >= 0x4000000 && address < 0x5000000)
+        if (address >= 0x4000000 && address < 0x5000000) // I/O registers
         {
-            ioWriteMap7<T>(address, value);
+            ioWrite7<T>(address, value);
         }
         else
         {
@@ -885,29 +667,95 @@ void init()
     memset(extPalettesA, 0, sizeof(extPalettesA));
     memset(extPalettesB, 0, sizeof(extPalettesB));
 
-    memset(dmasad9, 0, sizeof(dmasad9));
-    memset(dmasad7, 0, sizeof(dmasad7));
-    memset(dmadad9, 0, sizeof(dmadad9));
-    memset(dmadad7, 0, sizeof(dmadad7));
-    memset(dmacnt9, 0, sizeof(dmacnt9));
-    memset(dmacnt7, 0, sizeof(dmacnt7));
-    memset(dmafill, 0, sizeof(dmafill));
+    memset(ioData9, 0, sizeof(ioData9));
+    memset(ioData7, 0, sizeof(ioData7));
 
-    keyinput = 0x03FF;
-    extkeyin = 0x007F;
+    *keyinput = 0x03FF;
+    *extkeyin = 0x007F;
 
-    ipcsync9 = ipcsync7 = 0;
-    ime9     = ime7     = 0;
-    ie9      = ie7      = 0;
-    if9      = if7      = 0;
+    *(uint32_t*)&ioMask9[0x000]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x000]  = 0xFFFFFFFF; // DISPCNT_A
+    *(uint16_t*)&ioMask9[0x004]  =     0xFFBF; *(uint16_t*)&ioWriteMask9[0x004]  =     0xFFB8; // DISPSTAT
+    *(uint16_t*)&ioMask9[0x006]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x006]  =     0x0000; // VCOUNT
+    *(uint16_t*)&ioMask9[0x008]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x008]  =     0xFFFF; // BG0CNT_A
+    *(uint16_t*)&ioMask9[0x00A]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x00A]  =     0xFFFF; // BG1CNT_A
+    *(uint16_t*)&ioMask9[0x00C]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x00C]  =     0xFFFF; // BG2CNT_A
+    *(uint16_t*)&ioMask9[0x00E]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x00E]  =     0xFFFF; // BG3CNT_A
+    *(uint16_t*)&ioMask9[0x010]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x010]  =     0x01FF; // BG0HOFS_A
+    *(uint16_t*)&ioMask9[0x012]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x012]  =     0x01FF; // BG0VOFS_A
+    *(uint16_t*)&ioMask9[0x014]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x014]  =     0x01FF; // BG1HOFS_A
+    *(uint16_t*)&ioMask9[0x016]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x016]  =     0x01FF; // BG1VOFS_A
+    *(uint16_t*)&ioMask9[0x018]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x018]  =     0x01FF; // BG2HOFS_A
+    *(uint16_t*)&ioMask9[0x01A]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x01A]  =     0x01FF; // BG2VOFS_A
+    *(uint16_t*)&ioMask9[0x01C]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x01C]  =     0x01FF; // BG3HOFS_A
+    *(uint16_t*)&ioMask9[0x01E]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x01E]  =     0x01FF; // BG3VOFS_A
+    *(uint32_t*)&ioMask9[0x0B0]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0B0]  = 0x0FFFFFFF; // DMA0SAD_9
+    *(uint32_t*)&ioMask9[0x0B4]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0B4]  = 0x0FFFFFFF; // DMA0DAD_9
+    *(uint32_t*)&ioMask9[0x0B8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0B8]  = 0xFFFFFFFF; // DMA0CNT_9
+    *(uint32_t*)&ioMask9[0x0BC]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0BC]  = 0x0FFFFFFF; // DMA1SAD_9
+    *(uint32_t*)&ioMask9[0x0C0]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0C0]  = 0x0FFFFFFF; // DMA1DAD_9
+    *(uint32_t*)&ioMask9[0x0C4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0C4]  = 0xFFFFFFFF; // DMA1CNT_9
+    *(uint32_t*)&ioMask9[0x0C8]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0C8]  = 0x0FFFFFFF; // DMA2SAD_9
+    *(uint32_t*)&ioMask9[0x0CC]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0CC]  = 0x0FFFFFFF; // DMA2DAD_9
+    *(uint32_t*)&ioMask9[0x0D0]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0D0]  = 0xFFFFFFFF; // DMA2CNT_9
+    *(uint32_t*)&ioMask9[0x0D4]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0D4]  = 0x0FFFFFFF; // DMA3SAD_9
+    *(uint32_t*)&ioMask9[0x0D8]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0D8]  = 0x0FFFFFFF; // DMA3DAD_9
+    *(uint32_t*)&ioMask9[0x0DC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0DC]  = 0xFFFFFFFF; // DMA3CNT_9
+    *(uint32_t*)&ioMask9[0x0E0]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0E0]  = 0xFFFFFFFF; // DMA0FILL
+    *(uint32_t*)&ioMask9[0x0E4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0E4]  = 0xFFFFFFFF; // DMA1FILL
+    *(uint32_t*)&ioMask9[0x0E8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0E8]  = 0xFFFFFFFF; // DMA2FILL
+    *(uint32_t*)&ioMask9[0x0EC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0EC]  = 0xFFFFFFFF; // DMA3FILL
+    *(uint16_t*)&ioMask9[0x130]  =     0x03FF; *(uint16_t*)&ioWriteMask9[0x130]  =     0x0000; // KEYINPUT
+    *(uint16_t*)&ioMask9[0x180]  =     0x6F0F; *(uint16_t*)&ioWriteMask9[0x180]  =     0x4F0F; // IPCSYNC_9
+    *(uint16_t*)&ioMask9[0x208]  =     0x0001; *(uint16_t*)&ioWriteMask9[0x208]  =     0x0001; // IME_9
+    *(uint32_t*)&ioMask9[0x210]  = 0x003F3F7F; *(uint32_t*)&ioWriteMask9[0x210]  = 0x003F3F7F; // IE_9
+    *(uint32_t*)&ioMask9[0x214]  = 0x003F3F7F; *(uint32_t*)&ioWriteMask9[0x214]  = 0x00000000; // IF_9
+                 ioMask9[0x240]  =       0x9B;              ioWriteMask9[0x240]  =       0x00; // VRAMCNT_A
+                 ioMask9[0x241]  =       0x9B;              ioWriteMask9[0x241]  =       0x00; // VRAMCNT_B
+                 ioMask9[0x242]  =       0x9F;              ioWriteMask9[0x242]  =       0x00; // VRAMCNT_C
+                 ioMask9[0x243]  =       0x9F;              ioWriteMask9[0x243]  =       0x00; // VRAMCNT_D
+                 ioMask9[0x244]  =       0x87;              ioWriteMask9[0x244]  =       0x00; // VRAMCNT_E
+                 ioMask9[0x245]  =       0x9F;              ioWriteMask9[0x245]  =       0x00; // VRAMCNT_F
+                 ioMask9[0x246]  =       0x9F;              ioWriteMask9[0x246]  =       0x00; // VRAMCNT_G
+                 ioMask9[0x247]  =       0x03;              ioWriteMask9[0x247]  =       0x03; // WRAMCNT
+                 ioMask9[0x248]  =       0x83;              ioWriteMask9[0x248]  =       0x00; // VRAMCNT_H
+                 ioMask9[0x249]  =       0x83;              ioWriteMask9[0x249]  =       0x00; // VRAMCNT_I
+    *(uint16_t*)&ioMask9[0x304]  =     0x820F; *(uint16_t*)&ioWriteMask9[0x304]  =     0x820F; // POWCNT1
+    *(uint32_t*)&ioMask9[0x1000] = 0xC0B1FFF7; *(uint32_t*)&ioWriteMask9[0x1000] = 0xC0B1FFF7; // DISPCNT_B
+    *(uint16_t*)&ioMask9[0x1008] =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x1008] =     0xFFFF; // BG0CNT_B
+    *(uint16_t*)&ioMask9[0x100A] =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x100A] =     0xFFFF; // BG1CNT_B
+    *(uint16_t*)&ioMask9[0x100C] =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x100C] =     0xFFFF; // BG2CNT_B
+    *(uint16_t*)&ioMask9[0x100E] =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x100E] =     0xFFFF; // BG3CNT_B
+    *(uint16_t*)&ioMask9[0x1010] =     0x01FF; *(uint16_t*)&ioWriteMask9[0x1010] =     0x01FF; // BG0HOFS_B
+    *(uint16_t*)&ioMask9[0x1012] =     0x01FF; *(uint16_t*)&ioWriteMask9[0x1012] =     0x01FF; // BG0VOFS_B
+    *(uint16_t*)&ioMask9[0x1014] =     0x01FF; *(uint16_t*)&ioWriteMask9[0x1014] =     0x01FF; // BG1HOFS_B
+    *(uint16_t*)&ioMask9[0x1016] =     0x01FF; *(uint16_t*)&ioWriteMask9[0x1016] =     0x01FF; // BG1VOFS_B
+    *(uint16_t*)&ioMask9[0x1018] =     0x01FF; *(uint16_t*)&ioWriteMask9[0x1018] =     0x01FF; // BG2HOFS_B
+    *(uint16_t*)&ioMask9[0x101A] =     0x01FF; *(uint16_t*)&ioWriteMask9[0x101A] =     0x01FF; // BG2VOFS_B
+    *(uint16_t*)&ioMask9[0x101C] =     0x01FF; *(uint16_t*)&ioWriteMask9[0x101C] =     0x01FF; // BG3HOFS_B
+    *(uint16_t*)&ioMask9[0x101E] =     0x01FF; *(uint16_t*)&ioWriteMask9[0x101E] =     0x01FF; // BG3VOFS_B
 
-    dispcntA = 0;
-    dispstat = 0;
-    vcount   = 0;
-    powcnt1  = 0;
-    dispcntB = 0;
-    memset(bgcntA, 0, sizeof(bgcntA));
-    memset(bgcntB, 0, sizeof(bgcntB));
+    *(uint16_t*)&ioMask7[0x004] =     0xFFBF; *(uint16_t*)&ioWriteMask7[0x004] =     0x0000; // DISPSTAT
+    *(uint16_t*)&ioMask7[0x006] =     0x01FF; *(uint16_t*)&ioWriteMask7[0x006] =     0x0000; // VCOUNT
+    *(uint32_t*)&ioMask7[0x0B0] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0B0] = 0x07FFFFFF; // DMA0SAD_7
+    *(uint32_t*)&ioMask7[0x0B4] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0B4] = 0x07FFFFFF; // DMA0DAD_7
+    *(uint32_t*)&ioMask7[0x0B8] = 0xF7E03FFF; *(uint32_t*)&ioWriteMask7[0x0B8] = 0xF7E03FFF; // DMA0CNT_7
+    *(uint32_t*)&ioMask7[0x0BC] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0BC] = 0x07FFFFFF; // DMA1SAD_7
+    *(uint32_t*)&ioMask7[0x0C0] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0C0] = 0x07FFFFFF; // DMA1DAD_7
+    *(uint32_t*)&ioMask7[0x0C4] = 0xF7E03FFF; *(uint32_t*)&ioWriteMask7[0x0C4] = 0xF7E03FFF; // DMA1CNT_7
+    *(uint32_t*)&ioMask7[0x0C8] = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask7[0x0C8] = 0x07FFFFFF; // DMA2SAD_7
+    *(uint32_t*)&ioMask7[0x0CC] = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask7[0x0CC] = 0x07FFFFFF; // DMA2DAD_7
+    *(uint32_t*)&ioMask7[0x0D0] = 0xF7E03FFF; *(uint32_t*)&ioWriteMask7[0x0D0] = 0xF7E03FFF; // DMA2CNT_7
+    *(uint32_t*)&ioMask7[0x0D4] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0D4] = 0x07FFFFFF; // DMA3SAD_7
+    *(uint32_t*)&ioMask7[0x0D8] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0D8] = 0x07FFFFFF; // DMA3DAD_7
+    *(uint32_t*)&ioMask7[0x0DC] = 0xF7E0FFFF; *(uint32_t*)&ioWriteMask7[0x0DC] = 0xF7E0FFFF; // DMA3CNT_7
+    *(uint16_t*)&ioMask7[0x130] =     0x03FF; *(uint16_t*)&ioWriteMask7[0x130] =     0x0000; // KEYINPUT
+    *(uint16_t*)&ioMask7[0x136] =     0x00FF; *(uint16_t*)&ioWriteMask7[0x136] =     0x0000; // EXTKEYIN
+    *(uint16_t*)&ioMask7[0x180] =     0x6F0F; *(uint16_t*)&ioWriteMask7[0x180] =     0x4F0F; // IPCSYNC_7
+    *(uint16_t*)&ioMask7[0x208] =     0x0001; *(uint16_t*)&ioWriteMask7[0x208] =     0x0001; // IME_7
+    *(uint32_t*)&ioMask7[0x210] = 0x01FF3FFF; *(uint32_t*)&ioWriteMask7[0x210] = 0x01FF3FFF; // IE_7
+    *(uint32_t*)&ioMask7[0x214] = 0x01FF3FFF; *(uint32_t*)&ioWriteMask7[0x214] = 0x00000000; // IF_7
+                 ioMask7[0x241]  =       0x03;              ioWriteMask7[0x241]  =       0x00; // WRAMSTAT
+                 ioMask7[0x301]  =       0xC0;              ioWriteMask7[0x301]  =       0xC0; // HALTCNT
 }
 
 }

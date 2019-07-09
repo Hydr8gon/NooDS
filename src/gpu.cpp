@@ -37,9 +37,9 @@ namespace gpu
 typedef struct
 {
     uint32_t *dispcnt;
-    uint32_t *bgcnt;
-    uint32_t *bghofs;
-    uint32_t *bgvofs;
+    uint16_t *bgcnt[4];
+    uint16_t *bghofs[4];
+    uint16_t *bgvofs[4];
     uint16_t *palette;
     uint16_t **extPalettes;
     uint32_t bgVram;
@@ -59,21 +59,21 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
         return;
     }
 
-    uint32_t screenBase = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x800  + ((*engine->dispcnt & 0x38000000) >> 27) * 0x10000;
-    uint32_t charBase   = ((engine->bgcnt[bg] & 0x003C) >> 2) * 0x4000 + ((*engine->dispcnt & 0x07000000) >> 24) * 0x10000;
-    uint16_t yOffset = memory::vcount + engine->bgvofs[bg];
+    uint32_t screenBase = ((*engine->bgcnt[bg] & 0x1F00) >> 8) * 0x800  + ((*engine->dispcnt & 0x38000000) >> 27) * 0x10000;
+    uint32_t charBase   = ((*engine->bgcnt[bg] & 0x003C) >> 2) * 0x4000 + ((*engine->dispcnt & 0x07000000) >> 24) * 0x10000;
+    uint16_t yOffset = *memory::vcount + *engine->bgvofs[bg];
     uint16_t *tiles = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + ((yOffset / 8) % 32) * 32 * sizeof(uint16_t));
 
     if (tiles)
     {
-        if ((engine->bgcnt[bg] & BIT(15)) && yOffset >= 256 && yOffset < 512)
-            tiles += (engine->bgcnt[bg] & BIT(14)) ? 0x800 : 0x400;
+        if ((*engine->bgcnt[bg] & BIT(15)) && yOffset >= 256 && yOffset < 512)
+            tiles += (*engine->bgcnt[bg] & BIT(14)) ? 0x800 : 0x400;
 
-        if (engine->bgcnt[bg] & BIT(7)) // 8-bit tiles
+        if (*engine->bgcnt[bg] & BIT(7)) // 8-bit tiles
         {
             uint16_t *palette;
             if (*engine->dispcnt & BIT(30)) // Extended palette
-                palette = engine->extPalettes[bg + ((bg < 2 && (engine->bgcnt[bg] & BIT(13))) ? 2 : 0)];
+                palette = engine->extPalettes[bg + ((bg < 2 && (*engine->bgcnt[bg] & BIT(13))) ? 2 : 0)];
             else // Standard palette
                 palette = engine->palette;
 
@@ -82,9 +82,9 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
                 uint16_t start = pixel;
                 for (int i = 0; i <= 32; i++)
                 {
-                    uint16_t xOffset = engine->bghofs[bg] + i * 8;
+                    uint16_t xOffset = *engine->bghofs[bg] + i * 8;
                     uint16_t *tile = &tiles[(xOffset / 8) % 32];
-                    if ((engine->bgcnt[bg] & BIT(14)) && xOffset >= 256 && xOffset < 512)
+                    if ((*engine->bgcnt[bg] & BIT(14)) && xOffset >= 256 && xOffset < 512)
                         tile += 0x400;
 
                     uint8_t *sprite;
@@ -123,9 +123,9 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
             uint16_t start = pixel;
             for (int i = 0; i < 32; i++)
             {
-                uint16_t xOffset = engine->bghofs[bg] + i * 8;
+                uint16_t xOffset = *engine->bghofs[bg] + i * 8;
                 uint16_t *tile = &tiles[(xOffset / 8) % 32];
-                if ((engine->bgcnt[bg] & BIT(14)) && xOffset >= 256 && xOffset < 512)
+                if ((*engine->bgcnt[bg] & BIT(14)) && xOffset >= 256 && xOffset < 512)
                     tile += 0x400;
 
                 uint8_t *sprite;
@@ -175,16 +175,16 @@ void drawAffine(Engine *engine, uint8_t bg, uint16_t pixel)
 
 void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
 {
-    if (engine->bgcnt[bg] & BIT(7))
+    if (*engine->bgcnt[bg] & BIT(7))
     {
-        uint32_t screenBase = ((engine->bgcnt[bg] & 0x1F00) >> 8) * 0x4000;
-        if (engine->bgcnt[bg] & BIT(2)) // Direct color bitmap
+        uint32_t screenBase = ((*engine->bgcnt[bg] & 0x1F00) >> 8) * 0x4000;
+        if (*engine->bgcnt[bg] & BIT(2)) // Direct color bitmap
         {
             uint16_t *line = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + pixel * sizeof(uint16_t));
             if (line)
                 memcpy(&engine->bgBuffers[bg][pixel], line, 256 * sizeof(uint16_t));
         }
-        else if (engine->bgcnt[bg] & BIT(7)) // 256 color bitmap
+        else if (*engine->bgcnt[bg] & BIT(7)) // 256 color bitmap
         {
             uint8_t *line = (uint8_t*)memory::vramMap(engine->bgVram + screenBase + pixel);
             if (line)
@@ -202,7 +202,7 @@ void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
 
 void drawScanline(Engine *engine)
 {
-    uint16_t pixel = memory::vcount * 256;
+    uint16_t pixel = *memory::vcount * 256;
 
     switch ((*engine->dispcnt & 0x00030000) >> 16) // Display mode
     {
@@ -268,7 +268,7 @@ void drawScanline(Engine *engine)
                 {
                     for (int k = 0; k < 4; k++)
                     {
-                        if ((engine->bgcnt[k] & 0x0003) == j && (*engine->dispcnt & BIT(8 + k)) && (engine->bgBuffers[k][pixel + i] & BIT(15)))
+                        if ((*engine->bgcnt[k] & 0x0003) == j && (*engine->dispcnt & BIT(8 + k)) && (engine->bgBuffers[k][pixel + i] & BIT(15)))
                         {
                             engine->framebuffer[pixel + i] = engine->bgBuffers[k][pixel + i];
                             break;
@@ -300,15 +300,15 @@ void drawScanline(Engine *engine)
 void scanline256()
 {
     // Draw a scanline
-    if (memory::vcount < 192)
+    if (*memory::vcount < 192)
     {
         drawScanline(&engineA);
         drawScanline(&engineB);
     }
 
     // Start H-blank
-    memory::dispstat |= BIT(1); // H-blank flag
-    if (memory::dispstat & BIT(4)) // H-blank IRQ flag
+    *memory::dispstat |= BIT(1); // H-blank flag
+    if (*memory::dispstat & BIT(4)) // H-blank IRQ flag
     {
         interpreter::irq9(1);
         interpreter::irq7(1);
@@ -318,42 +318,42 @@ void scanline256()
 void scanline355()
 {
     // End H-blank
-    memory::dispstat &= ~BIT(1); // H-blank flag
-    memory::vcount++;
+    *memory::dispstat &= ~BIT(1); // H-blank flag
+    (*memory::vcount)++;
 
     // Check the V-counter
-    if (memory::vcount == (memory::dispstat >> 8) | ((memory::dispstat & BIT(7)) << 1))
+    if (*memory::vcount == (*memory::dispstat >> 8) | ((*memory::dispstat & BIT(7)) << 1))
     {
-        memory::dispstat |= BIT(2); // V-counter flag
-        if (memory::dispstat & BIT(5)) // V-counter IRQ flag
+        *memory::dispstat |= BIT(2); // V-counter flag
+        if (*memory::dispstat & BIT(5)) // V-counter IRQ flag
         {
             interpreter::irq9(2);
             interpreter::irq7(2);
         }
     }
-    else if (memory::dispstat & BIT(2))
+    else if (*memory::dispstat & BIT(2))
     {
-        memory::dispstat &= ~BIT(2); // V-counter flag
+        *memory::dispstat &= ~BIT(2); // V-counter flag
     }
 
-    if (memory::vcount == 192) // Start of V-Blank
+    if (*memory::vcount == 192) // Start of V-Blank
     {
-        memory::dispstat |= BIT(0); // V-blank flag
-        if (memory::dispstat & BIT(3)) // V-blank IRQ flag
+        *memory::dispstat |= BIT(0); // V-blank flag
+        if (*memory::dispstat & BIT(3)) // V-blank IRQ flag
         {
             interpreter::irq9(0);
             interpreter::irq7(0);
         }
     }
-    else if (memory::vcount == 263) // End of frame
+    else if (*memory::vcount == 263) // End of frame
     {
-        memory::dispstat &= ~BIT(0); // V-blank flag
-        memory::vcount = 0;
+        *memory::dispstat &= ~BIT(0); // V-blank flag
+        *memory::vcount = 0;
 
         // Display the frame
-        if (memory::powcnt1 & BIT(0))
+        if (*memory::powcnt1 & BIT(0))
         {
-            if (memory::powcnt1 & BIT(15))
+            if (*memory::powcnt1 & BIT(15))
             {
                 memcpy(&displayBuffer[0],         engineA.framebuffer, sizeof(engineA.framebuffer));
                 memcpy(&displayBuffer[256 * 192], engineB.framebuffer, sizeof(engineB.framebuffer));
@@ -385,18 +385,36 @@ void scanline355()
 
 void init()
 {
-    engineA.dispcnt = &memory::dispcntA;
-    engineA.bgcnt   = memory::bgcntA;
-    engineA.bghofs  = memory::bghofsA;
-    engineA.bgvofs  = memory::bgvofsA;
+    engineA.dispcnt   = memory::dispcntA;
+    engineA.bgcnt[0]  = memory::bg0cntA;
+    engineA.bgcnt[1]  = memory::bg1cntA;
+    engineA.bgcnt[2]  = memory::bg2cntA;
+    engineA.bgcnt[3]  = memory::bg3cntA;
+    engineA.bghofs[0] = memory::bg0hofsA;
+    engineA.bgvofs[0] = memory::bg0vofsA;
+    engineA.bghofs[1] = memory::bg1hofsA;
+    engineA.bgvofs[1] = memory::bg1vofsA;
+    engineA.bghofs[2] = memory::bg2hofsA;
+    engineA.bgvofs[2] = memory::bg2vofsA;
+    engineA.bghofs[3] = memory::bg3hofsA;
+    engineA.bgvofs[3] = memory::bg3vofsA;
     engineA.palette = (uint16_t*)memory::paletteA;
     engineA.extPalettes = memory::extPalettesA;
     engineA.bgVram  = 0x6000000;
 
-    engineB.dispcnt = &memory::dispcntB;
-    engineB.bgcnt   = memory::bgcntB;
-    engineB.bghofs  = memory::bghofsB;
-    engineB.bgvofs  = memory::bgvofsB;
+    engineB.dispcnt = memory::dispcntB;
+    engineB.bgcnt[0]  = memory::bg0cntB;
+    engineB.bgcnt[1]  = memory::bg1cntB;
+    engineB.bgcnt[2]  = memory::bg2cntB;
+    engineB.bgcnt[3]  = memory::bg3cntB;
+    engineB.bghofs[0] = memory::bg0hofsB;
+    engineB.bgvofs[0] = memory::bg0vofsB;
+    engineB.bghofs[1] = memory::bg1hofsB;
+    engineB.bgvofs[1] = memory::bg1vofsB;
+    engineB.bghofs[2] = memory::bg2hofsB;
+    engineB.bgvofs[2] = memory::bg2vofsB;
+    engineB.bghofs[3] = memory::bg3hofsB;
+    engineB.bgvofs[3] = memory::bg3vofsB;
     engineB.palette = (uint16_t*)memory::paletteB;
     engineB.extPalettes = memory::extPalettesB;
     engineB.bgVram  = 0x6200000;
