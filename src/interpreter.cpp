@@ -174,41 +174,22 @@ void setMode(Cpu *cpu, uint8_t mode)
     cpu->cpsr = (cpu->cpsr & ~0x1F) | (mode & 0x1F);
 }
 
-void irq9(uint8_t type)
+void irq(Cpu *cpu, uint8_t type)
 {
-    if (*memory::ime9 && (*memory::ie9 & BIT(type)))
+    if (*cpu->ime && (*cpu->ie & BIT(type)))
     {
-        if (!(arm9.cpsr & BIT(7)))
+        if (!(cpu->cpsr & BIT(7)))
         {
-            *memory::if9 |= BIT(type);
-            uint32_t cpsr = arm9.cpsr;
-            setMode(&arm9, 0x12);
-            *arm9.spsr = cpsr;
-            arm9.cpsr &= ~BIT(5);
-            arm9.cpsr |= BIT(7);
-            *arm9.registers[14] = *arm9.registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
-            *arm9.registers[15] = cp15::exceptions + 0x18 + 8;
+            *cpu->irf |= BIT(type);
+            uint32_t cpsr = cpu->cpsr;
+            setMode(cpu, 0x12);
+            *cpu->spsr = cpsr;
+            cpu->cpsr &= ~BIT(5);
+            cpu->cpsr |= BIT(7);
+            *cpu->registers[14] = *cpu->registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
+            *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0) + 0x18 + 8;
         }
-        arm9.halt = false;
-    }
-}
-
-void irq7(uint8_t type)
-{
-    if (*memory::ie7 & BIT(type))
-    {
-        if (!(arm7.cpsr & BIT(7)) && *memory::ime7)
-        {
-            *memory::if7 |= BIT(type);
-            uint32_t cpsr = arm7.cpsr;
-            setMode(&arm7, 0x12);
-            *arm7.spsr = cpsr;
-            arm7.cpsr &= ~BIT(5);
-            arm7.cpsr |= BIT(7);
-            *arm7.registers[14] = *arm7.registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
-            *arm7.registers[15] = 0x00000018 + 8;
-        }
-        arm7.halt = false;
+        cpu->halt = false;
     }
 }
 

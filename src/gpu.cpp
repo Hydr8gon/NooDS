@@ -310,8 +310,8 @@ void scanline256()
     *memory::dispstat |= BIT(1); // H-blank flag
     if (*memory::dispstat & BIT(4)) // H-blank IRQ flag
     {
-        interpreter::irq9(1);
-        interpreter::irq7(1);
+        interpreter::irq(&interpreter::arm9, 1);
+        interpreter::irq(&interpreter::arm7, 1);
     }
 }
 
@@ -327,8 +327,8 @@ void scanline355()
         *memory::dispstat |= BIT(2); // V-counter flag
         if (*memory::dispstat & BIT(5)) // V-counter IRQ flag
         {
-            interpreter::irq9(2);
-            interpreter::irq7(2);
+            interpreter::irq(&interpreter::arm9, 2);
+            interpreter::irq(&interpreter::arm7, 2);
         }
     }
     else if (*memory::dispstat & BIT(2))
@@ -341,8 +341,8 @@ void scanline355()
         *memory::dispstat |= BIT(0); // V-blank flag
         if (*memory::dispstat & BIT(3)) // V-blank IRQ flag
         {
-            interpreter::irq9(0);
-            interpreter::irq7(0);
+            interpreter::irq(&interpreter::arm9, 0);
+            interpreter::irq(&interpreter::arm7, 0);
         }
     }
     else if (*memory::vcount == 263) // End of frame

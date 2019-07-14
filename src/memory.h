@@ -59,12 +59,28 @@ extern uint16_t *bg2vofsA, *bg2vofsB;
 extern uint16_t *bg3hofsA, *bg3hofsB;
 extern uint16_t *bg3vofsA, *bg3vofsB;
 
+extern uint32_t *dma0sad9, *dma0sad7;
+extern uint32_t *dma0dad9, *dma0dad7;
+extern uint32_t *dma0cnt9, *dma0cnt7;
+extern uint32_t *dma1sad9, *dma1sad7;
+extern uint32_t *dma1dad9, *dma1dad7;
+extern uint32_t *dma1cnt9, *dma1cnt7;
+extern uint32_t *dma2sad9, *dma2sad7;
+extern uint32_t *dma2dad9, *dma2dad7;
+extern uint32_t *dma2cnt9, *dma2cnt7;
+extern uint32_t *dma3sad9, *dma3sad7;
+extern uint32_t *dma3dad9, *dma3dad7;
+extern uint32_t *dma3cnt9, *dma3cnt7;
+
 extern uint16_t *keyinput;
 extern uint16_t *extkeyin;
 
-extern uint16_t *ime9, *ime7;
+extern uint16_t *spicnt;
+extern uint16_t *spidata;
+
+extern uint32_t *ime9, *ime7;
 extern uint32_t *ie9,  *ie7;
-extern uint32_t *if9,  *if7;
+extern uint32_t *irf9, *irf7;
 
 void *vramMap(uint32_t address);
 

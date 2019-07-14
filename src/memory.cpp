@@ -23,6 +23,7 @@
 #include "memory.h"
 #include "core.h"
 #include "cp15.h"
+#include "memory_transfer.h"
 
 namespace memory
 {
@@ -97,63 +98,14 @@ uint32_t *dma3cnt9 = (uint32_t*)&ioData9[0x0DC], *dma3cnt7 = (uint32_t*)&ioData7
 
 uint16_t *keyinput = (uint16_t*)&ioData9[0x130];
 uint16_t *extkeyin = (uint16_t*)&ioData7[0x136];
-
 uint16_t *ipcsync9 = (uint16_t*)&ioData9[0x180], *ipcsync7 = (uint16_t*)&ioData7[0x180];
-uint16_t *ime9     = (uint16_t*)&ioData9[0x208], *ime7     = (uint16_t*)&ioData7[0x208];
+
+uint16_t *spicnt  = (uint16_t*)&ioData7[0x1C0];
+uint16_t *spidata = (uint16_t*)&ioData7[0x1C2];
+
+uint32_t *ime9     = (uint32_t*)&ioData9[0x208], *ime7     = (uint32_t*)&ioData7[0x208];
 uint32_t *ie9      = (uint32_t*)&ioData9[0x210], *ie7      = (uint32_t*)&ioData7[0x210];
-uint32_t *if9      = (uint32_t*)&ioData9[0x214], *if7      = (uint32_t*)&ioData7[0x214];
-
-void dmaTransfer(interpreter::Cpu *cpu, uint32_t dmasad, uint32_t dmadad, uint32_t *dmacnt)
-{
-    uint8_t mode = (*dmacnt & 0x38000000) >> 27;
-    if (mode == 0) // Start immediately
-    {
-        uint8_t dstAddrCnt = (*dmacnt & 0x00600000) >> 21;
-        uint8_t srcAddrCnt = (*dmacnt & 0x01800000) >> 23;
-        uint32_t size = (*dmacnt & 0x001FFFFF);
-
-        if (*dmacnt & BIT(26)) // 32-bit
-        {
-            for (int i = 0; i < size; i++)
-            {
-                write<uint32_t>(cpu, dmadad, read<uint32_t>(cpu, dmasad));
-
-                if (dstAddrCnt == 0 || dstAddrCnt == 3) // Destination increment
-                    dmadad += 4;
-                else if (dstAddrCnt == 1) // Destination decrement
-                    dmadad -= 4;
-
-                if (srcAddrCnt == 0) // Source increment
-                    dmasad += 4;
-                else if (srcAddrCnt == 1) // Source decrement
-                    dmasad -= 4;
-            }
-        }
-        else // 16-bit
-        {
-            for (int i = 0; i < size; i++)
-            {
-                write<uint16_t>(cpu, dmadad, read<uint16_t>(cpu, dmasad));
-
-                if (dstAddrCnt == 0 || dstAddrCnt == 3) // Destination increment
-                    dmadad += 2;
-                else if (dstAddrCnt == 1) // Destination decrement
-                    dmadad -= 2;
-
-                if (srcAddrCnt == 0) // Source increment
-                    dmasad += 2;
-                else if (srcAddrCnt == 1) // Source decrement
-                    dmasad -= 2;
-            }
-        }
-    }
-    else
-    {
-        printf("Unknown ARM%d DMA transfer mode: %d\n", cpu->type, mode);
-    }
-
-    *dmacnt &= ~BIT(31);
-}
+uint32_t *irf9     = (uint32_t*)&ioData9[0x214], *irf7     = (uint32_t*)&ioData7[0x214];
 
 void *vramMap(uint32_t address)
 {
@@ -254,29 +206,25 @@ template <typename T> void ioWrite9(uint32_t address, T value)
         switch (ioAddr + i)
         {
             case 0x0BB: // DMA0CNT_9
-                if (((uint8_t*)&value)[i] & BIT(7))
-                    dmaTransfer(&interpreter::arm9, *dma0sad9, *dma0dad9, dma0cnt9);
+                memory_transfer::dmaTransfer(&interpreter::arm9, 0);
                 break;
 
             case 0x0C7: // DMA1CNT_9
-                if (((uint8_t*)&value)[i] & BIT(7))
-                    dmaTransfer(&interpreter::arm9, *dma1sad9, *dma1dad9, dma1cnt9);
+                memory_transfer::dmaTransfer(&interpreter::arm9, 1);
                 break;
 
             case 0x0D3: // DMA2CNT_9
-                if (((uint8_t*)&value)[i] & BIT(7))
-                    dmaTransfer(&interpreter::arm9, *dma2sad9, *dma2dad9, dma2cnt9);
+                memory_transfer::dmaTransfer(&interpreter::arm9, 2);
                 break;
 
             case 0x0DF: // DMA3CNT_9
-                if (((uint8_t*)&value)[i] & BIT(7))
-                    dmaTransfer(&interpreter::arm9, *dma3sad9, *dma3dad9, dma3cnt9);
+                memory_transfer::dmaTransfer(&interpreter::arm9, 3);
                 break;
 
             case 0x181: // IPCSYNC_9
                 ((uint8_t*)ipcsync7)[0] = (((uint8_t*)&value)[i] & 0x0F);
                 if ((((uint8_t*)&value)[i] & BIT(5)) && (*ipcsync7 & BIT(14))) // Remote IRQ
-                    interpreter::irq7(16);
+                    interpreter::irq(&interpreter::arm7, 16);
                 break;
 
             case 0x214: case 0x215: case 0x216: case 0x217: // IF_9
@@ -482,6 +430,7 @@ template <typename T> T ioRead7(uint32_t address)
     if (ioAddr >= sizeof(ioMask7) || !ioMask7[ioAddr])
     {
         printf("Unknown ARM7 I/O read: 0x%X\n", address);
+        if (ioAddr == 0x1A4) return (T)0x00800000; // Hack to bypass cart transfers
         return 0;
     }
 
@@ -524,29 +473,29 @@ template <typename T> void ioWrite7(uint32_t address, T value)
                 break;
 
             case 0x0BB: // DMA0CNT_7
-                if (((uint8_t*)&value)[i] & BIT(7))
-                    dmaTransfer(&interpreter::arm7, *dma0sad7, *dma0dad7, dma0cnt7);
+                memory_transfer::dmaTransfer(&interpreter::arm7, 0);
                 break;
 
             case 0x0C7: // DMA1CNT_7
-                if (((uint8_t*)&value)[i] & BIT(7))
-                    dmaTransfer(&interpreter::arm7, *dma1sad7, *dma1dad7, dma1cnt7);
+                memory_transfer::dmaTransfer(&interpreter::arm7, 1);
                 break;
 
             case 0x0D3: // DMA2CNT_7
-                if (((uint8_t*)&value)[i] & BIT(7))
-                    dmaTransfer(&interpreter::arm7, *dma2sad7, *dma2dad7, dma2cnt7);
+                memory_transfer::dmaTransfer(&interpreter::arm7, 2);
                 break;
 
             case 0x0DF: // DMA3CNT_7
-                if (((uint8_t*)&value)[i] & BIT(7))
-                    dmaTransfer(&interpreter::arm7, *dma3sad7, *dma3dad7, dma3cnt7);
+                memory_transfer::dmaTransfer(&interpreter::arm7, 3);
                 break;
 
             case 0x181: // IPCSYNC_7
                 ((uint8_t*)ipcsync9)[0] = (((uint8_t*)&value)[i] & 0x0F);
                 if ((((uint8_t*)&value)[i] & BIT(5)) && (*ipcsync9 & BIT(14))) // Remote IRQ
-                    interpreter::irq9(16);
+                    interpreter::irq(&interpreter::arm9, 16);
+                break;
+
+            case 0x1C2: // SPIDATA
+                memory_transfer::spiWrite(((uint8_t*)&value)[i]);
                 break;
 
             case 0x214: case 0x215: case 0x216: case 0x217: // IF_7
@@ -706,7 +655,7 @@ void init()
     *(uint32_t*)&ioMask9[0x0EC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0EC]  = 0xFFFFFFFF; // DMA3FILL
     *(uint16_t*)&ioMask9[0x130]  =     0x03FF; *(uint16_t*)&ioWriteMask9[0x130]  =     0x0000; // KEYINPUT
     *(uint16_t*)&ioMask9[0x180]  =     0x6F0F; *(uint16_t*)&ioWriteMask9[0x180]  =     0x4F0F; // IPCSYNC_9
-    *(uint16_t*)&ioMask9[0x208]  =     0x0001; *(uint16_t*)&ioWriteMask9[0x208]  =     0x0001; // IME_9
+    *(uint32_t*)&ioMask9[0x208]  =     0x0001; *(uint32_t*)&ioWriteMask9[0x208]  = 0x00000001; // IME_9
     *(uint32_t*)&ioMask9[0x210]  = 0x003F3F7F; *(uint32_t*)&ioWriteMask9[0x210]  = 0x003F3F7F; // IE_9
     *(uint32_t*)&ioMask9[0x214]  = 0x003F3F7F; *(uint32_t*)&ioWriteMask9[0x214]  = 0x00000000; // IF_9
                  ioMask9[0x240]  =       0x9B;              ioWriteMask9[0x240]  =       0x00; // VRAMCNT_A
@@ -751,7 +700,9 @@ void init()
     *(uint16_t*)&ioMask7[0x130] =     0x03FF; *(uint16_t*)&ioWriteMask7[0x130] =     0x0000; // KEYINPUT
     *(uint16_t*)&ioMask7[0x136] =     0x00FF; *(uint16_t*)&ioWriteMask7[0x136] =     0x0000; // EXTKEYIN
     *(uint16_t*)&ioMask7[0x180] =     0x6F0F; *(uint16_t*)&ioWriteMask7[0x180] =     0x4F0F; // IPCSYNC_7
-    *(uint16_t*)&ioMask7[0x208] =     0x0001; *(uint16_t*)&ioWriteMask7[0x208] =     0x0001; // IME_7
+    *(uint16_t*)&ioMask7[0x1C0] =     0xCF83; *(uint16_t*)&ioWriteMask7[0x1C0] =     0xCF03; // SPICNT
+    *(uint16_t*)&ioMask7[0x1C2] =     0x00FF; *(uint16_t*)&ioWriteMask7[0x1C2] =     0x0000; // SPIDATA
+    *(uint32_t*)&ioMask7[0x208] =     0x0001; *(uint32_t*)&ioWriteMask7[0x208] = 0x00000001; // IME_7
     *(uint32_t*)&ioMask7[0x210] = 0x01FF3FFF; *(uint32_t*)&ioWriteMask7[0x210] = 0x01FF3FFF; // IE_7
     *(uint32_t*)&ioMask7[0x214] = 0x01FF3FFF; *(uint32_t*)&ioWriteMask7[0x214] = 0x00000000; // IF_7
                  ioMask7[0x241]  =       0x03;              ioWriteMask7[0x241]  =       0x00; // WRAMSTAT

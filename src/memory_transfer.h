@@ -17,40 +17,17 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef INTERPRETER_H
-#define INTERPRETER_H
+#ifndef MEMORY_TRANSFER_H
+#define MEMORY_TRANSFER_H
 
-#include <cstdint>
+#include "interpreter.h"
 
-namespace interpreter
+namespace memory_transfer
 {
 
-typedef struct
-{
-    uint32_t *registers[16];
-    uint32_t *spsr;
-    uint32_t cpsr;
-    uint32_t registersUsr[16];
-    uint32_t registersFiq[7];
-    uint32_t registersSvc[2];
-    uint32_t registersAbt[2];
-    uint32_t registersIrq[2];
-    uint32_t registersUnd[2];
-    uint32_t spsrFiq, spsrSvc, spsrAbt, spsrIrq, spsrUnd;
-    uint32_t *dmasad[4], *dmadad[4], *dmacnt[4];
-    uint32_t *ime, *ie, *irf;
-    bool halt;
-    uint8_t type;
-} Cpu;
-
-extern Cpu arm9, arm7;
-
-void execute(Cpu *cpu);
-void setMode(Cpu *cpu, uint8_t mode);
-void irq(Cpu *cpu, uint8_t type);
-
-void init();
+void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel);
+void spiWrite(uint8_t value);
 
 }
 
-#endif // INTERPRETER_H
+#endif // MEMORY_TRANSFER_H

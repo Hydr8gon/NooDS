@@ -43,6 +43,21 @@ bool init()
         interpreter::arm9.registers[i] = &interpreter::arm9.registersUsr[i];
     interpreter::arm9.registersUsr[15] = 0xFFFF0000 + 8;
     interpreter::arm9.cpsr             = 0x000000C0;
+    interpreter::arm9.dmasad[0]        = memory::dma0sad9;
+    interpreter::arm9.dmadad[0]        = memory::dma0dad9;
+    interpreter::arm9.dmacnt[0]        = memory::dma0cnt9;
+    interpreter::arm9.dmasad[1]        = memory::dma1sad9;
+    interpreter::arm9.dmadad[1]        = memory::dma1dad9;
+    interpreter::arm9.dmacnt[1]        = memory::dma1cnt9;
+    interpreter::arm9.dmasad[2]        = memory::dma2sad9;
+    interpreter::arm9.dmadad[2]        = memory::dma2dad9;
+    interpreter::arm9.dmacnt[2]        = memory::dma2cnt9;
+    interpreter::arm9.dmasad[3]        = memory::dma3sad9;
+    interpreter::arm9.dmadad[3]        = memory::dma3dad9;
+    interpreter::arm9.dmacnt[3]        = memory::dma3cnt9;
+    interpreter::arm9.ime              = memory::ime9;
+    interpreter::arm9.ie               = memory::ie9;
+    interpreter::arm9.irf              = memory::irf9;
     interpreter::arm9.type             = 9;
     interpreter::setMode(&interpreter::arm9, 0x13);
 
@@ -52,6 +67,21 @@ bool init()
         interpreter::arm7.registers[i] = &interpreter::arm7.registersUsr[i];
     interpreter::arm7.registersUsr[15] = 0x00000000 + 8;
     interpreter::arm7.cpsr             = 0x000000C0;
+    interpreter::arm7.dmasad[0]        = memory::dma0sad7;
+    interpreter::arm7.dmadad[0]        = memory::dma0dad7;
+    interpreter::arm7.dmacnt[0]        = memory::dma0cnt7;
+    interpreter::arm7.dmasad[1]        = memory::dma1sad7;
+    interpreter::arm7.dmadad[1]        = memory::dma1dad7;
+    interpreter::arm7.dmacnt[1]        = memory::dma1cnt7;
+    interpreter::arm7.dmasad[2]        = memory::dma2sad7;
+    interpreter::arm7.dmadad[2]        = memory::dma2dad7;
+    interpreter::arm7.dmacnt[2]        = memory::dma2cnt7;
+    interpreter::arm7.dmasad[3]        = memory::dma3sad7;
+    interpreter::arm7.dmadad[3]        = memory::dma3dad7;
+    interpreter::arm7.dmacnt[3]        = memory::dma3cnt7;
+    interpreter::arm7.ime              = memory::ime7;
+    interpreter::arm7.ie               = memory::ie7;
+    interpreter::arm7.irf              = memory::irf7;
     interpreter::arm7.type             = 7;
     interpreter::setMode(&interpreter::arm7, 0x13);
 
