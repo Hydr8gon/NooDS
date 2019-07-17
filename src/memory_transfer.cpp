@@ -26,6 +26,8 @@
 namespace memory_transfer
 {
 
+uint16_t romReadSize, romReadCount;
+
 uint32_t spiWriteCount;
 uint32_t spiAddr;
 uint8_t spiInstr;
@@ -87,6 +89,52 @@ void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel)
     if (*cpu->dmacnt[channel] & BIT(30)) // End of transfer IRQ
         interpreter::irq(cpu, 8 + channel);
     *cpu->dmacnt[channel] &= ~BIT(31);
+}
+
+void romTransferStart(interpreter::Cpu *cpu)
+{
+    if (!(*cpu->romctrl & BIT(31)))
+        return;
+
+    switch (cpu->romcmdout[0])
+    {
+        case 0x9F: romReadSize = 0x2000; break; // Dummy
+        case 0x00: romReadSize = 0x0200; break; // Get header
+        case 0x90: romReadSize = 0x0004; break; // Get first chip ID
+
+        default:
+            *cpu->romctrl &= ~BIT(23); // Word not ready
+            *cpu->romctrl &= ~BIT(31); // Block ready
+            if (*cpu->auxspicnt & BIT(14)) // Block ready IRQ
+                interpreter::irq(cpu, 19);
+
+            printf("Unknown ROM transfer command: 0x");
+            for (int i = 0; i < 8; i++)
+                printf("%.2X", cpu->romcmdout[i]);
+            printf("\n");
+            return;
+    }
+
+    *cpu->romctrl |= BIT(23); // Word ready
+    romReadCount = 0;
+}
+
+uint32_t romTransfer(interpreter::Cpu *cpu)
+{
+    if (!(*cpu->romctrl & BIT(23)))
+        return 0;
+
+    romReadCount += 4;
+    if (romReadCount == romReadSize)
+    {
+        *cpu->romctrl &= ~BIT(23); // Word not ready
+        *cpu->romctrl &= ~BIT(31); // Block ready
+        if (*cpu->auxspicnt & BIT(14)) // Block ready IRQ
+            interpreter::irq(cpu, 19);
+    }
+
+    // Return an endless stream of 0xFFs as if there isn't a cart inserted
+    return 0xFFFFFFFF;
 }
 
 void spiWrite(uint8_t value)

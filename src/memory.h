@@ -72,13 +72,26 @@ extern uint32_t *dma3sad9, *dma3sad7;
 extern uint32_t *dma3dad9, *dma3dad7;
 extern uint32_t *dma3cnt9, *dma3cnt7;
 
+extern uint16_t *tm0count9, *tm0count7;
+extern uint16_t *tm0cnt9,   *tm0cnt7;
+extern uint16_t *tm1count9, *tm1count7;
+extern uint16_t *tm1cnt9,   *tm1cnt7;
+extern uint16_t *tm2count9, *tm2count7;
+extern uint16_t *tm2cnt9,   *tm2cnt7;
+extern uint16_t *tm3count9, *tm3count7;
+extern uint16_t *tm3cnt9,   *tm3cnt7;
+
 extern uint16_t *keyinput;
 extern uint16_t *extkeyin;
+
+extern uint16_t *auxspicnt9, *auxspicnt7;
+extern uint32_t *romctrl9,   *romctrl7;
+extern uint8_t  *romcmdout9, *romcmdout7;
 
 extern uint16_t *spicnt;
 extern uint16_t *spidata;
 
-extern uint32_t *ime9, *ime7;
+extern uint16_t *ime9, *ime7;
 extern uint32_t *ie9,  *ie7;
 extern uint32_t *irf9, *irf7;
 

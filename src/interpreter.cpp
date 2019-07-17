@@ -176,9 +176,9 @@ void setMode(Cpu *cpu, uint8_t mode)
 
 void irq(Cpu *cpu, uint8_t type)
 {
-    if (*cpu->ime && (*cpu->ie & BIT(type)))
+    if (*cpu->ie & BIT(type))
     {
-        if (!(cpu->cpsr & BIT(7)))
+        if (!(cpu->cpsr & BIT(7)) && *cpu->ime)
         {
             *cpu->irf |= BIT(type);
             uint32_t cpsr = cpu->cpsr;
@@ -189,7 +189,8 @@ void irq(Cpu *cpu, uint8_t type)
             *cpu->registers[14] = *cpu->registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
             *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0) + 0x18 + 8;
         }
-        cpu->halt = false;
+        if (*cpu->ime || cpu->type == 7)
+            cpu->halt = false;
     }
 }
 

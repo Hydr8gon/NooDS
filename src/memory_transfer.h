@@ -26,6 +26,10 @@ namespace memory_transfer
 {
 
 void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel);
+
+void romTransferStart(interpreter::Cpu *cpu);
+uint32_t romTransfer(interpreter::Cpu *cpu);
+
 void spiWrite(uint8_t value);
 
 }

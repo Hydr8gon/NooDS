@@ -96,16 +96,30 @@ uint32_t *dma3sad9 = (uint32_t*)&ioData9[0x0D4], *dma3sad7 = (uint32_t*)&ioData7
 uint32_t *dma3dad9 = (uint32_t*)&ioData9[0x0D8], *dma3dad7 = (uint32_t*)&ioData7[0x0D8];
 uint32_t *dma3cnt9 = (uint32_t*)&ioData9[0x0DC], *dma3cnt7 = (uint32_t*)&ioData7[0x0DC];
 
+uint16_t *tm0count9 = (uint16_t*)&ioData9[0x100], *tm0count7 = (uint16_t*)&ioData7[0x100];
+uint16_t *tm0cnt9   = (uint16_t*)&ioData9[0x102], *tm0cnt7   = (uint16_t*)&ioData7[0x102];
+uint16_t *tm1count9 = (uint16_t*)&ioData9[0x104], *tm1count7 = (uint16_t*)&ioData7[0x104];
+uint16_t *tm1cnt9   = (uint16_t*)&ioData9[0x106], *tm1cnt7   = (uint16_t*)&ioData7[0x106];
+uint16_t *tm2count9 = (uint16_t*)&ioData9[0x108], *tm2count7 = (uint16_t*)&ioData7[0x108];
+uint16_t *tm2cnt9   = (uint16_t*)&ioData9[0x10A], *tm2cnt7   = (uint16_t*)&ioData7[0x10A];
+uint16_t *tm3count9 = (uint16_t*)&ioData9[0x10C], *tm3count7 = (uint16_t*)&ioData7[0x10C];
+uint16_t *tm3cnt9   = (uint16_t*)&ioData9[0x10E], *tm3cnt7   = (uint16_t*)&ioData7[0x10E];
+
 uint16_t *keyinput = (uint16_t*)&ioData9[0x130];
 uint16_t *extkeyin = (uint16_t*)&ioData7[0x136];
+
 uint16_t *ipcsync9 = (uint16_t*)&ioData9[0x180], *ipcsync7 = (uint16_t*)&ioData7[0x180];
+
+uint16_t *auxspicnt9 = (uint16_t*)&ioData9[0x1A0], *auxspicnt7 = (uint16_t*)&ioData7[0x1A0];
+uint32_t *romctrl9   = (uint32_t*)&ioData9[0x1A4], *romctrl7   = (uint32_t*)&ioData7[0x1A4];
+uint8_t  *romcmdout9 =            &ioData9[0x1A8], *romcmdout7 =            &ioData7[0x1A8];
 
 uint16_t *spicnt  = (uint16_t*)&ioData7[0x1C0];
 uint16_t *spidata = (uint16_t*)&ioData7[0x1C2];
 
-uint32_t *ime9     = (uint32_t*)&ioData9[0x208], *ime7     = (uint32_t*)&ioData7[0x208];
-uint32_t *ie9      = (uint32_t*)&ioData9[0x210], *ie7      = (uint32_t*)&ioData7[0x210];
-uint32_t *irf9     = (uint32_t*)&ioData9[0x214], *irf7     = (uint32_t*)&ioData7[0x214];
+uint16_t *ime9 = (uint16_t*)&ioData9[0x208], *ime7 = (uint16_t*)&ioData7[0x208];
+uint32_t *ie9  = (uint32_t*)&ioData9[0x210], *ie7  = (uint32_t*)&ioData7[0x210];
+uint32_t *irf9 = (uint32_t*)&ioData9[0x214], *irf7 = (uint32_t*)&ioData7[0x214];
 
 void *vramMap(uint32_t address)
 {
@@ -177,7 +191,10 @@ void *memoryMap7(uint32_t address)
 
 template <typename T> T ioRead9(uint32_t address)
 {
-    uint16_t ioAddr = address - 0x4000000;
+    uint32_t ioAddr = address - 0x4000000;
+
+    if (ioAddr == 0x100010) // ROMDATAIN
+        return memory_transfer::romTransfer(&interpreter::arm9);
 
     if (ioAddr >= sizeof(ioMask9) || !ioMask9[ioAddr])
     {
@@ -190,7 +207,7 @@ template <typename T> T ioRead9(uint32_t address)
 
 template <typename T> void ioWrite9(uint32_t address, T value)
 {
-    uint16_t ioAddr = address - 0x4000000;
+    uint32_t ioAddr = address - 0x4000000;
 
     if (ioAddr >= sizeof(ioMask9) || !ioMask9[ioAddr])
     {
@@ -221,10 +238,30 @@ template <typename T> void ioWrite9(uint32_t address, T value)
                 memory_transfer::dmaTransfer(&interpreter::arm9, 3);
                 break;
 
+            case 0x100: case 0x104: case 0x108: case 0x10C: // TMCOUNT_9
+                ((uint8_t*)&interpreter::arm9.timerReloads[(ioAddr + i - 0x100) / 4])[0] = ((uint8_t*)&value)[i];
+                break;
+
+            case 0x101: case 0x105: case 0x109: case 0x10D: // TMCOUNT_9
+                ((uint8_t*)&interpreter::arm9.timerReloads[(ioAddr + i - 0x101) / 4])[1] = ((uint8_t*)&value)[i];
+                break;
+
+            case 0x102: case 0x106: case 0x10A: case 0x10E: // TMCNT_9
+                if (!(ioData9[ioAddr + i] & BIT(7)) && (((uint8_t*)&value)[i] & BIT(7)))
+                    *interpreter::arm9.timerCounters[(ioAddr + i - 0x102) / 4] = interpreter::arm9.timerReloads[(ioAddr + i - 0x102) / 4];
+                ioData9[ioAddr + i] &= ~BIT(7);
+                ioData9[ioAddr + i] |= (((uint8_t*)&value)[i] & BIT(7));
+                break;
+
             case 0x181: // IPCSYNC_9
                 ((uint8_t*)ipcsync7)[0] = (((uint8_t*)&value)[i] & 0x0F);
                 if ((((uint8_t*)&value)[i] & BIT(5)) && (*ipcsync7 & BIT(14))) // Remote IRQ
                     interpreter::irq(&interpreter::arm7, 16);
+                break;
+
+            case 0x1A7: // ROMCTRL
+                ioData9[0x1A7] |= (((uint8_t*)&value)[i] & BIT(5));
+                memory_transfer::romTransferStart(&interpreter::arm9);
                 break;
 
             case 0x214: case 0x215: case 0x216: case 0x217: // IF_9
@@ -419,18 +456,24 @@ template <typename T> void ioWrite9(uint32_t address, T value)
                     vramMapped[8] = false;
                 }
                 break;
+
+            case 0x300: // POSTFLG
+                ioData9[0x300] |= (((uint8_t*)&value)[i] & BIT(0));
+                break;
         }
     }
 }
 
 template <typename T> T ioRead7(uint32_t address)
 {
-    uint16_t ioAddr = address - 0x4000000;
+    uint32_t ioAddr = address - 0x4000000;
+
+    if (ioAddr == 0x100010) // ROMDATAIN
+        return memory_transfer::romTransfer(&interpreter::arm7);
 
     if (ioAddr >= sizeof(ioMask7) || !ioMask7[ioAddr])
     {
         printf("Unknown ARM7 I/O read: 0x%X\n", address);
-        if (ioAddr == 0x1A4) return (T)0x00800000; // Hack to bypass cart transfers
         return 0;
     }
 
@@ -452,7 +495,7 @@ template <typename T> T ioRead7(uint32_t address)
 
 template <typename T> void ioWrite7(uint32_t address, T value)
 {
-    uint16_t ioAddr = address - 0x4000000;
+    uint32_t ioAddr = address - 0x4000000;
 
     if (ioAddr >= sizeof(ioMask7) || !ioMask7[ioAddr])
     {
@@ -488,10 +531,30 @@ template <typename T> void ioWrite7(uint32_t address, T value)
                 memory_transfer::dmaTransfer(&interpreter::arm7, 3);
                 break;
 
+            case 0x100: case 0x104: case 0x108: case 0x10C: // TMCOUNT_7
+                ((uint8_t*)&interpreter::arm7.timerReloads[(ioAddr + i - 0x100) / 4])[0] = ((uint8_t*)&value)[i];
+                break;
+
+            case 0x101: case 0x105: case 0x109: case 0x10D: // TMCOUNT_7
+                ((uint8_t*)&interpreter::arm7.timerReloads[(ioAddr + i - 0x101) / 4])[1] = ((uint8_t*)&value)[i];
+                break;
+
+            case 0x102: case 0x106: case 0x10A: case 0x10E: // TMCNT_7
+                if (!(ioData7[ioAddr + i] & BIT(7)) && (((uint8_t*)&value)[i] & BIT(7)))
+                    *interpreter::arm7.timerCounters[(ioAddr + i - 0x102) / 4] = interpreter::arm7.timerReloads[(ioAddr + i - 0x102) / 4];
+                ioData7[ioAddr + i] &= ~BIT(7);
+                ioData7[ioAddr + i] |= (((uint8_t*)&value)[i] & BIT(7));
+                break;
+
             case 0x181: // IPCSYNC_7
                 ((uint8_t*)ipcsync9)[0] = (((uint8_t*)&value)[i] & 0x0F);
                 if ((((uint8_t*)&value)[i] & BIT(5)) && (*ipcsync9 & BIT(14))) // Remote IRQ
                     interpreter::irq(&interpreter::arm9, 16);
+                break;
+
+            case 0x1A7: // ROMCTRL
+                ioData7[0x1A7] |= (((uint8_t*)&value)[i] & BIT(5));
+                memory_transfer::romTransferStart(&interpreter::arm7);
                 break;
 
             case 0x1C2: // SPIDATA
@@ -500,6 +563,10 @@ template <typename T> void ioWrite7(uint32_t address, T value)
 
             case 0x214: case 0x215: case 0x216: case 0x217: // IF_7
                 ioData7[ioAddr + i] &= ~((uint8_t*)&value)[i];
+                break;
+
+            case 0x300: // POSTFLG
+                ioData7[0x300] |= (((uint8_t*)&value)[i] & BIT(0));
                 break;
 
             case 0x301: // HALTCNT
@@ -653,9 +720,21 @@ void init()
     *(uint32_t*)&ioMask9[0x0E4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0E4]  = 0xFFFFFFFF; // DMA1FILL
     *(uint32_t*)&ioMask9[0x0E8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0E8]  = 0xFFFFFFFF; // DMA2FILL
     *(uint32_t*)&ioMask9[0x0EC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0EC]  = 0xFFFFFFFF; // DMA3FILL
+    *(uint16_t*)&ioMask9[0x100]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x100]  =     0x0000; // TM0COUNT_9
+    *(uint16_t*)&ioMask9[0x102]  =     0x00C7; *(uint16_t*)&ioWriteMask9[0x102]  =     0x0047; // TM0CNT_9
+    *(uint16_t*)&ioMask9[0x104]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x104]  =     0x0000; // TM1COUNT_9
+    *(uint16_t*)&ioMask9[0x106]  =     0x00C7; *(uint16_t*)&ioWriteMask9[0x106]  =     0x0047; // TM1CNT_9
+    *(uint16_t*)&ioMask9[0x108]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x108]  =     0x0000; // TM2COUNT_9
+    *(uint16_t*)&ioMask9[0x10A]  =     0x00C7; *(uint16_t*)&ioWriteMask9[0x10A]  =     0x0047; // TM2CNT_9
+    *(uint16_t*)&ioMask9[0x10C]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x10C]  =     0x0000; // TM3COUNT_9
+    *(uint16_t*)&ioMask9[0x10E]  =     0x00C7; *(uint16_t*)&ioWriteMask9[0x10E]  =     0x0047; // TM3CNT_9
     *(uint16_t*)&ioMask9[0x130]  =     0x03FF; *(uint16_t*)&ioWriteMask9[0x130]  =     0x0000; // KEYINPUT
     *(uint16_t*)&ioMask9[0x180]  =     0x6F0F; *(uint16_t*)&ioWriteMask9[0x180]  =     0x4F0F; // IPCSYNC_9
-    *(uint32_t*)&ioMask9[0x208]  =     0x0001; *(uint32_t*)&ioWriteMask9[0x208]  = 0x00000001; // IME_9
+    *(uint16_t*)&ioMask9[0x1A0]  =     0xE0C3; *(uint16_t*)&ioWriteMask9[0x1A0]  =     0xE043; // AUXSPICNT_9
+    *(uint32_t*)&ioMask9[0x1A4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1A4]  = 0xDF7F7FFF; // ROMCTRL_9
+    *(uint32_t*)&ioMask9[0x1A8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1A8]  = 0xFFFFFFFF; // ROMCMDOUT_9
+    *(uint32_t*)&ioMask9[0x1AC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1AC]  = 0xFFFFFFFF; // ROMCMDOUT_9
+    *(uint16_t*)&ioMask9[0x208]  =     0x0001; *(uint16_t*)&ioWriteMask9[0x208]  =     0x0001; // IME_9
     *(uint32_t*)&ioMask9[0x210]  = 0x003F3F7F; *(uint32_t*)&ioWriteMask9[0x210]  = 0x003F3F7F; // IE_9
     *(uint32_t*)&ioMask9[0x214]  = 0x003F3F7F; *(uint32_t*)&ioWriteMask9[0x214]  = 0x00000000; // IF_9
                  ioMask9[0x240]  =       0x9B;              ioWriteMask9[0x240]  =       0x00; // VRAMCNT_A
@@ -668,6 +747,7 @@ void init()
                  ioMask9[0x247]  =       0x03;              ioWriteMask9[0x247]  =       0x03; // WRAMCNT
                  ioMask9[0x248]  =       0x83;              ioWriteMask9[0x248]  =       0x00; // VRAMCNT_H
                  ioMask9[0x249]  =       0x83;              ioWriteMask9[0x249]  =       0x00; // VRAMCNT_I
+                 ioMask9[0x300]  =       0x03;              ioWriteMask9[0x300]  =       0x02; // POSTFLG
     *(uint16_t*)&ioMask9[0x304]  =     0x820F; *(uint16_t*)&ioWriteMask9[0x304]  =     0x820F; // POWCNT1
     *(uint32_t*)&ioMask9[0x1000] = 0xC0B1FFF7; *(uint32_t*)&ioWriteMask9[0x1000] = 0xC0B1FFF7; // DISPCNT_B
     *(uint16_t*)&ioMask9[0x1008] =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x1008] =     0xFFFF; // BG0CNT_B
@@ -697,16 +777,30 @@ void init()
     *(uint32_t*)&ioMask7[0x0D4] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0D4] = 0x07FFFFFF; // DMA3SAD_7
     *(uint32_t*)&ioMask7[0x0D8] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0D8] = 0x07FFFFFF; // DMA3DAD_7
     *(uint32_t*)&ioMask7[0x0DC] = 0xF7E0FFFF; *(uint32_t*)&ioWriteMask7[0x0DC] = 0xF7E0FFFF; // DMA3CNT_7
+    *(uint16_t*)&ioMask7[0x100] =     0xFFFF; *(uint16_t*)&ioWriteMask7[0x100] =     0x0000; // TM0COUNT_7
+    *(uint16_t*)&ioMask7[0x102] =     0x00C7; *(uint16_t*)&ioWriteMask7[0x102] =     0x0047; // TM0CNT_7
+    *(uint16_t*)&ioMask7[0x104] =     0xFFFF; *(uint16_t*)&ioWriteMask7[0x104] =     0x0000; // TM1COUNT_7
+    *(uint16_t*)&ioMask7[0x106] =     0x00C7; *(uint16_t*)&ioWriteMask7[0x106] =     0x0047; // TM1CNT_7
+    *(uint16_t*)&ioMask7[0x108] =     0xFFFF; *(uint16_t*)&ioWriteMask7[0x108] =     0x0000; // TM2COUNT_7
+    *(uint16_t*)&ioMask7[0x10A] =     0x00C7; *(uint16_t*)&ioWriteMask7[0x10A] =     0x0047; // TM2CNT_7
+    *(uint16_t*)&ioMask7[0x10C] =     0xFFFF; *(uint16_t*)&ioWriteMask7[0x10C] =     0x0000; // TM3COUNT_7
+    *(uint16_t*)&ioMask7[0x10E] =     0x00C7; *(uint16_t*)&ioWriteMask7[0x10E] =     0x0047; // TM3CNT_7
     *(uint16_t*)&ioMask7[0x130] =     0x03FF; *(uint16_t*)&ioWriteMask7[0x130] =     0x0000; // KEYINPUT
     *(uint16_t*)&ioMask7[0x136] =     0x00FF; *(uint16_t*)&ioWriteMask7[0x136] =     0x0000; // EXTKEYIN
     *(uint16_t*)&ioMask7[0x180] =     0x6F0F; *(uint16_t*)&ioWriteMask7[0x180] =     0x4F0F; // IPCSYNC_7
+    *(uint16_t*)&ioMask7[0x1A0] =     0xE0C3; *(uint16_t*)&ioWriteMask7[0x1A0] =     0xE043; // AUXSPICNT_7
+    *(uint32_t*)&ioMask7[0x1A4] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1A4] = 0xDF7F7FFF; // ROMCTRL_7
+    *(uint32_t*)&ioMask7[0x1A8] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1A8] = 0xFFFFFFFF; // ROMCMDOUT_7
+    *(uint32_t*)&ioMask7[0x1AC] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1AC] = 0xFFFFFFFF; // ROMCMDOUT_7
     *(uint16_t*)&ioMask7[0x1C0] =     0xCF83; *(uint16_t*)&ioWriteMask7[0x1C0] =     0xCF03; // SPICNT
     *(uint16_t*)&ioMask7[0x1C2] =     0x00FF; *(uint16_t*)&ioWriteMask7[0x1C2] =     0x0000; // SPIDATA
-    *(uint32_t*)&ioMask7[0x208] =     0x0001; *(uint32_t*)&ioWriteMask7[0x208] = 0x00000001; // IME_7
+    *(uint16_t*)&ioMask7[0x208] =     0x0001; *(uint16_t*)&ioWriteMask7[0x208] =     0x0001; // IME_7
     *(uint32_t*)&ioMask7[0x210] = 0x01FF3FFF; *(uint32_t*)&ioWriteMask7[0x210] = 0x01FF3FFF; // IE_7
     *(uint32_t*)&ioMask7[0x214] = 0x01FF3FFF; *(uint32_t*)&ioWriteMask7[0x214] = 0x00000000; // IF_7
-                 ioMask7[0x241]  =       0x03;              ioWriteMask7[0x241]  =       0x00; // WRAMSTAT
-                 ioMask7[0x301]  =       0xC0;              ioWriteMask7[0x301]  =       0xC0; // HALTCNT
+                 ioMask7[0x241] =       0x03;              ioWriteMask7[0x241] =       0x00; // WRAMSTAT
+                 ioMask7[0x300] =       0x01;              ioWriteMask7[0x300] =       0x00; // POSTFLG
+                 ioMask7[0x301] =       0xC0;              ioWriteMask7[0x301] =       0xC0; // HALTCNT
+    *(uint16_t*)&ioMask7[0x504] =     0x03FF; *(uint16_t*)&ioWriteMask7[0x504] =     0x03FF; // SOUNDBIAS
 }
 
 }

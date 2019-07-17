@@ -38,7 +38,10 @@ typedef struct
     uint32_t registersUnd[2];
     uint32_t spsrFiq, spsrSvc, spsrAbt, spsrIrq, spsrUnd;
     uint32_t *dmasad[4], *dmadad[4], *dmacnt[4];
-    uint32_t *ime, *ie, *irf;
+    uint16_t *tmcnt[4], *timerCounters[4], timerReloads[4], timerScalers[4];
+    uint16_t *auxspicnt;
+    uint32_t *romctrl; uint8_t *romcmdout;
+    uint16_t *ime; uint32_t *ie, *irf;
     bool halt;
     uint8_t type;
 } Cpu;

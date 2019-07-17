@@ -55,6 +55,17 @@ bool init()
     interpreter::arm9.dmasad[3]        = memory::dma3sad9;
     interpreter::arm9.dmadad[3]        = memory::dma3dad9;
     interpreter::arm9.dmacnt[3]        = memory::dma3cnt9;
+    interpreter::arm9.tmcnt[0]         = memory::tm0cnt9;
+    interpreter::arm9.tmcnt[1]         = memory::tm1cnt9;
+    interpreter::arm9.tmcnt[2]         = memory::tm2cnt9;
+    interpreter::arm9.tmcnt[3]         = memory::tm3cnt9;
+    interpreter::arm9.timerCounters[0] = memory::tm0count9;
+    interpreter::arm9.timerCounters[1] = memory::tm1count9;
+    interpreter::arm9.timerCounters[2] = memory::tm2count9;
+    interpreter::arm9.timerCounters[3] = memory::tm3count9;
+    interpreter::arm9.auxspicnt        = memory::auxspicnt9;
+    interpreter::arm9.romctrl          = memory::romctrl9;
+    interpreter::arm9.romcmdout        = memory::romcmdout9;
     interpreter::arm9.ime              = memory::ime9;
     interpreter::arm9.ie               = memory::ie9;
     interpreter::arm9.irf              = memory::irf9;
@@ -79,6 +90,17 @@ bool init()
     interpreter::arm7.dmasad[3]        = memory::dma3sad7;
     interpreter::arm7.dmadad[3]        = memory::dma3dad7;
     interpreter::arm7.dmacnt[3]        = memory::dma3cnt7;
+    interpreter::arm7.tmcnt[0]         = memory::tm0cnt7;
+    interpreter::arm7.tmcnt[1]         = memory::tm1cnt7;
+    interpreter::arm7.tmcnt[2]         = memory::tm2cnt7;
+    interpreter::arm7.tmcnt[3]         = memory::tm3cnt7;
+    interpreter::arm7.timerCounters[0] = memory::tm0count7;
+    interpreter::arm7.timerCounters[1] = memory::tm1count7;
+    interpreter::arm7.timerCounters[2] = memory::tm2count7;
+    interpreter::arm7.timerCounters[3] = memory::tm3count7;
+    interpreter::arm7.auxspicnt        = memory::auxspicnt7;
+    interpreter::arm7.romctrl          = memory::romctrl7;
+    interpreter::arm7.romcmdout        = memory::romcmdout7;
     interpreter::arm7.ime              = memory::ime7;
     interpreter::arm7.ie               = memory::ie7;
     interpreter::arm7.irf              = memory::irf7;
@@ -150,6 +172,42 @@ bool loadRom(char *filename)
     return true;
 }
 
+void timerTick(interpreter::Cpu *cpu, uint8_t timer)
+{
+    if (!(*cpu->tmcnt[timer] & BIT(2)) || timer == 0) // Normal timing
+    {
+        // Scale frequencies
+        if ((*cpu->tmcnt[timer] & 0x0003) > 0)
+        {
+            cpu->timerScalers[timer]++;
+            if (cpu->timerScalers[timer] == 0x10 << ((*cpu->tmcnt[timer] & 0x0003) * 2))
+                cpu->timerScalers[timer] = 0;
+            else
+                return;
+        }
+
+        // Decrement and handle overflows
+        (*cpu->timerCounters[timer])--;
+        if (*cpu->timerCounters[timer] == 0xFFFF) // Overflow
+        {
+            *cpu->timerCounters[timer] = cpu->timerReloads[timer];
+            if (*cpu->tmcnt[timer] & BIT(6)) // Timer overflow IRQ
+                interpreter::irq(cpu, 3 + timer);
+
+            if (timer != 3 && (*cpu->tmcnt[timer + 1] & BIT(2))) // Count-up timing
+            {
+                (*cpu->timerCounters[timer + 1])--;
+                if (*cpu->timerCounters[timer + 1] == 0xFFFF) // Overflow
+                {
+                    *cpu->timerCounters[timer + 1] = cpu->timerReloads[timer + 1];
+                    if (*cpu->tmcnt[timer + 1] & BIT(6)) // Timer overflow IRQ
+                        interpreter::irq(cpu, 3 + timer + 1);
+                }
+            }
+        }
+    }
+}
+
 void runScanline()
 {
     for (int i = 0; i < 355 * 6; i++)
@@ -160,7 +218,20 @@ void runScanline()
             interpreter::execute(&interpreter::arm7);
         if (i == 256 * 6)
             gpu::scanline256();
+
+        for (int i = 0; i < 4; i++)
+        {
+            if (*interpreter::arm9.tmcnt[i] & BIT(7))
+                timerTick(&interpreter::arm9, i);
+            if (*interpreter::arm7.tmcnt[i] & BIT(7))
+                timerTick(&interpreter::arm7, i);
+        }
+
+        // Gross hack to make it through the BIOS boot
+        if (*memory::ie7 == BIT(19) && interpreter::arm7.halt)
+            interpreter::irq(&interpreter::arm7, 19);
     }
+
     gpu::scanline355();
 }
 
