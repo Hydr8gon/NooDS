@@ -53,6 +53,8 @@ uint8_t vramI[0x4000];   //  16KB VRAM block I
 uint8_t oamA[0x400];     //   1KB engine A OAM
 uint8_t oamB[0x400];     //   1KB engine B OAM
 
+std::queue<uint32_t> fifo9, fifo7;
+
 uint16_t wramOffset9; uint16_t wramSize9;
 uint16_t wramOffset7; uint16_t wramSize7;
 
@@ -108,7 +110,9 @@ uint16_t *tm3cnt9   = (uint16_t*)&ioData9[0x10E], *tm3cnt7   = (uint16_t*)&ioDat
 uint16_t *keyinput = (uint16_t*)&ioData9[0x130];
 uint16_t *extkeyin = (uint16_t*)&ioData7[0x136];
 
-uint16_t *ipcsync9 = (uint16_t*)&ioData9[0x180], *ipcsync7 = (uint16_t*)&ioData7[0x180];
+uint16_t *ipcsync9     = (uint16_t*)&ioData9[0x180], *ipcsync7     = (uint16_t*)&ioData7[0x180];
+uint16_t *ipcfifocnt9  = (uint16_t*)&ioData9[0x184], *ipcfifocnt7  = (uint16_t*)&ioData7[0x184];
+uint32_t *ipcfifosend9 = (uint32_t*)&ioData9[0x188], *ipcfifosend7 = (uint32_t*)&ioData7[0x188];
 
 uint16_t *auxspicnt9 = (uint16_t*)&ioData9[0x1A0], *auxspicnt7 = (uint16_t*)&ioData7[0x1A0];
 uint32_t *romctrl9   = (uint32_t*)&ioData9[0x1A4], *romctrl7   = (uint32_t*)&ioData7[0x1A4];
@@ -193,7 +197,9 @@ template <typename T> T ioRead9(uint32_t address)
 {
     uint32_t ioAddr = address - 0x4000000;
 
-    if (ioAddr == 0x100010) // ROMDATAIN
+    if (ioAddr == 0x100000) // IPCFIFORECV
+        return memory_transfer::fifoReceive(&interpreter::arm9, &interpreter::arm7);
+    else if (ioAddr == 0x100010) // ROMDATAIN
         return memory_transfer::romTransfer(&interpreter::arm9);
 
     if (ioAddr >= sizeof(ioMask9) || !ioMask9[ioAddr])
@@ -256,8 +262,28 @@ template <typename T> void ioWrite9(uint32_t address, T value)
             case 0x181: // IPCSYNC_9
                 ((uint8_t*)ipcsync7)[0] = (((uint8_t*)&value)[i] & 0x0F);
                 if ((((uint8_t*)&value)[i] & BIT(5)) && (*ipcsync7 & BIT(14))) // Remote IRQ
-                    interpreter::arm7.irqRequest |= BIT(16);
+                    *interpreter::arm7.irf |= BIT(16);
                 break;
+
+            case 0x184: // IPCFIFOCNT_9
+                if ((*ipcfifocnt9 & BIT(0)) && (((uint8_t*)&value)[i] & BIT(2)) && !(ioData9[0x184] & BIT(2)))
+                    *interpreter::arm9.irf |= BIT(17); // Send FIFO empty IRQ
+                ioData9[0x184] &= ~BIT(2);
+                ioData9[0x184] |= (((uint8_t*)&value)[i] & BIT(2));
+                if (((uint8_t*)&value)[i] & BIT(3))
+                    memory_transfer::fifoClear(&interpreter::arm9, &interpreter::arm7);
+                break;
+
+            case 0x185: // IPCFIFOCNT_9
+                if (!(*ipcfifocnt9 & BIT(8)) && (((uint8_t*)&value)[i] & BIT(2)) && !(ioData9[0x185] & BIT(2)))
+                    *interpreter::arm9.irf |= BIT(18); // Receive FIFO not empty IRQ
+                ioData9[0x185] &= ~BIT(2);
+                ioData9[0x185] |= (((uint8_t*)&value)[i] & BIT(2));
+                break;
+
+            case 0x188: case 0x189: case 0x18A: case 0x18B: // IPCFIFOSEND_9
+                memory_transfer::fifoSend(&interpreter::arm9, &interpreter::arm7);
+                return;
 
             case 0x1A7: // ROMCTRL
                 ioData9[0x1A7] |= (((uint8_t*)&value)[i] & BIT(5));
@@ -468,7 +494,9 @@ template <typename T> T ioRead7(uint32_t address)
 {
     uint32_t ioAddr = address - 0x4000000;
 
-    if (ioAddr == 0x100010) // ROMDATAIN
+    if (ioAddr == 0x100000) // IPCFIFORECV
+        return memory_transfer::fifoReceive(&interpreter::arm7, &interpreter::arm9);
+    else if (ioAddr == 0x100010) // ROMDATAIN
         return memory_transfer::romTransfer(&interpreter::arm7);
 
     if (ioAddr >= sizeof(ioMask7) || !ioMask7[ioAddr])
@@ -549,8 +577,28 @@ template <typename T> void ioWrite7(uint32_t address, T value)
             case 0x181: // IPCSYNC_7
                 ((uint8_t*)ipcsync9)[0] = (((uint8_t*)&value)[i] & 0x0F);
                 if ((((uint8_t*)&value)[i] & BIT(5)) && (*ipcsync9 & BIT(14))) // Remote IRQ
-                    interpreter::arm9.irqRequest |= BIT(16);
+                    *interpreter::arm9.irf |= BIT(16);
                 break;
+
+            case 0x184: // IPCFIFOCNT_7
+                if ((*ipcfifocnt7 & BIT(0)) && (((uint8_t*)&value)[i] & BIT(2)) && !(ioData7[0x184] & BIT(2)))
+                    *interpreter::arm7.irf |= BIT(17); // Send FIFO empty IRQ
+                ioData7[0x184] &= ~BIT(2);
+                ioData7[0x184] |= (((uint8_t*)&value)[i] & BIT(2));
+                if (((uint8_t*)&value)[i] & BIT(3)) // Clear FIFO
+                    memory_transfer::fifoClear(&interpreter::arm7, &interpreter::arm9);
+                break;
+
+            case 0x185: // IPCFIFOCNT_7
+                if (!(*ipcfifocnt7 & BIT(8)) && (((uint8_t*)&value)[i] & BIT(2)) && !(ioData7[0x185] & BIT(2)))
+                    *interpreter::arm7.irf |= BIT(18); // Receive FIFO not empty IRQ
+                ioData7[0x185] &= ~BIT(2);
+                ioData7[0x185] |= (((uint8_t*)&value)[i] & BIT(2));
+                break;
+
+            case 0x188: case 0x189: case 0x18A: case 0x18B: // IPCFIFOSEND_7
+                memory_transfer::fifoSend(&interpreter::arm7, &interpreter::arm9);
+                return;
 
             case 0x1A7: // ROMCTRL
                 ioData7[0x1A7] |= (((uint8_t*)&value)[i] & BIT(5));
@@ -571,13 +619,7 @@ template <typename T> void ioWrite7(uint32_t address, T value)
 
             case 0x301: // HALTCNT
                 if (((value & 0xC0) >> 6) == 0x2)
-                {
                     interpreter::arm7.halt = true;
-
-                    // Gross hack to make it through the BIOS boot
-                    if (*ie7 == BIT(19))
-                        interpreter::arm7.irqRequest |= BIT(19);
-                }
                 break;
         }
     }
@@ -692,8 +734,14 @@ void init()
     memset(ioData9, 0, sizeof(ioData9));
     memset(ioData7, 0, sizeof(ioData7));
 
+    while (!fifo9.empty()) fifo9.pop();
+    while (!fifo7.empty()) fifo7.pop();
+
     *keyinput = 0x03FF;
     *extkeyin = 0x007F;
+
+    *ipcfifocnt9 = 0x0101;
+    *ipcfifocnt7 = 0x0101;
 
     *(uint32_t*)&ioMask9[0x000]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x000]  = 0xFFFFFFFF; // DISPCNT_A
     *(uint16_t*)&ioMask9[0x004]  =     0xFFBF; *(uint16_t*)&ioWriteMask9[0x004]  =     0xFFB8; // DISPSTAT
@@ -736,6 +784,8 @@ void init()
     *(uint16_t*)&ioMask9[0x10E]  =     0x00C7; *(uint16_t*)&ioWriteMask9[0x10E]  =     0x0047; // TM3CNT_9
     *(uint16_t*)&ioMask9[0x130]  =     0x03FF; *(uint16_t*)&ioWriteMask9[0x130]  =     0x0000; // KEYINPUT
     *(uint16_t*)&ioMask9[0x180]  =     0x6F0F; *(uint16_t*)&ioWriteMask9[0x180]  =     0x4F0F; // IPCSYNC_9
+    *(uint16_t*)&ioMask9[0x184]  =     0xC70F; *(uint16_t*)&ioWriteMask9[0x184]  =     0xC000; // IPCFIFOCNT_9
+    *(uint32_t*)&ioMask9[0x188]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x188]  = 0xFFFFFFFF; // IPCFIFOSEND_9
     *(uint16_t*)&ioMask9[0x1A0]  =     0xE0C3; *(uint16_t*)&ioWriteMask9[0x1A0]  =     0xE043; // AUXSPICNT_9
     *(uint32_t*)&ioMask9[0x1A4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1A4]  = 0xDF7F7FFF; // ROMCTRL_9
     *(uint32_t*)&ioMask9[0x1A8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1A8]  = 0xFFFFFFFF; // ROMCMDOUT_9
@@ -794,6 +844,8 @@ void init()
     *(uint16_t*)&ioMask7[0x130] =     0x03FF; *(uint16_t*)&ioWriteMask7[0x130] =     0x0000; // KEYINPUT
     *(uint16_t*)&ioMask7[0x136] =     0x00FF; *(uint16_t*)&ioWriteMask7[0x136] =     0x0000; // EXTKEYIN
     *(uint16_t*)&ioMask7[0x180] =     0x6F0F; *(uint16_t*)&ioWriteMask7[0x180] =     0x4F0F; // IPCSYNC_7
+    *(uint16_t*)&ioMask7[0x184] =     0xC70F; *(uint16_t*)&ioWriteMask7[0x184] =     0xC000; // IPCFIFOCNT_7
+    *(uint32_t*)&ioMask7[0x188] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x188] = 0xFFFFFFFF; // IPCFIFOSEND_7
     *(uint16_t*)&ioMask7[0x1A0] =     0xE0C3; *(uint16_t*)&ioWriteMask7[0x1A0] =     0xE043; // AUXSPICNT_7
     *(uint32_t*)&ioMask7[0x1A4] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1A4] = 0xDF7F7FFF; // ROMCTRL_7
     *(uint32_t*)&ioMask7[0x1A8] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1A8] = 0xFFFFFFFF; // ROMCMDOUT_7

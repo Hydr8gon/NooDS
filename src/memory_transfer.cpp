@@ -87,8 +87,96 @@ void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel)
     }
 
     if (*cpu->dmacnt[channel] & BIT(30)) // End of transfer IRQ
-        cpu->irqRequest |= BIT(8 + channel);
+        *cpu->irf |= BIT(8 + channel);
     *cpu->dmacnt[channel] &= ~BIT(31);
+}
+
+void fifoClear(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv)
+{
+    if (cpuSend->fifo->empty())
+        return;
+
+    // Empty the FIFO
+    while (!cpuSend->fifo->empty())
+        cpuSend->fifo->pop();
+    cpuSend->ipcfiforecv = 0;
+
+    // Set FIFO empty bits
+    *cpuSend->ipcfifocnt |=  BIT(0);
+    *cpuSend->ipcfifocnt &= ~BIT(1);
+    *cpuRecv->ipcfifocnt |=  BIT(8);
+    *cpuRecv->ipcfifocnt &= ~BIT(9);
+
+    if (*cpuSend->ipcfifocnt & BIT(2)) // Send FIFO empty IRQ
+        *cpuSend->irf |= BIT(17);
+}
+
+void fifoSend(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv)
+{
+    if (*cpuSend->ipcfifocnt & BIT(15)) // FIFO enabled
+    {
+        if (cpuSend->fifo->size() < 16)
+        {
+            cpuSend->fifo->push(*cpuSend->ipcfifosend);
+
+            if (cpuSend->fifo->size() == 1)
+            {
+                // Clear FIFO empty bits
+                *cpuSend->ipcfifocnt &= ~BIT(0);
+                *cpuRecv->ipcfifocnt &= ~BIT(8);
+
+                if (*cpuRecv->ipcfifocnt & BIT(10)) // Receive FIFO not empty IRQ
+                    *cpuRecv->irf |= BIT(18);
+            }
+            else if (cpuSend->fifo->size() == 16)
+            {
+                // Set FIFO full bits
+                *cpuSend->ipcfifocnt |= BIT(1);
+                *cpuRecv->ipcfifocnt |= BIT(9);
+            }
+        }
+        else
+        {
+            // Send full error
+            *cpuSend->ipcfifocnt |= BIT(14);
+        }
+    }
+}
+
+uint32_t fifoReceive(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv)
+{
+    if (!cpuRecv->fifo->empty())
+    {
+        cpuSend->ipcfiforecv = cpuRecv->fifo->front();
+
+        if (*cpuSend->ipcfifocnt & BIT(15)) // FIFO enabled
+        {
+            cpuRecv->fifo->pop();
+
+            if (cpuRecv->fifo->empty())
+            {
+                // Set FIFO empty bits
+                *cpuSend->ipcfifocnt |= BIT(8);
+                *cpuRecv->ipcfifocnt |= BIT(0);
+
+                if (*cpuRecv->ipcfifocnt & BIT(2)) // Send FIFO empty IRQ
+                    *cpuRecv->irf |= BIT(17);
+            }
+            else if (cpuRecv->fifo->size() == 15)
+            {
+                // Clear FIFO full bits
+                *cpuSend->ipcfifocnt &= ~BIT(9);
+                *cpuRecv->ipcfifocnt &= ~BIT(1);
+            }
+        }
+    }
+    else
+    {
+        // Receive empty error
+        *cpuSend->ipcfifocnt |= BIT(14);
+    }
+
+    return cpuSend->ipcfiforecv;
 }
 
 void romTransferStart(interpreter::Cpu *cpu)
@@ -106,7 +194,7 @@ void romTransferStart(interpreter::Cpu *cpu)
             *cpu->romctrl &= ~BIT(23); // Word not ready
             *cpu->romctrl &= ~BIT(31); // Block ready
             if (*cpu->auxspicnt & BIT(14)) // Block ready IRQ
-                cpu->irqRequest |= BIT(19);
+                *cpu->irf |= BIT(19);
 
             printf("Unknown ROM transfer command: 0x");
             for (int i = 0; i < 8; i++)
@@ -130,7 +218,7 @@ uint32_t romTransfer(interpreter::Cpu *cpu)
         *cpu->romctrl &= ~BIT(23); // Word not ready
         *cpu->romctrl &= ~BIT(31); // Block ready
         if (*cpu->auxspicnt & BIT(14)) // Block ready IRQ
-            cpu->irqRequest |= BIT(19);
+            *cpu->irf |= BIT(19);
     }
 
     // Return an endless stream of 0xFFs as if there isn't a cart inserted
@@ -180,7 +268,7 @@ void spiWrite(uint8_t value)
         spiWriteCount = 0;
 
     if (*memory::spicnt & BIT(14)) // Transfer finished IRQ
-        interpreter::arm7.irqRequest |= BIT(23);
+        *interpreter::arm7.irf |= BIT(23);
 }
 
 }

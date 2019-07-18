@@ -67,13 +67,12 @@ bool condition(Cpu *cpu, uint32_t opcode)
 void execute(Cpu *cpu)
 {
     // Handle IRQs
-    if (cpu->irqRequest)
+    if (*cpu->irf)
     {
-        if (*cpu->ie & cpu->irqRequest)
+        if (*cpu->ie & *cpu->irf)
         {
             if (!(cpu->cpsr & BIT(7)) && *cpu->ime)
             {
-                *cpu->irf |= cpu->irqRequest;
                 uint32_t cpsr = cpu->cpsr;
                 setMode(cpu, 0x12);
                 *cpu->spsr = cpsr;
@@ -85,7 +84,6 @@ void execute(Cpu *cpu)
             if (*cpu->ime || cpu->type == 7)
                 cpu->halt = false;
         }
-        cpu->irqRequest = 0;
     }
 
     if (cpu->halt)

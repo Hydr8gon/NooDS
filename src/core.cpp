@@ -63,6 +63,9 @@ bool init()
     interpreter::arm9.timerCounters[1] = memory::tm1count9;
     interpreter::arm9.timerCounters[2] = memory::tm2count9;
     interpreter::arm9.timerCounters[3] = memory::tm3count9;
+    interpreter::arm9.ipcfifocnt       = memory::ipcfifocnt9;
+    interpreter::arm9.ipcfifosend      = memory::ipcfifosend9;
+    interpreter::arm9.fifo             = &memory::fifo9;
     interpreter::arm9.auxspicnt        = memory::auxspicnt9;
     interpreter::arm9.romctrl          = memory::romctrl9;
     interpreter::arm9.romcmdout        = memory::romcmdout9;
@@ -98,6 +101,9 @@ bool init()
     interpreter::arm7.timerCounters[1] = memory::tm1count7;
     interpreter::arm7.timerCounters[2] = memory::tm2count7;
     interpreter::arm7.timerCounters[3] = memory::tm3count7;
+    interpreter::arm7.ipcfifocnt       = memory::ipcfifocnt7;
+    interpreter::arm7.ipcfifosend      = memory::ipcfifosend7;
+    interpreter::arm7.fifo             = &memory::fifo7;
     interpreter::arm7.auxspicnt        = memory::auxspicnt7;
     interpreter::arm7.romctrl          = memory::romctrl7;
     interpreter::arm7.romcmdout        = memory::romcmdout7;
@@ -192,7 +198,7 @@ void timerTick(interpreter::Cpu *cpu, uint8_t timer)
         {
             *cpu->timerCounters[timer] = cpu->timerReloads[timer];
             if (*cpu->tmcnt[timer] & BIT(6)) // Timer overflow IRQ
-                cpu->irqRequest |= BIT(3 + timer);
+                *cpu->irf |= BIT(3 + timer);
 
             if (timer != 3 && (*cpu->tmcnt[timer + 1] & BIT(2))) // Count-up timing
             {
@@ -201,7 +207,7 @@ void timerTick(interpreter::Cpu *cpu, uint8_t timer)
                 {
                     *cpu->timerCounters[timer + 1] = cpu->timerReloads[timer + 1];
                     if (*cpu->tmcnt[timer + 1] & BIT(6)) // Timer overflow IRQ
-                        cpu->irqRequest |= BIT(3 + timer + 1);
+                        *cpu->irf |= BIT(3 + timer + 1);
                 }
             }
         }

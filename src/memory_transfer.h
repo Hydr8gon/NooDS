@@ -27,6 +27,10 @@ namespace memory_transfer
 
 void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel);
 
+void fifoClear(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
+void fifoSend(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
+uint32_t fifoReceive(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
+
 void romTransferStart(interpreter::Cpu *cpu);
 uint32_t romTransfer(interpreter::Cpu *cpu);
 

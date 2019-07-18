@@ -20,6 +20,8 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+#include <queue>
+
 #include "interpreter.h"
 
 namespace memory
@@ -37,6 +39,8 @@ extern uint8_t vramA[0x20000];
 extern uint8_t vramB[0x20000];
 extern uint8_t vramC[0x20000];
 extern uint8_t vramD[0x20000];
+
+extern std::queue<uint32_t> fifo9, fifo7;
 
 extern uint16_t *extPalettesA[6];
 extern uint16_t *extPalettesB[4];
@@ -84,7 +88,8 @@ extern uint16_t *tm3cnt9,   *tm3cnt7;
 extern uint16_t *keyinput;
 extern uint16_t *extkeyin;
 
-extern uint16_t *ipcfifocnt9, *ipcfifocnt7;
+extern uint16_t *ipcfifocnt9,  *ipcfifocnt7;
+extern uint32_t *ipcfifosend9, *ipcfifosend7;
 
 extern uint16_t *auxspicnt9, *auxspicnt7;
 extern uint32_t *romctrl9,   *romctrl7;

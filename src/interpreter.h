@@ -21,6 +21,7 @@
 #define INTERPRETER_H
 
 #include <cstdint>
+#include <queue>
 
 namespace interpreter
 {
@@ -39,11 +40,10 @@ typedef struct
     uint32_t spsrFiq, spsrSvc, spsrAbt, spsrIrq, spsrUnd;
     uint32_t *dmasad[4], *dmadad[4], *dmacnt[4];
     uint16_t *tmcnt[4], *timerCounters[4], timerReloads[4], timerScalers[4];
-    uint16_t *ipcfifocnt;
+    uint16_t *ipcfifocnt; uint32_t *ipcfifosend, ipcfiforecv; std::queue<uint32_t> *fifo;
     uint16_t *auxspicnt;
     uint32_t *romctrl; uint8_t *romcmdout;
     uint16_t *ime; uint32_t *ie, *irf;
-    uint32_t irqRequest;
     bool halt;
     uint8_t type;
 } Cpu;
