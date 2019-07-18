@@ -66,6 +66,31 @@ bool condition(Cpu *cpu, uint32_t opcode)
 
 void execute(Cpu *cpu)
 {
+    // Handle IRQs
+    if (cpu->irqRequest)
+    {
+        if (*cpu->ie & cpu->irqRequest)
+        {
+            if (!(cpu->cpsr & BIT(7)) && *cpu->ime)
+            {
+                *cpu->irf |= cpu->irqRequest;
+                uint32_t cpsr = cpu->cpsr;
+                setMode(cpu, 0x12);
+                *cpu->spsr = cpsr;
+                cpu->cpsr &= ~BIT(5);
+                cpu->cpsr |= BIT(7);
+                *cpu->registers[14] = *cpu->registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
+                *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0) + 0x18 + 8;
+            }
+            if (*cpu->ime || cpu->type == 7)
+                cpu->halt = false;
+        }
+        cpu->irqRequest = 0;
+    }
+
+    if (cpu->halt)
+        return;
+
     if (cpu->cpsr & BIT(5)) // THUMB mode
     {
         uint32_t programCounter = *cpu->registers[15] - 4;
@@ -172,26 +197,6 @@ void setMode(Cpu *cpu, uint8_t mode)
     }
 
     cpu->cpsr = (cpu->cpsr & ~0x1F) | (mode & 0x1F);
-}
-
-void irq(Cpu *cpu, uint8_t type)
-{
-    if (*cpu->ie & BIT(type))
-    {
-        if (!(cpu->cpsr & BIT(7)) && *cpu->ime)
-        {
-            *cpu->irf |= BIT(type);
-            uint32_t cpsr = cpu->cpsr;
-            setMode(cpu, 0x12);
-            *cpu->spsr = cpsr;
-            cpu->cpsr &= ~BIT(5);
-            cpu->cpsr |= BIT(7);
-            *cpu->registers[14] = *cpu->registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
-            *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0) + 0x18 + 8;
-        }
-        if (*cpu->ime || cpu->type == 7)
-            cpu->halt = false;
-    }
 }
 
 void unknownArm(Cpu *cpu, uint32_t opcode)

@@ -87,7 +87,7 @@ void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel)
     }
 
     if (*cpu->dmacnt[channel] & BIT(30)) // End of transfer IRQ
-        interpreter::irq(cpu, 8 + channel);
+        cpu->irqRequest |= BIT(8 + channel);
     *cpu->dmacnt[channel] &= ~BIT(31);
 }
 
@@ -106,7 +106,7 @@ void romTransferStart(interpreter::Cpu *cpu)
             *cpu->romctrl &= ~BIT(23); // Word not ready
             *cpu->romctrl &= ~BIT(31); // Block ready
             if (*cpu->auxspicnt & BIT(14)) // Block ready IRQ
-                interpreter::irq(cpu, 19);
+                cpu->irqRequest |= BIT(19);
 
             printf("Unknown ROM transfer command: 0x");
             for (int i = 0; i < 8; i++)
@@ -130,7 +130,7 @@ uint32_t romTransfer(interpreter::Cpu *cpu)
         *cpu->romctrl &= ~BIT(23); // Word not ready
         *cpu->romctrl &= ~BIT(31); // Block ready
         if (*cpu->auxspicnt & BIT(14)) // Block ready IRQ
-            interpreter::irq(cpu, 19);
+            cpu->irqRequest |= BIT(19);
     }
 
     // Return an endless stream of 0xFFs as if there isn't a cart inserted
@@ -180,7 +180,7 @@ void spiWrite(uint8_t value)
         spiWriteCount = 0;
 
     if (*memory::spicnt & BIT(14)) // Transfer finished IRQ
-        interpreter::irq(&interpreter::arm7, 23);
+        interpreter::arm7.irqRequest |= BIT(23);
 }
 
 }

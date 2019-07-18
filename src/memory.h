@@ -84,6 +84,8 @@ extern uint16_t *tm3cnt9,   *tm3cnt7;
 extern uint16_t *keyinput;
 extern uint16_t *extkeyin;
 
+extern uint16_t *ipcfifocnt9, *ipcfifocnt7;
+
 extern uint16_t *auxspicnt9, *auxspicnt7;
 extern uint32_t *romctrl9,   *romctrl7;
 extern uint8_t  *romcmdout9, *romcmdout7;

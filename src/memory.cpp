@@ -256,7 +256,7 @@ template <typename T> void ioWrite9(uint32_t address, T value)
             case 0x181: // IPCSYNC_9
                 ((uint8_t*)ipcsync7)[0] = (((uint8_t*)&value)[i] & 0x0F);
                 if ((((uint8_t*)&value)[i] & BIT(5)) && (*ipcsync7 & BIT(14))) // Remote IRQ
-                    interpreter::irq(&interpreter::arm7, 16);
+                    interpreter::arm7.irqRequest |= BIT(16);
                 break;
 
             case 0x1A7: // ROMCTRL
@@ -549,7 +549,7 @@ template <typename T> void ioWrite7(uint32_t address, T value)
             case 0x181: // IPCSYNC_7
                 ((uint8_t*)ipcsync9)[0] = (((uint8_t*)&value)[i] & 0x0F);
                 if ((((uint8_t*)&value)[i] & BIT(5)) && (*ipcsync9 & BIT(14))) // Remote IRQ
-                    interpreter::irq(&interpreter::arm9, 16);
+                    interpreter::arm9.irqRequest |= BIT(16);
                 break;
 
             case 0x1A7: // ROMCTRL
@@ -571,7 +571,13 @@ template <typename T> void ioWrite7(uint32_t address, T value)
 
             case 0x301: // HALTCNT
                 if (((value & 0xC0) >> 6) == 0x2)
+                {
                     interpreter::arm7.halt = true;
+
+                    // Gross hack to make it through the BIOS boot
+                    if (*ie7 == BIT(19))
+                        interpreter::arm7.irqRequest |= BIT(19);
+                }
                 break;
         }
     }

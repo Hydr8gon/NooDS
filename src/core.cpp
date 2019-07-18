@@ -192,7 +192,7 @@ void timerTick(interpreter::Cpu *cpu, uint8_t timer)
         {
             *cpu->timerCounters[timer] = cpu->timerReloads[timer];
             if (*cpu->tmcnt[timer] & BIT(6)) // Timer overflow IRQ
-                interpreter::irq(cpu, 3 + timer);
+                cpu->irqRequest |= BIT(3 + timer);
 
             if (timer != 3 && (*cpu->tmcnt[timer + 1] & BIT(2))) // Count-up timing
             {
@@ -201,7 +201,7 @@ void timerTick(interpreter::Cpu *cpu, uint8_t timer)
                 {
                     *cpu->timerCounters[timer + 1] = cpu->timerReloads[timer + 1];
                     if (*cpu->tmcnt[timer + 1] & BIT(6)) // Timer overflow IRQ
-                        interpreter::irq(cpu, 3 + timer + 1);
+                        cpu->irqRequest |= BIT(3 + timer + 1);
                 }
             }
         }
@@ -212,9 +212,8 @@ void runScanline()
 {
     for (int i = 0; i < 355 * 6; i++)
     {
-        if (!interpreter::arm9.halt)
-            interpreter::execute(&interpreter::arm9);
-        if (i % 2 == 0 && !interpreter::arm7.halt)
+        interpreter::execute(&interpreter::arm9);
+        if (i % 2 == 0)
             interpreter::execute(&interpreter::arm7);
         if (i == 256 * 6)
             gpu::scanline256();
@@ -226,10 +225,6 @@ void runScanline()
             if (*interpreter::arm7.tmcnt[i] & BIT(7))
                 timerTick(&interpreter::arm7, i);
         }
-
-        // Gross hack to make it through the BIOS boot
-        if (*memory::ie7 == BIT(19) && interpreter::arm7.halt)
-            interpreter::irq(&interpreter::arm7, 19);
     }
 
     gpu::scanline355();
