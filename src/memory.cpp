@@ -783,7 +783,7 @@ void init()
     *(uint16_t*)&ioMask9[0x10C]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x10C]  =     0x0000; // TM3COUNT_9
     *(uint16_t*)&ioMask9[0x10E]  =     0x00C7; *(uint16_t*)&ioWriteMask9[0x10E]  =     0x0047; // TM3CNT_9
     *(uint16_t*)&ioMask9[0x130]  =     0x03FF; *(uint16_t*)&ioWriteMask9[0x130]  =     0x0000; // KEYINPUT
-    *(uint16_t*)&ioMask9[0x180]  =     0x6F0F; *(uint16_t*)&ioWriteMask9[0x180]  =     0x4F0F; // IPCSYNC_9
+    *(uint16_t*)&ioMask9[0x180]  =     0x6F0F; *(uint16_t*)&ioWriteMask9[0x180]  =     0x4F00; // IPCSYNC_9
     *(uint16_t*)&ioMask9[0x184]  =     0xC70F; *(uint16_t*)&ioWriteMask9[0x184]  =     0xC000; // IPCFIFOCNT_9
     *(uint32_t*)&ioMask9[0x188]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x188]  = 0xFFFFFFFF; // IPCFIFOSEND_9
     *(uint16_t*)&ioMask9[0x1A0]  =     0xE0C3; *(uint16_t*)&ioWriteMask9[0x1A0]  =     0xE043; // AUXSPICNT_9
@@ -843,7 +843,7 @@ void init()
     *(uint16_t*)&ioMask7[0x10E] =     0x00C7; *(uint16_t*)&ioWriteMask7[0x10E] =     0x0047; // TM3CNT_7
     *(uint16_t*)&ioMask7[0x130] =     0x03FF; *(uint16_t*)&ioWriteMask7[0x130] =     0x0000; // KEYINPUT
     *(uint16_t*)&ioMask7[0x136] =     0x00FF; *(uint16_t*)&ioWriteMask7[0x136] =     0x0000; // EXTKEYIN
-    *(uint16_t*)&ioMask7[0x180] =     0x6F0F; *(uint16_t*)&ioWriteMask7[0x180] =     0x4F0F; // IPCSYNC_7
+    *(uint16_t*)&ioMask7[0x180] =     0x6F0F; *(uint16_t*)&ioWriteMask7[0x180] =     0x4F00; // IPCSYNC_7
     *(uint16_t*)&ioMask7[0x184] =     0xC70F; *(uint16_t*)&ioWriteMask7[0x184] =     0xC000; // IPCFIFOCNT_7
     *(uint32_t*)&ioMask7[0x188] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x188] = 0xFFFFFFFF; // IPCFIFOSEND_7
     *(uint16_t*)&ioMask7[0x1A0] =     0xE0C3; *(uint16_t*)&ioWriteMask7[0x1A0] =     0xE043; // AUXSPICNT_7
