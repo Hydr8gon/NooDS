@@ -231,35 +231,41 @@ void spiWrite(uint8_t value)
         return;
 
     uint8_t device = (*memory::spicnt & 0x0300) >> 8;
-    if (device != 1) // Firmware
+    switch (device)
     {
-        printf("Write to unimplemented SPI device: %d\n", device);
-        return;
-    }
+        case 1: // Firmware
+            if (spiWriteCount == 0)
+            {
+                spiInstr = value;
+                spiAddr = 0;
+                *memory::spidata = 0;
+            }
+            else if (spiInstr == 0x03) // READ
+            {
+                if (spiWriteCount < 4)
+                {
+                    // Set the 3 byte address
+                    spiAddr |= value << (24 - spiWriteCount * 8);
+                }
+                else
+                {
+                    // Read from the firmware
+                    if (spiAddr < sizeof(memory::firmware))
+                        *memory::spidata = memory::firmware[spiAddr];
+                    spiAddr += (*memory::spicnt & BIT(10)) ? 2 : 1;
+                }
+            }
+            else
+            {
+                *memory::spidata = 0;
+                printf("Unknown firmware SPI instruction: 0x%X\n", spiInstr);
+            }
+            break;
 
-    if (spiWriteCount == 0)
-    {
-        spiInstr = value;
-        spiAddr = 0;
-    }
-    else if (spiInstr == 0x03) // READ
-    {
-        if (spiWriteCount < 4)
-        {
-            // Set the 3 byte address
-            spiAddr |= value << (24 - spiWriteCount * 8);
-        }
-        else
-        {
-            // Read from the firmware
-            if (spiAddr < sizeof(memory::firmware))
-                *memory::spidata = memory::firmware[spiAddr];
-            spiAddr += (*memory::spicnt & BIT(10)) ? 2 : 1;
-        }
-    }
-    else
-    {
-        printf("Unknown firmware SPI instruction: 0x%X\n", spiInstr);
+        default:
+            *memory::spidata = 0;
+            printf("Write to unknown SPI device: %d\n", device);
+            break;
     }
 
     if (*memory::spicnt & BIT(11)) // Keep chip selected

@@ -227,25 +227,41 @@ void ldrbPrrplr(interpreter::Cpu *cpu, uint32_t opcode);
 void ldrbPrrpar(interpreter::Cpu *cpu, uint32_t opcode);
 void ldrbPrrprr(interpreter::Cpu *cpu, uint32_t opcode);
 
-void stmda (interpreter::Cpu *cpu, uint32_t opcode);
-void ldmda (interpreter::Cpu *cpu, uint32_t opcode);
-void stmdaW(interpreter::Cpu *cpu, uint32_t opcode);
-void ldmdaW(interpreter::Cpu *cpu, uint32_t opcode);
+void stmda  (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmda  (interpreter::Cpu *cpu, uint32_t opcode);
+void stmdaW (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmdaW (interpreter::Cpu *cpu, uint32_t opcode);
+void stmdaU (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmdaU (interpreter::Cpu *cpu, uint32_t opcode);
+void stmdaUW(interpreter::Cpu *cpu, uint32_t opcode);
+void ldmdaUW(interpreter::Cpu *cpu, uint32_t opcode);
 
-void stmia (interpreter::Cpu *cpu, uint32_t opcode);
-void ldmia (interpreter::Cpu *cpu, uint32_t opcode);
-void stmiaW(interpreter::Cpu *cpu, uint32_t opcode);
-void ldmiaW(interpreter::Cpu *cpu, uint32_t opcode);
+void stmia  (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmia  (interpreter::Cpu *cpu, uint32_t opcode);
+void stmiaW (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmiaW (interpreter::Cpu *cpu, uint32_t opcode);
+void stmiaU (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmiaU (interpreter::Cpu *cpu, uint32_t opcode);
+void stmiaUW(interpreter::Cpu *cpu, uint32_t opcode);
+void ldmiaUW(interpreter::Cpu *cpu, uint32_t opcode);
 
-void stmdb (interpreter::Cpu *cpu, uint32_t opcode);
-void ldmdb (interpreter::Cpu *cpu, uint32_t opcode);
-void stmdbW(interpreter::Cpu *cpu, uint32_t opcode);
-void ldmdbW(interpreter::Cpu *cpu, uint32_t opcode);
+void stmdb  (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmdb  (interpreter::Cpu *cpu, uint32_t opcode);
+void stmdbW (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmdbW (interpreter::Cpu *cpu, uint32_t opcode);
+void stmdbU (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmdbU (interpreter::Cpu *cpu, uint32_t opcode);
+void stmdbUW(interpreter::Cpu *cpu, uint32_t opcode);
+void ldmdbUW(interpreter::Cpu *cpu, uint32_t opcode);
 
-void stmib (interpreter::Cpu *cpu, uint32_t opcode);
-void ldmib (interpreter::Cpu *cpu, uint32_t opcode);
-void stmibW(interpreter::Cpu *cpu, uint32_t opcode);
-void ldmibW(interpreter::Cpu *cpu, uint32_t opcode);
+void stmib  (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmib  (interpreter::Cpu *cpu, uint32_t opcode);
+void stmibW (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmibW (interpreter::Cpu *cpu, uint32_t opcode);
+void stmibU (interpreter::Cpu *cpu, uint32_t opcode);
+void ldmibU (interpreter::Cpu *cpu, uint32_t opcode);
+void stmibUW(interpreter::Cpu *cpu, uint32_t opcode);
+void ldmibUW(interpreter::Cpu *cpu, uint32_t opcode);
 
 }
 

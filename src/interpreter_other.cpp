@@ -93,6 +93,21 @@ void msrRs(interpreter::Cpu *cpu, uint32_t opcode) // MSR SPSR,Rm
     }
 }
 
+void clz(interpreter::Cpu *cpu, uint32_t opcode)
+{
+    if (cpu->type == 9)
+    {
+        uint32_t val = RM;
+        int count = 0;
+        while (val != 0)
+        {
+            val >>= 1;
+            count++;
+        }
+        RD = 32 - count;
+    }
+}
+
 void msrIc(interpreter::Cpu *cpu, uint32_t opcode) // MSR CPSR,#i
 {
     uint32_t value = MSR_IMM;
