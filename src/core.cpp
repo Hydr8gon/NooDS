@@ -192,9 +192,9 @@ void timerTick(interpreter::Cpu *cpu, uint8_t timer)
                 return;
         }
 
-        // Decrement and handle overflows
-        (*cpu->timerCounters[timer])--;
-        if (*cpu->timerCounters[timer] == 0xFFFF) // Overflow
+        // Increment and handle overflows
+        (*cpu->timerCounters[timer])++;
+        if (*cpu->timerCounters[timer] == 0) // Overflow
         {
             *cpu->timerCounters[timer] = cpu->timerReloads[timer];
             if (*cpu->tmcnt[timer] & BIT(6)) // Timer overflow IRQ
@@ -202,8 +202,8 @@ void timerTick(interpreter::Cpu *cpu, uint8_t timer)
 
             if (timer != 3 && (*cpu->tmcnt[timer + 1] & BIT(2))) // Count-up timing
             {
-                (*cpu->timerCounters[timer + 1])--;
-                if (*cpu->timerCounters[timer + 1] == 0xFFFF) // Overflow
+                (*cpu->timerCounters[timer + 1])++;
+                if (*cpu->timerCounters[timer + 1] == 0) // Overflow
                 {
                     *cpu->timerCounters[timer + 1] = cpu->timerReloads[timer + 1];
                     if (*cpu->tmcnt[timer + 1] & BIT(6)) // Timer overflow IRQ
