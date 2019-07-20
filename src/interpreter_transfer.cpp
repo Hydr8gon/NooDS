@@ -66,9 +66,10 @@
     op1 = op1 sign op2;                   \
     op0 = memory::read<type>(cpu, op1);
 
-#define SWP(type, op0, op1, op2)        \
-    op0 = memory::read<type>(cpu, op2); \
-    memory::write<type>(cpu, op2, op1);
+#define SWP(type, op0, op1, op2)          \
+    type value = op1;                     \
+    op0 = memory::read<type>(cpu, op2);   \
+    memory::write<type>(cpu, op2, value);
 
 #define STMDA(op0, regs, range)                             \
     uint32_t address = op0;                                 \
