@@ -630,6 +630,9 @@ template uint16_t read(interpreter::Cpu *cpu, uint32_t address);
 template uint32_t read(interpreter::Cpu *cpu, uint32_t address);
 template <typename T> T read(interpreter::Cpu *cpu, uint32_t address)
 {
+    if (address >= 0x8000000 && address < 0x9000000) // GBA
+        return (T)0xFFFFFFFF;
+
     if (cpu->type == 9)
     {
         if (address >= 0x4000000 && address < 0x5000000) // I/O registers
