@@ -39,11 +39,13 @@ extern uint8_t vramA[0x20000];
 extern uint8_t vramB[0x20000];
 extern uint8_t vramC[0x20000];
 extern uint8_t vramD[0x20000];
+extern uint8_t oamA[0x400];
+extern uint8_t oamB[0x400];
 
 extern std::queue<uint32_t> fifo9, fifo7;
 
-extern uint16_t *extPalettesA[6];
-extern uint16_t *extPalettesB[4];
+extern uint16_t *extPalettesA[5];
+extern uint16_t *extPalettesB[5];
 
 extern uint16_t *dispstat;
 extern uint16_t *vcount;

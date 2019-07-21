@@ -41,8 +41,9 @@ typedef struct
     uint16_t *bghofs[4];
     uint16_t *bgvofs[4];
     uint16_t *palette;
+    uint16_t *oam;
     uint16_t **extPalettes;
-    uint32_t bgVram;
+    uint32_t bgVram, objVram;
     uint16_t bgBuffers[4][256 * 192];
     uint16_t framebuffer[256 * 192];
 } Engine;
@@ -200,6 +201,103 @@ void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
     }
 }
 
+void drawObjects(Engine *engine, uint16_t pixel)
+{
+    for (int i = 127; i >= 0; i--)
+    {
+        uint16_t *object = &engine->oam[i * 4];
+        if (!(object[0] & 0x0300)) // Not rotscale, visible
+        {
+            uint8_t sizeX = 0, sizeY = 0;
+            switch ((object[1] & 0xC000) >> 14) // Size
+            {
+                case 0x0:
+                    switch ((object[0] & 0xC000) >> 14) // Shape
+                    {
+                        case 0x0: sizeX =  8; sizeY =  8; break; // Square
+                        case 0x1: sizeX = 16; sizeY =  8; break; // Horizontal
+                        case 0x2: sizeX =  8; sizeY = 16; break; // Vertical
+                    }
+                    break;
+
+                case 0x1:
+                    switch ((object[0] & 0xC000) >> 14) // Shape
+                    {
+                        case 0x0: sizeX = 16; sizeY = 16; break; // Square
+                        case 0x1: sizeX = 32; sizeY =  8; break; // Horizontal
+                        case 0x2: sizeX =  8; sizeY = 32; break; // Vertical
+                    }
+                    break;
+
+                case 0x2:
+                    switch ((object[0] & 0xC000) >> 14) // Shape
+                    {
+                        case 0x0: sizeX = 32; sizeY = 32; break; // Square
+                        case 0x1: sizeX = 32; sizeY = 16; break; // Horizontal
+                        case 0x2: sizeX = 16; sizeY = 32; break; // Vertical
+                    }
+                    break;
+
+                case 0x3:
+                    switch ((object[0] & 0xC000) >> 14) // Shape
+                    {
+                        case 0x0: sizeX = 64; sizeY = 64; break; // Square
+                        case 0x1: sizeX = 64; sizeY = 32; break; // Horizontal
+                        case 0x2: sizeX = 32; sizeY = 64; break; // Vertical
+                    }
+                    break;
+            }
+
+            uint16_t y = (object[0] & 0x00FF);
+            if (*memory::vcount >= y && *memory::vcount < y + sizeY)
+            {
+                uint16_t bound = (32 << ((*engine->dispcnt & 0x00300000) >> 20));
+                uint8_t *tile = (uint8_t*)memory::vramMap(engine->objVram + (object[2] & 0x03FF) * bound);
+                uint16_t x = (object[1] & 0x01FF);
+
+                uint16_t *palette;
+                if (*engine->dispcnt & BIT(31)) // Extended palette
+                    palette = engine->extPalettes[4];
+                else
+                    palette = &engine->palette[0x100];
+
+                if (palette)
+                {
+                    if (object[0] & BIT(13)) // 8-bit
+                    {
+                        tile += (((*memory::vcount - y) % 8) + ((*memory::vcount - y) / 8) * sizeX) * 8;
+
+                        for (int j = 0; j < sizeX; j++)
+                        {
+                            if (j != 0 && j % 8 == 0)
+                                tile += 64;
+
+                            if (x + j < 256 && tile && tile[j % 8])
+                                engine->framebuffer[pixel + x + j] = palette[tile[j % 8]];
+                        }
+                    }
+                    else // 4-bit
+                    {
+                        tile += (((*memory::vcount - y) % 8) + ((*memory::vcount - y) / 8) * sizeX) * 4;
+                        palette += ((object[2] & 0xF000) >> 12) * 0x10;
+
+                        for (int j = 0; j < sizeX; j += 2)
+                        {
+                            if (j != 0 && j % 8 == 0)
+                                tile += 32;
+
+                            if (x + j < 256 && tile && (tile[(j / 2) % 4] & 0x0F))
+                                engine->framebuffer[pixel + x + j] = palette[(tile[(j / 2) % 4] & 0x0F)];
+                            if (x + j + 1 < 256 && tile && (tile[(j / 2) % 4] & 0xF0))
+                                engine->framebuffer[pixel + x + j + 1] = palette[(tile[(j / 2) % 4] & 0xF0) >> 4];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void drawScanline(Engine *engine)
 {
     uint16_t pixel = *memory::vcount * 256;
@@ -278,6 +376,8 @@ void drawScanline(Engine *engine)
                         break;
                 }
             }
+
+            drawObjects(engine, pixel);
             break;
 
         case 0x2: // VRAM display
@@ -399,8 +499,10 @@ void init()
     engineA.bghofs[3] = memory::bg3hofsA;
     engineA.bgvofs[3] = memory::bg3vofsA;
     engineA.palette = (uint16_t*)memory::paletteA;
+    engineA.oam = (uint16_t*)memory::oamA;
     engineA.extPalettes = memory::extPalettesA;
     engineA.bgVram  = 0x6000000;
+    engineA.objVram = 0x6400000;
 
     engineB.dispcnt = memory::dispcntB;
     engineB.bgcnt[0]  = memory::bg0cntB;
@@ -416,8 +518,10 @@ void init()
     engineB.bghofs[3] = memory::bg3hofsB;
     engineB.bgvofs[3] = memory::bg3vofsB;
     engineB.palette = (uint16_t*)memory::paletteB;
+    engineB.oam = (uint16_t*)memory::oamB;
     engineB.extPalettes = memory::extPalettesB;
     engineB.bgVram  = 0x6200000;
+    engineB.objVram = 0x6600000;
 }
 
 }
