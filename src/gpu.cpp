@@ -258,38 +258,79 @@ void drawObjects(Engine *engine, uint16_t pixel)
                 uint16_t *palette;
                 if (*engine->dispcnt & BIT(31)) // Extended palette
                     palette = engine->extPalettes[4];
-                else
+                else // Standard palette
                     palette = &engine->palette[0x100];
 
                 if (palette)
                 {
                     if (object[0] & BIT(13)) // 8-bit
                     {
-                        tile += (((*memory::vcount - y) % 8) + ((*memory::vcount - y) / 8) * sizeX) * 8;
+                        if (object[1] & BIT(13)) // Vertical flip
+                            tile += (7 - ((*memory::vcount - y) % 8) + ((sizeY - 1 - (*memory::vcount - y)) / 8) * sizeX) * 8;
+                        else
+                            tile += (((*memory::vcount - y) % 8) + ((*memory::vcount - y) / 8) * sizeX) * 8;
 
-                        for (int j = 0; j < sizeX; j++)
+                        if (object[1] & BIT(12)) // Horizontal flip
                         {
-                            if (j != 0 && j % 8 == 0)
-                                tile += 64;
+                            tile += sizeX * 8 - 64;
 
-                            if (x + j < 256 && tile && tile[j % 8])
-                                engine->framebuffer[pixel + x + j] = palette[tile[j % 8]];
+                            for (int j = 0; j < sizeX; j++)
+                            {
+                                if (j != 0 && j % 8 == 0)
+                                    tile -= 64;
+
+                                if (x + j < 256 && tile && tile[7 - j % 8])
+                                    engine->framebuffer[pixel + x + j] = palette[tile[7 - j % 8]];
+                            }
+                        }
+                        else
+                        {
+                            for (int j = 0; j < sizeX; j++)
+                            {
+                                if (j != 0 && j % 8 == 0)
+                                    tile += 64;
+
+                                if (x + j < 256 && tile && tile[j % 8])
+                                    engine->framebuffer[pixel + x + j] = palette[tile[j % 8]];
+                            }
                         }
                     }
                     else // 4-bit
                     {
-                        tile += (((*memory::vcount - y) % 8) + ((*memory::vcount - y) / 8) * sizeX) * 4;
                         palette += ((object[2] & 0xF000) >> 12) * 0x10;
 
-                        for (int j = 0; j < sizeX; j += 2)
-                        {
-                            if (j != 0 && j % 8 == 0)
-                                tile += 32;
+                        if (object[1] & BIT(13)) // Vertical flip
+                            tile += (7 - ((*memory::vcount - y) % 8) + ((sizeY - 1 - (*memory::vcount - y)) / 8) * sizeX) * 4;
+                        else
+                            tile += (((*memory::vcount - y) % 8) + ((*memory::vcount - y) / 8) * sizeX) * 4;
 
-                            if (x + j < 256 && tile && (tile[(j / 2) % 4] & 0x0F))
-                                engine->framebuffer[pixel + x + j] = palette[(tile[(j / 2) % 4] & 0x0F)];
-                            if (x + j + 1 < 256 && tile && (tile[(j / 2) % 4] & 0xF0))
-                                engine->framebuffer[pixel + x + j + 1] = palette[(tile[(j / 2) % 4] & 0xF0) >> 4];
+                        if (object[1] & BIT(12)) // Horizontal flip
+                        {
+                            tile += sizeX * 4 - 32;
+
+                            for (int j = 0; j < sizeX; j += 2)
+                            {
+                                if (j != 0 && j % 8 == 0)
+                                    tile -= 32;
+
+                                if (x + j < 256 && tile && (tile[3 - (j / 2) % 4] & 0xF0))
+                                    engine->framebuffer[pixel + x + j] = palette[(tile[3 - (j / 2) % 4] & 0xF0) >> 4];
+                                if (x + j + 1 < 256 && tile && (tile[3 - (j / 2) % 4] & 0x0F))
+                                    engine->framebuffer[pixel + x + j + 1] = palette[(tile[3 - (j / 2) % 4] & 0x0F)];
+                            }
+                        }
+                        else
+                        {
+                            for (int j = 0; j < sizeX; j += 2)
+                            {
+                                if (j != 0 && j % 8 == 0)
+                                    tile += 32;
+
+                                if (x + j < 256 && tile && (tile[(j / 2) % 4] & 0x0F))
+                                    engine->framebuffer[pixel + x + j] = palette[(tile[(j / 2) % 4] & 0x0F)];
+                                if (x + j + 1 < 256 && tile && (tile[(j / 2) % 4] & 0xF0))
+                                    engine->framebuffer[pixel + x + j + 1] = palette[(tile[(j / 2) % 4] & 0xF0) >> 4];
+                            }
                         }
                     }
                 }
