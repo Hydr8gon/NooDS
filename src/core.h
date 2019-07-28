@@ -31,6 +31,7 @@ bool init();
 bool loadRom(char *filename);
 
 void runScanline();
+
 void pressKey(uint8_t key);
 void releaseKey(uint8_t key);
 

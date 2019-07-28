@@ -25,11 +25,12 @@
 namespace cp15
 {
 
-extern uint32_t exceptions;
-extern bool     dtcmEnable;
-extern bool     itcmEnable;
-extern uint32_t dtcmBase;
-extern uint32_t dtcmSize;
+extern uint32_t exceptionBase;
+
+extern bool dtcmEnable;
+extern uint32_t dtcmBase, dtcmSize;
+
+extern bool itcmEnable;
 extern uint32_t itcmSize;
 
 uint32_t readRegister(uint8_t cn, uint8_t cm, uint8_t cp);

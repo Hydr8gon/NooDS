@@ -7,8 +7,10 @@ This is my third emulator project. I'm doing this for fun and as a learning expe
 
 Right now there's a build for Windows and Linux, and a barebones build for Switch. To build for desktop, you'll need to compile and install [wxWidgets](https://www.wxwidgets.org/). On Linux, simply run "make" in the project root directory to compile. On Windows, you can use the provided .sln file. To build for Switch, you'll need to have devkitPro set up on your machine and the switch-dev package installed. You can then run "make -f Makefile.switch" in the project root directory to compile.
 
-You probably won't be able to run anything other than homebrew on this yet! If you still want to try it, you'll need BIOS files, named "bios7.bin" and "bios9.bin", placed in the same directory as the executable. On the Switch, you'll also have to name a ROM file "rom.nds" and place it in the directory, because there's no file browser yet.
+You probably won't be able to run commercial games on this yet! If you still want to try it, you'll need BIOS files, named "bios7.bin" and "bios9.bin", and a firmware file, named "firmware.bin", placed in the same directory as the executable. On the Switch, you'll also have to name a ROM file "rom.nds" and place it in the directory, because there's no file browser yet.
 
-I hope some people will find some use for this project as it matures. If anything it's at least helping me grow my skills as a programmer. Let's have some fun with this :)
+I hope someone will find some use for this project as it matures. If anything it's at least helping me grow my skills as a programmer. Let's have some fun with this :)
 
-Also check out [the official NooDS Discord server](https://discord.gg/JbNz7y4), where we can chat and do other fun stuff!
+Also check out:
+[The NooDS Discord server](https://discord.gg/JbNz7y4), where we can chat and do other fun stuff!
+[My Patreon](https://www.patreon.com/Hydr8gon), where you can support the project or read about my progress!

@@ -27,82 +27,23 @@
 namespace memory
 {
 
-extern uint8_t firmware[0x40000];
-extern uint8_t *rom;
-
 extern uint8_t bios9[0x8000];
 extern uint8_t bios7[0x4000];
 
-extern uint8_t paletteA[0x400];
-extern uint8_t paletteB[0x400];
 extern uint8_t vramA[0x20000];
 extern uint8_t vramB[0x20000];
 extern uint8_t vramC[0x20000];
 extern uint8_t vramD[0x20000];
-extern uint8_t oamA[0x400];
-extern uint8_t oamB[0x400];
-
-extern std::queue<uint32_t> fifo9, fifo7;
-
-extern uint16_t *extPalettesA[5];
-extern uint16_t *extPalettesB[5];
 
 extern uint16_t *dispstat;
 extern uint16_t *vcount;
 extern uint16_t *powcnt1;
 
-extern uint32_t *dispcntA, *dispcntB;
-extern uint16_t *bg0cntA,  *bg0cntB;
-extern uint16_t *bg1cntA,  *bg1cntB;
-extern uint16_t *bg2cntA,  *bg2cntB;
-extern uint16_t *bg3cntA,  *bg3cntB;
-extern uint16_t *bg0hofsA, *bg0hofsB;
-extern uint16_t *bg0vofsA, *bg0vofsB;
-extern uint16_t *bg1hofsA, *bg1hofsB;
-extern uint16_t *bg1vofsA, *bg1vofsB;
-extern uint16_t *bg2hofsA, *bg2hofsB;
-extern uint16_t *bg2vofsA, *bg2vofsB;
-extern uint16_t *bg3hofsA, *bg3hofsB;
-extern uint16_t *bg3vofsA, *bg3vofsB;
-
-extern uint32_t *dma0sad9, *dma0sad7;
-extern uint32_t *dma0dad9, *dma0dad7;
-extern uint32_t *dma0cnt9, *dma0cnt7;
-extern uint32_t *dma1sad9, *dma1sad7;
-extern uint32_t *dma1dad9, *dma1dad7;
-extern uint32_t *dma1cnt9, *dma1cnt7;
-extern uint32_t *dma2sad9, *dma2sad7;
-extern uint32_t *dma2dad9, *dma2dad7;
-extern uint32_t *dma2cnt9, *dma2cnt7;
-extern uint32_t *dma3sad9, *dma3sad7;
-extern uint32_t *dma3dad9, *dma3dad7;
-extern uint32_t *dma3cnt9, *dma3cnt7;
-
-extern uint16_t *tm0count9, *tm0count7;
-extern uint16_t *tm0cnt9,   *tm0cnt7;
-extern uint16_t *tm1count9, *tm1count7;
-extern uint16_t *tm1cnt9,   *tm1cnt7;
-extern uint16_t *tm2count9, *tm2count7;
-extern uint16_t *tm2cnt9,   *tm2cnt7;
-extern uint16_t *tm3count9, *tm3count7;
-extern uint16_t *tm3cnt9,   *tm3cnt7;
-
 extern uint16_t *keyinput;
 extern uint16_t *extkeyin;
 
-extern uint16_t *ipcfifocnt9,  *ipcfifocnt7;
-extern uint32_t *ipcfifosend9, *ipcfifosend7;
-
-extern uint16_t *auxspicnt9, *auxspicnt7;
-extern uint32_t *romctrl9,   *romctrl7;
-extern uint8_t  *romcmdout9, *romcmdout7;
-
 extern uint16_t *spicnt;
 extern uint16_t *spidata;
-
-extern uint16_t *ime9, *ime7;
-extern uint32_t *ie9,  *ie7;
-extern uint32_t *irf9, *irf7;
 
 void *vramMap(uint32_t address);
 

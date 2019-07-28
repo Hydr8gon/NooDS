@@ -29,22 +29,35 @@ namespace interpreter
 typedef struct
 {
     uint32_t *registers[16];
-    uint32_t *spsr;
-    uint32_t cpsr;
     uint32_t registersUsr[16];
     uint32_t registersFiq[7];
     uint32_t registersSvc[2];
     uint32_t registersAbt[2];
     uint32_t registersIrq[2];
     uint32_t registersUnd[2];
+
+    uint32_t cpsr, *spsr;
     uint32_t spsrFiq, spsrSvc, spsrAbt, spsrIrq, spsrUnd;
-    uint32_t *dmasad[4], *dmadad[4], *dmacnt[4];
-    uint16_t *tmcnt[4], *timerCounters[4], timerReloads[4], timerScalers[4];
-    uint16_t *ipcfifocnt; uint32_t *ipcfifosend, ipcfiforecv; std::queue<uint32_t> *fifo;
+
+    uint32_t *dmasad[4], *dmadad[4];
+    uint32_t *dmacnt[4];
+
+    uint16_t *tmcntL[4], *tmcntH[4];
+    uint16_t timerReloads[4], timerScalers[4];
+
+    uint16_t *ipcfifocnt;
+    uint32_t *ipcfifosend, ipcfiforecv;
+    std::queue<uint32_t> *fifo;
+
     uint16_t *auxspicnt;
-    uint32_t *romctrl; uint8_t *romcmdout;
-    uint16_t *ime; uint32_t *ie, *irf;
+    uint32_t *romctrl;
+    uint8_t *romcmdout;
+
+    uint16_t *ime;
+    uint32_t *ie, *irf;
+
     bool halt;
+
     uint8_t type;
 } Cpu;
 

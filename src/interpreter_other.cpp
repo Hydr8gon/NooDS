@@ -21,45 +21,65 @@
 #include "core.h"
 #include "cp15.h"
 
+// Opcode condition
 #define CONDITION ((opcode & 0xF0000000) >> 28)
 
+// Register values for ARM opcodes
 #define RD (*cpu->registers[(opcode & 0x0000F000) >> 12])
 #define RM (*cpu->registers[(opcode & 0x0000000F)])
 
+// CP15 register selectors
 #define CN ((opcode & 0x000F0000) >> 16)
 #define CP ((opcode & 0x000000E0) >> 5)
 #define CM (opcode & 0x0000000F)
 
-#define MSR_IMM (((opcode & 0x000000FF) << (32 - ((opcode & 0x00000F00) >> 7))) | ((opcode & 0x000000FF) >> ((opcode & 0x00000F00) >> 7)))
+// Immediate value for MSR opcodes
+#define MSR_IMM   (opcode & 0x000000FF)
+#define MSR_SHIFT ((opcode & 0x00000F00) >> 7)
+#define MSR_ROR   ((MSR_IMM << (32 - MSR_SHIFT)) | (MSR_IMM >> (MSR_SHIFT)))
 
+// Branch offset for ARM opcodes
+// Negative values have their MSB extended to 32 bits
 #define B_OFFSET (((opcode & 0x00FFFFFF) << 2) | ((opcode & BIT(23)) ? 0xFC000000 : 0))
 
+// Branch offsets for THUMB opcodes
+// Negative values have their MSB extended to 32 bits
 #define BCOND_OFFSET_THUMB (((opcode & 0x00FF) << 1) | ((opcode & BIT(7))  ? 0xFFFFFE00 : 0))
 #define B_OFFSET_THUMB     (((opcode & 0x07FF) << 1) | ((opcode & BIT(10)) ? 0xFFFFF000 : 0))
 #define BL_OFFSET_THUMB    ((opcode & 0x07FF) << 1)
-#define BX_OFFSET_THUMB    (*cpu->registers[(opcode & 0x0078) >> 3])
+#define BX_ADDRESS_THUMB   (*cpu->registers[(opcode & 0x0078) >> 3])
 
 namespace interpreter_other
 {
 
 void mrsRc(interpreter::Cpu *cpu, uint32_t opcode) // MRS Rd,CPSR
 {
+    // Copy the status flags to a register
     RD = cpu->cpsr;
 }
 
 void msrRc(interpreter::Cpu *cpu, uint32_t opcode) // MSR CPSR,Rm
 {
-    if (opcode & BIT(19))
-        cpu->cpsr = (cpu->cpsr & ~0xFF000000) | (RM & 0xFF000000);
-    if ((opcode & BIT(16)) && (cpu->cpsr & 0x0000001F) != 0x10)
+    // Write the first 8 bits of the status flags, but only allow changing the CPU mode when not in user mode
+    if (opcode & BIT(16))
     {
         cpu->cpsr = (cpu->cpsr & ~0x000000E0) | (RM & 0x000000E0);
-        interpreter::setMode(cpu, RM & 0x0000001F);
+        if ((cpu->cpsr & 0x0000001F) != 0x10)
+            interpreter::setMode(cpu, RM & 0x0000001F);
+    }
+
+    // Write the remaining 8-bit blocks of the status flags
+    // Bits 16-19 of the opcode determine which blocks are written
+    for (int i = 0; i < 3; i++)
+    {
+        if (opcode & BIT(17 + i))
+            cpu->cpsr = (cpu->cpsr & ~(0x0000FF00 << (i * 8))) | (RM & (0x0000FF00 << (i * 8)));
     }
 }
 
 void bx(interpreter::Cpu *cpu, uint32_t opcode) // BX Rn
 {
+    // Branch and switch to THUMB mode if bit 0 is set
     *cpu->registers[15] = RM;
     if (*cpu->registers[15] & BIT(0))
         cpu->cpsr |= BIT(5);
@@ -67,6 +87,7 @@ void bx(interpreter::Cpu *cpu, uint32_t opcode) // BX Rn
 
 void blx(interpreter::Cpu *cpu, uint32_t opcode) // BLX Rn
 {
+    // Branch to address with link and switch to THUMB mode if bit 0 is set (ARM9 exclusive)
     if (cpu->type == 9)
     {
         *cpu->registers[14] = *cpu->registers[15] - 4;
@@ -78,30 +99,35 @@ void blx(interpreter::Cpu *cpu, uint32_t opcode) // BLX Rn
 
 void mrsRs(interpreter::Cpu *cpu, uint32_t opcode) // MRS Rd,SPSR
 {
+    // Copy the saved status flags to a register
     if (cpu->spsr)
         RD = *cpu->spsr;
 }
 
 void msrRs(interpreter::Cpu *cpu, uint32_t opcode) // MSR SPSR,Rm
 {
+    // Write the saved status flags in 8-bit blocks
+    // Bits 16-19 of the opcode determine which blocks are written
     if (cpu->spsr)
     {
-        if (opcode & BIT(19))
-            *cpu->spsr = (*cpu->spsr & ~0xFF000000) | (RM & 0xFF000000);
-        if (opcode & BIT(16))
-            *cpu->spsr = (*cpu->spsr & ~0x000000FF) | (RM & 0x000000FF);
+        for (int i = 0; i < 4; i++)
+        {
+            if (opcode & BIT(16 + i))
+                *cpu->spsr = (*cpu->spsr & ~(0x000000FF << (i * 8))) | (RM & (0x000000FF << (i * 8)));
+        }
     }
 }
 
 void clz(interpreter::Cpu *cpu, uint32_t opcode)
 {
+    // Count the leading zeros of a register (ARM9 exclusive)
     if (cpu->type == 9)
     {
-        uint32_t val = RM;
-        int count = 0;
-        while (val != 0)
+        uint32_t value = RM;
+        uint8_t count = 0;
+        while (value != 0)
         {
-            val >>= 1;
+            value >>= 1;
             count++;
         }
         RD = 32 - count;
@@ -110,25 +136,38 @@ void clz(interpreter::Cpu *cpu, uint32_t opcode)
 
 void msrIc(interpreter::Cpu *cpu, uint32_t opcode) // MSR CPSR,#i
 {
-    uint32_t value = MSR_IMM;
-    if (opcode & BIT(19))
-        cpu->cpsr = (cpu->cpsr & ~0xFF000000) | (value & 0xFF000000);
-    if ((opcode & BIT(16)) && (cpu->cpsr & 0x0000001F) != 0x10)
+    uint32_t value = MSR_ROR;
+
+    // Write the first 8 bits of the status flags, but only allow changing the CPU mode when not in user mode
+    if (opcode & BIT(16))
     {
         cpu->cpsr = (cpu->cpsr & ~0x000000E0) | (value & 0x000000E0);
-        interpreter::setMode(cpu, RM & 0x0000001F);
+        if ((cpu->cpsr & 0x0000001F) != 0x10)
+            interpreter::setMode(cpu, value & 0x0000001F);
+    }
+
+    // Write the remaining 8-bit blocks of the status flags
+    // Bits 16-19 of the opcode determine which blocks are written
+    for (int i = 0; i < 3; i++)
+    {
+        if (opcode & BIT(17 + i))
+            cpu->cpsr = (cpu->cpsr & ~(0x0000FF00 << (i * 8))) | (value & (0x0000FF00 << (i * 8)));
     }
 }
 
 void msrIs(interpreter::Cpu *cpu, uint32_t opcode) // MSR SPSR,#i
 {
+    // Write the saved status flags in 8-bit blocks
+    // Bits 16-19 of the opcode determine which blocks are written
     if (cpu->spsr)
     {
-        uint32_t value = MSR_IMM;
-        if (opcode & BIT(19))
-            *cpu->spsr = (*cpu->spsr & ~0xFF000000) | (value & 0xFF000000);
-        if (opcode & BIT(16))
-            *cpu->spsr = (*cpu->spsr & ~0x000000FF) | (value & 0x000000FF);
+        uint32_t value = MSR_ROR;
+
+        for (int i = 0; i < 4; i++)
+        {
+            if (opcode & BIT(16 + i))
+                *cpu->spsr = (*cpu->spsr & ~(0x000000FF << (i * 8))) | (value & (0x000000FF << (i * 8)));
+        }
     }
 }
 
@@ -136,6 +175,7 @@ void b(interpreter::Cpu *cpu, uint32_t opcode)
 {
     if (CONDITION == 0xF) // BLX label
     {
+        // Branch to offset with link and switch to THUMB mode (ARM9 exclusive)
         if (cpu->type == 9)
         {
             *cpu->registers[14] = *cpu->registers[15] - 4;
@@ -145,6 +185,7 @@ void b(interpreter::Cpu *cpu, uint32_t opcode)
     }
     else // B label
     {
+        // Branch to offset
         *cpu->registers[15] += B_OFFSET | BIT(0);
     }
 }
@@ -153,6 +194,7 @@ void bl(interpreter::Cpu *cpu, uint32_t opcode)
 {
     if (CONDITION == 0xF) // BLX label
     {
+        // Branch to offset plus halfword with link and switch to THUMB mode (ARM9 exclusive)
         if (cpu->type == 9)
         {
             *cpu->registers[14] = *cpu->registers[15] - 4;
@@ -162,6 +204,7 @@ void bl(interpreter::Cpu *cpu, uint32_t opcode)
     }
     else // BL label
     {
+        // Branch to offset with link
         *cpu->registers[14] = *cpu->registers[15] - 4;
         *cpu->registers[15] += B_OFFSET | BIT(0);
     }
@@ -169,24 +212,29 @@ void bl(interpreter::Cpu *cpu, uint32_t opcode)
 
 void mcr(interpreter::Cpu *cpu, uint32_t opcode) // MCR Pn,<cpopc>,Rd,Cn,Cm,<cp>
 {
+    // Write to a CP15 register
+    // Only the ARM9 has a CP15
     if (cpu->type == 9)
         cp15::writeRegister(CN, CM, CP, RD);
 }
 
 void mrc(interpreter::Cpu *cpu, uint32_t opcode) // MRC Pn,<cpopc>,Rd,Cn,Cm,<cp>
 {
+    // Read from a CP15 register
+    // Only the ARM9 has a CP15
     if (cpu->type == 9)
         RD = cp15::readRegister(CN, CM, CP);
 }
 
 void swi(interpreter::Cpu *cpu, uint32_t opcode) // SWI #i
 {
+    // Software interrupt
     uint32_t cpsr = cpu->cpsr;
     setMode(cpu, 0x13);
     *cpu->spsr = cpsr;
     cpu->cpsr |= BIT(7);
     *cpu->registers[14] = *cpu->registers[15] - 4;
-    *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0x00000000) + 0x08;
+    *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptionBase : 0) + 0x08;
 }
 
 }
@@ -196,11 +244,21 @@ namespace interpreter_other_thumb
 
 void bxReg(interpreter::Cpu *cpu, uint32_t opcode) // BX/BLX Rs
 {
-    if (!(opcode & BIT(7)) || cpu->type == 9)
+    if (opcode & BIT(7)) // BLX Rs
     {
-        if (opcode & BIT(7))
+        // Branch to address with link and switch to ARM mode if bit 0 is cleared (ARM9 exclusive)
+        if (cpu->type == 9)
+        {
             *cpu->registers[14] = *cpu->registers[15] - 1;
-        *cpu->registers[15] = BX_OFFSET_THUMB;
+            *cpu->registers[15] = BX_ADDRESS_THUMB;
+            if (!(*cpu->registers[15] & BIT(0)))
+                cpu->cpsr &= ~BIT(5);
+        }
+    }
+    else // BX Rs
+    {
+        // Branch to address and switch to ARM mode if bit 0 is cleared
+        *cpu->registers[15] = BX_ADDRESS_THUMB;
         if (!(*cpu->registers[15] & BIT(0)))
             cpu->cpsr &= ~BIT(5);
     }
@@ -208,106 +266,123 @@ void bxReg(interpreter::Cpu *cpu, uint32_t opcode) // BX/BLX Rs
 
 void beq(interpreter::Cpu *cpu, uint32_t opcode) // BEQ label
 {
+    // Branch to offset if equal
     if (cpu->cpsr & BIT(30))
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bne(interpreter::Cpu *cpu, uint32_t opcode) // BNE label
 {
+    // Branch to offset if not equal
     if (!(cpu->cpsr & BIT(30)))
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bcs(interpreter::Cpu *cpu, uint32_t opcode) // BCS label
 {
+    // Branch to offset if carry set
     if (cpu->cpsr & BIT(29))
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bcc(interpreter::Cpu *cpu, uint32_t opcode) // BCC label
 {
+    // Branch to offset if carry clear
     if (!(cpu->cpsr & BIT(29)))
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bmi(interpreter::Cpu *cpu, uint32_t opcode) // BMI label
 {
+    // Branch to offset if negative
     if (cpu->cpsr & BIT(31))
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bpl(interpreter::Cpu *cpu, uint32_t opcode) // BPL label
 {
+    // Branch to offset if positive
     if (!(cpu->cpsr & BIT(31)))
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bvs(interpreter::Cpu *cpu, uint32_t opcode) // BVS label
 {
+    // Branch to offset if overflow set
     if (cpu->cpsr & BIT(28))
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bvc(interpreter::Cpu *cpu, uint32_t opcode) // BVC label
 {
+    // Branch to offset if overflow clear
     if (!(cpu->cpsr & BIT(28)))
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bhi(interpreter::Cpu *cpu, uint32_t opcode) // BHI label
 {
+    // Branch to offset if higher
     if ((cpu->cpsr & BIT(29)) && !(cpu->cpsr & BIT(30)))
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bls(interpreter::Cpu *cpu, uint32_t opcode) // BLS label
 {
+    // Branch to offset if lower or same
     if (!(cpu->cpsr & BIT(29)) || (cpu->cpsr & BIT(30)))
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bge(interpreter::Cpu *cpu, uint32_t opcode) // BGE label
 {
+    // Branch to offset if signed greater or equal
     if ((cpu->cpsr & BIT(31)) == (cpu->cpsr & BIT(28)) << 3)
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void blt(interpreter::Cpu *cpu, uint32_t opcode) // BLT label
 {
+    // Branch to offset if signed less than
     if ((cpu->cpsr & BIT(31)) != (cpu->cpsr & BIT(28)) << 3)
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void bgt(interpreter::Cpu *cpu, uint32_t opcode) // BGT label
 {
+    // Branch to offset if signed greater than
     if (!(cpu->cpsr & BIT(30)) && (cpu->cpsr & BIT(31)) == (cpu->cpsr & BIT(28)) << 3)
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void ble(interpreter::Cpu *cpu, uint32_t opcode) // BLE label
 {
+    // Branch to offset if signed less or equal
     if ((cpu->cpsr & BIT(30)) || (cpu->cpsr & BIT(31)) != (cpu->cpsr & BIT(28)) << 3)
         *cpu->registers[15] += BCOND_OFFSET_THUMB | BIT(0);
 }
 
 void swi(interpreter::Cpu *cpu, uint32_t opcode) // SWI #i
 {
+    // Software interrupt
     uint32_t cpsr = cpu->cpsr;
     setMode(cpu, 0x13);
     *cpu->spsr = cpsr;
     cpu->cpsr &= ~BIT(5);
     cpu->cpsr |= BIT(7);
     *cpu->registers[14] = *cpu->registers[15] - 2;
-    *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptions : 0x00000000) + 0x08;
+    *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptionBase : 0) + 0x08;
 }
 
 void b(interpreter::Cpu *cpu, uint32_t opcode) // B label
 {
+    // Branch to offset
     *cpu->registers[15] += B_OFFSET_THUMB | BIT(0);
 }
 
 void blxOff(interpreter::Cpu *cpu, uint32_t opcode) // BLX label
 {
+    // Long branch to offset with link and switch to ARM mode (ARM9 exclusive)
     if (cpu->type == 9)
     {
         uint32_t ret = *cpu->registers[15] - 1;
@@ -319,11 +394,13 @@ void blxOff(interpreter::Cpu *cpu, uint32_t opcode) // BLX label
 
 void blSetup(interpreter::Cpu *cpu, uint32_t opcode) // BL/BLX label
 {
+    // Set the upper 11 bits of the target address for a long BL/BLX
     *cpu->registers[14] = *cpu->registers[15] + (B_OFFSET_THUMB << 11);
 }
 
 void blOff(interpreter::Cpu *cpu, uint32_t opcode) // BL label
 {
+    // Long branch to offset with link
     uint32_t ret = *cpu->registers[15] - 1;
     *cpu->registers[15] = *cpu->registers[14] + BL_OFFSET_THUMB;
     *cpu->registers[14] = ret;

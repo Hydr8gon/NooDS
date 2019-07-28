@@ -26,6 +26,7 @@ const u32 keyMap[] = { KEY_A, KEY_B, KEY_MINUS, KEY_PLUS, KEY_RIGHT, KEY_LEFT, K
 
 u32 bgr5ToRgba8(u16 color)
 {
+    // Convert a BGR5 value to an RGBA8 value
     uint8_t r = ((color >>  0) & 0x1F) * 255 / 31;
     uint8_t g = ((color >>  5) & 0x1F) * 255 / 31;
     uint8_t b = ((color >> 10) & 0x1F) * 255 / 31;
@@ -40,25 +41,34 @@ void runCore(void *args)
 
 int main(int argc, char **argv)
 {
+    // Attempt to initialize the emulator
+    // If the BIOS and firmware files are missing, exit
     if (!core::init()) return 0;
+
+    // Attempt to load a ROM
+    // If this fails, the firmware will be booted instead
     core::loadRom((char*)"rom.nds");
 
+    // Overclock the Switch CPU
     ClkrstSession cpuSession;
     clkrstInitialize();
     clkrstOpenSession(&cpuSession, PcvModuleId_CpuBus, 0);
     clkrstSetClockRate(&cpuSession, 1785000000);
 
+    // Create a framebuffer
     NWindow* win = nwindowGetDefault();
     Framebuffer fb;
     framebufferCreate(&fb, win, 1280, 720, PIXEL_FORMAT_RGBA_8888, 2);
     framebufferMakeLinear(&fb);
 
+    // Start the emulator
     Thread core;
     threadCreate(&core, runCore, NULL, 0x8000, 0x30, 1);
     threadStart(&core);
 
     while (appletMainLoop())
     {
+        // Scan for key input and pass it to the emulator
         hidScanInput();
         u32 pressed = hidKeysDown(CONTROLLER_P1_AUTO);
         u32 released = hidKeysUp(CONTROLLER_P1_AUTO);
@@ -70,14 +80,22 @@ int main(int argc, char **argv)
                 core::releaseKey(i);
         }
 
+        // Draw the display
         u32 stride;
         u32 *framebuf = (u32*)framebufferBegin(&fb, &stride);
-        for (u32 y = 0; y < 384; y ++)
-            for (u32 x = 0; x < 256; x ++)
-                framebuf[y * stride / sizeof(u32) + x] = bgr5ToRgba8(gpu::displayBuffer[y * 256 + x]);
+        for (u32 y = 0; y < 720; y++)
+        {
+            int scaledY = (float)y * (384.0f / 720);
+            for (u32 x = 0; x < 480; x++)
+            {
+                int scaledX = (float)x * (256.0f / 480);
+                framebuf[y * stride / sizeof(u32) + x + 400] = bgr5ToRgba8(gpu::displayBuffer[scaledY * 256 + scaledX]);
+            }
+        }
         framebufferEnd(&fb);
     }
 
+    // Clean up
     framebufferClose(&fb);
     clkrstSetClockRate(&cpuSession, 1020000000);
     clkrstExit();

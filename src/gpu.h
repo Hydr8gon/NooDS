@@ -25,12 +25,28 @@
 namespace gpu
 {
 
+typedef struct
+{
+    uint16_t framebuffer[256 * 192];
+    uint16_t bgBuffers[4][256 * 192];
+
+    uint32_t *dispcnt;
+    uint16_t *bgcnt[4];
+    uint16_t *bghofs[4], *bgvofs[4];
+
+    uint16_t *palette;
+    uint16_t *oam;
+    uint16_t **extPalettes;
+
+    uint32_t bgVramAddr, objVramAddr;
+} Engine;
+
+extern Engine engineA, engineB;
+
 extern uint16_t displayBuffer[256 * 192 * 2];
 
 void scanline256();
 void scanline355();
-
-void init();
 
 }
 

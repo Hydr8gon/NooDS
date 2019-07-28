@@ -25,6 +25,9 @@
 namespace memory_transfer
 {
 
+extern uint8_t firmware[0x40000];
+extern uint8_t *rom;
+
 void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel);
 
 void fifoClear(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
@@ -35,6 +38,8 @@ void romTransferStart(interpreter::Cpu *cpu);
 uint32_t romTransfer(interpreter::Cpu *cpu);
 
 void spiWrite(uint8_t value);
+
+void init();
 
 }
 

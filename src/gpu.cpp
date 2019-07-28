@@ -34,27 +34,16 @@
 namespace gpu
 {
 
-typedef struct
-{
-    uint32_t *dispcnt;
-    uint16_t *bgcnt[4];
-    uint16_t *bghofs[4];
-    uint16_t *bgvofs[4];
-    uint16_t *palette;
-    uint16_t *oam;
-    uint16_t **extPalettes;
-    uint32_t bgVram, objVram;
-    uint16_t bgBuffers[4][256 * 192];
-    uint16_t framebuffer[256 * 192];
-} Engine;
-
 Engine engineA, engineB;
+
 uint16_t displayBuffer[256 * 192 * 2];
 std::chrono::steady_clock::time_point timer;
 
 void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 {
-    if (bg == 0 && *engine->dispcnt & BIT(3)) // 3D
+    // If 3D is enabled, it's rendered to BG0 in text mode
+    // But 3D isn't supported yet, so don't render anything
+    if (bg == 0 && (*engine->dispcnt & BIT(3)))
     {
         memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
         return;
@@ -63,7 +52,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
     uint32_t screenBase = ((*engine->bgcnt[bg] & 0x1F00) >> 8) * 0x800  + ((*engine->dispcnt & 0x38000000) >> 27) * 0x10000;
     uint32_t charBase   = ((*engine->bgcnt[bg] & 0x003C) >> 2) * 0x4000 + ((*engine->dispcnt & 0x07000000) >> 24) * 0x10000;
     uint16_t yOffset = *memory::vcount + *engine->bgvofs[bg];
-    uint16_t *tiles = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + ((yOffset / 8) % 32) * 32 * sizeof(uint16_t));
+    uint16_t *tiles = (uint16_t*)memory::vramMap(engine->bgVramAddr + screenBase + ((yOffset / 8) % 32) * 32 * sizeof(uint16_t));
 
     if (tiles)
     {
@@ -90,9 +79,9 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 
                     uint8_t *sprite;
                     if (*tile & BIT(11)) // Vertical flip
-                        sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (*tile & 0x03FF) * 64 + (7 - yOffset % 8) * 8);
+                        sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 64 + (7 - yOffset % 8) * 8);
                     else
-                        sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (*tile & 0x03FF) * 64 + (yOffset % 8) * 8);
+                        sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 64 + (yOffset % 8) * 8);
 
                     if (sprite)
                     {
@@ -131,9 +120,9 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 
                 uint8_t *sprite;
                 if (tiles[i] & BIT(11)) // Vertical flip
-                    sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (*tile & 0x03FF) * 32 + (7 - yOffset % 8) * 4);
+                    sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 32 + (7 - yOffset % 8) * 4);
                 else
-                    sprite = (uint8_t*)memory::vramMap(engine->bgVram + charBase + (*tile & 0x03FF) * 32 + (yOffset % 8) * 4);
+                    sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 32 + (yOffset % 8) * 4);
 
                 if (sprite)
                 {
@@ -171,6 +160,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 
 void drawAffine(Engine *engine, uint8_t bg, uint16_t pixel)
 {
+    // Affine backgrounds aren't implemented yet, so just fill them with nothing
     memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
 }
 
@@ -181,13 +171,13 @@ void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
         uint32_t screenBase = ((*engine->bgcnt[bg] & 0x1F00) >> 8) * 0x4000;
         if (*engine->bgcnt[bg] & BIT(2)) // Direct color bitmap
         {
-            uint16_t *line = (uint16_t*)memory::vramMap(engine->bgVram + screenBase + pixel * sizeof(uint16_t));
+            uint16_t *line = (uint16_t*)memory::vramMap(engine->bgVramAddr + screenBase + pixel * sizeof(uint16_t));
             if (line)
                 memcpy(&engine->bgBuffers[bg][pixel], line, 256 * sizeof(uint16_t));
         }
         else if (*engine->bgcnt[bg] & BIT(7)) // 256 color bitmap
         {
-            uint8_t *line = (uint8_t*)memory::vramMap(engine->bgVram + screenBase + pixel);
+            uint8_t *line = (uint8_t*)memory::vramMap(engine->bgVramAddr + screenBase + pixel);
             if (line)
             {
                 for (int i = 0; i < 256; i++)
@@ -211,7 +201,8 @@ void drawObjects(Engine *engine, uint16_t pixel)
             uint8_t sizeX = 0, sizeY = 0;
             switch ((object[1] & 0xC000) >> 14) // Size
             {
-                case 0x0:
+                case 0:
+                {
                     switch ((object[0] & 0xC000) >> 14) // Shape
                     {
                         case 0x0: sizeX =  8; sizeY =  8; break; // Square
@@ -219,8 +210,10 @@ void drawObjects(Engine *engine, uint16_t pixel)
                         case 0x2: sizeX =  8; sizeY = 16; break; // Vertical
                     }
                     break;
+                }
 
-                case 0x1:
+                case 1:
+                {
                     switch ((object[0] & 0xC000) >> 14) // Shape
                     {
                         case 0x0: sizeX = 16; sizeY = 16; break; // Square
@@ -228,8 +221,10 @@ void drawObjects(Engine *engine, uint16_t pixel)
                         case 0x2: sizeX =  8; sizeY = 32; break; // Vertical
                     }
                     break;
+                }
 
-                case 0x2:
+                case 2:
+                {
                     switch ((object[0] & 0xC000) >> 14) // Shape
                     {
                         case 0x0: sizeX = 32; sizeY = 32; break; // Square
@@ -237,8 +232,10 @@ void drawObjects(Engine *engine, uint16_t pixel)
                         case 0x2: sizeX = 16; sizeY = 32; break; // Vertical
                     }
                     break;
+                }
 
-                case 0x3:
+                case 3:
+                {
                     switch ((object[0] & 0xC000) >> 14) // Shape
                     {
                         case 0x0: sizeX = 64; sizeY = 64; break; // Square
@@ -246,13 +243,14 @@ void drawObjects(Engine *engine, uint16_t pixel)
                         case 0x2: sizeX = 32; sizeY = 64; break; // Vertical
                     }
                     break;
+                }
             }
 
             uint16_t y = (object[0] & 0x00FF);
             if (*memory::vcount >= y && *memory::vcount < y + sizeY)
             {
                 uint16_t bound = (32 << ((*engine->dispcnt & 0x00300000) >> 20));
-                uint8_t *tile = (uint8_t*)memory::vramMap(engine->objVram + (object[2] & 0x03FF) * bound);
+                uint8_t *tile = (uint8_t*)memory::vramMap(engine->objVramAddr + (object[2] & 0x03FF) * bound);
                 uint16_t x = (object[1] & 0x01FF);
 
                 uint16_t *palette;
@@ -345,64 +343,83 @@ void drawScanline(Engine *engine)
 
     switch ((*engine->dispcnt & 0x00030000) >> 16) // Display mode
     {
-        case 0x0: // Display off
+        case 0: // Display off
+        {
+            // Fill the display with white
             memset(&engine->framebuffer[pixel], 0xFF, 256 * sizeof(uint16_t));
             break;
+        }
 
-        case 0x1: // Graphics display
+        case 1: // Graphics display
+        {
+            // Draw the backgrounds
             switch (*engine->dispcnt & 0x00000007) // BG mode
             {
-                case 0x0:
+                case 0:
+                {
                     if (*engine->dispcnt & BIT(8))  drawText(engine, 0, pixel);
                     if (*engine->dispcnt & BIT(9))  drawText(engine, 1, pixel);
                     if (*engine->dispcnt & BIT(10)) drawText(engine, 2, pixel);
                     if (*engine->dispcnt & BIT(11)) drawText(engine, 3, pixel);
                     break;
+                }
 
-                case 0x1:
+                case 1:
+                {
                     if (*engine->dispcnt & BIT(8))  drawText  (engine, 0, pixel);
                     if (*engine->dispcnt & BIT(9))  drawText  (engine, 1, pixel);
                     if (*engine->dispcnt & BIT(10)) drawText  (engine, 2, pixel);
                     if (*engine->dispcnt & BIT(11)) drawAffine(engine, 3, pixel);
                     break;
+                }
 
-                case 0x2:
+                case 2:
+                {
                     if (*engine->dispcnt & BIT(8))  drawText  (engine, 0, pixel);
                     if (*engine->dispcnt & BIT(9))  drawText  (engine, 1, pixel);
                     if (*engine->dispcnt & BIT(10)) drawAffine(engine, 2, pixel);
                     if (*engine->dispcnt & BIT(11)) drawAffine(engine, 3, pixel);
                     break;
+                }
 
-                case 0x3:
+                case 3:
+                {
                     if (*engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
                     if (*engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
                     if (*engine->dispcnt & BIT(10)) drawText    (engine, 2, pixel);
                     if (*engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
                     break;
+                }
 
-                case 0x4:
+                case 4:
+                {
                     if (*engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
                     if (*engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
                     if (*engine->dispcnt & BIT(10)) drawAffine  (engine, 2, pixel);
                     if (*engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
                     break;
+                }
 
-                case 0x5:
+                case 5:
+                {
                     if (*engine->dispcnt & BIT(8))  drawText    (engine, 0, pixel);
                     if (*engine->dispcnt & BIT(9))  drawText    (engine, 1, pixel);
                     if (*engine->dispcnt & BIT(10)) drawExtended(engine, 2, pixel);
                     if (*engine->dispcnt & BIT(11)) drawExtended(engine, 3, pixel);
                     break;
+                }
 
                 default:
+                {
                     printf("Unknown BG mode: %d\n", (*engine->dispcnt & 0x00000007));
                     break;
+                }
             }
 
-            // Draw the pixels from the highest priority background
+            // Copy the pixels from the highest priority background to the framebuffer
             for (int i = 0; i < 256; i++)
             {
-                engine->framebuffer[pixel + i] = 0x0000;
+                engine->framebuffer[pixel + i] = (engine->palette[0] & ~BIT(15));
                 for (int j = 0; j < 4; j++)
                 {
                     for (int k = 0; k < 4; k++)
@@ -413,28 +430,36 @@ void drawScanline(Engine *engine)
                             break;
                         }
                     }
-                    if (engine->framebuffer[pixel + i])
+                    if (engine->framebuffer[pixel + i] & BIT(15))
                         break;
                 }
             }
 
+            // Just draw objects on top of everything for now
             drawObjects(engine, pixel);
-            break;
 
-        case 0x2: // VRAM display
+            break;
+        }
+
+        case 2: // VRAM display
+        {
+            // Draw raw bitmap data from a VRAM block
             switch ((*engine->dispcnt & 0x000C0000) >> 18) // VRAM block
             {
-                case 0x0: memcpy(&engine->framebuffer[pixel], &memory::vramA[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
-                case 0x1: memcpy(&engine->framebuffer[pixel], &memory::vramB[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
-                case 0x2: memcpy(&engine->framebuffer[pixel], &memory::vramC[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
-                default:  memcpy(&engine->framebuffer[pixel], &memory::vramD[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
+                case 0:  memcpy(&engine->framebuffer[pixel], &memory::vramA[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
+                case 1:  memcpy(&engine->framebuffer[pixel], &memory::vramB[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
+                case 2:  memcpy(&engine->framebuffer[pixel], &memory::vramC[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
+                default: memcpy(&engine->framebuffer[pixel], &memory::vramD[pixel * sizeof(uint16_t)], 256 * sizeof(uint16_t)); break;
             }
             break;
+        }
 
-        case 0x3: // Main memory display
+        case 3: // Main memory display
+        {
             printf("Unsupported display mode: main memory\n");
             *engine->dispcnt &= ~0x00030000;
             break;
+        }
     }
 }
 
@@ -463,7 +488,7 @@ void scanline355()
     (*memory::vcount)++;
 
     // Check the V-counter
-    if (*memory::vcount == (*memory::dispstat >> 8) | ((*memory::dispstat & BIT(7)) << 1))
+    if (*memory::vcount == ((*memory::dispstat >> 8) | ((*memory::dispstat & BIT(7)) << 1)))
     {
         *memory::dispstat |= BIT(2); // V-counter flag
         if (*memory::dispstat & BIT(5)) // V-counter IRQ flag
@@ -522,47 +547,6 @@ void scanline355()
         }
         timer = std::chrono::steady_clock::now();
     }
-}
-
-void init()
-{
-    engineA.dispcnt   = memory::dispcntA;
-    engineA.bgcnt[0]  = memory::bg0cntA;
-    engineA.bgcnt[1]  = memory::bg1cntA;
-    engineA.bgcnt[2]  = memory::bg2cntA;
-    engineA.bgcnt[3]  = memory::bg3cntA;
-    engineA.bghofs[0] = memory::bg0hofsA;
-    engineA.bgvofs[0] = memory::bg0vofsA;
-    engineA.bghofs[1] = memory::bg1hofsA;
-    engineA.bgvofs[1] = memory::bg1vofsA;
-    engineA.bghofs[2] = memory::bg2hofsA;
-    engineA.bgvofs[2] = memory::bg2vofsA;
-    engineA.bghofs[3] = memory::bg3hofsA;
-    engineA.bgvofs[3] = memory::bg3vofsA;
-    engineA.palette = (uint16_t*)memory::paletteA;
-    engineA.oam = (uint16_t*)memory::oamA;
-    engineA.extPalettes = memory::extPalettesA;
-    engineA.bgVram  = 0x6000000;
-    engineA.objVram = 0x6400000;
-
-    engineB.dispcnt = memory::dispcntB;
-    engineB.bgcnt[0]  = memory::bg0cntB;
-    engineB.bgcnt[1]  = memory::bg1cntB;
-    engineB.bgcnt[2]  = memory::bg2cntB;
-    engineB.bgcnt[3]  = memory::bg3cntB;
-    engineB.bghofs[0] = memory::bg0hofsB;
-    engineB.bgvofs[0] = memory::bg0vofsB;
-    engineB.bghofs[1] = memory::bg1hofsB;
-    engineB.bgvofs[1] = memory::bg1vofsB;
-    engineB.bghofs[2] = memory::bg2hofsB;
-    engineB.bgvofs[2] = memory::bg2vofsB;
-    engineB.bghofs[3] = memory::bg3hofsB;
-    engineB.bgvofs[3] = memory::bg3vofsB;
-    engineB.palette = (uint16_t*)memory::paletteB;
-    engineB.oam = (uint16_t*)memory::oamB;
-    engineB.extPalettes = memory::extPalettesB;
-    engineB.bgVram  = 0x6200000;
-    engineB.objVram = 0x6600000;
 }
 
 }

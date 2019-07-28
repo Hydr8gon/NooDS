@@ -20,27 +20,20 @@
 #include "interpreter_alu.h"
 #include "core.h"
 
-#define SET_FLAG(bit, cond) if (cond) cpu->cpsr |= BIT(bit); else cpu->cpsr &= ~BIT(bit);
-
-#define LLI(value, amount) (value << amount)
-#define LLR(value, amount) (((amount & 0xFF) < 32) ? (value << (amount & 0xFF)) : 0)
-#define LRI(value, amount) (amount ? (value >> amount) : 0)
-#define LRR(value, amount) (((amount & 0xFF) < 32) ? (value >> (amount & 0xFF)) : 0)
-#define ARI(value, amount) (amount ? ((int32_t)value >> amount) : ((value & BIT(31)) ? 0xFFFFFFFF : 0))
-#define ARR(value, amount) (((amount & 0xFF) < 32) ? ((int32_t)value >> (amount & 0xFF)) : ((value & BIT(31)) ? 0xFFFFFFFF : 0))
-#define RRR(value, amount) ((value << (32 - (amount & 0xFF) % 32)) | (value >> ((amount & 0xFF) % 32)))
-#define RRI(value, amount) (amount ? ((value << (32 - amount)) | (value >> amount)) : (((cpu->cpsr & BIT(29)) << 2) | (value >> 1)))
-
+// Register values for ARM opcodes
+// When used as Rm, the program counter is read as PC+12 if shifted by a register, or the usual PC+8 if not
 #define RN  (*cpu->registers[(opcode & 0x000F0000) >> 16])
 #define RD  (*cpu->registers[(opcode & 0x0000F000) >> 12])
 #define RS  (*cpu->registers[(opcode & 0x00000F00) >> 8])
 #define RMI (*cpu->registers[(opcode & 0x0000000F)])
 #define RMR (*cpu->registers[(opcode & 0x0000000F)] + (((opcode & 0x0000000F) == 0xF) ? 4 : 0))
 
+// Immediate values for ARM opcodes
 #define IMM       (opcode & 0x000000FF)
 #define IMM_SHIFT ((opcode & 0x00000F00) >> 7)
 #define REG_SHIFT ((opcode & 0x00000F80) >> 7)
 
+// Register values for THUMB opcodes
 #define RN_THUMB  (*cpu->registers[(opcode & 0x01C0) >> 6])
 #define RS_THUMB  (*cpu->registers[(opcode & 0x0038) >> 3])
 #define RD_THUMB  (*cpu->registers[(opcode & 0x0007)])
@@ -48,103 +41,142 @@
 #define RSH_THUMB (*cpu->registers[(opcode & 0x0078) >> 3])
 #define RDH_THUMB (*cpu->registers[(opcode & 0x0007) | ((opcode & 0x0080) >> 4)])
 
-#define IMM3_THUMB  ((opcode & 0x01C0) >> 6)
-#define IMM5_THUMB  ((opcode & 0x07C0) >> 6)
-#define IMM7_THUMB  ((opcode & BIT(7)) ? (0 - (opcode & 0x007F)) : (opcode & 0x007F))
-#define IMM8_THUMB  (opcode & 0x00FF)
-#define DP_SWITCH   ((opcode & 0x00C0) >> 6)
+// Immediate values for THUMB opcodes
+#define IMM3_THUMB ((opcode & 0x01C0) >> 6)
+#define IMM5_THUMB ((opcode & 0x07C0) >> 6)
+#define IMM7_THUMB ((opcode & BIT(7)) ? (0 - (opcode & 0x007F)) : (opcode & 0x007F))
+#define IMM8_THUMB (opcode & 0x00FF)
+#define DP_SWITCH  ((opcode & 0x00C0) >> 6)
 
+// Shifts for immediate values
+// A shift amount of 0 for LSR and ASR translates to a shift of 32
+// A shift amount of 0 for ROR translates to RCR (rotate with carry) 1
+#define LLI(value, amount) (value << amount)
+#define LRI(value, amount) (amount ? (value >> amount) : 0)
+#define ARI(value, amount) (amount ? ((int32_t)value >> amount) : ((value & BIT(31)) ? 0xFFFFFFFF : 0))
+#define RRI(value, amount) (amount ? ((value << (32 - amount)) | (value >> amount)) : (((cpu->cpsr & BIT(29)) << 2) | (value >> 1)))
+
+// Shifts for registers
+// Only the lower 8 bits are used
+// Shifts greater than 32 can be wonky on target systems, so they're handled explicitly
+#define LLR(value, amount) (((amount & 0xFF) < 32) ? (value << (amount & 0xFF)) : 0)
+#define LRR(value, amount) (((amount & 0xFF) < 32) ? (value >> (amount & 0xFF)) : 0)
+#define ARR(value, amount) (((amount & 0xFF) < 32) ? ((int32_t)value >> (amount & 0xFF)) : ((value & BIT(31)) ? 0xFFFFFFFF : 0))
+#define RRR(value, amount) ((value << (32 - (amount & 0xFF) % 32)) | (value >> ((amount & 0xFF) % 32)))
+
+// Bitwise and
 #define AND(op0, op1, op2) \
     op0 = op1 & op2;
 
+// Bitwise exclusive or
 #define EOR(op0, op1, op2) \
     op0 = op1 ^ op2;
 
+// Subtraction
 #define SUB(op0, op1, op2) \
     uint32_t pre = op1;    \
     uint32_t sub = op2;    \
     op0 = pre - sub;
 
+// Reverse subtraction
 #define RSB(op0, op1, op2) \
     uint32_t pre = op2;    \
     uint32_t sub = op1;    \
     op0 = pre - sub;
 
+// Addition
 #define ADD(op0, op1, op2) \
     uint32_t pre = op1;    \
     uint32_t add = op2;    \
     op0 = pre + add;
 
+// Addition with carry
 #define ADC(op0, op1, op2)                           \
     uint32_t pre = op1;                              \
     uint32_t add = op2;                              \
     op0 = pre + add + ((cpu->cpsr & BIT(29)) >> 29);
 
+// Subtraction with carry
 #define SBC(op0, op1, op2)                               \
     uint32_t pre = op1;                                  \
     uint32_t sub = op2;                                  \
     op0 = pre - sub - 1 + ((cpu->cpsr & BIT(29)) >> 29);
 
+// Reverse subtraction with carry
 #define RSC(op0, op1, op2)                               \
     uint32_t pre = op2;                                  \
     uint32_t sub = op1;                                  \
     op0 = pre - sub - 1 + ((cpu->cpsr & BIT(29)) >> 29);
 
+// Test bits
 #define TST(op1, op2)         \
     uint32_t res = op1 & op2; \
     COMMON_FLAGS(res)
 
+// Test equivalence
 #define TEQ(op1, op2)         \
     uint32_t res = op1 ^ op2; \
     COMMON_FLAGS(res)
 
+// Compare
 #define CMP(op1, op2)         \
     uint32_t pre = op1;       \
     uint32_t sub = op2;       \
     uint32_t res = pre - sub; \
     SUB_FLAGS(res)
 
+// Compare negative
 #define CMN(op1, op2)         \
     uint32_t pre = op1;       \
     uint32_t add = op2;       \
     uint32_t res = pre + add; \
     ADD_FLAGS(res)
 
+// Bitwise or
 #define ORR(op0, op1, op2) \
     op0 = op1 | op2;
 
+// Move
 #define MOV(op0, op2) \
     op0 = op2;
 
+// Bit clear
 #define BIC(op0, op1, op2) \
     op0 = op1 & ~op2;
 
+// Move not
 #define MVN(op0, op2) \
     op0 = ~op2;
 
+// Multiply
 #define MUL(op0, op1, op2) \
     op0 = op1 * op2;
 
+// Multiply and accumulate
 #define MLA(op0, op1, op2, op3) \
     op0 = op1 * op2 + op3;
 
+// Unsigned long multiply
 #define UMULL(op0, op1, op2, op3)       \
     uint64_t res = (uint64_t)op2 * op3; \
     op1 = res >> 32;                    \
     op0 = res;
 
+// Unsigned long multiply and accumulate
 #define UMLAL(op0, op1, op2, op3)       \
     uint64_t res = (uint64_t)op2 * op3; \
     res += ((uint64_t)op1 << 32) | op0; \
     op1 = res >> 32;                    \
     op0 = res;
 
+// Signed long multiply
 #define SMULL(op0, op1, op2, op3) \
     int64_t res = (int32_t)op2;   \
     res *= (int32_t)op3;          \
     op1 = res >> 32;              \
     op0 = res;
 
+// Signed long multiply and accumulate
 #define SMLAL(op0, op1, op2, op3)      \
     int64_t res = (int32_t)op2;        \
     res *= (int32_t)op3;               \
@@ -152,43 +184,66 @@
     op1 = res >> 32;                   \
     op0 = res;
 
+// Set or clear a flag bit
+#define SET_FLAG(bit, cond) if (cond) cpu->cpsr |= BIT(bit); else cpu->cpsr &= ~BIT(bit);
+
+// Get an LLI shifted value and set the carry flag
 #define LLI_CARRY(value, amount)                                 \
     uint32_t lli = LLI(value, amount);                           \
     if (amount > 0)                                              \
-        SET_FLAG(29, amount <= 32 && (value & BIT(32 - amount)))
+    {                                                            \
+        SET_FLAG(29, amount <= 32 && (value & BIT(32 - amount))) \
+    }
 
-#define LLR_CARRY(value, amount)                                                   \
-    uint32_t llr = LLR(value, amount);                                             \
-    if ((amount & 0xFF) > 0)                                                       \
-        SET_FLAG(29, (amount & 0xFF) <= 32 && (value & BIT(32 - (amount & 0xFF))))
-
+// Get an LRI shifted value and set the carry flag
 #define LRI_CARRY(value, amount)                            \
     uint32_t lri = LRI(value, amount);                      \
     SET_FLAG(29, (value & BIT(amount ? (amount - 1) : 31)))
 
-#define LRR_CARRY(value, amount)                                                  \
-    uint32_t lrr = LRR(value, amount);                                            \
-    if ((amount & 0xFF) > 0)                                                      \
-        SET_FLAG(29, (amount & 0xFF) <= 32 && (value & BIT((amount & 0xFF) - 1)))
-
+// Get an ARI shifted value and set the carry flag
 #define ARI_CARRY(value, amount)                                                                  \
     uint32_t ari = ARI(value, amount);                                                            \
     SET_FLAG(29, (amount == 0 && (value & BIT(31))) || (amount > 0 && (value & BIT(amount - 1))))
 
-#define ARR_CARRY(value, amount)                                                                                                   \
-    uint32_t arr = ARR(value, amount);                                                                                             \
-    if ((amount & 0xFF) > 0)                                                                                                       \
-        SET_FLAG(29, ((amount & 0xFF) > 32 && (value & BIT(31))) || ((amount & 0xFF) <= 32 && (value & BIT((amount & 0xFF) - 1))))
-
+// Get an RRI shifted value and set the carry flag
 #define RRI_CARRY(value, amount)                           \
     uint32_t rri = RRI(value, amount);                     \
     SET_FLAG(29, (value & BIT(amount ? (amount - 1) : 0)))
 
+// Get an LLR shifted value and set the carry flag
+#define LLR_CARRY(value, amount)                                                   \
+    uint32_t llr = LLR(value, amount);                                             \
+    if ((amount & 0xFF) > 0)                                                       \
+    {                                                                              \
+        SET_FLAG(29, (amount & 0xFF) <= 32 && (value & BIT(32 - (amount & 0xFF)))) \
+    }
+
+// Get an LRR shifted value and set the carry flag
+#define LRR_CARRY(value, amount)                                                  \
+    uint32_t lrr = LRR(value, amount);                                            \
+    if ((amount & 0xFF) > 0)                                                      \
+    {                                                                             \
+        SET_FLAG(29, (amount & 0xFF) <= 32 && (value & BIT((amount & 0xFF) - 1))) \
+    }
+
+// Get an ARR shifted value and set the carry flag
+#define ARR_CARRY(value, amount)                                                                                                   \
+    uint32_t arr = ARR(value, amount);                                                                                             \
+    if ((amount & 0xFF) > 0)                                                                                                       \
+    {                                                                                                                              \
+        SET_FLAG(29, ((amount & 0xFF) > 32 && (value & BIT(31))) || ((amount & 0xFF) <= 32 && (value & BIT((amount & 0xFF) - 1)))) \
+    }
+
+// Get an RRR shifted value and set the carry flag
 #define RRR_CARRY(value, amount)                                \
     uint32_t rrr = RRR(value, amount);                          \
     if ((amount & 0xFF) > 0)                                    \
-        SET_FLAG(29, (value & BIT(((amount & 0xFF) - 1) % 32)))
+    {                                                           \
+        SET_FLAG(29, (value & BIT(((amount & 0xFF) - 1) % 32))) \
+    }
 
+// Set the N and Z flags after an operation was performed
+// Also return to the previous CPU mode if the result was stored in the program counter
 #define COMMON_FLAGS(dst)                                   \
     if(&dst == cpu->registers[15] && cpu->spsr)             \
     {                                                       \
@@ -199,30 +254,38 @@
     SET_FLAG(31, dst & BIT(31))                             \
     SET_FLAG(30, dst == 0)
 
+// Set the C and V flags for a subtraction operation
 #define SUB_FLAGS(dst)                                                                     \
     COMMON_FLAGS(dst)                                                                      \
     SET_FLAG(29, pre >= dst)                                                               \
     SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31)))
 
+// Set the C and V flags for an addition operation
 #define ADD_FLAGS(dst)                                                                     \
     COMMON_FLAGS(dst)                                                                      \
     SET_FLAG(29, pre > dst)                                                                \
     SET_FLAG(28, (add & BIT(31)) == (pre & BIT(31)) && (dst & BIT(31)) != (add & BIT(31)))
 
+// Set the C and V flags for an addition with carry operation
 #define ADC_FLAGS(dst)                                                                     \
     COMMON_FLAGS(dst)                                                                      \
     SET_FLAG(29, pre > dst || (add == 0xFFFFFFFF && (cpu->cpsr & BIT(29))))                \
     SET_FLAG(28, (add & BIT(31)) == (pre & BIT(31)) && (dst & BIT(31)) != (add & BIT(31)))
 
+// Set the C and V flags for a subtraction with carry operation
 #define SBC_FLAGS(dst)                                                                     \
     COMMON_FLAGS(dst)                                                                      \
     SET_FLAG(29, pre >= dst && (sub != 0xFFFFFFFF || (cpu->cpsr & BIT(29))))               \
     SET_FLAG(28, (sub & BIT(31)) != (pre & BIT(31)) && (dst & BIT(31)) == (sub & BIT(31)))
 
+// Set the flags for a multiplication operation
+// Just sets the common flags, but on ARM7 the C flag is destroyed
 #define MUL_FLAGS(dst)         \
     COMMON_FLAGS(dst)          \
     if (cpu->type == 7)        \
         cpu->cpsr &= ~BIT(29);
+
+// Below, the above macros are combined to form all the variations of the ALU instructions
 
 namespace interpreter_alu
 {

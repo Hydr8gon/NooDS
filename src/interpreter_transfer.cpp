@@ -21,56 +21,69 @@
 #include "core.h"
 #include "memory.h"
 
+// Register values for ARM opcodes
 #define RN (*cpu->registers[(opcode & 0x000F0000) >> 16])
 #define RD (*cpu->registers[(opcode & 0x0000F000) >> 12])
 #define RM (*cpu->registers[(opcode & 0x0000000F)])
 
+// Immediate values for ARM opcodes
 #define SING_IMM (opcode & 0x00000FFF)
 #define SPEC_IMM (((opcode & 0x00000F00) >> 4) | (opcode & 0x0000000F))
 #define SHIFT    ((opcode & 0x00000F80) >> 7)
 
-#define LSL (RM << SHIFT)
-#define LSR (SHIFT ? (RM >> SHIFT) : 0)
-#define ASR (SHIFT ? ((int32_t)RM >> SHIFT) : ((RM & BIT(31)) ? 0xFFFFFFFF : 0))
-#define ROR (SHIFT ? ((RM << (32 - SHIFT)) | (RM >> SHIFT)) : (((cpu->cpsr & BIT(29)) << 2) | (RM >> 1)))
-
+// Register values for THUMB opcodes
 #define RO_THUMB  (*cpu->registers[(opcode & 0x01C0) >> 6])
 #define RB_THUMB  (*cpu->registers[(opcode & 0x0038) >> 3])
 #define RD_THUMB  (*cpu->registers[(opcode & 0x0007)])
 #define RD8_THUMB (*cpu->registers[(opcode & 0x0700) >> 8])
 
+// Immediate values for THUMB opcodes
 #define IMM5_THUMB ((opcode & 0x07C0) >> 6)
 #define IMM8_THUMB (opcode & 0x00FF)
 
+// Shifted values
+#define LSL (RM << SHIFT)
+#define LSR (SHIFT ? (RM >> SHIFT) : 0)
+#define ASR (SHIFT ? ((int32_t)RM >> SHIFT) : ((RM & BIT(31)) ? 0xFFFFFFFF : 0))
+#define ROR (SHIFT ? ((RM << (32 - SHIFT)) | (RM >> SHIFT)) : (((cpu->cpsr & BIT(29)) << 2) | (RM >> 1)))
+
+// Store, post-adjust
 #define STR_PT(type, sign, op0, op1, op2) \
     uint32_t offset = op2;                \
     memory::write<type>(cpu, op1, op0);   \
     op1 = op1 sign offset;
 
+// Load, post-adjust
 #define LDR_PT(type, sign, op0, op1, op2) \
     uint32_t offset = op2;                \
     op0 = memory::read<type>(cpu, op1);   \
     op1 = op1 sign offset;
 
+// Store, pre-adjust without writeback
 #define STR_OF(type, sign, op0, op1, op2)        \
     memory::write<type>(cpu, op1 sign op2, op0);
 
+// Load, pre-adjust without writeback
 #define LDR_OF(type, sign, op0, op1, op2)        \
     op0 = memory::read<type>(cpu, op1 sign op2);
 
+// Store, pre-adjust with writeback
 #define STR_PR(type, sign, op0, op1, op2) \
     op1 = op1 sign op2;                   \
     memory::write<type>(cpu, op1, op0);
 
+// Load, pre-adjust with writeback
 #define LDR_PR(type, sign, op0, op1, op2) \
     op1 = op1 sign op2;                   \
     op0 = memory::read<type>(cpu, op1);
 
+// Swap between registers and memory
 #define SWP(type, op0, op1, op2)          \
     type value = op1;                     \
     op0 = memory::read<type>(cpu, op2);   \
     memory::write<type>(cpu, op2, value);
 
+// Block store, post-decrement
 #define STMDA(op0, regs, range)                             \
     uint32_t address = op0;                                 \
     for (int i = range; i >= 0; i--)                        \
@@ -82,6 +95,7 @@
         }                                                   \
     }
 
+// Block load, post-decrement
 #define LDMDA(op0, regs, range)                             \
     uint32_t address = op0;                                 \
     for (int i = range; i >= 0; i--)                        \
@@ -93,6 +107,7 @@
         }                                                   \
     }
 
+// Block store, post-increment
 #define STMIA(op0, regs, range)                             \
     uint32_t address = op0;                                 \
     for (int i = 0; i <= range; i++)                        \
@@ -104,6 +119,7 @@
         }                                                   \
     }
 
+// Block load, post-increment
 #define LDMIA(op0, regs, range)                             \
     uint32_t address = op0;                                 \
     for (int i = 0; i <= range; i++)                        \
@@ -115,6 +131,7 @@
         }                                                   \
     }
 
+// Block store, pre-decrement
 #define STMDB(op0, regs, range)                             \
     uint32_t address = op0;                                 \
     for (int i = range; i >= 0; i--)                        \
@@ -126,6 +143,7 @@
         }                                                   \
     }
 
+// Block load, pre-decrement
 #define LDMDB(op0, regs, range)                             \
     uint32_t address = op0;                                 \
     for (int i = range; i >= 0; i--)                        \
@@ -137,6 +155,7 @@
         }                                                   \
     }
 
+// Block store, pre-increment
 #define STMIB(op0, regs, range)                             \
     uint32_t address = op0;                                 \
     for (int i = 0; i <= range; i++)                        \
@@ -148,6 +167,7 @@
         }                                                   \
     }
 
+// Block load, pre-increment
 #define LDMIB(op0, regs, range)                             \
     uint32_t address = op0;                                 \
     for (int i = 0; i <= range; i++)                        \
@@ -159,6 +179,7 @@
         }                                                   \
     }
 
+// Push to the stack (STMDB)
 #define PUSH_LR                                                        \
     uint32_t address = *cpu->registers[13] - 4;                        \
     memory::write<uint32_t>(cpu, address, *cpu->registers[14]);        \
@@ -171,6 +192,7 @@
         }                                                              \
     }
 
+// Pop from the stack (LDMIA)
 #define POP_PC                                                         \
     uint32_t address = *cpu->registers[13];                            \
     for (int i = 0; i <= 7; i++)                                       \
@@ -184,9 +206,11 @@
     *cpu->registers[15] = memory::read<uint32_t>(cpu, address);        \
     address += 4;
 
+// Writeback for block transfers
 #define WRITEBACK(op0) \
     op0 = address;
 
+// Switch to THUMB mode for ARM loads to the program counter
 #define THUMB_SWITCH                                      \
     if (cpu->type == 9 && (*cpu->registers[15] & BIT(0))) \
     {                                                     \
@@ -194,6 +218,7 @@
         *cpu->registers[15] &= ~BIT(0);                   \
     }
 
+// Switch to ARM mode for THUMB loads to the program counter
 #define ARM_SWITCH                          \
     if (cpu->type == 9)                     \
     {                                       \
@@ -203,6 +228,7 @@
             cpu->cpsr &= ~BIT(5);           \
     }
 
+// Return to the previous CPU mode if the program counter was loaded in a user-mode block transfer
 #define MODE_SWITCH                                          \
     if ((opcode & BIT(15)) && cpu->spsr)                     \
     {                                                        \
@@ -210,6 +236,8 @@
         interpreter::setMode(cpu, (cpu->cpsr & 0x0000001F)); \
     }                                                        \
     THUMB_SWITCH
+
+// Below, the above macros are combined to form all the variations of the transfer instructions
 
 namespace interpreter_transfer
 {
