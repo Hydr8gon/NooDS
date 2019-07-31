@@ -30,6 +30,8 @@ extern uint8_t *rom;
 
 void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel);
 
+void rtcWrite(uint8_t *value);
+
 void fifoClear(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
 void fifoSend(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
 uint32_t fifoReceive(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);

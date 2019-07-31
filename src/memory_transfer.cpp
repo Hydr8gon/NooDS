@@ -30,6 +30,10 @@ namespace memory_transfer
 uint8_t firmware[0x40000];
 uint8_t *rom;
 
+uint8_t rtcWriteCount;
+uint8_t rtcCommand;
+uint8_t rtcLast;
+
 std::queue<uint32_t> fifo9, fifo7;
 
 uint64_t romCommand;
@@ -113,6 +117,98 @@ void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel)
     // Clear the enable bit to indicate transfer completion
     // Transfers shouldn't complete instantly like this, but there's no timing system yet
     *cpu->dmacnt[channel] &= ~BIT(31);
+}
+
+void rtcWrite(uint8_t *value)
+{
+    // I find GBATEK's RTC documentation confusing, so here's a quick summary of how it works
+    //
+    // Bits 2 and 6 are connected to the CS pinout
+    // Bit 6 should always be set, so bit 2 being 1 or 0 causes CS to be high or low, respectively
+    //
+    // Bits 1 and 5 are connected to the SCK pinout
+    // Bit 5 should always be set, so bit 1 being 1 or 0 causes SCK to be high or low, respectively
+    //
+    // Bits 0 and 4 are connected to the SIO pinout
+    // Bit 4 indicates data direction; 0 is read, and 1 is write
+    // Bit 0 is where data sent from the RTC is read, and where data sent to the RTC is written
+    //
+    // To start a transfer, switch CS from low to high
+    // To end a transfer, switch CS from high to low
+    //
+    // To transfer a bit, set SCK to low and then high (it should be high when the transfer starts)
+    // When writing a bit to the RTC, you should set bit 0 at the same time as setting SCK to low
+    // When reading a bit from the RTC, you should read bit 0 after setting SCK to low (or high?)
+    //
+    // Start by writing the 8 bits of the command register, LSB first
+    // After that, read or write the registers selected with the command register, MSB first
+    // RTC registers at least are documented nicely on GBATEK
+
+    if (*value & BIT(2)) // CS high
+    {
+        if ((rtcLast & BIT(1)) && !(*value & BIT(1))) // SCK high to low
+        {
+            if (rtcWriteCount < 8)
+            {
+                // Write the first 8 bits to the command register, reversing the bit order
+                rtcCommand |= (*value & BIT(0)) << (7 - rtcWriteCount);
+                rtcWriteCount++;
+            }
+            else
+            {
+                uint8_t regSelect = (rtcCommand & 0x0E) >> 1;
+
+                // Transfer all following bits to or from the registers selected by the command register
+                if (*value & BIT(4)) // Write
+                {
+                    // For now, writes aren't supported
+                    printf("Unhandled write to RTC registers: %d\n", regSelect);
+                }
+                else // Read
+                {
+                    *value &= ~BIT(0);
+
+                    switch (regSelect)
+                    {
+                        case 2: // Date and time
+                        {
+                            // The bytes here (from low to high) represent:
+                            // Year, month, day, day of week, hours, minutes, seconds
+                            // For now it's just a hardcoded value
+                            *value |= ((0x00301100250519 >> (rtcWriteCount - 8)) & BIT(0));
+                            break;
+                        }
+
+                        case 3: // Time
+                        {
+                            // The bytes here (from low to high) represent:
+                            // Hours, minutes, seconds
+                            // For now it's just a hardcoded value
+                            *value |= ((0x003011 >> (rtcWriteCount - 8)) & BIT(0));
+                            break;
+                        }
+
+                        default:
+                        {
+                            printf("Read from unknown RTC registers: %d\n", regSelect);
+                            break;
+                        }
+                    }
+                }
+
+                rtcWriteCount++;
+            }
+        }
+    }
+    else // CS low
+    {
+        // Reset the transfer
+        rtcWriteCount = 0;
+        rtcCommand = 0;
+    }
+
+    // Save the current RTC register so it can be compared to the next write
+    rtcLast = *value;
 }
 
 void fifoClear(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv)
@@ -475,6 +571,10 @@ void spiWrite(uint8_t value)
 
 void init()
 {
+    rtcWriteCount = 0;
+    rtcCommand = 0;
+    rtcLast = 0;
+
     // Empty the FIFOs
     while (!fifo9.empty()) fifo9.pop();
     while (!fifo7.empty()) fifo7.pop();

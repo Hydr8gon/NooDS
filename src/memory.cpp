@@ -697,6 +697,13 @@ template <typename T> void ioWrite7(uint32_t address, T value)
                 break;
             }
 
+            case 0x138: // RTC
+            {
+                // Handle writes to the RTC register
+                memory_transfer::rtcWrite(&ioData7[0x138]);
+                break;
+            }
+
             case 0x181: // IPCSYNC_7
             {
                 // Copy the ARM7 send value to the ARM9 receive value
@@ -1035,6 +1042,7 @@ void init()
     *(uint16_t*)&ioMask7[0x10E] =     0x00C7; *(uint16_t*)&ioWriteMask7[0x10E] =     0x0047; // TM3CNT_7
     *(uint16_t*)&ioMask7[0x130] =     0x03FF; *(uint16_t*)&ioWriteMask7[0x130] =     0x0000; // KEYINPUT
     *(uint16_t*)&ioMask7[0x136] =     0x00FF; *(uint16_t*)&ioWriteMask7[0x136] =     0x0000; // EXTKEYIN
+    *(uint16_t*)&ioMask7[0x138] =     0xFFFF; *(uint16_t*)&ioWriteMask7[0x138] =     0xFFFF; // RTC
     *(uint16_t*)&ioMask7[0x180] =     0x6F0F; *(uint16_t*)&ioWriteMask7[0x180] =     0x4F00; // IPCSYNC_7
     *(uint16_t*)&ioMask7[0x184] =     0xC70F; *(uint16_t*)&ioWriteMask7[0x184] =     0x8000; // IPCFIFOCNT_7
     *(uint32_t*)&ioMask7[0x188] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x188] = 0xFFFFFFFF; // IPCFIFOSEND_7
