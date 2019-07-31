@@ -51,7 +51,7 @@ typedef struct
 
     uint16_t *auxspicnt;
     uint32_t *romctrl;
-    uint8_t *romcmdout;
+    uint64_t *romcmdout;
 
     uint16_t *ime;
     uint32_t *ie, *irf;

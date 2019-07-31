@@ -259,7 +259,7 @@ void drawObjects(Engine *engine, uint16_t pixel)
                 else // Standard palette
                     palette = &engine->palette[0x100];
 
-                if (palette)
+                if (tile && palette)
                 {
                     if (object[0] & BIT(13)) // 8-bit
                     {

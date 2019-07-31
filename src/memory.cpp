@@ -287,8 +287,14 @@ template <typename T> void ioWrite9(uint32_t address, T value)
                 // Set the release reset bit, but never clear it
                 ioData9[0x1A7] |= (((uint8_t*)&value)[i] & BIT(5));
 
-                // Start a ROM transfer
-                memory_transfer::romTransferStart(&interpreter::arm9);
+                // Save the old start bit for later use and set the new one
+                uint8_t startBit = (ioData9[0x1A7] & BIT(7));
+                ioData9[0x1A7] &= ~BIT(7);
+                ioData9[0x1A7] |= (((uint8_t*)&value)[i] & BIT(7));
+
+                // Start a ROM transfer if the start bit changes from 0 to 1
+                if (!startBit && (((uint8_t*)&value)[i] & BIT(7)))
+                    memory_transfer::romTransferStart(&interpreter::arm9);
 
                 break;
             }
@@ -749,8 +755,14 @@ template <typename T> void ioWrite7(uint32_t address, T value)
                 // Set the release reset bit, but never clear it
                 ioData7[0x1A7] |= (((uint8_t*)&value)[i] & BIT(5));
 
-                // Start a ROM transfer
-                memory_transfer::romTransferStart(&interpreter::arm7);
+                // Save the old start bit for later use and set the new one
+                uint8_t startBit = (ioData7[0x1A7] & BIT(7));
+                ioData7[0x1A7] &= ~BIT(7);
+                ioData7[0x1A7] |= (((uint8_t*)&value)[i] & BIT(7));
+
+                // Start a ROM transfer if the start bit changes from 0 to 1
+                if (!startBit && (((uint8_t*)&value)[i] & BIT(7)))
+                    memory_transfer::romTransferStart(&interpreter::arm7);
 
                 break;
             }
@@ -964,7 +976,7 @@ void init()
     *(uint16_t*)&ioMask9[0x184]  =     0xC70F; *(uint16_t*)&ioWriteMask9[0x184]  =     0x8000; // IPCFIFOCNT_9
     *(uint32_t*)&ioMask9[0x188]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x188]  = 0xFFFFFFFF; // IPCFIFOSEND_9
     *(uint16_t*)&ioMask9[0x1A0]  =     0xE0C3; *(uint16_t*)&ioWriteMask9[0x1A0]  =     0xE043; // AUXSPICNT_9
-    *(uint32_t*)&ioMask9[0x1A4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1A4]  = 0xDF7F7FFF; // ROMCTRL_9
+    *(uint32_t*)&ioMask9[0x1A4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1A4]  = 0x5F7F7FFF; // ROMCTRL_9
     *(uint32_t*)&ioMask9[0x1A8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1A8]  = 0xFFFFFFFF; // ROMCMDOUT_9
     *(uint32_t*)&ioMask9[0x1AC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1AC]  = 0xFFFFFFFF; // ROMCMDOUT_9
     *(uint16_t*)&ioMask9[0x208]  =     0x0001; *(uint16_t*)&ioWriteMask9[0x208]  =     0x0001; // IME_9
@@ -1027,7 +1039,7 @@ void init()
     *(uint16_t*)&ioMask7[0x184] =     0xC70F; *(uint16_t*)&ioWriteMask7[0x184] =     0x8000; // IPCFIFOCNT_7
     *(uint32_t*)&ioMask7[0x188] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x188] = 0xFFFFFFFF; // IPCFIFOSEND_7
     *(uint16_t*)&ioMask7[0x1A0] =     0xE0C3; *(uint16_t*)&ioWriteMask7[0x1A0] =     0xE043; // AUXSPICNT_7
-    *(uint32_t*)&ioMask7[0x1A4] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1A4] = 0xDF7F7FFF; // ROMCTRL_7
+    *(uint32_t*)&ioMask7[0x1A4] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1A4] = 0x5F7F7FFF; // ROMCTRL_7
     *(uint32_t*)&ioMask7[0x1A8] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1A8] = 0xFFFFFFFF; // ROMCMDOUT_7
     *(uint32_t*)&ioMask7[0x1AC] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1AC] = 0xFFFFFFFF; // ROMCMDOUT_7
     *(uint16_t*)&ioMask7[0x1C0] =     0xCF83; *(uint16_t*)&ioWriteMask7[0x1C0] =     0xCF03; // SPICNT
@@ -1065,7 +1077,7 @@ void init()
     interpreter::arm9.ipcfifosend = (uint32_t*)&ioData9[0x188];
     interpreter::arm9.auxspicnt   = (uint16_t*)&ioData9[0x1A0];
     interpreter::arm9.romctrl     = (uint32_t*)&ioData9[0x1A4];
-    interpreter::arm9.romcmdout   =            &ioData9[0x1A8];
+    interpreter::arm9.romcmdout   = (uint64_t*)&ioData9[0x1A8];
     interpreter::arm9.ime         = (uint16_t*)&ioData9[0x208];
     interpreter::arm9.ie          = (uint32_t*)&ioData9[0x210];
     interpreter::arm9.irf         = (uint32_t*)&ioData9[0x214];
@@ -1095,7 +1107,7 @@ void init()
     interpreter::arm7.ipcfifosend = (uint32_t*)&ioData7[0x188];
     interpreter::arm7.auxspicnt   = (uint16_t*)&ioData7[0x1A0];
     interpreter::arm7.romctrl     = (uint32_t*)&ioData7[0x1A4];
-    interpreter::arm7.romcmdout   =            &ioData7[0x1A8];
+    interpreter::arm7.romcmdout   = (uint64_t*)&ioData7[0x1A8];
     interpreter::arm7.ime         = (uint16_t*)&ioData7[0x208];
     interpreter::arm7.ie          = (uint32_t*)&ioData7[0x210];
     interpreter::arm7.irf         = (uint32_t*)&ioData7[0x214];

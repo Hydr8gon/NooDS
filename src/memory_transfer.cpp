@@ -18,6 +18,7 @@
 */
 
 #include <cstdio>
+#include <cstring>
 
 #include "memory_transfer.h"
 #include "core.h"
@@ -31,7 +32,12 @@ uint8_t *rom;
 
 std::queue<uint32_t> fifo9, fifo7;
 
-uint16_t romReadSize, romReadCount;
+uint64_t romCommand;
+uint16_t romBlockSize, romReadCount;
+bool romEncrypt;
+
+uint32_t encTable[0x412];
+uint32_t encCode[3];
 
 uint32_t spiWriteCount;
 uint32_t spiAddr;
@@ -44,6 +50,7 @@ void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel)
         return;
 
     uint8_t mode = (*cpu->dmacnt[channel] & 0x38000000) >> 27;
+
     if (mode == 0) // Start immediately
     {
         // Get some values from the registers
@@ -203,34 +210,150 @@ uint32_t fifoReceive(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv)
     return cpuSend->ipcfiforecv;
 }
 
+void decrypt64(uint64_t *value)
+{
+    // Decrypt a 64-bit value using the Blowfish algorithm
+    // This is a translation of the pseudocode from GBATEK to C++
+
+    uint32_t y = ((uint32_t*)value)[0];
+    uint32_t x = ((uint32_t*)value)[1];
+
+    for (int i = 0x11; i >= 0x02; i--)
+    {
+        uint32_t z = encTable[i] ^ x;
+        x = encTable[0x012 + ((z >> 24) & 0xFF)];
+        x = encTable[0x112 + ((z >> 16) & 0xFF)] + x;
+        x = encTable[0x212 + ((z >>  8) & 0xFF)] ^ x;
+        x = encTable[0x312 + ((z >>  0) & 0xFF)] + x;
+        x ^= y;
+        y = z;
+    }
+
+    ((uint32_t*)value)[0] = x ^ encTable[1];
+    ((uint32_t*)value)[1] = y ^ encTable[0];
+}
+
+void encrypt64(uint64_t *value)
+{
+    // Encrypt a 64-bit value using the Blowfish algorithm
+    // This is a translation of the pseudocode from GBATEK to C++
+
+    uint32_t y = ((uint32_t*)value)[0];
+    uint32_t x = ((uint32_t*)value)[1];
+
+    for (int i = 0x00; i <= 0x0F; i++)
+    {
+        uint32_t z = encTable[i] ^ x;
+        x = encTable[0x012 + ((z >> 24) & 0xFF)];
+        x = encTable[0x112 + ((z >> 16) & 0xFF)] + x;
+        x = encTable[0x212 + ((z >>  8) & 0xFF)] ^ x;
+        x = encTable[0x312 + ((z >>  0) & 0xFF)] + x;
+        x ^= y;
+        y = z;
+    }
+
+    ((uint32_t*)value)[0] = x ^ encTable[0x10];
+    ((uint32_t*)value)[1] = y ^ encTable[0x11];
+}
+
+uint32_t byteReverse32(uint32_t value)
+{
+    // Reverse the byte order of a 32-bit value
+    uint32_t reverse = 0;
+    for (int i = 0; i < 4; i++)
+        ((uint8_t*)&reverse)[i] = ((uint8_t*)&value)[3 - i];
+    return reverse;
+}
+
+void applyKeycode()
+{
+    // Apply a keycode to the Blowfish encryption table
+    // This is a translation of the pseudocode from GBATEK to C++
+
+    encrypt64((uint64_t*)&encCode[1]);
+    encrypt64((uint64_t*)&encCode[0]);
+
+    uint64_t scratch = 0;
+
+    for (int i = 0; i <= 0x11; i++)
+        encTable[i] ^= byteReverse32(encCode[i % 2]);
+
+    for (int i = 0; i <= 0x410; i += 2)
+    {
+        encrypt64(&scratch);
+        encTable[i + 0] = ((uint32_t*)&scratch)[1];
+        encTable[i + 1] = ((uint32_t*)&scratch)[0];
+    }
+}
+
+void initKeycode(uint32_t idCode, uint8_t level)
+{
+    // Initialize the Blowfish encryption table
+    // This is a translation of the pseudocode from GBATEK to C++
+
+    memcpy(encTable, &memory::bios7[0x30], sizeof(encTable));
+
+    encCode[0] = idCode;
+    encCode[1] = idCode / 2;
+    encCode[2] = idCode * 2;
+
+    if (level >= 1) applyKeycode();
+    if (level >= 2) applyKeycode();
+
+    encCode[1] *= 2;
+    encCode[2] /= 2;
+
+    if (level >= 3) applyKeycode();
+}
+
 void romTransferStart(interpreter::Cpu *cpu)
 {
-    // Don't do anything if the start bit isn't set
-    if (!(*cpu->romctrl & BIT(31)))
-        return;
-
-    // Set the default size of the transfer
-    switch (cpu->romcmdout[0])
+    // Get the size of the block to transfer
+    uint8_t size = (*cpu->romctrl & 0x07000000) >> 24;
+    switch (size)
     {
-        case 0x9F: romReadSize = 0x2000; break; // Dummy
-        case 0x00: romReadSize = 0x0200; break; // Get header
-        case 0x90: romReadSize = 0x0004; break; // Get first chip ID
+        case 0:  romBlockSize = 0;             break;
+        case 7:  romBlockSize = 4;             break;
+        default: romBlockSize = 0x100 << size; break;
+    }
 
-        default:
+    // Reverse the byte order of the ROM command to make it easier to work with
+    for (int i = 0; i < 8; i++)
+       ((uint8_t*)&romCommand)[i] = ((uint8_t*)cpu->romcmdout)[7 - i];
+
+    // Decrypt the ROM command if encryption is enabled
+    if (romEncrypt)
+        decrypt64(&romCommand);
+
+    // Handle encryption commands
+    if (rom)
+    {
+        if (((uint8_t*)&romCommand)[7] == 0x3C) // Activate KEY1 encryption mode
         {
-            // Pretend the transfer completed so the program can continue
-            *cpu->romctrl &= ~BIT(23); // Word not ready
-            *cpu->romctrl &= ~BIT(31); // Block ready
-            if (*cpu->auxspicnt & BIT(14)) // Block ready IRQ
-                *cpu->irf |= BIT(19);
-
-            printf("Unknown ROM transfer command: 0x");
-            for (int i = 0; i < 8; i++)
-                printf("%.2X", cpu->romcmdout[i]);
-            printf("\n");
-
-            return;
+            // Initialize KEY1 encryption
+            initKeycode(*(uint32_t*)&rom[0x0C], 2);
+            romEncrypt = true;
         }
+        else if ((((uint8_t*)&romCommand)[7] & 0xF0) == 0xA0) // Enter main data mode
+        {
+            // Disable KEY1 encryption
+            // On hardware, this is where KEY2 encryption would start
+            romEncrypt = false;
+        }
+    }
+
+    // Indicate transfer completion right away when the block size is 0
+    if (romBlockSize == 0)
+    {
+        // Set the ready bits
+        *cpu->romctrl &= ~BIT(23); // Word not ready
+        *cpu->romctrl &= ~BIT(31); // Block ready
+
+        // Trigger a block ready IRQ if enabled
+        if (*cpu->auxspicnt & BIT(14))
+            *cpu->irf |= BIT(19);
+
+        return;
     }
 
     // Indicate that a word is ready
@@ -245,19 +368,45 @@ uint32_t romTransfer(interpreter::Cpu *cpu)
     if (!(*cpu->romctrl & BIT(23)))
         return 0;
 
-    romReadCount += 4;
-    if (romReadCount == romReadSize)
+    // When a cart isn't inserted, endless 0xFFs are returned
+    uint32_t value = 0xFFFFFFFF;
+
+    // Interpret the current ROM command and change the return value if needed
+    if (rom)
     {
-        // Indicated the transfer has finished once the transfer size is reached
+        if (romCommand == 0x0000000000000000) // Get header
+        {
+            // Return the ROM header, repeated every 0x1000 bytes
+            value = *(uint32_t*)&rom[romReadCount % 0x1000];
+        }
+        else if ((romCommand & 0xFF00000000FFFFFF) == 0xB700000000000000) // Get data
+        {
+            // Return ROM data from the given address
+            uint32_t address = (romCommand & 0x00FFFFFFFF000000) >> 24;
+            value = *(uint32_t*)&rom[address + romReadCount];
+        }
+        else if (romCommand != 0x9F00000000000000) // Dummy
+        {
+            // Split the ROM command into 2 32-bit parts for easier printing
+            printf("ROM transfer with unknown command: 0x%.8X%.8X\n", ((uint32_t*)&romCommand)[1], ((uint32_t*)&romCommand)[0]);
+        }
+    }
+
+    romReadCount += 4;
+
+    // Indicate transfer completion when the block size has been reached
+    if (romReadCount == romBlockSize)
+    {
+        // Set the ready bits
         *cpu->romctrl &= ~BIT(23); // Word not ready
         *cpu->romctrl &= ~BIT(31); // Block ready
-        if (*cpu->auxspicnt & BIT(14)) // Block ready IRQ
+
+        // Trigger a block ready IRQ if enabled
+        if (*cpu->auxspicnt & BIT(14))
             *cpu->irf |= BIT(19);
     }
 
-    // Return an endless stream of 0xFFs as if there isn't a cart inserted
-    // Right now the ROM transfer system is just a hack designed to let the firmware boot
-    return 0xFFFFFFFF;
+    return value;
 }
 
 void spiWrite(uint8_t value)
@@ -329,6 +478,9 @@ void init()
     // Empty the FIFOs
     while (!fifo9.empty()) fifo9.pop();
     while (!fifo7.empty()) fifo7.pop();
+
+    romEncrypt = false;
+    spiWriteCount = 0;
 
     interpreter::arm9.fifo = &fifo9;
     interpreter::arm7.fifo = &fifo7;
