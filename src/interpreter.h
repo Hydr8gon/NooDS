@@ -41,6 +41,7 @@ typedef struct
 
     uint32_t *dmasad[4], *dmadad[4];
     uint32_t *dmacnt[4];
+    uint32_t dmaDstAddrs[4], dmaSrcAddrs[4];
 
     uint16_t *tmcntL[4], *tmcntH[4];
     uint16_t timerReloads[4], timerScalers[4];

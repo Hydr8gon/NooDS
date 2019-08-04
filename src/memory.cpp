@@ -60,13 +60,20 @@ uint8_t ioData7[0x2000], ioMask7[0x2000], ioWriteMask7[0x2000];
 
 uint16_t *dispstat = (uint16_t*)&ioData9[0x004];
 uint16_t *vcount   = (uint16_t*)&ioData9[0x006];
-uint16_t *powcnt1  = (uint16_t*)&ioData9[0x304];
 
 uint16_t *keyinput = (uint16_t*)&ioData9[0x130];
 uint16_t *extkeyin = (uint16_t*)&ioData7[0x136];
 
 uint16_t *spicnt  = (uint16_t*)&ioData7[0x1C0];
 uint16_t *spidata = (uint16_t*)&ioData7[0x1C2];
+
+uint16_t *divcnt   = (uint16_t*)&ioData9[0x280];
+int64_t *divnumer  =  (int64_t*)&ioData9[0x290];
+int64_t *divdenom  =  (int64_t*)&ioData9[0x298];
+int64_t *divresult =  (int64_t*)&ioData9[0x2A0];
+int64_t *divremain =  (int64_t*)&ioData9[0x2A8];
+
+uint16_t *powcnt1 = (uint16_t*)&ioData9[0x304];
 
 void *vramMap(uint32_t address)
 {
@@ -173,31 +180,20 @@ template <typename T> void ioWrite9(uint32_t address, T value)
     {
         switch (ioAddr + i)
         {
-            case 0x0BB: // DMA0CNT_9
+            case 0x0BB: case 0x0C7: case 0x0D3: case 0x0DF: // DMACNT_9
             {
-                // Perform a DMA transfer on channel 0
-                memory_transfer::dmaTransfer(&interpreter::arm9, 0);
-                break;
-            }
+                // Reload the DMA address counters if the enable bit changes from 0 to 1
+                if (!(ioData9[ioAddr + i] & BIT(7)) && (((uint8_t*)&value)[i] & BIT(7)))
+                {
+                    uint8_t channel = (ioAddr + i - 0x0BB) / 0x0C;
+                    interpreter::arm9.dmaDstAddrs[channel] = *interpreter::arm9.dmadad[channel];
+                    interpreter::arm9.dmaSrcAddrs[channel] = *interpreter::arm9.dmasad[channel];
+                }
 
-            case 0x0C7: // DMA1CNT_9
-            {
-                // Perform a DMA transfer on channel 1
-                memory_transfer::dmaTransfer(&interpreter::arm9, 1);
-                break;
-            }
+                // Now that the old enable bit has been used, set the new one
+                ioData9[ioAddr + i] &= ~BIT(7);
+                ioData9[ioAddr + i] |= (((uint8_t*)&value)[i] & BIT(7));
 
-            case 0x0D3: // DMA2CNT_9
-            {
-                // Perform a DMA transfer on channel 2
-                memory_transfer::dmaTransfer(&interpreter::arm9, 2);
-                break;
-            }
-
-            case 0x0DF: // DMA3CNT_9
-            {
-                // Perform a DMA transfer on channel 3
-                memory_transfer::dmaTransfer(&interpreter::arm9, 3);
                 break;
             }
 
@@ -564,6 +560,47 @@ template <typename T> void ioWrite9(uint32_t address, T value)
                 break;
             }
 
+            case 0x280: case 0x290: case 0x298: // DIV
+            {
+                if (*divdenom == 0)
+                {
+                    // Set the division by zero error bit
+                    *divcnt |= BIT(14);
+                }
+                else
+                {
+                    // Clear the division by zero error bit
+                    *divcnt &= ~BIT(14);
+
+                    // Set the result and the remainder
+                    switch (*divcnt & 0x0003) // Division mode
+                    {
+                        case 0: // 32-bit / 32-bit
+                        {
+                            *divresult = *(int32_t*)divnumer / *(int32_t*)divdenom;
+                            *divremain = *(int32_t*)divnumer % *(int32_t*)divdenom;
+                            break;
+                        }
+
+                        case 1: case 3: // 64-bit / 32-bit
+                        {
+                            *divresult = *divnumer / *(int32_t*)divdenom;
+                            *divremain = *divnumer % *(int32_t*)divdenom;
+                            break;
+                        }
+
+                        case 2: // 64-bit / 64-bit
+                        {
+                            *divresult = *divnumer / *divdenom;
+                            *divremain = *divnumer % *divdenom;
+                            break;
+                        }
+                    }
+                }
+
+                break;
+            }
+
             case 0x300: // POSTFLG_9
             {
                 // Set the POSTFLG bit, but never clear it
@@ -641,31 +678,20 @@ template <typename T> void ioWrite7(uint32_t address, T value)
                 break;
             }
 
-            case 0x0BB: // DMA0CNT_7
+            case 0x0BB: case 0x0C7: case 0x0D3: case 0x0DF: // DMACNT_7
             {
-                // Perform a DMA transfer on channel 0
-                memory_transfer::dmaTransfer(&interpreter::arm7, 0);
-                break;
-            }
+                // Reload the DMA address counters if the enable bit changes from 0 to 1
+                if (!(ioData7[ioAddr + i] & BIT(7)) && (((uint8_t*)&value)[i] & BIT(7)))
+                {
+                    uint8_t channel = (ioAddr + i - 0x0BB) / 0x0C;
+                    interpreter::arm7.dmaDstAddrs[channel] = *interpreter::arm7.dmadad[channel];
+                    interpreter::arm7.dmaSrcAddrs[channel] = *interpreter::arm7.dmasad[channel];
+                }
 
-            case 0x0C7: // DMA1CNT_7
-            {
-                // Perform a DMA transfer on channel 1
-                memory_transfer::dmaTransfer(&interpreter::arm7, 1);
-                break;
-            }
+                // Now that the old enable bit has been used, set the new one
+                ioData7[ioAddr + i] &= ~BIT(7);
+                ioData7[ioAddr + i] |= (((uint8_t*)&value)[i] & BIT(7));
 
-            case 0x0D3: // DMA2CNT_7
-            {
-                // Perform a DMA transfer on channel 2
-                memory_transfer::dmaTransfer(&interpreter::arm7, 2);
-                break;
-            }
-
-            case 0x0DF: // DMA3CNT_7
-            {
-                // Perform a DMA transfer on channel 3
-                memory_transfer::dmaTransfer(&interpreter::arm7, 3);
                 break;
             }
 
@@ -956,16 +982,16 @@ void init()
     *(uint16_t*)&ioMask9[0x01E]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x01E]  =     0x01FF; // BG3VOFS_A
     *(uint32_t*)&ioMask9[0x0B0]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0B0]  = 0x0FFFFFFF; // DMA0SAD_9
     *(uint32_t*)&ioMask9[0x0B4]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0B4]  = 0x0FFFFFFF; // DMA0DAD_9
-    *(uint32_t*)&ioMask9[0x0B8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0B8]  = 0xFFFFFFFF; // DMA0CNT_9
+    *(uint32_t*)&ioMask9[0x0B8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0B8]  = 0x7FFFFFFF; // DMA0CNT_9
     *(uint32_t*)&ioMask9[0x0BC]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0BC]  = 0x0FFFFFFF; // DMA1SAD_9
     *(uint32_t*)&ioMask9[0x0C0]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0C0]  = 0x0FFFFFFF; // DMA1DAD_9
-    *(uint32_t*)&ioMask9[0x0C4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0C4]  = 0xFFFFFFFF; // DMA1CNT_9
+    *(uint32_t*)&ioMask9[0x0C4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0C4]  = 0x7FFFFFFF; // DMA1CNT_9
     *(uint32_t*)&ioMask9[0x0C8]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0C8]  = 0x0FFFFFFF; // DMA2SAD_9
     *(uint32_t*)&ioMask9[0x0CC]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0CC]  = 0x0FFFFFFF; // DMA2DAD_9
-    *(uint32_t*)&ioMask9[0x0D0]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0D0]  = 0xFFFFFFFF; // DMA2CNT_9
+    *(uint32_t*)&ioMask9[0x0D0]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0D0]  = 0x7FFFFFFF; // DMA2CNT_9
     *(uint32_t*)&ioMask9[0x0D4]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0D4]  = 0x0FFFFFFF; // DMA3SAD_9
     *(uint32_t*)&ioMask9[0x0D8]  = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask9[0x0D8]  = 0x0FFFFFFF; // DMA3DAD_9
-    *(uint32_t*)&ioMask9[0x0DC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0DC]  = 0xFFFFFFFF; // DMA3CNT_9
+    *(uint32_t*)&ioMask9[0x0DC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0DC]  = 0x7FFFFFFF; // DMA3CNT_9
     *(uint32_t*)&ioMask9[0x0E0]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0E0]  = 0xFFFFFFFF; // DMA0FILL
     *(uint32_t*)&ioMask9[0x0E4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0E4]  = 0xFFFFFFFF; // DMA1FILL
     *(uint32_t*)&ioMask9[0x0E8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x0E8]  = 0xFFFFFFFF; // DMA2FILL
@@ -999,6 +1025,15 @@ void init()
                  ioMask9[0x247]  =       0x03;              ioWriteMask9[0x247]  =       0x03; // WRAMCNT
                  ioMask9[0x248]  =       0x83;              ioWriteMask9[0x248]  =       0x00; // VRAMCNT_H
                  ioMask9[0x249]  =       0x83;              ioWriteMask9[0x249]  =       0x00; // VRAMCNT_I
+    *(uint16_t*)&ioMask9[0x280]  =     0xC003; *(uint16_t*)&ioWriteMask9[0x280]  =     0x0003; // DIVCNT
+    *(uint32_t*)&ioMask9[0x290]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x290]  = 0xFFFFFFFF; // DIVNUMER
+    *(uint32_t*)&ioMask9[0x294]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x294]  = 0xFFFFFFFF; // DIVNUMER
+    *(uint32_t*)&ioMask9[0x298]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x298]  = 0xFFFFFFFF; // DIVDENOM
+    *(uint32_t*)&ioMask9[0x29C]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x29C]  = 0xFFFFFFFF; // DIVDENOM
+    *(uint32_t*)&ioMask9[0x2A0]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x2A0]  = 0x00000000; // DIVRESULT
+    *(uint32_t*)&ioMask9[0x2A4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x2A4]  = 0x00000000; // DIVRESULT
+    *(uint32_t*)&ioMask9[0x2A8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x2A8]  = 0x00000000; // DIVREMAIN
+    *(uint32_t*)&ioMask9[0x2AC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x2AC]  = 0x00000000; // DIVREMAIN
                  ioMask9[0x300]  =       0x03;              ioWriteMask9[0x300]  =       0x02; // POSTFLG_9
     *(uint16_t*)&ioMask9[0x304]  =     0x820F; *(uint16_t*)&ioWriteMask9[0x304]  =     0x820F; // POWCNT1
     *(uint32_t*)&ioMask9[0x1000] = 0xC0B1FFF7; *(uint32_t*)&ioWriteMask9[0x1000] = 0xC0B1FFF7; // DISPCNT_B
@@ -1022,16 +1057,16 @@ void init()
     *(uint16_t*)&ioMask7[0x006] =     0x01FF; *(uint16_t*)&ioWriteMask7[0x006] =     0x0000; // VCOUNT
     *(uint32_t*)&ioMask7[0x0B0] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0B0] = 0x07FFFFFF; // DMA0SAD_7
     *(uint32_t*)&ioMask7[0x0B4] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0B4] = 0x07FFFFFF; // DMA0DAD_7
-    *(uint32_t*)&ioMask7[0x0B8] = 0xF7E03FFF; *(uint32_t*)&ioWriteMask7[0x0B8] = 0xF7E03FFF; // DMA0CNT_7
+    *(uint32_t*)&ioMask7[0x0B8] = 0xF7E03FFF; *(uint32_t*)&ioWriteMask7[0x0B8] = 0x77E03FFF; // DMA0CNT_7
     *(uint32_t*)&ioMask7[0x0BC] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0BC] = 0x07FFFFFF; // DMA1SAD_7
     *(uint32_t*)&ioMask7[0x0C0] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0C0] = 0x07FFFFFF; // DMA1DAD_7
-    *(uint32_t*)&ioMask7[0x0C4] = 0xF7E03FFF; *(uint32_t*)&ioWriteMask7[0x0C4] = 0xF7E03FFF; // DMA1CNT_7
+    *(uint32_t*)&ioMask7[0x0C4] = 0xF7E03FFF; *(uint32_t*)&ioWriteMask7[0x0C4] = 0x77E03FFF; // DMA1CNT_7
     *(uint32_t*)&ioMask7[0x0C8] = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask7[0x0C8] = 0x07FFFFFF; // DMA2SAD_7
     *(uint32_t*)&ioMask7[0x0CC] = 0x0FFFFFFF; *(uint32_t*)&ioWriteMask7[0x0CC] = 0x07FFFFFF; // DMA2DAD_7
-    *(uint32_t*)&ioMask7[0x0D0] = 0xF7E03FFF; *(uint32_t*)&ioWriteMask7[0x0D0] = 0xF7E03FFF; // DMA2CNT_7
+    *(uint32_t*)&ioMask7[0x0D0] = 0xF7E03FFF; *(uint32_t*)&ioWriteMask7[0x0D0] = 0x77E03FFF; // DMA2CNT_7
     *(uint32_t*)&ioMask7[0x0D4] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0D4] = 0x07FFFFFF; // DMA3SAD_7
     *(uint32_t*)&ioMask7[0x0D8] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0D8] = 0x07FFFFFF; // DMA3DAD_7
-    *(uint32_t*)&ioMask7[0x0DC] = 0xF7E0FFFF; *(uint32_t*)&ioWriteMask7[0x0DC] = 0xF7E0FFFF; // DMA3CNT_7
+    *(uint32_t*)&ioMask7[0x0DC] = 0xF7E0FFFF; *(uint32_t*)&ioWriteMask7[0x0DC] = 0x77E0FFFF; // DMA3CNT_7
     *(uint16_t*)&ioMask7[0x100] =     0xFFFF; *(uint16_t*)&ioWriteMask7[0x100] =     0x0000; // TM0CNT_L_7
     *(uint16_t*)&ioMask7[0x102] =     0x00C7; *(uint16_t*)&ioWriteMask7[0x102] =     0x0047; // TM0CNT_H_7
     *(uint16_t*)&ioMask7[0x104] =     0xFFFF; *(uint16_t*)&ioWriteMask7[0x104] =     0x0000; // TM1COUNT_7

@@ -49,74 +49,80 @@ uint8_t spiInstr;
 
 void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel)
 {
-    // Don't transfer if the channel isn't enabled
-    if (!(*cpu->dmacnt[channel] & BIT(31)) || channel > 3)
-        return;
-
-    uint8_t mode = (*cpu->dmacnt[channel] & 0x38000000) >> 27;
-
-    if (mode == 0) // Start immediately
+    uint8_t timing = (*cpu->dmacnt[channel] & 0x38000000) >> 27;
+    switch (timing)
     {
-        // Get some values from the registers
-        uint8_t dstAddrCnt = (*cpu->dmacnt[channel] & 0x00600000) >> 21;
-        uint8_t srcAddrCnt = (*cpu->dmacnt[channel] & 0x01800000) >> 23;
-        uint32_t dstAddr = *cpu->dmadad[channel];
-        uint32_t srcAddr = *cpu->dmasad[channel];
-        uint32_t size = (*cpu->dmacnt[channel] & 0x001FFFFF);
-
-        if (*cpu->dmacnt[channel] & BIT(26)) // Whole word transfer
+        case 0: // Start immediately
         {
-            for (unsigned int i = 0; i < size; i++)
-            {
-                // Transfer a word
-                memory::write<uint32_t>(cpu, dstAddr, memory::read<uint32_t>(cpu, srcAddr));
-
-                // Adjust the destination address
-                if (dstAddrCnt == 0 || dstAddrCnt == 3) // Increment
-                    dstAddr += 4;
-                else if (dstAddrCnt == 1) // Decrement
-                    dstAddr -= 4;
-
-                // Adjust the source address
-                if (srcAddrCnt == 0) // Increment
-                    srcAddr += 4;
-                else if (srcAddrCnt == 1) // Decrement
-                    srcAddr -= 4;
-            }
+            // Always transfer
+            break;
         }
-        else // Halfword transfer
+
+        default:
         {
-            for (unsigned int i = 0; i < size; i++)
-            {
-                // Transfer a halfword
-                memory::write<uint16_t>(cpu, dstAddr, memory::read<uint16_t>(cpu, srcAddr));
-
-                // Adjust the destination address
-                if (dstAddrCnt == 0 || dstAddrCnt == 3) // Increment
-                    dstAddr += 2;
-                else if (dstAddrCnt == 1) // Decrement
-                    dstAddr -= 2;
-
-                // Adjust the source address
-                if (srcAddrCnt == 0) // Increment
-                    srcAddr += 2;
-                else if (srcAddrCnt == 1) // Decrement
-                    srcAddr -= 2;
-            }
+            printf("Unknown ARM%d DMA transfer timing: %d\n", cpu->type, timing);
+            *cpu->dmacnt[channel] &= ~BIT(31);
+            return;
         }
     }
-    else
+
+    // Get some starting values from the registers
+    uint8_t dstAddrCnt = (*cpu->dmacnt[channel] & 0x00600000) >> 21;
+    uint8_t srcAddrCnt = (*cpu->dmacnt[channel] & 0x01800000) >> 23;
+    uint32_t size = (*cpu->dmacnt[channel] & 0x001FFFFF);
+
+    if (*cpu->dmacnt[channel] & BIT(26)) // Whole word transfer
     {
-        printf("Unknown ARM%d DMA transfer mode: %d\n", cpu->type, mode);
+        for (unsigned int i = 0; i < size; i++)
+        {
+            // Transfer a word
+            memory::write<uint32_t>(cpu, cpu->dmaDstAddrs[channel], memory::read<uint32_t>(cpu, cpu->dmaSrcAddrs[channel]));
+
+            // Adjust the destination address
+            if (dstAddrCnt == 0 || dstAddrCnt == 3) // Increment
+                cpu->dmaDstAddrs[channel] += 4;
+            else if (dstAddrCnt == 1) // Decrement
+                cpu->dmaDstAddrs[channel] -= 4;
+
+            // Adjust the source address
+            if (srcAddrCnt == 0) // Increment
+                cpu->dmaSrcAddrs[channel] += 4;
+            else if (srcAddrCnt == 1) // Decrement
+                cpu->dmaSrcAddrs[channel] -= 4;
+        }
+    }
+    else // Halfword transfer
+    {
+        for (unsigned int i = 0; i < size; i++)
+        {
+            // Transfer a halfword
+            memory::write<uint16_t>(cpu, cpu->dmaDstAddrs[channel], memory::read<uint16_t>(cpu, cpu->dmaSrcAddrs[channel]));
+
+            // Adjust the destination address
+            if (dstAddrCnt == 0 || dstAddrCnt == 3) // Increment
+                cpu->dmaDstAddrs[channel] += 2;
+            else if (dstAddrCnt == 1) // Decrement
+                cpu->dmaDstAddrs[channel] -= 2;
+
+            // Adjust the source address
+            if (srcAddrCnt == 0) // Increment
+                cpu->dmaSrcAddrs[channel] += 2;
+            else if (srcAddrCnt == 1) // Decrement
+                cpu->dmaSrcAddrs[channel] -= 2;
+        }
     }
 
     // Trigger an end of transfer IRQ if enabled
     if (*cpu->dmacnt[channel] & BIT(30))
         *cpu->irf |= BIT(8 + channel);
 
-    // Clear the enable bit to indicate transfer completion
-    // Transfers shouldn't complete instantly like this, but there's no timing system yet
-    *cpu->dmacnt[channel] &= ~BIT(31);
+    // Unless the repeat bit is set, clear the enable bit to indicate transfer completion
+    if (!(*cpu->dmacnt[channel] & BIT(25)))
+        *cpu->dmacnt[channel] &= ~BIT(31);
+
+    // Reload the destination address if increment/reload is selected
+    if (dstAddrCnt == 3)
+        cpu->dmaDstAddrs[channel] = *cpu->dmadad[channel];
 }
 
 void rtcWrite(uint8_t *value)

@@ -166,13 +166,19 @@ void runScanline()
         if (i == 256 * 6)
             gpu::scanline256();
 
-        // Tick the timers if they're enabled
-        for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
         {
-            if (*interpreter::arm9.tmcntH[i] & BIT(7))
-                timerTick(&interpreter::arm9, i);
-            if (*interpreter::arm7.tmcntH[i] & BIT(7))
-                timerTick(&interpreter::arm7, i);
+            // Tick the timers if they're enabled
+            if (*interpreter::arm9.tmcntH[j] & BIT(7))
+                timerTick(&interpreter::arm9, j);
+            if (*interpreter::arm7.tmcntH[j] & BIT(7))
+                timerTick(&interpreter::arm7, j);
+
+            // Perform DMA transfers if they're enabled
+            if (*interpreter::arm9.dmacnt[j] & BIT(31))
+                memory_transfer::dmaTransfer(&interpreter::arm9, j);
+            if (*interpreter::arm7.dmacnt[j] & BIT(31))
+                memory_transfer::dmaTransfer(&interpreter::arm7, j);
         }
     }
 
