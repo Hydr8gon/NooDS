@@ -49,12 +49,24 @@ uint8_t spiInstr;
 
 void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel)
 {
+    // Determine the timing mode of the transfer
+    // The ARM7 doesn't use bit 27 and has different values
     uint8_t timing = (*cpu->dmacnt[channel] & 0x38000000) >> 27;
+    if (cpu->type == 7 && timing == 4) timing = 5;
+
     switch (timing)
     {
         case 0: // Start immediately
         {
             // Always transfer
+            break;
+        }
+
+        case 5: // DS cartridge slot
+        {
+            // Only transfer when a word from the cart is ready
+            if (!(*cpu->romctrl & BIT(23)))
+                return;
             break;
         }
 
@@ -425,7 +437,10 @@ void romTransferStart(interpreter::Cpu *cpu)
 
     // Decrypt the ROM command if encryption is enabled
     if (romEncrypt)
+    {
+        initKeycode(*(uint32_t*)&rom[0x0C], 2);
         decrypt64(&romCommand);
+    }
 
     // Handle encryption commands
     if (rom)
@@ -433,7 +448,6 @@ void romTransferStart(interpreter::Cpu *cpu)
         if (((uint8_t*)&romCommand)[7] == 0x3C) // Activate KEY1 encryption mode
         {
             // Initialize KEY1 encryption
-            initKeycode(*(uint32_t*)&rom[0x0C], 2);
             romEncrypt = true;
         }
         else if ((((uint8_t*)&romCommand)[7] & 0xF0) == 0xA0) // Enter main data mode
@@ -480,6 +494,38 @@ uint32_t romTransfer(interpreter::Cpu *cpu)
         {
             // Return the ROM header, repeated every 0x1000 bytes
             value = *(uint32_t*)&rom[romReadCount % 0x1000];
+        }
+        else if (romCommand == 0x9000000000000000 || (((uint8_t*)&romCommand)[7] & 0xF0) == 0x10 || romCommand == 0xB800000000000000) // Get chip ID
+        {
+            // Return the chip ID, repeated every 4 bytes
+            // ROM dumps don't provide a chip ID, so use a fake one
+            value = 0x00001FC2;
+        }
+        else if ((((uint8_t*)&romCommand)[7] & 0xF0) == 0x20) // Get secure area
+        {
+            uint32_t address = ((romCommand & 0x0FFFF00000000000) >> 44) * 0x1000;
+
+            // Return data from the selected secure area block
+            if (address == 0x4000 && romReadCount < 0x800)
+            {
+                // Encrypt the first 2KB of the first block
+                uint64_t data = *(uint64_t*)&rom[(address + romReadCount) & ~BIT(2)];
+                initKeycode(*(uint32_t*)&rom[0x0C], 3);
+                encrypt64(&data);
+
+                // Double-encrypt the first 8 bytes
+                if (romReadCount < 8)
+                {
+                    initKeycode(*(uint32_t*)&rom[0x0C], 2);
+                    encrypt64(&data);
+                }
+
+                value = ((uint32_t*)&data)[((address + romReadCount) & BIT(2)) >> 2];
+            }
+            else
+            {
+                value = *(uint32_t*)&rom[address + romReadCount];
+            }
         }
         else if ((romCommand & 0xFF00000000FFFFFF) == 0xB700000000000000) // Get data
         {
