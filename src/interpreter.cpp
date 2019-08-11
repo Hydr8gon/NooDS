@@ -120,9 +120,6 @@ void execute(Cpu *cpu)
             *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 4;
         else // Normal increment
             *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 2;
-
-        // Lame hack to make the firmware load the secure area
-        if (programCounter == 0x1CDC) *cpu->registers[0] = 1;
     }
     else // ARM mode
     {

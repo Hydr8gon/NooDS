@@ -19,6 +19,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 
 #include "memory_transfer.h"
 #include "core.h"
@@ -30,8 +31,10 @@ namespace memory_transfer
 uint8_t firmware[0x40000];
 uint8_t *rom;
 
+uint64_t rtcDateTime;
 uint8_t rtcWriteCount;
 uint8_t rtcCommand;
+uint8_t rtcStatus1;
 uint8_t rtcLast;
 
 std::queue<uint32_t> fifo9, fifo7;
@@ -179,8 +182,25 @@ void rtcWrite(uint8_t *value)
                 // Transfer all following bits to or from the registers selected by the command register
                 if (*value & BIT(4)) // Write
                 {
-                    // For now, writes aren't supported
-                    printf("Unhandled write to RTC registers: %d\n", regSelect);
+                    switch (regSelect)
+                    {
+                        case 0: // Status register 1
+                        {
+                            // Only write to the writeable bits 1 through 3
+                            if (rtcWriteCount - 8 >= 1 && rtcWriteCount - 8 <= 3)
+                            {
+                                rtcStatus1 &= ~BIT(rtcWriteCount - 8);
+                                rtcStatus1 |= (*value & BIT(0)) << (rtcWriteCount - 8);
+                            }
+                            break;
+                        }
+
+                        default:
+                        {
+                            printf("Unhandled write to RTC registers: %d\n", regSelect);
+                            break;
+                        }
+                    }
                 }
                 else // Read
                 {
@@ -188,27 +208,80 @@ void rtcWrite(uint8_t *value)
 
                     switch (regSelect)
                     {
+                        case 0: // Status register 1
+                        {
+                            *value |= ((rtcStatus1 >> (rtcWriteCount - 8)) & BIT(0));
+                            break;
+                        }
+
                         case 2: // Date and time
                         {
-                            // The bytes here (from low to high) represent:
-                            // Year, month, day, day of week, hours, minutes, seconds
-                            // For now it's just a hardcoded value
-                            *value |= ((0x00301100250519 >> (rtcWriteCount - 8)) & BIT(0));
+                            // Update the time at the start of the read
+                            if (rtcWriteCount == 8)
+                            {
+                                // Get the local time, and adjust its values to better match the DS formatting
+                                std::time_t t = std::time(nullptr);
+                                std::tm *time = std::localtime(&t);
+                                time->tm_year %= 100;
+                                time->tm_mon++;
+
+                                // Convert to 12-hour mode if set
+                                uint8_t hour = time->tm_hour;
+                                if (!(rtcStatus1 & BIT(1)))
+                                    time->tm_hour %= 12;
+
+                                // Save to the date and time registers in BCD format
+                                // The bytes here (from low to high) represent:
+                                // Year, month, day, day of week, hours, minutes, seconds
+                                ((uint8_t*)&rtcDateTime)[0] = ((time->tm_year / 10) << 4) | (time->tm_year % 10);
+                                ((uint8_t*)&rtcDateTime)[1] = ((time->tm_mon  / 10) << 4) | (time->tm_mon  % 10);
+                                ((uint8_t*)&rtcDateTime)[2] = ((time->tm_mday / 10) << 4) | (time->tm_mday % 10);
+                                ((uint8_t*)&rtcDateTime)[4] = ((time->tm_hour / 10) << 4) | (time->tm_hour % 10);
+                                ((uint8_t*)&rtcDateTime)[5] = ((time->tm_min  / 10) << 4) | (time->tm_min  % 10);
+                                ((uint8_t*)&rtcDateTime)[6] = ((time->tm_sec  / 10) << 4) | (time->tm_sec  % 10);
+
+                                // Set the AM/PM bit
+                                if (hour >= 12)
+                                    ((uint8_t*)&rtcDateTime)[4] |= BIT(6);
+                            }
+
+                            *value |= ((rtcDateTime >> (rtcWriteCount - 8)) & BIT(0));
                             break;
                         }
 
                         case 3: // Time
                         {
-                            // The bytes here (from low to high) represent:
-                            // Hours, minutes, seconds
-                            // For now it's just a hardcoded value
-                            *value |= ((0x003011 >> (rtcWriteCount - 8)) & BIT(0));
+                            // Update the time at the start of the read
+                            if (rtcWriteCount == 8)
+                            {
+                                // Get the local time
+                                std::time_t t = std::time(nullptr);
+                                std::tm *time = std::localtime(&t);
+
+                                // Convert to 12-hour mode if set
+                                uint8_t hour = time->tm_hour;
+                                if (!(rtcStatus1 & BIT(1)))
+                                    time->tm_hour %= 12;
+
+                                // Save to the date and time registers in BCD format
+                                // The bytes here (from low to high) represent:
+                                // Hours, minutes, seconds
+                                ((uint8_t*)&rtcDateTime)[4] = ((time->tm_hour / 10) << 4) | (time->tm_hour % 10);
+                                ((uint8_t*)&rtcDateTime)[5] = ((time->tm_min  / 10) << 4) | (time->tm_min  % 10);
+                                ((uint8_t*)&rtcDateTime)[6] = ((time->tm_sec  / 10) << 4) | (time->tm_sec  % 10);
+
+                                // Set the AM/PM bit
+                                if (hour >= 12)
+                                    ((uint8_t*)&rtcDateTime)[4] |= BIT(6);
+                            }
+
+                            *value |= ((rtcDateTime >> (rtcWriteCount + 24)) & BIT(0));
                             break;
                         }
 
                         default:
                         {
-                            printf("Read from unknown RTC registers: %d\n", regSelect);
+                            printf("Unhandled read from RTC registers: %d\n", regSelect);
                             break;
                         }
                     }
@@ -216,6 +289,12 @@ void rtcWrite(uint8_t *value)
 
                 rtcWriteCount++;
             }
+        }
+        else if (!(rtcLast & BIT(1)) && (*value & BIT(1)) && !(*value & BIT(4))) // SCK low to high, read
+        {
+            // Read bits can still be read after switching SCK to high, so keep the previous bit value
+            *value &= ~BIT(0);
+            *value |= rtcLast & BIT(0);
         }
     }
     else // CS low
