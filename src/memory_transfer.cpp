@@ -587,12 +587,20 @@ uint32_t romTransfer(interpreter::Cpu *cpu)
             // Return data from the selected secure area block
             if (address == 0x4000 && romReadCount < 0x800)
             {
+                // Get a 64-bit value for use with the encryption functions
+                // The first 8 bytes of the first block should contain the double-encrypted string 'encryObj'
+                // This string isn't included in ROM dumps, so manually supply it
+                uint64_t data;
+                if (romReadCount < 8)
+                    data = 0x6A624F7972636E65; // encryObj
+                else
+                    data = *(uint64_t*)&rom[(address + romReadCount) & ~BIT(2)];
+
                 // Encrypt the first 2KB of the first block
-                uint64_t data = *(uint64_t*)&rom[(address + romReadCount) & ~BIT(2)];
                 initKeycode(*(uint32_t*)&rom[0x0C], 3);
                 encrypt64(&data);
 
-                // Double-encrypt the first 8 bytes
+                // Double-encrypt the first 8 bytes of the first block
                 if (romReadCount < 8)
                 {
                     initKeycode(*(uint32_t*)&rom[0x0C], 2);
