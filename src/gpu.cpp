@@ -51,7 +51,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 
     uint32_t screenBase = ((*engine->bgcnt[bg] & 0x1F00) >> 8) * 0x800  + ((*engine->dispcnt & 0x38000000) >> 27) * 0x10000;
     uint32_t charBase   = ((*engine->bgcnt[bg] & 0x003C) >> 2) * 0x4000 + ((*engine->dispcnt & 0x07000000) >> 24) * 0x10000;
-    uint16_t yOffset = *memory::vcount + *engine->bgvofs[bg];
+    uint16_t yOffset = *interpreter::arm9.vcount + *engine->bgvofs[bg];
     uint16_t *tiles = (uint16_t*)memory::vramMap(engine->bgVramAddr + screenBase + ((yOffset / 8) % 32) * 32 * sizeof(uint16_t));
 
     if (tiles)
@@ -247,7 +247,7 @@ void drawObjects(Engine *engine, uint16_t pixel)
             }
 
             uint16_t y = (object[0] & 0x00FF);
-            if (*memory::vcount >= y && *memory::vcount < y + sizeY)
+            if (*interpreter::arm9.vcount >= y && *interpreter::arm9.vcount < y + sizeY)
             {
                 uint16_t bound = (32 << ((*engine->dispcnt & 0x00300000) >> 20));
                 uint8_t *tile = (uint8_t*)memory::vramMap(engine->objVramAddr + (object[2] & 0x03FF) * bound);
@@ -264,9 +264,9 @@ void drawObjects(Engine *engine, uint16_t pixel)
                     if (object[0] & BIT(13)) // 8-bit
                     {
                         if (object[1] & BIT(13)) // Vertical flip
-                            tile += (7 - ((*memory::vcount - y) % 8) + ((sizeY - 1 - (*memory::vcount - y)) / 8) * sizeX) * 8;
+                            tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((sizeY - 1 - (*interpreter::arm9.vcount - y)) / 8) * sizeX) * 8;
                         else
-                            tile += (((*memory::vcount - y) % 8) + ((*memory::vcount - y) / 8) * sizeX) * 8;
+                            tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * sizeX) * 8;
 
                         if (object[1] & BIT(12)) // Horizontal flip
                         {
@@ -298,9 +298,9 @@ void drawObjects(Engine *engine, uint16_t pixel)
                         palette += ((object[2] & 0xF000) >> 12) * 0x10;
 
                         if (object[1] & BIT(13)) // Vertical flip
-                            tile += (7 - ((*memory::vcount - y) % 8) + ((sizeY - 1 - (*memory::vcount - y)) / 8) * sizeX) * 4;
+                            tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((sizeY - 1 - (*interpreter::arm9.vcount - y)) / 8) * sizeX) * 4;
                         else
-                            tile += (((*memory::vcount - y) % 8) + ((*memory::vcount - y) / 8) * sizeX) * 4;
+                            tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * sizeX) * 4;
 
                         if (object[1] & BIT(12)) // Horizontal flip
                         {
@@ -339,7 +339,7 @@ void drawObjects(Engine *engine, uint16_t pixel)
 
 void drawScanline(Engine *engine)
 {
-    uint16_t pixel = *memory::vcount * 256;
+    uint16_t pixel = *interpreter::arm9.vcount * 256;
 
     switch ((*engine->dispcnt & 0x00030000) >> 16) // Display mode
     {
@@ -463,59 +463,65 @@ void drawScanline(Engine *engine)
     }
 }
 
+void hBlankStart(interpreter::Cpu *cpu)
+{
+    // Set the H-blank bit
+    *cpu->dispstat |= BIT(1);
+
+    // Trigger an H-blank IRQ if enabled
+    if (*cpu->dispstat & BIT(4))
+        *cpu->irf |= BIT(1);
+}
+
+void hBlankEnd(interpreter::Cpu *cpu)
+{
+    // Clear the H-blank bit and move to the next scanline
+    *cpu->dispstat &= ~BIT(1);
+    (*cpu->vcount)++;
+
+    // Check the V-counter
+    if (*cpu->vcount == ((*cpu->dispstat >> 8) | ((*cpu->dispstat & BIT(7)) << 1)))
+    {
+        *cpu->dispstat |= BIT(2); // V-counter flag
+        if (*cpu->dispstat & BIT(5)) // V-counter IRQ flag
+            *cpu->irf |= BIT(2);
+    }
+    else if (*cpu->dispstat & BIT(2))
+    {
+        *cpu->dispstat &= ~BIT(2); // V-counter flag
+    }
+
+    if (*cpu->vcount == 192) // Start of V-Blank
+    {
+        *cpu->dispstat |= BIT(0); // V-blank flag
+        if (*cpu->dispstat & BIT(3)) // V-blank IRQ flag
+            *cpu->irf |= BIT(0);
+    }
+    else if (*cpu->vcount == 263) // End of frame
+    {
+        *cpu->dispstat &= ~BIT(0); // V-blank flag
+        *cpu->vcount = 0;
+    }
+}
+
 void scanline256()
 {
     // Draw a scanline
-    if (*memory::vcount < 192)
+    if (*interpreter::arm9.vcount < 192)
     {
         drawScanline(&engineA);
         drawScanline(&engineB);
     }
 
     // Start H-blank
-    *memory::dispstat |= BIT(1); // H-blank flag
-    if (*memory::dispstat & BIT(4)) // H-blank IRQ flag
-    {
-        *interpreter::arm9.irf |= BIT(1);
-        *interpreter::arm7.irf |= BIT(1);
-    }
+    hBlankStart(&interpreter::arm9);
+    hBlankStart(&interpreter::arm7);
 }
 
 void scanline355()
 {
-    // End H-blank
-    *memory::dispstat &= ~BIT(1); // H-blank flag
-    (*memory::vcount)++;
-
-    // Check the V-counter
-    if (*memory::vcount == ((*memory::dispstat >> 8) | ((*memory::dispstat & BIT(7)) << 1)))
+    if (*interpreter::arm9.vcount == 262) // End of frame
     {
-        *memory::dispstat |= BIT(2); // V-counter flag
-        if (*memory::dispstat & BIT(5)) // V-counter IRQ flag
-        {
-            *interpreter::arm9.irf |= BIT(2);
-            *interpreter::arm7.irf |= BIT(2);
-        }
-    }
-    else if (*memory::dispstat & BIT(2))
-    {
-        *memory::dispstat &= ~BIT(2); // V-counter flag
-    }
-
-    if (*memory::vcount == 192) // Start of V-Blank
-    {
-        *memory::dispstat |= BIT(0); // V-blank flag
-        if (*memory::dispstat & BIT(3)) // V-blank IRQ flag
-        {
-            *interpreter::arm9.irf |= BIT(0);
-            *interpreter::arm7.irf |= BIT(0);
-        }
-    }
-    else if (*memory::vcount == 263) // End of frame
-    {
-        *memory::dispstat &= ~BIT(0); // V-blank flag
-        *memory::vcount = 0;
-
         // Display the frame
         if (*memory::powcnt1 & BIT(0))
         {
@@ -547,6 +553,10 @@ void scanline355()
         }
         timer = std::chrono::steady_clock::now();
     }
+
+    // End H-blank
+    hBlankEnd(&interpreter::arm9);
+    hBlankEnd(&interpreter::arm7);
 }
 
 }

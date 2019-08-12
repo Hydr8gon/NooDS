@@ -58,10 +58,6 @@ uint16_t *extPalettesA[5], *extPalettesB[5];
 uint8_t ioData9[0x2000], ioMask9[0x2000], ioWriteMask9[0x2000];
 uint8_t ioData7[0x2000], ioMask7[0x2000], ioWriteMask7[0x2000];
 
-uint16_t *dispstat = (uint16_t*)&ioData9[0x004];
-uint16_t *vcount   = (uint16_t*)&ioData9[0x006];
-
-uint16_t *keyinput = (uint16_t*)&ioData9[0x130];
 uint16_t *extkeyin = (uint16_t*)&ioData7[0x136];
 
 uint16_t *spicnt  = (uint16_t*)&ioData7[0x1C0];
@@ -628,22 +624,6 @@ template <typename T> T ioRead7(uint32_t address)
         return 0;
     }
 
-    // Handle special cases
-    for (unsigned int i = 0; i < sizeof(T); i++)
-    {
-        switch (ioAddr + i)
-        {
-            case 0x004: case 0x005: // DISPSTAT
-            case 0x006: case 0x007: // VCOUNT
-            case 0x130:             // KEYINPUT
-            {
-                // These registers are shared between CPUs, so copy data from the ARM9
-                ioData7[ioAddr + i] = ioData9[ioAddr + i];
-                break;
-            }
-        }
-    }
-
     // Read data from the ARM7 I/O registers
     return *(T*)&ioData7[ioAddr];
 }
@@ -670,14 +650,6 @@ template <typename T> void ioWrite7(uint32_t address, T value)
     {
         switch (ioAddr + i)
         {
-            case 0x004: case 0x005: // DISPSTAT
-            {
-                // This register is shared between CPUs, so redirect writes to the ARM9
-                ioData9[ioAddr + i] &= ~ioWriteMask9[ioAddr + i];
-                ioData9[ioAddr + i] |= (((uint8_t*)&value)[i] & ioWriteMask9[ioAddr + i]);
-                break;
-            }
-
             case 0x0BB: case 0x0C7: case 0x0D3: case 0x0DF: // DMACNT_7
             {
                 // Reload the DMA address counters if the enable bit changes from 0 to 1
@@ -966,8 +938,8 @@ void init()
     // The normal mask indicates which bits exist, and the write mask indicates which bits are writable
     // More info about what each register does (and about the DS in general) can be found at https://problemkaputt.de/gbatek.htm
     *(uint32_t*)&ioMask9[0x000]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x000]  = 0xFFFFFFFF; // DISPCNT_A
-    *(uint16_t*)&ioMask9[0x004]  =     0xFFBF; *(uint16_t*)&ioWriteMask9[0x004]  =     0xFFB8; // DISPSTAT
-    *(uint16_t*)&ioMask9[0x006]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x006]  =     0x0000; // VCOUNT
+    *(uint16_t*)&ioMask9[0x004]  =     0xFFBF; *(uint16_t*)&ioWriteMask9[0x004]  =     0xFFB8; // DISPSTAT_9
+    *(uint16_t*)&ioMask9[0x006]  =     0x01FF; *(uint16_t*)&ioWriteMask9[0x006]  =     0x0000; // VCOUNT_9
     *(uint16_t*)&ioMask9[0x008]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x008]  =     0xFFFF; // BG0CNT_A
     *(uint16_t*)&ioMask9[0x00A]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x00A]  =     0xFFFF; // BG1CNT_A
     *(uint16_t*)&ioMask9[0x00C]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x00C]  =     0xFFFF; // BG2CNT_A
@@ -1004,7 +976,7 @@ void init()
     *(uint16_t*)&ioMask9[0x10A]  =     0x00C7; *(uint16_t*)&ioWriteMask9[0x10A]  =     0x0047; // TM2CNT_9
     *(uint16_t*)&ioMask9[0x10C]  =     0xFFFF; *(uint16_t*)&ioWriteMask9[0x10C]  =     0x0000; // TM3COUNT_9
     *(uint16_t*)&ioMask9[0x10E]  =     0x00C7; *(uint16_t*)&ioWriteMask9[0x10E]  =     0x0047; // TM3CNT_9
-    *(uint16_t*)&ioMask9[0x130]  =     0x03FF; *(uint16_t*)&ioWriteMask9[0x130]  =     0x0000; // KEYINPUT
+    *(uint16_t*)&ioMask9[0x130]  =     0x03FF; *(uint16_t*)&ioWriteMask9[0x130]  =     0x0000; // KEYINPUT_9
     *(uint16_t*)&ioMask9[0x180]  =     0x6F0F; *(uint16_t*)&ioWriteMask9[0x180]  =     0x4F00; // IPCSYNC_9
     *(uint16_t*)&ioMask9[0x184]  =     0xC70F; *(uint16_t*)&ioWriteMask9[0x184]  =     0x8000; // IPCFIFOCNT_9
     *(uint32_t*)&ioMask9[0x188]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x188]  = 0xFFFFFFFF; // IPCFIFOSEND_9
@@ -1053,8 +1025,8 @@ void init()
     // Set the ARM7 I/O register masks
     // The normal mask indicates which bits exist, and the write mask indicates which bits are writable
     // More info about what each register does (and about the DS in general) can be found at https://problemkaputt.de/gbatek.htm
-    *(uint16_t*)&ioMask7[0x004] =     0xFFBF; *(uint16_t*)&ioWriteMask7[0x004] =     0x0000; // DISPSTAT
-    *(uint16_t*)&ioMask7[0x006] =     0x01FF; *(uint16_t*)&ioWriteMask7[0x006] =     0x0000; // VCOUNT
+    *(uint16_t*)&ioMask7[0x004] =     0xFFBF; *(uint16_t*)&ioWriteMask7[0x004] =     0xFFB8; // DISPSTAT_7
+    *(uint16_t*)&ioMask7[0x006] =     0x01FF; *(uint16_t*)&ioWriteMask7[0x006] =     0x0000; // VCOUNT_7
     *(uint32_t*)&ioMask7[0x0B0] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0B0] = 0x07FFFFFF; // DMA0SAD_7
     *(uint32_t*)&ioMask7[0x0B4] = 0x07FFFFFF; *(uint32_t*)&ioWriteMask7[0x0B4] = 0x07FFFFFF; // DMA0DAD_7
     *(uint32_t*)&ioMask7[0x0B8] = 0xF7E03FFF; *(uint32_t*)&ioWriteMask7[0x0B8] = 0x77E03FFF; // DMA0CNT_7
@@ -1075,7 +1047,7 @@ void init()
     *(uint16_t*)&ioMask7[0x10A] =     0x00C7; *(uint16_t*)&ioWriteMask7[0x10A] =     0x0047; // TM2CNT_7
     *(uint16_t*)&ioMask7[0x10C] =     0xFFFF; *(uint16_t*)&ioWriteMask7[0x10C] =     0x0000; // TM3COUNT_7
     *(uint16_t*)&ioMask7[0x10E] =     0x00C7; *(uint16_t*)&ioWriteMask7[0x10E] =     0x0047; // TM3CNT_7
-    *(uint16_t*)&ioMask7[0x130] =     0x03FF; *(uint16_t*)&ioWriteMask7[0x130] =     0x0000; // KEYINPUT
+    *(uint16_t*)&ioMask7[0x130] =     0x03FF; *(uint16_t*)&ioWriteMask7[0x130] =     0x0000; // KEYINPUT_7
     *(uint16_t*)&ioMask7[0x136] =     0x00FF; *(uint16_t*)&ioWriteMask7[0x136] =     0x0000; // EXTKEYIN
     *(uint16_t*)&ioMask7[0x138] =     0xFFFF; *(uint16_t*)&ioWriteMask7[0x138] =     0xFFFF; // RTC
     *(uint16_t*)&ioMask7[0x180] =     0x6F0F; *(uint16_t*)&ioWriteMask7[0x180] =     0x4F00; // IPCSYNC_7
@@ -1096,6 +1068,8 @@ void init()
     *(uint16_t*)&ioMask7[0x504] =     0x03FF; *(uint16_t*)&ioWriteMask7[0x504] =     0x03FF; // SOUNDBIAS
 
     // Set pointers to the data of registers used by the ARM9
+    interpreter::arm9.dispstat    = (uint16_t*)&ioData9[0x004];
+    interpreter::arm9.vcount      = (uint16_t*)&ioData9[0x006];
     interpreter::arm9.dmasad[0]   = (uint32_t*)&ioData9[0x0B0];
     interpreter::arm9.dmadad[0]   = (uint32_t*)&ioData9[0x0B4];
     interpreter::arm9.dmacnt[0]   = (uint32_t*)&ioData9[0x0B8];
@@ -1116,6 +1090,7 @@ void init()
     interpreter::arm9.tmcntH[2]   = (uint16_t*)&ioData9[0x10A];
     interpreter::arm9.tmcntL[3]   = (uint16_t*)&ioData9[0x10C];
     interpreter::arm9.tmcntH[3]   = (uint16_t*)&ioData9[0x10E];
+    interpreter::arm9.keyinput    = (uint16_t*)&ioData9[0x130];
     interpreter::arm9.ipcfifocnt  = (uint16_t*)&ioData9[0x184];
     interpreter::arm9.ipcfifosend = (uint32_t*)&ioData9[0x188];
     interpreter::arm9.auxspicnt   = (uint16_t*)&ioData9[0x1A0];
@@ -1126,6 +1101,8 @@ void init()
     interpreter::arm9.irf         = (uint32_t*)&ioData9[0x214];
 
     // Set pointers to the data of registers used by the ARM7
+    interpreter::arm7.dispstat    = (uint16_t*)&ioData7[0x004];
+    interpreter::arm7.vcount      = (uint16_t*)&ioData7[0x006];
     interpreter::arm7.dmasad[0]   = (uint32_t*)&ioData7[0x0B0];
     interpreter::arm7.dmadad[0]   = (uint32_t*)&ioData7[0x0B4];
     interpreter::arm7.dmacnt[0]   = (uint32_t*)&ioData7[0x0B8];
@@ -1146,6 +1123,7 @@ void init()
     interpreter::arm7.tmcntH[2]   = (uint16_t*)&ioData7[0x10A];
     interpreter::arm7.tmcntL[3]   = (uint16_t*)&ioData7[0x10C];
     interpreter::arm7.tmcntH[3]   = (uint16_t*)&ioData7[0x10E];
+    interpreter::arm7.keyinput    = (uint16_t*)&ioData7[0x130];
     interpreter::arm7.ipcfifocnt  = (uint16_t*)&ioData7[0x184];
     interpreter::arm7.ipcfifosend = (uint32_t*)&ioData7[0x188];
     interpreter::arm7.auxspicnt   = (uint16_t*)&ioData7[0x1A0];
@@ -1196,7 +1174,8 @@ void init()
     gpu::engineB.objVramAddr = 0x6600000;
 
     // Set key bits to indicate the keys are released
-    *keyinput = 0x03FF;
+    *interpreter::arm9.keyinput = 0x03FF;
+    *interpreter::arm7.keyinput = 0x03FF;
     *extkeyin = 0x007F;
 
     // Set FIFO empty bits

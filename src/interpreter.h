@@ -39,12 +39,17 @@ typedef struct
     uint32_t cpsr, *spsr;
     uint32_t spsrFiq, spsrSvc, spsrAbt, spsrIrq, spsrUnd;
 
+    uint16_t *dispstat;
+    uint16_t *vcount;
+
     uint32_t *dmasad[4], *dmadad[4];
     uint32_t *dmacnt[4];
     uint32_t dmaDstAddrs[4], dmaSrcAddrs[4];
 
     uint16_t *tmcntL[4], *tmcntH[4];
     uint16_t timerReloads[4], timerScalers[4];
+
+    uint16_t *keyinput;
 
     uint16_t *ipcfifocnt;
     uint32_t *ipcfifosend, ipcfiforecv;

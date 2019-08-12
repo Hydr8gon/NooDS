@@ -35,11 +35,8 @@ extern uint8_t vramB[0x20000];
 extern uint8_t vramC[0x20000];
 extern uint8_t vramD[0x20000];
 
-extern uint16_t *dispstat;
-extern uint16_t *vcount;
 extern uint16_t *powcnt1;
 
-extern uint16_t *keyinput;
 extern uint16_t *extkeyin;
 
 extern uint16_t *spicnt;

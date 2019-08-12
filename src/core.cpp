@@ -190,18 +190,28 @@ void pressKey(uint8_t key)
 {
     // Clear key bits to indicate presses
     if (key < 10) // A, B, select, start, right, left, up, down, R, L
-        *memory::keyinput &= ~BIT(key);
+    {
+        *interpreter::arm9.keyinput &= ~BIT(key);
+        *interpreter::arm7.keyinput &= ~BIT(key);
+    }
     else if (key < 12) // X, Y
+    {
         *memory::extkeyin &= ~BIT(key - 10);
+    }
 }
 
 void releaseKey(uint8_t key)
 {
     // Set key bits to indicate releases
     if (key < 10) // A, B, select, start, right, left, up, down, R, L
-        *memory::keyinput |= BIT(key);
+    {
+        *interpreter::arm9.keyinput |= BIT(key);
+        *interpreter::arm7.keyinput |= BIT(key);
+    }
     else if (key < 12) // X, Y
+    {
         *memory::extkeyin |= BIT(key - 10);
+    }
 }
 
 }
