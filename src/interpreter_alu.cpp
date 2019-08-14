@@ -64,49 +64,62 @@
 #define ARR(value, amount) (((amount & 0xFF) < 32) ? ((int32_t)value >> (amount & 0xFF)) : ((value & BIT(31)) ? 0xFFFFFFFF : 0))
 #define RRR(value, amount) ((value << (32 - (amount & 0xFF) % 32)) | (value >> ((amount & 0xFF) % 32)))
 
+// If the program counter is the destination, set bit 0 to indicate a jump
+#define PC_PIPELINE(op0)            \
+    if (&op0 == cpu->registers[15]) \
+        op0 |= BIT(0);
+
 // Bitwise and
 #define AND(op0, op1, op2) \
-    op0 = op1 & op2;
+    op0 = op1 & op2;       \
+    PC_PIPELINE(op0)
 
 // Bitwise exclusive or
 #define EOR(op0, op1, op2) \
-    op0 = op1 ^ op2;
+    op0 = op1 ^ op2;       \
+    PC_PIPELINE(op0)
 
 // Subtraction
 #define SUB(op0, op1, op2) \
     uint32_t pre = op1;    \
     uint32_t sub = op2;    \
-    op0 = pre - sub;
+    op0 = pre - sub;       \
+    PC_PIPELINE(op0)
 
 // Reverse subtraction
 #define RSB(op0, op1, op2) \
     uint32_t pre = op2;    \
     uint32_t sub = op1;    \
-    op0 = pre - sub;
+    op0 = pre - sub;       \
+    PC_PIPELINE(op0)
 
 // Addition
 #define ADD(op0, op1, op2) \
     uint32_t pre = op1;    \
     uint32_t add = op2;    \
-    op0 = pre + add;
+    op0 = pre + add;       \
+    PC_PIPELINE(op0)
 
 // Addition with carry
 #define ADC(op0, op1, op2)                           \
     uint32_t pre = op1;                              \
     uint32_t add = op2;                              \
-    op0 = pre + add + ((cpu->cpsr & BIT(29)) >> 29);
+    op0 = pre + add + ((cpu->cpsr & BIT(29)) >> 29); \
+    PC_PIPELINE(op0)
 
 // Subtraction with carry
 #define SBC(op0, op1, op2)                               \
     uint32_t pre = op1;                                  \
     uint32_t sub = op2;                                  \
-    op0 = pre - sub - 1 + ((cpu->cpsr & BIT(29)) >> 29);
+    op0 = pre - sub - 1 + ((cpu->cpsr & BIT(29)) >> 29); \
+    PC_PIPELINE(op0)
 
 // Reverse subtraction with carry
 #define RSC(op0, op1, op2)                               \
     uint32_t pre = op2;                                  \
     uint32_t sub = op1;                                  \
-    op0 = pre - sub - 1 + ((cpu->cpsr & BIT(29)) >> 29);
+    op0 = pre - sub - 1 + ((cpu->cpsr & BIT(29)) >> 29); \
+    PC_PIPELINE(op0)
 
 // Test bits
 #define TST(op1, op2)         \
@@ -134,19 +147,23 @@
 
 // Bitwise or
 #define ORR(op0, op1, op2) \
-    op0 = op1 | op2;
+    op0 = op1 | op2;       \
+    PC_PIPELINE(op0)
 
 // Move
 #define MOV(op0, op2) \
-    op0 = op2;
+    op0 = op2;        \
+    PC_PIPELINE(op0)
 
 // Bit clear
 #define BIC(op0, op1, op2) \
-    op0 = op1 & ~op2;
+    op0 = op1 & ~op2;      \
+    PC_PIPELINE(op0)
 
 // Move not
 #define MVN(op0, op2) \
-    op0 = ~op2;
+    op0 = ~op2;       \
+    PC_PIPELINE(op0)
 
 // Multiply
 #define MUL(op0, op1, op2) \
