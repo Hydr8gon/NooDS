@@ -18,10 +18,19 @@
     <ClCompile Include="src\desktop\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\cartridge.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\core.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\cp15.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dma.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fifo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\gpu.cpp">
@@ -42,15 +51,30 @@
     <ClCompile Include="src\memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\memory_transfer.cpp">
+    <ClCompile Include="src\rtc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\spi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\timer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\cartridge.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\core.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\cp15.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dma.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\fifo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\gpu.h">
@@ -71,7 +95,13 @@
     <ClInclude Include="src\memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\memory_transfer.h">
+    <ClInclude Include="src\rtc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\spi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

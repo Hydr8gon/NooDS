@@ -253,13 +253,7 @@ void drawObjects(Engine *engine, uint16_t pixel)
                 uint8_t *tile = (uint8_t*)memory::vramMap(engine->objVramAddr + (object[2] & 0x03FF) * bound);
                 uint16_t x = (object[1] & 0x01FF);
 
-                uint16_t *palette;
-                if (*engine->dispcnt & BIT(31)) // Extended palette
-                    palette = engine->extPalettes[4];
-                else // Standard palette
-                    palette = &engine->palette[0x100];
-
-                if (tile && palette)
+                if (tile)
                 {
                     if (object[0] & BIT(13)) // 8-bit
                     {
@@ -268,34 +262,43 @@ void drawObjects(Engine *engine, uint16_t pixel)
                         else
                             tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * sizeX) * 8;
 
-                        if (object[1] & BIT(12)) // Horizontal flip
+                        uint16_t *palette;
+                        if (*engine->dispcnt & BIT(31)) // Extended palette
+                            palette = engine->extPalettes[4];
+                        else // Standard palette
+                            palette = &engine->palette[0x100];
+
+                        if (palette)
                         {
-                            tile += sizeX * 8 - 64;
-
-                            for (int j = 0; j < sizeX; j++)
+                            if (object[1] & BIT(12)) // Horizontal flip
                             {
-                                if (j != 0 && j % 8 == 0)
-                                    tile -= 64;
+                                tile += sizeX * 8 - 64;
 
-                                if (x + j < 256 && tile && tile[7 - j % 8])
-                                    engine->framebuffer[pixel + x + j] = palette[tile[7 - j % 8]];
+                                for (int j = 0; j < sizeX; j++)
+                                {
+                                    if (j != 0 && j % 8 == 0)
+                                        tile -= 64;
+
+                                    if (x + j < 256 && tile && tile[7 - j % 8])
+                                        engine->framebuffer[pixel + x + j] = palette[tile[7 - j % 8]];
+                                }
                             }
-                        }
-                        else
-                        {
-                            for (int j = 0; j < sizeX; j++)
+                            else
                             {
-                                if (j != 0 && j % 8 == 0)
-                                    tile += 64;
+                                for (int j = 0; j < sizeX; j++)
+                                {
+                                    if (j != 0 && j % 8 == 0)
+                                            tile += 64;
 
-                                if (x + j < 256 && tile && tile[j % 8])
-                                    engine->framebuffer[pixel + x + j] = palette[tile[j % 8]];
+                                    if (x + j < 256 && tile && tile[j % 8])
+                                        engine->framebuffer[pixel + x + j] = palette[tile[j % 8]];
+                                }
                             }
                         }
                     }
                     else // 4-bit
                     {
-                        palette += ((object[2] & 0xF000) >> 12) * 0x10;
+                        uint16_t *palette = &engine->palette[0x100 + ((object[2] & 0xF000) >> 12) * 0x10];
 
                         if (object[1] & BIT(13)) // Vertical flip
                             tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((sizeY - 1 - (*interpreter::arm9.vcount - y)) / 8) * sizeX) * 4;

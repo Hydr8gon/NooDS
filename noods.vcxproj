@@ -82,27 +82,37 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\cartridge.cpp" />
     <ClCompile Include="src\core.cpp" />
     <ClCompile Include="src\cp15.cpp" />
     <ClCompile Include="src\desktop\main.cpp" />
+    <ClCompile Include="src\dma.cpp" />
+    <ClCompile Include="src\fifo.cpp" />
     <ClCompile Include="src\gpu.cpp" />
     <ClCompile Include="src\interpreter.cpp" />
     <ClCompile Include="src\interpreter_alu.cpp" />
     <ClCompile Include="src\interpreter_other.cpp" />
     <ClCompile Include="src\interpreter_transfer.cpp" />
     <ClCompile Include="src\memory.cpp" />
-    <ClCompile Include="src\memory_transfer.cpp" />
+    <ClCompile Include="src\rtc.cpp" />
+    <ClCompile Include="src\spi.cpp" />
+    <ClCompile Include="src\timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\cartridge.h" />
     <ClInclude Include="src\core.h" />
     <ClInclude Include="src\cp15.h" />
+    <ClInclude Include="src\dma.h" />
+    <ClInclude Include="src\fifo.h" />
     <ClInclude Include="src\gpu.h" />
     <ClInclude Include="src\interpreter.h" />
     <ClInclude Include="src\interpreter_alu.h" />
     <ClInclude Include="src\interpreter_other.h" />
     <ClInclude Include="src\interpreter_transfer.h" />
     <ClInclude Include="src\memory.h" />
-    <ClInclude Include="src\memory_transfer.h" />
+    <ClInclude Include="src\rtc.h" />
+    <ClInclude Include="src\spi.h" />
+    <ClInclude Include="src\timer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

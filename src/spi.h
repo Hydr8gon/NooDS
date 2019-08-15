@@ -17,32 +17,20 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef MEMORY_TRANSFER_H
-#define MEMORY_TRANSFER_H
+#ifndef SPI_H
+#define SPI_H
 
-#include "interpreter.h"
+#include <cstdint>
 
-namespace memory_transfer
+namespace spi
 {
 
 extern uint8_t firmware[0x40000];
-extern uint8_t *rom;
 
-void dmaTransfer(interpreter::Cpu *cpu, uint8_t channel);
-
-void rtcWrite(uint8_t *value);
-
-void fifoClear(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
-void fifoSend(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
-uint32_t fifoReceive(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
-
-void romTransferStart(interpreter::Cpu *cpu);
-uint32_t romTransfer(interpreter::Cpu *cpu);
-
-void spiWrite(uint8_t value);
+void write(uint8_t value);
 
 void init();
 
 }
 
-#endif // MEMORY_TRANSFER_H
+#endif // SPI_H

@@ -17,14 +17,18 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
 #include "memory.h"
+#include "cartridge.h"
 #include "core.h"
 #include "cp15.h"
+#include "fifo.h"
 #include "gpu.h"
-#include "memory_transfer.h"
+#include "rtc.h"
+#include "spi.h"
 
 namespace memory
 {
@@ -68,6 +72,10 @@ int64_t *divnumer  =  (int64_t*)&ioData9[0x290];
 int64_t *divdenom  =  (int64_t*)&ioData9[0x298];
 int64_t *divresult =  (int64_t*)&ioData9[0x2A0];
 int64_t *divremain =  (int64_t*)&ioData9[0x2A8];
+
+uint16_t *sqrtcnt    = (uint16_t*)&ioData9[0x2B0];
+uint32_t *sqrtresult = (uint32_t*)&ioData9[0x2B4];
+uint64_t *sqrtparam  = (uint64_t*)&ioData9[0x2B8];
 
 uint16_t *powcnt1 = (uint16_t*)&ioData9[0x304];
 
@@ -140,9 +148,9 @@ template <typename T> T ioRead9(uint32_t address)
 
     // Read from special transfer registers
     if (ioAddr == 0x100000) // IPCFIFORECV
-        return memory_transfer::fifoReceive(&interpreter::arm9, &interpreter::arm7);
+        return fifo::receive(&interpreter::arm9, &interpreter::arm7);
     else if (ioAddr == 0x100010) // ROMDATAIN
-        return memory_transfer::romTransfer(&interpreter::arm9);
+        return cartridge::transfer(&interpreter::arm9);
 
     // Make sure an I/O register exists at the given address
     if (ioAddr >= sizeof(ioMask9) || !ioMask9[ioAddr])
@@ -245,7 +253,7 @@ template <typename T> void ioWrite9(uint32_t address, T value)
 
                 // Clear the send FIFO if the clear bit is set
                 if (((uint8_t*)&value)[i] & BIT(3))
-                    memory_transfer::fifoClear(&interpreter::arm9, &interpreter::arm7);
+                    fifo::clear(&interpreter::arm9, &interpreter::arm7);
 
                 break;
             }
@@ -270,7 +278,7 @@ template <typename T> void ioWrite9(uint32_t address, T value)
             case 0x188: case 0x189: case 0x18A: case 0x18B: // IPCFIFOSEND_9
             {
                 // Trigger a FIFO send, and return so it doesn't trigger multiple times
-                memory_transfer::fifoSend(&interpreter::arm9, &interpreter::arm7);
+                fifo::send(&interpreter::arm9, &interpreter::arm7);
                 return;
             }
 
@@ -286,7 +294,7 @@ template <typename T> void ioWrite9(uint32_t address, T value)
 
                 // Start a ROM transfer if the start bit changes from 0 to 1
                 if (!startBit && (((uint8_t*)&value)[i] & BIT(7)))
-                    memory_transfer::romTransferStart(&interpreter::arm9);
+                    cartridge::transferStart(&interpreter::arm9);
 
                 break;
             }
@@ -558,42 +566,67 @@ template <typename T> void ioWrite9(uint32_t address, T value)
 
             case 0x280: case 0x290: case 0x298: // DIV
             {
-                if (*divdenom == 0)
-                {
-                    // Set the division by zero error bit
-                    *divcnt |= BIT(14);
-                }
-                else
-                {
-                    // Clear the division by zero error bit
-                    *divcnt &= ~BIT(14);
+                // Clear the division by zero error bit
+                *divcnt &= ~BIT(14);
 
-                    // Set the result and the remainder
-                    switch (*divcnt & 0x0003) // Division mode
+                // Set the result and the remainder
+                switch (*divcnt & 0x0003) // Division mode
+                {
+                    case 0: // 32-bit / 32-bit
                     {
-                        case 0: // 32-bit / 32-bit
+                        if (*(int32_t*)divdenom == 0)
+                        {
+                            // Set the division by zero error bit
+                            *divcnt |= BIT(14);
+                        }
+                        else
                         {
                             *divresult = *(int32_t*)divnumer / *(int32_t*)divdenom;
                             *divremain = *(int32_t*)divnumer % *(int32_t*)divdenom;
-                            break;
                         }
+                        break;
+                    }
 
-                        case 1: case 3: // 64-bit / 32-bit
+                    case 1: case 3: // 64-bit / 32-bit
+                    {
+                        if (*(int32_t*)divdenom == 0)
+                        {
+                            // Set the division by zero error bit
+                            *divcnt |= BIT(14);
+                        }
+                        else
                         {
                             *divresult = *divnumer / *(int32_t*)divdenom;
                             *divremain = *divnumer % *(int32_t*)divdenom;
-                            break;
                         }
+                        break;
+                    }
 
-                        case 2: // 64-bit / 64-bit
+                    case 2: // 64-bit / 64-bit
+                    {
+                        if (*divdenom == 0)
+                        {
+                            // Set the division by zero error bit
+                            *divcnt |= BIT(14);
+                        }
+                        else
                         {
                             *divresult = *divnumer / *divdenom;
                             *divremain = *divnumer % *divdenom;
-                            break;
                         }
+                        break;
                     }
                 }
+                break;
+            }
 
+            case 0x2B0: case 0x2B8: // SQRT
+            {
+                // Set the square root result
+                if (*sqrtcnt & BIT(0)) // 64-bit
+                    *sqrtresult = sqrt(*sqrtparam);
+                else // 32-bit
+                    *sqrtresult = sqrt(*(uint32_t*)sqrtparam);
                 break;
             }
 
@@ -613,9 +646,9 @@ template <typename T> T ioRead7(uint32_t address)
 
     // Read from special transfer registers
     if (ioAddr == 0x100000) // IPCFIFORECV
-        return memory_transfer::fifoReceive(&interpreter::arm7, &interpreter::arm9);
+        return fifo::receive(&interpreter::arm7, &interpreter::arm9);
     else if (ioAddr == 0x100010) // ROMDATAIN
-        return memory_transfer::romTransfer(&interpreter::arm7);
+        return cartridge::transfer(&interpreter::arm7);
 
     // Make sure an I/O register exists at the given address
     if (ioAddr >= sizeof(ioMask7) || !ioMask7[ioAddr])
@@ -698,7 +731,7 @@ template <typename T> void ioWrite7(uint32_t address, T value)
             case 0x138: // RTC
             {
                 // Handle writes to the RTC register
-                memory_transfer::rtcWrite(&ioData7[0x138]);
+                rtc::write(&ioData7[0x138]);
                 break;
             }
 
@@ -726,7 +759,7 @@ template <typename T> void ioWrite7(uint32_t address, T value)
 
                 // Clear the send FIFO if the clear bit is set
                 if (((uint8_t*)&value)[i] & BIT(3))
-                    memory_transfer::fifoClear(&interpreter::arm7, &interpreter::arm9);
+                    fifo::clear(&interpreter::arm7, &interpreter::arm9);
 
                 break;
             }
@@ -751,7 +784,7 @@ template <typename T> void ioWrite7(uint32_t address, T value)
             case 0x188: case 0x189: case 0x18A: case 0x18B: // IPCFIFOSEND_7
             {
                 // Trigger a FIFO send, and return so it doesn't trigger multiple times
-                memory_transfer::fifoSend(&interpreter::arm7, &interpreter::arm9);
+                fifo::send(&interpreter::arm7, &interpreter::arm9);
                 return;
             }
 
@@ -767,7 +800,7 @@ template <typename T> void ioWrite7(uint32_t address, T value)
 
                 // Start a ROM transfer if the start bit changes from 0 to 1
                 if (!startBit && (((uint8_t*)&value)[i] & BIT(7)))
-                    memory_transfer::romTransferStart(&interpreter::arm7);
+                    cartridge::transferStart(&interpreter::arm7);
 
                 break;
             }
@@ -775,7 +808,7 @@ template <typename T> void ioWrite7(uint32_t address, T value)
             case 0x1C2: // SPIDATA
             {
                 // Send the value to the SPI
-                memory_transfer::spiWrite(((uint8_t*)&value)[i]);
+                spi::write(((uint8_t*)&value)[i]);
                 break;
             }
 
@@ -1006,6 +1039,10 @@ void init()
     *(uint32_t*)&ioMask9[0x2A4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x2A4]  = 0x00000000; // DIVRESULT
     *(uint32_t*)&ioMask9[0x2A8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x2A8]  = 0x00000000; // DIVREMAIN
     *(uint32_t*)&ioMask9[0x2AC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x2AC]  = 0x00000000; // DIVREMAIN
+    *(uint16_t*)&ioMask9[0x2B0]  =     0x8001; *(uint16_t*)&ioWriteMask9[0x2B0]  =     0x0001; // SQRTCNT
+    *(uint32_t*)&ioMask9[0x2B4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x2B4]  = 0x00000000; // SQRTRESULT
+    *(uint32_t*)&ioMask9[0x2B8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x2B8]  = 0xFFFFFFFF; // SQRTPARAM
+    *(uint32_t*)&ioMask9[0x2BC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x2BC]  = 0xFFFFFFFF; // SQRTPARAM
                  ioMask9[0x300]  =       0x03;              ioWriteMask9[0x300]  =       0x02; // POSTFLG_9
     *(uint16_t*)&ioMask9[0x304]  =     0x820F; *(uint16_t*)&ioWriteMask9[0x304]  =     0x820F; // POWCNT1
     *(uint32_t*)&ioMask9[0x1000] = 0xC0B1FFF7; *(uint32_t*)&ioWriteMask9[0x1000] = 0xC0B1FFF7; // DISPCNT_B
