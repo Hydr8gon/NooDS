@@ -44,6 +44,7 @@ typedef struct
 extern Engine engineA, engineB;
 
 extern uint16_t displayBuffer[256 * 192 * 2];
+extern uint16_t fps;
 
 void scanline256();
 void scanline355();

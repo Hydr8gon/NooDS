@@ -35,6 +35,18 @@ void runCore()
         core::runScanline();
 }
 
+class EmuFrame: public wxFrame
+{
+    public:
+        EmuFrame();
+
+    private:
+        void openRom(wxCommandEvent &event);
+        void bootFirmware(wxCommandEvent &event);
+        void exit(wxCommandEvent &event);
+        wxDECLARE_EVENT_TABLE();
+};
+
 class DisplayPanel: public wxPanel
 {
     public:
@@ -53,21 +65,10 @@ class DisplayPanel: public wxPanel
 class NooDS: public wxApp
 {
     private:
+        EmuFrame *frame;
         DisplayPanel *panel;
         bool OnInit();
         void requestDraw(wxIdleEvent &event);
-};
-
-class EmuFrame: public wxFrame
-{
-    public:
-        EmuFrame();
-
-    private:
-        void openRom(wxCommandEvent &event);
-        void bootFirmware(wxCommandEvent &event);
-        void exit(wxCommandEvent &event);
-        wxDECLARE_EVENT_TABLE();
 };
 
 wxIMPLEMENT_APP(NooDS);
@@ -94,7 +95,7 @@ bool NooDS::OnInit()
 #endif
 
     // Set up the window
-    EmuFrame *frame = new EmuFrame();
+    frame = new EmuFrame();
     panel = new DisplayPanel(frame);
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
     sizer->Add(panel, 1, wxEXPAND);     
@@ -105,11 +106,15 @@ bool NooDS::OnInit()
 
 void NooDS::requestDraw(wxIdleEvent &event)
 {
+    // Refresh the display
     panel->draw(false);
     event.RequestMore();
+
+    // Update the window title
+    frame->SetLabel(wxString::Format(wxT("NooDS - %d FPS"), gpu::fps));
 }
 
-EmuFrame::EmuFrame(): wxFrame(NULL, wxID_ANY, "NooDS", wxPoint(50, 50), wxSize(256, 192 * 2), wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS)
+EmuFrame::EmuFrame(): wxFrame(NULL, wxID_ANY, "", wxPoint(50, 50), wxSize(256, 192 * 2), wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS)
 {
     // Set up the File menu
     wxMenu *fileMenu = new wxMenu();

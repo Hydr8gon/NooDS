@@ -37,7 +37,8 @@ namespace gpu
 Engine engineA, engineB;
 
 uint16_t displayBuffer[256 * 192 * 2];
-std::chrono::steady_clock::time_point timer;
+std::chrono::steady_clock::time_point frameTimer, fpsTimer;
+uint16_t fpsCount, fps;
 
 void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 {
@@ -545,16 +546,26 @@ void scanline355()
         }
 
         // Limit FPS to 60
-        std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - timer;
-        if (elapsed.count() < 1.0f / 60)
+        std::chrono::duration<double> frameTime = std::chrono::steady_clock::now() - frameTimer;
+        if (frameTime.count() < 1.0f / 60)
         {
 #ifdef _WIN32
-            Sleep((1.0f / 60 - elapsed.count()) * 1000);
+            Sleep((1.0f / 60 - frameTime.count()) * 1000);
 #else
-            usleep((1.0f / 60 - elapsed.count()) * 1000000);
+            usleep((1.0f / 60 - frameTime.count()) * 1000000);
 #endif
         }
-        timer = std::chrono::steady_clock::now();
+        frameTimer = std::chrono::steady_clock::now();
+
+        // Count FPS
+        fpsCount++;
+        std::chrono::duration<double> fpsTime = std::chrono::steady_clock::now() - fpsTimer;
+        if (fpsTime.count() >= 1.0f)
+        {
+            fps = fpsCount;
+            fpsCount = 0;
+            fpsTimer = std::chrono::steady_clock::now();
+        }
     }
 
     // End H-blank
