@@ -62,29 +62,30 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 
         if (*engine->bgcnt[bg] & BIT(7)) // 8-bit tiles
         {
-            uint16_t *palette;
-            if (*engine->dispcnt & BIT(30)) // Extended palette
-                palette = engine->extPalettes[bg + ((bg < 2 && (*engine->bgcnt[bg] & BIT(13))) ? 2 : 0)];
-            else // Standard palette
-                palette = engine->palette;
-
-            if (palette)
+            uint16_t start = pixel;
+            for (int i = 0; i <= 32; i++)
             {
-                uint16_t start = pixel;
-                for (int i = 0; i <= 32; i++)
+                uint16_t xOffset = *engine->bghofs[bg] + i * 8;
+                uint16_t *tile = &tiles[(xOffset / 8) % 32];
+                if ((*engine->bgcnt[bg] & BIT(14)) && xOffset >= 256 && xOffset < 512)
+                    tile += 0x400;
+
+                uint8_t *sprite;
+                if (*tile & BIT(11)) // Vertical flip
+                    sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 64 + (7 - yOffset % 8) * 8);
+                else
+                    sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 64 + (yOffset % 8) * 8);
+
+                if (sprite)
                 {
-                    uint16_t xOffset = *engine->bghofs[bg] + i * 8;
-                    uint16_t *tile = &tiles[(xOffset / 8) % 32];
-                    if ((*engine->bgcnt[bg] & BIT(14)) && xOffset >= 256 && xOffset < 512)
-                        tile += 0x400;
+                    uint16_t *palette;
+                    if (*engine->dispcnt & BIT(30)) // Extended palette
+                        palette = engine->extPalettes[bg + ((bg < 2 && (*engine->bgcnt[bg] & BIT(13))) ? 2 : 0)];
+                    else // Standard palette
+                        palette = engine->palette;
+                    palette += ((tiles[i] & 0xF000) >> 12) * 0x100;
 
-                    uint8_t *sprite;
-                    if (*tile & BIT(11)) // Vertical flip
-                        sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 64 + (7 - yOffset % 8) * 8);
-                    else
-                        sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 64 + (yOffset % 8) * 8);
-
-                    if (sprite)
+                    if (palette)
                     {
                         if (*tile & BIT(10)) // Horizontal flip
                         {
@@ -105,8 +106,8 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
                             }
                         }
                     }
-                    pixel += 8;
                 }
+                pixel += 8;
             }
         }
         else // 4-bit tiles
@@ -128,6 +129,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
                 if (sprite)
                 {
                     uint16_t *palette = &engine->palette[((tiles[i] & 0xF000) >> 12) * 0x10];
+
                     if (*tile & BIT(10)) // Horizontal flip
                     {
                         for (int j = 0; j < 4; j++)
@@ -268,6 +270,7 @@ void drawObjects(Engine *engine, uint16_t pixel)
                             palette = engine->extPalettes[4];
                         else // Standard palette
                             palette = &engine->palette[0x100];
+                        palette += ((object[2] & 0xF000) >> 12) * 0x100;
 
                         if (palette)
                         {
@@ -299,12 +302,12 @@ void drawObjects(Engine *engine, uint16_t pixel)
                     }
                     else // 4-bit
                     {
-                        uint16_t *palette = &engine->palette[0x100 + ((object[2] & 0xF000) >> 12) * 0x10];
-
                         if (object[1] & BIT(13)) // Vertical flip
                             tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((sizeY - 1 - (*interpreter::arm9.vcount - y)) / 8) * sizeX) * 4;
                         else
                             tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * sizeX) * 4;
+
+                        uint16_t *palette = &engine->palette[0x100 + ((object[2] & 0xF000) >> 12) * 0x10];
 
                         if (object[1] & BIT(12)) // Horizontal flip
                         {

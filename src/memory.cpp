@@ -450,7 +450,7 @@ template <typename T> void ioWrite9(uint32_t address, T value)
                         case 4: // Engine A BG ext palette
                         {
                             for (int i = 0; i < 2; i++)
-                                extPalettesA[(ofs & BIT(0)) * 2 + i] = (uint16_t*)&vramF[0x4000 * i];
+                                extPalettesA[(ofs & BIT(0)) * 2 + i] = (uint16_t*)&vramF[0x2000 * i];
                             break;
                         }
 
@@ -482,7 +482,7 @@ template <typename T> void ioWrite9(uint32_t address, T value)
                         case 4: // Engine A BG ext palette
                         {
                             for (int i = 0; i < 2; i++)
-                                extPalettesA[(ofs & BIT(0)) * 2 + i] = (uint16_t*)&vramG[0x4000 * i];
+                                extPalettesA[(ofs & BIT(0)) * 2 + i] = (uint16_t*)&vramG[0x2000 * i];
                             break;
                         }
 
@@ -524,7 +524,7 @@ template <typename T> void ioWrite9(uint32_t address, T value)
                         case 2: // Engine B BG ext palette
                         {
                             for (int i = 0; i < 4; i++)
-                                extPalettesB[i] = (uint16_t*)(vramH + 0x2000 * i);
+                                extPalettesB[i] = (uint16_t*)&vramH[0x2000 * i];
                             break;
                         }
 
