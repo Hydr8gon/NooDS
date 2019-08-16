@@ -83,6 +83,7 @@ void bx(interpreter::Cpu *cpu, uint32_t opcode) // BX Rn
     *cpu->registers[15] = RM;
     if (*cpu->registers[15] & BIT(0))
         cpu->cpsr |= BIT(5);
+    *cpu->registers[15] |= BIT(0);
 }
 
 void blx(interpreter::Cpu *cpu, uint32_t opcode) // BLX Rn
@@ -94,6 +95,7 @@ void blx(interpreter::Cpu *cpu, uint32_t opcode) // BLX Rn
         *cpu->registers[15] = RM;
         if (*cpu->registers[15] & BIT(0))
             cpu->cpsr |= BIT(5);
+        *cpu->registers[15] |= BIT(0);
     }
 }
 
@@ -253,6 +255,7 @@ void bxReg(interpreter::Cpu *cpu, uint32_t opcode) // BX/BLX Rs
             *cpu->registers[15] = BX_ADDRESS_THUMB;
             if (!(*cpu->registers[15] & BIT(0)))
                 cpu->cpsr &= ~BIT(5);
+            *cpu->registers[15] |= BIT(0);
         }
     }
     else // BX Rs
@@ -261,6 +264,7 @@ void bxReg(interpreter::Cpu *cpu, uint32_t opcode) // BX/BLX Rs
         *cpu->registers[15] = BX_ADDRESS_THUMB;
         if (!(*cpu->registers[15] & BIT(0)))
             cpu->cpsr &= ~BIT(5);
+        *cpu->registers[15] |= BIT(0);
     }
 }
 
@@ -386,7 +390,7 @@ void blxOff(interpreter::Cpu *cpu, uint32_t opcode) // BLX label
     if (cpu->type == 9)
     {
         uint32_t ret = *cpu->registers[15] - 1;
-        *cpu->registers[15] = (*cpu->registers[14] & ~BIT(1)) + BL_OFFSET_THUMB;
+        *cpu->registers[15] = ((*cpu->registers[14] & ~BIT(1)) + BL_OFFSET_THUMB) | BIT(0);
         *cpu->registers[14] = ret;
         cpu->cpsr &= ~BIT(5);
     }
@@ -402,7 +406,7 @@ void blOff(interpreter::Cpu *cpu, uint32_t opcode) // BL label
 {
     // Long branch to offset with link
     uint32_t ret = *cpu->registers[15] - 1;
-    *cpu->registers[15] = *cpu->registers[14] + BL_OFFSET_THUMB;
+    *cpu->registers[15] = (*cpu->registers[14] + BL_OFFSET_THUMB) | BIT(0);
     *cpu->registers[14] = ret;
 }
 
