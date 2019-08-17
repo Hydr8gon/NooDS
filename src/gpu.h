@@ -28,7 +28,7 @@ namespace gpu
 typedef struct
 {
     uint16_t framebuffer[256 * 192];
-    uint16_t bgBuffers[4][256 * 192];
+    uint16_t layers[8][256 * 192];
 
     uint32_t *dispcnt;
     uint16_t *bgcnt[4];

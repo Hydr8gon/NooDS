@@ -1,6 +1,6 @@
 NAME	:= noods
 SOURCES := src src/desktop
-ARGS    := -O2 -no-pie
+ARGS    := -Ofast -no-pie
 LIBS    := -lpthread `wx-config --cxxflags --libs`
 
 CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))

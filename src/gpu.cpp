@@ -45,117 +45,101 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
     // If 3D is enabled, it's rendered to BG0 in text mode
     // But 3D isn't supported yet, so don't render anything
     if (bg == 0 && (*engine->dispcnt & BIT(3)))
-    {
-        memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
         return;
-    }
 
-    uint32_t screenBase = ((*engine->bgcnt[bg] & 0x1F00) >> 8) * 0x800  + ((*engine->dispcnt & 0x38000000) >> 27) * 0x10000;
+    // Get the background data offsets
+    uint32_t screenBase = ((*engine->bgcnt[bg] & 0x1F00) >> 8) * 0x0800 + ((*engine->dispcnt & 0x38000000) >> 27) * 0x10000;
     uint32_t charBase   = ((*engine->bgcnt[bg] & 0x003C) >> 2) * 0x4000 + ((*engine->dispcnt & 0x07000000) >> 24) * 0x10000;
-    uint16_t yOffset = *interpreter::arm9.vcount + *engine->bgvofs[bg];
-    uint16_t *tiles = (uint16_t*)memory::vramMap(engine->bgVramAddr + screenBase + ((yOffset / 8) % 32) * 32 * sizeof(uint16_t));
 
-    if (tiles)
+    // Get the screen data that contains the current line
+    uint16_t yOffset = (*interpreter::arm9.vcount + *engine->bgvofs[bg]) % 512;
+    uint16_t *screen = (uint16_t*)memory::vramMap(engine->bgVramAddr + screenBase + ((yOffset / 8) % 32) * 64);
+    if (!screen) return;
+
+    // If the Y-offset exceeds 256 and the background is 512 pixels tall, move to the next 256x256 section
+    // When the background is 256 pixels wide, this means moving one section
+    // When the background is 512 pixels wide, this means moving two sections
+    if (yOffset >= 256 && *engine->bgcnt[bg] & BIT(15))
+        screen += (*engine->bgcnt[bg] & BIT(14)) ? 0x800 : 0x400;
+
+    // Draw a line
+    if (*engine->bgcnt[bg] & BIT(7)) // 8-bit
     {
-        if ((*engine->bgcnt[bg] & BIT(15)) && yOffset >= 256 && yOffset < 512)
-            tiles += (*engine->bgcnt[bg] & BIT(14)) ? 0x800 : 0x400;
-
-        if (*engine->bgcnt[bg] & BIT(7)) // 8-bit tiles
+        for (int i = 0; i <= 256; i += 8)
         {
-            uint16_t start = pixel;
-            for (int i = 0; i <= 32; i++)
+            // Get the data for the current tile
+            uint16_t xOffset = (*engine->bghofs[bg] + i) % 512;
+            uint16_t *tile = &screen[(xOffset / 8) % 32];
+
+            // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
+            if (xOffset >= 256 && (*engine->bgcnt[bg] & BIT(14)))
+                tile += 0x400;
+
+            // Determine the palette index based on whether or not the tile is vertically flipped
+            uint8_t *indices = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 64);
+            if (!indices) continue;
+            indices += (*tile & BIT(11)) ? ((7 - yOffset % 8) * 8) : ((yOffset % 8) * 8);
+
+            // Get the palette of the tile
+            uint16_t *palette;
+            if (*engine->dispcnt & BIT(30)) // Extended palette
             {
-                uint16_t xOffset = *engine->bghofs[bg] + i * 8;
-                uint16_t *tile = &tiles[(xOffset / 8) % 32];
-                if ((*engine->bgcnt[bg] & BIT(14)) && xOffset >= 256 && xOffset < 512)
-                    tile += 0x400;
+                // Determine the extended palette slot
+                // Backgrounds 0 and 1 can alternatively use slots 2 and 3
+                uint8_t slot = (bg < 2 && (*engine->bgcnt[bg] & BIT(13))) ? (bg + 2) : bg;
 
-                uint8_t *sprite;
-                if (*tile & BIT(11)) // Vertical flip
-                    sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 64 + (7 - yOffset % 8) * 8);
-                else
-                    sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 64 + (yOffset % 8) * 8);
+                // In extended palette mode, the tile can select from multiple 256-color palettes
+                palette = &engine->extPalettes[slot][((*tile & 0xF000) >> 12) * 256];
+                if (!engine->extPalettes[slot]) continue;
+            }
+            else // Standard palette
+            {
+                palette = engine->palette;
+            }
 
-                if (sprite)
-                {
-                    uint16_t *palette;
-                    if (*engine->dispcnt & BIT(30)) // Extended palette
-                        palette = engine->extPalettes[bg + ((bg < 2 && (*engine->bgcnt[bg] & BIT(13))) ? 2 : 0)];
-                    else // Standard palette
-                        palette = engine->palette;
-                    palette += ((tiles[i] & 0xF000) >> 12) * 0x100;
+            for (int j = 0; j < 8; j++)
+            {
+                // Determine the horizontal pixel offset based on whether or not the tile is horizontally flipped
+                int32_t offset = (*tile & BIT(10)) ? (pixel + i - (xOffset % 8) + 7 - j) : (pixel + i - (xOffset % 8) + j);
 
-                    if (palette)
-                    {
-                        if (*tile & BIT(10)) // Horizontal flip
-                        {
-                            for (int j = 0; j < 8; j++)
-                            {
-                                int32_t p = pixel - (xOffset % 8) + 7 - j;
-                                if (p >= start && p < start + 256)
-                                    engine->bgBuffers[bg][p] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
-                            }
-                        }
-                        else
-                        {
-                            for (int j = 0; j < 8; j++)
-                            {
-                                int32_t p = pixel - (xOffset % 8) + j;
-                                if (p >= start && p < start + 256)
-                                    engine->bgBuffers[bg][p] = (sprite[j] ? (palette[sprite[j]] | BIT(15)) : 0);
-                            }
-                        }
-                    }
-                }
-                pixel += 8;
+                // Draw a pixel if one exists at the current position
+                if (offset >= pixel && offset < pixel + 256 && indices[j])
+                    engine->layers[bg][offset] = palette[indices[j]] | BIT(15);
             }
         }
-        else // 4-bit tiles
+    }
+    else // 4-bit
+    {
+        for (int i = 0; i <= 256; i += 8)
         {
-            uint16_t start = pixel;
-            for (int i = 0; i < 32; i++)
+            // Get the data for the current tile
+            uint16_t xOffset = (*engine->bghofs[bg] + i) % 512;
+            uint16_t *tile = &screen[(xOffset / 8) % 32];
+
+            // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
+            if ((*engine->bgcnt[bg] & BIT(14)) && xOffset >= 256)
+                tile += 0x400;
+
+            // Determine the palette index based on whether or not the tile is vertically flipped
+            uint8_t *indices = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 32);
+            if (!indices) continue;
+            indices += (*tile & BIT(11)) ? ((7 - yOffset % 8) * 4) : ((yOffset % 8) * 4);
+
+            // Get the palette of the tile
+            // In 4-bit mode, the tile can select from multiple 16-color palettes
+            uint16_t *palette = &engine->palette[((*tile & 0xF000) >> 12) * 16];
+
+            for (int j = 0; j < 8; j++)
             {
-                uint16_t xOffset = *engine->bghofs[bg] + i * 8;
-                uint16_t *tile = &tiles[(xOffset / 8) % 32];
-                if ((*engine->bgcnt[bg] & BIT(14)) && xOffset >= 256 && xOffset < 512)
-                    tile += 0x400;
+                // Determine the horizontal pixel offset based on whether or not the tile is horizontally flipped
+                int32_t offset = (*tile & BIT(10)) ? (pixel + i - (xOffset % 8) + 7 - j) : (pixel + i - (xOffset % 8) + j);
 
-                uint8_t *sprite;
-                if (tiles[i] & BIT(11)) // Vertical flip
-                    sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 32 + (7 - yOffset % 8) * 4);
-                else
-                    sprite = (uint8_t*)memory::vramMap(engine->bgVramAddr + charBase + (*tile & 0x03FF) * 32 + (yOffset % 8) * 4);
+                // Get the appropriate palette index from the tile for the current position
+                uint8_t index = (j % 2 == 1) ? ((indices[j / 2] & 0xF0) >> 4) : (indices[j / 2] & 0x0F);
 
-                if (sprite)
-                {
-                    uint16_t *palette = &engine->palette[((tiles[i] & 0xF000) >> 12) * 0x10];
-
-                    if (*tile & BIT(10)) // Horizontal flip
-                    {
-                        for (int j = 0; j < 4; j++)
-                        {
-                            int32_t p = pixel - (xOffset % 8) + 7 - j * 2;
-                            if (p >= start && p < start + 256)
-                                engine->bgBuffers[bg][p] = ((sprite[j] & 0x0F) ? (palette[sprite[j] & 0x0F] | BIT(15)) : 0);
-                            p--;
-                            if (p >= start && p < start + 256)
-                                engine->bgBuffers[bg][p] = ((sprite[j] & 0xF0) ? (palette[(sprite[j] & 0xF0) >> 4] | BIT(15)) : 0);
-                        }
-                    }
-                    else
-                    {
-                        for (int j = 0; j < 4; j++)
-                        {
-                            int32_t p = pixel - (xOffset % 8) + j * 2;
-                            if (p >= start && p < start + 256)
-                                engine->bgBuffers[bg][p] = ((sprite[j] & 0x0F) ? (palette[sprite[j] & 0x0F] | BIT(15)) : 0);
-                            p++;
-                            if (p >= start && p < start + 256)
-                                engine->bgBuffers[bg][p] = ((sprite[j] & 0xF0) ? (palette[(sprite[j] & 0xF0) >> 4] | BIT(15)) : 0);
-                        }
-                    }
-                }
-                pixel += 8;
+                // Draw a pixel if one exists at the current position
+                if (offset >= pixel && offset < pixel + 256 && index)
+                    engine->layers[bg][offset] = palette[index] | BIT(15);
             }
         }
     }
@@ -163,8 +147,7 @@ void drawText(Engine *engine, uint8_t bg, uint16_t pixel)
 
 void drawAffine(Engine *engine, uint8_t bg, uint16_t pixel)
 {
-    // Affine backgrounds aren't implemented yet, so just fill them with nothing
-    memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
+    // Affine backgrounds aren't implemented yet
 }
 
 void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
@@ -176,7 +159,7 @@ void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
         {
             uint16_t *line = (uint16_t*)memory::vramMap(engine->bgVramAddr + screenBase + pixel * sizeof(uint16_t));
             if (line)
-                memcpy(&engine->bgBuffers[bg][pixel], line, 256 * sizeof(uint16_t));
+                memcpy(&engine->layers[bg][pixel], line, 256 * sizeof(uint16_t));
         }
         else if (*engine->bgcnt[bg] & BIT(7)) // 256 color bitmap
         {
@@ -184,161 +167,158 @@ void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
             if (line)
             {
                 for (int i = 0; i < 256; i++)
-                    engine->bgBuffers[bg][pixel + i] = (line[i] ? (engine->palette[line[i]] | BIT(15)) : 0);
+                    engine->layers[bg][pixel + i] = (line[i] ? (engine->palette[line[i]] | BIT(15)) : 0);
             }
         }
-    }
-    else
-    {
-        memset(&engine->bgBuffers[bg][pixel], 0, 256 * sizeof(uint16_t));
     }
 }
 
 void drawObjects(Engine *engine, uint16_t pixel)
 {
+    // 2D tile mapping isn't implemented yet, so don't render anything
+    if (!(*engine->dispcnt & BIT(4)))
+        return;
+
+    // Loop through the 128 sprites in OAM, in order of priority from high to low
     for (int i = 127; i >= 0; i--)
     {
+        // Get the current object
+        // Each object occupies 4 bytes
         uint16_t *object = &engine->oam[i * 4];
-        if (!(object[0] & 0x0300)) // Not rotscale, visible
+
+        // Rotated/scaled sprites aren't implemented yet, so skip them
+        // Also skip sprites that are disabled
+        if ((object[0] & BIT(8)) || (object[0] & BIT(9)))
+            continue;
+
+        // Determine the dimensions of the object
+        uint8_t width = 0, height = 0;
+        switch ((object[1] & 0xC000) >> 14) // Size
         {
-            uint8_t sizeX = 0, sizeY = 0;
-            switch ((object[1] & 0xC000) >> 14) // Size
+            case 0:
             {
-                case 0:
+                switch ((object[0] & 0xC000) >> 14) // Shape
                 {
-                    switch ((object[0] & 0xC000) >> 14) // Shape
-                    {
-                        case 0x0: sizeX =  8; sizeY =  8; break; // Square
-                        case 0x1: sizeX = 16; sizeY =  8; break; // Horizontal
-                        case 0x2: sizeX =  8; sizeY = 16; break; // Vertical
-                    }
-                    break;
+                    case 0: width =  8; height =  8; break; // Square
+                    case 1: width = 16; height =  8; break; // Horizontal
+                    case 2: width =  8; height = 16; break; // Vertical
                 }
-
-                case 1:
-                {
-                    switch ((object[0] & 0xC000) >> 14) // Shape
-                    {
-                        case 0x0: sizeX = 16; sizeY = 16; break; // Square
-                        case 0x1: sizeX = 32; sizeY =  8; break; // Horizontal
-                        case 0x2: sizeX =  8; sizeY = 32; break; // Vertical
-                    }
-                    break;
-                }
-
-                case 2:
-                {
-                    switch ((object[0] & 0xC000) >> 14) // Shape
-                    {
-                        case 0x0: sizeX = 32; sizeY = 32; break; // Square
-                        case 0x1: sizeX = 32; sizeY = 16; break; // Horizontal
-                        case 0x2: sizeX = 16; sizeY = 32; break; // Vertical
-                    }
-                    break;
-                }
-
-                case 3:
-                {
-                    switch ((object[0] & 0xC000) >> 14) // Shape
-                    {
-                        case 0x0: sizeX = 64; sizeY = 64; break; // Square
-                        case 0x1: sizeX = 64; sizeY = 32; break; // Horizontal
-                        case 0x2: sizeX = 32; sizeY = 64; break; // Vertical
-                    }
-                    break;
-                }
+                break;
             }
 
-            uint16_t y = (object[0] & 0x00FF);
-            if (*interpreter::arm9.vcount >= y && *interpreter::arm9.vcount < y + sizeY)
+            case 1:
             {
-                uint16_t bound = (32 << ((*engine->dispcnt & 0x00300000) >> 20));
-                uint8_t *tile = (uint8_t*)memory::vramMap(engine->objVramAddr + (object[2] & 0x03FF) * bound);
-                uint16_t x = (object[1] & 0x01FF);
-
-                if (tile)
+                switch ((object[0] & 0xC000) >> 14) // Shape
                 {
-                    if (object[0] & BIT(13)) // 8-bit
-                    {
-                        if (object[1] & BIT(13)) // Vertical flip
-                            tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((sizeY - 1 - (*interpreter::arm9.vcount - y)) / 8) * sizeX) * 8;
-                        else
-                            tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * sizeX) * 8;
-
-                        uint16_t *palette;
-                        if (*engine->dispcnt & BIT(31)) // Extended palette
-                            palette = engine->extPalettes[4];
-                        else // Standard palette
-                            palette = &engine->palette[0x100];
-                        palette += ((object[2] & 0xF000) >> 12) * 0x100;
-
-                        if (palette)
-                        {
-                            if (object[1] & BIT(12)) // Horizontal flip
-                            {
-                                tile += sizeX * 8 - 64;
-
-                                for (int j = 0; j < sizeX; j++)
-                                {
-                                    if (j != 0 && j % 8 == 0)
-                                        tile -= 64;
-
-                                    if (x + j < 256 && tile && tile[7 - j % 8])
-                                        engine->framebuffer[pixel + x + j] = palette[tile[7 - j % 8]];
-                                }
-                            }
-                            else
-                            {
-                                for (int j = 0; j < sizeX; j++)
-                                {
-                                    if (j != 0 && j % 8 == 0)
-                                            tile += 64;
-
-                                    if (x + j < 256 && tile && tile[j % 8])
-                                        engine->framebuffer[pixel + x + j] = palette[tile[j % 8]];
-                                }
-                            }
-                        }
-                    }
-                    else // 4-bit
-                    {
-                        if (object[1] & BIT(13)) // Vertical flip
-                            tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((sizeY - 1 - (*interpreter::arm9.vcount - y)) / 8) * sizeX) * 4;
-                        else
-                            tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * sizeX) * 4;
-
-                        uint16_t *palette = &engine->palette[0x100 + ((object[2] & 0xF000) >> 12) * 0x10];
-
-                        if (object[1] & BIT(12)) // Horizontal flip
-                        {
-                            tile += sizeX * 4 - 32;
-
-                            for (int j = 0; j < sizeX; j += 2)
-                            {
-                                if (j != 0 && j % 8 == 0)
-                                    tile -= 32;
-
-                                if (x + j < 256 && tile && (tile[3 - (j / 2) % 4] & 0xF0))
-                                    engine->framebuffer[pixel + x + j] = palette[(tile[3 - (j / 2) % 4] & 0xF0) >> 4];
-                                if (x + j + 1 < 256 && tile && (tile[3 - (j / 2) % 4] & 0x0F))
-                                    engine->framebuffer[pixel + x + j + 1] = palette[(tile[3 - (j / 2) % 4] & 0x0F)];
-                            }
-                        }
-                        else
-                        {
-                            for (int j = 0; j < sizeX; j += 2)
-                            {
-                                if (j != 0 && j % 8 == 0)
-                                    tile += 32;
-
-                                if (x + j < 256 && tile && (tile[(j / 2) % 4] & 0x0F))
-                                    engine->framebuffer[pixel + x + j] = palette[(tile[(j / 2) % 4] & 0x0F)];
-                                if (x + j + 1 < 256 && tile && (tile[(j / 2) % 4] & 0xF0))
-                                    engine->framebuffer[pixel + x + j + 1] = palette[(tile[(j / 2) % 4] & 0xF0) >> 4];
-                            }
-                        }
-                    }
+                    case 0: width = 16; height = 16; break; // Square
+                    case 1: width = 32; height =  8; break; // Horizontal
+                    case 2: width =  8; height = 32; break; // Vertical
                 }
+                break;
+            }
+
+            case 2:
+            {
+                switch ((object[0] & 0xC000) >> 14) // Shape
+                {
+                    case 0: width = 32; height = 32; break; // Square
+                    case 1: width = 32; height = 16; break; // Horizontal
+                    case 2: width = 16; height = 32; break; // Vertical
+                }
+                break;
+            }
+
+            case 3:
+            {
+                switch ((object[0] & 0xC000) >> 14) // Shape
+                {
+                    case 0: width = 64; height = 64; break; // Square
+                    case 1: width = 64; height = 32; break; // Horizontal
+                    case 2: width = 32; height = 64; break; // Vertical
+                }
+                break;
+            }
+        }
+
+        // Get the Y coordinate and wrap it around if it exceeds the screen bounds
+        int16_t y = (object[0] & 0x00FF);
+        if (y >= 192) y -= 256;
+
+        // Don't draw anything if the current scanline lies outside of the object's bounds
+        if (*interpreter::arm9.vcount < y || *interpreter::arm9.vcount >= y + height)
+            continue;
+
+        // Get the current tile
+        // For 1D tile mapping, the boundary between tiles can be 32, 64, 128, or 256 bytes
+        uint16_t bound = (32 << ((*engine->dispcnt & 0x00300000) >> 20));
+        uint8_t *tile = (uint8_t*)memory::vramMap(engine->objVramAddr + (object[2] & 0x03FF) * bound);
+        if (!tile) continue;
+
+        // Get the X coordinate and wrap it around if it exceeds the screen bounds
+        int16_t x = (object[1] & 0x01FF);
+        if (x >= 256) x -= 512;
+
+        // Determine the layer to draw to based on the priority of the object
+        uint16_t *layer = engine->layers[4 + ((object[2] & 0x0C00) >> 10)];
+
+        if (object[0] & BIT(13)) // 8-bit
+        {
+            // Adjust the current tile to align with the current Y coordinate relative to the object
+            if (object[1] & BIT(13)) // Vertical flip
+                tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((height - 1 - (*interpreter::arm9.vcount - y)) / 8) * width) * 8;
+            else
+                tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * width) * 8;
+
+            // Get the palette of the object
+            uint16_t *palette;
+            if (*engine->dispcnt & BIT(31)) // Extended palette
+            {
+                // In extended palette mode, the object can select from multiple 256-color palettes
+                palette = &engine->extPalettes[4][((object[2] & 0xF000) >> 12) * 256];
+                if (!engine->extPalettes[4]) continue;
+            }
+            else // Standard palette
+            {
+                palette = &engine->palette[0x100];
+            }
+
+            for (int j = 0; j < width; j++)
+            {
+                // Determine the horizontal pixel offset based on whether or not the sprite is horizontally flipped
+                uint16_t offset = (object[1] & BIT(12)) ? (x + width - j - 1) : (x + j);
+
+                // Get the appropriate palette index from the tile for the current position
+                uint8_t index = tile[(j / 8) * 64 + j % 8];
+
+                // Draw a pixel if one exists at the current position
+                if (offset >= 0 && offset < 256 && index)
+                    layer[pixel + offset] = palette[index] | BIT(15);
+            }
+        }
+        else // 4-bit
+        {
+            // Adjust the current tile to align with the current Y coordinate relative to the object
+            if (object[1] & BIT(13)) // Vertical flip
+                tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((height - 1 - (*interpreter::arm9.vcount - y)) / 8) * width) * 4;
+            else
+                tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * width) * 4;
+
+            // Get the palette of the object
+            // In 4-bit mode, the object can select from multiple 16-color palettes
+            uint16_t *palette = &engine->palette[0x100 + ((object[2] & 0xF000) >> 12) * 16];
+
+            for (int j = 0; j < width; j++)
+            {
+                // Determine the horizontal pixel offset based on whether or not the sprite is horizontally flipped
+                uint16_t offset = (object[1] & BIT(12)) ? (x + width - j - 1) : (x + j);
+
+                // Get the appropriate palette index from the tile for the current position
+                uint8_t index = tile[(j / 8) * 32 + (j / 2) % 4];
+                index = (j % 2 == 1) ? ((index & 0xF0) >> 4) : (index & 0x0F);
+
+                // Draw a pixel if one exists at the current position
+                if (offset >= 0 && offset < 256 && index)
+                    layer[pixel + offset] = palette[index] | BIT(15);
             }
         }
     }
@@ -360,7 +340,9 @@ void drawScanline(Engine *engine)
         case 1: // Graphics display
         {
             // Draw the backgrounds
-            switch (*engine->dispcnt & 0x00000007) // BG mode
+            // The type of each background is determined by the mode
+            uint8_t mode = (*engine->dispcnt & 0x00000007);
+            switch (mode)
             {
                 case 0:
                 {
@@ -418,22 +400,35 @@ void drawScanline(Engine *engine)
 
                 default:
                 {
-                    printf("Unknown BG mode: %d\n", (*engine->dispcnt & 0x00000007));
+                    printf("Unknown BG mode: %d\n", mode);
                     break;
                 }
             }
 
-            // Copy the pixels from the highest priority background to the framebuffer
+            // Draw the objects
+            drawObjects(engine, pixel);
+
+            // Copy the pixels from the highest priority layer to the framebuffer
             for (int i = 0; i < 256; i++)
             {
+                // Set the background color to the first entry in the palette
                 engine->framebuffer[pixel + i] = (engine->palette[0] & ~BIT(15));
+
                 for (int j = 0; j < 4; j++)
                 {
+                    // Check for visible pixels in the object layers
+                    if (engine->layers[4 + j][pixel + i] & BIT(15))
+                    {
+                        engine->framebuffer[pixel + i] = engine->layers[4 + j][pixel + i];
+                        break;
+                    }
+
+                    // Check for visible pixels in the background layers
                     for (int k = 0; k < 4; k++)
                     {
-                        if ((*engine->bgcnt[k] & 0x0003) == j && (*engine->dispcnt & BIT(8 + k)) && (engine->bgBuffers[k][pixel + i] & BIT(15)))
+                        if ((*engine->bgcnt[k] & 0x0003) == j && (*engine->dispcnt & BIT(8 + k)) && (engine->layers[k][pixel + i] & BIT(15)))
                         {
-                            engine->framebuffer[pixel + i] = engine->bgBuffers[k][pixel + i];
+                            engine->framebuffer[pixel + i] = engine->layers[k][pixel + i];
                             break;
                         }
                     }
@@ -441,9 +436,6 @@ void drawScanline(Engine *engine)
                         break;
                 }
             }
-
-            // Just draw objects on top of everything for now
-            drawObjects(engine, pixel);
 
             break;
         }
@@ -548,11 +540,19 @@ void scanline355()
             memset(displayBuffer, 0, sizeof(displayBuffer));
         }
 
+        // Clear the layers in preparation for the next frame
+        for (int i = 0; i < 8; i++)
+        {
+            memset(engineA.layers[i], 0, sizeof(engineA.layers[i]));
+            memset(engineB.layers[i], 0, sizeof(engineB.layers[i]));
+        }
+
         // Limit FPS to 60
         std::chrono::duration<double> frameTime = std::chrono::steady_clock::now() - frameTimer;
         if (frameTime.count() < 1.0f / 60)
         {
 #ifdef _WIN32
+            // Windows has to be special and have their own sleep function
             Sleep((1.0f / 60 - frameTime.count()) * 1000);
 #else
             usleep((1.0f / 60 - frameTime.count()) * 1000000);
