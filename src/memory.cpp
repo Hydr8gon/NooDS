@@ -104,7 +104,7 @@ void *vramMap(uint32_t address)
     return nullptr;
 }
 
-void *memoryMap9(uint32_t address)
+void *memoryMap9(uint32_t address, bool read)
 {
     // Get a pointer to the memory currently mapped to a given address on the ARM9
     if (cp15::itcmEnable && address < cp15::itcmSize) // 32KB instruction TCM
@@ -121,16 +121,16 @@ void *memoryMap9(uint32_t address)
         return vramMap(address);
     else if (address >= 0x7000000 && address < 0x8000000) // 2KB OAM
         return &oam[address % 0x800];
-    else if (address >= 0xFFFF0000 && address < 0xFFFF8000) // 32KB ARM9 BIOS
+    else if (address >= 0xFFFF0000 && address < 0xFFFF8000 && read) // 32KB ARM9 BIOS
         return &bios9[address - 0xFFFF0000];
 
     return nullptr;
 }
 
-void *memoryMap7(uint32_t address)
+void *memoryMap7(uint32_t address, bool read)
 {
     // Get a pointer to the memory currently mapped to a given address on the ARM7
-    if (address < 0x4000) // 16KB ARM7 BIOS
+    if (address < 0x4000 && read) // 16KB ARM7 BIOS
         return &bios7[address];
     else if (address >= 0x2000000 && address < 0x3000000) // 4MB main RAM
         return &ram[address % 0x400000];
@@ -859,7 +859,7 @@ template <typename T> T read(interpreter::Cpu *cpu, uint32_t address)
         else
         {
             // Read from normal ARM9 memory
-            T *src = (T*)memoryMap9(address);
+            T *src = (T*)memoryMap9(address, true);
             if (src)
                 return *src;
             else
@@ -876,7 +876,7 @@ template <typename T> T read(interpreter::Cpu *cpu, uint32_t address)
         else
         {
             // Read from normal ARM7 memory
-            T *src = (T*)memoryMap7(address);
+            T *src = (T*)memoryMap7(address, true);
             if (src)
                 return *src;
             else
@@ -906,7 +906,7 @@ template <typename T> void write(interpreter::Cpu *cpu, uint32_t address, T valu
         else
         {
             // Write to normal ARM9 memory
-            T *dst = (T*)memoryMap9(address);
+            T *dst = (T*)memoryMap9(address, false);
             if (dst)
                 *dst = value;
             else
@@ -923,7 +923,7 @@ template <typename T> void write(interpreter::Cpu *cpu, uint32_t address, T valu
         else
         {
             // Write to normal ARM7 memory
-            T *dst = (T*)memoryMap7(address);
+            T *dst = (T*)memoryMap7(address, false);
             if (dst)
                 *dst = value;
             else
