@@ -32,55 +32,88 @@ uint32_t writeCount;
 uint32_t address;
 uint8_t command;
 
+uint16_t touchX, touchY;
+
 void write(uint8_t value)
 {
     // Don't do anything if the SPI isn't enabled
     if (!(*memory::spicnt & BIT(15)))
         return;
 
-    // Receive the value written by the CPU and send a value back
-    uint8_t device = (*memory::spicnt & 0x0300) >> 8;
-    switch (device)
+    if (writeCount == 0)
     {
-        case 1: // Firmware
+        // On the first write, set the command byte
+        command = value;
+        address = 0;
+        *memory::spidata = 0;
+    }
+    else
+    {
+        // Receive the value written by the CPU and send a value back
+        uint8_t device = (*memory::spicnt & 0x0300) >> 8;
+        switch (device)
         {
-            if (writeCount == 0)
+            case 1: // Firmware
             {
-                // On the first write, set the command byte
-                command = value;
-                address = 0;
-                *memory::spidata = 0;
-            }
-            else if (command == 0x03) // READ
-            {
-                if (writeCount < 4)
+                if (command == 0x03) // READ
                 {
-                    // On writes 2-4, set the 3 byte address to read from
-                    ((uint8_t*)&address)[3 - writeCount] = value;
+                    if (writeCount < 4)
+                    {
+                        // On writes 2-4, set the 3 byte address to read from
+                        ((uint8_t*)&address)[3 - writeCount] = value;
+                    }
+                    else
+                    {
+                        // On writes 5+, read from the firmware and send it back
+                        if (address < sizeof(firmware))
+                            *memory::spidata = firmware[address];
+
+                        // 16-bit mode is bugged; the address is incremented accordingly, but only the lower 8 bits are sent
+                        address += (*memory::spicnt & BIT(10)) ? 2 : 1;
+                    }
                 }
                 else
                 {
-                    // On writes 5+, read from the firmware and send it back
-                    if (address < sizeof(firmware))
-                        *memory::spidata = firmware[address];
-
-                    // 16-bit mode is bugged; the address is incremented accordingly, but only the lower 8 bits are sent
-                    address += (*memory::spicnt & BIT(10)) ? 2 : 1;
+                    *memory::spidata = 0;
+                    printf("Unknown firmware SPI instruction: 0x%X\n", command);
                 }
+                break;
             }
-            else
+
+            case 2: // Touchscreen
+            {
+                uint8_t channel = (command & 0x70) >> 4;
+                switch (channel)
+                {
+                    case 1: // Y-coordinate
+                    {
+                        // Send the ADC Y coordinate MSB first, with 3 dummy bits in front
+                        *memory::spidata = ((touchY << 11) & 0xFF00) | ((touchY >> 5) & 0x00FF) >> ((writeCount - 1) % 2);
+                        break;
+                    }
+
+                    case 5: // X-coordinate
+                    {
+                        // Send the ADC X coordinate MSB first, with 3 dummy bits in front
+                        *memory::spidata = ((touchX << 11) & 0xFF00) | ((touchX >> 5) & 0x00FF) >> ((writeCount - 1) % 2);
+                        break;
+                    }
+
+                    default:
+                    {
+                        *memory::spidata = 0;
+                        printf("Unknown touchscreen SPI channel: 0x%X\n", command);
+                    }
+                }
+                break;
+            }
+
+            default:
             {
                 *memory::spidata = 0;
-                printf("Unknown firmware SPI instruction: 0x%X\n", command);
+                printf("Write to unknown SPI device: %d\n", device);
+                break;
             }
-            break;
-        }
-
-        default:
-        {
-            *memory::spidata = 0;
-            printf("Write to unknown SPI device: %d\n", device);
-            break;
         }
     }
 

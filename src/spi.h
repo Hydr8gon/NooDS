@@ -27,6 +27,8 @@ namespace spi
 
 extern uint8_t firmware[0x40000];
 
+extern uint16_t touchX, touchY;
+
 void write(uint8_t value);
 
 void init();

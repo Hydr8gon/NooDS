@@ -180,4 +180,35 @@ void releaseKey(uint8_t key)
     }
 }
 
+void pressScreen(uint8_t x, uint8_t y)
+{
+    // Read calibration points from the firmware
+    uint16_t adcX1 = *(uint16_t*)&spi::firmware[0x3FF58];
+    uint16_t adcY1 = *(uint16_t*)&spi::firmware[0x3FF5A];
+    uint8_t  scrX1 =              spi::firmware[0x3FF5C];
+    uint8_t  scrY1 =              spi::firmware[0x3FF5D];
+    uint16_t adcX2 = *(uint16_t*)&spi::firmware[0x3FF5E];
+    uint16_t adcY2 = *(uint16_t*)&spi::firmware[0x3FF60];
+    uint8_t  scrX2 =              spi::firmware[0x3FF62];
+    uint8_t  scrY2 =              spi::firmware[0x3FF63];
+
+    // Convert the screen coordinates to ADC values and send them to the SPI
+    spi::touchX = (x - (scrX1 - 1)) * (adcX2 - adcX1) / (scrX2 - scrX1) + adcX1;
+    spi::touchY = (y - (scrY1 - 1)) * (adcY2 - adcY1) / (scrY2 - scrY1) + adcY1;
+
+    // Set the pen down bit
+    *memory::extkeyin &= ~BIT(6);
+}
+
+void releaseScreen()
+{
+    // Set the SPI values to their released state
+    spi::touchX = 0x000;
+    spi::touchY = 0xFFF;
+
+    // Clear the pen down bit
+    *memory::extkeyin |= BIT(6);
+    
+}
+
 }

@@ -35,6 +35,9 @@ void runScanline();
 void pressKey(uint8_t key);
 void releaseKey(uint8_t key);
 
+void pressScreen(uint8_t x, uint8_t y);
+void releaseScreen();
+
 }
 
 #endif // CORE_H

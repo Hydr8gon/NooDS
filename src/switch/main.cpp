@@ -41,13 +41,13 @@ void runCore(void *args)
 
 int main(int argc, char **argv)
 {
+    // Attempt to load a ROM
+    // If this fails, the firmware will still boot
+    core::loadRom((char*)"rom.nds");
+
     // Attempt to initialize the emulator
     // If the BIOS and firmware files are missing, exit
     if (!core::init()) return 0;
-
-    // Attempt to load a ROM
-    // If this fails, the firmware will be booted instead
-    core::loadRom((char*)"rom.nds");
 
     // Overclock the Switch CPU
     ClkrstSession cpuSession;
@@ -78,6 +78,24 @@ int main(int argc, char **argv)
                 core::pressKey(i);
             else if (released & keyMap[i])
                 core::releaseKey(i);
+        }
+
+        if (hidTouchCount() > 0)
+        {
+            // If the screen is being touched, determine the position relative to the emulated touch screen
+            touchPosition touch;
+            hidTouchRead(&touch, 0);
+            int16_t touchX = (float)(touch.px - 400) * 256 / 480;
+            int16_t touchY = (float)touch.py * 384 / 720 - 192;
+
+            // Send the touch coordinates to the emulator if they're within bounds
+            if (touchX >= 0 && touchX < 256 && touchY >= 0 && touchY < 192)
+                core::pressScreen(touchX, touchY);
+        }
+        else
+        {
+            // If the screen isn't being touched, release the touch screen press
+            core::releaseScreen();
         }
 
         // Draw the display

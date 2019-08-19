@@ -59,6 +59,8 @@ class DisplayPanel: public wxPanel
         void resize(wxSizeEvent &event);
         void pressKey(wxKeyEvent &event);
         void releaseKey(wxKeyEvent &event);
+        void pressScreen(wxMouseEvent &event);
+        void releaseScreen(wxMouseEvent &event);
         wxDECLARE_EVENT_TABLE();
 };
 
@@ -83,6 +85,9 @@ wxBEGIN_EVENT_TABLE(DisplayPanel, wxPanel)
 EVT_SIZE(DisplayPanel::resize)
 EVT_KEY_DOWN(DisplayPanel::pressKey)
 EVT_KEY_UP(DisplayPanel::releaseKey)
+EVT_LEFT_DOWN(DisplayPanel::pressScreen)
+EVT_MOTION(DisplayPanel::pressScreen)
+EVT_LEFT_UP(DisplayPanel::releaseScreen)
 wxEND_EVENT_TABLE()
 
 bool NooDS::OnInit()
@@ -274,4 +279,25 @@ void DisplayPanel::releaseKey(wxKeyEvent &event)
         if (event.GetKeyCode() == keyMap[i])
             core::releaseKey(i);
     }
+}
+
+void DisplayPanel::pressScreen(wxMouseEvent &event)
+{
+    // Don't do anything if the mouse button isn't pressed
+    if (!event.LeftDown() && !event.Dragging())
+        return;
+
+    // Determine the touch position relative to the emulated touch screen
+    int16_t touchX = (float)event.GetX() / scale - x;
+    int16_t touchY = (float)event.GetY() / scale - y - 192;
+
+    // Send the touch coordinates to the emulator if they're within bounds
+    if (touchX >= 0 && touchX < 256 && touchY >= 0 && touchY < 192)
+        core::pressScreen(touchX, touchY);
+}
+
+void DisplayPanel::releaseScreen(wxMouseEvent &event)
+{
+    // Release the touch screen press
+    core::releaseScreen();
 }
