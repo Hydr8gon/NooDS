@@ -42,9 +42,11 @@ uint32_t readRegister(uint8_t cn, uint8_t cm, uint8_t cp)
 {
     switch ((cn << 16) | (cm << 8) | (cp << 0))
     {
-        case 0x010000: return control; // Control
-        case 0x090100: return dtcmReg; // Data TCM base/size
-        case 0x090101: return itcmReg; // Instruction TCM base/size
+        case 0x000000: return 0x41059461; // Main ID (read-only)
+        case 0x000001: return 0x0F0D2112; // Cache type (read-only)
+        case 0x010000: return control;    // Control
+        case 0x090100: return dtcmReg;    // Data TCM base/size
+        case 0x090101: return itcmReg;    // Instruction TCM base/size
 
         default:
         {

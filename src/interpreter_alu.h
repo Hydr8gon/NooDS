@@ -193,6 +193,11 @@ void rscsRrr(interpreter::Cpu *cpu, uint32_t opcode);
 
 void smlals(interpreter::Cpu *cpu, uint32_t opcode);
 
+void smlabb(interpreter::Cpu *cpu, uint32_t opcode);
+void smlatb(interpreter::Cpu *cpu, uint32_t opcode);
+void smlabt(interpreter::Cpu *cpu, uint32_t opcode);
+void smlatt(interpreter::Cpu *cpu, uint32_t opcode);
+
 void tstLli(interpreter::Cpu *cpu, uint32_t opcode);
 void tstLlr(interpreter::Cpu *cpu, uint32_t opcode);
 void tstLri(interpreter::Cpu *cpu, uint32_t opcode);
@@ -219,6 +224,11 @@ void cmpAri(interpreter::Cpu *cpu, uint32_t opcode);
 void cmpArr(interpreter::Cpu *cpu, uint32_t opcode);
 void cmpRri(interpreter::Cpu *cpu, uint32_t opcode);
 void cmpRrr(interpreter::Cpu *cpu, uint32_t opcode);
+
+void smulbb(interpreter::Cpu *cpu, uint32_t opcode);
+void smultb(interpreter::Cpu *cpu, uint32_t opcode);
+void smulbt(interpreter::Cpu *cpu, uint32_t opcode);
+void smultt(interpreter::Cpu *cpu, uint32_t opcode);
 
 void cmnLli(interpreter::Cpu *cpu, uint32_t opcode);
 void cmnLlr(interpreter::Cpu *cpu, uint32_t opcode);

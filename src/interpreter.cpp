@@ -485,7 +485,11 @@ void init()
     armInstructions[0x0FE] = interpreter_alu::rscsRri;
     armInstructions[0x0FF] = interpreter_transfer::ldrshPtip;
     armInstructions[0x100] = interpreter_other::mrsRc;
+    armInstructions[0x108] = interpreter_alu::smlabb;
     armInstructions[0x109] = interpreter_transfer::swp;
+    armInstructions[0x10A] = interpreter_alu::smlatb;
+    armInstructions[0x10C] = interpreter_alu::smlabt;
+    armInstructions[0x10E] = interpreter_alu::smlatt;
     armInstructions[0x10B] = interpreter_transfer::strhOfrm;
     armInstructions[0x110] = interpreter_alu::tstLli;
     armInstructions[0x111] = interpreter_alu::tstLlr;
@@ -541,7 +545,11 @@ void init()
     armInstructions[0x15F] = interpreter_transfer::ldrshOfim;
     armInstructions[0x160] = interpreter_other::msrRs;
     armInstructions[0x161] = interpreter_other::clz;
+    armInstructions[0x168] = interpreter_alu::smulbb;
+    armInstructions[0x16A] = interpreter_alu::smultb;
     armInstructions[0x16B] = interpreter_transfer::strhPrim;
+    armInstructions[0x16C] = interpreter_alu::smulbt;
+    armInstructions[0x16E] = interpreter_alu::smultt;
     armInstructions[0x170] = interpreter_alu::cmnLli;
     armInstructions[0x171] = interpreter_alu::cmnLlr;
     armInstructions[0x172] = interpreter_alu::cmnLri;

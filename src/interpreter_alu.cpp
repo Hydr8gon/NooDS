@@ -201,6 +201,23 @@
     op1 = res >> 32;                   \
     op0 = res;
 
+// Signed halfword multiply and accumulate
+#define SMLAXY(op0, op1, op2, op3)                      \
+    if (cpu->type == 9)                                 \
+    {                                                   \
+        uint32_t res = (int16_t)(op1) * (int16_t)(op2); \
+        op0 = res + op3;                                \
+        if ((op0 & BIT(31)) != (res & BIT(31)))         \
+            cpu->cpsr |= BIT(27);                       \
+    }
+
+// Signed halfword multiply
+#define SMULXY(op0, op1, op2)                  \
+    if (cpu->type == 9)                        \
+    {                                          \
+        op0 = (int16_t)(op1) * (int16_t)(op2); \
+    }
+
 // Set or clear a flag bit
 #define SET_FLAG(bit, cond) if (cond) cpu->cpsr |= BIT(bit); else cpu->cpsr &= ~BIT(bit);
 
@@ -316,7 +333,7 @@ void andArr(interpreter::Cpu *cpu, uint32_t opcode) { AND(RD, RN, ARR(RMR, RS)) 
 void andRri(interpreter::Cpu *cpu, uint32_t opcode) { AND(RD, RN, RRI(RMI, REG_SHIFT)) } // AND Rd,Rn,Rm,ROR #i
 void andRrr(interpreter::Cpu *cpu, uint32_t opcode) { AND(RD, RN, RRR(RMR, RS))        } // AND Rd,Rn,Rm,ROR Rs
 
-void mul(interpreter::Cpu *cpu, uint32_t opcode) { MUL(RN, RMR, RS) } // MUL Rd,Rm,Rs
+void mul(interpreter::Cpu *cpu, uint32_t opcode) { MUL(RN, RMI, RS) } // MUL Rd,Rm,Rs
 
 void andsLli(interpreter::Cpu *cpu, uint32_t opcode) { LLI_CARRY(RMI, REG_SHIFT) AND(RD, RN, lli) COMMON_FLAGS(RD) } // ANDS Rd,Rn,Rm,LSL #i
 void andsLlr(interpreter::Cpu *cpu, uint32_t opcode) { LLR_CARRY(RMR, RS)        AND(RD, RN, llr) COMMON_FLAGS(RD) } // ANDS Rd,Rn,Rm,LSL Rs
@@ -327,7 +344,7 @@ void andsArr(interpreter::Cpu *cpu, uint32_t opcode) { ARR_CARRY(RMR, RS)       
 void andsRri(interpreter::Cpu *cpu, uint32_t opcode) { RRI_CARRY(RMI, REG_SHIFT) AND(RD, RN, rri) COMMON_FLAGS(RD) } // ANDS Rd,Rn,Rm,ROR #i
 void andsRrr(interpreter::Cpu *cpu, uint32_t opcode) { RRR_CARRY(RMR, RS)        AND(RD, RN, rrr) COMMON_FLAGS(RD) } // ANDS Rd,Rn,Rm,ROR Rs
 
-void muls(interpreter::Cpu *cpu, uint32_t opcode) { MUL(RN, RMR, RS) MUL_FLAGS(RN) } // MULS Rd,Rm,Rs
+void muls(interpreter::Cpu *cpu, uint32_t opcode) { MUL(RN, RMI, RS) MUL_FLAGS(RN) } // MULS Rd,Rm,Rs
 
 void eorLli(interpreter::Cpu *cpu, uint32_t opcode) { EOR(RD, RN, LLI(RMI, REG_SHIFT)) } // EOR Rd,Rn,Rm,LSL #i
 void eorLlr(interpreter::Cpu *cpu, uint32_t opcode) { EOR(RD, RN, LLR(RMR, RS))        } // EOR Rd,Rn,Rm,LSL Rs
@@ -338,7 +355,7 @@ void eorArr(interpreter::Cpu *cpu, uint32_t opcode) { EOR(RD, RN, ARR(RMR, RS)) 
 void eorRri(interpreter::Cpu *cpu, uint32_t opcode) { EOR(RD, RN, RRI(RMI, REG_SHIFT)) } // EOR Rd,Rn,Rm,ROR #i
 void eorRrr(interpreter::Cpu *cpu, uint32_t opcode) { EOR(RD, RN, RRR(RMR, RS))        } // EOR Rd,Rn,Rm,ROR Rs
 
-void mla(interpreter::Cpu *cpu, uint32_t opcode) { MLA(RN, RMR, RS, RD) } // MLA Rd,Rm,Rs,Rn
+void mla(interpreter::Cpu *cpu, uint32_t opcode) { MLA(RN, RMI, RS, RD) } // MLA Rd,Rm,Rs,Rn
 
 void eorsLli(interpreter::Cpu *cpu, uint32_t opcode) { LLI_CARRY(RMI, REG_SHIFT) EOR(RD, RN, lli) COMMON_FLAGS(RD) } // EORS Rd,Rn,Rm,LSL #i
 void eorsLlr(interpreter::Cpu *cpu, uint32_t opcode) { LLR_CARRY(RMR, RS)        EOR(RD, RN, llr) COMMON_FLAGS(RD) } // EORS Rd,Rn,Rm,LSL Rs
@@ -349,7 +366,7 @@ void eorsArr(interpreter::Cpu *cpu, uint32_t opcode) { ARR_CARRY(RMR, RS)       
 void eorsRri(interpreter::Cpu *cpu, uint32_t opcode) { RRI_CARRY(RMI, REG_SHIFT) EOR(RD, RN, rri) COMMON_FLAGS(RD) } // EORS Rd,Rn,Rm,ROR #i
 void eorsRrr(interpreter::Cpu *cpu, uint32_t opcode) { RRR_CARRY(RMR, RS)        EOR(RD, RN, rrr) COMMON_FLAGS(RD) } // EORS Rd,Rn,Rm,ROR Rs
 
-void mlas(interpreter::Cpu *cpu, uint32_t opcode) { MLA(RN, RMR, RS, RD) MUL_FLAGS(RN) } // MLAS Rd,Rm,Rs,Rn
+void mlas(interpreter::Cpu *cpu, uint32_t opcode) { MLA(RN, RMI, RS, RD) MUL_FLAGS(RN) } // MLAS Rd,Rm,Rs,Rn
 
 void subLli(interpreter::Cpu *cpu, uint32_t opcode) { SUB(RD, RN, LLI(RMI, REG_SHIFT)) } // SUB Rd,Rn,Rm,LSL #i
 void subLlr(interpreter::Cpu *cpu, uint32_t opcode) { SUB(RD, RN, LLR(RMR, RS))        } // SUB Rd,Rn,Rm,LSL Rs
@@ -396,7 +413,7 @@ void addArr(interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD, RN, ARR(RMR, RS)) 
 void addRri(interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD, RN, RRI(RMI, REG_SHIFT)) } // ADD Rd,Rn,Rm,ROR #i
 void addRrr(interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD, RN, RRR(RMR, RS))        } // ADD Rd,Rn,Rm,ROR Rs
 
-void umull(interpreter::Cpu *cpu, uint32_t opcode) { UMULL(RD, RN, RMR, RS) } // UMULL RdLo,RdHi,Rm,Rs
+void umull(interpreter::Cpu *cpu, uint32_t opcode) { UMULL(RD, RN, RMI, RS) } // UMULL RdLo,RdHi,Rm,Rs
 
 void addsLli(interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD, RN, LLI(RMI, REG_SHIFT)) ADD_FLAGS(RD) } // ADDS Rd,Rn,Rm,LSL #i
 void addsLlr(interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD, RN, LLR(RMR, RS))        ADD_FLAGS(RD) } // ADDS Rd,Rn,Rm,LSL Rs
@@ -407,7 +424,7 @@ void addsArr(interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD, RN, ARR(RMR, RS))
 void addsRri(interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD, RN, RRI(RMI, REG_SHIFT)) ADD_FLAGS(RD) } // ADDS Rd,Rn,Rm,ROR #i
 void addsRrr(interpreter::Cpu *cpu, uint32_t opcode) { ADD(RD, RN, RRR(RMR, RS))        ADD_FLAGS(RD) } // ADDS Rd,Rn,Rm,ROR Rs
 
-void umulls(interpreter::Cpu *cpu, uint32_t opcode) { UMULL(RD, RN, RMR, RS) MUL_FLAGS(RN) } // UMULLS RdLo,RdHi,Rm,Rs
+void umulls(interpreter::Cpu *cpu, uint32_t opcode) { UMULL(RD, RN, RMI, RS) MUL_FLAGS(RN) } // UMULLS RdLo,RdHi,Rm,Rs
 
 void adcLli(interpreter::Cpu *cpu, uint32_t opcode) { ADC(RD, RN, LLI(RMI, REG_SHIFT)) } // ADC Rd,Rn,Rm,LSL #i
 void adcLlr(interpreter::Cpu *cpu, uint32_t opcode) { ADC(RD, RN, LLR(RMR, RS))        } // ADC Rd,Rn,Rm,LSL Rs
@@ -418,7 +435,7 @@ void adcArr(interpreter::Cpu *cpu, uint32_t opcode) { ADC(RD, RN, ARR(RMR, RS)) 
 void adcRri(interpreter::Cpu *cpu, uint32_t opcode) { ADC(RD, RN, RRI(RMI, REG_SHIFT)) } // ADC Rd,Rn,Rm,ROR #i
 void adcRrr(interpreter::Cpu *cpu, uint32_t opcode) { ADC(RD, RN, RRR(RMR, RS))        } // ADC Rd,Rn,Rm,ROR Rs
 
-void umlal(interpreter::Cpu *cpu, uint32_t opcode) { UMLAL(RD, RN, RMR, RS) } // UMLAL RdLo,RdHi,Rm,Rs
+void umlal(interpreter::Cpu *cpu, uint32_t opcode) { UMLAL(RD, RN, RMI, RS) } // UMLAL RdLo,RdHi,Rm,Rs
 
 void adcsLli(interpreter::Cpu *cpu, uint32_t opcode) { ADC(RD, RN, LLI(RMI, REG_SHIFT)) ADC_FLAGS(RD) } // ADCS Rd,Rn,Rm,LSL #i
 void adcsLlr(interpreter::Cpu *cpu, uint32_t opcode) { ADC(RD, RN, LLR(RMR, RS))        ADC_FLAGS(RD) } // ADCS Rd,Rn,Rm,LSL Rs
@@ -429,7 +446,7 @@ void adcsArr(interpreter::Cpu *cpu, uint32_t opcode) { ADC(RD, RN, ARR(RMR, RS))
 void adcsRri(interpreter::Cpu *cpu, uint32_t opcode) { ADC(RD, RN, RRI(RMI, REG_SHIFT)) ADC_FLAGS(RD) } // ADCS Rd,Rn,Rm,ROR #i
 void adcsRrr(interpreter::Cpu *cpu, uint32_t opcode) { ADC(RD, RN, RRR(RMR, RS))        ADC_FLAGS(RD) } // ADCS Rd,Rn,Rm,ROR Rs
 
-void umlals(interpreter::Cpu *cpu, uint32_t opcode) { UMLAL(RD, RN, RMR, RS) MUL_FLAGS(RN) } // UMLALS RdLo,RdHi,Rm,Rs
+void umlals(interpreter::Cpu *cpu, uint32_t opcode) { UMLAL(RD, RN, RMI, RS) MUL_FLAGS(RN) } // UMLALS RdLo,RdHi,Rm,Rs
 
 void sbcLli(interpreter::Cpu *cpu, uint32_t opcode) { SBC(RD, RN, LLI(RMI, REG_SHIFT)) } // SBC Rd,Rn,Rm,LSL #i
 void sbcLlr(interpreter::Cpu *cpu, uint32_t opcode) { SBC(RD, RN, LLR(RMR, RS))        } // SBC Rd,Rn,Rm,LSL Rs
@@ -440,7 +457,7 @@ void sbcArr(interpreter::Cpu *cpu, uint32_t opcode) { SBC(RD, RN, ARR(RMR, RS)) 
 void sbcRri(interpreter::Cpu *cpu, uint32_t opcode) { SBC(RD, RN, RRI(RMI, REG_SHIFT)) } // SBC Rd,Rn,Rm,ROR #i
 void sbcRrr(interpreter::Cpu *cpu, uint32_t opcode) { SBC(RD, RN, RRR(RMR, RS))        } // SBC Rd,Rn,Rm,ROR Rs
 
-void smull(interpreter::Cpu *cpu, uint32_t opcode) { SMULL(RD, RN, RMR, RS) } // SMULL RdLo,RdHi,Rm,Rs
+void smull(interpreter::Cpu *cpu, uint32_t opcode) { SMULL(RD, RN, RMI, RS) } // SMULL RdLo,RdHi,Rm,Rs
 
 void sbcsLli(interpreter::Cpu *cpu, uint32_t opcode) { SBC(RD, RN, LLI(RMI, REG_SHIFT)) SBC_FLAGS(RD) } // SBCS Rd,Rn,Rm,LSL #i
 void sbcsLlr(interpreter::Cpu *cpu, uint32_t opcode) { SBC(RD, RN, LLR(RMR, RS))        SBC_FLAGS(RD) } // SBCS Rd,Rn,Rm,LSL Rs
@@ -451,7 +468,7 @@ void sbcsArr(interpreter::Cpu *cpu, uint32_t opcode) { SBC(RD, RN, ARR(RMR, RS))
 void sbcsRri(interpreter::Cpu *cpu, uint32_t opcode) { SBC(RD, RN, RRI(RMI, REG_SHIFT)) SBC_FLAGS(RD) } // SBCS Rd,Rn,Rm,ROR #i
 void sbcsRrr(interpreter::Cpu *cpu, uint32_t opcode) { SBC(RD, RN, RRR(RMR, RS))        SBC_FLAGS(RD) } // SBCS Rd,Rn,Rm,ROR Rs
 
-void smulls(interpreter::Cpu *cpu, uint32_t opcode) { SMULL(RD, RN, RMR, RS) MUL_FLAGS(RN) } // SMULLS RdLo,RdHi,Rm,Rs
+void smulls(interpreter::Cpu *cpu, uint32_t opcode) { SMULL(RD, RN, RMI, RS) MUL_FLAGS(RN) } // SMULLS RdLo,RdHi,Rm,Rs
 
 void rscLli(interpreter::Cpu *cpu, uint32_t opcode) { RSC(RD, RN, LLI(RMI, REG_SHIFT)) } // RSC Rd,Rn,Rm,LSL #i
 void rscLlr(interpreter::Cpu *cpu, uint32_t opcode) { RSC(RD, RN, LLR(RMR, RS))        } // RSC Rd,Rn,Rm,LSL Rs
@@ -462,7 +479,7 @@ void rscArr(interpreter::Cpu *cpu, uint32_t opcode) { RSC(RD, RN, ARR(RMR, RS)) 
 void rscRri(interpreter::Cpu *cpu, uint32_t opcode) { RSC(RD, RN, RRI(RMI, REG_SHIFT)) } // RSC Rd,Rn,Rm,ROR #i
 void rscRrr(interpreter::Cpu *cpu, uint32_t opcode) { RSC(RD, RN, RRR(RMR, RS))        } // RSC Rd,Rn,Rm,ROR Rs
 
-void smlal(interpreter::Cpu *cpu, uint32_t opcode) { SMLAL(RD, RN, RMR, RS) } // SMLAL RdLo,RdHi,Rm,Rs
+void smlal(interpreter::Cpu *cpu, uint32_t opcode) { SMLAL(RD, RN, RMI, RS) } // SMLAL RdLo,RdHi,Rm,Rs
 
 void rscsLli(interpreter::Cpu *cpu, uint32_t opcode) { RSC(RD, RN, LLI(RMI, REG_SHIFT)) SBC_FLAGS(RD) } // RSCS Rd,Rn,Rm,LSL #i
 void rscsLlr(interpreter::Cpu *cpu, uint32_t opcode) { RSC(RD, RN, LLR(RMR, RS))        SBC_FLAGS(RD) } // RSCS Rd,Rn,Rm,LSL Rs
@@ -473,7 +490,12 @@ void rscsArr(interpreter::Cpu *cpu, uint32_t opcode) { RSC(RD, RN, ARR(RMR, RS))
 void rscsRri(interpreter::Cpu *cpu, uint32_t opcode) { RSC(RD, RN, RRI(RMI, REG_SHIFT)) SBC_FLAGS(RD) } // RSCS Rd,Rn,Rm,ROR #i
 void rscsRrr(interpreter::Cpu *cpu, uint32_t opcode) { RSC(RD, RN, RRR(RMR, RS))        SBC_FLAGS(RD) } // RSCS Rd,Rn,Rm,ROR Rs
 
-void smlals(interpreter::Cpu *cpu, uint32_t opcode) { SMLAL(RD, RN, RMR, RS) MUL_FLAGS(RN) } // SMLALS RdLo,RdHi,Rm,Rs
+void smlals(interpreter::Cpu *cpu, uint32_t opcode) { SMLAL(RD, RN, RMI, RS) MUL_FLAGS(RN) } // SMLALS RdLo,RdHi,Rm,Rs
+
+void smlabb(interpreter::Cpu *cpu, uint32_t opcode) { SMLAXY(RN, RMI >>  0, RS >>  0, RD) } // SMLABB Rd,Rm,Rs
+void smlatb(interpreter::Cpu *cpu, uint32_t opcode) { SMLAXY(RN, RMI >> 16, RS >>  0, RD) } // SMLATB Rd,Rm,Rs
+void smlabt(interpreter::Cpu *cpu, uint32_t opcode) { SMLAXY(RN, RMI >>  0, RS >> 16, RD) } // SMLABT Rd,Rm,Rs
+void smlatt(interpreter::Cpu *cpu, uint32_t opcode) { SMLAXY(RN, RMI >> 16, RS >> 16, RD) } // SMLATT Rd,Rm,Rs
 
 void tstLli(interpreter::Cpu *cpu, uint32_t opcode) { LLI_CARRY(RMI, REG_SHIFT) TST(RN, lli) } // TST Rn,Rm,LSL #i
 void tstLlr(interpreter::Cpu *cpu, uint32_t opcode) { LLR_CARRY(RMR, RS)        TST(RN, llr) } // TST Rn,Rm,LSL Rs
@@ -501,6 +523,11 @@ void cmpAri(interpreter::Cpu *cpu, uint32_t opcode) { CMP(RN, ARI(RMI, REG_SHIFT
 void cmpArr(interpreter::Cpu *cpu, uint32_t opcode) { CMP(RN, ARR(RMR, RS))        } // CMP Rn,Rm,ASR Rs
 void cmpRri(interpreter::Cpu *cpu, uint32_t opcode) { CMP(RN, RRI(RMI, REG_SHIFT)) } // CMP Rn,Rm,ROR #i
 void cmpRrr(interpreter::Cpu *cpu, uint32_t opcode) { CMP(RN, RRR(RMR, RS))        } // CMP Rn,Rm,ROR Rs
+
+void smulbb(interpreter::Cpu *cpu, uint32_t opcode) { SMULXY(RN, RMI >>  0, RS >>  0) } // SMULBB Rd,Rm,Rs
+void smultb(interpreter::Cpu *cpu, uint32_t opcode) { SMULXY(RN, RMI >> 16, RS >>  0) } // SMULTB Rd,Rm,Rs
+void smulbt(interpreter::Cpu *cpu, uint32_t opcode) { SMULXY(RN, RMI >>  0, RS >> 16) } // SMULBT Rd,Rm,Rs
+void smultt(interpreter::Cpu *cpu, uint32_t opcode) { SMULXY(RN, RMI >> 16, RS >> 16) } // SMULTT Rd,Rm,Rs
 
 void cmnLli(interpreter::Cpu *cpu, uint32_t opcode) { CMN(RN, LLI(RMI, REG_SHIFT)) } // CMN Rn,Rm,LSL #i
 void cmnLlr(interpreter::Cpu *cpu, uint32_t opcode) { CMN(RN, LLR(RMR, RS))        } // CMN Rn,Rm,LSL Rs
