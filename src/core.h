@@ -29,6 +29,7 @@ namespace core
 
 bool init();
 bool loadRom(char *filename);
+void writeSave();
 
 void runScanline();
 

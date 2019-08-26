@@ -20,16 +20,19 @@
 #ifndef SPI_H
 #define SPI_H
 
-#include <cstdint>
+#include "interpreter.h"
 
 namespace spi
 {
 
 extern uint8_t firmware[0x40000];
+extern uint8_t *save;
 
 extern uint16_t touchX, touchY;
+extern uint32_t saveSize;
 
 void write(uint8_t value);
+void auxWrite(interpreter::Cpu *cpu, uint8_t value);
 
 void init();
 

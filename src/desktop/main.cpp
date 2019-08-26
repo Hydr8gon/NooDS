@@ -44,6 +44,7 @@ class EmuFrame: public wxFrame
         void openRom(wxCommandEvent &event);
         void bootFirmware(wxCommandEvent &event);
         void exit(wxCommandEvent &event);
+        void save(wxCloseEvent &event);
         wxDECLARE_EVENT_TABLE();
 };
 
@@ -79,6 +80,7 @@ wxBEGIN_EVENT_TABLE(EmuFrame, wxFrame)
 EVT_MENU(0,         EmuFrame::openRom)
 EVT_MENU(1,         EmuFrame::bootFirmware)
 EVT_MENU(wxID_EXIT, EmuFrame::exit)
+EVT_CLOSE(EmuFrame::save)
 wxEND_EVENT_TABLE()
 
 wxBEGIN_EVENT_TABLE(DisplayPanel, wxPanel)
@@ -148,12 +150,13 @@ void EmuFrame::openRom(wxCommandEvent &event)
     if (romSelect.ShowModal() == wxID_CANCEL)
         return;
 
-    // Ensure the emulator thread is stopped
+    // Stop the emulator thread and save the game if it was running
     if (coreThread)
     {
         running = false;
         coreThread->join();
         delete coreThread;
+        core::writeSave();
     }
 
     // Attempt to initialize the emulator
@@ -180,12 +183,13 @@ void EmuFrame::openRom(wxCommandEvent &event)
 
 void EmuFrame::bootFirmware(wxCommandEvent &event)
 {
-    // Ensure the emulator thread is stopped
+    // Stop the emulator thread and save the game if it was running
     if (coreThread)
     {
         running = false;
         coreThread->join();
         delete coreThread;
+        core::writeSave();
     }
 
     // Attempt to initialize the emulator
@@ -206,6 +210,19 @@ void EmuFrame::exit(wxCommandEvent &event)
     Close(true);
 }
 
+void EmuFrame::save(wxCloseEvent &event)
+{
+    // Stop the emulator thread and save the game if it was running
+    if (coreThread)
+    {
+        running = false;
+        coreThread->join();
+        delete coreThread;
+        core::writeSave();
+    }
+
+    event.Skip(true);
+}
 
 DisplayPanel::DisplayPanel(wxFrame *parent): wxPanel(parent)
 {

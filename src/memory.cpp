@@ -282,6 +282,13 @@ template <typename T> void ioWrite9(uint32_t address, T value)
                 return;
             }
 
+            case 0x1A2: // AUXSPIDATA_9
+            {
+                // Send the value to the AUX SPI
+                spi::auxWrite(&interpreter::arm9, ((uint8_t*)&value)[i]);
+                break;
+            }
+
             case 0x1A7: // ROMCTRL_9
             {
                 // Set the release reset bit, but never clear it
@@ -788,6 +795,13 @@ template <typename T> void ioWrite7(uint32_t address, T value)
                 return;
             }
 
+            case 0x1A2: // AUXSPIDATA_7
+            {
+                // Send the value to the AUX SPI
+                spi::auxWrite(&interpreter::arm7, ((uint8_t*)&value)[i]);
+                break;
+            }
+
             case 0x1A7: // ROMCTRL_7
             {
                 // Set the release reset bit, but never clear it
@@ -1014,6 +1028,7 @@ void init()
     *(uint16_t*)&ioMask9[0x184]  =     0xC70F; *(uint16_t*)&ioWriteMask9[0x184]  =     0x8000; // IPCFIFOCNT_9
     *(uint32_t*)&ioMask9[0x188]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x188]  = 0xFFFFFFFF; // IPCFIFOSEND_9
     *(uint16_t*)&ioMask9[0x1A0]  =     0xE0C3; *(uint16_t*)&ioWriteMask9[0x1A0]  =     0xE043; // AUXSPICNT_9
+    *(uint16_t*)&ioMask9[0x1A2]  =     0x00FF; *(uint16_t*)&ioWriteMask9[0x1A2]  =     0x0000; // AUXSPIDATA_9
     *(uint32_t*)&ioMask9[0x1A4]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1A4]  = 0x5F7F7FFF; // ROMCTRL_9
     *(uint32_t*)&ioMask9[0x1A8]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1A8]  = 0xFFFFFFFF; // ROMCMDOUT_9
     *(uint32_t*)&ioMask9[0x1AC]  = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask9[0x1AC]  = 0xFFFFFFFF; // ROMCMDOUT_9
@@ -1091,6 +1106,7 @@ void init()
     *(uint16_t*)&ioMask7[0x184] =     0xC70F; *(uint16_t*)&ioWriteMask7[0x184] =     0x8000; // IPCFIFOCNT_7
     *(uint32_t*)&ioMask7[0x188] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x188] = 0xFFFFFFFF; // IPCFIFOSEND_7
     *(uint16_t*)&ioMask7[0x1A0] =     0xE0C3; *(uint16_t*)&ioWriteMask7[0x1A0] =     0xE043; // AUXSPICNT_7
+    *(uint16_t*)&ioMask7[0x1A2] =     0x00FF; *(uint16_t*)&ioWriteMask7[0x1A2] =     0x0000; // AUXSPIDATA_7
     *(uint32_t*)&ioMask7[0x1A4] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1A4] = 0x5F7F7FFF; // ROMCTRL_7
     *(uint32_t*)&ioMask7[0x1A8] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1A8] = 0xFFFFFFFF; // ROMCMDOUT_7
     *(uint32_t*)&ioMask7[0x1AC] = 0xFFFFFFFF; *(uint32_t*)&ioWriteMask7[0x1AC] = 0xFFFFFFFF; // ROMCMDOUT_7
@@ -1131,6 +1147,7 @@ void init()
     interpreter::arm9.ipcfifocnt  = (uint16_t*)&ioData9[0x184];
     interpreter::arm9.ipcfifosend = (uint32_t*)&ioData9[0x188];
     interpreter::arm9.auxspicnt   = (uint16_t*)&ioData9[0x1A0];
+    interpreter::arm9.auxspidata  = (uint16_t*)&ioData9[0x1A2];
     interpreter::arm9.romctrl     = (uint32_t*)&ioData9[0x1A4];
     interpreter::arm9.romcmdout   = (uint64_t*)&ioData9[0x1A8];
     interpreter::arm9.ime         = (uint16_t*)&ioData9[0x208];
@@ -1164,6 +1181,7 @@ void init()
     interpreter::arm7.ipcfifocnt  = (uint16_t*)&ioData7[0x184];
     interpreter::arm7.ipcfifosend = (uint32_t*)&ioData7[0x188];
     interpreter::arm7.auxspicnt   = (uint16_t*)&ioData7[0x1A0];
+    interpreter::arm7.auxspidata  = (uint16_t*)&ioData7[0x1A2];
     interpreter::arm7.romctrl     = (uint32_t*)&ioData7[0x1A4];
     interpreter::arm7.romcmdout   = (uint64_t*)&ioData7[0x1A8];
     interpreter::arm7.ime         = (uint16_t*)&ioData7[0x208];

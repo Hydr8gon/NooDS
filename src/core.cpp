@@ -18,6 +18,7 @@
 */
 
 #include <cstdio>
+#include <string>
 
 #include "core.h"
 #include "cartridge.h"
@@ -33,6 +34,8 @@
 
 namespace core
 {
+
+std::string saveName;
 
 bool init()
 {
@@ -72,12 +75,33 @@ bool loadRom(char *filename)
     FILE *romFile = fopen(filename, "rb");
     if (!romFile) return false;
     fseek(romFile, 0, SEEK_END);
-    int size = ftell(romFile);
-    if (cartridge::rom) delete[] cartridge::rom;
-    cartridge::rom = new uint8_t[size];
+    int romSize = ftell(romFile);
     fseek(romFile, 0, SEEK_SET);
-    fread(cartridge::rom, sizeof(uint8_t), size, romFile);
+    if (cartridge::rom) delete[] cartridge::rom;
+    cartridge::rom = new uint8_t[romSize];
+    fread(cartridge::rom, sizeof(uint8_t), romSize, romFile);
     fclose(romFile);
+
+    // Load the save file
+    saveName = ((std::string)filename).substr(0, ((std::string)filename).rfind(".")) + ".sav";
+    FILE *saveFile = fopen(saveName.c_str(), "rb");
+    if (saveFile)
+    {
+        // If the file exists, load it and store the size
+        fseek(saveFile, 0, SEEK_END);
+        spi::saveSize = ftell(saveFile);
+        fseek(saveFile, 0, SEEK_SET);
+        if (spi::save) delete[] spi::save;
+        spi::save = new uint8_t[spi::saveSize];
+        fread(spi::save, sizeof(uint8_t), spi::saveSize, saveFile);
+        fclose(saveFile);
+    }
+    else
+    {
+        // If the file doesn't exist, saving won't be supported
+        // Eventually there will be some way to detect or set the save type in this case
+        spi::saveSize = 0;
+    }
 
     // Set some register values as the BIOS/firmware would
     memory::write<uint8_t>(&interpreter::arm9, 0x4000247, 0x03); // WRAMCNT
@@ -117,6 +141,18 @@ bool loadRom(char *filename)
     interpreter::setMode(&interpreter::arm7, 0x1F);
 
     return true;
+}
+
+void writeSave()
+{
+    // Don't write a save file if the file size is unknown
+    if (spi::saveSize == 0)
+        return;
+
+    // Write the save to a file
+    FILE *saveFile = fopen(saveName.c_str(), "wb");
+    if (saveFile)
+        fwrite(spi::save, sizeof(uint8_t), spi::saveSize, saveFile);
 }
 
 void runScanline()
@@ -193,8 +229,10 @@ void pressScreen(uint8_t x, uint8_t y)
     uint8_t  scrY2 =              spi::firmware[0x3FF63];
 
     // Convert the screen coordinates to ADC values and send them to the SPI
-    spi::touchX = (x - (scrX1 - 1)) * (adcX2 - adcX1) / (scrX2 - scrX1) + adcX1;
-    spi::touchY = (y - (scrY1 - 1)) * (adcY2 - adcY1) / (scrY2 - scrY1) + adcY1;
+    if (scrX2 - scrX1 != 0)
+        spi::touchX = (x - (scrX1 - 1)) * (adcX2 - adcX1) / (scrX2 - scrX1) + adcX1;
+    if (scrY2 - scrY1 != 0)
+        spi::touchY = (y - (scrY1 - 1)) * (adcY2 - adcY1) / (scrY2 - scrY1) + adcY1;
 
     // Set the pen down bit
     *memory::extkeyin &= ~BIT(6);

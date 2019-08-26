@@ -56,6 +56,8 @@ typedef struct
     std::queue<uint32_t> *fifo;
 
     uint16_t *auxspicnt;
+    uint16_t *auxspidata;
+
     uint32_t *romctrl;
     uint64_t *romcmdout;
 
