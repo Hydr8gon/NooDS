@@ -22,6 +22,9 @@
 #include "../core.h"
 #include "../gpu.h"
 
+bool running = true;
+Thread coreThread;
+
 const u32 keyMap[] = { KEY_A, KEY_B, KEY_MINUS, KEY_PLUS, KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN, KEY_R, KEY_L, KEY_X, KEY_Y };
 
 u32 bgr5ToRgba8(u16 color)
@@ -35,8 +38,9 @@ u32 bgr5ToRgba8(u16 color)
 
 void runCore(void *args)
 {
-    while (true)
+    while (running)
         core::runScanline();
+    core::writeSave();
 }
 
 int main(int argc, char **argv)
@@ -62,9 +66,9 @@ int main(int argc, char **argv)
     framebufferMakeLinear(&fb);
 
     // Start the emulator
-    Thread core;
-    threadCreate(&core, runCore, NULL, 0x8000, 0x30, 1);
-    threadStart(&core);
+    threadCreate(&coreThread, runCore, NULL, 0x8000, 0x30, 1);
+    threadStart(&coreThread);
+    appletLockExit();
 
     while (appletMainLoop())
     {
@@ -114,8 +118,12 @@ int main(int argc, char **argv)
     }
 
     // Clean up
+    running = false;
+    threadWaitForExit(&coreThread);
+    threadClose(&coreThread);
     framebufferClose(&fb);
     clkrstSetClockRate(&cpuSession, 1020000000);
     clkrstExit();
+    appletUnlockExit();
     return 0;
 }
