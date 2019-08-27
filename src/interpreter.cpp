@@ -70,36 +70,31 @@ bool condition(Cpu *cpu, uint32_t opcode)
     }
 }
 
-void execute(Cpu *cpu)
+void interrupt(Cpu *cpu)
 {
-    // Handle any enabled interrupts that were triggered
-    if (*cpu->ie & *cpu->irf)
+    if (*cpu->ime && !(cpu->cpsr & BIT(7))) // Interrupts enabled
     {
-        if (*cpu->ime && !(cpu->cpsr & BIT(7))) // Interrupts enabled
-        {
-            // Switch the CPU to interrupt mode
-            uint32_t cpsr = cpu->cpsr;
-            setMode(cpu, 0x12);
-            *cpu->spsr = cpsr;
+        // Switch the CPU to interrupt mode
+        uint32_t cpsr = cpu->cpsr;
+        setMode(cpu, 0x12);
+        *cpu->spsr = cpsr;
 
-            // Disable THUMB mode and block other interrupts
-            cpu->cpsr &= ~BIT(5);
-            cpu->cpsr |= BIT(7);
+        // Disable THUMB mode and block other interrupts
+        cpu->cpsr &= ~BIT(5);
+        cpu->cpsr |= BIT(7);
 
-            // Save the return address and jump to the interrupt handler
-            *cpu->registers[14] = *cpu->registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
-            *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptionBase : 0) + 0x18 + 8;
-        }
-
-        // The ARM9 only unhalts if interrupts are enabled, but the ARM7 doesn't care
-        if (*cpu->ime || cpu->type == 7)
-            cpu->halt = false;
+        // Save the return address and jump to the interrupt handler
+        *cpu->registers[14] = *cpu->registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
+        *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptionBase : 0) + 0x18 + 8;
     }
 
-    // Don't execute anything if the CPU is halted
-    if (cpu->halt)
-        return;
+    // The ARM9 only unhalts if interrupts are enabled, but the ARM7 doesn't care
+    if (*cpu->ime || cpu->type == 7)
+        cpu->halt = false;
+}
 
+void execute(Cpu *cpu)
+{
     if (cpu->cpsr & BIT(5)) // THUMB mode
     {
         // Execute the instruction 2 opcodes behind the program counter because of pipelining

@@ -71,6 +71,7 @@ typedef struct
 
 extern Cpu arm9, arm7;
 
+void interrupt(Cpu *cpu);
 void execute(Cpu *cpu);
 void setMode(Cpu *cpu, uint8_t mode);
 

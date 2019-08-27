@@ -160,9 +160,17 @@ void runScanline()
     for (int i = 0; i < 355 * 6; i++)
     {
         // Run the CPUs, with the ARM7 running at half the frequency of the ARM9
-        interpreter::execute(&interpreter::arm9);
+        if (*interpreter::arm9.ie & *interpreter::arm9.irf)
+            interpreter::interrupt(&interpreter::arm9);
+        if (!interpreter::arm9.halt)
+            interpreter::execute(&interpreter::arm9);
         if (i % 2 == 0)
-            interpreter::execute(&interpreter::arm7);
+        {
+            if (*interpreter::arm7.ie & *interpreter::arm7.irf)
+                interpreter::interrupt(&interpreter::arm7);
+            if (!interpreter::arm7.halt)
+                interpreter::execute(&interpreter::arm7);
+        }
 
         // The end of the visible scanline, and the start of H-blank
         if (i == 256 * 6)
