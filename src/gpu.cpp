@@ -175,10 +175,6 @@ void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
 
 void drawObjects(Engine *engine, uint16_t pixel)
 {
-    // 2D tile mapping isn't implemented yet, so don't render anything
-    if (!(*engine->dispcnt & BIT(4)))
-        return;
-
     // Loop through the 128 sprites in OAM, in order of priority from high to low
     for (int i = 127; i >= 0; i--)
     {
@@ -250,7 +246,7 @@ void drawObjects(Engine *engine, uint16_t pixel)
 
         // Get the current tile
         // For 1D tile mapping, the boundary between tiles can be 32, 64, 128, or 256 bytes
-        uint16_t bound = (32 << ((*engine->dispcnt & 0x00300000) >> 20));
+        uint16_t bound = (*engine->dispcnt & BIT(4)) ? (32 << ((*engine->dispcnt & 0x00300000) >> 20)) : 32;
         uint8_t *tile = (uint8_t*)memory::vramMap(engine->objVramAddr + (object[2] & 0x03FF) * bound);
         if (!tile) continue;
 
@@ -264,10 +260,11 @@ void drawObjects(Engine *engine, uint16_t pixel)
         if (object[0] & BIT(13)) // 8-bit
         {
             // Adjust the current tile to align with the current Y coordinate relative to the object
+            uint16_t mapWidth = (*engine->dispcnt & BIT(4)) ? width : 128;
             if (object[1] & BIT(13)) // Vertical flip
-                tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((height - 1 - (*interpreter::arm9.vcount - y)) / 8) * width) * 8;
+                tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((height - 1 - (*interpreter::arm9.vcount - y)) / 8) * mapWidth) * 8;
             else
-                tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * width) * 8;
+                tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * mapWidth) * 8;
 
             // Get the palette of the object
             uint16_t *palette;
@@ -298,10 +295,11 @@ void drawObjects(Engine *engine, uint16_t pixel)
         else // 4-bit
         {
             // Adjust the current tile to align with the current Y coordinate relative to the object
+            uint16_t mapWidth = (*engine->dispcnt & BIT(4)) ? width : 256;
             if (object[1] & BIT(13)) // Vertical flip
-                tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((height - 1 - (*interpreter::arm9.vcount - y)) / 8) * width) * 4;
+                tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((height - 1 - (*interpreter::arm9.vcount - y)) / 8) * mapWidth) * 4;
             else
-                tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * width) * 4;
+                tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * mapWidth) * 4;
 
             // Get the palette of the object
             // In 4-bit mode, the object can select from multiple 16-color palettes
