@@ -112,7 +112,7 @@ void write(uint8_t value)
                     default:
                     {
                         *memory::spidata = 0;
-                        printf("Unknown touchscreen SPI channel: 0x%X\n", channel);
+                        printf("Unknown touchscreen SPI channel: %d\n", channel);
                         break;
                     }
                 }

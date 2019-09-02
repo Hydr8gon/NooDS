@@ -45,13 +45,13 @@ void runCore(void *args)
 
 int main(int argc, char **argv)
 {
-    // Attempt to load a ROM
-    // If this fails, the firmware will still boot
-    core::loadRom((char*)"rom.nds");
-
     // Attempt to initialize the emulator
     // If the BIOS and firmware files are missing, exit
     if (!core::init()) return 0;
+
+    // Attempt to load a ROM
+    // If this fails, the firmware will boot instead
+    core::loadRom((char*)"rom.nds");
 
     // Overclock the Switch CPU
     ClkrstSession cpuSession;

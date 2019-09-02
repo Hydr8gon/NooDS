@@ -103,13 +103,6 @@ bool loadRom(char *filename)
         spi::saveSize = 0;
     }
 
-    // Set some register values as the BIOS/firmware would
-    memory::write<uint8_t>(&interpreter::arm9, 0x4000247, 0x03); // WRAMCNT
-    memory::write<uint8_t>(&interpreter::arm9, 0x4000300, 0x01); // POSTFLG_9
-    memory::write<uint8_t>(&interpreter::arm7, 0x4000300, 0x01); // POSTFLG_7
-    cp15::writeRegister(9, 1, 0, 0x027C0005); // Data TCM base/size
-    cp15::writeRegister(9, 1, 1, 0x00000010); // Instruction TCM base/size
-
     // Load the initial ROM code into memory using values from the header
     for (unsigned int i = 0; i < *(uint32_t*)&cartridge::rom[0x2C]; i++)
     {
@@ -121,6 +114,32 @@ bool loadRom(char *filename)
         memory::write<uint8_t>(&interpreter::arm7, *(uint32_t*)&cartridge::rom[0x38] + i,
                                cartridge::rom[*(uint32_t*)&cartridge::rom[0x30] + i]);
     }
+
+    // Load the ROM header into memory
+    for (unsigned int i = 0; i < 0x170; i++)
+        memory::write<uint8_t>(&interpreter::arm9, 0x27FFE00 + i, cartridge::rom[i]);
+
+    // Load the user settings into memory
+    for (unsigned int i = 0; i < 0x70; i++)
+        memory::write<uint8_t>(&interpreter::arm9, 0x27FFC80 + i, spi::firmware[0x3FF00 + i]);
+
+    // Write some memory values as the BIOS/firmware would
+    memory::write<uint32_t>(&interpreter::arm9, 0x27FF800, 0x00001FC2); // Chip ID 1
+    memory::write<uint32_t>(&interpreter::arm9, 0x27FF804, 0x00001FC2); // Chip ID 2
+    memory::write<uint16_t>(&interpreter::arm9, 0x27FF850,     0x5835); // ARM7 BIOS CRC
+    memory::write<uint16_t>(&interpreter::arm9, 0x27FF880,     0x0007); // Message from ARM9 to ARM7
+    memory::write<uint16_t>(&interpreter::arm9, 0x27FF884,     0x0006); // ARM7 boot task
+    memory::write<uint32_t>(&interpreter::arm9, 0x27FFC00, 0x00001FC2); // Copy of chip ID 1
+    memory::write<uint32_t>(&interpreter::arm9, 0x27FFC04, 0x00001FC2); // Copy of chip ID 2
+    memory::write<uint16_t>(&interpreter::arm9, 0x27FFC10,     0x5835); // Copy of ARM7 BIOS CRC
+    memory::write<uint16_t>(&interpreter::arm9, 0x27FFC40,     0x0001); // Boot indicator
+
+    // Write some register values as the BIOS/firmware would
+    memory::write<uint8_t>(&interpreter::arm9, 0x4000247, 0x03); // WRAMCNT
+    memory::write<uint8_t>(&interpreter::arm9, 0x4000300, 0x01); // POSTFLG_9
+    memory::write<uint8_t>(&interpreter::arm7, 0x4000300, 0x01); // POSTFLG_7
+    cp15::writeRegister(9, 1, 0, 0x027C0005); // Data TCM base/size
+    cp15::writeRegister(9, 1, 1, 0x00000010); // Instruction TCM base/size
 
     // Point the ARM9 to its starting execution point and initialize the stack pointers
     interpreter::arm9.registersUsr[12] = *(uint32_t*)&cartridge::rom[0x24];
