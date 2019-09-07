@@ -67,6 +67,8 @@ uint16_t *extkeyin = (uint16_t*)&ioData7[0x136];
 uint16_t *spicnt  = (uint16_t*)&ioData7[0x1C0];
 uint16_t *spidata = (uint16_t*)&ioData7[0x1C2];
 
+uint8_t *vramstat = &ioData7[0x240];
+
 uint16_t *divcnt   = (uint16_t*)&ioData9[0x280];
 int64_t *divnumer  =  (int64_t*)&ioData9[0x290];
 int64_t *divdenom  =  (int64_t*)&ioData9[0x298];
@@ -86,9 +88,9 @@ void *vramMap(uint32_t address)
         return &vramA[address - vramBases[0]];
     else if (vramBases[1] && address >= vramBases[1] && address < vramBases[1] + 0x20000) // 128KB VRAM block B
         return &vramB[address - vramBases[1]];
-    else if (vramBases[2] && address >= vramBases[2] && address < vramBases[2] + 0x20000) // 128KB VRAM block C
+    else if (vramBases[2] && address >= vramBases[2] && address < vramBases[2] + 0x20000 && !(*vramstat & BIT(0))) // 128KB VRAM block C
         return &vramC[address - vramBases[2]];
-    else if (vramBases[3] && address >= vramBases[3] && address < vramBases[3] + 0x20000) // 128KB VRAM block D
+    else if (vramBases[3] && address >= vramBases[3] && address < vramBases[3] + 0x20000 && !(*vramstat & BIT(1))) // 128KB VRAM block D
         return &vramD[address - vramBases[3]];
     else if (vramBases[4] && address >= vramBases[4] && address < vramBases[4] + 0x10000) // 64KB VRAM block E
         return &vramE[address - vramBases[4]];
@@ -138,6 +140,10 @@ void *memoryMap7(uint32_t address, bool read)
         return &wram[wramOffset7 + address % wramSize7];
     else if (address >= 0x3000000 && address < 0x4000000) // 64KB ARM7 WRAM
         return &wram7[address % 0x10000];
+    else if ((*vramstat & BIT(0)) && address >= vramBases[2] && address < vramBases[2] + 0x20000) // 128KB VRAM block C
+        return &vramC[address - vramBases[2]];
+    else if ((*vramstat & BIT(1)) && address >= vramBases[3] && address < vramBases[3] + 0x20000) // 128KB VRAM block D
+        return &vramD[address - vramBases[3]];
 
     return nullptr;
 }
@@ -365,15 +371,17 @@ template <typename T> void ioWrite9(uint32_t address, T value)
             {
                 // Remap VRAM block C
                 vramBases[2] = 0;
+                *vramstat &= ~BIT(0);
                 if (((uint8_t*)&value)[i] & BIT(7)) // VRAM enabled
                 {
                     uint8_t mst = (((uint8_t*)&value)[i] & 0x07);
                     uint8_t ofs = (((uint8_t*)&value)[i] & 0x18) >> 3;
                     switch (mst)
                     {
-                        case 0: vramBases[2] = 0x6840000;                 break; // Plain ARM9 access
-                        case 1: vramBases[2] = 0x6000000 + 0x20000 * ofs; break; // Engine A BG VRAM
-                        case 4: vramBases[2] = 0x6200000;                 break; // Engine B BG VRAM
+                        case 0:                      vramBases[2] = 0x6840000;                            break; // Plain ARM9 access
+                        case 1:                      vramBases[2] = 0x6000000 + 0x20000 * ofs;            break; // Engine A BG VRAM
+                        case 2: *vramstat |= BIT(0); vramBases[2] = 0x6000000 + 0x20000 * (ofs & BIT(0)); break; // Plain ARM7 access
+                        case 4:                      vramBases[2] = 0x6200000;                            break; // Engine B BG VRAM
 
                         default:
                         {
@@ -389,15 +397,17 @@ template <typename T> void ioWrite9(uint32_t address, T value)
             {
                 // Remap VRAM block D
                 vramBases[3] = 0;
+                *vramstat &= ~BIT(1);
                 if (((uint8_t*)&value)[i] & BIT(7)) // VRAM enabled
                 {
                     uint8_t mst = (((uint8_t*)&value)[i] & 0x07);
                     uint8_t ofs = (((uint8_t*)&value)[i] & 0x18) >> 3;
                     switch (mst)
                     {
-                        case 0: vramBases[3] = 0x6860000;                 break; // Plain ARM9 access
-                        case 1: vramBases[3] = 0x6000000 + 0x20000 * ofs; break; // Engine A BG VRAM
-                        case 4: vramBases[3] = 0x6600000;                 break; // Engine B OBJ VRAM
+                        case 0:                      vramBases[3] = 0x6860000;                            break; // Plain ARM9 access
+                        case 1:                      vramBases[3] = 0x6000000 + 0x20000 * ofs;            break; // Engine A BG VRAM
+                        case 2: *vramstat |= BIT(1); vramBases[3] = 0x6000000 + 0x20000 * (ofs & BIT(0)); break; // Plain ARM7 access
+                        case 4:                      vramBases[3] = 0x6600000;                            break; // Engine B OBJ VRAM
 
                         default:
                         {
@@ -1115,6 +1125,7 @@ void init()
     *(uint16_t*)&ioMask7[0x208] =     0x0001; *(uint16_t*)&ioWriteMask7[0x208] =     0x0001; // IME_7
     *(uint32_t*)&ioMask7[0x210] = 0x01FF3FFF; *(uint32_t*)&ioWriteMask7[0x210] = 0x01FF3FFF; // IE_7
     *(uint32_t*)&ioMask7[0x214] = 0x01FF3FFF; *(uint32_t*)&ioWriteMask7[0x214] = 0x00000000; // IRF_7
+                 ioMask7[0x240] =       0x03;              ioWriteMask7[0x240] =       0x00; // VRAMSTAT
                  ioMask7[0x241] =       0x03;              ioWriteMask7[0x241] =       0x00; // WRAMSTAT
                  ioMask7[0x300] =       0x01;              ioWriteMask7[0x300] =       0x00; // POSTFLG_7
                  ioMask7[0x301] =       0xC0;              ioWriteMask7[0x301] =       0xC0; // HALTCNT

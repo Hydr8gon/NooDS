@@ -197,17 +197,13 @@
     if (cpu->type == 9 && (*cpu->registers[15] & BIT(0))) \
     {                                                     \
         cpu->cpsr |= BIT(5);                              \
-        *cpu->registers[15] &= ~BIT(0);                   \
     }
 
 // Switch to ARM mode for THUMB loads to the program counter
-#define ARM_SWITCH                          \
-    if (cpu->type == 9)                     \
-    {                                       \
-        if (*cpu->registers[15] & BIT(0))   \
-            *cpu->registers[15] &= ~BIT(0); \
-        else                                \
-            cpu->cpsr &= ~BIT(5);           \
+#define ARM_SWITCH                                         \
+    if (cpu->type == 9 && !(*cpu->registers[15] & BIT(0))) \
+    {                                                      \
+        cpu->cpsr &= ~BIT(5);                              \
     }
 
 // Return to the previous CPU mode if the program counter was loaded in a user-mode block transfer
