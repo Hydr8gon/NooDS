@@ -182,9 +182,8 @@ void drawObjects(Engine *engine, uint16_t pixel)
         // Each object occupies 4 bytes
         uint16_t *object = &engine->oam[i * 4];
 
-        // Rotated/scaled sprites aren't implemented yet, so skip them
-        // Also skip sprites that are disabled
-        if ((object[0] & BIT(8)) || (object[0] & BIT(9)))
+        // Skip sprites that are disabled
+        if (!(object[0] & BIT(8)) && (object[0] & BIT(9)))
             continue;
 
         // Determine the dimensions of the object
@@ -236,12 +235,22 @@ void drawObjects(Engine *engine, uint16_t pixel)
             }
         }
 
+        // Double the object bounds for rotscale objects with the double size bit set
+        uint8_t width2 = width;
+        uint8_t height2 = height;
+        if ((object[0] & BIT(8)) && (object[0] & BIT(9)))
+        {
+            width2 *= 2;
+            height2 *= 2;
+        }
+
         // Get the Y coordinate and wrap it around if it exceeds the screen bounds
         int16_t y = (object[0] & 0x00FF);
         if (y >= 192) y -= 256;
 
         // Don't draw anything if the current scanline lies outside of the object's bounds
-        if (*interpreter::arm9.vcount < y || *interpreter::arm9.vcount >= y + height)
+        int16_t spriteY = *interpreter::arm9.vcount - y;
+        if (spriteY < 0 || spriteY >= height2)
             continue;
 
         // Get the current tile
@@ -257,14 +266,90 @@ void drawObjects(Engine *engine, uint16_t pixel)
         // Determine the layer to draw to based on the priority of the object
         uint16_t *layer = engine->layers[4 + ((object[2] & 0x0C00) >> 10)];
 
-        if (object[0] & BIT(13)) // 8-bit
+        // Draw the object
+        if (object[0] & BIT(8)) // Rotscale
+        {
+            // Get the rotscale parameters and convert them to floats
+            float params[4];
+            for (int j = 0; j < 4; j++)
+            {
+                uint16_t param = engine->oam[((object[1] & 0x3E00) >> 9) * 0x10 + j * 4 + 3];
+                params[j] = (float)(param & 0x00FF) / 0x100; // Fractional
+                params[j] += (param & 0x7F00) >> 8; // Integer
+                if (param & BIT(15)) params[j] = -0x80 + params[j]; // Sign
+            }
+
+            if (object[0] & BIT(13)) // 8-bit
+            {
+                uint16_t mapWidth = (*engine->dispcnt & BIT(4)) ? width : 128;
+
+                // Get the palette of the object
+                uint16_t *palette;
+                if (*engine->dispcnt & BIT(31)) // Extended palette
+                {
+                    // In extended palette mode, the object can select from multiple 256-color palettes
+                    palette = &engine->extPalettes[4][((object[2] & 0xF000) >> 12) * 256];
+                    if (!engine->extPalettes[4]) continue;
+                }
+                else // Standard palette
+                {
+                    palette = &engine->palette[0x100];
+                }
+
+                for (int j = 0; j < width2; j++)
+                {
+                    // Get the rotscaled X coordinate relative to the sprite
+                    int16_t rotscaleX = (j - width2 / 2) * params[0] + (spriteY - height2 / 2) * params[1] + width / 2;
+                    if (rotscaleX < 0 || rotscaleX >= width) continue;
+
+                    // Get the rotscaled Y coordinate relative to the sprite
+                    int16_t rotscaleY = (j - width2 / 2) * params[2] + (spriteY - height2 / 2) * params[3] + height / 2;
+                    if (rotscaleY < 0 || rotscaleY >= height) continue;
+
+                    // Get the appropriate palette index from the tile for the current position
+                    uint8_t index = tile[((rotscaleY / 8) * mapWidth + rotscaleY % 8) * 8 + (rotscaleX / 8) * 64 + rotscaleX % 8];
+
+                    // Draw a pixel if one exists at the current position
+                    if (x + j < 256 && index)
+                        layer[pixel + x + j] = palette[index] | BIT(15);
+                }
+            }
+            else // 4-bit
+            {
+                uint16_t mapWidth = (*engine->dispcnt & BIT(4)) ? width : 256;
+
+                // Get the palette of the object
+                // In 4-bit mode, the object can select from multiple 16-color palettes
+                uint16_t *palette = &engine->palette[0x100 + ((object[2] & 0xF000) >> 12) * 16];
+
+                for (int j = 0; j < width2; j++)
+                {
+                    // Get the rotscaled X coordinate relative to the sprite
+                    int16_t rotscaleX = (j - width2 / 2) * params[0] + (spriteY - height2 / 2) * params[1] + width / 2;
+                    if (rotscaleX < 0 || rotscaleX >= width) continue;
+
+                    // Get the rotscaled Y coordinate relative to the sprite
+                    int16_t rotscaleY = (j - width2 / 2) * params[2] + (spriteY - height2 / 2) * params[3] + height / 2;
+                    if (rotscaleY < 0 || rotscaleY >= height) continue;
+
+                    // Get the appropriate palette index from the tile for the current position
+                    uint8_t index = tile[((rotscaleY / 8) * mapWidth + rotscaleY % 8) * 4 + (rotscaleX / 8) * 32 + (rotscaleX / 2) % 4];
+                    index = (rotscaleX % 2 == 1) ? ((index & 0xF0) >> 4) : (index & 0x0F);
+
+                    // Draw a pixel if one exists at the current position
+                    if (x + j < 256 && index)
+                        layer[pixel + x + j] = palette[index] | BIT(15);
+                }
+            }
+        }
+        else if (object[0] & BIT(13)) // 8-bit
         {
             // Adjust the current tile to align with the current Y coordinate relative to the object
             uint16_t mapWidth = (*engine->dispcnt & BIT(4)) ? width : 128;
             if (object[1] & BIT(13)) // Vertical flip
-                tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((height - 1 - (*interpreter::arm9.vcount - y)) / 8) * mapWidth) * 8;
+                tile += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 8;
             else
-                tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * mapWidth) * 8;
+                tile += ((spriteY % 8) + (spriteY / 8) * mapWidth) * 8;
 
             // Get the palette of the object
             uint16_t *palette;
@@ -297,9 +382,9 @@ void drawObjects(Engine *engine, uint16_t pixel)
             // Adjust the current tile to align with the current Y coordinate relative to the object
             uint16_t mapWidth = (*engine->dispcnt & BIT(4)) ? width : 256;
             if (object[1] & BIT(13)) // Vertical flip
-                tile += (7 - ((*interpreter::arm9.vcount - y) % 8) + ((height - 1 - (*interpreter::arm9.vcount - y)) / 8) * mapWidth) * 4;
+                tile += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 4;
             else
-                tile += (((*interpreter::arm9.vcount - y) % 8) + ((*interpreter::arm9.vcount - y) / 8) * mapWidth) * 4;
+                tile += ((spriteY % 8) + (spriteY / 8) * mapWidth) * 4;
 
             // Get the palette of the object
             // In 4-bit mode, the object can select from multiple 16-color palettes
