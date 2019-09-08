@@ -110,11 +110,11 @@ void execute(Cpu *cpu)
         // Increment the program counter and adjust it for pipelining if needed
         // Branch instructions set bit 0 to indicate that a jump has occurred
         if (!(cpu->cpsr & BIT(5))) // Switch to ARM mode
-            *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 8;
+            *cpu->registers[15] = (*cpu->registers[15] & ~0x03) + 8;
         else if (programCounter != *cpu->registers[15] - 4) // Jump
-            *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 4;
+            *cpu->registers[15] = (*cpu->registers[15] & ~0x01) + 4;
         else // Normal increment
-            *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 2;
+            *cpu->registers[15] = (*cpu->registers[15] & ~0x01) + 2;
     }
     else // ARM mode
     {
@@ -134,9 +134,9 @@ void execute(Cpu *cpu)
         // Increment the program counter and adjust it for pipelining if needed
         // Branch instructions set bit 0 to indicate that a jump has occurred
         if (programCounter != *cpu->registers[15] - 8 && !(cpu->cpsr & BIT(5))) // Jump
-            *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 8;
+            *cpu->registers[15] = (*cpu->registers[15] & ~0x03) + 8;
         else // Normal increment or switch to THUMB mode
-            *cpu->registers[15] = (*cpu->registers[15] & ~BIT(0)) + 4;
+            *cpu->registers[15] = (*cpu->registers[15] & ~0x01) + 4;
     }
 }
 

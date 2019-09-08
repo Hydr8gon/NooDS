@@ -161,7 +161,7 @@ void drawExtended(Engine *engine, uint8_t bg, uint16_t pixel)
             if (line)
                 memcpy(&engine->layers[bg][pixel], line, 256 * sizeof(uint16_t));
         }
-        else if (*engine->bgcnt[bg] & BIT(7)) // 256 color bitmap
+        else // 256 color bitmap
         {
             uint8_t *line = (uint8_t*)memory::vramMap(engine->bgVramAddr + screenBase + pixel);
             if (line)
