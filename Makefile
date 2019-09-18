@@ -7,7 +7,7 @@ CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
 HFILES   := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.h))
 
 $(NAME): $(CPPFILES) $(HFILES)
-	g++ -o $@ $(ARGS) $(LIBS) $(CPPFILES)
+	g++ -o $@ $(ARGS) $(CPPFILES) $(LIBS)
 
 clean:
 	rm -f $(NAME)

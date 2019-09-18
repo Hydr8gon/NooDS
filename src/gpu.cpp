@@ -20,12 +20,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
+#include <thread>
 
 #include "gpu.h"
 #include "core.h"
@@ -633,14 +628,7 @@ void scanline355()
         // Limit FPS to 60
         std::chrono::duration<double> frameTime = std::chrono::steady_clock::now() - frameTimer;
         if (frameTime.count() < 1.0f / 60)
-        {
-#ifdef _WIN32
-            // Windows has to be special and have their own sleep function
-            Sleep((1.0f / 60 - frameTime.count()) * 1000);
-#else
-            usleep((1.0f / 60 - frameTime.count()) * 1000000);
-#endif
-        }
+            std::this_thread::sleep_for(std::chrono::microseconds((int)((1.0f / 60 - frameTime.count()) * 1000000)));
         frameTimer = std::chrono::steady_clock::now();
 
         // Count FPS
