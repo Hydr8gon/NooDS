@@ -18,49 +18,73 @@
 */
 
 #include <cstdio>
+#include <exception>
 
 #include "spi.h"
-#include "core.h"
-#include "memory.h"
+#include "defines.h"
+#include "interpreter.h"
 
-namespace spi
+void Spi::setTouch(int x, int y)
 {
+    // Read calibration points from the firmware
+    uint16_t adcX1 = U8TO16(firmware, 0x3FF58);
+    uint16_t adcY1 = U8TO16(firmware, 0x3FF5A);
+    uint8_t  scrX1 = firmware[0x3FF5C];
+    uint8_t  scrY1 = firmware[0x3FF5D];
+    uint16_t adcX2 = U8TO16(firmware, 0x3FF5E);
+    uint16_t adcY2 = U8TO16(firmware, 0x3FF60);
+    uint8_t  scrX2 = firmware[0x3FF62];
+    uint8_t  scrY2 = firmware[0x3FF63];
 
-uint8_t firmware[0x40000];
-uint8_t *save;
+    // Ensure the coordinates are within bounds
+    if (x < 0) x = 0; else if (x > 255) x = 255;
+    if (y < 0) y = 0; else if (y > 191) y = 191;
 
-uint32_t writeCount, auxWriteCount;
-uint32_t address, auxAddress;
-uint8_t command, auxCommand;
+    // Convert the coordinates to ADC values
+    if (scrX2 - scrX1 != 0)
+        touchX = (x - (scrX1 - 1)) * (adcX2 - adcX1) / (scrX2 - scrX1) + adcX1;
+    if (scrY2 - scrY1 != 0)
+        touchY = (y - (scrY1 - 1)) * (adcY2 - adcY1) / (scrY2 - scrY1) + adcY1;
+}
 
-uint16_t touchX, touchY;
-uint32_t saveSize;
+void Spi::clearTouch()
+{
+    // Set the ADC values to their default state
+    touchX = 0x000;
+    touchY = 0xFFF;
+}
 
-void write(uint8_t value)
+void Spi::writeSpiCnt(unsigned int byte, uint8_t value)
+{
+    // Write to the SPICNT register
+    uint16_t mask = 0xCF03 & (0xFF << (byte * 8));
+    spiCnt = (spiCnt & ~mask) | ((value << (byte * 8)) & mask);
+}
+
+void Spi::writeSpiData(uint8_t value)
 {
     // Don't do anything if the SPI isn't enabled
-    if (!(*memory::spicnt & BIT(15)))
+    if (!(spiCnt & BIT(15)))
+    {
+        spiData = 0;
         return;
+    }
 
     if (writeCount == 0)
     {
         // On the first write, set the command byte
         command = value;
         address = 0;
-        *memory::spidata = 0;
+        spiData = 0;
     }
     else
     {
-        // Receive the value written by the CPU and send a value back
-        uint8_t device = (*memory::spicnt & 0x0300) >> 8;
-        switch (device)
+        switch ((spiCnt & 0x0300) >> 8) // Device
         {
             case 1: // Firmware
-            {
                 switch (command)
                 {
                     case 0x03: // Read data bytes
-                    {
                         if (writeCount < 4)
                         {
                             // On writes 2-4, set the 3 byte address to read from
@@ -69,213 +93,55 @@ void write(uint8_t value)
                         else
                         {
                             // On writes 5+, read data from the firmware and send it back
-                            if (address < sizeof(firmware))
-                                    *memory::spidata = firmware[address];
+                            spiData = (address < 0x40000) ? firmware[address] : 0;
 
+                            // Increment the address
                             // 16-bit mode is bugged; the address is incremented accordingly, but only the lower 8 bits are sent
-                            address += (*memory::spicnt & BIT(10)) ? 2 : 1;
+                            address += (spiCnt & BIT(10)) ? 2 : 1;
                         }
-
                         break;
-                    }
 
                     default:
-                    {
-                        *memory::spidata = 0;
-                        printf("Unknown firmware SPI instruction: 0x%X\n", command);
+                        printf("Write to SPI with unknown firmware command: 0x%X\n", command);
+                        spiData = 0;
                         break;
-                    }
                 }
-
                 break;
-            }
 
             case 2: // Touchscreen
-            {
-                uint8_t channel = (command & 0x70) >> 4;
-                switch (channel)
+                switch ((command & 0x70) >> 4) // Channel
                 {
                     case 1: // Y-coordinate
-                    {
                         // Send the ADC Y coordinate MSB first, with 3 dummy bits in front
-                        *memory::spidata = ((touchY << 11) & 0xFF00) | ((touchY >> 5) & 0x00FF) >> ((writeCount - 1) % 2);
+                        spiData = ((touchY << 11) & 0xFF00) | ((touchY >> 5) & 0x00FF) >> ((writeCount - 1) % 2);
                         break;
-                    }
 
                     case 5: // X-coordinate
-                    {
                         // Send the ADC X coordinate MSB first, with 3 dummy bits in front
-                        *memory::spidata = ((touchX << 11) & 0xFF00) | ((touchX >> 5) & 0x00FF) >> ((writeCount - 1) % 2);
+                        spiData = ((touchX << 11) & 0xFF00) | ((touchX >> 5) & 0x00FF) >> ((writeCount - 1) % 2);
                         break;
-                    }
 
                     default:
-                    {
-                        *memory::spidata = 0;
-                        printf("Unknown touchscreen SPI channel: %d\n", channel);
+                        printf("Write to SPI with unknown touchscreen channel: %d\n", (command & 0x70) >> 4);
+                        spiData = 0;
                         break;
-                    }
                 }
-
                 break;
-            }
 
             default:
-            {
-                *memory::spidata = 0;
-                printf("Write to unknown SPI device: %d\n", device);
+                printf("Write to SPI with unknown device: %d\n", (spiCnt & 0x0300) >> 8);
+                spiData = 0;
                 break;
-            }
         }
     }
 
     // Keep track of the write count
-    if (*memory::spicnt & BIT(11)) // Keep chip selected
+    if (spiCnt & BIT(11)) // Keep chip selected
         writeCount++;
     else // Deselect chip
         writeCount = 0;
 
     // Trigger a transfer finished IRQ if enabled
-    // Transfers shouldn't complete instantly like this, but there's no timing system yet
-    if (*memory::spicnt & BIT(14))
-        *interpreter::arm7.irf |= BIT(23);
-}
-
-void auxWrite(interpreter::Cpu *cpu, uint8_t value)
-{
-    if (auxWriteCount == 0)
-    {
-        // On the first write, set the command byte
-        auxCommand = value;
-        auxAddress = 0;
-        *cpu->auxspidata = 0;
-    }
-    else
-    {
-        // Receive the value written by the CPU and send a value back
-        switch (saveSize)
-        {
-            case 0x2000: case 0x10000: // EEPROM 8KB, 64KB
-            {
-                switch (auxCommand)
-                {
-                    case 0x03: // Read from memory
-                    {
-                        if (auxWriteCount < 3)
-                        {
-                            // On writes 2-3, set the 2 byte address to write to
-                            auxAddress |= value << ((2 - auxWriteCount) * 8);
-                        }
-                        else
-                        {
-                            // On writes 4+, read data from the save and send it back
-                            if (auxAddress < saveSize)
-                                *cpu->auxspidata = save[auxAddress];
-                            auxAddress++;
-                        }
-                        break;
-                    }
-
-                    case 0x02: // Write to memory
-                    {
-                        if (auxWriteCount < 3)
-                        {
-                            // On writes 2-3, set the 2 byte address to write to
-                            auxAddress |= value << ((2 - auxWriteCount) * 8);
-                        }
-                        else
-                        {
-                            // On writes 4+, write data to the save
-                            if (auxAddress < saveSize)
-                                save[auxAddress] = value;
-                            auxAddress++;
-                        }
-                        break;
-                    }
-
-                    default:
-                    {
-                        *cpu->auxspidata = 0;
-                        printf("Unknown EEPROM SPI command: %d\n", auxCommand);
-                        break;
-                    }
-                }
-
-                break;
-            }
-
-            case 0x40000: case 0x80000: // FLASH 256KB, 512KB
-            {
-                // Receive the value written by the CPU and send a value back
-                switch (auxCommand)
-                {
-                    case 0x03: // Read data bytes
-                    {
-                        if (auxWriteCount < 4)
-                        {
-                            // On writes 2-4, set the 3 byte address to write to
-                            auxAddress |= value << ((3 - auxWriteCount) * 8);
-                        }
-                        else
-                        {
-                            // On writes 5+, read data from the save and send it back
-                            if (auxAddress < saveSize)
-                                *cpu->auxspidata = save[auxAddress];
-                            auxAddress++;
-                        }
-                        break;
-                    }
-
-                    case 0x0A: // Page write
-                    {
-                        if (auxWriteCount < 4)
-                        {
-                            // On writes 2-4, set the 3 byte address to write to
-                            auxAddress |= value << ((3 - auxWriteCount) * 8);
-                        }
-                        else
-                        {
-                            // On writes 5+, write data to the save
-                            if (auxAddress < saveSize)
-                                save[auxAddress] = value;
-                            auxAddress++;
-                        }
-                        break;
-                    }
-
-                    default:
-                    {
-                        *cpu->auxspidata = 0;
-                        printf("Unknown FLASH SPI command: %d\n", auxCommand);
-                        break;
-                    }
-                }
-
-                break;
-            }
-
-            default:
-            {
-                printf("Write to AUX SPI with unknown save type\n");
-                break;
-            }
-        }
-    }
-
-    // Keep track of the write count
-    if (*cpu->auxspicnt & BIT(6)) // Keep chip selected
-        auxWriteCount++;
-    else // Deselect chip
-        auxWriteCount = 0;
-}
-
-void init()
-{
-    writeCount = auxWriteCount = 0;
-    address = auxAddress = 0;
-    command = auxCommand = 0;
-
-    touchX = touchY = 0;
-}
-
+    if (spiCnt & BIT(14))
+        arm7->sendInterrupt(23);
 }

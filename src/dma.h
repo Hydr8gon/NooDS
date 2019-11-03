@@ -20,13 +20,42 @@
 #ifndef DMA_H
 #define DMA_H
 
-#include "interpreter.h"
+#include <cstdint>
 
-namespace dma
+class Cartridge;
+class Interpreter;
+class Memory;
+
+class Dma
 {
+    public:
+        Dma(Cartridge *cart, Interpreter *cpu, Memory *memory): cart(cart), cpu(cpu), memory(memory) {}
 
-void transfer(interpreter::Cpu *cpu, uint8_t channel);
+        void transfer();
 
-}
+        bool shouldTransfer() { return enabled; }
+
+        uint8_t readDmaSad(unsigned int channel, unsigned int byte) { return dmaSad[channel] >> (byte * 8); }
+        uint8_t readDmaDad(unsigned int channel, unsigned int byte) { return dmaDad[channel] >> (byte * 8); }
+        uint8_t readDmaCnt(unsigned int channel, unsigned int byte) { return dmaCnt[channel] >> (byte * 8); }
+
+        void writeDmaSad(unsigned int channel, unsigned int byte, uint8_t value);
+        void writeDmaDad(unsigned int channel, unsigned int byte, uint8_t value);
+        void writeDmaCnt(unsigned int channel, unsigned int byte, uint8_t value);
+
+    private:
+        uint32_t dmaSad[4] = {};
+        uint32_t dmaDad[4] = {};
+        uint32_t dmaCnt[4] = {};
+
+        uint32_t srcAddrs[4] = {};
+        uint32_t dstAddrs[4] = {};
+        uint32_t wordCounts[4] = {};
+        uint8_t enabled = 0;
+
+        Cartridge *cart;
+        Interpreter *cpu;
+        Memory *memory;
+};
 
 #endif // DMA_H

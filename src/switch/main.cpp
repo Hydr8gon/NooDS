@@ -20,14 +20,20 @@
 #include <switch.h>
 
 #include "../core.h"
-#include "../gpu.h"
 
-bool running = true;
+const uint32_t keyMap[] = { KEY_A, KEY_B, KEY_MINUS, KEY_PLUS, KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN, KEY_ZR, KEY_ZL, KEY_X, KEY_Y };
+
+Core *core;
 Thread coreThread;
+bool running = true;
 
-const u32 keyMap[] = { KEY_A, KEY_B, KEY_MINUS, KEY_PLUS, KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN, KEY_R, KEY_L, KEY_X, KEY_Y };
+void runCore(void *args)
+{
+    while (running)
+        core->runFrame();
+}
 
-u32 bgr5ToRgba8(u16 color)
+uint32_t bgr5ToRgba8(uint16_t color)
 {
     // Convert a BGR5 value to an RGBA8 value
     uint8_t r = ((color >>  0) & 0x1F) * 255 / 31;
@@ -36,22 +42,27 @@ u32 bgr5ToRgba8(u16 color)
     return (0xFF << 24) | (b << 16) | (g << 8) | r;
 }
 
-void runCore(void *args)
+int main()
 {
-    while (running)
-        core::runScanline();
-    core::writeSave();
-}
-
-int main(int argc, char **argv)
-{
-    // Attempt to initialize the emulator
-    // If the BIOS and firmware files are missing, exit
-    if (!core::init()) return 0;
-
-    // Attempt to load a ROM
-    // If this fails, the firmware will boot instead
-    core::loadRom((char*)"rom.nds");
+    // Prepare the core
+    try
+    {
+        // Attempt to boot a ROM
+        core = new Core("rom.nds");
+    }
+    catch (std::exception *e)
+    {
+        try
+        {
+            // Attempt to boot the firmware if ROM loading failed
+            core = new Core();
+        }
+        catch (std::exception *e)
+        {
+            // Exit if the BIOS or firmware files are missing
+            return 1;
+        }
+    }
 
     // Overclock the Switch CPU
     ClkrstSession cpuSession;
@@ -74,44 +85,44 @@ int main(int argc, char **argv)
     {
         // Scan for key input and pass it to the emulator
         hidScanInput();
-        u32 pressed = hidKeysDown(CONTROLLER_P1_AUTO);
-        u32 released = hidKeysUp(CONTROLLER_P1_AUTO);
+        uint32_t pressed = hidKeysDown(CONTROLLER_P1_AUTO);
+        uint32_t released = hidKeysUp(CONTROLLER_P1_AUTO);
         for (int i = 0; i < 12; i++)
         {
             if (pressed & keyMap[i])
-                core::pressKey(i);
+                core->pressKey(i);
             else if (released & keyMap[i])
-                core::releaseKey(i);
+                core->releaseKey(i);
         }
 
+        // Scan for touch input
         if (hidTouchCount() > 0)
         {
             // If the screen is being touched, determine the position relative to the emulated touch screen
             touchPosition touch;
             hidTouchRead(&touch, 0);
-            int16_t touchX = (float)(touch.px - 400) * 256 / 480;
-            int16_t touchY = (float)touch.py * 384 / 720 - 192;
+            int touchX = (touch.px - 640) / 2;
+            int touchY = (touch.py - 168) / 2;
 
-            // Send the touch coordinates to the emulator if they're within bounds
-            if (touchX >= 0 && touchX < 256 && touchY >= 0 && touchY < 192)
-                core::pressScreen(touchX, touchY);
+            // Send the touch coordinates to the core
+            core->pressScreen(touchX, touchY);
         }
         else
         {
             // If the screen isn't being touched, release the touch screen press
-            core::releaseScreen();
+            core->releaseScreen();
         }
 
         // Draw the display
-        u32 stride;
-        u32 *framebuf = (u32*)framebufferBegin(&fb, &stride);
-        for (u32 y = 0; y < 720; y++)
+        uint32_t stride;
+        uint32_t *switchBuf = (uint32_t*)framebufferBegin(&fb, &stride);
+        uint16_t *coreBuf = core->getFramebuffer();
+        for (int y = 0; y < 192 * 2; y++)
         {
-            int scaledY = (float)y * (384.0f / 720);
-            for (u32 x = 0; x < 480; x++)
+            for (int x = 0; x < 256 * 2; x++)
             {
-                int scaledX = (float)x * (256.0f / 480);
-                framebuf[y * stride / sizeof(u32) + x + 400] = bgr5ToRgba8(gpu::displayBuffer[scaledY * 256 + scaledX]);
+                switchBuf[(y + 168) * stride / sizeof(uint32_t) + (x + 128)] = bgr5ToRgba8(coreBuf[(y / 2) * 256 + (x / 2)]);
+                switchBuf[(y + 168) * stride / sizeof(uint32_t) + (x + 640)] = bgr5ToRgba8(coreBuf[((y / 2) + 192) * 256 + (x / 2)]);
             }
         }
         framebufferEnd(&fb);
@@ -121,6 +132,7 @@ int main(int argc, char **argv)
     running = false;
     threadWaitForExit(&coreThread);
     threadClose(&coreThread);
+    delete core;
     framebufferClose(&fb);
     clkrstSetClockRate(&cpuSession, 1020000000);
     clkrstExit();

@@ -17,20 +17,25 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef FIFO_H
-#define FIFO_H
+#ifndef INPUT_H
+#define INPUT_H
 
-#include "interpreter.h"
+#include <cstdint>
 
-namespace fifo
+class Input
 {
+    public:
+        void pressKey(unsigned int key);
+        void releaseKey(unsigned int key);
+        void pressScreen();
+        void releaseScreen();
 
-void clear(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
-void send(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
-uint32_t receive(interpreter::Cpu *cpuSend, interpreter::Cpu *cpuRecv);
+        uint8_t readKeyInput(unsigned int byte) { return keyInput >> (byte * 8); }
+        uint8_t readExtKeyIn(unsigned int byte) { return extKeyIn >> (byte * 8); }
 
-void init();
+    private:
+        uint16_t keyInput = 0x03FF;
+        uint16_t extKeyIn = 0x007F;
+};
 
-}
-
-#endif // FIFO_H
+#endif // INPUT_H

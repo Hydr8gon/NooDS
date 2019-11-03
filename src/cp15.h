@@ -22,22 +22,35 @@
 
 #include <cstdint>
 
-namespace cp15
+class Interpreter;
+
+class Cp15
 {
+    public:
+        Cp15(Interpreter *arm9): arm9(arm9) {}
 
-extern uint32_t exceptionBase;
+        uint32_t read(unsigned int cn, unsigned int cm, unsigned int cp);
+        void write(unsigned int cn, unsigned int cm, unsigned int cp, uint32_t value);
 
-extern bool dtcmEnable;
-extern uint32_t dtcmBase, dtcmSize;
+        uint32_t getExceptionAddr() { return exceptionAddr; }
+        bool getDtcmEnabled()       { return dtcmEnabled;   }
+        bool getItcmEnabled()       { return itcmEnabled;   }
+        uint32_t getDtcmAddr()      { return dtcmAddr;      }
+        uint32_t getDtcmSize()      { return dtcmSize;      }
+        uint32_t getItcmSize()      { return itcmSize;      }
 
-extern bool itcmEnable;
-extern uint32_t itcmSize;
+    private:
+        uint32_t ctrlReg = 0x00000078;
+        uint32_t dtcmReg = 0x00000000;
+        uint32_t itcmReg = 0x00000000;
 
-uint32_t readRegister(uint8_t cn, uint8_t cm, uint8_t cp);
-void writeRegister(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value);
+        uint32_t exceptionAddr = 0;
+        bool dtcmEnabled = false;
+        bool itcmEnabled = false;
+        uint32_t dtcmAddr = 0, dtcmSize = 0;
+        uint32_t itcmSize = 0;
 
-void init();
-
-}
+        Interpreter *arm9;
+};
 
 #endif // CP15_H

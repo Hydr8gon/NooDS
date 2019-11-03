@@ -22,13 +22,20 @@
 
 #include <cstdint>
 
-namespace rtc
+class Rtc
 {
+    public:
+        uint8_t readRtc() { return rtc; }
 
-void write(uint8_t *value);
+        void writeRtc(uint8_t value);
 
-void init();
+    private:
+        uint8_t writeCount = 0;
+        uint8_t command = 0;
+        uint8_t status1 = 0;
+        uint8_t dateTime[7] = {};
 
-}
+        uint8_t rtc = 0;
+};
 
 #endif // RTC_H

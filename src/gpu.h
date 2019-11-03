@@ -22,33 +22,38 @@
 
 #include <cstdint>
 
-namespace gpu
+class Gpu2D;
+class Interpreter;
+
+class Gpu
 {
+    public:
+        Gpu(Gpu2D *engineA, Gpu2D *engineB, Interpreter *arm9, Interpreter *arm7):
+            engineA(engineA), engineB(engineB), arm9(arm9), arm7(arm7) {}
 
-typedef struct
-{
-    uint16_t framebuffer[256 * 192];
-    uint16_t layers[8][256 * 192];
+        void scanline256();
+        void scanline355();
 
-    uint32_t *dispcnt;
-    uint16_t *bgcnt[4];
-    uint16_t *bghofs[4], *bgvofs[4];
+        uint16_t *getFramebuffer() { return framebuffer; }
 
-    uint16_t *palette;
-    uint16_t *oam;
-    uint16_t **extPalettes;
+        uint8_t readDispStat9(unsigned int byte) { return dispStat9 >> (byte * 8); }
+        uint8_t readDispStat7(unsigned int byte) { return dispStat7 >> (byte * 8); }
+        uint8_t readVCount(unsigned int byte)    { return vCount    >> (byte * 8); }
+        uint8_t readPowCnt1(unsigned int byte)   { return powCnt1   >> (byte * 8); }
 
-    uint32_t bgVramAddr, objVramAddr;
-} Engine;
+        void writeDispStat9(unsigned int byte, uint8_t value);
+        void writeDispStat7(unsigned int byte, uint8_t value);
+        void writePowCnt1(unsigned int byte, uint8_t value);
 
-extern Engine engineA, engineB;
+    private:
+        uint16_t framebuffer[256 * 192 * 2] = {};
 
-extern uint16_t displayBuffer[256 * 192 * 2];
-extern uint16_t fps;
+        uint16_t dispStat9 = 0, dispStat7 = 0;
+        uint16_t vCount = 0;
+        uint16_t powCnt1 = 0;
 
-void scanline256();
-void scanline355();
-
-}
+        Gpu2D *engineA, *engineB;
+        Interpreter *arm9, *arm7;
+};
 
 #endif // GPU_H

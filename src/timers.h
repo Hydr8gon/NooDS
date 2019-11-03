@@ -17,38 +17,38 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef SPI_H
-#define SPI_H
+#ifndef TIMERS_H
+#define TIMERS_H
 
 #include <cstdint>
 
 class Interpreter;
 
-class Spi
+class Timers
 {
     public:
-        Spi(Interpreter *arm7, uint8_t *firmware): arm7(arm7), firmware(firmware) {}
+        Timers(Interpreter *cpu): cpu(cpu) {}
 
-        void setTouch(int x, int y);
-        void clearTouch();
+        void tick();
+        void doubleTick();
 
-        uint8_t readSpiCnt(unsigned int byte) { return spiCnt >> (byte * 8); }
-        uint8_t readSpiData()                 { return spiData;              }
+        bool shouldTick() { return enabled; }
 
-        void writeSpiCnt(unsigned int byte, uint8_t value);
-        void writeSpiData(uint8_t value);
+        uint8_t readTmCntL(unsigned int timer, unsigned int byte) { return tmCntL[timer] >> (byte * 8); }
+        uint8_t readTmCntH(unsigned int timer)                    { return tmCntH[timer];               }
+
+        void writeTmCntL(unsigned int timer, unsigned int byte, uint8_t value);
+        void writeTmCntH(unsigned int timer, uint8_t value);
 
     private:
-        unsigned int writeCount = 0;
-        uint32_t address = 0;
-        uint8_t command = 0;
+        uint16_t tmCntL[4] = {};
+        uint8_t tmCntH[4] = {};
 
-        uint16_t touchX = 0x000, touchY = 0xFFF;
-        uint16_t spiCnt = 0;
-        uint8_t spiData = 0;
+        uint16_t reloads[4] = {};
+        uint16_t scalers[4] = {};
+        uint8_t enabled = 0;
 
-        Interpreter *arm7;
-        uint8_t *firmware;
+        Interpreter *cpu;
 };
 
-#endif // SPI_H
+#endif // TIMERS_H

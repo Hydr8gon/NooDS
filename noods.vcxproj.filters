@@ -30,22 +30,22 @@
     <ClCompile Include="src\dma.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\fifo.cpp">
+    <ClCompile Include="src\gpu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\gpu.cpp">
+    <ClCompile Include="src\gpu_2d.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\interpreter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\interpreter_alu.cpp">
+    <ClCompile Include="src\ipc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\interpreter_other.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\interpreter_transfer.cpp">
+    <ClCompile Include="src\math.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\memory.cpp">
@@ -57,7 +57,7 @@
     <ClCompile Include="src\spi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\timer.cpp">
+    <ClCompile Include="src\timers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -71,13 +71,19 @@
     <ClInclude Include="src\cp15.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\defines.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\dma.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\fifo.h">
+    <ClInclude Include="src\gpu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\gpu.h">
+    <ClInclude Include="src\gpu_2d.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\input.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\interpreter.h">
@@ -86,10 +92,16 @@
     <ClInclude Include="src\interpreter_alu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\interpreter_other.h">
+    <ClInclude Include="src\interpreter_branch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\interpreter_transfer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ipc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\math.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\memory.h">
@@ -101,7 +113,7 @@
     <ClInclude Include="src\spi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\timer.h">
+    <ClInclude Include="src\timers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

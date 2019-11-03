@@ -1,0 +1,10 @@
+build/
+x64/
+bios7.bin
+bios9.bin
+firmware.bin
+noods
+noods.elf
+noods.nacp
+noods.nro
+noods.vcxproj.user

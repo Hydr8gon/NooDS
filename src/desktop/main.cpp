@@ -22,110 +22,109 @@
 #include <wx/rawbmp.h>
 
 #include "../core.h"
-#include "../gpu.h"
 
 const char keyMap[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
 
+Core *core;
 std::thread *coreThread;
 bool running;
 
 void runCore()
 {
     while (running)
-        core::runScanline();
+        core->runFrame();
 }
 
-class EmuFrame: public wxFrame
+class NooFrame: public wxFrame
 {
     public:
-        EmuFrame();
+        NooFrame();
 
     private:
-        void openRom(wxCommandEvent &event);
+        void loadRom(wxCommandEvent &event);
         void bootFirmware(wxCommandEvent &event);
         void exit(wxCommandEvent &event);
-        void save(wxCloseEvent &event);
+        void stop(wxCloseEvent &event);
+
         wxDECLARE_EVENT_TABLE();
 };
 
-class DisplayPanel: public wxPanel
+class NooPanel: public wxPanel
 {
     public:
-        DisplayPanel(wxFrame *parent);
+        NooPanel(wxFrame *parent);
+
         void draw(bool clear);
 
     private:
         int x, y;
         float scale;
+
         void resize(wxSizeEvent &event);
         void pressKey(wxKeyEvent &event);
         void releaseKey(wxKeyEvent &event);
         void pressScreen(wxMouseEvent &event);
         void releaseScreen(wxMouseEvent &event);
+
         wxDECLARE_EVENT_TABLE();
 };
 
-class NooDS: public wxApp
+class NooApp: public wxApp
 {
     private:
-        EmuFrame *frame;
-        DisplayPanel *panel;
+        NooFrame *frame;
+        NooPanel *panel;
+
         bool OnInit();
         void requestDraw(wxIdleEvent &event);
 };
 
-wxIMPLEMENT_APP(NooDS);
+wxIMPLEMENT_APP(NooApp);
 
-wxBEGIN_EVENT_TABLE(EmuFrame, wxFrame)
-EVT_MENU(0,         EmuFrame::openRom)
-EVT_MENU(1,         EmuFrame::bootFirmware)
-EVT_MENU(wxID_EXIT, EmuFrame::exit)
-EVT_CLOSE(EmuFrame::save)
+wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
+EVT_MENU(0, NooFrame::loadRom)
+EVT_MENU(1, NooFrame::bootFirmware)
+EVT_MENU(wxID_EXIT, NooFrame::exit)
+EVT_CLOSE(NooFrame::stop)
 wxEND_EVENT_TABLE()
 
-wxBEGIN_EVENT_TABLE(DisplayPanel, wxPanel)
-EVT_SIZE(DisplayPanel::resize)
-EVT_KEY_DOWN(DisplayPanel::pressKey)
-EVT_KEY_UP(DisplayPanel::releaseKey)
-EVT_LEFT_DOWN(DisplayPanel::pressScreen)
-EVT_MOTION(DisplayPanel::pressScreen)
-EVT_LEFT_UP(DisplayPanel::releaseScreen)
+wxBEGIN_EVENT_TABLE(NooPanel, wxPanel)
+EVT_SIZE(NooPanel::resize)
+EVT_KEY_DOWN(NooPanel::pressKey)
+EVT_KEY_UP(NooPanel::releaseKey)
+EVT_LEFT_DOWN(NooPanel::pressScreen)
+EVT_MOTION(NooPanel::pressScreen)
+EVT_LEFT_UP(NooPanel::releaseScreen)
 wxEND_EVENT_TABLE()
 
-bool NooDS::OnInit()
+bool NooApp::OnInit()
 {
-#ifndef _WIN32
-    // Disable debug output unless "-v" is specified as an argument
-    // Windows doesn't like this though...
-    if (argc == 1 || argv[1] != "-v")
-        fclose(stdout);
-#endif
-
     // Set up the window
-    frame = new EmuFrame();
-    panel = new DisplayPanel(frame);
+    frame = new NooFrame();
+    panel = new NooPanel(frame);
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
     sizer->Add(panel, 1, wxEXPAND);     
     frame->SetSizer(sizer);
-    Connect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(NooDS::requestDraw));
+    Connect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(NooApp::requestDraw));
+
     return true;
 }
 
-void NooDS::requestDraw(wxIdleEvent &event)
+void NooApp::requestDraw(wxIdleEvent &event)
 {
     // Refresh the display
     panel->draw(false);
     event.RequestMore();
 
-    // Update the window title
-    frame->SetLabel(wxString::Format(wxT("NooDS - %d FPS"), gpu::fps));
+    // Update the FPS in the window title if the core is running
+    frame->SetLabel(running ? wxString::Format(wxT("NooDS - %d FPS"), core->getFps()) : wxT("NooDS"));
 }
 
-EmuFrame::EmuFrame(): wxFrame(NULL, wxID_ANY, "", wxPoint(50, 50), wxSize(256, 192 * 2), wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS)
+NooFrame::NooFrame(): wxFrame(NULL, wxID_ANY, "", wxPoint(50, 50), wxSize(256, 192 * 2), wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS)
 {
     // Set up the File menu
     wxMenu *fileMenu = new wxMenu();
-    fileMenu->Append(0, "&Open ROM");
+    fileMenu->Append(0, "&Load ROM");
     fileMenu->Append(1, "&Boot Firmware");
     fileMenu->AppendSeparator();
     fileMenu->Append(wxID_EXIT);
@@ -143,109 +142,111 @@ EmuFrame::EmuFrame(): wxFrame(NULL, wxID_ANY, "", wxPoint(50, 50), wxSize(256, 1
     Show(true);
 }
 
-void EmuFrame::openRom(wxCommandEvent &event)
+void NooFrame::loadRom(wxCommandEvent &event)
 {
-    // Show the file picker
-    wxFileDialog romSelect(this, "Open ROM File", "", "", "NDS ROM files (*.nds)|*.nds", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    // Show the file browser
+    wxFileDialog romSelect(this, "Select ROM File", "", "", "NDS ROM files (*.nds)|*.nds", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (romSelect.ShowModal() == wxID_CANCEL)
         return;
 
-    // Stop the emulator thread and save the game if it was running
+    // Ensure the core thread is stopped
     if (coreThread)
     {
         running = false;
         coreThread->join();
         delete coreThread;
-        core::writeSave();
     }
 
-    // Attempt to initialize the emulator
-    if (!core::init())
-    {
-        wxMessageBox("Initialization failed. Make sure you have BIOS files named 'bios9.bin' and 'bios7.bin' "
-                     "and a firmware file named 'firmware.bin' placed in the same directory as the emulator.");
-        return;
-    }
-
-    // Attempt to load the ROM
+    // Get the ROM path
     char path[1024];
     strncpy(path, (const char*)romSelect.GetPath().mb_str(wxConvUTF8), 1023);
-    if (!core::loadRom(path))
+
+    // Attempt to boot the ROM
+    try
     {
-        wxMessageBox("ROM loading failed. Make sure the file is accessible.");
-        return;
+        if (core) delete core;
+        core = new Core(path);
     }
-
-    // Start the emulator
-    running = true;
-    coreThread = new std::thread(runCore);
-}
-
-void EmuFrame::bootFirmware(wxCommandEvent &event)
-{
-    // Stop the emulator thread and save the game if it was running
-    if (coreThread)
-    {
-        running = false;
-        coreThread->join();
-        delete coreThread;
-        core::writeSave();
-    }
-
-    // Attempt to initialize the emulator
-    if (!core::init())
+    catch (std::exception *e)
     {
         wxMessageBox("Initialization failed. Make sure you have BIOS files named 'bios9.bin' and 'bios7.bin' "
                      "and a firmware file named 'firmware.bin' placed in the same directory as the emulator.");
         return;
     }
 
-    // Start the emulator
+    // Start the core thread
     running = true;
     coreThread = new std::thread(runCore);
 }
 
-void EmuFrame::exit(wxCommandEvent &event)
+void NooFrame::bootFirmware(wxCommandEvent &event)
 {
+    // Ensure the core thread is stopped
+    if (coreThread)
+    {
+        running = false;
+        coreThread->join();
+        delete coreThread;
+    }
+
+    // Attempt to boot the firmware
+    try
+    {
+        if (core) delete core;
+        core = new Core();
+    }
+    catch (std::exception *e)
+    {
+        wxMessageBox("Initialization failed. Make sure you have BIOS files named 'bios9.bin' and 'bios7.bin' "
+                     "and a firmware file named 'firmware.bin' placed in the same directory as the emulator.");
+        return;
+    }
+
+    // Start the core thread
+    running = true;
+    coreThread = new std::thread(runCore);
+}
+
+void NooFrame::exit(wxCommandEvent &event)
+{
+    // Close the program
     Close(true);
 }
 
-void EmuFrame::save(wxCloseEvent &event)
+void NooFrame::stop(wxCloseEvent &event)
 {
-    // Stop the emulator thread and save the game if it was running
+    // Ensure the core thread is stopped
     if (coreThread)
     {
         running = false;
         coreThread->join();
         delete coreThread;
-        core::writeSave();
     }
 
     event.Skip(true);
 }
 
-DisplayPanel::DisplayPanel(wxFrame *parent): wxPanel(parent)
+NooPanel::NooPanel(wxFrame *parent): wxPanel(parent)
 {
+    // Set the panel size and set focus for reading input
     SetSize(256, 192 * 2);
-
-    // Set focus so that key inputs will be received
     SetFocus();
 }
 
-void DisplayPanel::draw(bool clear)
+void NooPanel::draw(bool clear)
 {
     wxBitmap bmp(256, 192 * 2, 24);
     wxNativePixelData data(bmp);
     wxNativePixelData::Iterator iter(data);
 
-    // Copy the display to a bitmap
+    // Copy the framebuffer to a bitmap
     for (int y = 0; y < 192 * 2; y++)
     {
         wxNativePixelData::Iterator pixel = iter;
         for (int x = 0; x < 256; x++, pixel++)
         {
             // Convert the color values from 5-bit to 8-bit
-            uint16_t color = gpu::displayBuffer[y * 256 + x];
+            uint16_t color = core ? core->getFramebuffer()[y * 256 + x] : 0;
             pixel.Red()   = ((color >>  0) & 0x1F) * 255 / 31;
             pixel.Green() = ((color >>  5) & 0x1F) * 255 / 31;
             pixel.Blue()  = ((color >> 10) & 0x1F) * 255 / 31;
@@ -253,7 +254,7 @@ void DisplayPanel::draw(bool clear)
         iter.OffsetY(data, 1);
     }
 
-    // Draw the display bitmap
+    // Draw the bitmap
     // Clearing can cause flickering, so only do it when necessary (on resize)
     wxClientDC dc(this);
     if (clear) dc.Clear();
@@ -261,7 +262,7 @@ void DisplayPanel::draw(bool clear)
     dc.DrawBitmap(bmp, wxPoint(x, y));
 }
 
-void DisplayPanel::resize(wxSizeEvent &event)
+void NooPanel::resize(wxSizeEvent &event)
 {
     // Scale the display based on the aspect ratio of the window
     // If the window is wider than the DS ratio, scale to the height of the window
@@ -271,50 +272,53 @@ void DisplayPanel::resize(wxSizeEvent &event)
     float window = (float)size.x / size.y;
     scale = ((ratio >= window) ? (float)size.x / 256 : (float)size.y / (192 * 2));
 
-    // Keep the display centered
+    // Center the display
     x = ((float)size.x / scale - 256)     / 2;
     y = ((float)size.y / scale - 192 * 2) / 2;
 
     draw(true);
 }
 
-void DisplayPanel::pressKey(wxKeyEvent &event)
+void NooPanel::pressKey(wxKeyEvent &event)
 {
-    // Send a key press to the emulator
+    if (!core) return;
+
+    // Send a key press to the core
     for (int i = 0; i < 12; i++)
     {
         if (event.GetKeyCode() == keyMap[i])
-            core::pressKey(i);
+            core->pressKey(i);
     }
 }
 
-void DisplayPanel::releaseKey(wxKeyEvent &event)
+void NooPanel::releaseKey(wxKeyEvent &event)
 {
-    // Send a key release to the emulator
+    if (!core) return;
+
+    // Send a key release to the core
     for (int i = 0; i < 12; i++)
     {
         if (event.GetKeyCode() == keyMap[i])
-            core::releaseKey(i);
+            core->releaseKey(i);
     }
 }
 
-void DisplayPanel::pressScreen(wxMouseEvent &event)
+void NooPanel::pressScreen(wxMouseEvent &event)
 {
-    // Don't do anything if the mouse button isn't pressed
-    if (!event.LeftDown() && !event.Dragging())
+    // Ensure the left mouse button is clicked
+    if (!core || (!event.LeftDown() && !event.Dragging()))
         return;
 
     // Determine the touch position relative to the emulated touch screen
-    int16_t touchX = (float)event.GetX() / scale - x;
-    int16_t touchY = (float)event.GetY() / scale - y - 192;
+    int touchX = (float)event.GetX() / scale - x;
+    int touchY = (float)event.GetY() / scale - y - 192;
 
-    // Send the touch coordinates to the emulator if they're within bounds
-    if (touchX >= 0 && touchX < 256 && touchY >= 0 && touchY < 192)
-        core::pressScreen(touchX, touchY);
+    // Send the touch coordinates to the core
+    core->pressScreen(touchX, touchY);
 }
 
-void DisplayPanel::releaseScreen(wxMouseEvent &event)
+void NooPanel::releaseScreen(wxMouseEvent &event)
 {
-    // Release the touch screen press
-    core::releaseScreen();
+    // Send a touch release to the core
+    if (core) core->releaseScreen();
 }

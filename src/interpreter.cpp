@@ -18,3371 +18,3003 @@
 */
 
 #include <cstdio>
-#include <cstring>
 
 #include "interpreter.h"
-#include "core.h"
-#include "cp15.h"
 #include "interpreter_alu.h"
-#include "interpreter_other.h"
+#include "interpreter_branch.h"
 #include "interpreter_transfer.h"
-#include "memory.h"
 
-namespace interpreter
+Interpreter::Interpreter(Memory *memory): cp15(nullptr), memory(memory)
 {
+    for (int i = 0; i < 16; i++)
+        registers[i] = &registersUsr[i];
 
-Cpu arm9, arm7;
+    // Prepare an ARM7 interpreter to boot the BIOS
+    registersUsr[15] = 0x00000000 + 8;
+    cpsr = 0x000000C0;
+    setMode(0x13); // Supervisor
+}
 
-typedef void (*Instruction)(Cpu*, uint32_t);
-Instruction armInstructions[0x1000];
-Instruction thumbInstructions[0x100];
+Interpreter::Interpreter(Cp15 *cp15, Memory *memory): cp15(cp15), memory(memory)
+{
+    for (int i = 0; i < 16; i++)
+        registers[i] = &registersUsr[i];
 
-bool condition(Cpu *cpu, uint32_t opcode)
+    // Prepare an ARM9 interpreter to boot the BIOS
+    registersUsr[15] = 0xFFFF0000 + 8;
+    cpsr = 0x000000C0;
+    setMode(0x13); // Supervisor
+}
+
+void Interpreter::directBoot(uint32_t entryAddr)
+{
+    // Prepare an interpreter to directly boot a game
+    registersUsr[12] = entryAddr;
+    registersUsr[14] = entryAddr;
+    registersUsr[15] = entryAddr + 8;
+    setMode(0x1F); // System
+
+    if (cp15)
+    {
+        registersUsr[13] = 0x03002F7C;
+        registersIrq[0]  = 0x03003F80;
+        registersSvc[0]  = 0x03003FC0;
+    }
+    else
+    {
+        registersUsr[13] = 0x0380FD80;
+        registersIrq[0]  = 0x0380FF80;
+        registersSvc[0]  = 0x0380FFC0;
+    }
+}
+
+void Interpreter::runCycle()
+{
+    // Execute an instruction
+    if (cpsr & BIT(5)) // THUMB mode
+    {
+        // Execute 2 opcodes behind the program counter because of pipelining
+        // In THUMB mode, this is 4 bytes behind
+        uint16_t opcode = memory->read<uint16_t>(cp15, *registers[15] - 4);
+
+        // THUMB lookup table, based on the map found at http://imrannazar.com/ARM-Opcode-Map
+        // Uses bits 15-8 of an opcode to find the appropriate instruction
+        switch ((opcode & 0xFF00) >> 8)
+        {
+            case 0x00: case 0x01: case 0x02: case 0x03:
+            case 0x04: case 0x05: case 0x06: case 0x07:
+                lslImmT(opcode); // LSL Rd,Rs,#i
+                break;
+
+            case 0x08: case 0x09: case 0x0A: case 0x0B:
+            case 0x0C: case 0x0D: case 0x0E: case 0x0F:
+                lsrImmT(opcode); // LSR Rd,Rs,#i
+                break;
+
+            case 0x10: case 0x11: case 0x12: case 0x13:
+            case 0x14: case 0x15: case 0x16: case 0x17:
+                asrImmT(opcode); // ASR Rd,Rs,#i
+                break;
+
+            case 0x18: case 0x19:
+                addRegT(opcode); // ADD Rd,Rs,Rn
+                break;
+
+            case 0x1A: case 0x1B:
+                subRegT(opcode); // SUB Rd,Rs,Rn
+                break;
+
+            case 0x1C: case 0x1D:
+                addImm3T(opcode); // ADD Rd,Rs,#i
+                break;
+
+            case 0x1E: case 0x1F:
+                subImm3T(opcode); // SUB Rd,Rs,#i
+                break;
+
+            case 0x20: case 0x21: case 0x22: case 0x23:
+            case 0x24: case 0x25: case 0x26: case 0x27:
+                movImm8T(opcode); // MOV Rd,#i
+                break;
+
+            case 0x28: case 0x29: case 0x2A: case 0x2B:
+            case 0x2C: case 0x2D: case 0x2E: case 0x2F:
+                cmpImm8T(opcode); // CMP Rd,#i
+                break;
+
+            case 0x30: case 0x31: case 0x32: case 0x33:
+            case 0x34: case 0x35: case 0x36: case 0x37:
+                addImm8T(opcode); // ADD Rd,#i
+                break;
+
+            case 0x38: case 0x39: case 0x3A: case 0x3B:
+            case 0x3C: case 0x3D: case 0x3E: case 0x3F:
+                subImm8T(opcode); // SUB Rd,#i
+                break;
+
+            case 0x40:
+                switch ((opcode & 0x00C0) >> 6)
+                {
+                    case 0: andDpT(opcode); break; // AND Rd,Rs
+                    case 1: eorDpT(opcode); break; // EOR Rd,Rs
+                    case 2: lslDpT(opcode); break; // LSL Rd,Rs
+                    case 3: lsrDpT(opcode); break; // LSR Rd,Rs
+                }
+                break;
+
+            case 0x41:
+                switch ((opcode & 0x00C0) >> 6)
+                {
+                    case 0: asrDpT(opcode); break; // ASR Rd,Rs
+                    case 1: adcDpT(opcode); break; // ADC Rd,Rs
+                    case 2: sbcDpT(opcode); break; // SBC Rd,Rs
+                    case 3: rorDpT(opcode); break; // ROR Rd,Rs
+                }
+                break;
+
+            case 0x42:
+                switch ((opcode & 0x00C0) >> 6)
+                {
+                    case 0: tstDpT(opcode); break; // TST Rd,Rs
+                    case 1: negDpT(opcode); break; // NEG Rd,Rs
+                    case 2: cmpDpT(opcode); break; // CMP Rd,Rs
+                    case 3: cmnDpT(opcode); break; // CMN Rd,Rs
+                }
+                break;
+
+            case 0x43:
+                switch ((opcode & 0x00C0) >> 6)
+                {
+                    case 0: orrDpT(opcode); break; // ORR Rd,Rs
+                    case 1: mulDpT(opcode); break; // MUL Rd,Rs
+                    case 2: bicDpT(opcode); break; // BIC Rd,Rs
+                    case 3: mvnDpT(opcode); break; // MVN Rd,Rs
+                }
+                break;
+
+            case 0x44:
+                addHT(opcode); // ADD Rd,Rs
+                break;
+
+            case 0x45:
+                cmpHT(opcode); // CMP Rd,Rs
+                break;
+
+            case 0x46:
+                movHT(opcode); // MOV Rd,Rs
+                break;
+
+            case 0x47:
+                if (opcode & BIT(7))
+                    blxRegT(opcode); // BLX Rs
+                else
+                    bxRegT(opcode); // BX Rs
+                break;
+
+            case 0x48: case 0x49: case 0x4A: case 0x4B:
+            case 0x4C: case 0x4D: case 0x4E: case 0x4F:
+                ldrPcT(opcode); // LDR Rd,[PC,#i]
+                break;
+
+            case 0x50: case 0x51:
+                strRegT(opcode); // STR Rd,[Rb,Ro]
+                break;
+
+            case 0x52: case 0x53:
+                strhRegT(opcode); // STRH Rd,[Rb,Ro]
+                break;
+
+            case 0x54: case 0x55:
+                strbRegT(opcode); // STRB Rd,[Rb,Ro]
+                break;
+
+            case 0x56: case 0x57:
+                ldrsbRegT(opcode); // LDRSB Rd,[Rb,Ro]
+                break;
+
+            case 0x58: case 0x59:
+                ldrRegT(opcode); // LDR Rd,[Rb,Ro]
+                break;
+
+            case 0x5A: case 0x5B:
+                ldrhRegT(opcode); // LDRH Rd,[Rb,Ro]
+                break;
+
+            case 0x5C: case 0x5D:
+                ldrbRegT(opcode); // LDRB Rd,[Rb,Ro]
+                break;
+
+            case 0x5E: case 0x5F:
+                ldrshRegT(opcode); // LDRSH Rd,[Rb,Ro]
+                break;
+
+            case 0x60: case 0x61: case 0x62: case 0x63:
+            case 0x64: case 0x65: case 0x66: case 0x67:
+                strImm5T(opcode); // STR Rd,[Rb,#i]
+                break;
+
+            case 0x68: case 0x69: case 0x6A: case 0x6B:
+            case 0x6C: case 0x6D: case 0x6E: case 0x6F:
+                ldrImm5T(opcode); // LDR Rd,[Rb,#i]
+                break;
+
+            case 0x70: case 0x71: case 0x72: case 0x73:
+            case 0x74: case 0x75: case 0x76: case 0x77:
+                strbImm5T(opcode); // STRB Rd,[Rb,#i]
+                break;
+
+            case 0x78: case 0x79: case 0x7A: case 0x7B:
+            case 0x7C: case 0x7D: case 0x7E: case 0x7F:
+                ldrbImm5T(opcode); // LDRB Rd,[Rb,#i]
+                break;
+
+            case 0x80: case 0x81: case 0x82: case 0x83:
+            case 0x84: case 0x85: case 0x86: case 0x87:
+                strhImm5T(opcode); // STRH Rd,[Rb,#i]
+                break;
+
+            case 0x88: case 0x89: case 0x8A: case 0x8B:
+            case 0x8C: case 0x8D: case 0x8E: case 0x8F:
+                ldrhImm5T(opcode); // LDRH Rd,[Rb,#i]
+                break;
+
+            case 0x90: case 0x91: case 0x92: case 0x93:
+            case 0x94: case 0x95: case 0x96: case 0x97:
+                strSpT(opcode); // STR Rd,[SP,#i]
+                break;
+
+            case 0x98: case 0x99: case 0x9A: case 0x9B:
+            case 0x9C: case 0x9D: case 0x9E: case 0x9F:
+                ldrSpT(opcode); // LDR Rd,[SP,#i]
+                break;
+
+            case 0xA0: case 0xA1: case 0xA2: case 0xA3:
+            case 0xA4: case 0xA5: case 0xA6: case 0xA7:
+                addPcT(opcode); // ADD Rd,PC,#i
+                break;
+
+            case 0xA8: case 0xA9: case 0xAA: case 0xAB:
+            case 0xAC: case 0xAD: case 0xAE: case 0xAF:
+                addSpT(opcode); // ADD Rd,SP,#i
+                break;
+
+            case 0xB0:
+                addSpImmT(opcode); // ADD SP,#i
+                break;
+
+            case 0xB4:
+                pushT(opcode); // PUSH <Rlist>
+                break;
+
+            case 0xB5:
+                pushLrT(opcode); // PUSH <Rlist>,LR
+                break;
+
+            case 0xBC:
+                popT(opcode); // POP <Rlist>
+                break;
+
+            case 0xBD:
+                popPcT(opcode); // POP <Rlist>,PC
+                break;
+
+            case 0xC0: case 0xC1: case 0xC2: case 0xC3:
+            case 0xC4: case 0xC5: case 0xC6: case 0xC7:
+                stmiaT(opcode); // STMIA Rb!,<Rlist>
+                break;
+
+            case 0xC8: case 0xC9: case 0xCA: case 0xCB:
+            case 0xCC: case 0xCD: case 0xCE: case 0xCF:
+                ldmiaT(opcode); // LDMIA Rb!,<Rlist>
+                break;
+
+            case 0xD0:
+                beqT(opcode); // BEQ label
+                break;
+
+            case 0xD1:
+                bneT(opcode); // BNE label
+                break;
+
+            case 0xD2:
+                bcsT(opcode); // BCS label
+                break;
+
+            case 0xD3:
+                bccT(opcode); // BCC label
+                break;
+
+            case 0xD4:
+                bmiT(opcode); // BMI label
+                break;
+
+            case 0xD5:
+                bplT(opcode); // BPL label
+                break;
+
+            case 0xD6:
+                bvsT(opcode); // BVS label
+                break;
+
+            case 0xD7:
+                bvcT(opcode); // BVC label
+                break;
+
+            case 0xD8:
+                bhiT(opcode); // BHI label
+                break;
+
+            case 0xD9:
+                blsT(opcode); // BLS label
+                break;
+
+            case 0xDA:
+                bgeT(opcode); // BGE label
+                break;
+
+            case 0xDB:
+                bltT(opcode); // BLT label
+                break;
+
+            case 0xDC:
+                bgtT(opcode); // BGT label
+                break;
+
+            case 0xDD:
+                bleT(opcode); // BLE label
+                break;
+
+            case 0xDF:
+                swiT(); // SWI #i
+                break;
+
+            case 0xE0: case 0xE1: case 0xE2: case 0xE3:
+            case 0xE4: case 0xE5: case 0xE6: case 0xE7:
+                bT(opcode); // B label
+                break;
+
+            case 0xE8: case 0xE9: case 0xEA: case 0xEB:
+            case 0xEC: case 0xED: case 0xEE: case 0xEF:
+                blxOffT(opcode); // BLX label
+                break;
+
+            case 0xF0: case 0xF1: case 0xF2: case 0xF3:
+            case 0xF4: case 0xF5: case 0xF6: case 0xF7:
+                blSetupT(opcode); // BL/BLX label
+                break;
+
+            case 0xF8: case 0xF9: case 0xFA: case 0xFB:
+            case 0xFC: case 0xFD: case 0xFE: case 0xFF:
+                blOffT(opcode); // BL label
+                break;
+
+            default:
+                printf("Unknown ARM%d THUMB opcode: 0x%X\n", (cp15 ? 9 : 7), opcode);
+                break;
+        }
+
+        // Increment the program counter
+        *registers[15] += 2;
+    }
+    else // ARM mode
+    {
+        // Execute 2 opcodes behind the program counter because of pipelining
+        // In ARM mode, this is 8 bytes behind
+        uint32_t opcode = memory->read<uint32_t>(cp15, *registers[15] - 8);
+
+        if (condition(opcode))
+        {
+            // ARM lookup table, based on the map found at http://imrannazar.com/ARM-Opcode-Map
+            // Uses bits 27-20 and 7-4 of an opcode to find the appropriate instruction
+            switch (((opcode & 0x0FF00000) >> 16) | ((opcode & 0x000000F0) >> 4))
+            {
+                case 0x000: case 0x008:
+                    _and(opcode, lli(opcode)); // AND Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x001:
+                    _and(opcode, llr(opcode)); // AND Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x002: case 0x00A:
+                    _and(opcode, lri(opcode)); // AND Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x003:
+                    _and(opcode, lrr(opcode)); // AND Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x004: case 0x00C:
+                    _and(opcode, ari(opcode)); // AND Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x005:
+                    _and(opcode, arr(opcode)); // AND Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x006: case 0x00E:
+                    _and(opcode, rri(opcode)); // AND Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x007:
+                    _and(opcode, rrr(opcode)); // AND Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x009:
+                    mul(opcode); // MUL Rd,Rm,Rs
+                    break;
+
+                case 0x00B: case 0x02B:
+                    strhPt(opcode, -rp(opcode)); // STRH Rd,[Rn],-Rm
+                    break;
+
+                case 0x010: case 0x018:
+                    ands(opcode, lliS(opcode)); // ANDS Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x011:
+                    ands(opcode, llrS(opcode)); // ANDS Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x012: case 0x01A:
+                    ands(opcode, lriS(opcode)); // ANDS Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x013:
+                    ands(opcode, lrrS(opcode)); // ANDS Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x014: case 0x01C:
+                    ands(opcode, ariS(opcode)); // ANDS Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x015:
+                    ands(opcode, arrS(opcode)); // ANDS Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x016: case 0x01E:
+                    ands(opcode, rriS(opcode)); // ANDS Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x017:
+                    ands(opcode, rrrS(opcode)); // ANDS Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x019:
+                    muls(opcode); // MULS Rd,Rm,Rs
+                    break;
+
+                case 0x01B: case 0x03B:
+                    ldrhPt(opcode, -rp(opcode)); // LDRH Rd,[Rn],-Rm
+                    break;
+
+                case 0x01D: case 0x03D:
+                    ldrsbPt(opcode, -rp(opcode)); // LDRSB Rd,[Rn],-Rm
+                    break;
+
+                case 0x01F: case 0x03F:
+                    ldrshPt(opcode, -rp(opcode)); // LDRSH Rd,[Rn],-Rm
+                    break;
+
+                case 0x020: case 0x028:
+                    eor(opcode, lli(opcode)); // EOR Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x021:
+                    eor(opcode, llr(opcode)); // EOR Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x022: case 0x02A:
+                    eor(opcode, lri(opcode)); // EOR Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x023:
+                    eor(opcode, lrr(opcode)); // EOR Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x024: case 0x02C:
+                    eor(opcode, ari(opcode)); // EOR Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x025:
+                    eor(opcode, arr(opcode)); // EOR Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x026: case 0x02E:
+                    eor(opcode, rri(opcode)); // EOR Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x027:
+                    eor(opcode, rrr(opcode)); // EOR Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x029:
+                    mla(opcode); // MLA Rd,Rm,Rs,Rn
+                    break;
+
+                case 0x030: case 0x038:
+                    eors(opcode, lliS(opcode)); // EORS Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x031:
+                    eors(opcode, llrS(opcode)); // EORS Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x032: case 0x03A:
+                    eors(opcode, lriS(opcode)); // EORS Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x033:
+                    eors(opcode, lrrS(opcode)); // EORS Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x034: case 0x03C:
+                    eors(opcode, ariS(opcode)); // EORS Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x035:
+                    eors(opcode, arrS(opcode)); // EORS Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x036: case 0x03E:
+                    eors(opcode, rriS(opcode)); // EORS Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x037:
+                    eors(opcode, rrrS(opcode)); // EORS Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x039:
+                    mlas(opcode); // MLAS Rd,Rm,Rs,Rn
+                    break;
+
+                case 0x040: case 0x048:
+                    sub(opcode, lli(opcode)); // SUB Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x041:
+                    sub(opcode, llr(opcode)); // SUB Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x042: case 0x04A:
+                    sub(opcode, lri(opcode)); // SUB Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x043:
+                    sub(opcode, lrr(opcode)); // SUB Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x044: case 0x04C:
+                    sub(opcode, ari(opcode)); // SUB Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x045:
+                    sub(opcode, arr(opcode)); // SUB Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x046: case 0x04E:
+                    sub(opcode, rri(opcode)); // SUB Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x047:
+                    sub(opcode, rrr(opcode)); // SUB Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x04B: case 0x06B:
+                    strhPt(opcode, -ipH(opcode)); // STRH Rd,[Rn],-#i
+                    break;
+
+                case 0x050: case 0x058:
+                    subs(opcode, lli(opcode)); // SUBS Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x051:
+                    subs(opcode, llr(opcode)); // SUBS Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x052: case 0x05A:
+                    subs(opcode, lri(opcode)); // SUBS Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x053:
+                    subs(opcode, lrr(opcode)); // SUBS Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x054: case 0x05C:
+                    subs(opcode, ari(opcode)); // SUBS Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x055:
+                    subs(opcode, arr(opcode)); // SUBS Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x056: case 0x05E:
+                    subs(opcode, rri(opcode)); // SUBS Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x057:
+                    subs(opcode, rrr(opcode)); // SUBS Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x05B: case 0x07B:
+                    ldrhPt(opcode, -ipH(opcode)); // LDRH Rd,[Rn],-#i
+                    break;
+
+                case 0x05D: case 0x07D:
+                    ldrsbPt(opcode, -ipH(opcode)); // LDRSB Rd,[Rn],-#i
+                    break;
+
+                case 0x05F: case 0x07F:
+                    ldrshPt(opcode, -ipH(opcode)); // LDRSH Rd,[Rn],-#i
+                    break;
+
+                case 0x060: case 0x068:
+                    rsb(opcode, lli(opcode)); // RSB Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x061:
+                    rsb(opcode, llr(opcode)); // RSB Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x062: case 0x06A:
+                    rsb(opcode, lri(opcode)); // RSB Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x063:
+                    rsb(opcode, lrr(opcode)); // RSB Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x064: case 0x06C:
+                    rsb(opcode, ari(opcode)); // RSB Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x065:
+                    rsb(opcode, arr(opcode)); // RSB Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x066: case 0x06E:
+                    rsb(opcode, rri(opcode)); // RSB Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x067:
+                    rsb(opcode, rrr(opcode)); // RSB Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x070: case 0x078:
+                    rsbs(opcode, lli(opcode)); // RSBS Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x071:
+                    rsbs(opcode, llr(opcode)); // RSBS Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x072: case 0x07A:
+                    rsbs(opcode, lri(opcode)); // RSBS Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x073:
+                    rsbs(opcode, lrr(opcode)); // RSBS Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x074: case 0x07C:
+                    rsbs(opcode, ari(opcode)); // RSBS Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x075:
+                    rsbs(opcode, arr(opcode)); // RSBS Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x076: case 0x07E:
+                    rsbs(opcode, rri(opcode)); // RSBS Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x077:
+                    rsbs(opcode, rrr(opcode)); // RSBS Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x080: case 0x088:
+                    add(opcode, lli(opcode)); // ADD Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x081:
+                    add(opcode, llr(opcode)); // ADD Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x082: case 0x08A:
+                    add(opcode, lri(opcode)); // ADD Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x083:
+                    add(opcode, lrr(opcode)); // ADD Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x084: case 0x08C:
+                    add(opcode, ari(opcode)); // ADD Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x085:
+                    add(opcode, arr(opcode)); // ADD Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x086: case 0x08E:
+                    add(opcode, rri(opcode)); // ADD Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x087:
+                    add(opcode, rrr(opcode)); // ADD Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x089:
+                    umull(opcode); // UMULL RdLo,RdHi,Rm,Rs
+                    break;
+
+                case 0x08B: case 0x0AB:
+                    strhPt(opcode, rp(opcode)); // STRH Rd,[Rn],Rm
+                    break;
+
+                case 0x090: case 0x098:
+                    adds(opcode, lli(opcode)); // ADDS Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x091:
+                    adds(opcode, llr(opcode)); // ADDS Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x092: case 0x09A:
+                    adds(opcode, lri(opcode)); // ADDS Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x093:
+                    adds(opcode, lrr(opcode)); // ADDS Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x094: case 0x09C:
+                    adds(opcode, ari(opcode)); // ADDS Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x095:
+                    adds(opcode, arr(opcode)); // ADDS Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x096: case 0x09E:
+                    adds(opcode, rri(opcode)); // ADDS Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x097:
+                    adds(opcode, rrr(opcode)); // ADDS Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x099:
+                    umulls(opcode); // UMULLS RdLo,RdHi,Rm,Rs
+                    break;
+
+                case 0x09B: case 0x0BB:
+                    ldrhPt(opcode, rp(opcode)); // LDRH Rd,[Rn],Rm
+                    break;
+
+                case 0x09D: case 0x0BD:
+                    ldrsbPt(opcode, rp(opcode)); // LDRSB Rd,[Rn],Rm
+                    break;
+
+                case 0x09F: case 0x0BF:
+                    ldrshPt(opcode, rp(opcode)); // LDRSH Rd,[Rn],Rm
+                    break;
+
+                case 0x0A0: case 0x0A8:
+                    adc(opcode, lli(opcode)); // ADC Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x0A1:
+                    adc(opcode, llr(opcode)); // ADC Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x0A2: case 0x0AA:
+                    adc(opcode, lri(opcode)); // ADC Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x0A3:
+                    adc(opcode, lrr(opcode)); // ADC Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x0A4: case 0x0AC:
+                    adc(opcode, ari(opcode)); // ADC Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x0A5:
+                    adc(opcode, arr(opcode)); // ADC Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x0A6: case 0x0AE:
+                    adc(opcode, rri(opcode)); // ADC Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x0A7:
+                    adc(opcode, rrr(opcode)); // ADC Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x0A9:
+                    umlal(opcode); // UMLAL RdLo,RdHi,Rm,Rs
+                    break;
+
+                case 0x0B0: case 0x0B8:
+                    adcs(opcode, lli(opcode)); // ADCS Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x0B1:
+                    adcs(opcode, llr(opcode)); // ADCS Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x0B2: case 0x0BA:
+                    adcs(opcode, lri(opcode)); // ADCS Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x0B3:
+                    adcs(opcode, lrr(opcode)); // ADCS Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x0B4: case 0x0BC:
+                    adcs(opcode, ari(opcode)); // ADCS Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x0B5:
+                    adcs(opcode, arr(opcode)); // ADCS Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x0B6: case 0x0BE:
+                    adcs(opcode, rri(opcode)); // ADCS Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x0B7:
+                    adcs(opcode, rrr(opcode)); // ADCS Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x0B9:
+                    umlals(opcode); // UMLALS RdLo,RdHi,Rm,Rs
+                    break;
+
+                case 0x0C0: case 0x0C8:
+                    sbc(opcode, lli(opcode)); // SBC Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x0C1:
+                    sbc(opcode, llr(opcode)); // SBC Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x0C2: case 0x0CA:
+                    sbc(opcode, lri(opcode)); // SBC Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x0C3:
+                    sbc(opcode, lrr(opcode)); // SBC Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x0C4: case 0x0CC:
+                    sbc(opcode, ari(opcode)); // SBC Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x0C5:
+                    sbc(opcode, arr(opcode)); // SBC Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x0C6: case 0x0CE:
+                    sbc(opcode, rri(opcode)); // SBC Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x0C7:
+                    sbc(opcode, rrr(opcode)); // SBC Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x0C9:
+                    smull(opcode); // SMULL RdLo,RdHi,Rm,Rs
+                    break;
+
+                case 0x0CB: case 0x0EB:
+                    strhPt(opcode, ipH(opcode)); // STRH Rd,[Rn],#i
+                    break;
+
+                case 0x0D0: case 0x0D8:
+                    sbcs(opcode, lli(opcode)); // SBCS Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x0D1:
+                    sbcs(opcode, llr(opcode)); // SBCS Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x0D2: case 0x0DA:
+                    sbcs(opcode, lri(opcode)); // SBCS Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x0D3:
+                    sbcs(opcode, lrr(opcode)); // SBCS Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x0D4: case 0x0DC:
+                    sbcs(opcode, ari(opcode)); // SBCS Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x0D5:
+                    sbcs(opcode, arr(opcode)); // SBCS Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x0D6: case 0x0DE:
+                    sbcs(opcode, rri(opcode)); // SBCS Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x0D7:
+                    sbcs(opcode, rrr(opcode)); // SBCS Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x0D9:
+                    smulls(opcode); // SMULLS RdLo,RdHi,Rm,Rs
+                    break;
+
+                case 0x0DB: case 0x0FB:
+                    ldrhPt(opcode, ipH(opcode)); // LDRH Rd,[Rn],#i
+                    break;
+
+                case 0x0DD: case 0x0FD:
+                    ldrsbPt(opcode, ipH(opcode)); // LDRSB Rd,[Rn],#i
+                    break;
+
+                case 0x0DF: case 0x0FF:
+                    ldrshPt(opcode, ipH(opcode)); // LDRSH Rd,[Rn],#i
+                    break;
+
+                case 0x0E0: case 0x0E8:
+                    rsc(opcode, lli(opcode)); // RSC Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x0E1:
+                    rsc(opcode, llr(opcode)); // RSC Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x0E2: case 0x0EA:
+                    rsc(opcode, lri(opcode)); // RSC Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x0E3:
+                    rsc(opcode, lrr(opcode)); // RSC Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x0E4: case 0x0EC:
+                    rsc(opcode, ari(opcode)); // RSC Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x0E5:
+                    rsc(opcode, arr(opcode)); // RSC Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x0E6: case 0x0EE:
+                    rsc(opcode, rri(opcode)); // RSC Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x0E7:
+                    rsc(opcode, rrr(opcode)); // RSC Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x0E9:
+                    smlal(opcode); // SMLAL RdLo,RdHi,Rm,Rs
+                    break;
+
+                case 0x0F0: case 0x0F8:
+                    rscs(opcode, lli(opcode)); // RSCS Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x0F1:
+                    rscs(opcode, llr(opcode)); // RSCS Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x0F2: case 0x0FA:
+                    rscs(opcode, lri(opcode)); // RSCS Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x0F3:
+                    rscs(opcode, lrr(opcode)); // RSCS Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x0F4: case 0x0FC:
+                    rscs(opcode, ari(opcode)); // RSCS Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x0F5:
+                    rscs(opcode, arr(opcode)); // RSCS Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x0F6: case 0x0FE:
+                    rscs(opcode, rri(opcode)); // RSCS Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x0F7:
+                    rscs(opcode, rrr(opcode)); // RSCS Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x0F9:
+                    smlals(opcode); // SMLALS RdLo,RdHi,Rm,Rs
+                    break;
+
+                case 0x100:
+                    mrsRc(opcode); // MRS Rd,CPSR
+                    break;
+
+                case 0x108:
+                    smlabb(opcode); // SMLABB Rd,Rm,Rs,Rn
+                    break;
+
+                case 0x109:
+                    swp(opcode); // SWP Rd,Rm,[Rn]
+                    break;
+
+                case 0x10A:
+                    smlatb(opcode); // SMLATB Rd,Rm,Rs,Rn
+                    break;
+
+                case 0x10B:
+                    strhOf(opcode, -rp(opcode)); // STRH Rd,[Rn,-Rm]
+                    break;
+
+                case 0x10C:
+                    smlabt(opcode); // SMLABT Rd,Rm,Rs,Rn
+                    break;
+
+                case 0x10E:
+                    smlatt(opcode); // SMLATT Rd,Rm,Rs,Rn
+                    break;
+
+                case 0x110: case 0x118:
+                    tst(opcode, lliS(opcode)); // TST Rn,Rm,LSL #i
+                    break;
+
+                case 0x111:
+                    tst(opcode, llrS(opcode)); // TST Rn,Rm,LSL Rs
+                    break;
+
+                case 0x112: case 0x11A:
+                    tst(opcode, lriS(opcode)); // TST Rn,Rm,LSR #i
+                    break;
+
+                case 0x113:
+                    tst(opcode, lrrS(opcode)); // TST Rn,Rm,LSR Rs
+                    break;
+
+                case 0x114: case 0x11C:
+                    tst(opcode, ariS(opcode)); // TST Rn,Rm,ASR #i
+                    break;
+
+                case 0x115:
+                    tst(opcode, arrS(opcode)); // TST Rn,Rm,ASR Rs
+                    break;
+
+                case 0x116: case 0x11E:
+                    tst(opcode, rriS(opcode)); // TST Rn,Rm,ROR #i
+                    break;
+
+                case 0x117:
+                    tst(opcode, rrrS(opcode)); // TST Rn,Rm,ROR Rs
+                    break;
+
+                case 0x11B:
+                    ldrhOf(opcode, -rp(opcode)); // LDRH Rd,[Rn,-Rm]
+                    break;
+
+                case 0x11D:
+                    ldrsbOf(opcode, -rp(opcode)); // LDRSB Rd,[Rn,-Rm]
+                    break;
+
+                case 0x11F:
+                    ldrshOf(opcode, -rp(opcode)); // LDRSH Rd,[Rn,-Rm]
+                    break;
+
+                case 0x120:
+                    msrRc(opcode); // MSR CPSR,Rm
+                    break;
+
+                case 0x121:
+                    bx(opcode); // BX Rn
+                    break;
+
+                case 0x123:
+                    blxReg(opcode); // BLX Rn
+                    break;
+
+                case 0x12B:
+                    strhPr(opcode, -rp(opcode)); // STRH Rd,[Rn,-Rm]!
+                    break;
+
+                case 0x130: case 0x138:
+                    teq(opcode, lliS(opcode)); // TEQ Rn,Rm,LSL #i
+                    break;
+
+                case 0x131:
+                    teq(opcode, llrS(opcode)); // TEQ Rn,Rm,LSL Rs
+                    break;
+
+                case 0x132: case 0x13A:
+                    teq(opcode, lriS(opcode)); // TEQ Rn,Rm,LSR #i
+                    break;
+
+                case 0x133:
+                    teq(opcode, lrrS(opcode)); // TEQ Rn,Rm,LSR Rs
+                    break;
+
+                case 0x134: case 0x13C:
+                    teq(opcode, ariS(opcode)); // TEQ Rn,Rm,ASR #i
+                    break;
+
+                case 0x135:
+                    teq(opcode, arrS(opcode)); // TEQ Rn,Rm,ASR Rs
+                    break;
+
+                case 0x136: case 0x13E:
+                    teq(opcode, rriS(opcode)); // TEQ Rn,Rm,ROR #i
+                    break;
+
+                case 0x137:
+                    teq(opcode, rrrS(opcode)); // TEQ Rn,Rm,ROR Rs
+                    break;
+
+                case 0x13B:
+                    ldrhPr(opcode, -rp(opcode)); // LDRH Rd,[Rn,-Rm]!
+                    break;
+
+                case 0x13D:
+                    ldrsbPr(opcode, -rp(opcode)); // LDRSB Rd,[Rn,-Rm]!
+                    break;
+
+                case 0x13F:
+                    ldrshPr(opcode, -rp(opcode)); // LDRSH Rd,[Rn,-Rm]!
+                    break;
+
+                case 0x140:
+                    mrsRs(opcode); // MRS Rd,SPSR
+                    break;
+
+                case 0x149:
+                    swpb(opcode); // SWPB Rd,Rm,[Rn]
+                    break;
+
+                case 0x14B:
+                    strhOf(opcode, -ipH(opcode)); // STRH Rd,[Rn,-#i]
+                    break;
+
+                case 0x150: case 0x158:
+                    cmp(opcode, lli(opcode)); // CMP Rn,Rm,LSL #i
+                    break;
+
+                case 0x151:
+                    cmp(opcode, llr(opcode)); // CMP Rn,Rm,LSL Rs
+                    break;
+
+                case 0x152: case 0x15A:
+                    cmp(opcode, lri(opcode)); // CMP Rn,Rm,LSR #i
+                    break;
+
+                case 0x153:
+                    cmp(opcode, lrr(opcode)); // CMP Rn,Rm,LSR Rs
+                    break;
+
+                case 0x154: case 0x15C:
+                    cmp(opcode, ari(opcode)); // CMP Rn,Rm,ASR #i
+                    break;
+
+                case 0x155:
+                    cmp(opcode, arr(opcode)); // CMP Rn,Rm,ASR Rs
+                    break;
+
+                case 0x156: case 0x15E:
+                    cmp(opcode, rri(opcode)); // CMP Rn,Rm,ROR #i
+                    break;
+
+                case 0x157:
+                    cmp(opcode, rrr(opcode)); // CMP Rn,Rm,ROR Rs
+                    break;
+
+                case 0x15B:
+                    ldrhOf(opcode, -ipH(opcode)); // LDRH Rd,[Rn,-#i]
+                    break;
+
+                case 0x15D:
+                    ldrsbOf(opcode, -ipH(opcode)); // LDRSB Rd,[Rn,-#i]
+                    break;
+
+                case 0x15F:
+                    ldrshOf(opcode, -ipH(opcode)); // LDRSH Rd,[Rn,-#i]
+                    break;
+
+                case 0x160:
+                    msrRs(opcode); // MSR SPSR,Rm
+                    break;
+
+                case 0x161:
+                    clz(opcode); // CLZ Rd,Rm
+                    break;
+
+                case 0x168:
+                    smulbb(opcode); // SMULBB Rd,Rm,Rs
+                    break;
+
+                case 0x16A:
+                    smultb(opcode); // SMULTB Rd,Rm,Rs
+                    break;
+
+                case 0x16B:
+                    strhPr(opcode, -ipH(opcode)); // STRH Rd,[Rn,-#i]!
+                    break;
+
+                case 0x16C:
+                    smulbt(opcode); // SMULBT Rd,Rm,Rs
+                    break;
+
+                case 0x16E:
+                    smultt(opcode); // SMULTT Rd,Rm,Rs
+                    break;
+
+                case 0x170: case 0x178:
+                    cmn(opcode, lli(opcode)); // CMN Rn,Rm,LSL #i
+                    break;
+
+                case 0x171:
+                    cmn(opcode, llr(opcode)); // CMN Rn,Rm,LSL Rs
+                    break;
+
+                case 0x172: case 0x17A:
+                    cmn(opcode, lri(opcode)); // CMN Rn,Rm,LSR #i
+                    break;
+
+                case 0x173:
+                    cmn(opcode, lrr(opcode)); // CMN Rn,Rm,LSR Rs
+                    break;
+
+                case 0x174: case 0x17C:
+                    cmn(opcode, ari(opcode)); // CMN Rn,Rm,ASR #i
+                    break;
+
+                case 0x175:
+                    cmn(opcode, arr(opcode)); // CMN Rn,Rm,ASR Rs
+                    break;
+
+                case 0x176: case 0x17E:
+                    cmn(opcode, rri(opcode)); // CMN Rn,Rm,ROR #i
+                    break;
+
+                case 0x177:
+                    cmn(opcode, rrr(opcode)); // CMN Rn,Rm,ROR Rs
+                    break;
+
+                case 0x17B:
+                    ldrhPr(opcode, -ipH(opcode)); // LDRH Rd,[Rn,-#i]!
+                    break;
+
+                case 0x17D:
+                    ldrsbPr(opcode, -ipH(opcode)); // LDRSB Rd,[Rn,-#i]!
+                    break;
+
+                case 0x17F:
+                    ldrshPr(opcode, -ipH(opcode)); // LDRSH Rd,[Rn,-#i]!
+                    break;
+
+                case 0x180: case 0x188:
+                    orr(opcode, lli(opcode)); // ORR Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x181:
+                    orr(opcode, llr(opcode)); // ORR Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x182: case 0x18A:
+                    orr(opcode, lri(opcode)); // ORR Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x183:
+                    orr(opcode, lrr(opcode)); // ORR Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x184: case 0x18C:
+                    orr(opcode, ari(opcode)); // ORR Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x185:
+                    orr(opcode, arr(opcode)); // ORR Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x186: case 0x18E:
+                    orr(opcode, rri(opcode)); // ORR Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x187:
+                    orr(opcode, rrr(opcode)); // ORR Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x18B:
+                    strhOf(opcode, rp(opcode)); // STRH Rd,[Rn,Rm]
+                    break;
+
+                case 0x190: case 0x198:
+                    orrs(opcode, lliS(opcode)); // ORRS Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x191:
+                    orrs(opcode, llrS(opcode)); // ORRS Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x192: case 0x19A:
+                    orrs(opcode, lriS(opcode)); // ORRS Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x193:
+                    orrs(opcode, lrrS(opcode)); // ORRS Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x194: case 0x19C:
+                    orrs(opcode, ariS(opcode)); // ORRS Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x195:
+                    orrs(opcode, arrS(opcode)); // ORRS Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x196: case 0x19E:
+                    orrs(opcode, rriS(opcode)); // ORRS Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x197:
+                    orrs(opcode, rrrS(opcode)); // ORRS Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x19B:
+                    ldrhOf(opcode, rp(opcode)); // LDRH Rd,[Rn,Rm]
+                    break;
+
+                case 0x19D:
+                    ldrsbOf(opcode, rp(opcode)); // LDRSB Rd,[Rn,Rm]
+                    break;
+
+                case 0x19F:
+                    ldrshOf(opcode, rp(opcode)); // LDRSH Rd,[Rn,Rm]
+                    break;
+
+                case 0x1A0: case 0x1A8:
+                    mov(opcode, lli(opcode)); // MOV Rd,Rm,LSL #i
+                    break;
+
+                case 0x1A1:
+                    mov(opcode, llr(opcode)); // MOV Rd,Rm,LSL Rs
+                    break;
+
+                case 0x1A2: case 0x1AA:
+                    mov(opcode, lri(opcode)); // MOV Rd,Rm,LSR #i
+                    break;
+
+                case 0x1A3:
+                    mov(opcode, lrr(opcode)); // MOV Rd,Rm,LSR Rs
+                    break;
+
+                case 0x1A4: case 0x1AC:
+                    mov(opcode, ari(opcode)); // MOV Rd,Rm,ASR #i
+                    break;
+
+                case 0x1A5:
+                    mov(opcode, arr(opcode)); // MOV Rd,Rm,ASR Rs
+                    break;
+
+                case 0x1A6: case 0x1AE:
+                    mov(opcode, rri(opcode)); // MOV Rd,Rm,ROR #i
+                    break;
+
+                case 0x1A7:
+                    mov(opcode, rrr(opcode)); // MOV Rd,Rm,ROR Rs
+                    break;
+
+                case 0x1AB:
+                    strhPr(opcode, rp(opcode)); // STRH Rd,[Rn,Rm]!
+                    break;
+
+                case 0x1B0: case 0x1B8:
+                    movs(opcode, lliS(opcode)); // MOVS Rd,Rm,LSL #i
+                    break;
+
+                case 0x1B1:
+                    movs(opcode, llrS(opcode)); // MOVS Rd,Rm,LSL Rs
+                    break;
+
+                case 0x1B2: case 0x1BA:
+                    movs(opcode, lriS(opcode)); // MOVS Rd,Rm,LSR #i
+                    break;
+
+                case 0x1B3:
+                    movs(opcode, lrrS(opcode)); // MOVS Rd,Rm,LSR Rs
+                    break;
+
+                case 0x1B4: case 0x1BC:
+                    movs(opcode, ariS(opcode)); // MOVS Rd,Rm,ASR #i
+                    break;
+
+                case 0x1B5:
+                    movs(opcode, arrS(opcode)); // MOVS Rd,Rm,ASR Rs
+                    break;
+
+                case 0x1B6: case 0x1BE:
+                    movs(opcode, rriS(opcode)); // MOVS Rd,Rm,ROR #i
+                    break;
+
+                case 0x1B7:
+                    movs(opcode, rrrS(opcode)); // MOVS Rd,Rm,ROR Rs
+                    break;
+
+                case 0x1BB:
+                    ldrhPr(opcode, rp(opcode)); // LDRH Rd,[Rn,Rm]!
+                    break;
+
+                case 0x1BD:
+                    ldrsbPr(opcode, rp(opcode)); // LDRSB Rd,[Rn,Rm]!
+                    break;
+
+                case 0x1BF:
+                    ldrshPr(opcode, rp(opcode)); // LDRSH Rd,[Rn,Rm]!
+                    break;
+
+                case 0x1C0: case 0x1C8:
+                    bic(opcode, lli(opcode)); // BIC Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x1C1:
+                    bic(opcode, llr(opcode)); // BIC Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x1C2: case 0x1CA:
+                    bic(opcode, lri(opcode)); // BIC Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x1C3:
+                    bic(opcode, lrr(opcode)); // BIC Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x1C4: case 0x1CC:
+                    bic(opcode, ari(opcode)); // BIC Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x1C5:
+                    bic(opcode, arr(opcode)); // BIC Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x1C6: case 0x1CE:
+                    bic(opcode, rri(opcode)); // BIC Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x1C7:
+                    bic(opcode, rrr(opcode)); // BIC Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x1CB:
+                    strhOf(opcode, ipH(opcode)); // STRH Rd,[Rn,#i]
+                    break;
+
+                case 0x1D0: case 0x1D8:
+                    bics(opcode, lliS(opcode)); // BICS Rd,Rn,Rm,LSL #i
+                    break;
+
+                case 0x1D1:
+                    bics(opcode, llrS(opcode)); // BICS Rd,Rn,Rm,LSL Rs
+                    break;
+
+                case 0x1D2: case 0x1DA:
+                    bics(opcode, lriS(opcode)); // BICS Rd,Rn,Rm,LSR #i
+                    break;
+
+                case 0x1D3:
+                    bics(opcode, lrrS(opcode)); // BICS Rd,Rn,Rm,LSR Rs
+                    break;
+
+                case 0x1D4: case 0x1DC:
+                    bics(opcode, ariS(opcode)); // BICS Rd,Rn,Rm,ASR #i
+                    break;
+
+                case 0x1D5:
+                    bics(opcode, arrS(opcode)); // BICS Rd,Rn,Rm,ASR Rs
+                    break;
+
+                case 0x1D6: case 0x1DE:
+                    bics(opcode, rriS(opcode)); // BICS Rd,Rn,Rm,ROR #i
+                    break;
+
+                case 0x1D7:
+                    bics(opcode, rrrS(opcode)); // BICS Rd,Rn,Rm,ROR Rs
+                    break;
+
+                case 0x1DB:
+                    ldrhOf(opcode, ipH(opcode)); // LDRH Rd,[Rn,#i]
+                    break;
+
+                case 0x1DD:
+                    ldrsbOf(opcode, ipH(opcode)); // LDRSB Rd,[Rn,#i]
+                    break;
+
+                case 0x1DF:
+                    ldrshOf(opcode, ipH(opcode)); // LDRSH Rd,[Rn,#i]
+                    break;
+
+                case 0x1E0: case 0x1E8:
+                    mvn(opcode, lli(opcode)); // MVN Rd,Rm,LSL #i
+                    break;
+
+                case 0x1E1:
+                    mvn(opcode, llr(opcode)); // MVN Rd,Rm,LSL Rs
+                    break;
+
+                case 0x1E2: case 0x1EA:
+                    mvn(opcode, lri(opcode)); // MVN Rd,Rm,LSR #i
+                    break;
+
+                case 0x1E3:
+                    mvn(opcode, lrr(opcode)); // MVN Rd,Rm,LSR Rs
+                    break;
+
+                case 0x1E4: case 0x1EC:
+                    mvn(opcode, ari(opcode)); // MVN Rd,Rm,ASR #i
+                    break;
+
+                case 0x1E5:
+                    mvn(opcode, arr(opcode)); // MVN Rd,Rm,ASR Rs
+                    break;
+
+                case 0x1E6: case 0x1EE:
+                    mvn(opcode, rri(opcode)); // MVN Rd,Rm,ROR #i
+                    break;
+
+                case 0x1E7:
+                    mvn(opcode, rrr(opcode)); // MVN Rd,Rm,ROR Rs
+                    break;
+
+                case 0x1EB:
+                    strhPr(opcode, ipH(opcode)); // STRH Rd,[Rn,#i]!
+                    break;
+
+                case 0x1F0: case 0x1F8:
+                    mvns(opcode, lliS(opcode)); // MVNS Rd,Rm,LSL #i
+                    break;
+
+                case 0x1F1:
+                    mvns(opcode, llrS(opcode)); // MVNS Rd,Rm,LSL Rs
+                    break;
+
+                case 0x1F2: case 0x1FA:
+                    mvns(opcode, lriS(opcode)); // MVNS Rd,Rm,LSR #i
+                    break;
+
+                case 0x1F3:
+                    mvns(opcode, lrrS(opcode)); // MVNS Rd,Rm,LSR Rs
+                    break;
+
+                case 0x1F4: case 0x1FC:
+                    mvns(opcode, ariS(opcode)); // MVNS Rd,Rm,ASR #i
+                    break;
+
+                case 0x1F5:
+                    mvns(opcode, arrS(opcode)); // MVNS Rd,Rm,ASR Rs
+                    break;
+
+                case 0x1F6: case 0x1FE:
+                    mvns(opcode, rriS(opcode)); // MVNS Rd,Rm,ROR #i
+                    break;
+
+                case 0x1F7:
+                    mvns(opcode, rrrS(opcode)); // MVNS Rd,Rm,ROR Rs
+                    break;
+
+                case 0x1FB:
+                    ldrhPr(opcode, ipH(opcode)); // LDRH Rd,[Rn,#i]!
+                    break;
+
+                case 0x1FD:
+                    ldrsbPr(opcode, ipH(opcode)); // LDRSB Rd,[Rn,#i]!
+                    break;
+
+                case 0x1FF:
+                    ldrshPr(opcode, ipH(opcode)); // LDRSH Rd,[Rn,#i]!
+                    break;
+
+                case 0x200: case 0x201: case 0x202: case 0x203:
+                case 0x204: case 0x205: case 0x206: case 0x207:
+                case 0x208: case 0x209: case 0x20A: case 0x20B:
+                case 0x20C: case 0x20D: case 0x20E: case 0x20F:
+                    _and(opcode, imm(opcode)); // AND Rd,Rn,#i
+                    break;
+
+                case 0x210: case 0x211: case 0x212: case 0x213:
+                case 0x214: case 0x215: case 0x216: case 0x217:
+                case 0x218: case 0x219: case 0x21A: case 0x21B:
+                case 0x21C: case 0x21D: case 0x21E: case 0x21F:
+                    ands(opcode, imm(opcode)); // ANDS Rd,Rn,#i
+                    break;
+
+                case 0x220: case 0x221: case 0x222: case 0x223:
+                case 0x224: case 0x225: case 0x226: case 0x227:
+                case 0x228: case 0x229: case 0x22A: case 0x22B:
+                case 0x22C: case 0x22D: case 0x22E: case 0x22F:
+                    eor(opcode, imm(opcode)); // EOR Rd,Rn,#i
+                    break;
+
+                case 0x230: case 0x231: case 0x232: case 0x233:
+                case 0x234: case 0x235: case 0x236: case 0x237:
+                case 0x238: case 0x239: case 0x23A: case 0x23B:
+                case 0x23C: case 0x23D: case 0x23E: case 0x23F:
+                    eors(opcode, imm(opcode)); // EORS Rd,Rn,#i
+                    break;
+
+                case 0x240: case 0x241: case 0x242: case 0x243:
+                case 0x244: case 0x245: case 0x246: case 0x247:
+                case 0x248: case 0x249: case 0x24A: case 0x24B:
+                case 0x24C: case 0x24D: case 0x24E: case 0x24F:
+                    sub(opcode, imm(opcode)); // SUB Rd,Rn,#i
+                    break;
+
+                case 0x250: case 0x251: case 0x252: case 0x253:
+                case 0x254: case 0x255: case 0x256: case 0x257:
+                case 0x258: case 0x259: case 0x25A: case 0x25B:
+                case 0x25C: case 0x25D: case 0x25E: case 0x25F:
+                    subs(opcode, imm(opcode)); // SUBS Rd,Rn,#i
+                    break;
+
+                case 0x260: case 0x261: case 0x262: case 0x263:
+                case 0x264: case 0x265: case 0x266: case 0x267:
+                case 0x268: case 0x269: case 0x26A: case 0x26B:
+                case 0x26C: case 0x26D: case 0x26E: case 0x26F:
+                    rsb(opcode, imm(opcode)); // RSB Rd,Rn,#i
+                    break;
+
+                case 0x270: case 0x271: case 0x272: case 0x273:
+                case 0x274: case 0x275: case 0x276: case 0x277:
+                case 0x278: case 0x279: case 0x27A: case 0x27B:
+                case 0x27C: case 0x27D: case 0x27E: case 0x27F:
+                    rsbs(opcode, imm(opcode)); // RSBS Rd,Rn,#i
+                    break;
+
+                case 0x280: case 0x281: case 0x282: case 0x283:
+                case 0x284: case 0x285: case 0x286: case 0x287:
+                case 0x288: case 0x289: case 0x28A: case 0x28B:
+                case 0x28C: case 0x28D: case 0x28E: case 0x28F:
+                    add(opcode, imm(opcode)); // ADD Rd,Rn,#i
+                    break;
+
+                case 0x290: case 0x291: case 0x292: case 0x293:
+                case 0x294: case 0x295: case 0x296: case 0x297:
+                case 0x298: case 0x299: case 0x29A: case 0x29B:
+                case 0x29C: case 0x29D: case 0x29E: case 0x29F:
+                    adds(opcode, imm(opcode)); // ADDS Rd,Rn,#i
+                    break;
+
+                case 0x2A0: case 0x2A1: case 0x2A2: case 0x2A3:
+                case 0x2A4: case 0x2A5: case 0x2A6: case 0x2A7:
+                case 0x2A8: case 0x2A9: case 0x2AA: case 0x2AB:
+                case 0x2AC: case 0x2AD: case 0x2AE: case 0x2AF:
+                    adc(opcode, imm(opcode)); // ADC Rd,Rn,#i
+                    break;
+
+                case 0x2B0: case 0x2B1: case 0x2B2: case 0x2B3:
+                case 0x2B4: case 0x2B5: case 0x2B6: case 0x2B7:
+                case 0x2B8: case 0x2B9: case 0x2BA: case 0x2BB:
+                case 0x2BC: case 0x2BD: case 0x2BE: case 0x2BF:
+                    adcs(opcode, imm(opcode)); // ADCS Rd,Rn,#i
+                    break;
+
+                case 0x2C0: case 0x2C1: case 0x2C2: case 0x2C3:
+                case 0x2C4: case 0x2C5: case 0x2C6: case 0x2C7:
+                case 0x2C8: case 0x2C9: case 0x2CA: case 0x2CB:
+                case 0x2CC: case 0x2CD: case 0x2CE: case 0x2CF:
+                    sbc(opcode, imm(opcode)); // SBC Rd,Rn,#i
+                    break;
+
+                case 0x2D0: case 0x2D1: case 0x2D2: case 0x2D3:
+                case 0x2D4: case 0x2D5: case 0x2D6: case 0x2D7:
+                case 0x2D8: case 0x2D9: case 0x2DA: case 0x2DB:
+                case 0x2DC: case 0x2DD: case 0x2DE: case 0x2DF:
+                    sbcs(opcode, imm(opcode)); // SBCS Rd,Rn,#i
+                    break;
+
+                case 0x2E0: case 0x2E1: case 0x2E2: case 0x2E3:
+                case 0x2E4: case 0x2E5: case 0x2E6: case 0x2E7:
+                case 0x2E8: case 0x2E9: case 0x2EA: case 0x2EB:
+                case 0x2EC: case 0x2ED: case 0x2EE: case 0x2EF:
+                    rsc(opcode, imm(opcode)); // RSC Rd,Rn,#i
+                    break;
+
+                case 0x2F0: case 0x2F1: case 0x2F2: case 0x2F3:
+                case 0x2F4: case 0x2F5: case 0x2F6: case 0x2F7:
+                case 0x2F8: case 0x2F9: case 0x2FA: case 0x2FB:
+                case 0x2FC: case 0x2FD: case 0x2FE: case 0x2FF:
+                    rscs(opcode, imm(opcode)); // RSCS Rd,Rn,#i
+                    break;
+
+                case 0x310: case 0x311: case 0x312: case 0x313:
+                case 0x314: case 0x315: case 0x316: case 0x317:
+                case 0x318: case 0x319: case 0x31A: case 0x31B:
+                case 0x31C: case 0x31D: case 0x31E: case 0x31F:
+                    tst(opcode, imm(opcode)); // TST Rn,#i
+                    break;
+
+                case 0x320: case 0x321: case 0x322: case 0x323:
+                case 0x324: case 0x325: case 0x326: case 0x327:
+                case 0x328: case 0x329: case 0x32A: case 0x32B:
+                case 0x32C: case 0x32D: case 0x32E: case 0x32F:
+                    msrIc(opcode); // MSR CPSR,#i
+                    break;
+
+                case 0x330: case 0x331: case 0x332: case 0x333:
+                case 0x334: case 0x335: case 0x336: case 0x337:
+                case 0x338: case 0x339: case 0x33A: case 0x33B:
+                case 0x33C: case 0x33D: case 0x33E: case 0x33F:
+                    teq(opcode, imm(opcode)); // TEQ Rn,#i
+                    break;
+
+                case 0x350: case 0x351: case 0x352: case 0x353:
+                case 0x354: case 0x355: case 0x356: case 0x357:
+                case 0x358: case 0x359: case 0x35A: case 0x35B:
+                case 0x35C: case 0x35D: case 0x35E: case 0x35F:
+                    cmp(opcode, imm(opcode)); // CMP Rn,#i
+                    break;
+
+                case 0x360: case 0x361: case 0x362: case 0x363:
+                case 0x364: case 0x365: case 0x366: case 0x367:
+                case 0x368: case 0x369: case 0x36A: case 0x36B:
+                case 0x36C: case 0x36D: case 0x36E: case 0x36F:
+                    msrIs(opcode); // MSR SPSR,#i
+                    break;
+
+                case 0x370: case 0x371: case 0x372: case 0x373:
+                case 0x374: case 0x375: case 0x376: case 0x377:
+                case 0x378: case 0x379: case 0x37A: case 0x37B:
+                case 0x37C: case 0x37D: case 0x37E: case 0x37F:
+                    cmn(opcode, imm(opcode)); // CMN Rn,#i
+                    break;
+
+                case 0x380: case 0x381: case 0x382: case 0x383:
+                case 0x384: case 0x385: case 0x386: case 0x387:
+                case 0x388: case 0x389: case 0x38A: case 0x38B:
+                case 0x38C: case 0x38D: case 0x38E: case 0x38F:
+                    orr(opcode, imm(opcode)); // ORR Rd,Rn,#i
+                    break;
+
+                case 0x390: case 0x391: case 0x392: case 0x393:
+                case 0x394: case 0x395: case 0x396: case 0x397:
+                case 0x398: case 0x399: case 0x39A: case 0x39B:
+                case 0x39C: case 0x39D: case 0x39E: case 0x39F:
+                    orrs(opcode, imm(opcode)); // ORRS Rd,Rn,#i
+                    break;
+
+                case 0x3A0: case 0x3A1: case 0x3A2: case 0x3A3:
+                case 0x3A4: case 0x3A5: case 0x3A6: case 0x3A7:
+                case 0x3A8: case 0x3A9: case 0x3AA: case 0x3AB:
+                case 0x3AC: case 0x3AD: case 0x3AE: case 0x3AF:
+                    mov(opcode, imm(opcode)); // MOV Rd,#i
+                    break;
+
+                case 0x3B0: case 0x3B1: case 0x3B2: case 0x3B3:
+                case 0x3B4: case 0x3B5: case 0x3B6: case 0x3B7:
+                case 0x3B8: case 0x3B9: case 0x3BA: case 0x3BB:
+                case 0x3BC: case 0x3BD: case 0x3BE: case 0x3BF:
+                    movs(opcode, imm(opcode)); // MOVS Rd,#i
+                    break;
+
+                case 0x3C0: case 0x3C1: case 0x3C2: case 0x3C3:
+                case 0x3C4: case 0x3C5: case 0x3C6: case 0x3C7:
+                case 0x3C8: case 0x3C9: case 0x3CA: case 0x3CB:
+                case 0x3CC: case 0x3CD: case 0x3CE: case 0x3CF:
+                    bic(opcode, imm(opcode)); // BIC Rd,Rn,#i
+                    break;
+
+                case 0x3D0: case 0x3D1: case 0x3D2: case 0x3D3:
+                case 0x3D4: case 0x3D5: case 0x3D6: case 0x3D7:
+                case 0x3D8: case 0x3D9: case 0x3DA: case 0x3DB:
+                case 0x3DC: case 0x3DD: case 0x3DE: case 0x3DF:
+                    bics(opcode, imm(opcode)); // BICS Rd,Rn,#i
+                    break;
+
+                case 0x3E0: case 0x3E1: case 0x3E2: case 0x3E3:
+                case 0x3E4: case 0x3E5: case 0x3E6: case 0x3E7:
+                case 0x3E8: case 0x3E9: case 0x3EA: case 0x3EB:
+                case 0x3EC: case 0x3ED: case 0x3EE: case 0x3EF:
+                    mvn(opcode, imm(opcode)); // MVN Rd,#i
+                    break;
+
+                case 0x3F0: case 0x3F1: case 0x3F2: case 0x3F3:
+                case 0x3F4: case 0x3F5: case 0x3F6: case 0x3F7:
+                case 0x3F8: case 0x3F9: case 0x3FA: case 0x3FB:
+                case 0x3FC: case 0x3FD: case 0x3FE: case 0x3FF:
+                    mvns(opcode, imm(opcode)); // MVNS Rd,#i
+                    break;
+
+                case 0x400: case 0x401: case 0x402: case 0x403:
+                case 0x404: case 0x405: case 0x406: case 0x407:
+                case 0x408: case 0x409: case 0x40A: case 0x40B:
+                case 0x40C: case 0x40D: case 0x40E: case 0x40F:
+                    strPt(opcode, -ip(opcode)); // STR Rd,[Rn],-#i
+                    break;
+
+                case 0x410: case 0x411: case 0x412: case 0x413:
+                case 0x414: case 0x415: case 0x416: case 0x417:
+                case 0x418: case 0x419: case 0x41A: case 0x41B:
+                case 0x41C: case 0x41D: case 0x41E: case 0x41F:
+                    ldrPt(opcode, -ip(opcode)); // LDR Rd,[Rn],-#i
+                    break;
+
+                case 0x440: case 0x441: case 0x442: case 0x443:
+                case 0x444: case 0x445: case 0x446: case 0x447:
+                case 0x448: case 0x449: case 0x44A: case 0x44B:
+                case 0x44C: case 0x44D: case 0x44E: case 0x44F:
+                    strbPt(opcode, -ip(opcode)); // STRB Rd,[Rn],-#i
+                    break;
+
+                case 0x450: case 0x451: case 0x452: case 0x453:
+                case 0x454: case 0x455: case 0x456: case 0x457:
+                case 0x458: case 0x459: case 0x45A: case 0x45B:
+                case 0x45C: case 0x45D: case 0x45E: case 0x45F:
+                    ldrbPt(opcode, -ip(opcode)); // LDRB Rd,[Rn],-#i
+                    break;
+
+                case 0x480: case 0x481: case 0x482: case 0x483:
+                case 0x484: case 0x485: case 0x486: case 0x487:
+                case 0x488: case 0x489: case 0x48A: case 0x48B:
+                case 0x48C: case 0x48D: case 0x48E: case 0x48F:
+                    strPt(opcode, ip(opcode)); // STR Rd,[Rn],#i
+                    break;
+
+                case 0x490: case 0x491: case 0x492: case 0x493:
+                case 0x494: case 0x495: case 0x496: case 0x497:
+                case 0x498: case 0x499: case 0x49A: case 0x49B:
+                case 0x49C: case 0x49D: case 0x49E: case 0x49F:
+                    ldrPt(opcode, ip(opcode)); // LDR Rd,[Rn],#i
+                    break;
+
+                case 0x4C0: case 0x4C1: case 0x4C2: case 0x4C3:
+                case 0x4C4: case 0x4C5: case 0x4C6: case 0x4C7:
+                case 0x4C8: case 0x4C9: case 0x4CA: case 0x4CB:
+                case 0x4CC: case 0x4CD: case 0x4CE: case 0x4CF:
+                    strbPt(opcode, ip(opcode)); // STRB Rd,[Rn],#i
+                    break;
+
+                case 0x4D0: case 0x4D1: case 0x4D2: case 0x4D3:
+                case 0x4D4: case 0x4D5: case 0x4D6: case 0x4D7:
+                case 0x4D8: case 0x4D9: case 0x4DA: case 0x4DB:
+                case 0x4DC: case 0x4DD: case 0x4DE: case 0x4DF:
+                    ldrbPt(opcode, ip(opcode)); // LDRB Rd,[Rn],#i
+                    break;
+
+                case 0x500: case 0x501: case 0x502: case 0x503:
+                case 0x504: case 0x505: case 0x506: case 0x507:
+                case 0x508: case 0x509: case 0x50A: case 0x50B:
+                case 0x50C: case 0x50D: case 0x50E: case 0x50F:
+                    strOf(opcode, -ip(opcode)); // STR Rd,[Rn,-#i]
+                    break;
+
+                case 0x510: case 0x511: case 0x512: case 0x513:
+                case 0x514: case 0x515: case 0x516: case 0x517:
+                case 0x518: case 0x519: case 0x51A: case 0x51B:
+                case 0x51C: case 0x51D: case 0x51E: case 0x51F:
+                    ldrOf(opcode, -ip(opcode)); // LDR Rd,[Rn,-#i]
+                    break;
+
+                case 0x520: case 0x521: case 0x522: case 0x523:
+                case 0x524: case 0x525: case 0x526: case 0x527:
+                case 0x528: case 0x529: case 0x52A: case 0x52B:
+                case 0x52C: case 0x52D: case 0x52E: case 0x52F:
+                    strPr(opcode, -ip(opcode)); // STR Rd,[Rn,-#i]
+                    break;
+
+                case 0x530: case 0x531: case 0x532: case 0x533:
+                case 0x534: case 0x535: case 0x536: case 0x537:
+                case 0x538: case 0x539: case 0x53A: case 0x53B:
+                case 0x53C: case 0x53D: case 0x53E: case 0x53F:
+                    ldrPr(opcode, -ip(opcode)); // LDR Rd,[Rn,-#i]
+                    break;
+
+                case 0x540: case 0x541: case 0x542: case 0x543:
+                case 0x544: case 0x545: case 0x546: case 0x547:
+                case 0x548: case 0x549: case 0x54A: case 0x54B:
+                case 0x54C: case 0x54D: case 0x54E: case 0x54F:
+                    strbOf(opcode, -ip(opcode)); // STRB Rd,[Rn,-#i]
+                    break;
+
+                case 0x550: case 0x551: case 0x552: case 0x553:
+                case 0x554: case 0x555: case 0x556: case 0x557:
+                case 0x558: case 0x559: case 0x55A: case 0x55B:
+                case 0x55C: case 0x55D: case 0x55E: case 0x55F:
+                    ldrbOf(opcode, -ip(opcode)); // LDRB Rd,[Rn,-#i]
+                    break;
+
+                case 0x560: case 0x561: case 0x562: case 0x563:
+                case 0x564: case 0x565: case 0x566: case 0x567:
+                case 0x568: case 0x569: case 0x56A: case 0x56B:
+                case 0x56C: case 0x56D: case 0x56E: case 0x56F:
+                    strbPr(opcode, -ip(opcode)); // STRB Rd,[Rn,-#i]!
+                    break;
+
+                case 0x570: case 0x571: case 0x572: case 0x573:
+                case 0x574: case 0x575: case 0x576: case 0x577:
+                case 0x578: case 0x579: case 0x57A: case 0x57B:
+                case 0x57C: case 0x57D: case 0x57E: case 0x57F:
+                    ldrbPr(opcode, -ip(opcode)); // LDRB Rd,[Rn,-#i]!
+                    break;
+
+                case 0x580: case 0x581: case 0x582: case 0x583:
+                case 0x584: case 0x585: case 0x586: case 0x587:
+                case 0x588: case 0x589: case 0x58A: case 0x58B:
+                case 0x58C: case 0x58D: case 0x58E: case 0x58F:
+                    strOf(opcode, ip(opcode)); // STR Rd,[Rn,#i]
+                    break;
+
+                case 0x590: case 0x591: case 0x592: case 0x593:
+                case 0x594: case 0x595: case 0x596: case 0x597:
+                case 0x598: case 0x599: case 0x59A: case 0x59B:
+                case 0x59C: case 0x59D: case 0x59E: case 0x59F:
+                    ldrOf(opcode, ip(opcode)); // LDR Rd,[Rn,#i]
+                    break;
+
+                case 0x5A0: case 0x5A1: case 0x5A2: case 0x5A3:
+                case 0x5A4: case 0x5A5: case 0x5A6: case 0x5A7:
+                case 0x5A8: case 0x5A9: case 0x5AA: case 0x5AB:
+                case 0x5AC: case 0x5AD: case 0x5AE: case 0x5AF:
+                    strPr(opcode, ip(opcode)); // STR Rd,[Rn,#i]
+                    break;
+
+                case 0x5B0: case 0x5B1: case 0x5B2: case 0x5B3:
+                case 0x5B4: case 0x5B5: case 0x5B6: case 0x5B7:
+                case 0x5B8: case 0x5B9: case 0x5BA: case 0x5BB:
+                case 0x5BC: case 0x5BD: case 0x5BE: case 0x5BF:
+                    ldrPr(opcode, ip(opcode)); // LDR Rd,[Rn,#i]
+                    break;
+
+                case 0x5C0: case 0x5C1: case 0x5C2: case 0x5C3:
+                case 0x5C4: case 0x5C5: case 0x5C6: case 0x5C7:
+                case 0x5C8: case 0x5C9: case 0x5CA: case 0x5CB:
+                case 0x5CC: case 0x5CD: case 0x5CE: case 0x5CF:
+                    strbOf(opcode, ip(opcode)); // STRB Rd,[Rn,#i]
+                    break;
+
+                case 0x5D0: case 0x5D1: case 0x5D2: case 0x5D3:
+                case 0x5D4: case 0x5D5: case 0x5D6: case 0x5D7:
+                case 0x5D8: case 0x5D9: case 0x5DA: case 0x5DB:
+                case 0x5DC: case 0x5DD: case 0x5DE: case 0x5DF:
+                    ldrbOf(opcode, ip(opcode)); // LDRB Rd,[Rn,#i]
+                    break;
+
+                case 0x5E0: case 0x5E1: case 0x5E2: case 0x5E3:
+                case 0x5E4: case 0x5E5: case 0x5E6: case 0x5E7:
+                case 0x5E8: case 0x5E9: case 0x5EA: case 0x5EB:
+                case 0x5EC: case 0x5ED: case 0x5EE: case 0x5EF:
+                    strbPr(opcode, ip(opcode)); // STRB Rd,[Rn,#i]!
+                    break;
+
+                case 0x5F0: case 0x5F1: case 0x5F2: case 0x5F3:
+                case 0x5F4: case 0x5F5: case 0x5F6: case 0x5F7:
+                case 0x5F8: case 0x5F9: case 0x5FA: case 0x5FB:
+                case 0x5FC: case 0x5FD: case 0x5FE: case 0x5FF:
+                    ldrbPr(opcode, ip(opcode)); // LDRB Rd,[Rn,#i]!
+                    break;
+
+                case 0x600: case 0x608:
+                    strPt(opcode, -rpll(opcode)); // STR Rd,[Rn],-Rm,LSL #i
+                    break;
+
+                case 0x602: case 0x60A:
+                    strPt(opcode, -rplr(opcode)); // STR Rd,[Rn],-Rm,LSR #i
+                    break;
+
+                case 0x604: case 0x60C:
+                    strPt(opcode, -rpar(opcode)); // STR Rd,[Rn],-Rm,ASR #i
+                    break;
+
+                case 0x606: case 0x60E:
+                    strPt(opcode, -rprr(opcode)); // STR Rd,[Rn],-Rm,ROR #i
+                    break;
+
+                case 0x610: case 0x618:
+                    ldrPt(opcode, -rpll(opcode)); // LDR Rd,[Rn],-Rm,LSL #i
+                    break;
+
+                case 0x612: case 0x61A:
+                    ldrPt(opcode, -rplr(opcode)); // LDR Rd,[Rn],-Rm,LSR #i
+                    break;
+
+                case 0x614: case 0x61C:
+                    ldrPt(opcode, -rpar(opcode)); // LDR Rd,[Rn],-Rm,ASR #i
+                    break;
+
+                case 0x616: case 0x61E:
+                    ldrPt(opcode, -rprr(opcode)); // LDR Rd,[Rn],-Rm,ROR #i
+                    break;
+
+                case 0x640: case 0x648:
+                    strbPt(opcode, -rpll(opcode)); // STRB Rd,[Rn],-Rm,LSL #i
+                    break;
+
+                case 0x642: case 0x64A:
+                    strbPt(opcode, -rplr(opcode)); // STRB Rd,[Rn],-Rm,LSR #i
+                    break;
+
+                case 0x644: case 0x64C:
+                    strbPt(opcode, -rpar(opcode)); // STRB Rd,[Rn],-Rm,ASR #i
+                    break;
+
+                case 0x646: case 0x64E:
+                    strbPt(opcode, -rprr(opcode)); // STRB Rd,[Rn],-Rm,ROR #i
+                    break;
+
+                case 0x650: case 0x658:
+                    ldrbPt(opcode, -rpll(opcode)); // LDRB Rd,[Rn],-Rm,LSL #i
+                    break;
+
+                case 0x652: case 0x65A:
+                    ldrbPt(opcode, -rplr(opcode)); // LDRB Rd,[Rn],-Rm,LSR #i
+                    break;
+
+                case 0x654: case 0x65C:
+                    ldrbPt(opcode, -rpar(opcode)); // LDRB Rd,[Rn],-Rm,ASR #i
+                    break;
+
+                case 0x656: case 0x65E:
+                    ldrbPt(opcode, -rprr(opcode)); // LDRB Rd,[Rn],-Rm,ROR #i
+                    break;
+
+                case 0x680: case 0x688:
+                    strPt(opcode, rpll(opcode)); // STR Rd,[Rn],Rm,LSL #i
+                    break;
+
+                case 0x682: case 0x68A:
+                    strPt(opcode, rplr(opcode)); // STR Rd,[Rn],Rm,LSR #i
+                    break;
+
+                case 0x684: case 0x68C:
+                    strPt(opcode, rpar(opcode)); // STR Rd,[Rn],Rm,ASR #i
+                    break;
+
+                case 0x686: case 0x68E:
+                    strPt(opcode, rprr(opcode)); // STR Rd,[Rn],Rm,ROR #i
+                    break;
+
+                case 0x690: case 0x698:
+                    ldrPt(opcode, rpll(opcode)); // LDR Rd,[Rn],Rm,LSL #i
+                    break;
+
+                case 0x692: case 0x69A:
+                    ldrPt(opcode, rplr(opcode)); // LDR Rd,[Rn],Rm,LSR #i
+                    break;
+
+                case 0x694: case 0x69C:
+                    ldrPt(opcode, rpar(opcode)); // LDR Rd,[Rn],Rm,ASR #i
+                    break;
+
+                case 0x696: case 0x69E:
+                    ldrPt(opcode, rprr(opcode)); // LDR Rd,[Rn],Rm,ROR #i
+                    break;
+
+                case 0x6C0: case 0x6C8:
+                    strbPt(opcode, rpll(opcode)); // STRB Rd,[Rn],Rm,LSL #i
+                    break;
+
+                case 0x6C2: case 0x6CA:
+                    strbPt(opcode, rplr(opcode)); // STRB Rd,[Rn],Rm,LSR #i
+                    break;
+
+                case 0x6C4: case 0x6CC:
+                    strbPt(opcode, rpar(opcode)); // STRB Rd,[Rn],Rm,ASR #i
+                    break;
+
+                case 0x6C6: case 0x6CE:
+                    strbPt(opcode, rprr(opcode)); // STRB Rd,[Rn],Rm,ROR #i
+                    break;
+
+                case 0x6D0: case 0x6D8:
+                    ldrbPt(opcode, rpll(opcode)); // LDRB Rd,[Rn],Rm,LSL #i
+                    break;
+
+                case 0x6D2: case 0x6DA:
+                    ldrbPt(opcode, rplr(opcode)); // LDRB Rd,[Rn],Rm,LSR #i
+                    break;
+
+                case 0x6D4: case 0x6DC:
+                    ldrbPt(opcode, rpar(opcode)); // LDRB Rd,[Rn],Rm,ASR #i
+                    break;
+
+                case 0x6D6: case 0x6DE:
+                    ldrbPt(opcode, rprr(opcode)); // LDRB Rd,[Rn],Rm,ROR #i
+                    break;
+
+                case 0x700: case 0x708:
+                    strOf(opcode, -rpll(opcode)); // STR Rd,[Rn,-Rm,LSL #i]
+                    break;
+
+                case 0x702: case 0x70A:
+                    strOf(opcode, -rplr(opcode)); // STR Rd,[Rn,-Rm,LSR #i]
+                    break;
+
+                case 0x704: case 0x70C:
+                    strOf(opcode, -rpar(opcode)); // STR Rd,[Rn,-Rm,ASR #i]
+                    break;
+
+                case 0x706: case 0x70E:
+                    strOf(opcode, -rprr(opcode)); // STR Rd,[Rn,-Rm,ROR #i]
+                    break;
+
+                case 0x710: case 0x718:
+                    ldrOf(opcode, -rpll(opcode)); // LDR Rd,[Rn,-Rm,LSL #i]
+                    break;
+
+                case 0x712: case 0x71A:
+                    ldrOf(opcode, -rplr(opcode)); // LDR Rd,[Rn,-Rm,LSR #i]
+                    break;
+
+                case 0x714: case 0x71C:
+                    ldrOf(opcode, -rpar(opcode)); // LDR Rd,[Rn,-Rm,ASR #i]
+                    break;
+
+                case 0x716: case 0x71E:
+                    ldrOf(opcode, -rprr(opcode)); // LDR Rd,[Rn,-Rm,ROR #i]
+                    break;
+
+                case 0x720: case 0x728:
+                    strPr(opcode, -rpll(opcode)); // STR Rd,[Rn,-Rm,LSL #i]!
+                    break;
+
+                case 0x722: case 0x72A:
+                    strPr(opcode, -rplr(opcode)); // STR Rd,[Rn,-Rm,LSR #i]!
+                    break;
+
+                case 0x724: case 0x72C:
+                    strPr(opcode, -rpar(opcode)); // STR Rd,[Rn,-Rm,ASR #i]!
+                    break;
+
+                case 0x726: case 0x72E:
+                    strPr(opcode, -rprr(opcode)); // STR Rd,[Rn,-Rm,ROR #i]!
+                    break;
+
+                case 0x730: case 0x738:
+                    ldrPr(opcode, -rpll(opcode)); // LDR Rd,[Rn,-Rm,LSL #i]!
+                    break;
+
+                case 0x732: case 0x73A:
+                    ldrPr(opcode, -rplr(opcode)); // LDR Rd,[Rn,-Rm,LSR #i]!
+                    break;
+
+                case 0x734: case 0x73C:
+                    ldrPr(opcode, -rpar(opcode)); // LDR Rd,[Rn,-Rm,ASR #i]!
+                    break;
+
+                case 0x736: case 0x73E:
+                    ldrPr(opcode, -rprr(opcode)); // LDR Rd,[Rn,-Rm,ROR #i]!
+                    break;
+
+                case 0x740: case 0x748:
+                    strbOf(opcode, -rpll(opcode)); // STRB Rd,[Rn,-Rm,LSL #i]
+                    break;
+
+                case 0x742: case 0x74A:
+                    strbOf(opcode, -rplr(opcode)); // STRB Rd,[Rn,-Rm,LSR #i]
+                    break;
+
+                case 0x744: case 0x74C:
+                    strbOf(opcode, -rpar(opcode)); // STRB Rd,[Rn,-Rm,ASR #i]
+                    break;
+
+                case 0x746: case 0x74E:
+                    strbOf(opcode, -rprr(opcode)); // STRB Rd,[Rn,-Rm,ROR #i]
+                    break;
+
+                case 0x750: case 0x758:
+                    ldrbOf(opcode, -rpll(opcode)); // LDRB Rd,[Rn,-Rm,LSL #i]
+                    break;
+
+                case 0x752: case 0x75A:
+                    ldrbOf(opcode, -rplr(opcode)); // LDRB Rd,[Rn,-Rm,LSR #i]
+                    break;
+
+                case 0x754: case 0x75C:
+                    ldrbOf(opcode, -rpar(opcode)); // LDRB Rd,[Rn,-Rm,ASR #i]
+                    break;
+
+                case 0x756: case 0x75E:
+                    ldrbOf(opcode, -rprr(opcode)); // LDRB Rd,[Rn,-Rm,ROR #i]
+                    break;
+
+                case 0x760: case 0x768:
+                    strbPr(opcode, -rpll(opcode)); // STRB Rd,[Rn,-Rm,LSL #i]!
+                    break;
+
+                case 0x762: case 0x76A:
+                    strbPr(opcode, -rplr(opcode)); // STRB Rd,[Rn,-Rm,LSR #i]!
+                    break;
+
+                case 0x764: case 0x76C:
+                    strbPr(opcode, -rpar(opcode)); // STRB Rd,[Rn,-Rm,ASR #i]!
+                    break;
+
+                case 0x766: case 0x76E:
+                    strbPr(opcode, -rprr(opcode)); // STRB Rd,[Rn,-Rm,ROR #i]!
+                    break;
+
+                case 0x770: case 0x778:
+                    ldrbPr(opcode, -rpll(opcode)); // LDRB Rd,[Rn,-Rm,LSL #i]!
+                    break;
+
+                case 0x772: case 0x77A:
+                    ldrbPr(opcode, -rplr(opcode)); // LDRB Rd,[Rn,-Rm,LSR #i]!
+                    break;
+
+                case 0x774: case 0x77C:
+                    ldrbPr(opcode, -rpar(opcode)); // LDRB Rd,[Rn,-Rm,ASR #i]!
+                    break;
+
+                case 0x776: case 0x77E:
+                    ldrbPr(opcode, -rprr(opcode)); // LDRB Rd,[Rn,-Rm,ROR #i]!
+                    break;
+
+                case 0x780: case 0x788:
+                    strOf(opcode, rpll(opcode)); // STR Rd,[Rn,Rm,LSL #i]
+                    break;
+
+                case 0x782: case 0x78A:
+                    strOf(opcode, rplr(opcode)); // STR Rd,[Rn,Rm,LSR #i]
+                    break;
+
+                case 0x784: case 0x78C:
+                    strOf(opcode, rpar(opcode)); // STR Rd,[Rn,Rm,ASR #i]
+                    break;
+
+                case 0x786: case 0x78E:
+                    strOf(opcode, rprr(opcode)); // STR Rd,[Rn,Rm,ROR #i]
+                    break;
+
+                case 0x790: case 0x798:
+                    ldrOf(opcode, rpll(opcode)); // LDR Rd,[Rn,Rm,LSL #i]
+                    break;
+
+                case 0x792: case 0x79A:
+                    ldrOf(opcode, rplr(opcode)); // LDR Rd,[Rn,Rm,LSR #i]
+                    break;
+
+                case 0x794: case 0x79C:
+                    ldrOf(opcode, rpar(opcode)); // LDR Rd,[Rn,Rm,ASR #i]
+                    break;
+
+                case 0x796: case 0x79E:
+                    ldrOf(opcode, rprr(opcode)); // LDR Rd,[Rn,Rm,ROR #i]
+                    break;
+
+                case 0x7A0: case 0x7A8:
+                    strPr(opcode, rpll(opcode)); // STR Rd,[Rn,Rm,LSL #i]!
+                    break;
+
+                case 0x7A2: case 0x7AA:
+                    strPr(opcode, rplr(opcode)); // STR Rd,[Rn,Rm,LSR #i]!
+                    break;
+
+                case 0x7A4: case 0x7AC:
+                    strPr(opcode, rpar(opcode)); // STR Rd,[Rn,Rm,ASR #i]!
+                    break;
+
+                case 0x7A6: case 0x7AE:
+                    strPr(opcode, rprr(opcode)); // STR Rd,[Rn,Rm,ROR #i]!
+                    break;
+
+                case 0x7B0: case 0x7B8:
+                    ldrPr(opcode, rpll(opcode)); // LDR Rd,[Rn,Rm,LSL #i]!
+                    break;
+
+                case 0x7B2: case 0x7BA:
+                    ldrPr(opcode, rplr(opcode)); // LDR Rd,[Rn,Rm,LSR #i]!
+                    break;
+
+                case 0x7B4: case 0x7BC:
+                    ldrPr(opcode, rpar(opcode)); // LDR Rd,[Rn,Rm,ASR #i]!
+                    break;
+
+                case 0x7B6: case 0x7BE:
+                    ldrPr(opcode, rprr(opcode)); // LDR Rd,[Rn,Rm,ROR #i]!
+                    break;
+
+                case 0x7C0: case 0x7C8:
+                    strbOf(opcode, rpll(opcode)); // STRB Rd,[Rn,Rm,LSL #i]
+                    break;
+
+                case 0x7C2: case 0x7CA:
+                    strbOf(opcode, rplr(opcode)); // STRB Rd,[Rn,Rm,LSR #i]
+                    break;
+
+                case 0x7C4: case 0x7CC:
+                    strbOf(opcode, rpar(opcode)); // STRB Rd,[Rn,Rm,ASR #i]
+                    break;
+
+                case 0x7C6: case 0x7CE:
+                    strbOf(opcode, rprr(opcode)); // STRB Rd,[Rn,Rm,ROR #i]
+                    break;
+
+                case 0x7D0: case 0x7D8:
+                    ldrbOf(opcode, rpll(opcode)); // LDRB Rd,[Rn,Rm,LSL #i]
+                    break;
+
+                case 0x7D2: case 0x7DA:
+                    ldrbOf(opcode, rplr(opcode)); // LDRB Rd,[Rn,Rm,LSR #i]
+                    break;
+
+                case 0x7D4: case 0x7DC:
+                    ldrbOf(opcode, rpar(opcode)); // LDRB Rd,[Rn,Rm,ASR #i]
+                    break;
+
+                case 0x7D6: case 0x7DE:
+                    ldrbOf(opcode, rprr(opcode)); // LDRB Rd,[Rn,Rm,ROR #i]
+                    break;
+
+                case 0x7E0: case 0x7E8:
+                    strbPr(opcode, rpll(opcode)); // STRB Rd,[Rn,Rm,LSL #i]!
+                    break;
+
+                case 0x7E2: case 0x7EA:
+                    strbPr(opcode, rplr(opcode)); // STRB Rd,[Rn,Rm,LSR #i]!
+                    break;
+
+                case 0x7E4: case 0x7EC:
+                    strbPr(opcode, rpar(opcode)); // STRB Rd,[Rn,Rm,ASR #i]!
+                    break;
+
+                case 0x7E6: case 0x7EE:
+                    strbPr(opcode, rprr(opcode)); // STRB Rd,[Rn,Rm,ROR #i]!
+                    break;
+
+                case 0x7F0: case 0x7F8:
+                    ldrbPr(opcode, rpll(opcode)); // LDRB Rd,[Rn,Rm,LSL #i]!
+                    break;
+
+                case 0x7F2: case 0x7FA:
+                    ldrbPr(opcode, rplr(opcode)); // LDRB Rd,[Rn,Rm,LSR #i]!
+                    break;
+
+                case 0x7F4: case 0x7FC:
+                    ldrbPr(opcode, rpar(opcode)); // LDRB Rd,[Rn,Rm,ASR #i]!
+                    break;
+
+                case 0x7F6: case 0x7FE:
+                    ldrbPr(opcode, rprr(opcode)); // LDRB Rd,[Rn,Rm,ROR #i]!
+                    break;
+
+                case 0x800: case 0x801: case 0x802: case 0x803:
+                case 0x804: case 0x805: case 0x806: case 0x807:
+                case 0x808: case 0x809: case 0x80A: case 0x80B:
+                case 0x80C: case 0x80D: case 0x80E: case 0x80F:
+                    stmda(opcode); // STMDA Rn, <Rlist>
+                    break;
+
+                case 0x810: case 0x811: case 0x812: case 0x813:
+                case 0x814: case 0x815: case 0x816: case 0x817:
+                case 0x818: case 0x819: case 0x81A: case 0x81B:
+                case 0x81C: case 0x81D: case 0x81E: case 0x81F:
+                    ldmda(opcode); // LDMDA Rn, <Rlist>
+                    break;
+
+                case 0x820: case 0x821: case 0x822: case 0x823:
+                case 0x824: case 0x825: case 0x826: case 0x827:
+                case 0x828: case 0x829: case 0x82A: case 0x82B:
+                case 0x82C: case 0x82D: case 0x82E: case 0x82F:
+                    stmdaW(opcode); // STMDA Rn!, <Rlist>
+                    break;
+
+                case 0x830: case 0x831: case 0x832: case 0x833:
+                case 0x834: case 0x835: case 0x836: case 0x837:
+                case 0x838: case 0x839: case 0x83A: case 0x83B:
+                case 0x83C: case 0x83D: case 0x83E: case 0x83F:
+                    ldmdaW(opcode); // LDMDA Rn!, <Rlist>
+                    break;
+
+                case 0x840: case 0x841: case 0x842: case 0x843:
+                case 0x844: case 0x845: case 0x846: case 0x847:
+                case 0x848: case 0x849: case 0x84A: case 0x84B:
+                case 0x84C: case 0x84D: case 0x84E: case 0x84F:
+                    stmdaU(opcode); // STMDA Rn, <Rlist>^
+                    break;
+
+                case 0x850: case 0x851: case 0x852: case 0x853:
+                case 0x854: case 0x855: case 0x856: case 0x857:
+                case 0x858: case 0x859: case 0x85A: case 0x85B:
+                case 0x85C: case 0x85D: case 0x85E: case 0x85F:
+                    ldmdaU(opcode); // LDMDA Rn, <Rlist>^
+                    break;
+
+                case 0x860: case 0x861: case 0x862: case 0x863:
+                case 0x864: case 0x865: case 0x866: case 0x867:
+                case 0x868: case 0x869: case 0x86A: case 0x86B:
+                case 0x86C: case 0x86D: case 0x86E: case 0x86F:
+                    stmdaUW(opcode); // STMDA Rn!, <Rlist>^
+                    break;
+
+                case 0x870: case 0x871: case 0x872: case 0x873:
+                case 0x874: case 0x875: case 0x876: case 0x877:
+                case 0x878: case 0x879: case 0x87A: case 0x87B:
+                case 0x87C: case 0x87D: case 0x87E: case 0x87F:
+                    ldmdaUW(opcode); // LDMDA Rn!, <Rlist>^
+                    break;
+
+                case 0x880: case 0x881: case 0x882: case 0x883:
+                case 0x884: case 0x885: case 0x886: case 0x887:
+                case 0x888: case 0x889: case 0x88A: case 0x88B:
+                case 0x88C: case 0x88D: case 0x88E: case 0x88F:
+                    stmia(opcode); // STMIA Rn, <Rlist>
+                    break;
+
+                case 0x890: case 0x891: case 0x892: case 0x893:
+                case 0x894: case 0x895: case 0x896: case 0x897:
+                case 0x898: case 0x899: case 0x89A: case 0x89B:
+                case 0x89C: case 0x89D: case 0x89E: case 0x89F:
+                    ldmia(opcode); // LDMIA Rn, <Rlist>
+                    break;
+
+                case 0x8A0: case 0x8A1: case 0x8A2: case 0x8A3:
+                case 0x8A4: case 0x8A5: case 0x8A6: case 0x8A7:
+                case 0x8A8: case 0x8A9: case 0x8AA: case 0x8AB:
+                case 0x8AC: case 0x8AD: case 0x8AE: case 0x8AF:
+                    stmiaW(opcode); // STMIA Rn!, <Rlist>
+                    break;
+
+                case 0x8B0: case 0x8B1: case 0x8B2: case 0x8B3:
+                case 0x8B4: case 0x8B5: case 0x8B6: case 0x8B7:
+                case 0x8B8: case 0x8B9: case 0x8BA: case 0x8BB:
+                case 0x8BC: case 0x8BD: case 0x8BE: case 0x8BF:
+                    ldmiaW(opcode); // LDMIA Rn!, <Rlist>
+                    break;
+
+                case 0x8C0: case 0x8C1: case 0x8C2: case 0x8C3:
+                case 0x8C4: case 0x8C5: case 0x8C6: case 0x8C7:
+                case 0x8C8: case 0x8C9: case 0x8CA: case 0x8CB:
+                case 0x8CC: case 0x8CD: case 0x8CE: case 0x8CF:
+                    stmiaU(opcode); // STMIA Rn, <Rlist>^
+                    break;
+
+                case 0x8D0: case 0x8D1: case 0x8D2: case 0x8D3:
+                case 0x8D4: case 0x8D5: case 0x8D6: case 0x8D7:
+                case 0x8D8: case 0x8D9: case 0x8DA: case 0x8DB:
+                case 0x8DC: case 0x8DD: case 0x8DE: case 0x8DF:
+                    ldmiaU(opcode); // LDMIA Rn, <Rlist>^
+                    break;
+
+                case 0x8E0: case 0x8E1: case 0x8E2: case 0x8E3:
+                case 0x8E4: case 0x8E5: case 0x8E6: case 0x8E7:
+                case 0x8E8: case 0x8E9: case 0x8EA: case 0x8EB:
+                case 0x8EC: case 0x8ED: case 0x8EE: case 0x8EF:
+                    stmiaUW(opcode); // STMIA Rn!, <Rlist>^
+                    break;
+
+                case 0x8F0: case 0x8F1: case 0x8F2: case 0x8F3:
+                case 0x8F4: case 0x8F5: case 0x8F6: case 0x8F7:
+                case 0x8F8: case 0x8F9: case 0x8FA: case 0x8FB:
+                case 0x8FC: case 0x8FD: case 0x8FE: case 0x8FF:
+                    ldmiaUW(opcode); // LDMIA Rn!, <Rlist>^
+                    break;
+
+                case 0x900: case 0x901: case 0x902: case 0x903:
+                case 0x904: case 0x905: case 0x906: case 0x907:
+                case 0x908: case 0x909: case 0x90A: case 0x90B:
+                case 0x90C: case 0x90D: case 0x90E: case 0x90F:
+                    stmdb(opcode); // STMDB Rn, <Rlist>
+                    break;
+
+                case 0x910: case 0x911: case 0x912: case 0x913:
+                case 0x914: case 0x915: case 0x916: case 0x917:
+                case 0x918: case 0x919: case 0x91A: case 0x91B:
+                case 0x91C: case 0x91D: case 0x91E: case 0x91F:
+                    ldmdb(opcode); // LDMDB Rn, <Rlist>
+                    break;
+
+                case 0x920: case 0x921: case 0x922: case 0x923:
+                case 0x924: case 0x925: case 0x926: case 0x927:
+                case 0x928: case 0x929: case 0x92A: case 0x92B:
+                case 0x92C: case 0x92D: case 0x92E: case 0x92F:
+                    stmdbW(opcode); // STMDB Rn!, <Rlist>
+                    break;
+
+                case 0x930: case 0x931: case 0x932: case 0x933:
+                case 0x934: case 0x935: case 0x936: case 0x937:
+                case 0x938: case 0x939: case 0x93A: case 0x93B:
+                case 0x93C: case 0x93D: case 0x93E: case 0x93F:
+                    ldmdbW(opcode); // LDMDB Rn!, <Rlist>
+                    break;
+
+                case 0x940: case 0x941: case 0x942: case 0x943:
+                case 0x944: case 0x945: case 0x946: case 0x947:
+                case 0x948: case 0x949: case 0x94A: case 0x94B:
+                case 0x94C: case 0x94D: case 0x94E: case 0x94F:
+                    stmdbU(opcode); // STMDB Rn, <Rlist>^
+                    break;
+
+                case 0x950: case 0x951: case 0x952: case 0x953:
+                case 0x954: case 0x955: case 0x956: case 0x957:
+                case 0x958: case 0x959: case 0x95A: case 0x95B:
+                case 0x95C: case 0x95D: case 0x95E: case 0x95F:
+                    ldmdbU(opcode); // LDMDB Rn, <Rlist>^
+                    break;
+
+                case 0x960: case 0x961: case 0x962: case 0x963:
+                case 0x964: case 0x965: case 0x966: case 0x967:
+                case 0x968: case 0x969: case 0x96A: case 0x96B:
+                case 0x96C: case 0x96D: case 0x96E: case 0x96F:
+                    stmdbUW(opcode); // STMDB Rn!, <Rlist>^
+                    break;
+
+                case 0x970: case 0x971: case 0x972: case 0x973:
+                case 0x974: case 0x975: case 0x976: case 0x977:
+                case 0x978: case 0x979: case 0x97A: case 0x97B:
+                case 0x97C: case 0x97D: case 0x97E: case 0x97F:
+                    ldmdbUW(opcode); // LDMDB Rn!, <Rlist>^
+                    break;
+
+                case 0x980: case 0x981: case 0x982: case 0x983:
+                case 0x984: case 0x985: case 0x986: case 0x987:
+                case 0x988: case 0x989: case 0x98A: case 0x98B:
+                case 0x98C: case 0x98D: case 0x98E: case 0x98F:
+                    stmib(opcode); // STMIB Rn, <Rlist>
+                    break;
+
+                case 0x990: case 0x991: case 0x992: case 0x993:
+                case 0x994: case 0x995: case 0x996: case 0x997:
+                case 0x998: case 0x999: case 0x99A: case 0x99B:
+                case 0x99C: case 0x99D: case 0x99E: case 0x99F:
+                    ldmib(opcode); // LDMIB Rn, <Rlist>
+                    break;
+
+                case 0x9A0: case 0x9A1: case 0x9A2: case 0x9A3:
+                case 0x9A4: case 0x9A5: case 0x9A6: case 0x9A7:
+                case 0x9A8: case 0x9A9: case 0x9AA: case 0x9AB:
+                case 0x9AC: case 0x9AD: case 0x9AE: case 0x9AF:
+                    stmibW(opcode); // STMIB Rn!, <Rlist>
+                    break;
+
+                case 0x9B0: case 0x9B1: case 0x9B2: case 0x9B3:
+                case 0x9B4: case 0x9B5: case 0x9B6: case 0x9B7:
+                case 0x9B8: case 0x9B9: case 0x9BA: case 0x9BB:
+                case 0x9BC: case 0x9BD: case 0x9BE: case 0x9BF:
+                    ldmibW(opcode); // LDMIB Rn!, <Rlist>
+                    break;
+
+                case 0x9C0: case 0x9C1: case 0x9C2: case 0x9C3:
+                case 0x9C4: case 0x9C5: case 0x9C6: case 0x9C7:
+                case 0x9C8: case 0x9C9: case 0x9CA: case 0x9CB:
+                case 0x9CC: case 0x9CD: case 0x9CE: case 0x9CF:
+                    stmibU(opcode); // STMIB Rn, <Rlist>^
+                    break;
+
+                case 0x9D0: case 0x9D1: case 0x9D2: case 0x9D3:
+                case 0x9D4: case 0x9D5: case 0x9D6: case 0x9D7:
+                case 0x9D8: case 0x9D9: case 0x9DA: case 0x9DB:
+                case 0x9DC: case 0x9DD: case 0x9DE: case 0x9DF:
+                    ldmibU(opcode); // LDMIB Rn, <Rlist>^
+                    break;
+
+                case 0x9E0: case 0x9E1: case 0x9E2: case 0x9E3:
+                case 0x9E4: case 0x9E5: case 0x9E6: case 0x9E7:
+                case 0x9E8: case 0x9E9: case 0x9EA: case 0x9EB:
+                case 0x9EC: case 0x9ED: case 0x9EE: case 0x9EF:
+                    stmibUW(opcode); // STMIB Rn!, <Rlist>^
+                    break;
+
+                case 0x9F0: case 0x9F1: case 0x9F2: case 0x9F3:
+                case 0x9F4: case 0x9F5: case 0x9F6: case 0x9F7:
+                case 0x9F8: case 0x9F9: case 0x9FA: case 0x9FB:
+                case 0x9FC: case 0x9FD: case 0x9FE: case 0x9FF:
+                    ldmibUW(opcode); // LDMIB Rn!, <Rlist>^
+                    break;
+
+                case 0xA00: case 0xA01: case 0xA02: case 0xA03:
+                case 0xA04: case 0xA05: case 0xA06: case 0xA07:
+                case 0xA08: case 0xA09: case 0xA0A: case 0xA0B:
+                case 0xA0C: case 0xA0D: case 0xA0E: case 0xA0F:
+                case 0xA10: case 0xA11: case 0xA12: case 0xA13:
+                case 0xA14: case 0xA15: case 0xA16: case 0xA17:
+                case 0xA18: case 0xA19: case 0xA1A: case 0xA1B:
+                case 0xA1C: case 0xA1D: case 0xA1E: case 0xA1F:
+                case 0xA20: case 0xA21: case 0xA22: case 0xA23:
+                case 0xA24: case 0xA25: case 0xA26: case 0xA27:
+                case 0xA28: case 0xA29: case 0xA2A: case 0xA2B:
+                case 0xA2C: case 0xA2D: case 0xA2E: case 0xA2F:
+                case 0xA30: case 0xA31: case 0xA32: case 0xA33:
+                case 0xA34: case 0xA35: case 0xA36: case 0xA37:
+                case 0xA38: case 0xA39: case 0xA3A: case 0xA3B:
+                case 0xA3C: case 0xA3D: case 0xA3E: case 0xA3F:
+                case 0xA40: case 0xA41: case 0xA42: case 0xA43:
+                case 0xA44: case 0xA45: case 0xA46: case 0xA47:
+                case 0xA48: case 0xA49: case 0xA4A: case 0xA4B:
+                case 0xA4C: case 0xA4D: case 0xA4E: case 0xA4F:
+                case 0xA50: case 0xA51: case 0xA52: case 0xA53:
+                case 0xA54: case 0xA55: case 0xA56: case 0xA57:
+                case 0xA58: case 0xA59: case 0xA5A: case 0xA5B:
+                case 0xA5C: case 0xA5D: case 0xA5E: case 0xA5F:
+                case 0xA60: case 0xA61: case 0xA62: case 0xA63:
+                case 0xA64: case 0xA65: case 0xA66: case 0xA67:
+                case 0xA68: case 0xA69: case 0xA6A: case 0xA6B:
+                case 0xA6C: case 0xA6D: case 0xA6E: case 0xA6F:
+                case 0xA70: case 0xA71: case 0xA72: case 0xA73:
+                case 0xA74: case 0xA75: case 0xA76: case 0xA77:
+                case 0xA78: case 0xA79: case 0xA7A: case 0xA7B:
+                case 0xA7C: case 0xA7D: case 0xA7E: case 0xA7F:
+                case 0xA80: case 0xA81: case 0xA82: case 0xA83:
+                case 0xA84: case 0xA85: case 0xA86: case 0xA87:
+                case 0xA88: case 0xA89: case 0xA8A: case 0xA8B:
+                case 0xA8C: case 0xA8D: case 0xA8E: case 0xA8F:
+                case 0xA90: case 0xA91: case 0xA92: case 0xA93:
+                case 0xA94: case 0xA95: case 0xA96: case 0xA97:
+                case 0xA98: case 0xA99: case 0xA9A: case 0xA9B:
+                case 0xA9C: case 0xA9D: case 0xA9E: case 0xA9F:
+                case 0xAA0: case 0xAA1: case 0xAA2: case 0xAA3:
+                case 0xAA4: case 0xAA5: case 0xAA6: case 0xAA7:
+                case 0xAA8: case 0xAA9: case 0xAAA: case 0xAAB:
+                case 0xAAC: case 0xAAD: case 0xAAE: case 0xAAF:
+                case 0xAB0: case 0xAB1: case 0xAB2: case 0xAB3:
+                case 0xAB4: case 0xAB5: case 0xAB6: case 0xAB7:
+                case 0xAB8: case 0xAB9: case 0xABA: case 0xABB:
+                case 0xABC: case 0xABD: case 0xABE: case 0xABF:
+                case 0xAC0: case 0xAC1: case 0xAC2: case 0xAC3:
+                case 0xAC4: case 0xAC5: case 0xAC6: case 0xAC7:
+                case 0xAC8: case 0xAC9: case 0xACA: case 0xACB:
+                case 0xACC: case 0xACD: case 0xACE: case 0xACF:
+                case 0xAD0: case 0xAD1: case 0xAD2: case 0xAD3:
+                case 0xAD4: case 0xAD5: case 0xAD6: case 0xAD7:
+                case 0xAD8: case 0xAD9: case 0xADA: case 0xADB:
+                case 0xADC: case 0xADD: case 0xADE: case 0xADF:
+                case 0xAE0: case 0xAE1: case 0xAE2: case 0xAE3:
+                case 0xAE4: case 0xAE5: case 0xAE6: case 0xAE7:
+                case 0xAE8: case 0xAE9: case 0xAEA: case 0xAEB:
+                case 0xAEC: case 0xAED: case 0xAEE: case 0xAEF:
+                case 0xAF0: case 0xAF1: case 0xAF2: case 0xAF3:
+                case 0xAF4: case 0xAF5: case 0xAF6: case 0xAF7:
+                case 0xAF8: case 0xAF9: case 0xAFA: case 0xAFB:
+                case 0xAFC: case 0xAFD: case 0xAFE: case 0xAFF:
+                    if ((opcode & 0xF0000000) != 0xF0000000)
+                        b(opcode); // B label
+                    else
+                        blx(opcode); // BLX label
+                    break;
+
+                case 0xB00: case 0xB01: case 0xB02: case 0xB03:
+                case 0xB04: case 0xB05: case 0xB06: case 0xB07:
+                case 0xB08: case 0xB09: case 0xB0A: case 0xB0B:
+                case 0xB0C: case 0xB0D: case 0xB0E: case 0xB0F:
+                case 0xB10: case 0xB11: case 0xB12: case 0xB13:
+                case 0xB14: case 0xB15: case 0xB16: case 0xB17:
+                case 0xB18: case 0xB19: case 0xB1A: case 0xB1B:
+                case 0xB1C: case 0xB1D: case 0xB1E: case 0xB1F:
+                case 0xB20: case 0xB21: case 0xB22: case 0xB23:
+                case 0xB24: case 0xB25: case 0xB26: case 0xB27:
+                case 0xB28: case 0xB29: case 0xB2A: case 0xB2B:
+                case 0xB2C: case 0xB2D: case 0xB2E: case 0xB2F:
+                case 0xB30: case 0xB31: case 0xB32: case 0xB33:
+                case 0xB34: case 0xB35: case 0xB36: case 0xB37:
+                case 0xB38: case 0xB39: case 0xB3A: case 0xB3B:
+                case 0xB3C: case 0xB3D: case 0xB3E: case 0xB3F:
+                case 0xB40: case 0xB41: case 0xB42: case 0xB43:
+                case 0xB44: case 0xB45: case 0xB46: case 0xB47:
+                case 0xB48: case 0xB49: case 0xB4A: case 0xB4B:
+                case 0xB4C: case 0xB4D: case 0xB4E: case 0xB4F:
+                case 0xB50: case 0xB51: case 0xB52: case 0xB53:
+                case 0xB54: case 0xB55: case 0xB56: case 0xB57:
+                case 0xB58: case 0xB59: case 0xB5A: case 0xB5B:
+                case 0xB5C: case 0xB5D: case 0xB5E: case 0xB5F:
+                case 0xB60: case 0xB61: case 0xB62: case 0xB63:
+                case 0xB64: case 0xB65: case 0xB66: case 0xB67:
+                case 0xB68: case 0xB69: case 0xB6A: case 0xB6B:
+                case 0xB6C: case 0xB6D: case 0xB6E: case 0xB6F:
+                case 0xB70: case 0xB71: case 0xB72: case 0xB73:
+                case 0xB74: case 0xB75: case 0xB76: case 0xB77:
+                case 0xB78: case 0xB79: case 0xB7A: case 0xB7B:
+                case 0xB7C: case 0xB7D: case 0xB7E: case 0xB7F:
+                case 0xB80: case 0xB81: case 0xB82: case 0xB83:
+                case 0xB84: case 0xB85: case 0xB86: case 0xB87:
+                case 0xB88: case 0xB89: case 0xB8A: case 0xB8B:
+                case 0xB8C: case 0xB8D: case 0xB8E: case 0xB8F:
+                case 0xB90: case 0xB91: case 0xB92: case 0xB93:
+                case 0xB94: case 0xB95: case 0xB96: case 0xB97:
+                case 0xB98: case 0xB99: case 0xB9A: case 0xB9B:
+                case 0xB9C: case 0xB9D: case 0xB9E: case 0xB9F:
+                case 0xBA0: case 0xBA1: case 0xBA2: case 0xBA3:
+                case 0xBA4: case 0xBA5: case 0xBA6: case 0xBA7:
+                case 0xBA8: case 0xBA9: case 0xBAA: case 0xBAB:
+                case 0xBAC: case 0xBAD: case 0xBAE: case 0xBAF:
+                case 0xBB0: case 0xBB1: case 0xBB2: case 0xBB3:
+                case 0xBB4: case 0xBB5: case 0xBB6: case 0xBB7:
+                case 0xBB8: case 0xBB9: case 0xBBA: case 0xBBB:
+                case 0xBBC: case 0xBBD: case 0xBBE: case 0xBBF:
+                case 0xBC0: case 0xBC1: case 0xBC2: case 0xBC3:
+                case 0xBC4: case 0xBC5: case 0xBC6: case 0xBC7:
+                case 0xBC8: case 0xBC9: case 0xBCA: case 0xBCB:
+                case 0xBCC: case 0xBCD: case 0xBCE: case 0xBCF:
+                case 0xBD0: case 0xBD1: case 0xBD2: case 0xBD3:
+                case 0xBD4: case 0xBD5: case 0xBD6: case 0xBD7:
+                case 0xBD8: case 0xBD9: case 0xBDA: case 0xBDB:
+                case 0xBDC: case 0xBDD: case 0xBDE: case 0xBDF:
+                case 0xBE0: case 0xBE1: case 0xBE2: case 0xBE3:
+                case 0xBE4: case 0xBE5: case 0xBE6: case 0xBE7:
+                case 0xBE8: case 0xBE9: case 0xBEA: case 0xBEB:
+                case 0xBEC: case 0xBED: case 0xBEE: case 0xBEF:
+                case 0xBF0: case 0xBF1: case 0xBF2: case 0xBF3:
+                case 0xBF4: case 0xBF5: case 0xBF6: case 0xBF7:
+                case 0xBF8: case 0xBF9: case 0xBFA: case 0xBFB:
+                case 0xBFC: case 0xBFD: case 0xBFE: case 0xBFF:
+                    if ((opcode & 0xF0000000) != 0xF0000000)
+                        bl(opcode); // BL label
+                    else
+                        blx(opcode); // BLX label
+                    break;
+
+                case 0xE01: case 0xE03: case 0xE05: case 0xE07:
+                case 0xE09: case 0xE0B: case 0xE0D: case 0xE0F:
+                case 0xE21: case 0xE23: case 0xE25: case 0xE27:
+                case 0xE29: case 0xE2B: case 0xE2D: case 0xE2F:
+                case 0xE41: case 0xE43: case 0xE45: case 0xE47:
+                case 0xE49: case 0xE4B: case 0xE4D: case 0xE4F:
+                case 0xE61: case 0xE63: case 0xE65: case 0xE67:
+                case 0xE69: case 0xE6B: case 0xE6D: case 0xE6F:
+                case 0xE81: case 0xE83: case 0xE85: case 0xE87:
+                case 0xE89: case 0xE8B: case 0xE8D: case 0xE8F:
+                case 0xEA1: case 0xEA3: case 0xEA5: case 0xEA7:
+                case 0xEA9: case 0xEAB: case 0xEAD: case 0xEAF:
+                case 0xEC1: case 0xEC3: case 0xEC5: case 0xEC7:
+                case 0xEC9: case 0xECB: case 0xECD: case 0xECF:
+                case 0xEE1: case 0xEE3: case 0xEE5: case 0xEE7:
+                case 0xEE9: case 0xEEB: case 0xEED: case 0xEEF:
+                    mcr(opcode); // MCR Pn,<cpopc>,Rd,Cn,Cm,<cp>
+                    break;
+
+                case 0xE11: case 0xE13: case 0xE15: case 0xE17:
+                case 0xE19: case 0xE1B: case 0xE1D: case 0xE1F:
+                case 0xE31: case 0xE33: case 0xE35: case 0xE37:
+                case 0xE39: case 0xE3B: case 0xE3D: case 0xE3F:
+                case 0xE51: case 0xE53: case 0xE55: case 0xE57:
+                case 0xE59: case 0xE5B: case 0xE5D: case 0xE5F:
+                case 0xE71: case 0xE73: case 0xE75: case 0xE77:
+                case 0xE79: case 0xE7B: case 0xE7D: case 0xE7F:
+                case 0xE91: case 0xE93: case 0xE95: case 0xE97:
+                case 0xE99: case 0xE9B: case 0xE9D: case 0xE9F:
+                case 0xEB1: case 0xEB3: case 0xEB5: case 0xEB7:
+                case 0xEB9: case 0xEBB: case 0xEBD: case 0xEBF:
+                case 0xED1: case 0xED3: case 0xED5: case 0xED7:
+                case 0xED9: case 0xEDB: case 0xEDD: case 0xEDF:
+                case 0xEF1: case 0xEF3: case 0xEF5: case 0xEF7:
+                case 0xEF9: case 0xEFB: case 0xEFD: case 0xEFF:
+                    mrc(opcode); // MRC Pn,<cpopc>,Rd,Cn,Cm,<cp>
+                    break;
+
+                case 0xF00: case 0xF01: case 0xF02: case 0xF03:
+                case 0xF04: case 0xF05: case 0xF06: case 0xF07:
+                case 0xF08: case 0xF09: case 0xF0A: case 0xF0B:
+                case 0xF0C: case 0xF0D: case 0xF0E: case 0xF0F:
+                case 0xF10: case 0xF11: case 0xF12: case 0xF13:
+                case 0xF14: case 0xF15: case 0xF16: case 0xF17:
+                case 0xF18: case 0xF19: case 0xF1A: case 0xF1B:
+                case 0xF1C: case 0xF1D: case 0xF1E: case 0xF1F:
+                case 0xF20: case 0xF21: case 0xF22: case 0xF23:
+                case 0xF24: case 0xF25: case 0xF26: case 0xF27:
+                case 0xF28: case 0xF29: case 0xF2A: case 0xF2B:
+                case 0xF2C: case 0xF2D: case 0xF2E: case 0xF2F:
+                case 0xF30: case 0xF31: case 0xF32: case 0xF33:
+                case 0xF34: case 0xF35: case 0xF36: case 0xF37:
+                case 0xF38: case 0xF39: case 0xF3A: case 0xF3B:
+                case 0xF3C: case 0xF3D: case 0xF3E: case 0xF3F:
+                case 0xF40: case 0xF41: case 0xF42: case 0xF43:
+                case 0xF44: case 0xF45: case 0xF46: case 0xF47:
+                case 0xF48: case 0xF49: case 0xF4A: case 0xF4B:
+                case 0xF4C: case 0xF4D: case 0xF4E: case 0xF4F:
+                case 0xF50: case 0xF51: case 0xF52: case 0xF53:
+                case 0xF54: case 0xF55: case 0xF56: case 0xF57:
+                case 0xF58: case 0xF59: case 0xF5A: case 0xF5B:
+                case 0xF5C: case 0xF5D: case 0xF5E: case 0xF5F:
+                case 0xF60: case 0xF61: case 0xF62: case 0xF63:
+                case 0xF64: case 0xF65: case 0xF66: case 0xF67:
+                case 0xF68: case 0xF69: case 0xF6A: case 0xF6B:
+                case 0xF6C: case 0xF6D: case 0xF6E: case 0xF6F:
+                case 0xF70: case 0xF71: case 0xF72: case 0xF73:
+                case 0xF74: case 0xF75: case 0xF76: case 0xF77:
+                case 0xF78: case 0xF79: case 0xF7A: case 0xF7B:
+                case 0xF7C: case 0xF7D: case 0xF7E: case 0xF7F:
+                case 0xF80: case 0xF81: case 0xF82: case 0xF83:
+                case 0xF84: case 0xF85: case 0xF86: case 0xF87:
+                case 0xF88: case 0xF89: case 0xF8A: case 0xF8B:
+                case 0xF8C: case 0xF8D: case 0xF8E: case 0xF8F:
+                case 0xF90: case 0xF91: case 0xF92: case 0xF93:
+                case 0xF94: case 0xF95: case 0xF96: case 0xF97:
+                case 0xF98: case 0xF99: case 0xF9A: case 0xF9B:
+                case 0xF9C: case 0xF9D: case 0xF9E: case 0xF9F:
+                case 0xFA0: case 0xFA1: case 0xFA2: case 0xFA3:
+                case 0xFA4: case 0xFA5: case 0xFA6: case 0xFA7:
+                case 0xFA8: case 0xFA9: case 0xFAA: case 0xFAB:
+                case 0xFAC: case 0xFAD: case 0xFAE: case 0xFAF:
+                case 0xFB0: case 0xFB1: case 0xFB2: case 0xFB3:
+                case 0xFB4: case 0xFB5: case 0xFB6: case 0xFB7:
+                case 0xFB8: case 0xFB9: case 0xFBA: case 0xFBB:
+                case 0xFBC: case 0xFBD: case 0xFBE: case 0xFBF:
+                case 0xFC0: case 0xFC1: case 0xFC2: case 0xFC3:
+                case 0xFC4: case 0xFC5: case 0xFC6: case 0xFC7:
+                case 0xFC8: case 0xFC9: case 0xFCA: case 0xFCB:
+                case 0xFCC: case 0xFCD: case 0xFCE: case 0xFCF:
+                case 0xFD0: case 0xFD1: case 0xFD2: case 0xFD3:
+                case 0xFD4: case 0xFD5: case 0xFD6: case 0xFD7:
+                case 0xFD8: case 0xFD9: case 0xFDA: case 0xFDB:
+                case 0xFDC: case 0xFDD: case 0xFDE: case 0xFDF:
+                case 0xFE0: case 0xFE1: case 0xFE2: case 0xFE3:
+                case 0xFE4: case 0xFE5: case 0xFE6: case 0xFE7:
+                case 0xFE8: case 0xFE9: case 0xFEA: case 0xFEB:
+                case 0xFEC: case 0xFED: case 0xFEE: case 0xFEF:
+                case 0xFF0: case 0xFF1: case 0xFF2: case 0xFF3:
+                case 0xFF4: case 0xFF5: case 0xFF6: case 0xFF7:
+                case 0xFF8: case 0xFF9: case 0xFFA: case 0xFFB:
+                case 0xFFC: case 0xFFD: case 0xFFE: case 0xFFF:
+                    swi(); // SWI #i
+                    break;
+
+                default:
+                    printf("Unknown ARM%d ARM opcode: 0x%X\n", (cp15 ? 9 : 7), opcode);
+                    break;
+            }
+        }
+
+        // Increment the program counter
+        *registers[15] += 4;
+    }
+}
+
+void Interpreter::interrupt()
+{
+    // Respond to an interrupt request
+    if (ime && !(cpsr & BIT(7))) // Interrupts enabled
+    {
+        // Switch the CPU to interrupt mode
+        uint32_t cpsrOld = cpsr;
+        setMode(0x12);
+        *spsr = cpsrOld;
+
+        // Switch to ARM mode and block other interrupts
+        cpsr &= ~BIT(5);
+        cpsr |= BIT(7);
+
+        // Save the return address and jump to the interrupt handler
+        *registers[14] = *registers[15] - ((cpsrOld & BIT(5)) ? 0 : 4);
+        *registers[15] = (cp15 ? cp15->getExceptionAddr() : 0) + 0x18 + 8;
+    }
+
+    // The ARM9 only unhalts if interrupts are enabled, but the ARM7 doesn't care
+    if (ime || !cp15)
+        halted = false;
+}
+
+bool Interpreter::condition(uint32_t opcode)
 {
     // Evaluate the condition of an ARM opcode
     switch ((opcode & 0xF0000000) >> 28)
     {
-        case 0x0: return  (cpu->cpsr & BIT(30));                                                         // EQ
-        case 0x1: return !(cpu->cpsr & BIT(30));                                                         // NE
-        case 0x2: return  (cpu->cpsr & BIT(29));                                                         // CS
-        case 0x3: return !(cpu->cpsr & BIT(29));                                                         // CC
-        case 0x4: return  (cpu->cpsr & BIT(31));                                                         // MI
-        case 0x5: return !(cpu->cpsr & BIT(31));                                                         // PL
-        case 0x6: return  (cpu->cpsr & BIT(28));                                                         // VS
-        case 0x7: return !(cpu->cpsr & BIT(28));                                                         // VC
-        case 0x8: return  (cpu->cpsr & BIT(29)) && !(cpu->cpsr & BIT(30));                               // HI
-        case 0x9: return !(cpu->cpsr & BIT(29)) ||  (cpu->cpsr & BIT(30));                               // LS
-        case 0xA: return  (cpu->cpsr & BIT(31)) ==  (cpu->cpsr & BIT(28)) << 3;                          // GE
-        case 0xB: return  (cpu->cpsr & BIT(31)) !=  (cpu->cpsr & BIT(28)) << 3;                          // LT
-        case 0xC: return !(cpu->cpsr & BIT(30)) &&  (cpu->cpsr & BIT(31)) == (cpu->cpsr & BIT(28)) << 3; // GT
-        case 0xD: return  (cpu->cpsr & BIT(30)) ||  (cpu->cpsr & BIT(31)) != (cpu->cpsr & BIT(28)) << 3; // LE
-        case 0xE: return true;                                                                           // AL
+        case 0x0: return  (cpsr & BIT(30));                                               // EQ
+        case 0x1: return !(cpsr & BIT(30));                                               // NE
+        case 0x2: return  (cpsr & BIT(29));                                               // CS
+        case 0x3: return !(cpsr & BIT(29));                                               // CC
+        case 0x4: return  (cpsr & BIT(31));                                               // MI
+        case 0x5: return !(cpsr & BIT(31));                                               // PL
+        case 0x6: return  (cpsr & BIT(28));                                               // VS
+        case 0x7: return !(cpsr & BIT(28));                                               // VC
+        case 0x8: return  (cpsr & BIT(29)) && !(cpsr & BIT(30));                          // HI
+        case 0x9: return !(cpsr & BIT(29)) ||  (cpsr & BIT(30));                          // LS
+        case 0xA: return  (cpsr & BIT(31)) ==  (cpsr & BIT(28)) << 3;                     // GE
+        case 0xB: return  (cpsr & BIT(31)) !=  (cpsr & BIT(28)) << 3;                     // LT
+        case 0xC: return !(cpsr & BIT(30)) &&  (cpsr & BIT(31)) == (cpsr & BIT(28)) << 3; // GT
+        case 0xD: return  (cpsr & BIT(30)) ||  (cpsr & BIT(31)) != (cpsr & BIT(28)) << 3; // LE
+        case 0xE: return true;                                                            // AL
 
         default: // Reserved
-        {
             // The ARM9-exclusive BLX instruction uses condition code 0xF, so let it run
-            if (((opcode & 0x0F000000) >> 24) == 0xA || ((opcode & 0x0F000000) >> 24) == 0xB)
+            if ((opcode & 0x0E000000) == 0x0A000000)
                 return true;
 
-            printf("Unknown ARM%d ARM opcode: 0x%X\n", cpu->type, opcode);
+            printf("Unknown ARM%d ARM opcode: 0x%X\n", (cp15 ? 9 : 7), opcode);
             return false;
-        }
     }
 }
 
-void interrupt(Cpu *cpu)
-{
-    if (*cpu->ime && !(cpu->cpsr & BIT(7))) // Interrupts enabled
-    {
-        // Switch the CPU to interrupt mode
-        uint32_t cpsr = cpu->cpsr;
-        setMode(cpu, 0x12);
-        *cpu->spsr = cpsr;
-
-        // Disable THUMB mode and block other interrupts
-        cpu->cpsr &= ~BIT(5);
-        cpu->cpsr |= BIT(7);
-
-        // Save the return address and jump to the interrupt handler
-        *cpu->registers[14] = *cpu->registers[15] - ((cpsr & BIT(5)) ? 0 : 4);
-        *cpu->registers[15] = ((cpu->type == 9) ? cp15::exceptionBase : 0) + 0x18 + 8;
-    }
-
-    // The ARM9 only unhalts if interrupts are enabled, but the ARM7 doesn't care
-    if (*cpu->ime || cpu->type == 7)
-        cpu->halt = false;
-}
-
-void execute(Cpu *cpu)
-{
-    if (cpu->cpsr & BIT(5)) // THUMB mode
-    {
-        // Execute the instruction 2 opcodes behind the program counter because of pipelining
-        // Opcodes are 2 bytes long in THUMB mode
-        uint32_t programCounter = *cpu->registers[15] - 4;
-        uint16_t opcode = memory::read<uint16_t>(cpu, programCounter);
-        Instruction instr = thumbInstructions[(opcode & 0xFF00) >> 8];
-        if (instr)
-            instr(cpu, opcode);
-        else
-            printf("Unknown ARM%d THUMB opcode: 0x%X\n", cpu->type, opcode);
-
-        // Increment the program counter and adjust it for pipelining if needed
-        // Branch instructions set bit 0 to indicate that a jump has occurred
-        if (!(cpu->cpsr & BIT(5))) // Switch to ARM mode
-            *cpu->registers[15] = (*cpu->registers[15] & ~0x03) + 8;
-        else if (programCounter != *cpu->registers[15] - 4) // Jump
-            *cpu->registers[15] = (*cpu->registers[15] & ~0x01) + 4;
-        else // Normal increment
-            *cpu->registers[15] = (*cpu->registers[15] & ~0x01) + 2;
-    }
-    else // ARM mode
-    {
-        // Execute the instruction 2 opcodes behind the program counter because of pipelining
-        // Opcodes are 4 bytes long in ARM mode
-        uint32_t programCounter = *cpu->registers[15] - 8;
-        uint32_t opcode = memory::read<uint32_t>(cpu, programCounter);
-        if (condition(cpu, opcode))
-        {
-            Instruction instr = armInstructions[((opcode & 0x0FF00000) >> 16) | ((opcode & 0x000000F0) >> 4)];
-            if (instr)
-                instr(cpu, opcode);
-            else
-                printf("Unknown ARM%d ARM opcode: 0x%X\n", cpu->type, opcode);
-        }
-
-        // Increment the program counter and adjust it for pipelining if needed
-        // Branch instructions set bit 0 to indicate that a jump has occurred
-        if (programCounter != *cpu->registers[15] - 8 && !(cpu->cpsr & BIT(5))) // Jump
-            *cpu->registers[15] = (*cpu->registers[15] & ~0x03) + 8;
-        else // Normal increment or switch to THUMB mode
-            *cpu->registers[15] = (*cpu->registers[15] & ~0x01) + 4;
-    }
-}
-
-void setMode(Cpu *cpu, uint8_t mode)
+void Interpreter::setMode(uint8_t mode)
 {
     // Point the registers to the correct ones for the new mode
     switch (mode & 0x1F)
     {
         case 0x10: // User
         case 0x1F: // System
-            cpu->registers[8]  = &cpu->registersUsr[8];
-            cpu->registers[9]  = &cpu->registersUsr[9];
-            cpu->registers[10] = &cpu->registersUsr[10];
-            cpu->registers[11] = &cpu->registersUsr[11];
-            cpu->registers[12] = &cpu->registersUsr[12];
-            cpu->registers[13] = &cpu->registersUsr[13];
-            cpu->registers[14] = &cpu->registersUsr[14];
-            cpu->spsr = nullptr;
+            registers[8]  = &registersUsr[8];
+            registers[9]  = &registersUsr[9];
+            registers[10] = &registersUsr[10];
+            registers[11] = &registersUsr[11];
+            registers[12] = &registersUsr[12];
+            registers[13] = &registersUsr[13];
+            registers[14] = &registersUsr[14];
+            spsr = nullptr;
             break;
 
         case 0x11: // FIQ
-            cpu->registers[8]  = &cpu->registersFiq[0];
-            cpu->registers[9]  = &cpu->registersFiq[1];
-            cpu->registers[10] = &cpu->registersFiq[2];
-            cpu->registers[11] = &cpu->registersFiq[3];
-            cpu->registers[12] = &cpu->registersFiq[4];
-            cpu->registers[13] = &cpu->registersFiq[5];
-            cpu->registers[14] = &cpu->registersFiq[6];
-            cpu->spsr = &cpu->spsrFiq;
+            registers[8]  = &registersFiq[0];
+            registers[9]  = &registersFiq[1];
+            registers[10] = &registersFiq[2];
+            registers[11] = &registersFiq[3];
+            registers[12] = &registersFiq[4];
+            registers[13] = &registersFiq[5];
+            registers[14] = &registersFiq[6];
+            spsr = &spsrFiq;
             break;
 
         case 0x12: // IRQ
-            cpu->registers[8]  = &cpu->registersUsr[8];
-            cpu->registers[9]  = &cpu->registersUsr[9];
-            cpu->registers[10] = &cpu->registersUsr[10];
-            cpu->registers[11] = &cpu->registersUsr[11];
-            cpu->registers[12] = &cpu->registersUsr[12];
-            cpu->registers[13] = &cpu->registersIrq[0];
-            cpu->registers[14] = &cpu->registersIrq[1];
-            cpu->spsr = &cpu->spsrIrq;
+            registers[8]  = &registersUsr[8];
+            registers[9]  = &registersUsr[9];
+            registers[10] = &registersUsr[10];
+            registers[11] = &registersUsr[11];
+            registers[12] = &registersUsr[12];
+            registers[13] = &registersIrq[0];
+            registers[14] = &registersIrq[1];
+            spsr = &spsrIrq;
             break;
 
         case 0x13: // Supervisor
-            cpu->registers[8]  = &cpu->registersUsr[8];
-            cpu->registers[9]  = &cpu->registersUsr[9];
-            cpu->registers[10] = &cpu->registersUsr[10];
-            cpu->registers[11] = &cpu->registersUsr[11];
-            cpu->registers[12] = &cpu->registersUsr[12];
-            cpu->registers[13] = &cpu->registersSvc[0];
-            cpu->registers[14] = &cpu->registersSvc[1];
-            cpu->spsr = &cpu->spsrSvc;
+            registers[8]  = &registersUsr[8];
+            registers[9]  = &registersUsr[9];
+            registers[10] = &registersUsr[10];
+            registers[11] = &registersUsr[11];
+            registers[12] = &registersUsr[12];
+            registers[13] = &registersSvc[0];
+            registers[14] = &registersSvc[1];
+            spsr = &spsrSvc;
             break;
 
         case 0x17: // Abort
-            cpu->registers[8]  = &cpu->registersUsr[8];
-            cpu->registers[9]  = &cpu->registersUsr[9];
-            cpu->registers[10] = &cpu->registersUsr[10];
-            cpu->registers[11] = &cpu->registersUsr[11];
-            cpu->registers[12] = &cpu->registersUsr[12];
-            cpu->registers[13] = &cpu->registersAbt[0];
-            cpu->registers[14] = &cpu->registersAbt[1];
-            cpu->spsr = &cpu->spsrAbt;
+            registers[8]  = &registersUsr[8];
+            registers[9]  = &registersUsr[9];
+            registers[10] = &registersUsr[10];
+            registers[11] = &registersUsr[11];
+            registers[12] = &registersUsr[12];
+            registers[13] = &registersAbt[0];
+            registers[14] = &registersAbt[1];
+            spsr = &spsrAbt;
             break;
 
         case 0x1B: // Undefined
-            cpu->registers[8]  = &cpu->registersUsr[8];
-            cpu->registers[9]  = &cpu->registersUsr[9];
-            cpu->registers[10] = &cpu->registersUsr[10];
-            cpu->registers[11] = &cpu->registersUsr[11];
-            cpu->registers[12] = &cpu->registersUsr[12];
-            cpu->registers[13] = &cpu->registersUnd[0];
-            cpu->registers[14] = &cpu->registersUnd[1];
-            cpu->spsr = &cpu->spsrUnd;
+            registers[8]  = &registersUsr[8];
+            registers[9]  = &registersUsr[9];
+            registers[10] = &registersUsr[10];
+            registers[11] = &registersUsr[11];
+            registers[12] = &registersUsr[12];
+            registers[13] = &registersUnd[0];
+            registers[14] = &registersUnd[1];
+            spsr = &spsrUnd;
             break;
 
         default:
-            printf("Unknown ARM%d CPU mode: 0x%X\n", cpu->type, mode & 0x1F);
+            printf("Unknown ARM%d CPU mode: 0x%X\n", (cp15 ? 9 : 7), mode & 0x1F);
             return;
     }
 
     // Set the new mode
-    cpu->cpsr = (cpu->cpsr & ~0x1F) | (mode & 0x1F);
+    cpsr = (cpsr & ~0x1F) | (mode & 0x1F);
 }
 
-void init()
+void Interpreter::writeIme(uint8_t value)
 {
-    // Reset the ARM9 and point it to the boot code
-    memset(&arm9, 0, sizeof(arm9));
-    for (int i = 0; i < 16; i++)
-        arm9.registers[i] = &arm9.registersUsr[i];
-    arm9.registersUsr[15] = 0xFFFF0000 + 8;
-    arm9.cpsr             = 0x000000C0;
-    arm9.type             = 9;
-    setMode(&arm9, 0x13);
-
-    // Reset the ARM7 and point it to the boot code
-    memset(&arm7, 0, sizeof(arm7));
-    for (int i = 0; i < 16; i++)
-        arm7.registers[i] = &arm7.registersUsr[i];
-    arm7.registersUsr[15] = 0x00000000 + 8;
-    arm7.cpsr             = 0x000000C0;
-    arm7.type             = 7;
-    setMode(&arm7, 0x13);
-
-    // ARM lookup table, based on the map found at http://imrannazar.com/ARM-Opcode-Map
-    // Uses bits 27-20 and 7-4 of an opcode to find the appropriate instruction
-    armInstructions[0x000] = interpreter_alu::andLli;
-    armInstructions[0x001] = interpreter_alu::andLlr;
-    armInstructions[0x002] = interpreter_alu::andLri;
-    armInstructions[0x003] = interpreter_alu::andLrr;
-    armInstructions[0x004] = interpreter_alu::andAri;
-    armInstructions[0x005] = interpreter_alu::andArr;
-    armInstructions[0x006] = interpreter_alu::andRri;
-    armInstructions[0x007] = interpreter_alu::andRrr;
-    armInstructions[0x008] = interpreter_alu::andLli;
-    armInstructions[0x009] = interpreter_alu::mul;
-    armInstructions[0x00A] = interpreter_alu::andLri;
-    armInstructions[0x00B] = interpreter_transfer::strhPtrm;
-    armInstructions[0x00C] = interpreter_alu::andAri;
-    armInstructions[0x00E] = interpreter_alu::andRri;
-    armInstructions[0x010] = interpreter_alu::andsLli;
-    armInstructions[0x011] = interpreter_alu::andsLlr;
-    armInstructions[0x012] = interpreter_alu::andsLri;
-    armInstructions[0x013] = interpreter_alu::andsLrr;
-    armInstructions[0x014] = interpreter_alu::andsAri;
-    armInstructions[0x015] = interpreter_alu::andsArr;
-    armInstructions[0x016] = interpreter_alu::andsRri;
-    armInstructions[0x017] = interpreter_alu::andsRrr;
-    armInstructions[0x018] = interpreter_alu::andsLli;
-    armInstructions[0x019] = interpreter_alu::muls;
-    armInstructions[0x01A] = interpreter_alu::andsLri;
-    armInstructions[0x01B] = interpreter_transfer::ldrhPtrm;
-    armInstructions[0x01C] = interpreter_alu::andsAri;
-    armInstructions[0x01D] = interpreter_transfer::ldrsbPtrm;
-    armInstructions[0x01E] = interpreter_alu::andsRri;
-    armInstructions[0x01F] = interpreter_transfer::ldrshPtrm;
-    armInstructions[0x020] = interpreter_alu::eorLli;
-    armInstructions[0x021] = interpreter_alu::eorLlr;
-    armInstructions[0x022] = interpreter_alu::eorLri;
-    armInstructions[0x023] = interpreter_alu::eorLrr;
-    armInstructions[0x024] = interpreter_alu::eorAri;
-    armInstructions[0x025] = interpreter_alu::eorArr;
-    armInstructions[0x026] = interpreter_alu::eorRri;
-    armInstructions[0x027] = interpreter_alu::eorRrr;
-    armInstructions[0x028] = interpreter_alu::eorLli;
-    armInstructions[0x029] = interpreter_alu::mla;
-    armInstructions[0x02A] = interpreter_alu::eorLri;
-    armInstructions[0x02B] = interpreter_transfer::strhPtrm;
-    armInstructions[0x02C] = interpreter_alu::eorAri;
-    armInstructions[0x02E] = interpreter_alu::eorRri;
-    armInstructions[0x030] = interpreter_alu::eorsLli;
-    armInstructions[0x031] = interpreter_alu::eorsLlr;
-    armInstructions[0x032] = interpreter_alu::eorsLri;
-    armInstructions[0x033] = interpreter_alu::eorsLrr;
-    armInstructions[0x034] = interpreter_alu::eorsAri;
-    armInstructions[0x035] = interpreter_alu::eorsArr;
-    armInstructions[0x036] = interpreter_alu::eorsRri;
-    armInstructions[0x037] = interpreter_alu::eorsRrr;
-    armInstructions[0x038] = interpreter_alu::eorsLli;
-    armInstructions[0x039] = interpreter_alu::mlas;
-    armInstructions[0x03A] = interpreter_alu::eorsLri;
-    armInstructions[0x03B] = interpreter_transfer::ldrhPtrm;
-    armInstructions[0x03C] = interpreter_alu::eorsAri;
-    armInstructions[0x03D] = interpreter_transfer::ldrsbPtrm;
-    armInstructions[0x03E] = interpreter_alu::eorsRri;
-    armInstructions[0x03F] = interpreter_transfer::ldrshPtrm;
-    armInstructions[0x040] = interpreter_alu::subLli;
-    armInstructions[0x041] = interpreter_alu::subLlr;
-    armInstructions[0x042] = interpreter_alu::subLri;
-    armInstructions[0x043] = interpreter_alu::subLrr;
-    armInstructions[0x044] = interpreter_alu::subAri;
-    armInstructions[0x045] = interpreter_alu::subArr;
-    armInstructions[0x046] = interpreter_alu::subRri;
-    armInstructions[0x047] = interpreter_alu::subRrr;
-    armInstructions[0x048] = interpreter_alu::subLli;
-    armInstructions[0x04A] = interpreter_alu::subLri;
-    armInstructions[0x04B] = interpreter_transfer::strhPtim;
-    armInstructions[0x04C] = interpreter_alu::subAri;
-    armInstructions[0x04E] = interpreter_alu::subRri;
-    armInstructions[0x050] = interpreter_alu::subsLli;
-    armInstructions[0x051] = interpreter_alu::subsLlr;
-    armInstructions[0x052] = interpreter_alu::subsLri;
-    armInstructions[0x053] = interpreter_alu::subsLrr;
-    armInstructions[0x054] = interpreter_alu::subsAri;
-    armInstructions[0x055] = interpreter_alu::subsArr;
-    armInstructions[0x056] = interpreter_alu::subsRri;
-    armInstructions[0x057] = interpreter_alu::subsRrr;
-    armInstructions[0x058] = interpreter_alu::subsLli;
-    armInstructions[0x05A] = interpreter_alu::subsLri;
-    armInstructions[0x05B] = interpreter_transfer::ldrhPtim;
-    armInstructions[0x05C] = interpreter_alu::subsAri;
-    armInstructions[0x05D] = interpreter_transfer::ldrsbPtim;
-    armInstructions[0x05E] = interpreter_alu::subsRri;
-    armInstructions[0x05F] = interpreter_transfer::ldrshPtim;
-    armInstructions[0x060] = interpreter_alu::rsbLli;
-    armInstructions[0x061] = interpreter_alu::rsbLlr;
-    armInstructions[0x062] = interpreter_alu::rsbLri;
-    armInstructions[0x063] = interpreter_alu::rsbLrr;
-    armInstructions[0x064] = interpreter_alu::rsbAri;
-    armInstructions[0x065] = interpreter_alu::rsbArr;
-    armInstructions[0x066] = interpreter_alu::rsbRri;
-    armInstructions[0x067] = interpreter_alu::rsbRrr;
-    armInstructions[0x068] = interpreter_alu::rsbLli;
-    armInstructions[0x06A] = interpreter_alu::rsbLri;
-    armInstructions[0x06B] = interpreter_transfer::strhPtim;
-    armInstructions[0x06C] = interpreter_alu::rsbAri;
-    armInstructions[0x06E] = interpreter_alu::rsbRri;
-    armInstructions[0x070] = interpreter_alu::rsbsLli;
-    armInstructions[0x071] = interpreter_alu::rsbsLlr;
-    armInstructions[0x072] = interpreter_alu::rsbsLri;
-    armInstructions[0x073] = interpreter_alu::rsbsLrr;
-    armInstructions[0x074] = interpreter_alu::rsbsAri;
-    armInstructions[0x075] = interpreter_alu::rsbsArr;
-    armInstructions[0x076] = interpreter_alu::rsbsRri;
-    armInstructions[0x077] = interpreter_alu::rsbsRrr;
-    armInstructions[0x078] = interpreter_alu::rsbsLli;
-    armInstructions[0x07A] = interpreter_alu::rsbsLri;
-    armInstructions[0x07B] = interpreter_transfer::ldrhPtim;
-    armInstructions[0x07C] = interpreter_alu::rsbsAri;
-    armInstructions[0x07D] = interpreter_transfer::ldrsbPtim;
-    armInstructions[0x07E] = interpreter_alu::rsbsRri;
-    armInstructions[0x07F] = interpreter_transfer::ldrshPtim;
-    armInstructions[0x080] = interpreter_alu::addLli;
-    armInstructions[0x081] = interpreter_alu::addLlr;
-    armInstructions[0x082] = interpreter_alu::addLri;
-    armInstructions[0x083] = interpreter_alu::addLrr;
-    armInstructions[0x084] = interpreter_alu::addAri;
-    armInstructions[0x085] = interpreter_alu::addArr;
-    armInstructions[0x086] = interpreter_alu::addRri;
-    armInstructions[0x087] = interpreter_alu::addRrr;
-    armInstructions[0x088] = interpreter_alu::addLli;
-    armInstructions[0x089] = interpreter_alu::umull;
-    armInstructions[0x08A] = interpreter_alu::addLri;
-    armInstructions[0x08B] = interpreter_transfer::strhPtrp;
-    armInstructions[0x08C] = interpreter_alu::addAri;
-    armInstructions[0x08E] = interpreter_alu::addRri;
-    armInstructions[0x090] = interpreter_alu::addsLli;
-    armInstructions[0x091] = interpreter_alu::addsLlr;
-    armInstructions[0x092] = interpreter_alu::addsLri;
-    armInstructions[0x093] = interpreter_alu::addsLrr;
-    armInstructions[0x094] = interpreter_alu::addsAri;
-    armInstructions[0x095] = interpreter_alu::addsArr;
-    armInstructions[0x096] = interpreter_alu::addsRri;
-    armInstructions[0x097] = interpreter_alu::addsRrr;
-    armInstructions[0x098] = interpreter_alu::addsLli;
-    armInstructions[0x099] = interpreter_alu::umulls;
-    armInstructions[0x09A] = interpreter_alu::addsLri;
-    armInstructions[0x09B] = interpreter_transfer::ldrhPtrp;
-    armInstructions[0x09C] = interpreter_alu::addsAri;
-    armInstructions[0x09D] = interpreter_transfer::ldrsbPtrp;
-    armInstructions[0x09E] = interpreter_alu::addsRri;
-    armInstructions[0x09F] = interpreter_transfer::ldrshPtrp;
-    armInstructions[0x0A0] = interpreter_alu::adcLli;
-    armInstructions[0x0A1] = interpreter_alu::adcLlr;
-    armInstructions[0x0A2] = interpreter_alu::adcLri;
-    armInstructions[0x0A3] = interpreter_alu::adcLrr;
-    armInstructions[0x0A4] = interpreter_alu::adcAri;
-    armInstructions[0x0A5] = interpreter_alu::adcArr;
-    armInstructions[0x0A6] = interpreter_alu::adcRri;
-    armInstructions[0x0A7] = interpreter_alu::adcRrr;
-    armInstructions[0x0A8] = interpreter_alu::adcLli;
-    armInstructions[0x0A9] = interpreter_alu::umlal;
-    armInstructions[0x0AA] = interpreter_alu::adcLri;
-    armInstructions[0x0AB] = interpreter_transfer::strhPtrp;
-    armInstructions[0x0AC] = interpreter_alu::adcAri;
-    armInstructions[0x0AE] = interpreter_alu::adcRri;
-    armInstructions[0x0B0] = interpreter_alu::adcsLli;
-    armInstructions[0x0B1] = interpreter_alu::adcsLlr;
-    armInstructions[0x0B2] = interpreter_alu::adcsLri;
-    armInstructions[0x0B3] = interpreter_alu::adcsLrr;
-    armInstructions[0x0B4] = interpreter_alu::adcsAri;
-    armInstructions[0x0B5] = interpreter_alu::adcsArr;
-    armInstructions[0x0B6] = interpreter_alu::adcsRri;
-    armInstructions[0x0B7] = interpreter_alu::adcsRrr;
-    armInstructions[0x0B8] = interpreter_alu::adcsLli;
-    armInstructions[0x0B9] = interpreter_alu::umlals;
-    armInstructions[0x0BA] = interpreter_alu::adcsLri;
-    armInstructions[0x0BB] = interpreter_transfer::ldrhPtrp;
-    armInstructions[0x0BC] = interpreter_alu::adcsAri;
-    armInstructions[0x0BD] = interpreter_transfer::ldrsbPtrp;
-    armInstructions[0x0BE] = interpreter_alu::adcsRri;
-    armInstructions[0x0BF] = interpreter_transfer::ldrshPtrp;
-    armInstructions[0x0C0] = interpreter_alu::sbcLli;
-    armInstructions[0x0C1] = interpreter_alu::sbcLlr;
-    armInstructions[0x0C2] = interpreter_alu::sbcLri;
-    armInstructions[0x0C3] = interpreter_alu::sbcLrr;
-    armInstructions[0x0C4] = interpreter_alu::sbcAri;
-    armInstructions[0x0C5] = interpreter_alu::sbcArr;
-    armInstructions[0x0C6] = interpreter_alu::sbcRri;
-    armInstructions[0x0C7] = interpreter_alu::sbcRrr;
-    armInstructions[0x0C8] = interpreter_alu::sbcLli;
-    armInstructions[0x0C9] = interpreter_alu::smull;
-    armInstructions[0x0CA] = interpreter_alu::sbcLri;
-    armInstructions[0x0CB] = interpreter_transfer::strhPtip;
-    armInstructions[0x0CC] = interpreter_alu::sbcAri;
-    armInstructions[0x0CE] = interpreter_alu::sbcRri;
-    armInstructions[0x0D0] = interpreter_alu::sbcsLli;
-    armInstructions[0x0D1] = interpreter_alu::sbcsLlr;
-    armInstructions[0x0D2] = interpreter_alu::sbcsLri;
-    armInstructions[0x0D3] = interpreter_alu::sbcsLrr;
-    armInstructions[0x0D4] = interpreter_alu::sbcsAri;
-    armInstructions[0x0D5] = interpreter_alu::sbcsArr;
-    armInstructions[0x0D6] = interpreter_alu::sbcsRri;
-    armInstructions[0x0D7] = interpreter_alu::sbcsRrr;
-    armInstructions[0x0D8] = interpreter_alu::sbcsLli;
-    armInstructions[0x0D9] = interpreter_alu::smulls;
-    armInstructions[0x0DA] = interpreter_alu::sbcsLri;
-    armInstructions[0x0DB] = interpreter_transfer::ldrhPtip;
-    armInstructions[0x0DC] = interpreter_alu::sbcsAri;
-    armInstructions[0x0DD] = interpreter_transfer::ldrsbPtip;
-    armInstructions[0x0DE] = interpreter_alu::sbcsRri;
-    armInstructions[0x0DF] = interpreter_transfer::ldrshPtip;
-    armInstructions[0x0E0] = interpreter_alu::rscLli;
-    armInstructions[0x0E1] = interpreter_alu::rscLlr;
-    armInstructions[0x0E2] = interpreter_alu::rscLri;
-    armInstructions[0x0E3] = interpreter_alu::rscLrr;
-    armInstructions[0x0E4] = interpreter_alu::rscAri;
-    armInstructions[0x0E5] = interpreter_alu::rscArr;
-    armInstructions[0x0E6] = interpreter_alu::rscRri;
-    armInstructions[0x0E7] = interpreter_alu::rscRrr;
-    armInstructions[0x0E8] = interpreter_alu::rscLli;
-    armInstructions[0x0E9] = interpreter_alu::smlal;
-    armInstructions[0x0EA] = interpreter_alu::rscLri;
-    armInstructions[0x0EB] = interpreter_transfer::strhPtip;
-    armInstructions[0x0EC] = interpreter_alu::rscAri;
-    armInstructions[0x0EE] = interpreter_alu::rscRri;
-    armInstructions[0x0F0] = interpreter_alu::rscsLli;
-    armInstructions[0x0F1] = interpreter_alu::rscsLlr;
-    armInstructions[0x0F2] = interpreter_alu::rscsLri;
-    armInstructions[0x0F3] = interpreter_alu::rscsLrr;
-    armInstructions[0x0F4] = interpreter_alu::rscsAri;
-    armInstructions[0x0F5] = interpreter_alu::rscsArr;
-    armInstructions[0x0F6] = interpreter_alu::rscsRri;
-    armInstructions[0x0F7] = interpreter_alu::rscsRrr;
-    armInstructions[0x0F8] = interpreter_alu::rscsLli;
-    armInstructions[0x0F9] = interpreter_alu::smlals;
-    armInstructions[0x0FA] = interpreter_alu::rscsLri;
-    armInstructions[0x0FB] = interpreter_transfer::ldrhPtip;
-    armInstructions[0x0FC] = interpreter_alu::rscsAri;
-    armInstructions[0x0FD] = interpreter_transfer::ldrsbPtip;
-    armInstructions[0x0FE] = interpreter_alu::rscsRri;
-    armInstructions[0x0FF] = interpreter_transfer::ldrshPtip;
-    armInstructions[0x100] = interpreter_other::mrsRc;
-    armInstructions[0x108] = interpreter_alu::smlabb;
-    armInstructions[0x109] = interpreter_transfer::swp;
-    armInstructions[0x10A] = interpreter_alu::smlatb;
-    armInstructions[0x10C] = interpreter_alu::smlabt;
-    armInstructions[0x10E] = interpreter_alu::smlatt;
-    armInstructions[0x10B] = interpreter_transfer::strhOfrm;
-    armInstructions[0x110] = interpreter_alu::tstLli;
-    armInstructions[0x111] = interpreter_alu::tstLlr;
-    armInstructions[0x112] = interpreter_alu::tstLri;
-    armInstructions[0x113] = interpreter_alu::tstLrr;
-    armInstructions[0x114] = interpreter_alu::tstAri;
-    armInstructions[0x115] = interpreter_alu::tstArr;
-    armInstructions[0x116] = interpreter_alu::tstRri;
-    armInstructions[0x117] = interpreter_alu::tstRrr;
-    armInstructions[0x118] = interpreter_alu::tstLli;
-    armInstructions[0x11A] = interpreter_alu::tstLri;
-    armInstructions[0x11B] = interpreter_transfer::ldrhOfrm;
-    armInstructions[0x11C] = interpreter_alu::tstAri;
-    armInstructions[0x11D] = interpreter_transfer::ldrsbOfrm;
-    armInstructions[0x11E] = interpreter_alu::tstRri;
-    armInstructions[0x11F] = interpreter_transfer::ldrshOfrm;
-    armInstructions[0x120] = interpreter_other::msrRc;
-    armInstructions[0x121] = interpreter_other::bx;
-    armInstructions[0x123] = interpreter_other::blx;
-    armInstructions[0x12B] = interpreter_transfer::strhPrrm;
-    armInstructions[0x130] = interpreter_alu::teqLli;
-    armInstructions[0x131] = interpreter_alu::teqLlr;
-    armInstructions[0x132] = interpreter_alu::teqLri;
-    armInstructions[0x133] = interpreter_alu::teqLrr;
-    armInstructions[0x134] = interpreter_alu::teqAri;
-    armInstructions[0x135] = interpreter_alu::teqArr;
-    armInstructions[0x136] = interpreter_alu::teqRri;
-    armInstructions[0x137] = interpreter_alu::teqRrr;
-    armInstructions[0x138] = interpreter_alu::teqLli;
-    armInstructions[0x13A] = interpreter_alu::teqLri;
-    armInstructions[0x13B] = interpreter_transfer::ldrhPrrm;
-    armInstructions[0x13C] = interpreter_alu::teqAri;
-    armInstructions[0x13D] = interpreter_transfer::ldrsbPrrm;
-    armInstructions[0x13E] = interpreter_alu::teqRri;
-    armInstructions[0x13F] = interpreter_transfer::ldrshPrrm;
-    armInstructions[0x140] = interpreter_other::mrsRs;
-    armInstructions[0x149] = interpreter_transfer::swpb;
-    armInstructions[0x14B] = interpreter_transfer::strhOfim;
-    armInstructions[0x150] = interpreter_alu::cmpLli;
-    armInstructions[0x151] = interpreter_alu::cmpLlr;
-    armInstructions[0x152] = interpreter_alu::cmpLri;
-    armInstructions[0x153] = interpreter_alu::cmpLrr;
-    armInstructions[0x154] = interpreter_alu::cmpAri;
-    armInstructions[0x155] = interpreter_alu::cmpArr;
-    armInstructions[0x156] = interpreter_alu::cmpRri;
-    armInstructions[0x157] = interpreter_alu::cmpRrr;
-    armInstructions[0x158] = interpreter_alu::cmpLli;
-    armInstructions[0x15A] = interpreter_alu::cmpLri;
-    armInstructions[0x15B] = interpreter_transfer::ldrhOfim;
-    armInstructions[0x15C] = interpreter_alu::cmpAri;
-    armInstructions[0x15D] = interpreter_transfer::ldrsbOfim;
-    armInstructions[0x15E] = interpreter_alu::cmpRri;
-    armInstructions[0x15F] = interpreter_transfer::ldrshOfim;
-    armInstructions[0x160] = interpreter_other::msrRs;
-    armInstructions[0x161] = interpreter_other::clz;
-    armInstructions[0x168] = interpreter_alu::smulbb;
-    armInstructions[0x16A] = interpreter_alu::smultb;
-    armInstructions[0x16B] = interpreter_transfer::strhPrim;
-    armInstructions[0x16C] = interpreter_alu::smulbt;
-    armInstructions[0x16E] = interpreter_alu::smultt;
-    armInstructions[0x170] = interpreter_alu::cmnLli;
-    armInstructions[0x171] = interpreter_alu::cmnLlr;
-    armInstructions[0x172] = interpreter_alu::cmnLri;
-    armInstructions[0x173] = interpreter_alu::cmnLrr;
-    armInstructions[0x174] = interpreter_alu::cmnAri;
-    armInstructions[0x175] = interpreter_alu::cmnArr;
-    armInstructions[0x176] = interpreter_alu::cmnRri;
-    armInstructions[0x177] = interpreter_alu::cmnRrr;
-    armInstructions[0x178] = interpreter_alu::cmnLli;
-    armInstructions[0x17A] = interpreter_alu::cmnLri;
-    armInstructions[0x17B] = interpreter_transfer::ldrhPrim;
-    armInstructions[0x17C] = interpreter_alu::cmnAri;
-    armInstructions[0x17D] = interpreter_transfer::ldrsbPrim;
-    armInstructions[0x17E] = interpreter_alu::cmnRri;
-    armInstructions[0x17F] = interpreter_transfer::ldrshPrim;
-    armInstructions[0x180] = interpreter_alu::orrLli;
-    armInstructions[0x181] = interpreter_alu::orrLlr;
-    armInstructions[0x182] = interpreter_alu::orrLri;
-    armInstructions[0x183] = interpreter_alu::orrLrr;
-    armInstructions[0x184] = interpreter_alu::orrAri;
-    armInstructions[0x185] = interpreter_alu::orrArr;
-    armInstructions[0x186] = interpreter_alu::orrRri;
-    armInstructions[0x187] = interpreter_alu::orrRrr;
-    armInstructions[0x188] = interpreter_alu::orrLli;
-    armInstructions[0x18A] = interpreter_alu::orrLri;
-    armInstructions[0x18B] = interpreter_transfer::strhOfrp;
-    armInstructions[0x18C] = interpreter_alu::orrAri;
-    armInstructions[0x18E] = interpreter_alu::orrRri;
-    armInstructions[0x190] = interpreter_alu::orrsLli;
-    armInstructions[0x191] = interpreter_alu::orrsLlr;
-    armInstructions[0x192] = interpreter_alu::orrsLri;
-    armInstructions[0x193] = interpreter_alu::orrsLrr;
-    armInstructions[0x194] = interpreter_alu::orrsAri;
-    armInstructions[0x195] = interpreter_alu::orrsArr;
-    armInstructions[0x196] = interpreter_alu::orrsRri;
-    armInstructions[0x197] = interpreter_alu::orrsRrr;
-    armInstructions[0x198] = interpreter_alu::orrsLli;
-    armInstructions[0x19A] = interpreter_alu::orrsLri;
-    armInstructions[0x19B] = interpreter_transfer::ldrhOfrp;
-    armInstructions[0x19C] = interpreter_alu::orrsAri;
-    armInstructions[0x19D] = interpreter_transfer::ldrsbOfrp;
-    armInstructions[0x19E] = interpreter_alu::orrsRri;
-    armInstructions[0x19F] = interpreter_transfer::ldrshOfrp;
-    armInstructions[0x1A0] = interpreter_alu::movLli;
-    armInstructions[0x1A1] = interpreter_alu::movLlr;
-    armInstructions[0x1A2] = interpreter_alu::movLri;
-    armInstructions[0x1A3] = interpreter_alu::movLrr;
-    armInstructions[0x1A4] = interpreter_alu::movAri;
-    armInstructions[0x1A5] = interpreter_alu::movArr;
-    armInstructions[0x1A6] = interpreter_alu::movRri;
-    armInstructions[0x1A7] = interpreter_alu::movRrr;
-    armInstructions[0x1A8] = interpreter_alu::movLli;
-    armInstructions[0x1AA] = interpreter_alu::movLri;
-    armInstructions[0x1AB] = interpreter_transfer::strhPrrp;
-    armInstructions[0x1AC] = interpreter_alu::movAri;
-    armInstructions[0x1AE] = interpreter_alu::movRri;
-    armInstructions[0x1B0] = interpreter_alu::movsLli;
-    armInstructions[0x1B1] = interpreter_alu::movsLlr;
-    armInstructions[0x1B2] = interpreter_alu::movsLri;
-    armInstructions[0x1B3] = interpreter_alu::movsLrr;
-    armInstructions[0x1B4] = interpreter_alu::movsAri;
-    armInstructions[0x1B5] = interpreter_alu::movsArr;
-    armInstructions[0x1B6] = interpreter_alu::movsRri;
-    armInstructions[0x1B7] = interpreter_alu::movsRrr;
-    armInstructions[0x1B8] = interpreter_alu::movsLli;
-    armInstructions[0x1BA] = interpreter_alu::movsLri;
-    armInstructions[0x1BB] = interpreter_transfer::ldrhPrrp;
-    armInstructions[0x1BC] = interpreter_alu::movsAri;
-    armInstructions[0x1BD] = interpreter_transfer::ldrsbPrrp;
-    armInstructions[0x1BE] = interpreter_alu::movsRri;
-    armInstructions[0x1BF] = interpreter_transfer::ldrshPrrp;
-    armInstructions[0x1C0] = interpreter_alu::bicLli;
-    armInstructions[0x1C1] = interpreter_alu::bicLlr;
-    armInstructions[0x1C2] = interpreter_alu::bicLri;
-    armInstructions[0x1C3] = interpreter_alu::bicLrr;
-    armInstructions[0x1C4] = interpreter_alu::bicAri;
-    armInstructions[0x1C5] = interpreter_alu::bicArr;
-    armInstructions[0x1C6] = interpreter_alu::bicRri;
-    armInstructions[0x1C7] = interpreter_alu::bicRrr;
-    armInstructions[0x1C8] = interpreter_alu::bicLli;
-    armInstructions[0x1CA] = interpreter_alu::bicLri;
-    armInstructions[0x1CB] = interpreter_transfer::strhOfip;
-    armInstructions[0x1CC] = interpreter_alu::bicAri;
-    armInstructions[0x1CE] = interpreter_alu::bicRri;
-    armInstructions[0x1D0] = interpreter_alu::bicsLli;
-    armInstructions[0x1D1] = interpreter_alu::bicsLlr;
-    armInstructions[0x1D2] = interpreter_alu::bicsLri;
-    armInstructions[0x1D3] = interpreter_alu::bicsLrr;
-    armInstructions[0x1D4] = interpreter_alu::bicsAri;
-    armInstructions[0x1D5] = interpreter_alu::bicsArr;
-    armInstructions[0x1D6] = interpreter_alu::bicsRri;
-    armInstructions[0x1D7] = interpreter_alu::bicsRrr;
-    armInstructions[0x1D8] = interpreter_alu::bicsLli;
-    armInstructions[0x1DA] = interpreter_alu::bicsLri;
-    armInstructions[0x1DB] = interpreter_transfer::ldrhOfip;
-    armInstructions[0x1DC] = interpreter_alu::bicsAri;
-    armInstructions[0x1DD] = interpreter_transfer::ldrsbOfip;
-    armInstructions[0x1DE] = interpreter_alu::bicsRri;
-    armInstructions[0x1DF] = interpreter_transfer::ldrshOfip;
-    armInstructions[0x1E0] = interpreter_alu::mvnLli;
-    armInstructions[0x1E1] = interpreter_alu::mvnLlr;
-    armInstructions[0x1E2] = interpreter_alu::mvnLri;
-    armInstructions[0x1E3] = interpreter_alu::mvnLrr;
-    armInstructions[0x1E4] = interpreter_alu::mvnAri;
-    armInstructions[0x1E5] = interpreter_alu::mvnArr;
-    armInstructions[0x1E6] = interpreter_alu::mvnRri;
-    armInstructions[0x1E7] = interpreter_alu::mvnRrr;
-    armInstructions[0x1E8] = interpreter_alu::mvnLli;
-    armInstructions[0x1EA] = interpreter_alu::mvnLri;
-    armInstructions[0x1EB] = interpreter_transfer::strhPrip;
-    armInstructions[0x1EC] = interpreter_alu::mvnAri;
-    armInstructions[0x1EE] = interpreter_alu::mvnRri;
-    armInstructions[0x1F0] = interpreter_alu::mvnsLli;
-    armInstructions[0x1F1] = interpreter_alu::mvnsLlr;
-    armInstructions[0x1F2] = interpreter_alu::mvnsLri;
-    armInstructions[0x1F3] = interpreter_alu::mvnsLrr;
-    armInstructions[0x1F4] = interpreter_alu::mvnsAri;
-    armInstructions[0x1F5] = interpreter_alu::mvnsArr;
-    armInstructions[0x1F6] = interpreter_alu::mvnsRri;
-    armInstructions[0x1F7] = interpreter_alu::mvnsRrr;
-    armInstructions[0x1F8] = interpreter_alu::mvnsLli;
-    armInstructions[0x1FA] = interpreter_alu::mvnsLlr;
-    armInstructions[0x1FB] = interpreter_transfer::ldrhPrip;
-    armInstructions[0x1FC] = interpreter_alu::mvnsAri;
-    armInstructions[0x1FD] = interpreter_transfer::ldrsbPrip;
-    armInstructions[0x1FE] = interpreter_alu::mvnsRri;
-    armInstructions[0x1FF] = interpreter_transfer::ldrshPrip;
-    armInstructions[0x200] = interpreter_alu::andImm;
-    armInstructions[0x201] = interpreter_alu::andImm;
-    armInstructions[0x202] = interpreter_alu::andImm;
-    armInstructions[0x203] = interpreter_alu::andImm;
-    armInstructions[0x204] = interpreter_alu::andImm;
-    armInstructions[0x205] = interpreter_alu::andImm;
-    armInstructions[0x206] = interpreter_alu::andImm;
-    armInstructions[0x207] = interpreter_alu::andImm;
-    armInstructions[0x208] = interpreter_alu::andImm;
-    armInstructions[0x209] = interpreter_alu::andImm;
-    armInstructions[0x20A] = interpreter_alu::andImm;
-    armInstructions[0x20B] = interpreter_alu::andImm;
-    armInstructions[0x20C] = interpreter_alu::andImm;
-    armInstructions[0x20D] = interpreter_alu::andImm;
-    armInstructions[0x20E] = interpreter_alu::andImm;
-    armInstructions[0x20F] = interpreter_alu::andImm;
-    armInstructions[0x210] = interpreter_alu::andsImm;
-    armInstructions[0x211] = interpreter_alu::andsImm;
-    armInstructions[0x212] = interpreter_alu::andsImm;
-    armInstructions[0x213] = interpreter_alu::andsImm;
-    armInstructions[0x214] = interpreter_alu::andsImm;
-    armInstructions[0x215] = interpreter_alu::andsImm;
-    armInstructions[0x216] = interpreter_alu::andsImm;
-    armInstructions[0x217] = interpreter_alu::andsImm;
-    armInstructions[0x218] = interpreter_alu::andsImm;
-    armInstructions[0x219] = interpreter_alu::andsImm;
-    armInstructions[0x21A] = interpreter_alu::andsImm;
-    armInstructions[0x21B] = interpreter_alu::andsImm;
-    armInstructions[0x21C] = interpreter_alu::andsImm;
-    armInstructions[0x21D] = interpreter_alu::andsImm;
-    armInstructions[0x21E] = interpreter_alu::andsImm;
-    armInstructions[0x21F] = interpreter_alu::andsImm;
-    armInstructions[0x220] = interpreter_alu::eorImm;
-    armInstructions[0x221] = interpreter_alu::eorImm;
-    armInstructions[0x222] = interpreter_alu::eorImm;
-    armInstructions[0x223] = interpreter_alu::eorImm;
-    armInstructions[0x224] = interpreter_alu::eorImm;
-    armInstructions[0x225] = interpreter_alu::eorImm;
-    armInstructions[0x226] = interpreter_alu::eorImm;
-    armInstructions[0x227] = interpreter_alu::eorImm;
-    armInstructions[0x228] = interpreter_alu::eorImm;
-    armInstructions[0x229] = interpreter_alu::eorImm;
-    armInstructions[0x22A] = interpreter_alu::eorImm;
-    armInstructions[0x22B] = interpreter_alu::eorImm;
-    armInstructions[0x22C] = interpreter_alu::eorImm;
-    armInstructions[0x22D] = interpreter_alu::eorImm;
-    armInstructions[0x22E] = interpreter_alu::eorImm;
-    armInstructions[0x22F] = interpreter_alu::eorImm;
-    armInstructions[0x230] = interpreter_alu::eorsImm;
-    armInstructions[0x231] = interpreter_alu::eorsImm;
-    armInstructions[0x232] = interpreter_alu::eorsImm;
-    armInstructions[0x233] = interpreter_alu::eorsImm;
-    armInstructions[0x234] = interpreter_alu::eorsImm;
-    armInstructions[0x235] = interpreter_alu::eorsImm;
-    armInstructions[0x236] = interpreter_alu::eorsImm;
-    armInstructions[0x237] = interpreter_alu::eorsImm;
-    armInstructions[0x238] = interpreter_alu::eorsImm;
-    armInstructions[0x239] = interpreter_alu::eorsImm;
-    armInstructions[0x23A] = interpreter_alu::eorsImm;
-    armInstructions[0x23B] = interpreter_alu::eorsImm;
-    armInstructions[0x23C] = interpreter_alu::eorsImm;
-    armInstructions[0x23D] = interpreter_alu::eorsImm;
-    armInstructions[0x23E] = interpreter_alu::eorsImm;
-    armInstructions[0x23F] = interpreter_alu::eorsImm;
-    armInstructions[0x240] = interpreter_alu::subImm;
-    armInstructions[0x241] = interpreter_alu::subImm;
-    armInstructions[0x242] = interpreter_alu::subImm;
-    armInstructions[0x243] = interpreter_alu::subImm;
-    armInstructions[0x244] = interpreter_alu::subImm;
-    armInstructions[0x245] = interpreter_alu::subImm;
-    armInstructions[0x246] = interpreter_alu::subImm;
-    armInstructions[0x247] = interpreter_alu::subImm;
-    armInstructions[0x248] = interpreter_alu::subImm;
-    armInstructions[0x249] = interpreter_alu::subImm;
-    armInstructions[0x24A] = interpreter_alu::subImm;
-    armInstructions[0x24B] = interpreter_alu::subImm;
-    armInstructions[0x24C] = interpreter_alu::subImm;
-    armInstructions[0x24D] = interpreter_alu::subImm;
-    armInstructions[0x24E] = interpreter_alu::subImm;
-    armInstructions[0x24F] = interpreter_alu::subImm;
-    armInstructions[0x250] = interpreter_alu::subsImm;
-    armInstructions[0x251] = interpreter_alu::subsImm;
-    armInstructions[0x252] = interpreter_alu::subsImm;
-    armInstructions[0x253] = interpreter_alu::subsImm;
-    armInstructions[0x254] = interpreter_alu::subsImm;
-    armInstructions[0x255] = interpreter_alu::subsImm;
-    armInstructions[0x256] = interpreter_alu::subsImm;
-    armInstructions[0x257] = interpreter_alu::subsImm;
-    armInstructions[0x258] = interpreter_alu::subsImm;
-    armInstructions[0x259] = interpreter_alu::subsImm;
-    armInstructions[0x25A] = interpreter_alu::subsImm;
-    armInstructions[0x25B] = interpreter_alu::subsImm;
-    armInstructions[0x25C] = interpreter_alu::subsImm;
-    armInstructions[0x25D] = interpreter_alu::subsImm;
-    armInstructions[0x25E] = interpreter_alu::subsImm;
-    armInstructions[0x25F] = interpreter_alu::subsImm;
-    armInstructions[0x260] = interpreter_alu::rsbImm;
-    armInstructions[0x261] = interpreter_alu::rsbImm;
-    armInstructions[0x262] = interpreter_alu::rsbImm;
-    armInstructions[0x263] = interpreter_alu::rsbImm;
-    armInstructions[0x264] = interpreter_alu::rsbImm;
-    armInstructions[0x265] = interpreter_alu::rsbImm;
-    armInstructions[0x266] = interpreter_alu::rsbImm;
-    armInstructions[0x267] = interpreter_alu::rsbImm;
-    armInstructions[0x268] = interpreter_alu::rsbImm;
-    armInstructions[0x269] = interpreter_alu::rsbImm;
-    armInstructions[0x26A] = interpreter_alu::rsbImm;
-    armInstructions[0x26B] = interpreter_alu::rsbImm;
-    armInstructions[0x26C] = interpreter_alu::rsbImm;
-    armInstructions[0x26D] = interpreter_alu::rsbImm;
-    armInstructions[0x26E] = interpreter_alu::rsbImm;
-    armInstructions[0x26F] = interpreter_alu::rsbImm;
-    armInstructions[0x270] = interpreter_alu::rsbsImm;
-    armInstructions[0x271] = interpreter_alu::rsbsImm;
-    armInstructions[0x272] = interpreter_alu::rsbsImm;
-    armInstructions[0x273] = interpreter_alu::rsbsImm;
-    armInstructions[0x274] = interpreter_alu::rsbsImm;
-    armInstructions[0x275] = interpreter_alu::rsbsImm;
-    armInstructions[0x276] = interpreter_alu::rsbsImm;
-    armInstructions[0x277] = interpreter_alu::rsbsImm;
-    armInstructions[0x278] = interpreter_alu::rsbsImm;
-    armInstructions[0x279] = interpreter_alu::rsbsImm;
-    armInstructions[0x27A] = interpreter_alu::rsbsImm;
-    armInstructions[0x27B] = interpreter_alu::rsbsImm;
-    armInstructions[0x27C] = interpreter_alu::rsbsImm;
-    armInstructions[0x27D] = interpreter_alu::rsbsImm;
-    armInstructions[0x27E] = interpreter_alu::rsbsImm;
-    armInstructions[0x27F] = interpreter_alu::rsbsImm;
-    armInstructions[0x280] = interpreter_alu::addImm;
-    armInstructions[0x281] = interpreter_alu::addImm;
-    armInstructions[0x282] = interpreter_alu::addImm;
-    armInstructions[0x283] = interpreter_alu::addImm;
-    armInstructions[0x284] = interpreter_alu::addImm;
-    armInstructions[0x285] = interpreter_alu::addImm;
-    armInstructions[0x286] = interpreter_alu::addImm;
-    armInstructions[0x287] = interpreter_alu::addImm;
-    armInstructions[0x288] = interpreter_alu::addImm;
-    armInstructions[0x289] = interpreter_alu::addImm;
-    armInstructions[0x28A] = interpreter_alu::addImm;
-    armInstructions[0x28B] = interpreter_alu::addImm;
-    armInstructions[0x28C] = interpreter_alu::addImm;
-    armInstructions[0x28D] = interpreter_alu::addImm;
-    armInstructions[0x28E] = interpreter_alu::addImm;
-    armInstructions[0x28F] = interpreter_alu::addImm;
-    armInstructions[0x290] = interpreter_alu::addsImm;
-    armInstructions[0x291] = interpreter_alu::addsImm;
-    armInstructions[0x292] = interpreter_alu::addsImm;
-    armInstructions[0x293] = interpreter_alu::addsImm;
-    armInstructions[0x294] = interpreter_alu::addsImm;
-    armInstructions[0x295] = interpreter_alu::addsImm;
-    armInstructions[0x296] = interpreter_alu::addsImm;
-    armInstructions[0x297] = interpreter_alu::addsImm;
-    armInstructions[0x298] = interpreter_alu::addsImm;
-    armInstructions[0x299] = interpreter_alu::addsImm;
-    armInstructions[0x29A] = interpreter_alu::addsImm;
-    armInstructions[0x29B] = interpreter_alu::addsImm;
-    armInstructions[0x29C] = interpreter_alu::addsImm;
-    armInstructions[0x29D] = interpreter_alu::addsImm;
-    armInstructions[0x29E] = interpreter_alu::addsImm;
-    armInstructions[0x29F] = interpreter_alu::addsImm;
-    armInstructions[0x2A0] = interpreter_alu::adcImm;
-    armInstructions[0x2A1] = interpreter_alu::adcImm;
-    armInstructions[0x2A2] = interpreter_alu::adcImm;
-    armInstructions[0x2A3] = interpreter_alu::adcImm;
-    armInstructions[0x2A4] = interpreter_alu::adcImm;
-    armInstructions[0x2A5] = interpreter_alu::adcImm;
-    armInstructions[0x2A6] = interpreter_alu::adcImm;
-    armInstructions[0x2A7] = interpreter_alu::adcImm;
-    armInstructions[0x2A8] = interpreter_alu::adcImm;
-    armInstructions[0x2A9] = interpreter_alu::adcImm;
-    armInstructions[0x2AA] = interpreter_alu::adcImm;
-    armInstructions[0x2AB] = interpreter_alu::adcImm;
-    armInstructions[0x2AC] = interpreter_alu::adcImm;
-    armInstructions[0x2AD] = interpreter_alu::adcImm;
-    armInstructions[0x2AE] = interpreter_alu::adcImm;
-    armInstructions[0x2AF] = interpreter_alu::adcImm;
-    armInstructions[0x2B0] = interpreter_alu::adcsImm;
-    armInstructions[0x2B1] = interpreter_alu::adcsImm;
-    armInstructions[0x2B2] = interpreter_alu::adcsImm;
-    armInstructions[0x2B3] = interpreter_alu::adcsImm;
-    armInstructions[0x2B4] = interpreter_alu::adcsImm;
-    armInstructions[0x2B5] = interpreter_alu::adcsImm;
-    armInstructions[0x2B6] = interpreter_alu::adcsImm;
-    armInstructions[0x2B7] = interpreter_alu::adcsImm;
-    armInstructions[0x2B8] = interpreter_alu::adcsImm;
-    armInstructions[0x2B9] = interpreter_alu::adcsImm;
-    armInstructions[0x2BA] = interpreter_alu::adcsImm;
-    armInstructions[0x2BB] = interpreter_alu::adcsImm;
-    armInstructions[0x2BC] = interpreter_alu::adcsImm;
-    armInstructions[0x2BD] = interpreter_alu::adcsImm;
-    armInstructions[0x2BE] = interpreter_alu::adcsImm;
-    armInstructions[0x2BF] = interpreter_alu::adcsImm;
-    armInstructions[0x2C0] = interpreter_alu::sbcImm;
-    armInstructions[0x2C1] = interpreter_alu::sbcImm;
-    armInstructions[0x2C2] = interpreter_alu::sbcImm;
-    armInstructions[0x2C3] = interpreter_alu::sbcImm;
-    armInstructions[0x2C4] = interpreter_alu::sbcImm;
-    armInstructions[0x2C5] = interpreter_alu::sbcImm;
-    armInstructions[0x2C6] = interpreter_alu::sbcImm;
-    armInstructions[0x2C7] = interpreter_alu::sbcImm;
-    armInstructions[0x2C8] = interpreter_alu::sbcImm;
-    armInstructions[0x2C9] = interpreter_alu::sbcImm;
-    armInstructions[0x2CA] = interpreter_alu::sbcImm;
-    armInstructions[0x2CB] = interpreter_alu::sbcImm;
-    armInstructions[0x2CC] = interpreter_alu::sbcImm;
-    armInstructions[0x2CD] = interpreter_alu::sbcImm;
-    armInstructions[0x2CE] = interpreter_alu::sbcImm;
-    armInstructions[0x2CF] = interpreter_alu::sbcImm;
-    armInstructions[0x2D0] = interpreter_alu::sbcsImm;
-    armInstructions[0x2D1] = interpreter_alu::sbcsImm;
-    armInstructions[0x2D2] = interpreter_alu::sbcsImm;
-    armInstructions[0x2D3] = interpreter_alu::sbcsImm;
-    armInstructions[0x2D4] = interpreter_alu::sbcsImm;
-    armInstructions[0x2D5] = interpreter_alu::sbcsImm;
-    armInstructions[0x2D6] = interpreter_alu::sbcsImm;
-    armInstructions[0x2D7] = interpreter_alu::sbcsImm;
-    armInstructions[0x2D8] = interpreter_alu::sbcsImm;
-    armInstructions[0x2D9] = interpreter_alu::sbcsImm;
-    armInstructions[0x2DA] = interpreter_alu::sbcsImm;
-    armInstructions[0x2DB] = interpreter_alu::sbcsImm;
-    armInstructions[0x2DC] = interpreter_alu::sbcsImm;
-    armInstructions[0x2DD] = interpreter_alu::sbcsImm;
-    armInstructions[0x2DE] = interpreter_alu::sbcsImm;
-    armInstructions[0x2DF] = interpreter_alu::sbcsImm;
-    armInstructions[0x2E0] = interpreter_alu::rscImm;
-    armInstructions[0x2E1] = interpreter_alu::rscImm;
-    armInstructions[0x2E2] = interpreter_alu::rscImm;
-    armInstructions[0x2E3] = interpreter_alu::rscImm;
-    armInstructions[0x2E4] = interpreter_alu::rscImm;
-    armInstructions[0x2E5] = interpreter_alu::rscImm;
-    armInstructions[0x2E6] = interpreter_alu::rscImm;
-    armInstructions[0x2E7] = interpreter_alu::rscImm;
-    armInstructions[0x2E8] = interpreter_alu::rscImm;
-    armInstructions[0x2E9] = interpreter_alu::rscImm;
-    armInstructions[0x2EA] = interpreter_alu::rscImm;
-    armInstructions[0x2EB] = interpreter_alu::rscImm;
-    armInstructions[0x2EC] = interpreter_alu::rscImm;
-    armInstructions[0x2ED] = interpreter_alu::rscImm;
-    armInstructions[0x2EE] = interpreter_alu::rscImm;
-    armInstructions[0x2EF] = interpreter_alu::rscImm;
-    armInstructions[0x2F0] = interpreter_alu::rscsImm;
-    armInstructions[0x2F1] = interpreter_alu::rscsImm;
-    armInstructions[0x2F2] = interpreter_alu::rscsImm;
-    armInstructions[0x2F3] = interpreter_alu::rscsImm;
-    armInstructions[0x2F4] = interpreter_alu::rscsImm;
-    armInstructions[0x2F5] = interpreter_alu::rscsImm;
-    armInstructions[0x2F6] = interpreter_alu::rscsImm;
-    armInstructions[0x2F7] = interpreter_alu::rscsImm;
-    armInstructions[0x2F8] = interpreter_alu::rscsImm;
-    armInstructions[0x2F9] = interpreter_alu::rscsImm;
-    armInstructions[0x2FA] = interpreter_alu::rscsImm;
-    armInstructions[0x2FB] = interpreter_alu::rscsImm;
-    armInstructions[0x2FC] = interpreter_alu::rscsImm;
-    armInstructions[0x2FD] = interpreter_alu::rscsImm;
-    armInstructions[0x2FE] = interpreter_alu::rscsImm;
-    armInstructions[0x2FF] = interpreter_alu::rscsImm;
-    armInstructions[0x310] = interpreter_alu::tstImm;
-    armInstructions[0x311] = interpreter_alu::tstImm;
-    armInstructions[0x312] = interpreter_alu::tstImm;
-    armInstructions[0x313] = interpreter_alu::tstImm;
-    armInstructions[0x314] = interpreter_alu::tstImm;
-    armInstructions[0x315] = interpreter_alu::tstImm;
-    armInstructions[0x316] = interpreter_alu::tstImm;
-    armInstructions[0x317] = interpreter_alu::tstImm;
-    armInstructions[0x318] = interpreter_alu::tstImm;
-    armInstructions[0x319] = interpreter_alu::tstImm;
-    armInstructions[0x31A] = interpreter_alu::tstImm;
-    armInstructions[0x31B] = interpreter_alu::tstImm;
-    armInstructions[0x31C] = interpreter_alu::tstImm;
-    armInstructions[0x31D] = interpreter_alu::tstImm;
-    armInstructions[0x31E] = interpreter_alu::tstImm;
-    armInstructions[0x31F] = interpreter_alu::tstImm;
-    armInstructions[0x320] = interpreter_other::msrIc;
-    armInstructions[0x321] = interpreter_other::msrIc;
-    armInstructions[0x322] = interpreter_other::msrIc;
-    armInstructions[0x323] = interpreter_other::msrIc;
-    armInstructions[0x324] = interpreter_other::msrIc;
-    armInstructions[0x325] = interpreter_other::msrIc;
-    armInstructions[0x326] = interpreter_other::msrIc;
-    armInstructions[0x327] = interpreter_other::msrIc;
-    armInstructions[0x328] = interpreter_other::msrIc;
-    armInstructions[0x329] = interpreter_other::msrIc;
-    armInstructions[0x32A] = interpreter_other::msrIc;
-    armInstructions[0x32B] = interpreter_other::msrIc;
-    armInstructions[0x32C] = interpreter_other::msrIc;
-    armInstructions[0x32D] = interpreter_other::msrIc;
-    armInstructions[0x32E] = interpreter_other::msrIc;
-    armInstructions[0x32F] = interpreter_other::msrIc;
-    armInstructions[0x330] = interpreter_alu::teqImm;
-    armInstructions[0x331] = interpreter_alu::teqImm;
-    armInstructions[0x332] = interpreter_alu::teqImm;
-    armInstructions[0x333] = interpreter_alu::teqImm;
-    armInstructions[0x334] = interpreter_alu::teqImm;
-    armInstructions[0x335] = interpreter_alu::teqImm;
-    armInstructions[0x336] = interpreter_alu::teqImm;
-    armInstructions[0x337] = interpreter_alu::teqImm;
-    armInstructions[0x338] = interpreter_alu::teqImm;
-    armInstructions[0x339] = interpreter_alu::teqImm;
-    armInstructions[0x33A] = interpreter_alu::teqImm;
-    armInstructions[0x33B] = interpreter_alu::teqImm;
-    armInstructions[0x33C] = interpreter_alu::teqImm;
-    armInstructions[0x33D] = interpreter_alu::teqImm;
-    armInstructions[0x33E] = interpreter_alu::teqImm;
-    armInstructions[0x33F] = interpreter_alu::teqImm;
-    armInstructions[0x350] = interpreter_alu::cmpImm;
-    armInstructions[0x351] = interpreter_alu::cmpImm;
-    armInstructions[0x352] = interpreter_alu::cmpImm;
-    armInstructions[0x353] = interpreter_alu::cmpImm;
-    armInstructions[0x354] = interpreter_alu::cmpImm;
-    armInstructions[0x355] = interpreter_alu::cmpImm;
-    armInstructions[0x356] = interpreter_alu::cmpImm;
-    armInstructions[0x357] = interpreter_alu::cmpImm;
-    armInstructions[0x358] = interpreter_alu::cmpImm;
-    armInstructions[0x359] = interpreter_alu::cmpImm;
-    armInstructions[0x35A] = interpreter_alu::cmpImm;
-    armInstructions[0x35B] = interpreter_alu::cmpImm;
-    armInstructions[0x35C] = interpreter_alu::cmpImm;
-    armInstructions[0x35D] = interpreter_alu::cmpImm;
-    armInstructions[0x35E] = interpreter_alu::cmpImm;
-    armInstructions[0x35F] = interpreter_alu::cmpImm;
-    armInstructions[0x360] = interpreter_other::msrIs;
-    armInstructions[0x361] = interpreter_other::msrIs;
-    armInstructions[0x362] = interpreter_other::msrIs;
-    armInstructions[0x363] = interpreter_other::msrIs;
-    armInstructions[0x364] = interpreter_other::msrIs;
-    armInstructions[0x365] = interpreter_other::msrIs;
-    armInstructions[0x366] = interpreter_other::msrIs;
-    armInstructions[0x367] = interpreter_other::msrIs;
-    armInstructions[0x368] = interpreter_other::msrIs;
-    armInstructions[0x369] = interpreter_other::msrIs;
-    armInstructions[0x36A] = interpreter_other::msrIs;
-    armInstructions[0x36B] = interpreter_other::msrIs;
-    armInstructions[0x36C] = interpreter_other::msrIs;
-    armInstructions[0x36D] = interpreter_other::msrIs;
-    armInstructions[0x36E] = interpreter_other::msrIs;
-    armInstructions[0x36F] = interpreter_other::msrIs;
-    armInstructions[0x370] = interpreter_alu::cmnImm;
-    armInstructions[0x371] = interpreter_alu::cmnImm;
-    armInstructions[0x372] = interpreter_alu::cmnImm;
-    armInstructions[0x373] = interpreter_alu::cmnImm;
-    armInstructions[0x374] = interpreter_alu::cmnImm;
-    armInstructions[0x375] = interpreter_alu::cmnImm;
-    armInstructions[0x376] = interpreter_alu::cmnImm;
-    armInstructions[0x377] = interpreter_alu::cmnImm;
-    armInstructions[0x378] = interpreter_alu::cmnImm;
-    armInstructions[0x379] = interpreter_alu::cmnImm;
-    armInstructions[0x37A] = interpreter_alu::cmnImm;
-    armInstructions[0x37B] = interpreter_alu::cmnImm;
-    armInstructions[0x37C] = interpreter_alu::cmnImm;
-    armInstructions[0x37D] = interpreter_alu::cmnImm;
-    armInstructions[0x37E] = interpreter_alu::cmnImm;
-    armInstructions[0x37F] = interpreter_alu::cmnImm;
-    armInstructions[0x380] = interpreter_alu::orrImm;
-    armInstructions[0x381] = interpreter_alu::orrImm;
-    armInstructions[0x382] = interpreter_alu::orrImm;
-    armInstructions[0x383] = interpreter_alu::orrImm;
-    armInstructions[0x384] = interpreter_alu::orrImm;
-    armInstructions[0x385] = interpreter_alu::orrImm;
-    armInstructions[0x386] = interpreter_alu::orrImm;
-    armInstructions[0x387] = interpreter_alu::orrImm;
-    armInstructions[0x388] = interpreter_alu::orrImm;
-    armInstructions[0x389] = interpreter_alu::orrImm;
-    armInstructions[0x38A] = interpreter_alu::orrImm;
-    armInstructions[0x38B] = interpreter_alu::orrImm;
-    armInstructions[0x38C] = interpreter_alu::orrImm;
-    armInstructions[0x38D] = interpreter_alu::orrImm;
-    armInstructions[0x38E] = interpreter_alu::orrImm;
-    armInstructions[0x38F] = interpreter_alu::orrImm;
-    armInstructions[0x390] = interpreter_alu::orrsImm;
-    armInstructions[0x391] = interpreter_alu::orrsImm;
-    armInstructions[0x392] = interpreter_alu::orrsImm;
-    armInstructions[0x393] = interpreter_alu::orrsImm;
-    armInstructions[0x394] = interpreter_alu::orrsImm;
-    armInstructions[0x395] = interpreter_alu::orrsImm;
-    armInstructions[0x396] = interpreter_alu::orrsImm;
-    armInstructions[0x397] = interpreter_alu::orrsImm;
-    armInstructions[0x398] = interpreter_alu::orrsImm;
-    armInstructions[0x399] = interpreter_alu::orrsImm;
-    armInstructions[0x39A] = interpreter_alu::orrsImm;
-    armInstructions[0x39B] = interpreter_alu::orrsImm;
-    armInstructions[0x39C] = interpreter_alu::orrsImm;
-    armInstructions[0x39D] = interpreter_alu::orrsImm;
-    armInstructions[0x39E] = interpreter_alu::orrsImm;
-    armInstructions[0x39F] = interpreter_alu::orrsImm;
-    armInstructions[0x3A0] = interpreter_alu::movImm;
-    armInstructions[0x3A1] = interpreter_alu::movImm;
-    armInstructions[0x3A2] = interpreter_alu::movImm;
-    armInstructions[0x3A3] = interpreter_alu::movImm;
-    armInstructions[0x3A4] = interpreter_alu::movImm;
-    armInstructions[0x3A5] = interpreter_alu::movImm;
-    armInstructions[0x3A6] = interpreter_alu::movImm;
-    armInstructions[0x3A7] = interpreter_alu::movImm;
-    armInstructions[0x3A8] = interpreter_alu::movImm;
-    armInstructions[0x3A9] = interpreter_alu::movImm;
-    armInstructions[0x3AA] = interpreter_alu::movImm;
-    armInstructions[0x3AB] = interpreter_alu::movImm;
-    armInstructions[0x3AC] = interpreter_alu::movImm;
-    armInstructions[0x3AD] = interpreter_alu::movImm;
-    armInstructions[0x3AE] = interpreter_alu::movImm;
-    armInstructions[0x3AF] = interpreter_alu::movImm;
-    armInstructions[0x3B0] = interpreter_alu::movsImm;
-    armInstructions[0x3B1] = interpreter_alu::movsImm;
-    armInstructions[0x3B2] = interpreter_alu::movsImm;
-    armInstructions[0x3B3] = interpreter_alu::movsImm;
-    armInstructions[0x3B4] = interpreter_alu::movsImm;
-    armInstructions[0x3B5] = interpreter_alu::movsImm;
-    armInstructions[0x3B6] = interpreter_alu::movsImm;
-    armInstructions[0x3B7] = interpreter_alu::movsImm;
-    armInstructions[0x3B8] = interpreter_alu::movsImm;
-    armInstructions[0x3B9] = interpreter_alu::movsImm;
-    armInstructions[0x3BA] = interpreter_alu::movsImm;
-    armInstructions[0x3BB] = interpreter_alu::movsImm;
-    armInstructions[0x3BC] = interpreter_alu::movsImm;
-    armInstructions[0x3BD] = interpreter_alu::movsImm;
-    armInstructions[0x3BE] = interpreter_alu::movsImm;
-    armInstructions[0x3BF] = interpreter_alu::movsImm;
-    armInstructions[0x3C0] = interpreter_alu::bicImm;
-    armInstructions[0x3C1] = interpreter_alu::bicImm;
-    armInstructions[0x3C2] = interpreter_alu::bicImm;
-    armInstructions[0x3C3] = interpreter_alu::bicImm;
-    armInstructions[0x3C4] = interpreter_alu::bicImm;
-    armInstructions[0x3C5] = interpreter_alu::bicImm;
-    armInstructions[0x3C6] = interpreter_alu::bicImm;
-    armInstructions[0x3C7] = interpreter_alu::bicImm;
-    armInstructions[0x3C8] = interpreter_alu::bicImm;
-    armInstructions[0x3C9] = interpreter_alu::bicImm;
-    armInstructions[0x3CA] = interpreter_alu::bicImm;
-    armInstructions[0x3CB] = interpreter_alu::bicImm;
-    armInstructions[0x3CC] = interpreter_alu::bicImm;
-    armInstructions[0x3CD] = interpreter_alu::bicImm;
-    armInstructions[0x3CE] = interpreter_alu::bicImm;
-    armInstructions[0x3CF] = interpreter_alu::bicImm;
-    armInstructions[0x3D0] = interpreter_alu::bicsImm;
-    armInstructions[0x3D1] = interpreter_alu::bicsImm;
-    armInstructions[0x3D2] = interpreter_alu::bicsImm;
-    armInstructions[0x3D3] = interpreter_alu::bicsImm;
-    armInstructions[0x3D4] = interpreter_alu::bicsImm;
-    armInstructions[0x3D5] = interpreter_alu::bicsImm;
-    armInstructions[0x3D6] = interpreter_alu::bicsImm;
-    armInstructions[0x3D7] = interpreter_alu::bicsImm;
-    armInstructions[0x3D8] = interpreter_alu::bicsImm;
-    armInstructions[0x3D9] = interpreter_alu::bicsImm;
-    armInstructions[0x3DA] = interpreter_alu::bicsImm;
-    armInstructions[0x3DB] = interpreter_alu::bicsImm;
-    armInstructions[0x3DC] = interpreter_alu::bicsImm;
-    armInstructions[0x3DD] = interpreter_alu::bicsImm;
-    armInstructions[0x3DE] = interpreter_alu::bicsImm;
-    armInstructions[0x3DF] = interpreter_alu::bicsImm;
-    armInstructions[0x3E0] = interpreter_alu::mvnImm;
-    armInstructions[0x3E1] = interpreter_alu::mvnImm;
-    armInstructions[0x3E2] = interpreter_alu::mvnImm;
-    armInstructions[0x3E3] = interpreter_alu::mvnImm;
-    armInstructions[0x3E4] = interpreter_alu::mvnImm;
-    armInstructions[0x3E5] = interpreter_alu::mvnImm;
-    armInstructions[0x3E6] = interpreter_alu::mvnImm;
-    armInstructions[0x3E7] = interpreter_alu::mvnImm;
-    armInstructions[0x3E8] = interpreter_alu::mvnImm;
-    armInstructions[0x3E9] = interpreter_alu::mvnImm;
-    armInstructions[0x3EA] = interpreter_alu::mvnImm;
-    armInstructions[0x3EB] = interpreter_alu::mvnImm;
-    armInstructions[0x3EC] = interpreter_alu::mvnImm;
-    armInstructions[0x3ED] = interpreter_alu::mvnImm;
-    armInstructions[0x3EE] = interpreter_alu::mvnImm;
-    armInstructions[0x3EF] = interpreter_alu::mvnImm;
-    armInstructions[0x3F0] = interpreter_alu::mvnsImm;
-    armInstructions[0x3F1] = interpreter_alu::mvnsImm;
-    armInstructions[0x3F2] = interpreter_alu::mvnsImm;
-    armInstructions[0x3F3] = interpreter_alu::mvnsImm;
-    armInstructions[0x3F4] = interpreter_alu::mvnsImm;
-    armInstructions[0x3F5] = interpreter_alu::mvnsImm;
-    armInstructions[0x3F6] = interpreter_alu::mvnsImm;
-    armInstructions[0x3F7] = interpreter_alu::mvnsImm;
-    armInstructions[0x3F8] = interpreter_alu::mvnsImm;
-    armInstructions[0x3F9] = interpreter_alu::mvnsImm;
-    armInstructions[0x3FA] = interpreter_alu::mvnsImm;
-    armInstructions[0x3FB] = interpreter_alu::mvnsImm;
-    armInstructions[0x3FC] = interpreter_alu::mvnsImm;
-    armInstructions[0x3FD] = interpreter_alu::mvnsImm;
-    armInstructions[0x3FE] = interpreter_alu::mvnsImm;
-    armInstructions[0x3FF] = interpreter_alu::mvnsImm;
-    armInstructions[0x400] = interpreter_transfer::strPtim;
-    armInstructions[0x401] = interpreter_transfer::strPtim;
-    armInstructions[0x402] = interpreter_transfer::strPtim;
-    armInstructions[0x403] = interpreter_transfer::strPtim;
-    armInstructions[0x404] = interpreter_transfer::strPtim;
-    armInstructions[0x405] = interpreter_transfer::strPtim;
-    armInstructions[0x406] = interpreter_transfer::strPtim;
-    armInstructions[0x407] = interpreter_transfer::strPtim;
-    armInstructions[0x408] = interpreter_transfer::strPtim;
-    armInstructions[0x409] = interpreter_transfer::strPtim;
-    armInstructions[0x40A] = interpreter_transfer::strPtim;
-    armInstructions[0x40B] = interpreter_transfer::strPtim;
-    armInstructions[0x40C] = interpreter_transfer::strPtim;
-    armInstructions[0x40D] = interpreter_transfer::strPtim;
-    armInstructions[0x40E] = interpreter_transfer::strPtim;
-    armInstructions[0x40F] = interpreter_transfer::strPtim;
-    armInstructions[0x410] = interpreter_transfer::ldrPtim;
-    armInstructions[0x411] = interpreter_transfer::ldrPtim;
-    armInstructions[0x412] = interpreter_transfer::ldrPtim;
-    armInstructions[0x413] = interpreter_transfer::ldrPtim;
-    armInstructions[0x414] = interpreter_transfer::ldrPtim;
-    armInstructions[0x415] = interpreter_transfer::ldrPtim;
-    armInstructions[0x416] = interpreter_transfer::ldrPtim;
-    armInstructions[0x417] = interpreter_transfer::ldrPtim;
-    armInstructions[0x418] = interpreter_transfer::ldrPtim;
-    armInstructions[0x419] = interpreter_transfer::ldrPtim;
-    armInstructions[0x41A] = interpreter_transfer::ldrPtim;
-    armInstructions[0x41B] = interpreter_transfer::ldrPtim;
-    armInstructions[0x41C] = interpreter_transfer::ldrPtim;
-    armInstructions[0x41D] = interpreter_transfer::ldrPtim;
-    armInstructions[0x41E] = interpreter_transfer::ldrPtim;
-    armInstructions[0x41F] = interpreter_transfer::ldrPtim;
-    armInstructions[0x440] = interpreter_transfer::strbPtim;
-    armInstructions[0x441] = interpreter_transfer::strbPtim;
-    armInstructions[0x442] = interpreter_transfer::strbPtim;
-    armInstructions[0x443] = interpreter_transfer::strbPtim;
-    armInstructions[0x444] = interpreter_transfer::strbPtim;
-    armInstructions[0x445] = interpreter_transfer::strbPtim;
-    armInstructions[0x446] = interpreter_transfer::strbPtim;
-    armInstructions[0x447] = interpreter_transfer::strbPtim;
-    armInstructions[0x448] = interpreter_transfer::strbPtim;
-    armInstructions[0x449] = interpreter_transfer::strbPtim;
-    armInstructions[0x44A] = interpreter_transfer::strbPtim;
-    armInstructions[0x44B] = interpreter_transfer::strbPtim;
-    armInstructions[0x44C] = interpreter_transfer::strbPtim;
-    armInstructions[0x44D] = interpreter_transfer::strbPtim;
-    armInstructions[0x44E] = interpreter_transfer::strbPtim;
-    armInstructions[0x44F] = interpreter_transfer::strbPtim;
-    armInstructions[0x450] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x451] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x452] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x453] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x454] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x455] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x456] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x457] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x458] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x459] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x45A] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x45B] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x45C] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x45D] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x45E] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x45F] = interpreter_transfer::ldrbPtim;
-    armInstructions[0x480] = interpreter_transfer::strPtip;
-    armInstructions[0x481] = interpreter_transfer::strPtip;
-    armInstructions[0x482] = interpreter_transfer::strPtip;
-    armInstructions[0x483] = interpreter_transfer::strPtip;
-    armInstructions[0x484] = interpreter_transfer::strPtip;
-    armInstructions[0x485] = interpreter_transfer::strPtip;
-    armInstructions[0x486] = interpreter_transfer::strPtip;
-    armInstructions[0x487] = interpreter_transfer::strPtip;
-    armInstructions[0x488] = interpreter_transfer::strPtip;
-    armInstructions[0x489] = interpreter_transfer::strPtip;
-    armInstructions[0x48A] = interpreter_transfer::strPtip;
-    armInstructions[0x48B] = interpreter_transfer::strPtip;
-    armInstructions[0x48C] = interpreter_transfer::strPtip;
-    armInstructions[0x48D] = interpreter_transfer::strPtip;
-    armInstructions[0x48E] = interpreter_transfer::strPtip;
-    armInstructions[0x48F] = interpreter_transfer::strPtip;
-    armInstructions[0x490] = interpreter_transfer::ldrPtip;
-    armInstructions[0x491] = interpreter_transfer::ldrPtip;
-    armInstructions[0x492] = interpreter_transfer::ldrPtip;
-    armInstructions[0x493] = interpreter_transfer::ldrPtip;
-    armInstructions[0x494] = interpreter_transfer::ldrPtip;
-    armInstructions[0x495] = interpreter_transfer::ldrPtip;
-    armInstructions[0x496] = interpreter_transfer::ldrPtip;
-    armInstructions[0x497] = interpreter_transfer::ldrPtip;
-    armInstructions[0x498] = interpreter_transfer::ldrPtip;
-    armInstructions[0x499] = interpreter_transfer::ldrPtip;
-    armInstructions[0x49A] = interpreter_transfer::ldrPtip;
-    armInstructions[0x49B] = interpreter_transfer::ldrPtip;
-    armInstructions[0x49C] = interpreter_transfer::ldrPtip;
-    armInstructions[0x49D] = interpreter_transfer::ldrPtip;
-    armInstructions[0x49E] = interpreter_transfer::ldrPtip;
-    armInstructions[0x49F] = interpreter_transfer::ldrPtip;
-    armInstructions[0x4C0] = interpreter_transfer::strbPtip;
-    armInstructions[0x4C1] = interpreter_transfer::strbPtip;
-    armInstructions[0x4C2] = interpreter_transfer::strbPtip;
-    armInstructions[0x4C3] = interpreter_transfer::strbPtip;
-    armInstructions[0x4C4] = interpreter_transfer::strbPtip;
-    armInstructions[0x4C5] = interpreter_transfer::strbPtip;
-    armInstructions[0x4C6] = interpreter_transfer::strbPtip;
-    armInstructions[0x4C7] = interpreter_transfer::strbPtip;
-    armInstructions[0x4C8] = interpreter_transfer::strbPtip;
-    armInstructions[0x4C9] = interpreter_transfer::strbPtip;
-    armInstructions[0x4CA] = interpreter_transfer::strbPtip;
-    armInstructions[0x4CB] = interpreter_transfer::strbPtip;
-    armInstructions[0x4CC] = interpreter_transfer::strbPtip;
-    armInstructions[0x4CD] = interpreter_transfer::strbPtip;
-    armInstructions[0x4CE] = interpreter_transfer::strbPtip;
-    armInstructions[0x4CF] = interpreter_transfer::strbPtip;
-    armInstructions[0x4D0] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4D1] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4D2] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4D3] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4D4] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4D5] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4D6] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4D7] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4D8] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4D9] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4DA] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4DB] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4DC] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4DD] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4DE] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x4DF] = interpreter_transfer::ldrbPtip;
-    armInstructions[0x500] = interpreter_transfer::strOfim;
-    armInstructions[0x501] = interpreter_transfer::strOfim;
-    armInstructions[0x502] = interpreter_transfer::strOfim;
-    armInstructions[0x503] = interpreter_transfer::strOfim;
-    armInstructions[0x504] = interpreter_transfer::strOfim;
-    armInstructions[0x505] = interpreter_transfer::strOfim;
-    armInstructions[0x506] = interpreter_transfer::strOfim;
-    armInstructions[0x507] = interpreter_transfer::strOfim;
-    armInstructions[0x508] = interpreter_transfer::strOfim;
-    armInstructions[0x509] = interpreter_transfer::strOfim;
-    armInstructions[0x50A] = interpreter_transfer::strOfim;
-    armInstructions[0x50B] = interpreter_transfer::strOfim;
-    armInstructions[0x50C] = interpreter_transfer::strOfim;
-    armInstructions[0x50D] = interpreter_transfer::strOfim;
-    armInstructions[0x50E] = interpreter_transfer::strOfim;
-    armInstructions[0x50F] = interpreter_transfer::strOfim;
-    armInstructions[0x510] = interpreter_transfer::ldrOfim;
-    armInstructions[0x511] = interpreter_transfer::ldrOfim;
-    armInstructions[0x512] = interpreter_transfer::ldrOfim;
-    armInstructions[0x513] = interpreter_transfer::ldrOfim;
-    armInstructions[0x514] = interpreter_transfer::ldrOfim;
-    armInstructions[0x515] = interpreter_transfer::ldrOfim;
-    armInstructions[0x516] = interpreter_transfer::ldrOfim;
-    armInstructions[0x517] = interpreter_transfer::ldrOfim;
-    armInstructions[0x518] = interpreter_transfer::ldrOfim;
-    armInstructions[0x519] = interpreter_transfer::ldrOfim;
-    armInstructions[0x51A] = interpreter_transfer::ldrOfim;
-    armInstructions[0x51B] = interpreter_transfer::ldrOfim;
-    armInstructions[0x51C] = interpreter_transfer::ldrOfim;
-    armInstructions[0x51D] = interpreter_transfer::ldrOfim;
-    armInstructions[0x51E] = interpreter_transfer::ldrOfim;
-    armInstructions[0x51F] = interpreter_transfer::ldrOfim;
-    armInstructions[0x520] = interpreter_transfer::strPrim;
-    armInstructions[0x521] = interpreter_transfer::strPrim;
-    armInstructions[0x522] = interpreter_transfer::strPrim;
-    armInstructions[0x523] = interpreter_transfer::strPrim;
-    armInstructions[0x524] = interpreter_transfer::strPrim;
-    armInstructions[0x525] = interpreter_transfer::strPrim;
-    armInstructions[0x526] = interpreter_transfer::strPrim;
-    armInstructions[0x527] = interpreter_transfer::strPrim;
-    armInstructions[0x528] = interpreter_transfer::strPrim;
-    armInstructions[0x529] = interpreter_transfer::strPrim;
-    armInstructions[0x52A] = interpreter_transfer::strPrim;
-    armInstructions[0x52B] = interpreter_transfer::strPrim;
-    armInstructions[0x52C] = interpreter_transfer::strPrim;
-    armInstructions[0x52D] = interpreter_transfer::strPrim;
-    armInstructions[0x52E] = interpreter_transfer::strPrim;
-    armInstructions[0x52F] = interpreter_transfer::strPrim;
-    armInstructions[0x530] = interpreter_transfer::ldrPrim;
-    armInstructions[0x531] = interpreter_transfer::ldrPrim;
-    armInstructions[0x532] = interpreter_transfer::ldrPrim;
-    armInstructions[0x533] = interpreter_transfer::ldrPrim;
-    armInstructions[0x534] = interpreter_transfer::ldrPrim;
-    armInstructions[0x535] = interpreter_transfer::ldrPrim;
-    armInstructions[0x536] = interpreter_transfer::ldrPrim;
-    armInstructions[0x537] = interpreter_transfer::ldrPrim;
-    armInstructions[0x538] = interpreter_transfer::ldrPrim;
-    armInstructions[0x539] = interpreter_transfer::ldrPrim;
-    armInstructions[0x53A] = interpreter_transfer::ldrPrim;
-    armInstructions[0x53B] = interpreter_transfer::ldrPrim;
-    armInstructions[0x53C] = interpreter_transfer::ldrPrim;
-    armInstructions[0x53D] = interpreter_transfer::ldrPrim;
-    armInstructions[0x53E] = interpreter_transfer::ldrPrim;
-    armInstructions[0x53F] = interpreter_transfer::ldrPrim;
-    armInstructions[0x540] = interpreter_transfer::strbOfim;
-    armInstructions[0x541] = interpreter_transfer::strbOfim;
-    armInstructions[0x542] = interpreter_transfer::strbOfim;
-    armInstructions[0x543] = interpreter_transfer::strbOfim;
-    armInstructions[0x544] = interpreter_transfer::strbOfim;
-    armInstructions[0x545] = interpreter_transfer::strbOfim;
-    armInstructions[0x546] = interpreter_transfer::strbOfim;
-    armInstructions[0x547] = interpreter_transfer::strbOfim;
-    armInstructions[0x548] = interpreter_transfer::strbOfim;
-    armInstructions[0x549] = interpreter_transfer::strbOfim;
-    armInstructions[0x54A] = interpreter_transfer::strbOfim;
-    armInstructions[0x54B] = interpreter_transfer::strbOfim;
-    armInstructions[0x54C] = interpreter_transfer::strbOfim;
-    armInstructions[0x54D] = interpreter_transfer::strbOfim;
-    armInstructions[0x54E] = interpreter_transfer::strbOfim;
-    armInstructions[0x54F] = interpreter_transfer::strbOfim;
-    armInstructions[0x550] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x551] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x552] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x553] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x554] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x555] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x556] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x557] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x558] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x559] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x55A] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x55B] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x55C] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x55D] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x55E] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x55F] = interpreter_transfer::ldrbOfim;
-    armInstructions[0x560] = interpreter_transfer::strbPrim;
-    armInstructions[0x561] = interpreter_transfer::strbPrim;
-    armInstructions[0x562] = interpreter_transfer::strbPrim;
-    armInstructions[0x563] = interpreter_transfer::strbPrim;
-    armInstructions[0x564] = interpreter_transfer::strbPrim;
-    armInstructions[0x565] = interpreter_transfer::strbPrim;
-    armInstructions[0x566] = interpreter_transfer::strbPrim;
-    armInstructions[0x567] = interpreter_transfer::strbPrim;
-    armInstructions[0x568] = interpreter_transfer::strbPrim;
-    armInstructions[0x569] = interpreter_transfer::strbPrim;
-    armInstructions[0x56A] = interpreter_transfer::strbPrim;
-    armInstructions[0x56B] = interpreter_transfer::strbPrim;
-    armInstructions[0x56C] = interpreter_transfer::strbPrim;
-    armInstructions[0x56D] = interpreter_transfer::strbPrim;
-    armInstructions[0x56E] = interpreter_transfer::strbPrim;
-    armInstructions[0x56F] = interpreter_transfer::strbPrim;
-    armInstructions[0x570] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x571] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x572] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x573] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x574] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x575] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x576] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x577] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x578] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x579] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x57A] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x57B] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x57C] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x57D] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x57E] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x57F] = interpreter_transfer::ldrbPrim;
-    armInstructions[0x580] = interpreter_transfer::strOfip;
-    armInstructions[0x581] = interpreter_transfer::strOfip;
-    armInstructions[0x582] = interpreter_transfer::strOfip;
-    armInstructions[0x583] = interpreter_transfer::strOfip;
-    armInstructions[0x584] = interpreter_transfer::strOfip;
-    armInstructions[0x585] = interpreter_transfer::strOfip;
-    armInstructions[0x586] = interpreter_transfer::strOfip;
-    armInstructions[0x587] = interpreter_transfer::strOfip;
-    armInstructions[0x588] = interpreter_transfer::strOfip;
-    armInstructions[0x589] = interpreter_transfer::strOfip;
-    armInstructions[0x58A] = interpreter_transfer::strOfip;
-    armInstructions[0x58B] = interpreter_transfer::strOfip;
-    armInstructions[0x58C] = interpreter_transfer::strOfip;
-    armInstructions[0x58D] = interpreter_transfer::strOfip;
-    armInstructions[0x58E] = interpreter_transfer::strOfip;
-    armInstructions[0x58F] = interpreter_transfer::strOfip;
-    armInstructions[0x590] = interpreter_transfer::ldrOfip;
-    armInstructions[0x591] = interpreter_transfer::ldrOfip;
-    armInstructions[0x592] = interpreter_transfer::ldrOfip;
-    armInstructions[0x593] = interpreter_transfer::ldrOfip;
-    armInstructions[0x594] = interpreter_transfer::ldrOfip;
-    armInstructions[0x595] = interpreter_transfer::ldrOfip;
-    armInstructions[0x596] = interpreter_transfer::ldrOfip;
-    armInstructions[0x597] = interpreter_transfer::ldrOfip;
-    armInstructions[0x598] = interpreter_transfer::ldrOfip;
-    armInstructions[0x599] = interpreter_transfer::ldrOfip;
-    armInstructions[0x59A] = interpreter_transfer::ldrOfip;
-    armInstructions[0x59B] = interpreter_transfer::ldrOfip;
-    armInstructions[0x59C] = interpreter_transfer::ldrOfip;
-    armInstructions[0x59D] = interpreter_transfer::ldrOfip;
-    armInstructions[0x59E] = interpreter_transfer::ldrOfip;
-    armInstructions[0x59F] = interpreter_transfer::ldrOfip;
-    armInstructions[0x5A0] = interpreter_transfer::strPrip;
-    armInstructions[0x5A1] = interpreter_transfer::strPrip;
-    armInstructions[0x5A2] = interpreter_transfer::strPrip;
-    armInstructions[0x5A3] = interpreter_transfer::strPrip;
-    armInstructions[0x5A4] = interpreter_transfer::strPrip;
-    armInstructions[0x5A5] = interpreter_transfer::strPrip;
-    armInstructions[0x5A6] = interpreter_transfer::strPrip;
-    armInstructions[0x5A7] = interpreter_transfer::strPrip;
-    armInstructions[0x5A8] = interpreter_transfer::strPrip;
-    armInstructions[0x5A9] = interpreter_transfer::strPrip;
-    armInstructions[0x5AA] = interpreter_transfer::strPrip;
-    armInstructions[0x5AB] = interpreter_transfer::strPrip;
-    armInstructions[0x5AC] = interpreter_transfer::strPrip;
-    armInstructions[0x5AD] = interpreter_transfer::strPrip;
-    armInstructions[0x5AE] = interpreter_transfer::strPrip;
-    armInstructions[0x5AF] = interpreter_transfer::strPrip;
-    armInstructions[0x5B0] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5B1] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5B2] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5B3] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5B4] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5B5] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5B6] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5B7] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5B8] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5B9] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5BA] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5BB] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5BC] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5BD] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5BE] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5BF] = interpreter_transfer::ldrPrip;
-    armInstructions[0x5C0] = interpreter_transfer::strbOfip;
-    armInstructions[0x5C1] = interpreter_transfer::strbOfip;
-    armInstructions[0x5C2] = interpreter_transfer::strbOfip;
-    armInstructions[0x5C3] = interpreter_transfer::strbOfip;
-    armInstructions[0x5C4] = interpreter_transfer::strbOfip;
-    armInstructions[0x5C5] = interpreter_transfer::strbOfip;
-    armInstructions[0x5C6] = interpreter_transfer::strbOfip;
-    armInstructions[0x5C7] = interpreter_transfer::strbOfip;
-    armInstructions[0x5C8] = interpreter_transfer::strbOfip;
-    armInstructions[0x5C9] = interpreter_transfer::strbOfip;
-    armInstructions[0x5CA] = interpreter_transfer::strbOfip;
-    armInstructions[0x5CB] = interpreter_transfer::strbOfip;
-    armInstructions[0x5CC] = interpreter_transfer::strbOfip;
-    armInstructions[0x5CD] = interpreter_transfer::strbOfip;
-    armInstructions[0x5CE] = interpreter_transfer::strbOfip;
-    armInstructions[0x5CF] = interpreter_transfer::strbOfip;
-    armInstructions[0x5D0] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5D1] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5D2] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5D3] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5D4] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5D5] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5D6] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5D7] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5D8] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5D9] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5DA] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5DB] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5DC] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5DD] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5DE] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5DF] = interpreter_transfer::ldrbOfip;
-    armInstructions[0x5E0] = interpreter_transfer::strbPrip;
-    armInstructions[0x5E1] = interpreter_transfer::strbPrip;
-    armInstructions[0x5E2] = interpreter_transfer::strbPrip;
-    armInstructions[0x5E3] = interpreter_transfer::strbPrip;
-    armInstructions[0x5E4] = interpreter_transfer::strbPrip;
-    armInstructions[0x5E5] = interpreter_transfer::strbPrip;
-    armInstructions[0x5E6] = interpreter_transfer::strbPrip;
-    armInstructions[0x5E7] = interpreter_transfer::strbPrip;
-    armInstructions[0x5E8] = interpreter_transfer::strbPrip;
-    armInstructions[0x5E9] = interpreter_transfer::strbPrip;
-    armInstructions[0x5EA] = interpreter_transfer::strbPrip;
-    armInstructions[0x5EB] = interpreter_transfer::strbPrip;
-    armInstructions[0x5EC] = interpreter_transfer::strbPrip;
-    armInstructions[0x5ED] = interpreter_transfer::strbPrip;
-    armInstructions[0x5EE] = interpreter_transfer::strbPrip;
-    armInstructions[0x5EF] = interpreter_transfer::strbPrip;
-    armInstructions[0x5F0] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5F1] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5F2] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5F3] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5F4] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5F5] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5F6] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5F7] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5F8] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5F9] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5FA] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5FB] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5FC] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5FD] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5FE] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x5FF] = interpreter_transfer::ldrbPrip;
-    armInstructions[0x600] = interpreter_transfer::strPtrmll;
-    armInstructions[0x602] = interpreter_transfer::strPtrmlr;
-    armInstructions[0x604] = interpreter_transfer::strPtrmar;
-    armInstructions[0x606] = interpreter_transfer::strPtrmrr;
-    armInstructions[0x608] = interpreter_transfer::strPtrmll;
-    armInstructions[0x60A] = interpreter_transfer::strPtrmlr;
-    armInstructions[0x60C] = interpreter_transfer::strPtrmar;
-    armInstructions[0x60E] = interpreter_transfer::strPtrmrr;
-    armInstructions[0x610] = interpreter_transfer::ldrPtrmll;
-    armInstructions[0x612] = interpreter_transfer::ldrPtrmlr;
-    armInstructions[0x614] = interpreter_transfer::ldrPtrmar;
-    armInstructions[0x616] = interpreter_transfer::ldrPtrmrr;
-    armInstructions[0x618] = interpreter_transfer::ldrPtrmll;
-    armInstructions[0x61A] = interpreter_transfer::ldrPtrmlr;
-    armInstructions[0x61C] = interpreter_transfer::ldrPtrmar;
-    armInstructions[0x61E] = interpreter_transfer::ldrPtrmrr;
-    armInstructions[0x640] = interpreter_transfer::strbPtrmll;
-    armInstructions[0x642] = interpreter_transfer::strbPtrmlr;
-    armInstructions[0x644] = interpreter_transfer::strbPtrmar;
-    armInstructions[0x646] = interpreter_transfer::strbPtrmrr;
-    armInstructions[0x648] = interpreter_transfer::strbPtrmll;
-    armInstructions[0x64A] = interpreter_transfer::strbPtrmlr;
-    armInstructions[0x64C] = interpreter_transfer::strbPtrmar;
-    armInstructions[0x64E] = interpreter_transfer::strbPtrmrr;
-    armInstructions[0x650] = interpreter_transfer::ldrbPtrmll;
-    armInstructions[0x652] = interpreter_transfer::ldrbPtrmlr;
-    armInstructions[0x654] = interpreter_transfer::ldrbPtrmar;
-    armInstructions[0x656] = interpreter_transfer::ldrbPtrmrr;
-    armInstructions[0x658] = interpreter_transfer::ldrbPtrmll;
-    armInstructions[0x65A] = interpreter_transfer::ldrbPtrmlr;
-    armInstructions[0x65C] = interpreter_transfer::ldrbPtrmar;
-    armInstructions[0x65E] = interpreter_transfer::ldrbPtrmrr;
-    armInstructions[0x680] = interpreter_transfer::strPtrpll;
-    armInstructions[0x682] = interpreter_transfer::strPtrplr;
-    armInstructions[0x684] = interpreter_transfer::strPtrpar;
-    armInstructions[0x686] = interpreter_transfer::strPtrprr;
-    armInstructions[0x688] = interpreter_transfer::strPtrpll;
-    armInstructions[0x68A] = interpreter_transfer::strPtrplr;
-    armInstructions[0x68C] = interpreter_transfer::strPtrpar;
-    armInstructions[0x68E] = interpreter_transfer::strPtrprr;
-    armInstructions[0x690] = interpreter_transfer::ldrPtrpll;
-    armInstructions[0x692] = interpreter_transfer::ldrPtrplr;
-    armInstructions[0x694] = interpreter_transfer::ldrPtrpar;
-    armInstructions[0x696] = interpreter_transfer::ldrPtrprr;
-    armInstructions[0x698] = interpreter_transfer::ldrPtrpll;
-    armInstructions[0x69A] = interpreter_transfer::ldrPtrplr;
-    armInstructions[0x69C] = interpreter_transfer::ldrPtrpar;
-    armInstructions[0x69E] = interpreter_transfer::ldrPtrprr;
-    armInstructions[0x6C0] = interpreter_transfer::strbPtrpll;
-    armInstructions[0x6C2] = interpreter_transfer::strbPtrplr;
-    armInstructions[0x6C4] = interpreter_transfer::strbPtrpar;
-    armInstructions[0x6C6] = interpreter_transfer::strbPtrprr;
-    armInstructions[0x6C8] = interpreter_transfer::strbPtrpll;
-    armInstructions[0x6CA] = interpreter_transfer::strbPtrplr;
-    armInstructions[0x6CC] = interpreter_transfer::strbPtrpar;
-    armInstructions[0x6CE] = interpreter_transfer::strbPtrprr;
-    armInstructions[0x6D0] = interpreter_transfer::ldrbPtrpll;
-    armInstructions[0x6D2] = interpreter_transfer::ldrbPtrplr;
-    armInstructions[0x6D4] = interpreter_transfer::ldrbPtrpar;
-    armInstructions[0x6D6] = interpreter_transfer::ldrbPtrprr;
-    armInstructions[0x6D8] = interpreter_transfer::ldrbPtrpll;
-    armInstructions[0x6DA] = interpreter_transfer::ldrbPtrplr;
-    armInstructions[0x6DC] = interpreter_transfer::ldrbPtrpar;
-    armInstructions[0x6DE] = interpreter_transfer::ldrbPtrprr;
-    armInstructions[0x700] = interpreter_transfer::strOfrmll;
-    armInstructions[0x702] = interpreter_transfer::strOfrmlr;
-    armInstructions[0x704] = interpreter_transfer::strOfrmar;
-    armInstructions[0x706] = interpreter_transfer::strOfrmrr;
-    armInstructions[0x708] = interpreter_transfer::strOfrmll;
-    armInstructions[0x70A] = interpreter_transfer::strOfrmlr;
-    armInstructions[0x70C] = interpreter_transfer::strOfrmar;
-    armInstructions[0x70E] = interpreter_transfer::strOfrmrr;
-    armInstructions[0x710] = interpreter_transfer::ldrOfrmll;
-    armInstructions[0x712] = interpreter_transfer::ldrOfrmlr;
-    armInstructions[0x714] = interpreter_transfer::ldrOfrmar;
-    armInstructions[0x716] = interpreter_transfer::ldrOfrmrr;
-    armInstructions[0x718] = interpreter_transfer::ldrOfrmll;
-    armInstructions[0x71A] = interpreter_transfer::ldrOfrmlr;
-    armInstructions[0x71C] = interpreter_transfer::ldrOfrmar;
-    armInstructions[0x71E] = interpreter_transfer::ldrOfrmrr;
-    armInstructions[0x720] = interpreter_transfer::strPrrmll;
-    armInstructions[0x722] = interpreter_transfer::strPrrmlr;
-    armInstructions[0x724] = interpreter_transfer::strPrrmar;
-    armInstructions[0x726] = interpreter_transfer::strPrrmrr;
-    armInstructions[0x728] = interpreter_transfer::strPrrmll;
-    armInstructions[0x72A] = interpreter_transfer::strPrrmlr;
-    armInstructions[0x72C] = interpreter_transfer::strPrrmar;
-    armInstructions[0x72E] = interpreter_transfer::strPrrmrr;
-    armInstructions[0x730] = interpreter_transfer::ldrPrrmll;
-    armInstructions[0x732] = interpreter_transfer::ldrPrrmlr;
-    armInstructions[0x734] = interpreter_transfer::ldrPrrmar;
-    armInstructions[0x736] = interpreter_transfer::ldrPrrmrr;
-    armInstructions[0x738] = interpreter_transfer::ldrPrrmll;
-    armInstructions[0x73A] = interpreter_transfer::ldrPrrmlr;
-    armInstructions[0x73C] = interpreter_transfer::ldrPrrmar;
-    armInstructions[0x73E] = interpreter_transfer::ldrPrrmrr;
-    armInstructions[0x740] = interpreter_transfer::strbOfrmll;
-    armInstructions[0x742] = interpreter_transfer::strbOfrmlr;
-    armInstructions[0x744] = interpreter_transfer::strbOfrmar;
-    armInstructions[0x746] = interpreter_transfer::strbOfrmrr;
-    armInstructions[0x748] = interpreter_transfer::strbOfrmll;
-    armInstructions[0x74A] = interpreter_transfer::strbOfrmlr;
-    armInstructions[0x74C] = interpreter_transfer::strbOfrmar;
-    armInstructions[0x74E] = interpreter_transfer::strbOfrmrr;
-    armInstructions[0x750] = interpreter_transfer::ldrbOfrmll;
-    armInstructions[0x752] = interpreter_transfer::ldrbOfrmlr;
-    armInstructions[0x754] = interpreter_transfer::ldrbOfrmar;
-    armInstructions[0x756] = interpreter_transfer::ldrbOfrmrr;
-    armInstructions[0x758] = interpreter_transfer::ldrbOfrmll;
-    armInstructions[0x75A] = interpreter_transfer::ldrbOfrmlr;
-    armInstructions[0x75C] = interpreter_transfer::ldrbOfrmar;
-    armInstructions[0x75E] = interpreter_transfer::ldrbOfrmrr;
-    armInstructions[0x760] = interpreter_transfer::strbPrrmll;
-    armInstructions[0x762] = interpreter_transfer::strbPrrmlr;
-    armInstructions[0x764] = interpreter_transfer::strbPrrmar;
-    armInstructions[0x766] = interpreter_transfer::strbPrrmrr;
-    armInstructions[0x768] = interpreter_transfer::strbPrrmll;
-    armInstructions[0x76A] = interpreter_transfer::strbPrrmlr;
-    armInstructions[0x76C] = interpreter_transfer::strbPrrmar;
-    armInstructions[0x76E] = interpreter_transfer::strbPrrmrr;
-    armInstructions[0x770] = interpreter_transfer::ldrbPrrmll;
-    armInstructions[0x772] = interpreter_transfer::ldrbPrrmlr;
-    armInstructions[0x774] = interpreter_transfer::ldrbPrrmar;
-    armInstructions[0x776] = interpreter_transfer::ldrbPrrmrr;
-    armInstructions[0x778] = interpreter_transfer::ldrbPrrmll;
-    armInstructions[0x77A] = interpreter_transfer::ldrbPrrmlr;
-    armInstructions[0x77C] = interpreter_transfer::ldrbPrrmar;
-    armInstructions[0x77E] = interpreter_transfer::ldrbPrrmrr;
-    armInstructions[0x780] = interpreter_transfer::strOfrpll;
-    armInstructions[0x782] = interpreter_transfer::strOfrplr;
-    armInstructions[0x784] = interpreter_transfer::strOfrpar;
-    armInstructions[0x786] = interpreter_transfer::strOfrprr;
-    armInstructions[0x788] = interpreter_transfer::strOfrpll;
-    armInstructions[0x78A] = interpreter_transfer::strOfrplr;
-    armInstructions[0x78C] = interpreter_transfer::strOfrpar;
-    armInstructions[0x78E] = interpreter_transfer::strOfrprr;
-    armInstructions[0x790] = interpreter_transfer::ldrOfrpll;
-    armInstructions[0x792] = interpreter_transfer::ldrOfrplr;
-    armInstructions[0x794] = interpreter_transfer::ldrOfrpar;
-    armInstructions[0x796] = interpreter_transfer::ldrOfrprr;
-    armInstructions[0x798] = interpreter_transfer::ldrOfrpll;
-    armInstructions[0x79A] = interpreter_transfer::ldrOfrplr;
-    armInstructions[0x79C] = interpreter_transfer::ldrOfrpar;
-    armInstructions[0x79E] = interpreter_transfer::ldrOfrprr;
-    armInstructions[0x7A0] = interpreter_transfer::strPrrpll;
-    armInstructions[0x7A2] = interpreter_transfer::strPrrplr;
-    armInstructions[0x7A4] = interpreter_transfer::strPrrpar;
-    armInstructions[0x7A6] = interpreter_transfer::strPrrprr;
-    armInstructions[0x7A8] = interpreter_transfer::strPrrpll;
-    armInstructions[0x7AA] = interpreter_transfer::strPrrplr;
-    armInstructions[0x7AC] = interpreter_transfer::strPrrpar;
-    armInstructions[0x7AE] = interpreter_transfer::strPrrprr;
-    armInstructions[0x7B0] = interpreter_transfer::ldrPrrpll;
-    armInstructions[0x7B2] = interpreter_transfer::ldrPrrplr;
-    armInstructions[0x7B4] = interpreter_transfer::ldrPrrpar;
-    armInstructions[0x7B6] = interpreter_transfer::ldrPrrprr;
-    armInstructions[0x7B8] = interpreter_transfer::ldrPrrpll;
-    armInstructions[0x7BA] = interpreter_transfer::ldrPrrplr;
-    armInstructions[0x7BC] = interpreter_transfer::ldrPrrpar;
-    armInstructions[0x7BE] = interpreter_transfer::ldrPrrprr;
-    armInstructions[0x7C0] = interpreter_transfer::strbOfrpll;
-    armInstructions[0x7C2] = interpreter_transfer::strbOfrplr;
-    armInstructions[0x7C4] = interpreter_transfer::strbOfrpar;
-    armInstructions[0x7C6] = interpreter_transfer::strbOfrprr;
-    armInstructions[0x7C8] = interpreter_transfer::strbOfrpll;
-    armInstructions[0x7CA] = interpreter_transfer::strbOfrplr;
-    armInstructions[0x7CC] = interpreter_transfer::strbOfrpar;
-    armInstructions[0x7CE] = interpreter_transfer::strbOfrprr;
-    armInstructions[0x7D0] = interpreter_transfer::ldrbOfrpll;
-    armInstructions[0x7D2] = interpreter_transfer::ldrbOfrplr;
-    armInstructions[0x7D4] = interpreter_transfer::ldrbOfrpar;
-    armInstructions[0x7D6] = interpreter_transfer::ldrbOfrprr;
-    armInstructions[0x7D8] = interpreter_transfer::ldrbOfrpll;
-    armInstructions[0x7DA] = interpreter_transfer::ldrbOfrplr;
-    armInstructions[0x7DC] = interpreter_transfer::ldrbOfrpar;
-    armInstructions[0x7DE] = interpreter_transfer::ldrbOfrprr;
-    armInstructions[0x7E0] = interpreter_transfer::strbPrrpll;
-    armInstructions[0x7E2] = interpreter_transfer::strbPrrplr;
-    armInstructions[0x7E4] = interpreter_transfer::strbPrrpar;
-    armInstructions[0x7E6] = interpreter_transfer::strbPrrprr;
-    armInstructions[0x7E8] = interpreter_transfer::strbPrrpll;
-    armInstructions[0x7EA] = interpreter_transfer::strbPrrplr;
-    armInstructions[0x7EC] = interpreter_transfer::strbPrrpar;
-    armInstructions[0x7EE] = interpreter_transfer::strbPrrprr;
-    armInstructions[0x7F0] = interpreter_transfer::ldrbPrrpll;
-    armInstructions[0x7F2] = interpreter_transfer::ldrbPrrplr;
-    armInstructions[0x7F4] = interpreter_transfer::ldrbPrrpar;
-    armInstructions[0x7F6] = interpreter_transfer::ldrbPrrprr;
-    armInstructions[0x7F8] = interpreter_transfer::ldrbPrrpll;
-    armInstructions[0x7FA] = interpreter_transfer::ldrbPrrplr;
-    armInstructions[0x7FC] = interpreter_transfer::ldrbPrrpar;
-    armInstructions[0x7FE] = interpreter_transfer::ldrbPrrprr;
-    armInstructions[0x800] = interpreter_transfer::stmda;
-    armInstructions[0x801] = interpreter_transfer::stmda;
-    armInstructions[0x802] = interpreter_transfer::stmda;
-    armInstructions[0x803] = interpreter_transfer::stmda;
-    armInstructions[0x804] = interpreter_transfer::stmda;
-    armInstructions[0x805] = interpreter_transfer::stmda;
-    armInstructions[0x806] = interpreter_transfer::stmda;
-    armInstructions[0x807] = interpreter_transfer::stmda;
-    armInstructions[0x808] = interpreter_transfer::stmda;
-    armInstructions[0x809] = interpreter_transfer::stmda;
-    armInstructions[0x80A] = interpreter_transfer::stmda;
-    armInstructions[0x80B] = interpreter_transfer::stmda;
-    armInstructions[0x80C] = interpreter_transfer::stmda;
-    armInstructions[0x80D] = interpreter_transfer::stmda;
-    armInstructions[0x80E] = interpreter_transfer::stmda;
-    armInstructions[0x80F] = interpreter_transfer::stmda;
-    armInstructions[0x810] = interpreter_transfer::ldmda;
-    armInstructions[0x811] = interpreter_transfer::ldmda;
-    armInstructions[0x812] = interpreter_transfer::ldmda;
-    armInstructions[0x813] = interpreter_transfer::ldmda;
-    armInstructions[0x814] = interpreter_transfer::ldmda;
-    armInstructions[0x815] = interpreter_transfer::ldmda;
-    armInstructions[0x816] = interpreter_transfer::ldmda;
-    armInstructions[0x817] = interpreter_transfer::ldmda;
-    armInstructions[0x818] = interpreter_transfer::ldmda;
-    armInstructions[0x819] = interpreter_transfer::ldmda;
-    armInstructions[0x81A] = interpreter_transfer::ldmda;
-    armInstructions[0x81B] = interpreter_transfer::ldmda;
-    armInstructions[0x81C] = interpreter_transfer::ldmda;
-    armInstructions[0x81D] = interpreter_transfer::ldmda;
-    armInstructions[0x81E] = interpreter_transfer::ldmda;
-    armInstructions[0x81F] = interpreter_transfer::ldmda;
-    armInstructions[0x820] = interpreter_transfer::stmdaW;
-    armInstructions[0x821] = interpreter_transfer::stmdaW;
-    armInstructions[0x822] = interpreter_transfer::stmdaW;
-    armInstructions[0x823] = interpreter_transfer::stmdaW;
-    armInstructions[0x824] = interpreter_transfer::stmdaW;
-    armInstructions[0x825] = interpreter_transfer::stmdaW;
-    armInstructions[0x826] = interpreter_transfer::stmdaW;
-    armInstructions[0x827] = interpreter_transfer::stmdaW;
-    armInstructions[0x828] = interpreter_transfer::stmdaW;
-    armInstructions[0x829] = interpreter_transfer::stmdaW;
-    armInstructions[0x82A] = interpreter_transfer::stmdaW;
-    armInstructions[0x82B] = interpreter_transfer::stmdaW;
-    armInstructions[0x82C] = interpreter_transfer::stmdaW;
-    armInstructions[0x82D] = interpreter_transfer::stmdaW;
-    armInstructions[0x82E] = interpreter_transfer::stmdaW;
-    armInstructions[0x82F] = interpreter_transfer::stmdaW;
-    armInstructions[0x830] = interpreter_transfer::ldmdaW;
-    armInstructions[0x831] = interpreter_transfer::ldmdaW;
-    armInstructions[0x832] = interpreter_transfer::ldmdaW;
-    armInstructions[0x833] = interpreter_transfer::ldmdaW;
-    armInstructions[0x834] = interpreter_transfer::ldmdaW;
-    armInstructions[0x835] = interpreter_transfer::ldmdaW;
-    armInstructions[0x836] = interpreter_transfer::ldmdaW;
-    armInstructions[0x837] = interpreter_transfer::ldmdaW;
-    armInstructions[0x838] = interpreter_transfer::ldmdaW;
-    armInstructions[0x839] = interpreter_transfer::ldmdaW;
-    armInstructions[0x83A] = interpreter_transfer::ldmdaW;
-    armInstructions[0x83B] = interpreter_transfer::ldmdaW;
-    armInstructions[0x83C] = interpreter_transfer::ldmdaW;
-    armInstructions[0x83D] = interpreter_transfer::ldmdaW;
-    armInstructions[0x83E] = interpreter_transfer::ldmdaW;
-    armInstructions[0x83F] = interpreter_transfer::ldmdaW;
-    armInstructions[0x840] = interpreter_transfer::stmdaU;
-    armInstructions[0x841] = interpreter_transfer::stmdaU;
-    armInstructions[0x842] = interpreter_transfer::stmdaU;
-    armInstructions[0x843] = interpreter_transfer::stmdaU;
-    armInstructions[0x844] = interpreter_transfer::stmdaU;
-    armInstructions[0x845] = interpreter_transfer::stmdaU;
-    armInstructions[0x846] = interpreter_transfer::stmdaU;
-    armInstructions[0x847] = interpreter_transfer::stmdaU;
-    armInstructions[0x848] = interpreter_transfer::stmdaU;
-    armInstructions[0x849] = interpreter_transfer::stmdaU;
-    armInstructions[0x84A] = interpreter_transfer::stmdaU;
-    armInstructions[0x84B] = interpreter_transfer::stmdaU;
-    armInstructions[0x84C] = interpreter_transfer::stmdaU;
-    armInstructions[0x84D] = interpreter_transfer::stmdaU;
-    armInstructions[0x84E] = interpreter_transfer::stmdaU;
-    armInstructions[0x84F] = interpreter_transfer::stmdaU;
-    armInstructions[0x850] = interpreter_transfer::ldmdaU;
-    armInstructions[0x851] = interpreter_transfer::ldmdaU;
-    armInstructions[0x852] = interpreter_transfer::ldmdaU;
-    armInstructions[0x853] = interpreter_transfer::ldmdaU;
-    armInstructions[0x854] = interpreter_transfer::ldmdaU;
-    armInstructions[0x855] = interpreter_transfer::ldmdaU;
-    armInstructions[0x856] = interpreter_transfer::ldmdaU;
-    armInstructions[0x857] = interpreter_transfer::ldmdaU;
-    armInstructions[0x858] = interpreter_transfer::ldmdaU;
-    armInstructions[0x859] = interpreter_transfer::ldmdaU;
-    armInstructions[0x85A] = interpreter_transfer::ldmdaU;
-    armInstructions[0x85B] = interpreter_transfer::ldmdaU;
-    armInstructions[0x85C] = interpreter_transfer::ldmdaU;
-    armInstructions[0x85D] = interpreter_transfer::ldmdaU;
-    armInstructions[0x85E] = interpreter_transfer::ldmdaU;
-    armInstructions[0x85F] = interpreter_transfer::ldmdaU;
-    armInstructions[0x860] = interpreter_transfer::stmdaUW;
-    armInstructions[0x861] = interpreter_transfer::stmdaUW;
-    armInstructions[0x862] = interpreter_transfer::stmdaUW;
-    armInstructions[0x863] = interpreter_transfer::stmdaUW;
-    armInstructions[0x864] = interpreter_transfer::stmdaUW;
-    armInstructions[0x865] = interpreter_transfer::stmdaUW;
-    armInstructions[0x866] = interpreter_transfer::stmdaUW;
-    armInstructions[0x867] = interpreter_transfer::stmdaUW;
-    armInstructions[0x868] = interpreter_transfer::stmdaUW;
-    armInstructions[0x869] = interpreter_transfer::stmdaUW;
-    armInstructions[0x86A] = interpreter_transfer::stmdaUW;
-    armInstructions[0x86B] = interpreter_transfer::stmdaUW;
-    armInstructions[0x86C] = interpreter_transfer::stmdaUW;
-    armInstructions[0x86D] = interpreter_transfer::stmdaUW;
-    armInstructions[0x86E] = interpreter_transfer::stmdaUW;
-    armInstructions[0x86F] = interpreter_transfer::stmdaUW;
-    armInstructions[0x870] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x871] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x872] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x873] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x874] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x875] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x876] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x877] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x878] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x879] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x87A] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x87B] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x87C] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x87D] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x87E] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x87F] = interpreter_transfer::ldmdaUW;
-    armInstructions[0x880] = interpreter_transfer::stmia;
-    armInstructions[0x881] = interpreter_transfer::stmia;
-    armInstructions[0x882] = interpreter_transfer::stmia;
-    armInstructions[0x883] = interpreter_transfer::stmia;
-    armInstructions[0x884] = interpreter_transfer::stmia;
-    armInstructions[0x885] = interpreter_transfer::stmia;
-    armInstructions[0x886] = interpreter_transfer::stmia;
-    armInstructions[0x887] = interpreter_transfer::stmia;
-    armInstructions[0x888] = interpreter_transfer::stmia;
-    armInstructions[0x889] = interpreter_transfer::stmia;
-    armInstructions[0x88A] = interpreter_transfer::stmia;
-    armInstructions[0x88B] = interpreter_transfer::stmia;
-    armInstructions[0x88C] = interpreter_transfer::stmia;
-    armInstructions[0x88D] = interpreter_transfer::stmia;
-    armInstructions[0x88E] = interpreter_transfer::stmia;
-    armInstructions[0x88F] = interpreter_transfer::stmia;
-    armInstructions[0x890] = interpreter_transfer::ldmia;
-    armInstructions[0x891] = interpreter_transfer::ldmia;
-    armInstructions[0x892] = interpreter_transfer::ldmia;
-    armInstructions[0x893] = interpreter_transfer::ldmia;
-    armInstructions[0x894] = interpreter_transfer::ldmia;
-    armInstructions[0x895] = interpreter_transfer::ldmia;
-    armInstructions[0x896] = interpreter_transfer::ldmia;
-    armInstructions[0x897] = interpreter_transfer::ldmia;
-    armInstructions[0x898] = interpreter_transfer::ldmia;
-    armInstructions[0x899] = interpreter_transfer::ldmia;
-    armInstructions[0x89A] = interpreter_transfer::ldmia;
-    armInstructions[0x89B] = interpreter_transfer::ldmia;
-    armInstructions[0x89C] = interpreter_transfer::ldmia;
-    armInstructions[0x89D] = interpreter_transfer::ldmia;
-    armInstructions[0x89E] = interpreter_transfer::ldmia;
-    armInstructions[0x89F] = interpreter_transfer::ldmia;
-    armInstructions[0x8A0] = interpreter_transfer::stmiaW;
-    armInstructions[0x8A1] = interpreter_transfer::stmiaW;
-    armInstructions[0x8A2] = interpreter_transfer::stmiaW;
-    armInstructions[0x8A3] = interpreter_transfer::stmiaW;
-    armInstructions[0x8A4] = interpreter_transfer::stmiaW;
-    armInstructions[0x8A5] = interpreter_transfer::stmiaW;
-    armInstructions[0x8A6] = interpreter_transfer::stmiaW;
-    armInstructions[0x8A7] = interpreter_transfer::stmiaW;
-    armInstructions[0x8A8] = interpreter_transfer::stmiaW;
-    armInstructions[0x8A9] = interpreter_transfer::stmiaW;
-    armInstructions[0x8AA] = interpreter_transfer::stmiaW;
-    armInstructions[0x8AB] = interpreter_transfer::stmiaW;
-    armInstructions[0x8AC] = interpreter_transfer::stmiaW;
-    armInstructions[0x8AD] = interpreter_transfer::stmiaW;
-    armInstructions[0x8AE] = interpreter_transfer::stmiaW;
-    armInstructions[0x8AF] = interpreter_transfer::stmiaW;
-    armInstructions[0x8B0] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8B1] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8B2] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8B3] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8B4] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8B5] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8B6] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8B7] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8B8] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8B9] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8BA] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8BB] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8BC] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8BD] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8BE] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8BF] = interpreter_transfer::ldmiaW;
-    armInstructions[0x8C0] = interpreter_transfer::stmiaU;
-    armInstructions[0x8C1] = interpreter_transfer::stmiaU;
-    armInstructions[0x8C2] = interpreter_transfer::stmiaU;
-    armInstructions[0x8C3] = interpreter_transfer::stmiaU;
-    armInstructions[0x8C4] = interpreter_transfer::stmiaU;
-    armInstructions[0x8C5] = interpreter_transfer::stmiaU;
-    armInstructions[0x8C6] = interpreter_transfer::stmiaU;
-    armInstructions[0x8C7] = interpreter_transfer::stmiaU;
-    armInstructions[0x8C8] = interpreter_transfer::stmiaU;
-    armInstructions[0x8C9] = interpreter_transfer::stmiaU;
-    armInstructions[0x8CA] = interpreter_transfer::stmiaU;
-    armInstructions[0x8CB] = interpreter_transfer::stmiaU;
-    armInstructions[0x8CC] = interpreter_transfer::stmiaU;
-    armInstructions[0x8CD] = interpreter_transfer::stmiaU;
-    armInstructions[0x8CE] = interpreter_transfer::stmiaU;
-    armInstructions[0x8CF] = interpreter_transfer::stmiaU;
-    armInstructions[0x8D0] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8D1] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8D2] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8D3] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8D4] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8D5] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8D6] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8D7] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8D8] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8D9] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8DA] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8DB] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8DC] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8DD] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8DE] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8DF] = interpreter_transfer::ldmiaU;
-    armInstructions[0x8E0] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8E1] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8E2] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8E3] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8E4] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8E5] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8E6] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8E7] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8E8] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8E9] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8EA] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8EB] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8EC] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8ED] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8EE] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8EF] = interpreter_transfer::stmiaUW;
-    armInstructions[0x8F0] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8F1] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8F2] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8F3] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8F4] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8F5] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8F6] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8F7] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8F8] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8F9] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8FA] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8FB] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8FC] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8FD] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8FE] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x8FF] = interpreter_transfer::ldmiaUW;
-    armInstructions[0x900] = interpreter_transfer::stmdb;
-    armInstructions[0x901] = interpreter_transfer::stmdb;
-    armInstructions[0x902] = interpreter_transfer::stmdb;
-    armInstructions[0x903] = interpreter_transfer::stmdb;
-    armInstructions[0x904] = interpreter_transfer::stmdb;
-    armInstructions[0x905] = interpreter_transfer::stmdb;
-    armInstructions[0x906] = interpreter_transfer::stmdb;
-    armInstructions[0x907] = interpreter_transfer::stmdb;
-    armInstructions[0x908] = interpreter_transfer::stmdb;
-    armInstructions[0x909] = interpreter_transfer::stmdb;
-    armInstructions[0x90A] = interpreter_transfer::stmdb;
-    armInstructions[0x90B] = interpreter_transfer::stmdb;
-    armInstructions[0x90C] = interpreter_transfer::stmdb;
-    armInstructions[0x90D] = interpreter_transfer::stmdb;
-    armInstructions[0x90E] = interpreter_transfer::stmdb;
-    armInstructions[0x90F] = interpreter_transfer::stmdb;
-    armInstructions[0x910] = interpreter_transfer::ldmdb;
-    armInstructions[0x911] = interpreter_transfer::ldmdb;
-    armInstructions[0x912] = interpreter_transfer::ldmdb;
-    armInstructions[0x913] = interpreter_transfer::ldmdb;
-    armInstructions[0x914] = interpreter_transfer::ldmdb;
-    armInstructions[0x915] = interpreter_transfer::ldmdb;
-    armInstructions[0x916] = interpreter_transfer::ldmdb;
-    armInstructions[0x917] = interpreter_transfer::ldmdb;
-    armInstructions[0x918] = interpreter_transfer::ldmdb;
-    armInstructions[0x919] = interpreter_transfer::ldmdb;
-    armInstructions[0x91A] = interpreter_transfer::ldmdb;
-    armInstructions[0x91B] = interpreter_transfer::ldmdb;
-    armInstructions[0x91C] = interpreter_transfer::ldmdb;
-    armInstructions[0x91D] = interpreter_transfer::ldmdb;
-    armInstructions[0x91E] = interpreter_transfer::ldmdb;
-    armInstructions[0x91F] = interpreter_transfer::ldmdb;
-    armInstructions[0x920] = interpreter_transfer::stmdbW;
-    armInstructions[0x921] = interpreter_transfer::stmdbW;
-    armInstructions[0x922] = interpreter_transfer::stmdbW;
-    armInstructions[0x923] = interpreter_transfer::stmdbW;
-    armInstructions[0x924] = interpreter_transfer::stmdbW;
-    armInstructions[0x925] = interpreter_transfer::stmdbW;
-    armInstructions[0x926] = interpreter_transfer::stmdbW;
-    armInstructions[0x927] = interpreter_transfer::stmdbW;
-    armInstructions[0x928] = interpreter_transfer::stmdbW;
-    armInstructions[0x929] = interpreter_transfer::stmdbW;
-    armInstructions[0x92A] = interpreter_transfer::stmdbW;
-    armInstructions[0x92B] = interpreter_transfer::stmdbW;
-    armInstructions[0x92C] = interpreter_transfer::stmdbW;
-    armInstructions[0x92D] = interpreter_transfer::stmdbW;
-    armInstructions[0x92E] = interpreter_transfer::stmdbW;
-    armInstructions[0x92F] = interpreter_transfer::stmdbW;
-    armInstructions[0x930] = interpreter_transfer::ldmdbW;
-    armInstructions[0x931] = interpreter_transfer::ldmdbW;
-    armInstructions[0x932] = interpreter_transfer::ldmdbW;
-    armInstructions[0x933] = interpreter_transfer::ldmdbW;
-    armInstructions[0x934] = interpreter_transfer::ldmdbW;
-    armInstructions[0x935] = interpreter_transfer::ldmdbW;
-    armInstructions[0x936] = interpreter_transfer::ldmdbW;
-    armInstructions[0x937] = interpreter_transfer::ldmdbW;
-    armInstructions[0x938] = interpreter_transfer::ldmdbW;
-    armInstructions[0x939] = interpreter_transfer::ldmdbW;
-    armInstructions[0x93A] = interpreter_transfer::ldmdbW;
-    armInstructions[0x93B] = interpreter_transfer::ldmdbW;
-    armInstructions[0x93C] = interpreter_transfer::ldmdbW;
-    armInstructions[0x93D] = interpreter_transfer::ldmdbW;
-    armInstructions[0x93E] = interpreter_transfer::ldmdbW;
-    armInstructions[0x93F] = interpreter_transfer::ldmdbW;
-    armInstructions[0x940] = interpreter_transfer::stmdbU;
-    armInstructions[0x941] = interpreter_transfer::stmdbU;
-    armInstructions[0x942] = interpreter_transfer::stmdbU;
-    armInstructions[0x943] = interpreter_transfer::stmdbU;
-    armInstructions[0x944] = interpreter_transfer::stmdbU;
-    armInstructions[0x945] = interpreter_transfer::stmdbU;
-    armInstructions[0x946] = interpreter_transfer::stmdbU;
-    armInstructions[0x947] = interpreter_transfer::stmdbU;
-    armInstructions[0x948] = interpreter_transfer::stmdbU;
-    armInstructions[0x949] = interpreter_transfer::stmdbU;
-    armInstructions[0x94A] = interpreter_transfer::stmdbU;
-    armInstructions[0x94B] = interpreter_transfer::stmdbU;
-    armInstructions[0x94C] = interpreter_transfer::stmdbU;
-    armInstructions[0x94D] = interpreter_transfer::stmdbU;
-    armInstructions[0x94E] = interpreter_transfer::stmdbU;
-    armInstructions[0x94F] = interpreter_transfer::stmdbU;
-    armInstructions[0x950] = interpreter_transfer::ldmdbU;
-    armInstructions[0x951] = interpreter_transfer::ldmdbU;
-    armInstructions[0x952] = interpreter_transfer::ldmdbU;
-    armInstructions[0x953] = interpreter_transfer::ldmdbU;
-    armInstructions[0x954] = interpreter_transfer::ldmdbU;
-    armInstructions[0x955] = interpreter_transfer::ldmdbU;
-    armInstructions[0x956] = interpreter_transfer::ldmdbU;
-    armInstructions[0x957] = interpreter_transfer::ldmdbU;
-    armInstructions[0x958] = interpreter_transfer::ldmdbU;
-    armInstructions[0x959] = interpreter_transfer::ldmdbU;
-    armInstructions[0x95A] = interpreter_transfer::ldmdbU;
-    armInstructions[0x95B] = interpreter_transfer::ldmdbU;
-    armInstructions[0x95C] = interpreter_transfer::ldmdbU;
-    armInstructions[0x95D] = interpreter_transfer::ldmdbU;
-    armInstructions[0x95E] = interpreter_transfer::ldmdbU;
-    armInstructions[0x95F] = interpreter_transfer::ldmdbU;
-    armInstructions[0x960] = interpreter_transfer::stmdbUW;
-    armInstructions[0x961] = interpreter_transfer::stmdbUW;
-    armInstructions[0x962] = interpreter_transfer::stmdbUW;
-    armInstructions[0x963] = interpreter_transfer::stmdbUW;
-    armInstructions[0x964] = interpreter_transfer::stmdbUW;
-    armInstructions[0x965] = interpreter_transfer::stmdbUW;
-    armInstructions[0x966] = interpreter_transfer::stmdbUW;
-    armInstructions[0x967] = interpreter_transfer::stmdbUW;
-    armInstructions[0x968] = interpreter_transfer::stmdbUW;
-    armInstructions[0x969] = interpreter_transfer::stmdbUW;
-    armInstructions[0x96A] = interpreter_transfer::stmdbUW;
-    armInstructions[0x96B] = interpreter_transfer::stmdbUW;
-    armInstructions[0x96C] = interpreter_transfer::stmdbUW;
-    armInstructions[0x96D] = interpreter_transfer::stmdbUW;
-    armInstructions[0x96E] = interpreter_transfer::stmdbUW;
-    armInstructions[0x96F] = interpreter_transfer::stmdbUW;
-    armInstructions[0x970] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x971] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x972] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x973] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x974] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x975] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x976] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x977] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x978] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x979] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x97A] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x97B] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x97C] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x97D] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x97E] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x97F] = interpreter_transfer::ldmdbUW;
-    armInstructions[0x980] = interpreter_transfer::stmib;
-    armInstructions[0x981] = interpreter_transfer::stmib;
-    armInstructions[0x982] = interpreter_transfer::stmib;
-    armInstructions[0x983] = interpreter_transfer::stmib;
-    armInstructions[0x984] = interpreter_transfer::stmib;
-    armInstructions[0x985] = interpreter_transfer::stmib;
-    armInstructions[0x986] = interpreter_transfer::stmib;
-    armInstructions[0x987] = interpreter_transfer::stmib;
-    armInstructions[0x988] = interpreter_transfer::stmib;
-    armInstructions[0x989] = interpreter_transfer::stmib;
-    armInstructions[0x98A] = interpreter_transfer::stmib;
-    armInstructions[0x98B] = interpreter_transfer::stmib;
-    armInstructions[0x98C] = interpreter_transfer::stmib;
-    armInstructions[0x98D] = interpreter_transfer::stmib;
-    armInstructions[0x98E] = interpreter_transfer::stmib;
-    armInstructions[0x98F] = interpreter_transfer::stmib;
-    armInstructions[0x990] = interpreter_transfer::ldmib;
-    armInstructions[0x991] = interpreter_transfer::ldmib;
-    armInstructions[0x992] = interpreter_transfer::ldmib;
-    armInstructions[0x993] = interpreter_transfer::ldmib;
-    armInstructions[0x994] = interpreter_transfer::ldmib;
-    armInstructions[0x995] = interpreter_transfer::ldmib;
-    armInstructions[0x996] = interpreter_transfer::ldmib;
-    armInstructions[0x997] = interpreter_transfer::ldmib;
-    armInstructions[0x998] = interpreter_transfer::ldmib;
-    armInstructions[0x999] = interpreter_transfer::ldmib;
-    armInstructions[0x99A] = interpreter_transfer::ldmib;
-    armInstructions[0x99B] = interpreter_transfer::ldmib;
-    armInstructions[0x99C] = interpreter_transfer::ldmib;
-    armInstructions[0x99D] = interpreter_transfer::ldmib;
-    armInstructions[0x99E] = interpreter_transfer::ldmib;
-    armInstructions[0x99F] = interpreter_transfer::ldmib;
-    armInstructions[0x9A0] = interpreter_transfer::stmibW;
-    armInstructions[0x9A1] = interpreter_transfer::stmibW;
-    armInstructions[0x9A2] = interpreter_transfer::stmibW;
-    armInstructions[0x9A3] = interpreter_transfer::stmibW;
-    armInstructions[0x9A4] = interpreter_transfer::stmibW;
-    armInstructions[0x9A5] = interpreter_transfer::stmibW;
-    armInstructions[0x9A6] = interpreter_transfer::stmibW;
-    armInstructions[0x9A7] = interpreter_transfer::stmibW;
-    armInstructions[0x9A8] = interpreter_transfer::stmibW;
-    armInstructions[0x9A9] = interpreter_transfer::stmibW;
-    armInstructions[0x9AA] = interpreter_transfer::stmibW;
-    armInstructions[0x9AB] = interpreter_transfer::stmibW;
-    armInstructions[0x9AC] = interpreter_transfer::stmibW;
-    armInstructions[0x9AD] = interpreter_transfer::stmibW;
-    armInstructions[0x9AE] = interpreter_transfer::stmibW;
-    armInstructions[0x9AF] = interpreter_transfer::stmibW;
-    armInstructions[0x9B0] = interpreter_transfer::ldmibW;
-    armInstructions[0x9B1] = interpreter_transfer::ldmibW;
-    armInstructions[0x9B2] = interpreter_transfer::ldmibW;
-    armInstructions[0x9B3] = interpreter_transfer::ldmibW;
-    armInstructions[0x9B4] = interpreter_transfer::ldmibW;
-    armInstructions[0x9B5] = interpreter_transfer::ldmibW;
-    armInstructions[0x9B6] = interpreter_transfer::ldmibW;
-    armInstructions[0x9B7] = interpreter_transfer::ldmibW;
-    armInstructions[0x9B8] = interpreter_transfer::ldmibW;
-    armInstructions[0x9B9] = interpreter_transfer::ldmibW;
-    armInstructions[0x9BA] = interpreter_transfer::ldmibW;
-    armInstructions[0x9BB] = interpreter_transfer::ldmibW;
-    armInstructions[0x9BC] = interpreter_transfer::ldmibW;
-    armInstructions[0x9BD] = interpreter_transfer::ldmibW;
-    armInstructions[0x9BE] = interpreter_transfer::ldmibW;
-    armInstructions[0x9BF] = interpreter_transfer::ldmibW;
-    armInstructions[0x9C0] = interpreter_transfer::stmibU;
-    armInstructions[0x9C1] = interpreter_transfer::stmibU;
-    armInstructions[0x9C2] = interpreter_transfer::stmibU;
-    armInstructions[0x9C3] = interpreter_transfer::stmibU;
-    armInstructions[0x9C4] = interpreter_transfer::stmibU;
-    armInstructions[0x9C5] = interpreter_transfer::stmibU;
-    armInstructions[0x9C6] = interpreter_transfer::stmibU;
-    armInstructions[0x9C7] = interpreter_transfer::stmibU;
-    armInstructions[0x9C8] = interpreter_transfer::stmibU;
-    armInstructions[0x9C9] = interpreter_transfer::stmibU;
-    armInstructions[0x9CA] = interpreter_transfer::stmibU;
-    armInstructions[0x9CB] = interpreter_transfer::stmibU;
-    armInstructions[0x9CC] = interpreter_transfer::stmibU;
-    armInstructions[0x9CD] = interpreter_transfer::stmibU;
-    armInstructions[0x9CE] = interpreter_transfer::stmibU;
-    armInstructions[0x9CF] = interpreter_transfer::stmibU;
-    armInstructions[0x9D0] = interpreter_transfer::ldmibU;
-    armInstructions[0x9D1] = interpreter_transfer::ldmibU;
-    armInstructions[0x9D2] = interpreter_transfer::ldmibU;
-    armInstructions[0x9D3] = interpreter_transfer::ldmibU;
-    armInstructions[0x9D4] = interpreter_transfer::ldmibU;
-    armInstructions[0x9D5] = interpreter_transfer::ldmibU;
-    armInstructions[0x9D6] = interpreter_transfer::ldmibU;
-    armInstructions[0x9D7] = interpreter_transfer::ldmibU;
-    armInstructions[0x9D8] = interpreter_transfer::ldmibU;
-    armInstructions[0x9D9] = interpreter_transfer::ldmibU;
-    armInstructions[0x9DA] = interpreter_transfer::ldmibU;
-    armInstructions[0x9DB] = interpreter_transfer::ldmibU;
-    armInstructions[0x9DC] = interpreter_transfer::ldmibU;
-    armInstructions[0x9DD] = interpreter_transfer::ldmibU;
-    armInstructions[0x9DE] = interpreter_transfer::ldmibU;
-    armInstructions[0x9DF] = interpreter_transfer::ldmibU;
-    armInstructions[0x9E0] = interpreter_transfer::stmibUW;
-    armInstructions[0x9E1] = interpreter_transfer::stmibUW;
-    armInstructions[0x9E2] = interpreter_transfer::stmibUW;
-    armInstructions[0x9E3] = interpreter_transfer::stmibUW;
-    armInstructions[0x9E4] = interpreter_transfer::stmibUW;
-    armInstructions[0x9E5] = interpreter_transfer::stmibUW;
-    armInstructions[0x9E6] = interpreter_transfer::stmibUW;
-    armInstructions[0x9E7] = interpreter_transfer::stmibUW;
-    armInstructions[0x9E8] = interpreter_transfer::stmibUW;
-    armInstructions[0x9E9] = interpreter_transfer::stmibUW;
-    armInstructions[0x9EA] = interpreter_transfer::stmibUW;
-    armInstructions[0x9EB] = interpreter_transfer::stmibUW;
-    armInstructions[0x9EC] = interpreter_transfer::stmibUW;
-    armInstructions[0x9ED] = interpreter_transfer::stmibUW;
-    armInstructions[0x9EE] = interpreter_transfer::stmibUW;
-    armInstructions[0x9EF] = interpreter_transfer::stmibUW;
-    armInstructions[0x9F0] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9F1] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9F2] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9F3] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9F4] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9F5] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9F6] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9F7] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9F8] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9F9] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9FA] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9FB] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9FC] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9FD] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9FE] = interpreter_transfer::ldmibUW;
-    armInstructions[0x9FF] = interpreter_transfer::ldmibUW;
-    armInstructions[0xA00] = interpreter_other::b;
-    armInstructions[0xA01] = interpreter_other::b;
-    armInstructions[0xA02] = interpreter_other::b;
-    armInstructions[0xA03] = interpreter_other::b;
-    armInstructions[0xA04] = interpreter_other::b;
-    armInstructions[0xA05] = interpreter_other::b;
-    armInstructions[0xA06] = interpreter_other::b;
-    armInstructions[0xA07] = interpreter_other::b;
-    armInstructions[0xA08] = interpreter_other::b;
-    armInstructions[0xA09] = interpreter_other::b;
-    armInstructions[0xA0A] = interpreter_other::b;
-    armInstructions[0xA0B] = interpreter_other::b;
-    armInstructions[0xA0C] = interpreter_other::b;
-    armInstructions[0xA0D] = interpreter_other::b;
-    armInstructions[0xA0E] = interpreter_other::b;
-    armInstructions[0xA0F] = interpreter_other::b;
-    armInstructions[0xA10] = interpreter_other::b;
-    armInstructions[0xA11] = interpreter_other::b;
-    armInstructions[0xA12] = interpreter_other::b;
-    armInstructions[0xA13] = interpreter_other::b;
-    armInstructions[0xA14] = interpreter_other::b;
-    armInstructions[0xA15] = interpreter_other::b;
-    armInstructions[0xA16] = interpreter_other::b;
-    armInstructions[0xA17] = interpreter_other::b;
-    armInstructions[0xA18] = interpreter_other::b;
-    armInstructions[0xA19] = interpreter_other::b;
-    armInstructions[0xA1A] = interpreter_other::b;
-    armInstructions[0xA1B] = interpreter_other::b;
-    armInstructions[0xA1C] = interpreter_other::b;
-    armInstructions[0xA1D] = interpreter_other::b;
-    armInstructions[0xA1E] = interpreter_other::b;
-    armInstructions[0xA1F] = interpreter_other::b;
-    armInstructions[0xA20] = interpreter_other::b;
-    armInstructions[0xA21] = interpreter_other::b;
-    armInstructions[0xA22] = interpreter_other::b;
-    armInstructions[0xA23] = interpreter_other::b;
-    armInstructions[0xA24] = interpreter_other::b;
-    armInstructions[0xA25] = interpreter_other::b;
-    armInstructions[0xA26] = interpreter_other::b;
-    armInstructions[0xA27] = interpreter_other::b;
-    armInstructions[0xA28] = interpreter_other::b;
-    armInstructions[0xA29] = interpreter_other::b;
-    armInstructions[0xA2A] = interpreter_other::b;
-    armInstructions[0xA2B] = interpreter_other::b;
-    armInstructions[0xA2C] = interpreter_other::b;
-    armInstructions[0xA2D] = interpreter_other::b;
-    armInstructions[0xA2E] = interpreter_other::b;
-    armInstructions[0xA2F] = interpreter_other::b;
-    armInstructions[0xA30] = interpreter_other::b;
-    armInstructions[0xA31] = interpreter_other::b;
-    armInstructions[0xA32] = interpreter_other::b;
-    armInstructions[0xA33] = interpreter_other::b;
-    armInstructions[0xA34] = interpreter_other::b;
-    armInstructions[0xA35] = interpreter_other::b;
-    armInstructions[0xA36] = interpreter_other::b;
-    armInstructions[0xA37] = interpreter_other::b;
-    armInstructions[0xA38] = interpreter_other::b;
-    armInstructions[0xA39] = interpreter_other::b;
-    armInstructions[0xA3A] = interpreter_other::b;
-    armInstructions[0xA3B] = interpreter_other::b;
-    armInstructions[0xA3C] = interpreter_other::b;
-    armInstructions[0xA3D] = interpreter_other::b;
-    armInstructions[0xA3E] = interpreter_other::b;
-    armInstructions[0xA3F] = interpreter_other::b;
-    armInstructions[0xA40] = interpreter_other::b;
-    armInstructions[0xA41] = interpreter_other::b;
-    armInstructions[0xA42] = interpreter_other::b;
-    armInstructions[0xA43] = interpreter_other::b;
-    armInstructions[0xA44] = interpreter_other::b;
-    armInstructions[0xA45] = interpreter_other::b;
-    armInstructions[0xA46] = interpreter_other::b;
-    armInstructions[0xA47] = interpreter_other::b;
-    armInstructions[0xA48] = interpreter_other::b;
-    armInstructions[0xA49] = interpreter_other::b;
-    armInstructions[0xA4A] = interpreter_other::b;
-    armInstructions[0xA4B] = interpreter_other::b;
-    armInstructions[0xA4C] = interpreter_other::b;
-    armInstructions[0xA4D] = interpreter_other::b;
-    armInstructions[0xA4E] = interpreter_other::b;
-    armInstructions[0xA4F] = interpreter_other::b;
-    armInstructions[0xA50] = interpreter_other::b;
-    armInstructions[0xA51] = interpreter_other::b;
-    armInstructions[0xA52] = interpreter_other::b;
-    armInstructions[0xA53] = interpreter_other::b;
-    armInstructions[0xA54] = interpreter_other::b;
-    armInstructions[0xA55] = interpreter_other::b;
-    armInstructions[0xA56] = interpreter_other::b;
-    armInstructions[0xA57] = interpreter_other::b;
-    armInstructions[0xA58] = interpreter_other::b;
-    armInstructions[0xA59] = interpreter_other::b;
-    armInstructions[0xA5A] = interpreter_other::b;
-    armInstructions[0xA5B] = interpreter_other::b;
-    armInstructions[0xA5C] = interpreter_other::b;
-    armInstructions[0xA5D] = interpreter_other::b;
-    armInstructions[0xA5E] = interpreter_other::b;
-    armInstructions[0xA5F] = interpreter_other::b;
-    armInstructions[0xA60] = interpreter_other::b;
-    armInstructions[0xA61] = interpreter_other::b;
-    armInstructions[0xA62] = interpreter_other::b;
-    armInstructions[0xA63] = interpreter_other::b;
-    armInstructions[0xA64] = interpreter_other::b;
-    armInstructions[0xA65] = interpreter_other::b;
-    armInstructions[0xA66] = interpreter_other::b;
-    armInstructions[0xA67] = interpreter_other::b;
-    armInstructions[0xA68] = interpreter_other::b;
-    armInstructions[0xA69] = interpreter_other::b;
-    armInstructions[0xA6A] = interpreter_other::b;
-    armInstructions[0xA6B] = interpreter_other::b;
-    armInstructions[0xA6C] = interpreter_other::b;
-    armInstructions[0xA6D] = interpreter_other::b;
-    armInstructions[0xA6E] = interpreter_other::b;
-    armInstructions[0xA6F] = interpreter_other::b;
-    armInstructions[0xA70] = interpreter_other::b;
-    armInstructions[0xA71] = interpreter_other::b;
-    armInstructions[0xA72] = interpreter_other::b;
-    armInstructions[0xA73] = interpreter_other::b;
-    armInstructions[0xA74] = interpreter_other::b;
-    armInstructions[0xA75] = interpreter_other::b;
-    armInstructions[0xA76] = interpreter_other::b;
-    armInstructions[0xA77] = interpreter_other::b;
-    armInstructions[0xA78] = interpreter_other::b;
-    armInstructions[0xA79] = interpreter_other::b;
-    armInstructions[0xA7A] = interpreter_other::b;
-    armInstructions[0xA7B] = interpreter_other::b;
-    armInstructions[0xA7C] = interpreter_other::b;
-    armInstructions[0xA7D] = interpreter_other::b;
-    armInstructions[0xA7E] = interpreter_other::b;
-    armInstructions[0xA7F] = interpreter_other::b;
-    armInstructions[0xA80] = interpreter_other::b;
-    armInstructions[0xA81] = interpreter_other::b;
-    armInstructions[0xA82] = interpreter_other::b;
-    armInstructions[0xA83] = interpreter_other::b;
-    armInstructions[0xA84] = interpreter_other::b;
-    armInstructions[0xA85] = interpreter_other::b;
-    armInstructions[0xA86] = interpreter_other::b;
-    armInstructions[0xA87] = interpreter_other::b;
-    armInstructions[0xA88] = interpreter_other::b;
-    armInstructions[0xA89] = interpreter_other::b;
-    armInstructions[0xA8A] = interpreter_other::b;
-    armInstructions[0xA8B] = interpreter_other::b;
-    armInstructions[0xA8C] = interpreter_other::b;
-    armInstructions[0xA8D] = interpreter_other::b;
-    armInstructions[0xA8E] = interpreter_other::b;
-    armInstructions[0xA8F] = interpreter_other::b;
-    armInstructions[0xA90] = interpreter_other::b;
-    armInstructions[0xA91] = interpreter_other::b;
-    armInstructions[0xA92] = interpreter_other::b;
-    armInstructions[0xA93] = interpreter_other::b;
-    armInstructions[0xA94] = interpreter_other::b;
-    armInstructions[0xA95] = interpreter_other::b;
-    armInstructions[0xA96] = interpreter_other::b;
-    armInstructions[0xA97] = interpreter_other::b;
-    armInstructions[0xA98] = interpreter_other::b;
-    armInstructions[0xA99] = interpreter_other::b;
-    armInstructions[0xA9A] = interpreter_other::b;
-    armInstructions[0xA9B] = interpreter_other::b;
-    armInstructions[0xA9C] = interpreter_other::b;
-    armInstructions[0xA9D] = interpreter_other::b;
-    armInstructions[0xA9E] = interpreter_other::b;
-    armInstructions[0xA9F] = interpreter_other::b;
-    armInstructions[0xAA0] = interpreter_other::b;
-    armInstructions[0xAA1] = interpreter_other::b;
-    armInstructions[0xAA2] = interpreter_other::b;
-    armInstructions[0xAA3] = interpreter_other::b;
-    armInstructions[0xAA4] = interpreter_other::b;
-    armInstructions[0xAA5] = interpreter_other::b;
-    armInstructions[0xAA6] = interpreter_other::b;
-    armInstructions[0xAA7] = interpreter_other::b;
-    armInstructions[0xAA8] = interpreter_other::b;
-    armInstructions[0xAA9] = interpreter_other::b;
-    armInstructions[0xAAA] = interpreter_other::b;
-    armInstructions[0xAAB] = interpreter_other::b;
-    armInstructions[0xAAC] = interpreter_other::b;
-    armInstructions[0xAAD] = interpreter_other::b;
-    armInstructions[0xAAE] = interpreter_other::b;
-    armInstructions[0xAAF] = interpreter_other::b;
-    armInstructions[0xAB0] = interpreter_other::b;
-    armInstructions[0xAB1] = interpreter_other::b;
-    armInstructions[0xAB2] = interpreter_other::b;
-    armInstructions[0xAB3] = interpreter_other::b;
-    armInstructions[0xAB4] = interpreter_other::b;
-    armInstructions[0xAB5] = interpreter_other::b;
-    armInstructions[0xAB6] = interpreter_other::b;
-    armInstructions[0xAB7] = interpreter_other::b;
-    armInstructions[0xAB8] = interpreter_other::b;
-    armInstructions[0xAB9] = interpreter_other::b;
-    armInstructions[0xABA] = interpreter_other::b;
-    armInstructions[0xABB] = interpreter_other::b;
-    armInstructions[0xABC] = interpreter_other::b;
-    armInstructions[0xABD] = interpreter_other::b;
-    armInstructions[0xABE] = interpreter_other::b;
-    armInstructions[0xABF] = interpreter_other::b;
-    armInstructions[0xAC0] = interpreter_other::b;
-    armInstructions[0xAC1] = interpreter_other::b;
-    armInstructions[0xAC2] = interpreter_other::b;
-    armInstructions[0xAC3] = interpreter_other::b;
-    armInstructions[0xAC4] = interpreter_other::b;
-    armInstructions[0xAC5] = interpreter_other::b;
-    armInstructions[0xAC6] = interpreter_other::b;
-    armInstructions[0xAC7] = interpreter_other::b;
-    armInstructions[0xAC8] = interpreter_other::b;
-    armInstructions[0xAC9] = interpreter_other::b;
-    armInstructions[0xACA] = interpreter_other::b;
-    armInstructions[0xACB] = interpreter_other::b;
-    armInstructions[0xACC] = interpreter_other::b;
-    armInstructions[0xACD] = interpreter_other::b;
-    armInstructions[0xACE] = interpreter_other::b;
-    armInstructions[0xACF] = interpreter_other::b;
-    armInstructions[0xAD0] = interpreter_other::b;
-    armInstructions[0xAD1] = interpreter_other::b;
-    armInstructions[0xAD2] = interpreter_other::b;
-    armInstructions[0xAD3] = interpreter_other::b;
-    armInstructions[0xAD4] = interpreter_other::b;
-    armInstructions[0xAD5] = interpreter_other::b;
-    armInstructions[0xAD6] = interpreter_other::b;
-    armInstructions[0xAD7] = interpreter_other::b;
-    armInstructions[0xAD8] = interpreter_other::b;
-    armInstructions[0xAD9] = interpreter_other::b;
-    armInstructions[0xADA] = interpreter_other::b;
-    armInstructions[0xADB] = interpreter_other::b;
-    armInstructions[0xADC] = interpreter_other::b;
-    armInstructions[0xADD] = interpreter_other::b;
-    armInstructions[0xADE] = interpreter_other::b;
-    armInstructions[0xADF] = interpreter_other::b;
-    armInstructions[0xAE0] = interpreter_other::b;
-    armInstructions[0xAE1] = interpreter_other::b;
-    armInstructions[0xAE2] = interpreter_other::b;
-    armInstructions[0xAE3] = interpreter_other::b;
-    armInstructions[0xAE4] = interpreter_other::b;
-    armInstructions[0xAE5] = interpreter_other::b;
-    armInstructions[0xAE6] = interpreter_other::b;
-    armInstructions[0xAE7] = interpreter_other::b;
-    armInstructions[0xAE8] = interpreter_other::b;
-    armInstructions[0xAE9] = interpreter_other::b;
-    armInstructions[0xAEA] = interpreter_other::b;
-    armInstructions[0xAEB] = interpreter_other::b;
-    armInstructions[0xAEC] = interpreter_other::b;
-    armInstructions[0xAED] = interpreter_other::b;
-    armInstructions[0xAEE] = interpreter_other::b;
-    armInstructions[0xAEF] = interpreter_other::b;
-    armInstructions[0xAF0] = interpreter_other::b;
-    armInstructions[0xAF1] = interpreter_other::b;
-    armInstructions[0xAF2] = interpreter_other::b;
-    armInstructions[0xAF3] = interpreter_other::b;
-    armInstructions[0xAF4] = interpreter_other::b;
-    armInstructions[0xAF5] = interpreter_other::b;
-    armInstructions[0xAF6] = interpreter_other::b;
-    armInstructions[0xAF7] = interpreter_other::b;
-    armInstructions[0xAF8] = interpreter_other::b;
-    armInstructions[0xAF9] = interpreter_other::b;
-    armInstructions[0xAFA] = interpreter_other::b;
-    armInstructions[0xAFB] = interpreter_other::b;
-    armInstructions[0xAFC] = interpreter_other::b;
-    armInstructions[0xAFD] = interpreter_other::b;
-    armInstructions[0xAFE] = interpreter_other::b;
-    armInstructions[0xAFF] = interpreter_other::b;
-    armInstructions[0xB00] = interpreter_other::bl;
-    armInstructions[0xB01] = interpreter_other::bl;
-    armInstructions[0xB02] = interpreter_other::bl;
-    armInstructions[0xB03] = interpreter_other::bl;
-    armInstructions[0xB04] = interpreter_other::bl;
-    armInstructions[0xB05] = interpreter_other::bl;
-    armInstructions[0xB06] = interpreter_other::bl;
-    armInstructions[0xB07] = interpreter_other::bl;
-    armInstructions[0xB08] = interpreter_other::bl;
-    armInstructions[0xB09] = interpreter_other::bl;
-    armInstructions[0xB0A] = interpreter_other::bl;
-    armInstructions[0xB0B] = interpreter_other::bl;
-    armInstructions[0xB0C] = interpreter_other::bl;
-    armInstructions[0xB0D] = interpreter_other::bl;
-    armInstructions[0xB0E] = interpreter_other::bl;
-    armInstructions[0xB0F] = interpreter_other::bl;
-    armInstructions[0xB10] = interpreter_other::bl;
-    armInstructions[0xB11] = interpreter_other::bl;
-    armInstructions[0xB12] = interpreter_other::bl;
-    armInstructions[0xB13] = interpreter_other::bl;
-    armInstructions[0xB14] = interpreter_other::bl;
-    armInstructions[0xB15] = interpreter_other::bl;
-    armInstructions[0xB16] = interpreter_other::bl;
-    armInstructions[0xB17] = interpreter_other::bl;
-    armInstructions[0xB18] = interpreter_other::bl;
-    armInstructions[0xB19] = interpreter_other::bl;
-    armInstructions[0xB1A] = interpreter_other::bl;
-    armInstructions[0xB1B] = interpreter_other::bl;
-    armInstructions[0xB1C] = interpreter_other::bl;
-    armInstructions[0xB1D] = interpreter_other::bl;
-    armInstructions[0xB1E] = interpreter_other::bl;
-    armInstructions[0xB1F] = interpreter_other::bl;
-    armInstructions[0xB20] = interpreter_other::bl;
-    armInstructions[0xB21] = interpreter_other::bl;
-    armInstructions[0xB22] = interpreter_other::bl;
-    armInstructions[0xB23] = interpreter_other::bl;
-    armInstructions[0xB24] = interpreter_other::bl;
-    armInstructions[0xB25] = interpreter_other::bl;
-    armInstructions[0xB26] = interpreter_other::bl;
-    armInstructions[0xB27] = interpreter_other::bl;
-    armInstructions[0xB28] = interpreter_other::bl;
-    armInstructions[0xB29] = interpreter_other::bl;
-    armInstructions[0xB2A] = interpreter_other::bl;
-    armInstructions[0xB2B] = interpreter_other::bl;
-    armInstructions[0xB2C] = interpreter_other::bl;
-    armInstructions[0xB2D] = interpreter_other::bl;
-    armInstructions[0xB2E] = interpreter_other::bl;
-    armInstructions[0xB2F] = interpreter_other::bl;
-    armInstructions[0xB30] = interpreter_other::bl;
-    armInstructions[0xB31] = interpreter_other::bl;
-    armInstructions[0xB32] = interpreter_other::bl;
-    armInstructions[0xB33] = interpreter_other::bl;
-    armInstructions[0xB34] = interpreter_other::bl;
-    armInstructions[0xB35] = interpreter_other::bl;
-    armInstructions[0xB36] = interpreter_other::bl;
-    armInstructions[0xB37] = interpreter_other::bl;
-    armInstructions[0xB38] = interpreter_other::bl;
-    armInstructions[0xB39] = interpreter_other::bl;
-    armInstructions[0xB3A] = interpreter_other::bl;
-    armInstructions[0xB3B] = interpreter_other::bl;
-    armInstructions[0xB3C] = interpreter_other::bl;
-    armInstructions[0xB3D] = interpreter_other::bl;
-    armInstructions[0xB3E] = interpreter_other::bl;
-    armInstructions[0xB3F] = interpreter_other::bl;
-    armInstructions[0xB40] = interpreter_other::bl;
-    armInstructions[0xB41] = interpreter_other::bl;
-    armInstructions[0xB42] = interpreter_other::bl;
-    armInstructions[0xB43] = interpreter_other::bl;
-    armInstructions[0xB44] = interpreter_other::bl;
-    armInstructions[0xB45] = interpreter_other::bl;
-    armInstructions[0xB46] = interpreter_other::bl;
-    armInstructions[0xB47] = interpreter_other::bl;
-    armInstructions[0xB48] = interpreter_other::bl;
-    armInstructions[0xB49] = interpreter_other::bl;
-    armInstructions[0xB4A] = interpreter_other::bl;
-    armInstructions[0xB4B] = interpreter_other::bl;
-    armInstructions[0xB4C] = interpreter_other::bl;
-    armInstructions[0xB4D] = interpreter_other::bl;
-    armInstructions[0xB4E] = interpreter_other::bl;
-    armInstructions[0xB4F] = interpreter_other::bl;
-    armInstructions[0xB50] = interpreter_other::bl;
-    armInstructions[0xB51] = interpreter_other::bl;
-    armInstructions[0xB52] = interpreter_other::bl;
-    armInstructions[0xB53] = interpreter_other::bl;
-    armInstructions[0xB54] = interpreter_other::bl;
-    armInstructions[0xB55] = interpreter_other::bl;
-    armInstructions[0xB56] = interpreter_other::bl;
-    armInstructions[0xB57] = interpreter_other::bl;
-    armInstructions[0xB58] = interpreter_other::bl;
-    armInstructions[0xB59] = interpreter_other::bl;
-    armInstructions[0xB5A] = interpreter_other::bl;
-    armInstructions[0xB5B] = interpreter_other::bl;
-    armInstructions[0xB5C] = interpreter_other::bl;
-    armInstructions[0xB5D] = interpreter_other::bl;
-    armInstructions[0xB5E] = interpreter_other::bl;
-    armInstructions[0xB5F] = interpreter_other::bl;
-    armInstructions[0xB60] = interpreter_other::bl;
-    armInstructions[0xB61] = interpreter_other::bl;
-    armInstructions[0xB62] = interpreter_other::bl;
-    armInstructions[0xB63] = interpreter_other::bl;
-    armInstructions[0xB64] = interpreter_other::bl;
-    armInstructions[0xB65] = interpreter_other::bl;
-    armInstructions[0xB66] = interpreter_other::bl;
-    armInstructions[0xB67] = interpreter_other::bl;
-    armInstructions[0xB68] = interpreter_other::bl;
-    armInstructions[0xB69] = interpreter_other::bl;
-    armInstructions[0xB6A] = interpreter_other::bl;
-    armInstructions[0xB6B] = interpreter_other::bl;
-    armInstructions[0xB6C] = interpreter_other::bl;
-    armInstructions[0xB6D] = interpreter_other::bl;
-    armInstructions[0xB6E] = interpreter_other::bl;
-    armInstructions[0xB6F] = interpreter_other::bl;
-    armInstructions[0xB70] = interpreter_other::bl;
-    armInstructions[0xB71] = interpreter_other::bl;
-    armInstructions[0xB72] = interpreter_other::bl;
-    armInstructions[0xB73] = interpreter_other::bl;
-    armInstructions[0xB74] = interpreter_other::bl;
-    armInstructions[0xB75] = interpreter_other::bl;
-    armInstructions[0xB76] = interpreter_other::bl;
-    armInstructions[0xB77] = interpreter_other::bl;
-    armInstructions[0xB78] = interpreter_other::bl;
-    armInstructions[0xB79] = interpreter_other::bl;
-    armInstructions[0xB7A] = interpreter_other::bl;
-    armInstructions[0xB7B] = interpreter_other::bl;
-    armInstructions[0xB7C] = interpreter_other::bl;
-    armInstructions[0xB7D] = interpreter_other::bl;
-    armInstructions[0xB7E] = interpreter_other::bl;
-    armInstructions[0xB7F] = interpreter_other::bl;
-    armInstructions[0xB80] = interpreter_other::bl;
-    armInstructions[0xB81] = interpreter_other::bl;
-    armInstructions[0xB82] = interpreter_other::bl;
-    armInstructions[0xB83] = interpreter_other::bl;
-    armInstructions[0xB84] = interpreter_other::bl;
-    armInstructions[0xB85] = interpreter_other::bl;
-    armInstructions[0xB86] = interpreter_other::bl;
-    armInstructions[0xB87] = interpreter_other::bl;
-    armInstructions[0xB88] = interpreter_other::bl;
-    armInstructions[0xB89] = interpreter_other::bl;
-    armInstructions[0xB8A] = interpreter_other::bl;
-    armInstructions[0xB8B] = interpreter_other::bl;
-    armInstructions[0xB8C] = interpreter_other::bl;
-    armInstructions[0xB8D] = interpreter_other::bl;
-    armInstructions[0xB8E] = interpreter_other::bl;
-    armInstructions[0xB8F] = interpreter_other::bl;
-    armInstructions[0xB90] = interpreter_other::bl;
-    armInstructions[0xB91] = interpreter_other::bl;
-    armInstructions[0xB92] = interpreter_other::bl;
-    armInstructions[0xB93] = interpreter_other::bl;
-    armInstructions[0xB94] = interpreter_other::bl;
-    armInstructions[0xB95] = interpreter_other::bl;
-    armInstructions[0xB96] = interpreter_other::bl;
-    armInstructions[0xB97] = interpreter_other::bl;
-    armInstructions[0xB98] = interpreter_other::bl;
-    armInstructions[0xB99] = interpreter_other::bl;
-    armInstructions[0xB9A] = interpreter_other::bl;
-    armInstructions[0xB9B] = interpreter_other::bl;
-    armInstructions[0xB9C] = interpreter_other::bl;
-    armInstructions[0xB9D] = interpreter_other::bl;
-    armInstructions[0xB9E] = interpreter_other::bl;
-    armInstructions[0xB9F] = interpreter_other::bl;
-    armInstructions[0xBA0] = interpreter_other::bl;
-    armInstructions[0xBA1] = interpreter_other::bl;
-    armInstructions[0xBA2] = interpreter_other::bl;
-    armInstructions[0xBA3] = interpreter_other::bl;
-    armInstructions[0xBA4] = interpreter_other::bl;
-    armInstructions[0xBA5] = interpreter_other::bl;
-    armInstructions[0xBA6] = interpreter_other::bl;
-    armInstructions[0xBA7] = interpreter_other::bl;
-    armInstructions[0xBA8] = interpreter_other::bl;
-    armInstructions[0xBA9] = interpreter_other::bl;
-    armInstructions[0xBAA] = interpreter_other::bl;
-    armInstructions[0xBAB] = interpreter_other::bl;
-    armInstructions[0xBAC] = interpreter_other::bl;
-    armInstructions[0xBAD] = interpreter_other::bl;
-    armInstructions[0xBAE] = interpreter_other::bl;
-    armInstructions[0xBAF] = interpreter_other::bl;
-    armInstructions[0xBB0] = interpreter_other::bl;
-    armInstructions[0xBB1] = interpreter_other::bl;
-    armInstructions[0xBB2] = interpreter_other::bl;
-    armInstructions[0xBB3] = interpreter_other::bl;
-    armInstructions[0xBB4] = interpreter_other::bl;
-    armInstructions[0xBB5] = interpreter_other::bl;
-    armInstructions[0xBB6] = interpreter_other::bl;
-    armInstructions[0xBB7] = interpreter_other::bl;
-    armInstructions[0xBB8] = interpreter_other::bl;
-    armInstructions[0xBB9] = interpreter_other::bl;
-    armInstructions[0xBBA] = interpreter_other::bl;
-    armInstructions[0xBBB] = interpreter_other::bl;
-    armInstructions[0xBBC] = interpreter_other::bl;
-    armInstructions[0xBBD] = interpreter_other::bl;
-    armInstructions[0xBBE] = interpreter_other::bl;
-    armInstructions[0xBBF] = interpreter_other::bl;
-    armInstructions[0xBC0] = interpreter_other::bl;
-    armInstructions[0xBC1] = interpreter_other::bl;
-    armInstructions[0xBC2] = interpreter_other::bl;
-    armInstructions[0xBC3] = interpreter_other::bl;
-    armInstructions[0xBC4] = interpreter_other::bl;
-    armInstructions[0xBC5] = interpreter_other::bl;
-    armInstructions[0xBC6] = interpreter_other::bl;
-    armInstructions[0xBC7] = interpreter_other::bl;
-    armInstructions[0xBC8] = interpreter_other::bl;
-    armInstructions[0xBC9] = interpreter_other::bl;
-    armInstructions[0xBCA] = interpreter_other::bl;
-    armInstructions[0xBCB] = interpreter_other::bl;
-    armInstructions[0xBCC] = interpreter_other::bl;
-    armInstructions[0xBCD] = interpreter_other::bl;
-    armInstructions[0xBCE] = interpreter_other::bl;
-    armInstructions[0xBCF] = interpreter_other::bl;
-    armInstructions[0xBD0] = interpreter_other::bl;
-    armInstructions[0xBD1] = interpreter_other::bl;
-    armInstructions[0xBD2] = interpreter_other::bl;
-    armInstructions[0xBD3] = interpreter_other::bl;
-    armInstructions[0xBD4] = interpreter_other::bl;
-    armInstructions[0xBD5] = interpreter_other::bl;
-    armInstructions[0xBD6] = interpreter_other::bl;
-    armInstructions[0xBD7] = interpreter_other::bl;
-    armInstructions[0xBD8] = interpreter_other::bl;
-    armInstructions[0xBD9] = interpreter_other::bl;
-    armInstructions[0xBDA] = interpreter_other::bl;
-    armInstructions[0xBDB] = interpreter_other::bl;
-    armInstructions[0xBDC] = interpreter_other::bl;
-    armInstructions[0xBDD] = interpreter_other::bl;
-    armInstructions[0xBDE] = interpreter_other::bl;
-    armInstructions[0xBDF] = interpreter_other::bl;
-    armInstructions[0xBE0] = interpreter_other::bl;
-    armInstructions[0xBE1] = interpreter_other::bl;
-    armInstructions[0xBE2] = interpreter_other::bl;
-    armInstructions[0xBE3] = interpreter_other::bl;
-    armInstructions[0xBE4] = interpreter_other::bl;
-    armInstructions[0xBE5] = interpreter_other::bl;
-    armInstructions[0xBE6] = interpreter_other::bl;
-    armInstructions[0xBE7] = interpreter_other::bl;
-    armInstructions[0xBE8] = interpreter_other::bl;
-    armInstructions[0xBE9] = interpreter_other::bl;
-    armInstructions[0xBEA] = interpreter_other::bl;
-    armInstructions[0xBEB] = interpreter_other::bl;
-    armInstructions[0xBEC] = interpreter_other::bl;
-    armInstructions[0xBED] = interpreter_other::bl;
-    armInstructions[0xBEE] = interpreter_other::bl;
-    armInstructions[0xBEF] = interpreter_other::bl;
-    armInstructions[0xBF0] = interpreter_other::bl;
-    armInstructions[0xBF1] = interpreter_other::bl;
-    armInstructions[0xBF2] = interpreter_other::bl;
-    armInstructions[0xBF3] = interpreter_other::bl;
-    armInstructions[0xBF4] = interpreter_other::bl;
-    armInstructions[0xBF5] = interpreter_other::bl;
-    armInstructions[0xBF6] = interpreter_other::bl;
-    armInstructions[0xBF7] = interpreter_other::bl;
-    armInstructions[0xBF8] = interpreter_other::bl;
-    armInstructions[0xBF9] = interpreter_other::bl;
-    armInstructions[0xBFA] = interpreter_other::bl;
-    armInstructions[0xBFB] = interpreter_other::bl;
-    armInstructions[0xBFC] = interpreter_other::bl;
-    armInstructions[0xBFD] = interpreter_other::bl;
-    armInstructions[0xBFE] = interpreter_other::bl;
-    armInstructions[0xBFF] = interpreter_other::bl;
-    armInstructions[0xE01] = interpreter_other::mcr;
-    armInstructions[0xE03] = interpreter_other::mcr;
-    armInstructions[0xE05] = interpreter_other::mcr;
-    armInstructions[0xE07] = interpreter_other::mcr;
-    armInstructions[0xE09] = interpreter_other::mcr;
-    armInstructions[0xE0B] = interpreter_other::mcr;
-    armInstructions[0xE0D] = interpreter_other::mcr;
-    armInstructions[0xE0F] = interpreter_other::mcr;
-    armInstructions[0xE11] = interpreter_other::mrc;
-    armInstructions[0xE13] = interpreter_other::mrc;
-    armInstructions[0xE15] = interpreter_other::mrc;
-    armInstructions[0xE17] = interpreter_other::mrc;
-    armInstructions[0xE19] = interpreter_other::mrc;
-    armInstructions[0xE1B] = interpreter_other::mrc;
-    armInstructions[0xE1D] = interpreter_other::mrc;
-    armInstructions[0xE1F] = interpreter_other::mrc;
-    armInstructions[0xE21] = interpreter_other::mcr;
-    armInstructions[0xE23] = interpreter_other::mcr;
-    armInstructions[0xE25] = interpreter_other::mcr;
-    armInstructions[0xE27] = interpreter_other::mcr;
-    armInstructions[0xE29] = interpreter_other::mcr;
-    armInstructions[0xE2B] = interpreter_other::mcr;
-    armInstructions[0xE2D] = interpreter_other::mcr;
-    armInstructions[0xE2F] = interpreter_other::mcr;
-    armInstructions[0xE31] = interpreter_other::mrc;
-    armInstructions[0xE33] = interpreter_other::mrc;
-    armInstructions[0xE35] = interpreter_other::mrc;
-    armInstructions[0xE37] = interpreter_other::mrc;
-    armInstructions[0xE39] = interpreter_other::mrc;
-    armInstructions[0xE3B] = interpreter_other::mrc;
-    armInstructions[0xE3D] = interpreter_other::mrc;
-    armInstructions[0xE3F] = interpreter_other::mrc;
-    armInstructions[0xE41] = interpreter_other::mcr;
-    armInstructions[0xE43] = interpreter_other::mcr;
-    armInstructions[0xE45] = interpreter_other::mcr;
-    armInstructions[0xE47] = interpreter_other::mcr;
-    armInstructions[0xE49] = interpreter_other::mcr;
-    armInstructions[0xE4B] = interpreter_other::mcr;
-    armInstructions[0xE4D] = interpreter_other::mcr;
-    armInstructions[0xE4F] = interpreter_other::mcr;
-    armInstructions[0xE51] = interpreter_other::mrc;
-    armInstructions[0xE53] = interpreter_other::mrc;
-    armInstructions[0xE55] = interpreter_other::mrc;
-    armInstructions[0xE57] = interpreter_other::mrc;
-    armInstructions[0xE59] = interpreter_other::mrc;
-    armInstructions[0xE5B] = interpreter_other::mrc;
-    armInstructions[0xE5D] = interpreter_other::mrc;
-    armInstructions[0xE5F] = interpreter_other::mrc;
-    armInstructions[0xE61] = interpreter_other::mcr;
-    armInstructions[0xE63] = interpreter_other::mcr;
-    armInstructions[0xE65] = interpreter_other::mcr;
-    armInstructions[0xE67] = interpreter_other::mcr;
-    armInstructions[0xE69] = interpreter_other::mcr;
-    armInstructions[0xE6B] = interpreter_other::mcr;
-    armInstructions[0xE6D] = interpreter_other::mcr;
-    armInstructions[0xE6F] = interpreter_other::mcr;
-    armInstructions[0xE71] = interpreter_other::mrc;
-    armInstructions[0xE73] = interpreter_other::mrc;
-    armInstructions[0xE75] = interpreter_other::mrc;
-    armInstructions[0xE77] = interpreter_other::mrc;
-    armInstructions[0xE79] = interpreter_other::mrc;
-    armInstructions[0xE7B] = interpreter_other::mrc;
-    armInstructions[0xE7D] = interpreter_other::mrc;
-    armInstructions[0xE7F] = interpreter_other::mrc;
-    armInstructions[0xE81] = interpreter_other::mcr;
-    armInstructions[0xE83] = interpreter_other::mcr;
-    armInstructions[0xE85] = interpreter_other::mcr;
-    armInstructions[0xE87] = interpreter_other::mcr;
-    armInstructions[0xE89] = interpreter_other::mcr;
-    armInstructions[0xE8B] = interpreter_other::mcr;
-    armInstructions[0xE8D] = interpreter_other::mcr;
-    armInstructions[0xE8F] = interpreter_other::mcr;
-    armInstructions[0xE91] = interpreter_other::mrc;
-    armInstructions[0xE93] = interpreter_other::mrc;
-    armInstructions[0xE95] = interpreter_other::mrc;
-    armInstructions[0xE97] = interpreter_other::mrc;
-    armInstructions[0xE99] = interpreter_other::mrc;
-    armInstructions[0xE9B] = interpreter_other::mrc;
-    armInstructions[0xE9D] = interpreter_other::mrc;
-    armInstructions[0xE9F] = interpreter_other::mrc;
-    armInstructions[0xEA1] = interpreter_other::mcr;
-    armInstructions[0xEA3] = interpreter_other::mcr;
-    armInstructions[0xEA5] = interpreter_other::mcr;
-    armInstructions[0xEA7] = interpreter_other::mcr;
-    armInstructions[0xEA9] = interpreter_other::mcr;
-    armInstructions[0xEAB] = interpreter_other::mcr;
-    armInstructions[0xEAD] = interpreter_other::mcr;
-    armInstructions[0xEAF] = interpreter_other::mcr;
-    armInstructions[0xEB1] = interpreter_other::mrc;
-    armInstructions[0xEB3] = interpreter_other::mrc;
-    armInstructions[0xEB5] = interpreter_other::mrc;
-    armInstructions[0xEB7] = interpreter_other::mrc;
-    armInstructions[0xEB9] = interpreter_other::mrc;
-    armInstructions[0xEBB] = interpreter_other::mrc;
-    armInstructions[0xEBD] = interpreter_other::mrc;
-    armInstructions[0xEBF] = interpreter_other::mrc;
-    armInstructions[0xEC1] = interpreter_other::mcr;
-    armInstructions[0xEC3] = interpreter_other::mcr;
-    armInstructions[0xEC5] = interpreter_other::mcr;
-    armInstructions[0xEC7] = interpreter_other::mcr;
-    armInstructions[0xEC9] = interpreter_other::mcr;
-    armInstructions[0xECB] = interpreter_other::mcr;
-    armInstructions[0xECD] = interpreter_other::mcr;
-    armInstructions[0xECF] = interpreter_other::mcr;
-    armInstructions[0xED1] = interpreter_other::mrc;
-    armInstructions[0xED3] = interpreter_other::mrc;
-    armInstructions[0xED5] = interpreter_other::mrc;
-    armInstructions[0xED7] = interpreter_other::mrc;
-    armInstructions[0xED9] = interpreter_other::mrc;
-    armInstructions[0xEDB] = interpreter_other::mrc;
-    armInstructions[0xEDD] = interpreter_other::mrc;
-    armInstructions[0xEDF] = interpreter_other::mrc;
-    armInstructions[0xEE1] = interpreter_other::mcr;
-    armInstructions[0xEE3] = interpreter_other::mcr;
-    armInstructions[0xEE5] = interpreter_other::mcr;
-    armInstructions[0xEE7] = interpreter_other::mcr;
-    armInstructions[0xEE9] = interpreter_other::mcr;
-    armInstructions[0xEEB] = interpreter_other::mcr;
-    armInstructions[0xEED] = interpreter_other::mcr;
-    armInstructions[0xEEF] = interpreter_other::mcr;
-    armInstructions[0xEF1] = interpreter_other::mrc;
-    armInstructions[0xEF3] = interpreter_other::mrc;
-    armInstructions[0xEF5] = interpreter_other::mrc;
-    armInstructions[0xEF7] = interpreter_other::mrc;
-    armInstructions[0xEF9] = interpreter_other::mrc;
-    armInstructions[0xEFB] = interpreter_other::mrc;
-    armInstructions[0xEFD] = interpreter_other::mrc;
-    armInstructions[0xEFF] = interpreter_other::mrc;
-    armInstructions[0xF00] = interpreter_other::swi;
-    armInstructions[0xF01] = interpreter_other::swi;
-    armInstructions[0xF02] = interpreter_other::swi;
-    armInstructions[0xF03] = interpreter_other::swi;
-    armInstructions[0xF04] = interpreter_other::swi;
-    armInstructions[0xF05] = interpreter_other::swi;
-    armInstructions[0xF06] = interpreter_other::swi;
-    armInstructions[0xF07] = interpreter_other::swi;
-    armInstructions[0xF08] = interpreter_other::swi;
-    armInstructions[0xF09] = interpreter_other::swi;
-    armInstructions[0xF0A] = interpreter_other::swi;
-    armInstructions[0xF0B] = interpreter_other::swi;
-    armInstructions[0xF0C] = interpreter_other::swi;
-    armInstructions[0xF0D] = interpreter_other::swi;
-    armInstructions[0xF0E] = interpreter_other::swi;
-    armInstructions[0xF0F] = interpreter_other::swi;
-    armInstructions[0xF10] = interpreter_other::swi;
-    armInstructions[0xF11] = interpreter_other::swi;
-    armInstructions[0xF12] = interpreter_other::swi;
-    armInstructions[0xF13] = interpreter_other::swi;
-    armInstructions[0xF14] = interpreter_other::swi;
-    armInstructions[0xF15] = interpreter_other::swi;
-    armInstructions[0xF16] = interpreter_other::swi;
-    armInstructions[0xF17] = interpreter_other::swi;
-    armInstructions[0xF18] = interpreter_other::swi;
-    armInstructions[0xF19] = interpreter_other::swi;
-    armInstructions[0xF1A] = interpreter_other::swi;
-    armInstructions[0xF1B] = interpreter_other::swi;
-    armInstructions[0xF1C] = interpreter_other::swi;
-    armInstructions[0xF1D] = interpreter_other::swi;
-    armInstructions[0xF1E] = interpreter_other::swi;
-    armInstructions[0xF1F] = interpreter_other::swi;
-    armInstructions[0xF20] = interpreter_other::swi;
-    armInstructions[0xF21] = interpreter_other::swi;
-    armInstructions[0xF22] = interpreter_other::swi;
-    armInstructions[0xF23] = interpreter_other::swi;
-    armInstructions[0xF24] = interpreter_other::swi;
-    armInstructions[0xF25] = interpreter_other::swi;
-    armInstructions[0xF26] = interpreter_other::swi;
-    armInstructions[0xF27] = interpreter_other::swi;
-    armInstructions[0xF28] = interpreter_other::swi;
-    armInstructions[0xF29] = interpreter_other::swi;
-    armInstructions[0xF2A] = interpreter_other::swi;
-    armInstructions[0xF2B] = interpreter_other::swi;
-    armInstructions[0xF2C] = interpreter_other::swi;
-    armInstructions[0xF2D] = interpreter_other::swi;
-    armInstructions[0xF2E] = interpreter_other::swi;
-    armInstructions[0xF2F] = interpreter_other::swi;
-    armInstructions[0xF30] = interpreter_other::swi;
-    armInstructions[0xF31] = interpreter_other::swi;
-    armInstructions[0xF32] = interpreter_other::swi;
-    armInstructions[0xF33] = interpreter_other::swi;
-    armInstructions[0xF34] = interpreter_other::swi;
-    armInstructions[0xF35] = interpreter_other::swi;
-    armInstructions[0xF36] = interpreter_other::swi;
-    armInstructions[0xF37] = interpreter_other::swi;
-    armInstructions[0xF38] = interpreter_other::swi;
-    armInstructions[0xF39] = interpreter_other::swi;
-    armInstructions[0xF3A] = interpreter_other::swi;
-    armInstructions[0xF3B] = interpreter_other::swi;
-    armInstructions[0xF3C] = interpreter_other::swi;
-    armInstructions[0xF3D] = interpreter_other::swi;
-    armInstructions[0xF3E] = interpreter_other::swi;
-    armInstructions[0xF3F] = interpreter_other::swi;
-    armInstructions[0xF40] = interpreter_other::swi;
-    armInstructions[0xF41] = interpreter_other::swi;
-    armInstructions[0xF42] = interpreter_other::swi;
-    armInstructions[0xF43] = interpreter_other::swi;
-    armInstructions[0xF44] = interpreter_other::swi;
-    armInstructions[0xF45] = interpreter_other::swi;
-    armInstructions[0xF46] = interpreter_other::swi;
-    armInstructions[0xF47] = interpreter_other::swi;
-    armInstructions[0xF48] = interpreter_other::swi;
-    armInstructions[0xF49] = interpreter_other::swi;
-    armInstructions[0xF4A] = interpreter_other::swi;
-    armInstructions[0xF4B] = interpreter_other::swi;
-    armInstructions[0xF4C] = interpreter_other::swi;
-    armInstructions[0xF4D] = interpreter_other::swi;
-    armInstructions[0xF4E] = interpreter_other::swi;
-    armInstructions[0xF4F] = interpreter_other::swi;
-    armInstructions[0xF50] = interpreter_other::swi;
-    armInstructions[0xF51] = interpreter_other::swi;
-    armInstructions[0xF52] = interpreter_other::swi;
-    armInstructions[0xF53] = interpreter_other::swi;
-    armInstructions[0xF54] = interpreter_other::swi;
-    armInstructions[0xF55] = interpreter_other::swi;
-    armInstructions[0xF56] = interpreter_other::swi;
-    armInstructions[0xF57] = interpreter_other::swi;
-    armInstructions[0xF58] = interpreter_other::swi;
-    armInstructions[0xF59] = interpreter_other::swi;
-    armInstructions[0xF5A] = interpreter_other::swi;
-    armInstructions[0xF5B] = interpreter_other::swi;
-    armInstructions[0xF5C] = interpreter_other::swi;
-    armInstructions[0xF5D] = interpreter_other::swi;
-    armInstructions[0xF5E] = interpreter_other::swi;
-    armInstructions[0xF5F] = interpreter_other::swi;
-    armInstructions[0xF60] = interpreter_other::swi;
-    armInstructions[0xF61] = interpreter_other::swi;
-    armInstructions[0xF62] = interpreter_other::swi;
-    armInstructions[0xF63] = interpreter_other::swi;
-    armInstructions[0xF64] = interpreter_other::swi;
-    armInstructions[0xF65] = interpreter_other::swi;
-    armInstructions[0xF66] = interpreter_other::swi;
-    armInstructions[0xF67] = interpreter_other::swi;
-    armInstructions[0xF68] = interpreter_other::swi;
-    armInstructions[0xF69] = interpreter_other::swi;
-    armInstructions[0xF6A] = interpreter_other::swi;
-    armInstructions[0xF6B] = interpreter_other::swi;
-    armInstructions[0xF6C] = interpreter_other::swi;
-    armInstructions[0xF6D] = interpreter_other::swi;
-    armInstructions[0xF6E] = interpreter_other::swi;
-    armInstructions[0xF6F] = interpreter_other::swi;
-    armInstructions[0xF70] = interpreter_other::swi;
-    armInstructions[0xF71] = interpreter_other::swi;
-    armInstructions[0xF72] = interpreter_other::swi;
-    armInstructions[0xF73] = interpreter_other::swi;
-    armInstructions[0xF74] = interpreter_other::swi;
-    armInstructions[0xF75] = interpreter_other::swi;
-    armInstructions[0xF76] = interpreter_other::swi;
-    armInstructions[0xF77] = interpreter_other::swi;
-    armInstructions[0xF78] = interpreter_other::swi;
-    armInstructions[0xF79] = interpreter_other::swi;
-    armInstructions[0xF7A] = interpreter_other::swi;
-    armInstructions[0xF7B] = interpreter_other::swi;
-    armInstructions[0xF7C] = interpreter_other::swi;
-    armInstructions[0xF7D] = interpreter_other::swi;
-    armInstructions[0xF7E] = interpreter_other::swi;
-    armInstructions[0xF7F] = interpreter_other::swi;
-    armInstructions[0xF80] = interpreter_other::swi;
-    armInstructions[0xF81] = interpreter_other::swi;
-    armInstructions[0xF82] = interpreter_other::swi;
-    armInstructions[0xF83] = interpreter_other::swi;
-    armInstructions[0xF84] = interpreter_other::swi;
-    armInstructions[0xF85] = interpreter_other::swi;
-    armInstructions[0xF86] = interpreter_other::swi;
-    armInstructions[0xF87] = interpreter_other::swi;
-    armInstructions[0xF88] = interpreter_other::swi;
-    armInstructions[0xF89] = interpreter_other::swi;
-    armInstructions[0xF8A] = interpreter_other::swi;
-    armInstructions[0xF8B] = interpreter_other::swi;
-    armInstructions[0xF8C] = interpreter_other::swi;
-    armInstructions[0xF8D] = interpreter_other::swi;
-    armInstructions[0xF8E] = interpreter_other::swi;
-    armInstructions[0xF8F] = interpreter_other::swi;
-    armInstructions[0xF90] = interpreter_other::swi;
-    armInstructions[0xF91] = interpreter_other::swi;
-    armInstructions[0xF92] = interpreter_other::swi;
-    armInstructions[0xF93] = interpreter_other::swi;
-    armInstructions[0xF94] = interpreter_other::swi;
-    armInstructions[0xF95] = interpreter_other::swi;
-    armInstructions[0xF96] = interpreter_other::swi;
-    armInstructions[0xF97] = interpreter_other::swi;
-    armInstructions[0xF98] = interpreter_other::swi;
-    armInstructions[0xF99] = interpreter_other::swi;
-    armInstructions[0xF9A] = interpreter_other::swi;
-    armInstructions[0xF9B] = interpreter_other::swi;
-    armInstructions[0xF9C] = interpreter_other::swi;
-    armInstructions[0xF9D] = interpreter_other::swi;
-    armInstructions[0xF9E] = interpreter_other::swi;
-    armInstructions[0xF9F] = interpreter_other::swi;
-    armInstructions[0xFA0] = interpreter_other::swi;
-    armInstructions[0xFA1] = interpreter_other::swi;
-    armInstructions[0xFA2] = interpreter_other::swi;
-    armInstructions[0xFA3] = interpreter_other::swi;
-    armInstructions[0xFA4] = interpreter_other::swi;
-    armInstructions[0xFA5] = interpreter_other::swi;
-    armInstructions[0xFA6] = interpreter_other::swi;
-    armInstructions[0xFA7] = interpreter_other::swi;
-    armInstructions[0xFA8] = interpreter_other::swi;
-    armInstructions[0xFA9] = interpreter_other::swi;
-    armInstructions[0xFAA] = interpreter_other::swi;
-    armInstructions[0xFAB] = interpreter_other::swi;
-    armInstructions[0xFAC] = interpreter_other::swi;
-    armInstructions[0xFAD] = interpreter_other::swi;
-    armInstructions[0xFAE] = interpreter_other::swi;
-    armInstructions[0xFAF] = interpreter_other::swi;
-    armInstructions[0xFB0] = interpreter_other::swi;
-    armInstructions[0xFB1] = interpreter_other::swi;
-    armInstructions[0xFB2] = interpreter_other::swi;
-    armInstructions[0xFB3] = interpreter_other::swi;
-    armInstructions[0xFB4] = interpreter_other::swi;
-    armInstructions[0xFB5] = interpreter_other::swi;
-    armInstructions[0xFB6] = interpreter_other::swi;
-    armInstructions[0xFB7] = interpreter_other::swi;
-    armInstructions[0xFB8] = interpreter_other::swi;
-    armInstructions[0xFB9] = interpreter_other::swi;
-    armInstructions[0xFBA] = interpreter_other::swi;
-    armInstructions[0xFBB] = interpreter_other::swi;
-    armInstructions[0xFBC] = interpreter_other::swi;
-    armInstructions[0xFBD] = interpreter_other::swi;
-    armInstructions[0xFBE] = interpreter_other::swi;
-    armInstructions[0xFBF] = interpreter_other::swi;
-    armInstructions[0xFC0] = interpreter_other::swi;
-    armInstructions[0xFC1] = interpreter_other::swi;
-    armInstructions[0xFC2] = interpreter_other::swi;
-    armInstructions[0xFC3] = interpreter_other::swi;
-    armInstructions[0xFC4] = interpreter_other::swi;
-    armInstructions[0xFC5] = interpreter_other::swi;
-    armInstructions[0xFC6] = interpreter_other::swi;
-    armInstructions[0xFC7] = interpreter_other::swi;
-    armInstructions[0xFC8] = interpreter_other::swi;
-    armInstructions[0xFC9] = interpreter_other::swi;
-    armInstructions[0xFCA] = interpreter_other::swi;
-    armInstructions[0xFCB] = interpreter_other::swi;
-    armInstructions[0xFCC] = interpreter_other::swi;
-    armInstructions[0xFCD] = interpreter_other::swi;
-    armInstructions[0xFCE] = interpreter_other::swi;
-    armInstructions[0xFCF] = interpreter_other::swi;
-    armInstructions[0xFD0] = interpreter_other::swi;
-    armInstructions[0xFD1] = interpreter_other::swi;
-    armInstructions[0xFD2] = interpreter_other::swi;
-    armInstructions[0xFD3] = interpreter_other::swi;
-    armInstructions[0xFD4] = interpreter_other::swi;
-    armInstructions[0xFD5] = interpreter_other::swi;
-    armInstructions[0xFD6] = interpreter_other::swi;
-    armInstructions[0xFD7] = interpreter_other::swi;
-    armInstructions[0xFD8] = interpreter_other::swi;
-    armInstructions[0xFD9] = interpreter_other::swi;
-    armInstructions[0xFDA] = interpreter_other::swi;
-    armInstructions[0xFDB] = interpreter_other::swi;
-    armInstructions[0xFDC] = interpreter_other::swi;
-    armInstructions[0xFDD] = interpreter_other::swi;
-    armInstructions[0xFDE] = interpreter_other::swi;
-    armInstructions[0xFDF] = interpreter_other::swi;
-    armInstructions[0xFE0] = interpreter_other::swi;
-    armInstructions[0xFE1] = interpreter_other::swi;
-    armInstructions[0xFE2] = interpreter_other::swi;
-    armInstructions[0xFE3] = interpreter_other::swi;
-    armInstructions[0xFE4] = interpreter_other::swi;
-    armInstructions[0xFE5] = interpreter_other::swi;
-    armInstructions[0xFE6] = interpreter_other::swi;
-    armInstructions[0xFE7] = interpreter_other::swi;
-    armInstructions[0xFE8] = interpreter_other::swi;
-    armInstructions[0xFE9] = interpreter_other::swi;
-    armInstructions[0xFEA] = interpreter_other::swi;
-    armInstructions[0xFEB] = interpreter_other::swi;
-    armInstructions[0xFEC] = interpreter_other::swi;
-    armInstructions[0xFED] = interpreter_other::swi;
-    armInstructions[0xFEE] = interpreter_other::swi;
-    armInstructions[0xFEF] = interpreter_other::swi;
-    armInstructions[0xFF0] = interpreter_other::swi;
-    armInstructions[0xFF1] = interpreter_other::swi;
-    armInstructions[0xFF2] = interpreter_other::swi;
-    armInstructions[0xFF3] = interpreter_other::swi;
-    armInstructions[0xFF4] = interpreter_other::swi;
-    armInstructions[0xFF5] = interpreter_other::swi;
-    armInstructions[0xFF6] = interpreter_other::swi;
-    armInstructions[0xFF7] = interpreter_other::swi;
-    armInstructions[0xFF8] = interpreter_other::swi;
-    armInstructions[0xFF9] = interpreter_other::swi;
-    armInstructions[0xFFA] = interpreter_other::swi;
-    armInstructions[0xFFB] = interpreter_other::swi;
-    armInstructions[0xFFC] = interpreter_other::swi;
-    armInstructions[0xFFD] = interpreter_other::swi;
-    armInstructions[0xFFE] = interpreter_other::swi;
-    armInstructions[0xFFF] = interpreter_other::swi;
-
-    // THUMB lookup table, based on the map found at http://imrannazar.com/ARM-Opcode-Map
-    // Uses bits 15-8 of an opcode to find the appropriate instruction
-    thumbInstructions[0x00] = interpreter_alu_thumb::lslImm5;
-    thumbInstructions[0x01] = interpreter_alu_thumb::lslImm5;
-    thumbInstructions[0x02] = interpreter_alu_thumb::lslImm5;
-    thumbInstructions[0x03] = interpreter_alu_thumb::lslImm5;
-    thumbInstructions[0x04] = interpreter_alu_thumb::lslImm5;
-    thumbInstructions[0x05] = interpreter_alu_thumb::lslImm5;
-    thumbInstructions[0x06] = interpreter_alu_thumb::lslImm5;
-    thumbInstructions[0x07] = interpreter_alu_thumb::lslImm5;
-    thumbInstructions[0x08] = interpreter_alu_thumb::lsrImm5;
-    thumbInstructions[0x09] = interpreter_alu_thumb::lsrImm5;
-    thumbInstructions[0x0A] = interpreter_alu_thumb::lsrImm5;
-    thumbInstructions[0x0B] = interpreter_alu_thumb::lsrImm5;
-    thumbInstructions[0x0C] = interpreter_alu_thumb::lsrImm5;
-    thumbInstructions[0x0D] = interpreter_alu_thumb::lsrImm5;
-    thumbInstructions[0x0E] = interpreter_alu_thumb::lsrImm5;
-    thumbInstructions[0x0F] = interpreter_alu_thumb::lsrImm5;
-    thumbInstructions[0x10] = interpreter_alu_thumb::asrImm5;
-    thumbInstructions[0x11] = interpreter_alu_thumb::asrImm5;
-    thumbInstructions[0x12] = interpreter_alu_thumb::asrImm5;
-    thumbInstructions[0x13] = interpreter_alu_thumb::asrImm5;
-    thumbInstructions[0x14] = interpreter_alu_thumb::asrImm5;
-    thumbInstructions[0x15] = interpreter_alu_thumb::asrImm5;
-    thumbInstructions[0x16] = interpreter_alu_thumb::asrImm5;
-    thumbInstructions[0x17] = interpreter_alu_thumb::asrImm5;
-    thumbInstructions[0x18] = interpreter_alu_thumb::addReg;
-    thumbInstructions[0x19] = interpreter_alu_thumb::addReg;
-    thumbInstructions[0x1A] = interpreter_alu_thumb::subReg;
-    thumbInstructions[0x1B] = interpreter_alu_thumb::subReg;
-    thumbInstructions[0x1C] = interpreter_alu_thumb::addImm3;
-    thumbInstructions[0x1D] = interpreter_alu_thumb::addImm3;
-    thumbInstructions[0x1E] = interpreter_alu_thumb::subImm3;
-    thumbInstructions[0x1F] = interpreter_alu_thumb::subImm3;
-    thumbInstructions[0x20] = interpreter_alu_thumb::movImm8;
-    thumbInstructions[0x21] = interpreter_alu_thumb::movImm8;
-    thumbInstructions[0x22] = interpreter_alu_thumb::movImm8;
-    thumbInstructions[0x23] = interpreter_alu_thumb::movImm8;
-    thumbInstructions[0x24] = interpreter_alu_thumb::movImm8;
-    thumbInstructions[0x25] = interpreter_alu_thumb::movImm8;
-    thumbInstructions[0x26] = interpreter_alu_thumb::movImm8;
-    thumbInstructions[0x27] = interpreter_alu_thumb::movImm8;
-    thumbInstructions[0x28] = interpreter_alu_thumb::cmpImm8;
-    thumbInstructions[0x29] = interpreter_alu_thumb::cmpImm8;
-    thumbInstructions[0x2A] = interpreter_alu_thumb::cmpImm8;
-    thumbInstructions[0x2B] = interpreter_alu_thumb::cmpImm8;
-    thumbInstructions[0x2C] = interpreter_alu_thumb::cmpImm8;
-    thumbInstructions[0x2D] = interpreter_alu_thumb::cmpImm8;
-    thumbInstructions[0x2E] = interpreter_alu_thumb::cmpImm8;
-    thumbInstructions[0x2F] = interpreter_alu_thumb::cmpImm8;
-    thumbInstructions[0x30] = interpreter_alu_thumb::addImm8;
-    thumbInstructions[0x31] = interpreter_alu_thumb::addImm8;
-    thumbInstructions[0x32] = interpreter_alu_thumb::addImm8;
-    thumbInstructions[0x33] = interpreter_alu_thumb::addImm8;
-    thumbInstructions[0x34] = interpreter_alu_thumb::addImm8;
-    thumbInstructions[0x35] = interpreter_alu_thumb::addImm8;
-    thumbInstructions[0x36] = interpreter_alu_thumb::addImm8;
-    thumbInstructions[0x37] = interpreter_alu_thumb::addImm8;
-    thumbInstructions[0x38] = interpreter_alu_thumb::subImm8;
-    thumbInstructions[0x39] = interpreter_alu_thumb::subImm8;
-    thumbInstructions[0x3A] = interpreter_alu_thumb::subImm8;
-    thumbInstructions[0x3B] = interpreter_alu_thumb::subImm8;
-    thumbInstructions[0x3C] = interpreter_alu_thumb::subImm8;
-    thumbInstructions[0x3D] = interpreter_alu_thumb::subImm8;
-    thumbInstructions[0x3E] = interpreter_alu_thumb::subImm8;
-    thumbInstructions[0x3F] = interpreter_alu_thumb::subImm8;
-    thumbInstructions[0x40] = interpreter_alu_thumb::dpG1;
-    thumbInstructions[0x41] = interpreter_alu_thumb::dpG2;
-    thumbInstructions[0x42] = interpreter_alu_thumb::dpG3;
-    thumbInstructions[0x43] = interpreter_alu_thumb::dpG4;
-    thumbInstructions[0x44] = interpreter_alu_thumb::addH;
-    thumbInstructions[0x45] = interpreter_alu_thumb::cmpH;
-    thumbInstructions[0x46] = interpreter_alu_thumb::movH;
-    thumbInstructions[0x47] = interpreter_other_thumb::bxReg;
-    thumbInstructions[0x48] = interpreter_transfer_thumb::ldrPc;
-    thumbInstructions[0x49] = interpreter_transfer_thumb::ldrPc;
-    thumbInstructions[0x4A] = interpreter_transfer_thumb::ldrPc;
-    thumbInstructions[0x4B] = interpreter_transfer_thumb::ldrPc;
-    thumbInstructions[0x4C] = interpreter_transfer_thumb::ldrPc;
-    thumbInstructions[0x4D] = interpreter_transfer_thumb::ldrPc;
-    thumbInstructions[0x4E] = interpreter_transfer_thumb::ldrPc;
-    thumbInstructions[0x4F] = interpreter_transfer_thumb::ldrPc;
-    thumbInstructions[0x50] = interpreter_transfer_thumb::strReg;
-    thumbInstructions[0x51] = interpreter_transfer_thumb::strReg;
-    thumbInstructions[0x52] = interpreter_transfer_thumb::strhReg;
-    thumbInstructions[0x53] = interpreter_transfer_thumb::strhReg;
-    thumbInstructions[0x54] = interpreter_transfer_thumb::strbReg;
-    thumbInstructions[0x55] = interpreter_transfer_thumb::strbReg;
-    thumbInstructions[0x56] = interpreter_transfer_thumb::ldrsbReg;
-    thumbInstructions[0x57] = interpreter_transfer_thumb::ldrsbReg;
-    thumbInstructions[0x58] = interpreter_transfer_thumb::ldrReg;
-    thumbInstructions[0x59] = interpreter_transfer_thumb::ldrReg;
-    thumbInstructions[0x5A] = interpreter_transfer_thumb::ldrhReg;
-    thumbInstructions[0x5B] = interpreter_transfer_thumb::ldrhReg;
-    thumbInstructions[0x5C] = interpreter_transfer_thumb::ldrbReg;
-    thumbInstructions[0x5D] = interpreter_transfer_thumb::ldrbReg;
-    thumbInstructions[0x5E] = interpreter_transfer_thumb::ldrshReg;
-    thumbInstructions[0x5F] = interpreter_transfer_thumb::ldrshReg;
-    thumbInstructions[0x60] = interpreter_transfer_thumb::strImm5;
-    thumbInstructions[0x61] = interpreter_transfer_thumb::strImm5;
-    thumbInstructions[0x62] = interpreter_transfer_thumb::strImm5;
-    thumbInstructions[0x63] = interpreter_transfer_thumb::strImm5;
-    thumbInstructions[0x64] = interpreter_transfer_thumb::strImm5;
-    thumbInstructions[0x65] = interpreter_transfer_thumb::strImm5;
-    thumbInstructions[0x66] = interpreter_transfer_thumb::strImm5;
-    thumbInstructions[0x67] = interpreter_transfer_thumb::strImm5;
-    thumbInstructions[0x68] = interpreter_transfer_thumb::ldrImm5;
-    thumbInstructions[0x69] = interpreter_transfer_thumb::ldrImm5;
-    thumbInstructions[0x6A] = interpreter_transfer_thumb::ldrImm5;
-    thumbInstructions[0x6B] = interpreter_transfer_thumb::ldrImm5;
-    thumbInstructions[0x6C] = interpreter_transfer_thumb::ldrImm5;
-    thumbInstructions[0x6D] = interpreter_transfer_thumb::ldrImm5;
-    thumbInstructions[0x6E] = interpreter_transfer_thumb::ldrImm5;
-    thumbInstructions[0x6F] = interpreter_transfer_thumb::ldrImm5;
-    thumbInstructions[0x70] = interpreter_transfer_thumb::strbImm5;
-    thumbInstructions[0x71] = interpreter_transfer_thumb::strbImm5;
-    thumbInstructions[0x72] = interpreter_transfer_thumb::strbImm5;
-    thumbInstructions[0x73] = interpreter_transfer_thumb::strbImm5;
-    thumbInstructions[0x74] = interpreter_transfer_thumb::strbImm5;
-    thumbInstructions[0x75] = interpreter_transfer_thumb::strbImm5;
-    thumbInstructions[0x76] = interpreter_transfer_thumb::strbImm5;
-    thumbInstructions[0x77] = interpreter_transfer_thumb::strbImm5;
-    thumbInstructions[0x78] = interpreter_transfer_thumb::ldrbImm5;
-    thumbInstructions[0x79] = interpreter_transfer_thumb::ldrbImm5;
-    thumbInstructions[0x7A] = interpreter_transfer_thumb::ldrbImm5;
-    thumbInstructions[0x7B] = interpreter_transfer_thumb::ldrbImm5;
-    thumbInstructions[0x7C] = interpreter_transfer_thumb::ldrbImm5;
-    thumbInstructions[0x7D] = interpreter_transfer_thumb::ldrbImm5;
-    thumbInstructions[0x7E] = interpreter_transfer_thumb::ldrbImm5;
-    thumbInstructions[0x7F] = interpreter_transfer_thumb::ldrbImm5;
-    thumbInstructions[0x80] = interpreter_transfer_thumb::strhImm5;
-    thumbInstructions[0x81] = interpreter_transfer_thumb::strhImm5;
-    thumbInstructions[0x82] = interpreter_transfer_thumb::strhImm5;
-    thumbInstructions[0x83] = interpreter_transfer_thumb::strhImm5;
-    thumbInstructions[0x84] = interpreter_transfer_thumb::strhImm5;
-    thumbInstructions[0x85] = interpreter_transfer_thumb::strhImm5;
-    thumbInstructions[0x86] = interpreter_transfer_thumb::strhImm5;
-    thumbInstructions[0x87] = interpreter_transfer_thumb::strhImm5;
-    thumbInstructions[0x88] = interpreter_transfer_thumb::ldrhImm5;
-    thumbInstructions[0x89] = interpreter_transfer_thumb::ldrhImm5;
-    thumbInstructions[0x8A] = interpreter_transfer_thumb::ldrhImm5;
-    thumbInstructions[0x8B] = interpreter_transfer_thumb::ldrhImm5;
-    thumbInstructions[0x8C] = interpreter_transfer_thumb::ldrhImm5;
-    thumbInstructions[0x8D] = interpreter_transfer_thumb::ldrhImm5;
-    thumbInstructions[0x8E] = interpreter_transfer_thumb::ldrhImm5;
-    thumbInstructions[0x8F] = interpreter_transfer_thumb::ldrhImm5;
-    thumbInstructions[0x90] = interpreter_transfer_thumb::strSp;
-    thumbInstructions[0x91] = interpreter_transfer_thumb::strSp;
-    thumbInstructions[0x92] = interpreter_transfer_thumb::strSp;
-    thumbInstructions[0x93] = interpreter_transfer_thumb::strSp;
-    thumbInstructions[0x94] = interpreter_transfer_thumb::strSp;
-    thumbInstructions[0x95] = interpreter_transfer_thumb::strSp;
-    thumbInstructions[0x96] = interpreter_transfer_thumb::strSp;
-    thumbInstructions[0x97] = interpreter_transfer_thumb::strSp;
-    thumbInstructions[0x98] = interpreter_transfer_thumb::ldrSp;
-    thumbInstructions[0x99] = interpreter_transfer_thumb::ldrSp;
-    thumbInstructions[0x9A] = interpreter_transfer_thumb::ldrSp;
-    thumbInstructions[0x9B] = interpreter_transfer_thumb::ldrSp;
-    thumbInstructions[0x9C] = interpreter_transfer_thumb::ldrSp;
-    thumbInstructions[0x9D] = interpreter_transfer_thumb::ldrSp;
-    thumbInstructions[0x9E] = interpreter_transfer_thumb::ldrSp;
-    thumbInstructions[0x9F] = interpreter_transfer_thumb::ldrSp;
-    thumbInstructions[0xA0] = interpreter_alu_thumb::addPc;
-    thumbInstructions[0xA1] = interpreter_alu_thumb::addPc;
-    thumbInstructions[0xA2] = interpreter_alu_thumb::addPc;
-    thumbInstructions[0xA3] = interpreter_alu_thumb::addPc;
-    thumbInstructions[0xA4] = interpreter_alu_thumb::addPc;
-    thumbInstructions[0xA5] = interpreter_alu_thumb::addPc;
-    thumbInstructions[0xA6] = interpreter_alu_thumb::addPc;
-    thumbInstructions[0xA7] = interpreter_alu_thumb::addPc;
-    thumbInstructions[0xA8] = interpreter_alu_thumb::addSp;
-    thumbInstructions[0xA9] = interpreter_alu_thumb::addSp;
-    thumbInstructions[0xAA] = interpreter_alu_thumb::addSp;
-    thumbInstructions[0xAB] = interpreter_alu_thumb::addSp;
-    thumbInstructions[0xAC] = interpreter_alu_thumb::addSp;
-    thumbInstructions[0xAD] = interpreter_alu_thumb::addSp;
-    thumbInstructions[0xAE] = interpreter_alu_thumb::addSp;
-    thumbInstructions[0xAF] = interpreter_alu_thumb::addSp;
-    thumbInstructions[0xB0] = interpreter_alu_thumb::addSpImm;
-    thumbInstructions[0xB4] = interpreter_transfer_thumb::push;
-    thumbInstructions[0xB5] = interpreter_transfer_thumb::pushLr;
-    thumbInstructions[0xBC] = interpreter_transfer_thumb::pop;
-    thumbInstructions[0xBD] = interpreter_transfer_thumb::popPc;
-    thumbInstructions[0xC0] = interpreter_transfer_thumb::stmia;
-    thumbInstructions[0xC1] = interpreter_transfer_thumb::stmia;
-    thumbInstructions[0xC2] = interpreter_transfer_thumb::stmia;
-    thumbInstructions[0xC3] = interpreter_transfer_thumb::stmia;
-    thumbInstructions[0xC4] = interpreter_transfer_thumb::stmia;
-    thumbInstructions[0xC5] = interpreter_transfer_thumb::stmia;
-    thumbInstructions[0xC6] = interpreter_transfer_thumb::stmia;
-    thumbInstructions[0xC7] = interpreter_transfer_thumb::stmia;
-    thumbInstructions[0xC8] = interpreter_transfer_thumb::ldmia;
-    thumbInstructions[0xC9] = interpreter_transfer_thumb::ldmia;
-    thumbInstructions[0xCA] = interpreter_transfer_thumb::ldmia;
-    thumbInstructions[0xCB] = interpreter_transfer_thumb::ldmia;
-    thumbInstructions[0xCC] = interpreter_transfer_thumb::ldmia;
-    thumbInstructions[0xCD] = interpreter_transfer_thumb::ldmia;
-    thumbInstructions[0xCE] = interpreter_transfer_thumb::ldmia;
-    thumbInstructions[0xCF] = interpreter_transfer_thumb::ldmia;
-    thumbInstructions[0xD0] = interpreter_other_thumb::beq;
-    thumbInstructions[0xD1] = interpreter_other_thumb::bne;
-    thumbInstructions[0xD2] = interpreter_other_thumb::bcs;
-    thumbInstructions[0xD3] = interpreter_other_thumb::bcc;
-    thumbInstructions[0xD4] = interpreter_other_thumb::bmi;
-    thumbInstructions[0xD5] = interpreter_other_thumb::bpl;
-    thumbInstructions[0xD6] = interpreter_other_thumb::bvs;
-    thumbInstructions[0xD7] = interpreter_other_thumb::bvc;
-    thumbInstructions[0xD8] = interpreter_other_thumb::bhi;
-    thumbInstructions[0xD9] = interpreter_other_thumb::bls;
-    thumbInstructions[0xDA] = interpreter_other_thumb::bge;
-    thumbInstructions[0xDB] = interpreter_other_thumb::blt;
-    thumbInstructions[0xDC] = interpreter_other_thumb::bgt;
-    thumbInstructions[0xDD] = interpreter_other_thumb::ble;
-    thumbInstructions[0xDF] = interpreter_other_thumb::swi;
-    thumbInstructions[0xE0] = interpreter_other_thumb::b;
-    thumbInstructions[0xE1] = interpreter_other_thumb::b;
-    thumbInstructions[0xE2] = interpreter_other_thumb::b;
-    thumbInstructions[0xE3] = interpreter_other_thumb::b;
-    thumbInstructions[0xE4] = interpreter_other_thumb::b;
-    thumbInstructions[0xE5] = interpreter_other_thumb::b;
-    thumbInstructions[0xE6] = interpreter_other_thumb::b;
-    thumbInstructions[0xE7] = interpreter_other_thumb::b;
-    thumbInstructions[0xE8] = interpreter_other_thumb::blxOff;
-    thumbInstructions[0xE9] = interpreter_other_thumb::blxOff;
-    thumbInstructions[0xEA] = interpreter_other_thumb::blxOff;
-    thumbInstructions[0xEB] = interpreter_other_thumb::blxOff;
-    thumbInstructions[0xEC] = interpreter_other_thumb::blxOff;
-    thumbInstructions[0xED] = interpreter_other_thumb::blxOff;
-    thumbInstructions[0xEE] = interpreter_other_thumb::blxOff;
-    thumbInstructions[0xEF] = interpreter_other_thumb::blxOff;
-    thumbInstructions[0xF0] = interpreter_other_thumb::blSetup;
-    thumbInstructions[0xF1] = interpreter_other_thumb::blSetup;
-    thumbInstructions[0xF2] = interpreter_other_thumb::blSetup;
-    thumbInstructions[0xF3] = interpreter_other_thumb::blSetup;
-    thumbInstructions[0xF4] = interpreter_other_thumb::blSetup;
-    thumbInstructions[0xF5] = interpreter_other_thumb::blSetup;
-    thumbInstructions[0xF6] = interpreter_other_thumb::blSetup;
-    thumbInstructions[0xF7] = interpreter_other_thumb::blSetup;
-    thumbInstructions[0xF8] = interpreter_other_thumb::blOff;
-    thumbInstructions[0xF9] = interpreter_other_thumb::blOff;
-    thumbInstructions[0xFA] = interpreter_other_thumb::blOff;
-    thumbInstructions[0xFB] = interpreter_other_thumb::blOff;
-    thumbInstructions[0xFC] = interpreter_other_thumb::blOff;
-    thumbInstructions[0xFD] = interpreter_other_thumb::blOff;
-    thumbInstructions[0xFE] = interpreter_other_thumb::blOff;
-    thumbInstructions[0xFF] = interpreter_other_thumb::blOff;
+    // Write to the IME register
+    ime = value & 0x01;
 }
 
+void Interpreter::writeIe(unsigned int byte, uint8_t value)
+{
+    // Write to the IE register
+    uint32_t mask = (cp15 ? 0x003F3F7F : 0x01FF3FFF) & (0xFF << (byte * 8));
+    ie = (ie & ~mask) | ((value << (byte * 8)) & mask);
+}
+
+void Interpreter::writeIrf(unsigned int byte, uint8_t value)
+{
+    // Write to the IF register
+    // Setting a bit actually clears it to acknowledge an interrupt
+    irf &= ~(value << (byte * 8));
+}
+
+void Interpreter::writePostFlg(uint8_t value)
+{
+    // Write to the POSTFLG register
+    // The first bit can be set, but never cleared
+    // For some reason, the second bit is writable on the ARM9
+    postFlg |= value & 0x01;
+    if (cp15) postFlg = (postFlg & ~0x02) | (value & 0x02);
 }

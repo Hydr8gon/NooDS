@@ -54,6 +54,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(WXWIN)/include/msvc;$(WXWIN)/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/wd4146</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -73,6 +74,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>_MBCS;_CRT_SECURE_NO_WARNINGS;__WXMSW__;_UNICODE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(WXWIN)/include/msvc;$(WXWIN)/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/wd4146</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -87,32 +89,36 @@
     <ClCompile Include="src\cp15.cpp" />
     <ClCompile Include="src\desktop\main.cpp" />
     <ClCompile Include="src\dma.cpp" />
-    <ClCompile Include="src\fifo.cpp" />
     <ClCompile Include="src\gpu.cpp" />
+    <ClCompile Include="src\gpu_2d.cpp" />
+    <ClCompile Include="src\input.cpp" />
     <ClCompile Include="src\interpreter.cpp" />
-    <ClCompile Include="src\interpreter_alu.cpp" />
-    <ClCompile Include="src\interpreter_other.cpp" />
-    <ClCompile Include="src\interpreter_transfer.cpp" />
+    <ClCompile Include="src\ipc.cpp" />
+    <ClCompile Include="src\math.cpp" />
     <ClCompile Include="src\memory.cpp" />
     <ClCompile Include="src\rtc.cpp" />
     <ClCompile Include="src\spi.cpp" />
-    <ClCompile Include="src\timer.cpp" />
+    <ClCompile Include="src\timers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\cartridge.h" />
     <ClInclude Include="src\core.h" />
     <ClInclude Include="src\cp15.h" />
+    <ClInclude Include="src\defines.h" />
     <ClInclude Include="src\dma.h" />
-    <ClInclude Include="src\fifo.h" />
     <ClInclude Include="src\gpu.h" />
+    <ClInclude Include="src\gpu_2d.h" />
+    <ClInclude Include="src\input.h" />
     <ClInclude Include="src\interpreter.h" />
     <ClInclude Include="src\interpreter_alu.h" />
-    <ClInclude Include="src\interpreter_other.h" />
+    <ClInclude Include="src\interpreter_branch.h" />
     <ClInclude Include="src\interpreter_transfer.h" />
+    <ClInclude Include="src\ipc.h" />
+    <ClInclude Include="src\math.h" />
     <ClInclude Include="src\memory.h" />
     <ClInclude Include="src\rtc.h" />
     <ClInclude Include="src\spi.h" />
-    <ClInclude Include="src\timer.h" />
+    <ClInclude Include="src\timers.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

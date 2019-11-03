@@ -20,104 +20,61 @@
 #include <cstdio>
 
 #include "cp15.h"
-#include "core.h"
+#include "defines.h"
 #include "interpreter.h"
 
-namespace cp15
+uint32_t Cp15::read(unsigned int cn, unsigned int cm, unsigned int cp)
 {
-
-uint32_t control = 0x00000078;
-uint32_t dtcmReg = 0x00000000;
-uint32_t itcmReg = 0x00000000;
-
-uint32_t exceptionBase;
-
-bool dtcmEnable;
-uint32_t dtcmBase, dtcmSize;
-
-bool itcmEnable;
-uint32_t itcmSize;
-
-uint32_t readRegister(uint8_t cn, uint8_t cm, uint8_t cp)
-{
+    // Read a value from a CP15 register
     switch ((cn << 16) | (cm << 8) | (cp << 0))
     {
-        case 0x000000: return 0x41059461; // Main ID (read-only)
-        case 0x000001: return 0x0F0D2112; // Cache type (read-only)
-        case 0x010000: return control;    // Control
+        case 0x000000: return 0x41059461; // Main ID
+        case 0x000001: return 0x0F0D2112; // Cache type
+        case 0x010000: return ctrlReg;    // Control
         case 0x090100: return dtcmReg;    // Data TCM base/size
-        case 0x090101: return itcmReg;    // Instruction TCM base/size
+        case 0x090101: return itcmReg;    // Instruction TCM size
 
         default:
-        {
             printf("Unknown CP15 register read: C%d,C%d,%d\n", cn, cm, cp);
             return 0;
-        }
     }
 }
 
-void writeRegister(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value)
+void Cp15::write(unsigned int cn, unsigned int cm, unsigned int cp, uint32_t value)
 {
+    // Write a value to a CP15 register
     switch ((cn << 16) | (cm << 8) | (cp << 0))
     {
         case 0x010000: // Control
-        {
-            // Some bits are read only, so only set the ones that are writeable
-            control = (control & ~0x000FF085) | (value & 0x000FF085);
-
-            // Set some control values that are used elsewhere
-            // The writeable bits that aren't used here also do stuff, but for now this is enough
-            exceptionBase = (control & BIT(13)) ? 0xFFFF0000 : 0x00000000;
-            dtcmEnable = (control & BIT(16));
-            itcmEnable = (control & BIT(18));
-
-            break;
-        }
-
-        case 0x070004: case 0x070802: // Wait for interrupt
-        {
-            interpreter::arm9.halt = true;
-            break;
-        }
+            // Some control bits are read only, so only set the writeable ones
+            ctrlReg = (ctrlReg & ~0x000FF085) | (value & 0x000FF085);
+            exceptionAddr = (ctrlReg & BIT(13)) ? 0xFFFF0000 : 0x00000000;
+            dtcmEnabled = (ctrlReg & BIT(16));
+            itcmEnabled = (ctrlReg & BIT(18));
+            return;
 
         case 0x090100: // Data TCM base/size
-        {
+            // DTCM size is calculated as 512 shifted left N bits, with a minimum of 4KB
             dtcmReg = value;
-            dtcmBase = value & 0xFFFFF000;
-
-            // TCM size is calculated as 512 shifted left N bits, with a minimum of 4KB
-            dtcmSize = 0x200 << ((value & 0x0000003E) >> 1);
+            dtcmAddr = dtcmReg & 0xFFFFF000;
+            dtcmSize = 0x200 << ((dtcmReg & 0x0000003E) >> 1);
             if (dtcmSize < 0x1000) dtcmSize = 0x1000;
+            return;
 
-            break;
-        }
+        case 0x070004: case 0x070802: // Wait for interrupt
+            arm9->halt();
+            return;
 
-        case 0x090101: // Instruction TCM base/size
-        {
+        case 0x090101: // Instruction TCM size
             // ITCM base is fixed, so that part of the value is unused
+            // ITCM size is calculated as 512 shifted left N bits, with a minimum of 4KB
             itcmReg = value;
-
-            // TCM size is calculated as 512 shifted left N bits, with a minimum of 4KB
-            itcmSize = 0x200 << ((value & 0x0000003E) >> 1);
+            itcmSize = 0x200 << ((itcmReg & 0x0000003E) >> 1);
             if (itcmSize < 0x1000) itcmSize = 0x1000;
-
-            break;
-        }
+            return;
 
         default:
-        {
             printf("Unknown CP15 register write: C%d,C%d,%d\n", cn, cm, cp);
-            break;
-        }
+            return;
     }
-}
-
-void init()
-{
-    // Reset all values
-    writeRegister(1, 0, 0, 0x00000000); // Control
-    writeRegister(9, 1, 0, 0x00000000); // Data TCM base/size
-    writeRegister(9, 1, 1, 0x00000000); // Instruction TCM base/size
-}
-
 }

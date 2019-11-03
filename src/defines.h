@@ -17,16 +17,30 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef TIMER_H
-#define TIMER_H
+#ifndef DEFINES_H
+#define DEFINES_H
 
-#include "interpreter.h"
+// Disable print statements for non-debug builds
+#ifndef DEBUG
+#define printf(fmt, ...) (0)
+#endif
 
-namespace timer
-{
+// Macro to force inlining
+#ifdef _MSC_VER
+#define FORCE_INLINE __forceinline
+#else
+#define FORCE_INLINE inline __attribute__((always_inline))
+#endif
 
-void tick(interpreter::Cpu *cpu, uint8_t timer);
+// Simple bit macro (included in libnx)
+#ifdef __SWITCH__
+#include <switch.h>
+#else
+#define BIT(i) (1 << (i))
+#endif
 
-}
+// Macros that read a value larger than 8 bits from an 8-bit array
+#define U8TO16(data, index) ((data[(index) + 1] << 8) | data[index])
+#define U8TO32(data, index) ((data[(index) + 3] << 24) | (data[(index) + 2] << 16) | (data[(index) + 1] << 8) | data[index])
 
-#endif // TIMER_H
+#endif // DEFINES_H

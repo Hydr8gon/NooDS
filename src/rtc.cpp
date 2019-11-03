@@ -21,26 +21,17 @@
 #include <ctime>
 
 #include "rtc.h"
-#include "core.h"
+#include "defines.h"
 
-namespace rtc
+void Rtc::writeRtc(uint8_t value)
 {
-
-uint64_t dateTime;
-uint8_t writeCount;
-uint8_t command;
-uint8_t status1;
-uint8_t lastValue;
-
-void write(uint8_t *value)
-{
-    // I find GBATEK's RTC documentation confusing, so here's a quick summary of how it works
+    // I find GBATEK's RTC documentation to be lacking, so here's a quick summary of how the I/O works
     //
     // Bits 2 and 6 are connected to the CS pinout
-    // Bit 6 should always be set, so bit 2 being 1 or 0 causes CS to be high or low, respectively
+    // Bit 6 should always be set, so setting bit 2 to 1 or 0 causes CS to be high or low, respectively
     //
     // Bits 1 and 5 are connected to the SCK pinout
-    // Bit 5 should always be set, so bit 1 being 1 or 0 causes SCK to be high or low, respectively
+    // Bit 5 should always be set, so setting bit 1 to 1 or 0 causes SCK to be high or low, respectively
     //
     // Bits 0 and 4 are connected to the SIO pinout
     // Bit 4 indicates data direction; 0 is read, and 1 is write
@@ -52,141 +43,113 @@ void write(uint8_t *value)
     // To transfer a bit, set SCK to low and then high (it should be high when the transfer starts)
     // When writing a bit to the RTC, you should set bit 0 at the same time as setting SCK to low
     // When reading a bit from the RTC, you should read bit 0 after setting SCK to low (or high?)
-    //
-    // Start by writing the 8 bits of the command register, LSB first
-    // After that, read or write the registers selected with the command register, MSB first
-    // RTC registers at least are documented nicely on GBATEK
 
-    if (*value & BIT(2)) // CS high
+    if (value & BIT(2)) // CS high
     {
-        if ((lastValue & BIT(1)) && !(*value & BIT(1))) // SCK high to low
+        if ((rtc & BIT(1)) && !(value & BIT(1))) // SCK high to low
         {
             if (writeCount < 8)
             {
-                // Write the first 8 bits to the command register, reversing the bit order
-                command |= (*value & BIT(0)) << (7 - writeCount);
+                // Write the first 8 bits to the command register, in reverse order
+                command |= (value & BIT(0)) << (7 - writeCount);
                 writeCount++;
             }
             else
             {
-                uint8_t regSelect = (command & 0x0E) >> 1;
-
-                // Transfer all following bits to or from the registers selected by the command register
-                if (*value & BIT(4)) // Write
+                if (!(value & BIT(4))) // Read
                 {
-                    switch (regSelect)
+                    value &= ~BIT(0);
+
+                    // Read a bit from an RTC register
+                    switch ((command & 0x0E) >> 1) // Register select
                     {
                         case 0: // Status register 1
-                        {
-                            // Only write to the writeable bits 1 through 3
-                            if (writeCount - 8 >= 1 && writeCount - 8 <= 3)
-                            {
-                                status1 &= ~BIT(writeCount - 8);
-                                status1 |= (*value & BIT(0)) << (writeCount - 8);
-                            }
+                            value |= ((status1 >> (writeCount - 8)) & BIT(0));
                             break;
-                        }
-
-                        default:
-                        {
-                            printf("Unhandled write to RTC registers: %d\n", regSelect);
-                            break;
-                        }
-                    }
-                }
-                else // Read
-                {
-                    *value &= ~BIT(0);
-
-                    switch (regSelect)
-                    {
-                        case 0: // Status register 1
-                        {
-                            *value |= ((status1 >> (writeCount - 8)) & BIT(0));
-                            break;
-                        }
 
                         case 2: // Date and time
-                        {
-                            // Update the time at the start of the read
+                            // Update the date and time
                             if (writeCount == 8)
                             {
-                                // Get the local time, and adjust its values to better match the DS formatting
+                                // Get the local time
                                 std::time_t t = std::time(nullptr);
                                 std::tm *time = std::localtime(&t);
-                                time->tm_year %= 100;
-                                time->tm_mon++;
+                                time->tm_year %= 100; // The DS only counts years 2000-2099
+                                time->tm_mon++; // The DS starts month values at 1, not 0
 
-                                // Convert to 12-hour mode if set
+                                // Convert to 12-hour mode if enabled
                                 uint8_t hour = time->tm_hour;
-                                if (!(status1 & BIT(1)))
-                                    time->tm_hour %= 12;
+                                if (!(status1 & BIT(1))) time->tm_hour %= 12;
 
                                 // Save to the date and time registers in BCD format
-                                // The bytes here (from low to high) represent:
-                                // Year, month, day, day of week, hours, minutes, seconds
-                                ((uint8_t*)&dateTime)[0] = ((time->tm_year / 10) << 4) | (time->tm_year % 10);
-                                ((uint8_t*)&dateTime)[1] = ((time->tm_mon  / 10) << 4) | (time->tm_mon  % 10);
-                                ((uint8_t*)&dateTime)[2] = ((time->tm_mday / 10) << 4) | (time->tm_mday % 10);
-                                ((uint8_t*)&dateTime)[4] = ((time->tm_hour / 10) << 4) | (time->tm_hour % 10);
-                                ((uint8_t*)&dateTime)[5] = ((time->tm_min  / 10) << 4) | (time->tm_min  % 10);
-                                ((uint8_t*)&dateTime)[6] = ((time->tm_sec  / 10) << 4) | (time->tm_sec  % 10);
+                                // Index 3 contains the day of the week, but most things don't care
+                                dateTime[0] = ((time->tm_year / 10) << 4) | (time->tm_year % 10);
+                                dateTime[1] = ((time->tm_mon  / 10) << 4) | (time->tm_mon  % 10);
+                                dateTime[2] = ((time->tm_mday / 10) << 4) | (time->tm_mday % 10);
+                                dateTime[4] = ((time->tm_hour / 10) << 4) | (time->tm_hour % 10);
+                                dateTime[5] = ((time->tm_min  / 10) << 4) | (time->tm_min  % 10);
+                                dateTime[6] = ((time->tm_sec  / 10) << 4) | (time->tm_sec  % 10);
 
                                 // Set the AM/PM bit
-                                if (hour >= 12)
-                                    ((uint8_t*)&dateTime)[4] |= BIT(6);
+                                if (hour >= 12) dateTime[4] |= BIT(6);
                             }
 
-                            *value |= ((dateTime >> (writeCount - 8)) & BIT(0));
+                            value |= ((dateTime[(writeCount / 8) - 1] >> (writeCount % 8)) & BIT(0));
                             break;
-                        }
 
                         case 3: // Time
-                        {
-                            // Update the time at the start of the read
+                            // Update the time
                             if (writeCount == 8)
                             {
                                 // Get the local time
                                 std::time_t t = std::time(nullptr);
                                 std::tm *time = std::localtime(&t);
 
-                                // Convert to 12-hour mode if set
+                                // Convert to 12-hour mode if enabled
                                 uint8_t hour = time->tm_hour;
-                                if (!(status1 & BIT(1)))
-                                    time->tm_hour %= 12;
+                                if (!(status1 & BIT(1))) time->tm_hour %= 12;
 
                                 // Save to the date and time registers in BCD format
-                                // The bytes here (from low to high) represent:
-                                // Hours, minutes, seconds
-                                ((uint8_t*)&dateTime)[4] = ((time->tm_hour / 10) << 4) | (time->tm_hour % 10);
-                                ((uint8_t*)&dateTime)[5] = ((time->tm_min  / 10) << 4) | (time->tm_min  % 10);
-                                ((uint8_t*)&dateTime)[6] = ((time->tm_sec  / 10) << 4) | (time->tm_sec  % 10);
+                                dateTime[4] = ((time->tm_hour / 10) << 4) | (time->tm_hour % 10);
+                                dateTime[5] = ((time->tm_min  / 10) << 4) | (time->tm_min  % 10);
+                                dateTime[6] = ((time->tm_sec  / 10) << 4) | (time->tm_sec  % 10);
 
                                 // Set the AM/PM bit
-                                if (hour >= 12)
-                                    ((uint8_t*)&dateTime)[4] |= BIT(6);
+                                if (hour >= 12) dateTime[4] |= BIT(6);
                             }
 
-                            *value |= ((dateTime >> (writeCount + 24)) & BIT(0));
+                            value |= ((dateTime[(writeCount / 8) - 5] >> (writeCount % 8)) & BIT(0));
                             break;
-                        }
 
                         default:
-                        {
-                            printf("Unhandled read from RTC registers: %d\n", regSelect);
+                            printf("Read from unknown RTC registers: %d\n", (command & 0x0E) >> 1);
                             break;
-                        }
+                    }
+                }
+                else // Write
+                {
+                    // Write a bit to an RTC register
+                    switch ((command & 0x0E) >> 1) // Register select
+                    {
+                        case 0: // Status register 1
+                            // Only write to the writable bits 1 through 3
+                            if (writeCount - 8 >= 1 && writeCount - 8 <= 3)
+                                status1 = (status1 & ~BIT(writeCount - 8)) | ((value & BIT(0)) << (writeCount - 8));
+                            break;
+
+                        default:
+                            printf("Write to unknown RTC registers: %d\n", (command & 0x0E) >> 1);
+                            break;
                     }
                 }
 
                 writeCount++;
             }
         }
-        else if (!(lastValue & BIT(1)) && (*value & BIT(1)) && !(*value & BIT(4))) // SCK low to high, read
+        else if (!(rtc & BIT(1)) && (value & BIT(1)) && !(value & BIT(4))) // SCK low to high, read
         {
             // Read bits can still be read after switching SCK to high, so keep the previous bit value
-            *value &= ~BIT(0);
-            *value |= lastValue & BIT(0);
+            value = (value & ~BIT(0)) | (rtc & BIT(0));
         }
     }
     else // CS low
@@ -196,16 +159,5 @@ void write(uint8_t *value)
         command = 0;
     }
 
-    // Save the current RTC register so it can be compared to the next write
-    lastValue = *value;
-}
-
-void init()
-{
-    writeCount = 0;
-    command = 0;
-    status1 = 0;
-    lastValue = 0;
-}
-
+    rtc = value;
 }

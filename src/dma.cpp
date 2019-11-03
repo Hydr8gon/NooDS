@@ -20,100 +20,157 @@
 #include <cstdio>
 
 #include "dma.h"
-#include "core.h"
+#include "defines.h"
+#include "cartridge.h"
+#include "interpreter.h"
 #include "memory.h"
 
-namespace dma
+void Dma::transfer()
 {
-
-void transfer(interpreter::Cpu *cpu, uint8_t channel)
-{
-    // Determine the timing mode of the transfer
-    // The ARM7 doesn't use bit 27 and has different values
-    uint8_t timing = (*cpu->dmacnt[channel] & 0x38000000) >> 27;
-    if (cpu->type == 7 && timing == 4) timing = 5;
-
-    switch (timing)
+    for (int i = 0; i < 4; i++)
     {
-        case 0: // Start immediately
+        // Only transfer on enabled channels
+        if (!(enabled & BIT(i))) continue;
+
+        // Determine the transfer mode
+        unsigned int mode;
+        if (cpu->isArm9())
         {
-            // Always transfer
-            break;
+            mode = (dmaCnt[i] & 0x38000000) >> 27;
+        }
+        else
+        {
+            // Redirect ARM7 mode values to the ARM9 equivalents
+            switch ((dmaCnt[i] & 0x30000000) >> 28)
+            {
+                case 0: mode = 0; break;
+                case 1: mode = 1; break;
+                case 2: mode = 5; break;
+                case 3: mode = 8; break;
+            }
         }
 
-        case 5: // DS cartridge slot
+        // Check if the transfer should be performed now
+        switch (mode)
         {
-            // Only transfer when a word from the cart is ready
-            if (!(*cpu->romctrl & BIT(23)))
-                return;
-            break;
+            case 0: // Start immediately
+                // Transfer now
+                break;
+
+            case 5: // DS cartridge slot
+                // Only transfer when a word from the cart is ready
+                if (!cart->transferReady())
+                    continue;
+                break;
+
+            default:
+                printf("Unknown ARM%d DMA transfer timing: %d\n", (cpu->isArm9() ? 9 : 7), mode);
+
+                // Pretend that the transfer completed
+                dmaCnt[i] &= ~BIT(31);
+                enabled &= ~BIT(i);
+                if (dmaCnt[i] & BIT(30))
+                    cpu->sendInterrupt(8 + i);
+
+                continue;
         }
 
-        default:
+        unsigned int dstAddrCnt = (dmaCnt[i] & 0x00600000) >> 21;
+        unsigned int srcAddrCnt = (dmaCnt[i] & 0x01800000) >> 23;
+
+        // Perform the transfer
+        if (dmaCnt[i] & BIT(26)) // Whole word transfer
         {
-            printf("Unknown ARM%d DMA transfer timing: %d\n", cpu->type, timing);
-            *cpu->dmacnt[channel] &= ~BIT(31);
-            return;
+            for (unsigned int j = 0; j < wordCounts[i]; j++)
+            {
+                // Transfer a word
+                memory->write<uint32_t>(cpu->isArm9(), dstAddrs[i], memory->read<uint32_t>(cpu->isArm9(), srcAddrs[i]));
+
+                // Adjust the source address
+                if (srcAddrCnt == 0) // Increment
+                    srcAddrs[i] += 4;
+                else if (srcAddrCnt == 1) // Decrement
+                    srcAddrs[i] -= 4;
+
+                // Adjust the destination address
+                if (dstAddrCnt == 0 || dstAddrCnt == 3) // Increment
+                    dstAddrs[i] += 4;
+                else if (dstAddrCnt == 1) // Decrement
+                    dstAddrs[i] -= 4;
+            }
         }
+        else // Half-word transfer
+        {
+            for (unsigned int j = 0; j < wordCounts[i]; j++)
+            {
+                // Transfer a half-word
+                memory->write<uint16_t>(cpu->isArm9(), dstAddrs[i], memory->read<uint16_t>(cpu->isArm9(), srcAddrs[i]));
+
+                // Adjust the source address
+                if (srcAddrCnt == 0) // Increment
+                    srcAddrs[i] += 2;
+                else if (srcAddrCnt == 1) // Decrement
+                    srcAddrs[i] -= 2;
+
+                // Adjust the destination address
+                if (dstAddrCnt == 0 || dstAddrCnt == 3) // Increment
+                    dstAddrs[i] += 2;
+                else if (dstAddrCnt == 1) // Decrement
+                    dstAddrs[i] -= 2;
+            }
+        }
+
+        if (dmaCnt[i] & BIT(25)) // Repeat
+        {
+            // Reload the internal registers on repeat
+            wordCounts[i] = dmaCnt[i] & 0x001FFFFF;
+            if (dstAddrCnt == 3) // Increment and reload
+                dstAddrs[i] = dmaDad[i];
+        }
+        else
+        {
+            // End the transfer
+            dmaCnt[i] &= ~BIT(31);
+            enabled &= ~BIT(i);
+        }
+
+        // Trigger an end of transfer IRQ if enabled
+        if (dmaCnt[i] & BIT(30))
+            cpu->sendInterrupt(8 + i);
     }
-
-    // Get some starting values from the registers
-    uint8_t dstAddrCnt = (*cpu->dmacnt[channel] & 0x00600000) >> 21;
-    uint8_t srcAddrCnt = (*cpu->dmacnt[channel] & 0x01800000) >> 23;
-    uint32_t size = (*cpu->dmacnt[channel] & 0x001FFFFF);
-
-    if (*cpu->dmacnt[channel] & BIT(26)) // Whole word transfer
-    {
-        for (unsigned int i = 0; i < size; i++)
-        {
-            // Transfer a word
-            memory::write<uint32_t>(cpu, cpu->dmaDstAddrs[channel], memory::read<uint32_t>(cpu, cpu->dmaSrcAddrs[channel]));
-
-            // Adjust the destination address
-            if (dstAddrCnt == 0 || dstAddrCnt == 3) // Increment
-                cpu->dmaDstAddrs[channel] += 4;
-            else if (dstAddrCnt == 1) // Decrement
-                cpu->dmaDstAddrs[channel] -= 4;
-
-            // Adjust the source address
-            if (srcAddrCnt == 0) // Increment
-                cpu->dmaSrcAddrs[channel] += 4;
-            else if (srcAddrCnt == 1) // Decrement
-                cpu->dmaSrcAddrs[channel] -= 4;
-        }
-    }
-    else // Halfword transfer
-    {
-        for (unsigned int i = 0; i < size; i++)
-        {
-            // Transfer a halfword
-            memory::write<uint16_t>(cpu, cpu->dmaDstAddrs[channel], memory::read<uint16_t>(cpu, cpu->dmaSrcAddrs[channel]));
-
-            // Adjust the destination address
-            if (dstAddrCnt == 0 || dstAddrCnt == 3) // Increment
-                cpu->dmaDstAddrs[channel] += 2;
-            else if (dstAddrCnt == 1) // Decrement
-                cpu->dmaDstAddrs[channel] -= 2;
-
-            // Adjust the source address
-            if (srcAddrCnt == 0) // Increment
-                cpu->dmaSrcAddrs[channel] += 2;
-            else if (srcAddrCnt == 1) // Decrement
-                cpu->dmaSrcAddrs[channel] -= 2;
-        }
-    }
-
-    // Trigger an end of transfer IRQ if enabled
-    if (*cpu->dmacnt[channel] & BIT(30))
-        *cpu->irf |= BIT(8 + channel);
-
-    // Unless the repeat bit is set, clear the enable bit to indicate transfer completion
-    if (!(*cpu->dmacnt[channel] & BIT(25)))
-        *cpu->dmacnt[channel] &= ~BIT(31);
-
-    // Reload the destination address if increment/reload is selected
-    if (dstAddrCnt == 3)
-        cpu->dmaDstAddrs[channel] = *cpu->dmadad[channel];
 }
 
+void Dma::writeDmaSad(unsigned int channel, unsigned int byte, uint8_t value)
+{
+    // Write to one of the DMASAD registers
+    uint32_t mask = (cpu->isArm9() ? 0x0FFFFFFF : 0x07FFFFFF) & (0xFF << (byte * 8));
+    dmaSad[channel] = (dmaSad[channel] & ~mask) | ((value << (byte * 8)) & mask);
+}
+
+void Dma::writeDmaDad(unsigned int channel, unsigned int byte, uint8_t value)
+{
+    // Write to one of the DMADAD registers
+    uint32_t mask = (cpu->isArm9() ? 0x0FFFFFFF : 0x07FFFFFF) & (0xFF << (byte * 8));
+    dmaDad[channel] = (dmaDad[channel] & ~mask) | ((value << (byte * 8)) & mask);
+}
+
+void Dma::writeDmaCnt(unsigned int channel, unsigned int byte, uint8_t value)
+{
+    if (byte == 3)
+    {
+        // Enable or disable the channel
+        if (value & BIT(7)) enabled |= BIT(channel); else enabled &= ~BIT(channel);
+
+        // Reload the internal registers if the enable bit changes from 0 to 1
+        if (!(dmaCnt[channel] & BIT(31)) && (value & BIT(7)))
+        {
+            dstAddrs[channel] = dmaDad[channel];
+            srcAddrs[channel] = dmaSad[channel];
+            wordCounts[channel] = dmaCnt[channel] & 0x001FFFFF;
+        }
+    }
+
+    // Write to one of the DMACNT registers
+    uint32_t mask = (cpu->isArm9() ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF)) & (0xFF << (byte * 8));
+    dmaCnt[channel] = (dmaCnt[channel] & ~mask) | ((value << (byte * 8)) & mask);
 }

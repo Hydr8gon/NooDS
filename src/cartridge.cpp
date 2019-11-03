@@ -18,54 +18,27 @@
 */
 
 #include <cstdio>
-#include <cstring>
 
 #include "cartridge.h"
-#include "core.h"
+#include "defines.h"
+#include "interpreter.h"
 #include "memory.h"
 
-namespace cartridge
+void Cartridge::setRom(uint8_t *rom, unsigned int romSize, uint8_t *save, unsigned int saveSize)
 {
-
-uint8_t *rom;
-
-uint64_t command;
-uint16_t blockSize, readCount;
-bool encrypt;
-
-uint32_t encTable[0x412];
-uint32_t encCode[3];
-
-void decrypt64(uint64_t *value)
-{
-    // Decrypt a 64-bit value using the Blowfish algorithm
-    // This is a translation of the pseudocode from GBATEK to C++
-
-    uint32_t y = ((uint32_t*)value)[0];
-    uint32_t x = ((uint32_t*)value)[1];
-
-    for (int i = 0x11; i >= 0x02; i--)
-    {
-        uint32_t z = encTable[i] ^ x;
-        x = encTable[0x012 + ((z >> 24) & 0xFF)];
-        x = encTable[0x112 + ((z >> 16) & 0xFF)] + x;
-        x = encTable[0x212 + ((z >>  8) & 0xFF)] ^ x;
-        x = encTable[0x312 + ((z >>  0) & 0xFF)] + x;
-        x ^= y;
-        y = z;
-    }
-
-    ((uint32_t*)value)[0] = x ^ encTable[1];
-    ((uint32_t*)value)[1] = y ^ encTable[0];
+    this->rom = rom;
+    this->romSize = romSize;
+    this->save = save;
+    this->saveSize = saveSize;
 }
 
-void encrypt64(uint64_t *value)
+uint64_t Cartridge::encrypt64(uint64_t value)
 {
     // Encrypt a 64-bit value using the Blowfish algorithm
     // This is a translation of the pseudocode from GBATEK to C++
 
-    uint32_t y = ((uint32_t*)value)[0];
-    uint32_t x = ((uint32_t*)value)[1];
+    uint32_t y = value;
+    uint32_t x = value >> 32;
 
     for (int i = 0x00; i <= 0x0F; i++)
     {
@@ -78,50 +51,44 @@ void encrypt64(uint64_t *value)
         y = z;
     }
 
-    ((uint32_t*)value)[0] = x ^ encTable[0x10];
-    ((uint32_t*)value)[1] = y ^ encTable[0x11];
+    return ((uint64_t)(y ^ encTable[0x11]) << 32) | (x ^ encTable[0x10]);
 }
 
-uint32_t byteReverse32(uint32_t value)
+uint64_t Cartridge::decrypt64(uint64_t value)
 {
-    // Reverse the byte order of a 32-bit value
-    uint32_t reverse = 0;
-    for (int i = 0; i < 4; i++)
-        ((uint8_t*)&reverse)[i] = ((uint8_t*)&value)[3 - i];
-    return reverse;
-}
-
-void applyKeycode()
-{
-    // Apply a keycode to the Blowfish encryption table
+    // Decrypt a 64-bit value using the Blowfish algorithm
     // This is a translation of the pseudocode from GBATEK to C++
 
-    encrypt64((uint64_t*)&encCode[1]);
-    encrypt64((uint64_t*)&encCode[0]);
+    uint32_t y = value;
+    uint32_t x = value >> 32;
 
-    uint64_t scratch = 0;
-
-    for (int i = 0; i <= 0x11; i++)
-        encTable[i] ^= byteReverse32(encCode[i % 2]);
-
-    for (int i = 0; i <= 0x410; i += 2)
+    for (int i = 0x11; i >= 0x02; i--)
     {
-        encrypt64(&scratch);
-        encTable[i + 0] = ((uint32_t*)&scratch)[1];
-        encTable[i + 1] = ((uint32_t*)&scratch)[0];
+        uint32_t z = encTable[i] ^ x;
+        x = encTable[0x012 + ((z >> 24) & 0xFF)];
+        x = encTable[0x112 + ((z >> 16) & 0xFF)] + x;
+        x = encTable[0x212 + ((z >>  8) & 0xFF)] ^ x;
+        x = encTable[0x312 + ((z >>  0) & 0xFF)] + x;
+        x ^= y;
+        y = z;
     }
+
+    return ((uint64_t)(y ^ encTable[0x00]) << 32) | (x ^ encTable[0x01]);
 }
 
-void initKeycode(uint32_t idCode, uint8_t level)
+void Cartridge::initKeycode(unsigned int level)
 {
     // Initialize the Blowfish encryption table
     // This is a translation of the pseudocode from GBATEK to C++
 
-    memcpy(encTable, &memory::bios7[0x30], sizeof(encTable));
+    for (int i = 0; i < 0x412; i++)
+        encTable[i] = memory->read<uint32_t>(false, 0x30 + i * 4);
 
-    encCode[0] = idCode;
-    encCode[1] = idCode / 2;
-    encCode[2] = idCode * 2;
+    uint32_t code = U8TO32(rom, 0x0C);
+
+    encCode[0] = code;
+    encCode[1] = code / 2;
+    encCode[2] = code * 2;
 
     if (level >= 1) applyKeycode();
     if (level >= 2) applyKeycode();
@@ -132,10 +99,181 @@ void initKeycode(uint32_t idCode, uint8_t level)
     if (level >= 3) applyKeycode();
 }
 
-void transferStart(interpreter::Cpu *cpu)
+void Cartridge::applyKeycode()
 {
-    // Get the size of the block to transfer
-    uint8_t size = (*cpu->romctrl & 0x07000000) >> 24;
+    // Apply a keycode to the Blowfish encryption table
+    // This is a translation of the pseudocode from GBATEK to C++
+    
+    uint64_t enc1 = encrypt64(((uint64_t)encCode[2] << 32) | encCode[1]);
+    encCode[1] = enc1;
+    encCode[2] = enc1 >> 32;
+
+    uint64_t enc2 = encrypt64(((uint64_t)encCode[1] << 32) | encCode[0]);
+    encCode[0] = enc2;
+    encCode[1] = enc2 >> 32;
+
+    for (int i = 0; i <= 0x11; i++)
+    {
+        uint32_t byteReverse = 0;
+        for (int j = 0; j < 4; j++)
+            byteReverse |= ((encCode[i % 2] >> (j * 8)) & 0xFF) << ((3 - j) * 8);
+
+        encTable[i] ^= byteReverse;
+    }
+
+    uint64_t scratch = 0;
+
+    for (int i = 0; i <= 0x410; i += 2)
+    {
+        scratch = encrypt64(scratch);
+        encTable[i + 0] = scratch >> 32;
+        encTable[i + 1] = scratch;
+    }
+}
+
+void Cartridge::writeAuxSpiCnt(unsigned int byte, uint8_t value)
+{
+    // Write to the AUXSPICNT register
+    uint16_t mask = 0xE043 & (0xFF << (byte * 8));
+    auxSpiCnt = (auxSpiCnt & ~mask) | ((value << (byte * 8)) & mask);
+}
+
+void Cartridge::writeRomCmdOut(unsigned int byte, uint8_t value)
+{
+    // Write to the ROMCMDOUT register
+    romCmdOut = (romCmdOut & ~((uint64_t)0xFF << (byte * 8))) | ((uint64_t)value << (byte * 8));
+}
+
+void Cartridge::writeAuxSpiData(uint8_t value)
+{
+    if (auxWriteCount == 0)
+    {
+        // On the first write, set the command byte
+        auxCommand = value;
+        auxAddress = 0;
+        auxSpiData = 0;
+    }
+    else
+    {
+        switch (saveSize)
+        {
+            case 0x2000: case 0x10000: // EEPROM 8KB, 64KB
+                switch (auxCommand)
+                {
+                    case 0x03: // Read from memory
+                        if (auxWriteCount < 3)
+                        {
+                            // On writes 2-3, set the 2 byte address to read from
+                            auxAddress |= value << ((2 - auxWriteCount) * 8);
+                            auxSpiData = 0;
+                        }
+                        else
+                        {
+                            // On writes 4+, read data from the save and send it back
+                            auxSpiData = (auxAddress < saveSize) ? save[auxAddress] : 0;
+                            auxAddress++;
+                        }
+                        break;
+
+                    case 0x02: // Write to memory
+                        if (auxWriteCount < 3)
+                        {
+                            // On writes 2-3, set the 2 byte address to write to
+                            auxAddress |= value << ((2 - auxWriteCount) * 8);
+                            auxSpiData = 0;
+                        }
+                        else
+                        {
+                            // On writes 4+, write data to the save
+                            if (auxAddress < saveSize) save[auxAddress] = value;
+                            auxAddress++;
+                            auxSpiData = 0;
+                        }
+                        break;
+
+                    default:
+                        printf("Write to AUX SPI with unknown EEPROM command: 0x%X\n", auxCommand);
+                        auxSpiData = 0;
+                        break;
+                }
+                break;
+
+            case 0x40000: case 0x80000: // FLASH 256KB, 512KB
+                switch (auxCommand)
+                {
+                    case 0x03: // Read data bytes
+                        if (auxWriteCount < 4)
+                        {
+                            // On writes 2-4, set the 3 byte address to read from
+                            auxAddress |= value << ((3 - auxWriteCount) * 8);
+                            auxSpiData = 0;
+                        }
+                        else
+                        {
+                            // On writes 5+, read data from the save and send it back
+                            auxSpiData = (auxAddress < saveSize) ? save[auxAddress] : 0;
+                            auxAddress++;
+                        }
+                        break;
+
+                    case 0x0A: // Page write
+                        if (auxWriteCount < 4)
+                        {
+                            // On writes 2-4, set the 3 byte address to write to
+                            auxAddress |= value << ((3 - auxWriteCount) * 8);
+                            auxSpiData = 0;
+                        }
+                        else
+                        {
+                            // On writes 5+, write data to the save
+                            if (auxAddress < saveSize) save[auxAddress] = value;
+                            auxAddress++;
+                            auxSpiData = 0;
+                        }
+                        break;
+
+                    default:
+                        printf("Write to AUX SPI with unknown FLASH command: 0x%X\n", auxCommand);
+                        auxSpiData = 0;
+                        break;
+                }
+                break;
+
+            default:
+                printf("Write to AUX SPI with unknown save type\n");
+                break;
+        }
+    }
+
+    // Keep track of the write count
+    if (auxSpiCnt & BIT(6)) // Keep chip selected
+        auxWriteCount++;
+    else // Deselect chip
+        auxWriteCount = 0;
+}
+
+void Cartridge::writeRomCtrl(unsigned int byte, uint8_t value)
+{
+    bool transfer = false;
+
+    if (byte == 3)
+    {
+        // Set the release reset bit, but never clear it
+        romCtrl |= (value & BIT(5)) << 24;
+
+        // Start a transfer if the start bit changes from 0 to 1
+        if (!(romCtrl & BIT(31)) && (value & BIT(7)))
+            transfer = true;
+    }
+
+    // Write to the ROMCTRL register
+    uint32_t mask = 0xDF7F7FFF & (0xFF << (byte * 8));
+    romCtrl = (romCtrl & ~mask) | ((value << (byte * 8)) & mask);
+
+    if (!transfer) return;
+
+    // Determine the size of the block to transfer
+    uint8_t size = (romCtrl & 0x07000000) >> 24;
     switch (size)
     {
         case 0:  blockSize = 0;             break;
@@ -144,145 +282,150 @@ void transferStart(interpreter::Cpu *cpu)
     }
 
     // Reverse the byte order of the ROM command to make it easier to work with
+    command = 0;
     for (int i = 0; i < 8; i++)
-       ((uint8_t*)&command)[i] = ((uint8_t*)cpu->romcmdout)[7 - i];
+        command |= ((romCmdOut >> (i * 8)) & 0xFF) << ((7 - i) * 8);
 
     // Decrypt the ROM command if encryption is enabled
-    if (encrypt)
+    if (encrypted)
     {
-        initKeycode(*(uint32_t*)&rom[0x0C], 2);
-        decrypt64(&command);
+        initKeycode(2);
+        command = decrypt64(command);
     }
 
     // Handle encryption commands
     if (rom)
     {
-        if (((uint8_t*)&command)[7] == 0x3C) // Activate KEY1 encryption mode
+        if ((command >> 56) == 0x3C) // Activate KEY1 encryption mode
         {
             // Initialize KEY1 encryption
-            encrypt = true;
+            encrypted = true;
         }
-        else if ((((uint8_t*)&command)[7] & 0xF0) == 0xA0) // Enter main data mode
+        else if (((command >> 56) & 0xF0) == 0xA0) // Enter main data mode
         {
             // Disable KEY1 encryption
             // On hardware, this is where KEY2 encryption would start
-            encrypt = false;
+            encrypted = false;
         }
     }
 
-    // Indicate transfer completion right away when the block size is 0
     if (blockSize == 0)
     {
-        // Set the ready bits
-        *cpu->romctrl &= ~BIT(23); // Word not ready
-        *cpu->romctrl &= ~BIT(31); // Block ready
+        // End the transfer right away if the block size is 0
+        romCtrl &= ~BIT(23); // Word not ready
+        romCtrl &= ~BIT(31); // Block ready
 
         // Trigger a block ready IRQ if enabled
-        if (*cpu->auxspicnt & BIT(14))
-            *cpu->irf |= BIT(19);
-
-        return;
+        if (auxSpiCnt & BIT(14))
+            cpu->sendInterrupt(19);
     }
-
-    // Indicate that a word is ready
-    // Transfers shouldn't complete instantly like this, but there's no timing system yet
-    *cpu->romctrl |= BIT(23);
-    readCount = 0;
+    else
+    {
+        // Indicate that a word is ready
+        romCtrl |= BIT(23);
+        readCount = 0;
+    }
 }
 
-uint32_t transfer(interpreter::Cpu *cpu)
+uint8_t Cartridge::readRomDataIn(unsigned int byte)
 {
-    // Don't transfer if the word bit isn't set
-    if (!(*cpu->romctrl & BIT(23)))
-        return 0;
-
-    // When a cart isn't inserted, endless 0xFFs are returned
-    uint32_t value = 0xFFFFFFFF;
-
-    // Interpret the current ROM command and change the return value if needed
-    if (rom)
+    if (byte == 0)
     {
-        if (command == 0x0000000000000000) // Get header
+        // Don't transfer if the word ready bit isn't set
+        if (!(romCtrl & BIT(23)))
         {
-            // Return the ROM header, repeated every 0x1000 bytes
-            value = *(uint32_t*)&rom[readCount % 0x1000];
+            romDataIn = 0;
+            return 0;
         }
-        else if (command == 0x9000000000000000 || (((uint8_t*)&command)[7] & 0xF0) == 0x10 || command == 0xB800000000000000) // Get chip ID
-        {
-            // Return the chip ID, repeated every 4 bytes
-            // ROM dumps don't provide a chip ID, so use a fake one
-            value = 0x00001FC2;
-        }
-        else if ((((uint8_t*)&command)[7] & 0xF0) == 0x20) // Get secure area
-        {
-            uint32_t address = ((command & 0x0FFFF00000000000) >> 44) * 0x1000;
 
-            // Return data from the selected secure area block
-            if (address == 0x4000 && readCount < 0x800)
+        if (rom)
+        {
+            // Interpret the current ROM command
+            if (command == 0x9F00000000000000) // Dummy
             {
-                // Get a 64-bit value for use with the encryption functions
-                // The first 8 bytes of the first block should contain the double-encrypted string 'encryObj'
-                // This string isn't included in ROM dumps, so manually supply it
-                uint64_t data;
-                if (readCount < 8)
-                    data = 0x6A624F7972636E65; // encryObj
-                else
-                    data = *(uint64_t*)&rom[(address + readCount) & ~BIT(2)];
+                // Return endless 0xFFs
+                romDataIn = 0xFFFFFFFF;
+            }
+            else if (command == 0x0000000000000000) // Get header
+            {
+                // Return the ROM header, repeated every 0x1000 bytes
+                romDataIn = U8TO32(rom, readCount % 0x1000);
+            }
+            else if (command == 0x9000000000000000 || ((command >> 56) & 0xF0) == 0x10 || command == 0xB800000000000000) // Get chip ID
+            {
+                // Return the chip ID, repeated every 4 bytes
+                // ROM dumps don't provide a chip ID, so use a fake one
+                romDataIn = 0x00001FC2;
+            }
+            else if (((command >> 56) & 0xF0) == 0x20) // Get secure area
+            {
+                uint32_t address = ((command & 0x0FFFF00000000000) >> 44) * 0x1000;
 
-                // Encrypt the first 2KB of the first block
-                initKeycode(*(uint32_t*)&rom[0x0C], 3);
-                encrypt64(&data);
-
-                // Double-encrypt the first 8 bytes of the first block
-                if (readCount < 8)
+                // Return data from the selected secure area block
+                if (address == 0x4000 && readCount < 0x800)
                 {
-                    initKeycode(*(uint32_t*)&rom[0x0C], 2);
-                    encrypt64(&data);
-                }
+                    // Encrypt the first 2KB of the first block
+                    // The first 8 bytes of this block should contain the double-encrypted string 'encryObj'
+                    // This string isn't included in ROM dumps, so manually supply it
+                    uint64_t data;
+                    if (readCount < 8)
+                    {
+                        data = 0x6A624F7972636E65; // encryObj
+                    }
+                    else
+                    {
+                        data = (uint64_t)U8TO32(rom, ((address + readCount) & ~7) + 4) << 32;
+                        data |= (uint32_t)U8TO32(rom, (address + readCount) & ~7);
+                    }
 
-                value = ((uint32_t*)&data)[((address + readCount) & BIT(2)) >> 2];
+                    // Encrypt the data
+                    initKeycode(3);
+                    data = encrypt64(data);
+
+                    // Double-encrypt the 'encryObj' string
+                    if (readCount < 8)
+                    {
+                        initKeycode(2);
+                        data = encrypt64(data);
+                    }
+
+                    romDataIn = data >> (((address + readCount) & 4) ? 32 : 0);
+                }
+                else
+                {
+                    romDataIn = U8TO32(rom, address + readCount);
+                }
+            }
+            else if ((command & 0xFF00000000FFFFFF) == 0xB700000000000000) // Get data
+            {
+                // Return ROM data from the given address
+                uint32_t address = (command & 0x00FFFFFFFF000000) >> 24;
+                romDataIn = (address + readCount < romSize) ? U8TO32(rom, address + readCount) : 0;
             }
             else
             {
-                value = *(uint32_t*)&rom[address + readCount];
+                printf("ROM transfer with unknown command: 0x%.8X%.8X\n", (uint32_t)(command >> 32), (uint32_t)command);
             }
         }
-        else if ((command & 0xFF00000000FFFFFF) == 0xB700000000000000) // Get data
+        else
         {
-            // Return ROM data from the given address
-            uint32_t address = (command & 0x00FFFFFFFF000000) >> 24;
-            value = *(uint32_t*)&rom[address + readCount];
+            // When a cart isn't inserted, endless 0xFFs are returned
+            romDataIn = 0xFFFFFFFF;
         }
-        else if (command != 0x9F00000000000000) // Dummy
+
+        readCount += 4;
+
+        if (readCount == blockSize)
         {
-            // Split the ROM command into 2 32-bit parts for easier printing
-            printf("ROM transfer with unknown command: 0x%.8X%.8X\n", ((uint32_t*)&command)[1], ((uint32_t*)&command)[0]);
+            // End the transfer when the block size has been reached
+            romCtrl &= ~BIT(23); // Word not ready
+            romCtrl &= ~BIT(31); // Block ready
+
+            // Trigger a block ready IRQ if enabled
+            if (auxSpiCnt & BIT(14))
+                cpu->sendInterrupt(19);
         }
     }
 
-    readCount += 4;
-
-    // Indicate transfer completion when the block size has been reached
-    if (readCount == blockSize)
-    {
-        // Set the ready bits
-        *cpu->romctrl &= ~BIT(23); // Word not ready
-        *cpu->romctrl &= ~BIT(31); // Block ready
-
-        // Trigger a block ready IRQ if enabled
-        if (*cpu->auxspicnt & BIT(14))
-            *cpu->irf |= BIT(19);
-    }
-
-    return value;
-}
-
-void init()
-{
-    command = 0;
-    blockSize = 0;
-    readCount = 0;
-    encrypt = false;
-}
-
+    return romDataIn >> (byte * 8);
 }

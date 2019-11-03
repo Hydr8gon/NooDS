@@ -20,25 +20,63 @@
 #ifndef CORE_H
 #define CORE_H
 
+#include <chrono>
 #include <cstdint>
+#include <string>
 
-#define BIT(i) (1 << (i))
+#include "cartridge.h"
+#include "cp15.h"
+#include "dma.h"
+#include "gpu.h"
+#include "gpu_2d.h"
+#include "input.h"
+#include "interpreter.h"
+#include "ipc.h"
+#include "math.h"
+#include "memory.h"
+#include "rtc.h"
+#include "spi.h"
+#include "timers.h"
 
-namespace core
+class Core
 {
+    public:
+        Core();
+        Core(std::string filename);
+        ~Core();
 
-bool init();
-bool loadRom(char *filename);
-void writeSave();
+        void runFrame();
 
-void runScanline();
+        void pressKey(unsigned int key)   { input.pressKey(key);                       }
+        void releaseKey(unsigned int key) { input.releaseKey(key);                     }
+        void pressScreen(int x, int y)    { input.pressScreen();   spi.setTouch(x, y); }
+        void releaseScreen()              { input.releaseScreen(); spi.clearTouch();   }
 
-void pressKey(uint8_t key);
-void releaseKey(uint8_t key);
+        uint16_t *getFramebuffer() { return gpu.getFramebuffer(); }
+        unsigned int getFps()      { return fps;                  }
 
-void pressScreen(uint8_t x, uint8_t y);
-void releaseScreen();
+    private:
+        unsigned int fps = 0, fpsCount = 0;
+        std::chrono::steady_clock::time_point lastFrameTime, lastFpsTime;
 
-}
+        uint8_t firmware[0x40000] = {};
+        uint8_t *rom = nullptr, *save = nullptr;
+        unsigned int saveSize = 0;
+        std::string saveName;
+
+        Cartridge cart9, cart7;
+        Cp15 cp15;
+        Dma dma9, dma7;
+        Gpu gpu;
+        Gpu2D engineA, engineB;
+        Input input;
+        Interpreter arm9, arm7;
+        Ipc ipc;
+        Math math;
+        Memory memory;
+        Rtc rtc;
+        Spi spi;
+        Timers timers9, timers7;
+};
 
 #endif // CORE_H
