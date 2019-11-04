@@ -683,124 +683,126 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x4000000:
             case 0x4000001:
             case 0x4000002:
-            case 0x4000003: engineA->writeDispCnt(address + i - 0x4000000, data);   break; // DISPCNT (engine A)
+            case 0x4000003: engineA->writeDispCnt(address + i - 0x4000000, data);      break; // DISPCNT (engine A)
             case 0x4000004:
-            case 0x4000005: gpu->writeDispStat9(address + i - 0x4000004, data);     break; // DISPSTAT (ARM9)
+            case 0x4000005: gpu->writeDispStat9(address + i - 0x4000004, data);        break; // DISPSTAT (ARM9)
             case 0x4000008:
-            case 0x4000009: engineA->writeBgCnt(0, address + i - 0x4000008, data);  break; // BG0CNT (engine A)
+            case 0x4000009: engineA->writeBgCnt(0, address + i - 0x4000008, data);     break; // BG0CNT (engine A)
             case 0x400000A:
-            case 0x400000B: engineA->writeBgCnt(1, address + i - 0x400000A, data);  break; // BG1CNT (engine A)
+            case 0x400000B: engineA->writeBgCnt(1, address + i - 0x400000A, data);     break; // BG1CNT (engine A)
             case 0x400000C:
-            case 0x400000D: engineA->writeBgCnt(2, address + i - 0x400000C, data);  break; // BG2CNT (engine A)
+            case 0x400000D: engineA->writeBgCnt(2, address + i - 0x400000C, data);     break; // BG2CNT (engine A)
             case 0x400000E:
-            case 0x400000F: engineA->writeBgCnt(3, address + i - 0x400000E, data);  break; // BG3CNT (engine A)
+            case 0x400000F: engineA->writeBgCnt(3, address + i - 0x400000E, data);     break; // BG3CNT (engine A)
             case 0x4000010:
-            case 0x4000011: engineA->writeBgHOfs(0, address + i - 0x4000010, data); break; // BG0HOFS (engine A)
+            case 0x4000011: engineA->writeBgHOfs(0, address + i - 0x4000010, data);    break; // BG0HOFS (engine A)
             case 0x4000012:
-            case 0x4000013: engineA->writeBgVOfs(0, address + i - 0x4000012, data); break; // BG0VOFS (engine A)
+            case 0x4000013: engineA->writeBgVOfs(0, address + i - 0x4000012, data);    break; // BG0VOFS (engine A)
             case 0x4000014:
-            case 0x4000015: engineA->writeBgHOfs(1, address + i - 0x4000014, data); break; // BG1HOFS (engine A)
+            case 0x4000015: engineA->writeBgHOfs(1, address + i - 0x4000014, data);    break; // BG1HOFS (engine A)
             case 0x4000016:
-            case 0x4000017: engineA->writeBgVOfs(1, address + i - 0x4000016, data); break; // BG1VOFS (engine A)
+            case 0x4000017: engineA->writeBgVOfs(1, address + i - 0x4000016, data);    break; // BG1VOFS (engine A)
             case 0x4000018:
-            case 0x4000019: engineA->writeBgHOfs(2, address + i - 0x4000018, data); break; // BG2HOFS (engine A)
+            case 0x4000019: engineA->writeBgHOfs(2, address + i - 0x4000018, data);    break; // BG2HOFS (engine A)
             case 0x400001A:
-            case 0x400001B: engineA->writeBgVOfs(2, address + i - 0x400001A, data); break; // BG2VOFS (engine A)
+            case 0x400001B: engineA->writeBgVOfs(2, address + i - 0x400001A, data);    break; // BG2VOFS (engine A)
             case 0x400001C:
-            case 0x400001D: engineA->writeBgHOfs(3, address + i - 0x400001C, data); break; // BG3HOFS (engine A)
+            case 0x400001D: engineA->writeBgHOfs(3, address + i - 0x400001C, data);    break; // BG3HOFS (engine A)
             case 0x400001E:
-            case 0x400001F: engineA->writeBgVOfs(3, address + i - 0x400001E, data); break; // BG3VOFS (engine A)
+            case 0x400001F: engineA->writeBgVOfs(3, address + i - 0x400001E, data);    break; // BG3VOFS (engine A)
+            case 0x400006C:
+            case 0x400006D: engineA->writeMasterBright(address + i - 0x400006C, data); break; // MASTER_BRIGHT (engine A)
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
-            case 0x40000B3: dma9->writeDmaSad(0, address + i - 0x40000B0, data);    break; // DMA0SAD (ARM9)
+            case 0x40000B3: dma9->writeDmaSad(0, address + i - 0x40000B0, data);       break; // DMA0SAD (ARM9)
             case 0x40000B4:
             case 0x40000B5:
             case 0x40000B6:
-            case 0x40000B7: dma9->writeDmaDad(0, address + i - 0x40000B4, data);    break; // DMA0DAD (ARM9)
+            case 0x40000B7: dma9->writeDmaDad(0, address + i - 0x40000B4, data);       break; // DMA0DAD (ARM9)
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
-            case 0x40000BB: dma9->writeDmaCnt(0, address + i - 0x40000B8, data);    break; // DMA0CNT (ARM9)
+            case 0x40000BB: dma9->writeDmaCnt(0, address + i - 0x40000B8, data);       break; // DMA0CNT (ARM9)
             case 0x40000BC:
             case 0x40000BD:
             case 0x40000BE:
-            case 0x40000BF: dma9->writeDmaSad(1, address + i - 0x40000BC, data);    break; // DMA1SAD (ARM9)
+            case 0x40000BF: dma9->writeDmaSad(1, address + i - 0x40000BC, data);       break; // DMA1SAD (ARM9)
             case 0x40000C0:
             case 0x40000C1:
             case 0x40000C2:
-            case 0x40000C3: dma9->writeDmaDad(1, address + i - 0x40000C0, data);    break; // DMA1DAD (ARM9)
+            case 0x40000C3: dma9->writeDmaDad(1, address + i - 0x40000C0, data);       break; // DMA1DAD (ARM9)
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
-            case 0x40000C7: dma9->writeDmaCnt(1, address + i - 0x40000C4, data);    break; // DMA1CNT (ARM9)
+            case 0x40000C7: dma9->writeDmaCnt(1, address + i - 0x40000C4, data);       break; // DMA1CNT (ARM9)
             case 0x40000C8:
             case 0x40000C9:
             case 0x40000CA:
-            case 0x40000CB: dma9->writeDmaSad(2, address + i - 0x40000C8, data);    break; // DMA2SAD (ARM9)
+            case 0x40000CB: dma9->writeDmaSad(2, address + i - 0x40000C8, data);       break; // DMA2SAD (ARM9)
             case 0x40000CC:
             case 0x40000CD:
             case 0x40000CE:
-            case 0x40000CF: dma9->writeDmaDad(2, address + i - 0x40000CC, data);    break; // DMA2DAD (ARM9)
+            case 0x40000CF: dma9->writeDmaDad(2, address + i - 0x40000CC, data);       break; // DMA2DAD (ARM9)
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
-            case 0x40000D3: dma9->writeDmaCnt(2, address + i - 0x40000D0, data);    break; // DMA2CNT (ARM9)
+            case 0x40000D3: dma9->writeDmaCnt(2, address + i - 0x40000D0, data);       break; // DMA2CNT (ARM9)
             case 0x40000D4:
             case 0x40000D5:
             case 0x40000D6:
-            case 0x40000D7: dma9->writeDmaSad(3, address + i - 0x40000D4, data);    break; // DMA3SAD (ARM9)
+            case 0x40000D7: dma9->writeDmaSad(3, address + i - 0x40000D4, data);       break; // DMA3SAD (ARM9)
             case 0x40000D8:
             case 0x40000D9:
             case 0x40000DA:
-            case 0x40000DB: dma9->writeDmaDad(3, address + i - 0x40000D8, data);    break; // DMA3DAD (ARM9)
+            case 0x40000DB: dma9->writeDmaDad(3, address + i - 0x40000D8, data);       break; // DMA3DAD (ARM9)
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
-            case 0x40000DF: dma9->writeDmaCnt(3, address + i - 0x40000DC, data);    break; // DMA3CNT (ARM9)
+            case 0x40000DF: dma9->writeDmaCnt(3, address + i - 0x40000DC, data);       break; // DMA3CNT (ARM9)
             case 0x40000E0:
             case 0x40000E1:
             case 0x40000E2:
-            case 0x40000E3: writeDmaFill(0, address + i - 0x40000E0, data);         break; // DMA0FILL
+            case 0x40000E3: writeDmaFill(0, address + i - 0x40000E0, data);            break; // DMA0FILL
             case 0x40000E4:
             case 0x40000E5:
             case 0x40000E6:
-            case 0x40000E7: writeDmaFill(1, address + i - 0x40000E4, data);         break; // DMA1FILL
+            case 0x40000E7: writeDmaFill(1, address + i - 0x40000E4, data);            break; // DMA1FILL
             case 0x40000E8:
             case 0x40000E9:
             case 0x40000EA:
-            case 0x40000EB: writeDmaFill(2, address + i - 0x40000E8, data);         break; // DMA2FILL
+            case 0x40000EB: writeDmaFill(2, address + i - 0x40000E8, data);            break; // DMA2FILL
             case 0x40000EC:
             case 0x40000ED:
             case 0x40000EE:
-            case 0x40000EF: writeDmaFill(3, address + i - 0x40000EC, data);         break; // DMA3FILL
+            case 0x40000EF: writeDmaFill(3, address + i - 0x40000EC, data);            break; // DMA3FILL
             case 0x4000100:
-            case 0x4000101: timers9->writeTmCntL(0, address + i - 0x4000100, data); break; // TM0CNT_L (ARM9)
-            case 0x4000102: timers9->writeTmCntH(0, data);                          break; // TM0CNT_H (ARM9)
+            case 0x4000101: timers9->writeTmCntL(0, address + i - 0x4000100, data);    break; // TM0CNT_L (ARM9)
+            case 0x4000102: timers9->writeTmCntH(0, data);                             break; // TM0CNT_H (ARM9)
             case 0x4000104:
-            case 0x4000105: timers9->writeTmCntL(1, address + i - 0x4000104, data); break; // TM1CNT_L (ARM9)
-            case 0x4000106: timers9->writeTmCntH(1, data);                          break; // TM1CNT_H (ARM9)
+            case 0x4000105: timers9->writeTmCntL(1, address + i - 0x4000104, data);    break; // TM1CNT_L (ARM9)
+            case 0x4000106: timers9->writeTmCntH(1, data);                             break; // TM1CNT_H (ARM9)
             case 0x4000108:
-            case 0x4000109: timers9->writeTmCntL(2, address + i - 0x4000108, data); break; // TM2CNT_L (ARM9)
-            case 0x400010A: timers9->writeTmCntH(2, data);                          break; // TM2CNT_H (ARM9)
+            case 0x4000109: timers9->writeTmCntL(2, address + i - 0x4000108, data);    break; // TM2CNT_L (ARM9)
+            case 0x400010A: timers9->writeTmCntH(2, data);                             break; // TM2CNT_H (ARM9)
             case 0x400010C:
-            case 0x400010D: timers9->writeTmCntL(3, address + i - 0x400010C, data); break; // TM3CNT_L (ARM9)
-            case 0x400010E: timers9->writeTmCntH(3, data);                          break; // TM3CNT_H (ARM9)
+            case 0x400010D: timers9->writeTmCntL(3, address + i - 0x400010C, data);    break; // TM3CNT_L (ARM9)
+            case 0x400010E: timers9->writeTmCntH(3, data);                             break; // TM3CNT_H (ARM9)
             case 0x4000180:
-            case 0x4000181: ipc->writeIpcSync9(address + i - 0x4000180, data);      break; // IPCSYNC (ARM9)
+            case 0x4000181: ipc->writeIpcSync9(address + i - 0x4000180, data);         break; // IPCSYNC (ARM9)
             case 0x4000184:
-            case 0x4000185: ipc->writeIpcFifoCnt9(address + i - 0x4000184, data);   break; // IPCFIFOCNT (ARM9)
+            case 0x4000185: ipc->writeIpcFifoCnt9(address + i - 0x4000184, data);      break; // IPCFIFOCNT (ARM9)
             case 0x4000188:
             case 0x4000189:
             case 0x400018A:
-            case 0x400018B: ipc->writeIpcFifoSend9(address + i - 0x4000188, data);  break; // IPCFIFOSEND (ARM9)
+            case 0x400018B: ipc->writeIpcFifoSend9(address + i - 0x4000188, data);     break; // IPCFIFOSEND (ARM9)
             case 0x40001A0:
-            case 0x40001A1: cart9->writeAuxSpiCnt(address + i - 0x40001A0, data);   break; // AUXSPICNT (ARM9)
-            case 0x40001A2: cart9->writeAuxSpiData(data);                           break; // AUXSPIDATA (ARM9)
+            case 0x40001A1: cart9->writeAuxSpiCnt(address + i - 0x40001A0, data);      break; // AUXSPICNT (ARM9)
+            case 0x40001A2: cart9->writeAuxSpiData(data);                              break; // AUXSPIDATA (ARM9)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: cart9->writeRomCtrl(address + i - 0x40001A4, data);     break; // ROMCTRL (ARM9)
+            case 0x40001A7: cart9->writeRomCtrl(address + i - 0x40001A4, data);        break; // ROMCTRL (ARM9)
             case 0x40001A8:
             case 0x40001A9:
             case 0x40001AA:
@@ -808,27 +810,27 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x40001AC:
             case 0x40001AD:
             case 0x40001AE:
-            case 0x40001AF: cart9->writeRomCmdOut(address + i - 0x40001A8, data);   break; // ROMCMDOUT (ARM9)
-            case 0x4000208: arm9->writeIme(data);                                   break; // IME (ARM9)
+            case 0x40001AF: cart9->writeRomCmdOut(address + i - 0x40001A8, data);      break; // ROMCMDOUT (ARM9)
+            case 0x4000208: arm9->writeIme(data);                                      break; // IME (ARM9)
             case 0x4000210:
             case 0x4000211:
             case 0x4000212:
-            case 0x4000213: arm9->writeIe(address + i - 0x4000210, data);           break; // IE (ARM9)
+            case 0x4000213: arm9->writeIe(address + i - 0x4000210, data);              break; // IE (ARM9)
             case 0x4000214:
             case 0x4000215:
             case 0x4000216:
-            case 0x4000217: arm9->writeIrf(address + i - 0x4000214, data);          break; // IF (ARM9)
-            case 0x4000240: writeVramCntA(value);                                   break; // VRAMCNT_A
-            case 0x4000241: writeVramCntB(value);                                   break; // VRAMCNT_B
-            case 0x4000242: writeVramCntC(value);                                   break; // VRAMCNT_C
-            case 0x4000243: writeVramCntD(value);                                   break; // VRAMCNT_D
-            case 0x4000244: writeVramCntE(value);                                   break; // VRAMCNT_E
-            case 0x4000245: writeVramCntF(value);                                   break; // VRAMCNT_F
-            case 0x4000246: writeVramCntG(value);                                   break; // VRAMCNT_G
-            case 0x4000247: writeWramCnt(value);                                    break; // WRAMCNT
-            case 0x4000248: writeVramCntH(value);                                   break; // VRAMCNT_H
-            case 0x4000249: writeVramCntI(value);                                   break; // VRAMCNT_I
-            case 0x4000280: math->writeDivCnt(data);                                break; // DIVCNT
+            case 0x4000217: arm9->writeIrf(address + i - 0x4000214, data);             break; // IF (ARM9)
+            case 0x4000240: writeVramCntA(value);                                      break; // VRAMCNT_A
+            case 0x4000241: writeVramCntB(value);                                      break; // VRAMCNT_B
+            case 0x4000242: writeVramCntC(value);                                      break; // VRAMCNT_C
+            case 0x4000243: writeVramCntD(value);                                      break; // VRAMCNT_D
+            case 0x4000244: writeVramCntE(value);                                      break; // VRAMCNT_E
+            case 0x4000245: writeVramCntF(value);                                      break; // VRAMCNT_F
+            case 0x4000246: writeVramCntG(value);                                      break; // VRAMCNT_G
+            case 0x4000247: writeWramCnt(value);                                       break; // WRAMCNT
+            case 0x4000248: writeVramCntH(value);                                      break; // VRAMCNT_H
+            case 0x4000249: writeVramCntI(value);                                      break; // VRAMCNT_I
+            case 0x4000280: math->writeDivCnt(data);                                   break; // DIVCNT
             case 0x4000290:
             case 0x4000291:
             case 0x4000292:
@@ -836,7 +838,7 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x4000294:
             case 0x4000295:
             case 0x4000296:
-            case 0x4000297: math->writeDivNumer(address + i - 0x4000290, data);     break; // DIVNUMER
+            case 0x4000297: math->writeDivNumer(address + i - 0x4000290, data);        break; // DIVNUMER
             case 0x4000298:
             case 0x4000299:
             case 0x400029A:
@@ -844,8 +846,8 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x400029C:
             case 0x400029D:
             case 0x400029E:
-            case 0x400029F: math->writeDivDenom(address + i - 0x4000298, data);     break; // DIVDENOM
-            case 0x40002B0: math->writeSqrtCnt(data);                               break; // SQRTCNT
+            case 0x400029F: math->writeDivDenom(address + i - 0x4000298, data);        break; // DIVDENOM
+            case 0x40002B0: math->writeSqrtCnt(data);                                  break; // SQRTCNT
             case 0x40002B8:
             case 0x40002B9:
             case 0x40002BA:
@@ -853,38 +855,40 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x40002BC:
             case 0x40002BD:
             case 0x40002BE:
-            case 0x40002BF: math->writeSqrtParam(address + i - 0x40002B8, data);    break; // SQRTPARAM
-            case 0x4000300: arm9->writePostFlg(data);                               break; // POSTFLG (ARM9)
+            case 0x40002BF: math->writeSqrtParam(address + i - 0x40002B8, data);       break; // SQRTPARAM
+            case 0x4000300: arm9->writePostFlg(data);                                  break; // POSTFLG (ARM9)
             case 0x4000304:
-            case 0x4000305: gpu->writePowCnt1(address + i - 0x4000214, data);       break; // POWCNT1
+            case 0x4000305: gpu->writePowCnt1(address + i - 0x4000214, data);          break; // POWCNT1
             case 0x4001000:
             case 0x4001001:
             case 0x4001002:
-            case 0x4001003: engineB->writeDispCnt(address + i - 0x4001000, data);   break; // DISPCNT (engine B)
+            case 0x4001003: engineB->writeDispCnt(address + i - 0x4001000, data);      break; // DISPCNT (engine B)
             case 0x4001008:
-            case 0x4001009: engineB->writeBgCnt(0, address + i - 0x4001008, data);  break; // BG0CNT (engine B)
+            case 0x4001009: engineB->writeBgCnt(0, address + i - 0x4001008, data);     break; // BG0CNT (engine B)
             case 0x400100A:
-            case 0x400100B: engineB->writeBgCnt(1, address + i - 0x400100A, data);  break; // BG1CNT (engine B)
+            case 0x400100B: engineB->writeBgCnt(1, address + i - 0x400100A, data);     break; // BG1CNT (engine B)
             case 0x400100C:
-            case 0x400100D: engineB->writeBgCnt(2, address + i - 0x400100C, data);  break; // BG2CNT (engine B)
+            case 0x400100D: engineB->writeBgCnt(2, address + i - 0x400100C, data);     break; // BG2CNT (engine B)
             case 0x400100E:
-            case 0x400100F: engineB->writeBgCnt(3, address + i - 0x400100E, data);  break; // BG3CNT (engine B)
+            case 0x400100F: engineB->writeBgCnt(3, address + i - 0x400100E, data);     break; // BG3CNT (engine B)
             case 0x4001010:
-            case 0x4001011: engineB->writeBgHOfs(0, address + i - 0x4001010, data); break; // BG0HOFS (engine B)
+            case 0x4001011: engineB->writeBgHOfs(0, address + i - 0x4001010, data);    break; // BG0HOFS (engine B)
             case 0x4001012:
-            case 0x4001013: engineB->writeBgVOfs(0, address + i - 0x4001012, data); break; // BG0VOFS (engine B)
+            case 0x4001013: engineB->writeBgVOfs(0, address + i - 0x4001012, data);    break; // BG0VOFS (engine B)
             case 0x4001014:
-            case 0x4001015: engineB->writeBgHOfs(1, address + i - 0x4001014, data); break; // BG1HOFS (engine B)
+            case 0x4001015: engineB->writeBgHOfs(1, address + i - 0x4001014, data);    break; // BG1HOFS (engine B)
             case 0x4001016:
-            case 0x4001017: engineB->writeBgVOfs(1, address + i - 0x4001016, data); break; // BG1VOFS (engine B)
+            case 0x4001017: engineB->writeBgVOfs(1, address + i - 0x4001016, data);    break; // BG1VOFS (engine B)
             case 0x4001018:
-            case 0x4001019: engineB->writeBgHOfs(2, address + i - 0x4001018, data); break; // BG2HOFS (engine B)
+            case 0x4001019: engineB->writeBgHOfs(2, address + i - 0x4001018, data);    break; // BG2HOFS (engine B)
             case 0x400101A:
-            case 0x400101B: engineB->writeBgVOfs(2, address + i - 0x400101A, data); break; // BG2VOFS (engine B)
+            case 0x400101B: engineB->writeBgVOfs(2, address + i - 0x400101A, data);    break; // BG2VOFS (engine B)
             case 0x400101C:
-            case 0x400101D: engineB->writeBgHOfs(3, address + i - 0x400101C, data); break; // BG3HOFS (engine B)
+            case 0x400101D: engineB->writeBgHOfs(3, address + i - 0x400101C, data);    break; // BG3HOFS (engine B)
             case 0x400101E:
-            case 0x400101F: engineB->writeBgVOfs(3, address + i - 0x400101E, data); break; // BG3VOFS (engine B)
+            case 0x400101F: engineB->writeBgVOfs(3, address + i - 0x400101E, data);    break; // BG3VOFS (engine B)
+            case 0x400106C:
+            case 0x400106D: engineB->writeMasterBright(address + i - 0x400106C, data); break; // MASTER_BRIGHT (engine B)
 
             default:
                 if (i == 0)

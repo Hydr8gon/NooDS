@@ -42,6 +42,7 @@ class Gpu2D
         void writeBgCnt(unsigned int bg, unsigned int byte, uint8_t value);
         void writeBgHOfs(unsigned int bg, unsigned int byte, uint8_t value);
         void writeBgVOfs(unsigned int bg, unsigned int byte, uint8_t value);
+        void writeMasterBright(unsigned int byte, uint8_t value);
 
     private:
         uint16_t framebuffer[256 * 192] = {};
@@ -51,6 +52,7 @@ class Gpu2D
         uint16_t bgCnt[4] = {};
         uint16_t bgHOfs[4] = {};
         uint16_t bgVOfs[4] = {};
+        uint16_t masterBright = 0;
 
         uint8_t *palette, *oam;
         uint32_t bgVramAddr, objVramAddr;

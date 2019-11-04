@@ -161,6 +161,60 @@ void Gpu2D::drawScanline(unsigned int line)
             dispCnt &= ~0x00030000;
             break;
     }
+
+    // Adjust the master brightness
+    switch ((masterBright & 0xC000) >> 14) // Mode
+    {
+        case 1: // Up
+        {
+            // Calculate the brightness factor
+            float factor = (masterBright & 0x001F);
+            if (factor > 16) factor = 16;
+            factor /= 16;
+
+            for (int i = 0; i < 256; i++)
+            {
+                // Extract the RGB values
+                uint16_t *pixel = &framebuffer[line * 256 + i];
+                uint8_t r = ((*pixel >>  0) & 0x1F);
+                uint8_t g = ((*pixel >>  5) & 0x1F);
+                uint8_t b = ((*pixel >> 10) & 0x1F);
+
+                // Adjust the values and put them back
+                r += (31 - r) * factor;
+                g += (31 - g) * factor;
+                b += (31 - b) * factor;
+                *pixel = (b << 10) | (g << 5) | r;
+            }
+
+            break;
+        }
+
+        case 2: // Down
+        {
+            // Calculate the brightness factor
+            float factor = (masterBright & 0x001F);
+            if (factor > 16) factor = 16;
+            factor /= 16;
+
+            for (int i = 0; i < 256; i++)
+            {
+                // Extract the RGB values
+                uint16_t *pixel = &framebuffer[line * 256 + i];
+                uint8_t r = ((*pixel >>  0) & 0x1F);
+                uint8_t g = ((*pixel >>  5) & 0x1F);
+                uint8_t b = ((*pixel >> 10) & 0x1F);
+
+                // Adjust the values and put them back
+                r -= r * factor;
+                g -= g * factor;
+                b -= b * factor;
+                *pixel = (b << 10) | (g << 5) | r;
+            }
+
+            break;
+        }
+    }
 }
 
 void Gpu2D::drawText(unsigned int bg, unsigned int line)
@@ -548,13 +602,20 @@ void Gpu2D::writeBgCnt(unsigned int bg, unsigned int byte, uint8_t value)
 void Gpu2D::writeBgHOfs(unsigned int bg, unsigned int byte, uint8_t value)
 {
     // Write to one of the BGHOFS registers
-    uint16_t mask = 0x1FF & (0xFF << (byte * 8));
+    uint16_t mask = 0x01FF & (0xFF << (byte * 8));
     bgHOfs[bg] = (bgHOfs[bg] & ~mask) | ((value << (byte * 8)) & mask);
 }
 
 void Gpu2D::writeBgVOfs(unsigned int bg, unsigned int byte, uint8_t value)
 {
     // Write to one of the BGVOFS registers
-    uint16_t mask = 0x1FF & (0xFF << (byte * 8));
+    uint16_t mask = 0x01FF & (0xFF << (byte * 8));
     bgVOfs[bg] = (bgVOfs[bg] & ~mask) | ((value << (byte * 8)) & mask);
+}
+
+void Gpu2D::writeMasterBright(unsigned int byte, uint8_t value)
+{
+    // Write to the MASTER_BRIGHT register
+    uint16_t mask = 0xC01F & (0xFF << (byte * 8));
+    masterBright = (masterBright & ~mask) | ((value << (byte * 8)) & mask);
 }
