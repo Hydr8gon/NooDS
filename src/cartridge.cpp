@@ -217,6 +217,7 @@ void Cartridge::writeAuxSpiData(uint8_t value)
                         break;
 
                     case 0x0A: // Page write
+                    case 0x02: // Page program
                         if (auxWriteCount < 4)
                         {
                             // On writes 2-4, set the 3 byte address to write to

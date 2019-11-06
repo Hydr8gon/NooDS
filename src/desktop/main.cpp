@@ -223,6 +223,9 @@ void NooFrame::stop(wxCloseEvent &event)
         delete coreThread;
     }
 
+    // Close the core to ensure the save gets written
+    if (core) delete core;
+
     event.Skip(true);
 }
 
