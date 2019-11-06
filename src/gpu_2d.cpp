@@ -224,20 +224,19 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
     if (bg == 0 && (dispCnt & BIT(3)))
         return;
 
-    // Get the background data offsets
+    // Get information about the tile data
     uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
     uint32_t charBase   = ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
 
     // If the Y-offset exceeds 256 and the background is 512 pixels tall, move to the next 256x256 section
-    // When the background is 256 pixels wide, this means moving one section
-    // When the background is 512 pixels wide, this means moving two sections
+    // If the background is 512 pixels wide, move 2 sections to skip the second X section
     unsigned int yOffset = (line + bgVOfs[bg]) % 512;
-    if (yOffset >= 256 && bgCnt[bg] & BIT(15))
+    if (yOffset >= 256 && (bgCnt[bg] & BIT(15)))
         screenBase += (bgCnt[bg] & BIT(14)) ? 0x1000 : 0x800;
 
-    // Get the screen data for the current line
-    uint8_t *screen = memory->getMappedVram(bgVramAddr + screenBase + ((yOffset / 8) % 32) * 64);
-    if (!screen) return;
+    // Get the tile data for the current line
+    uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase + ((yOffset / 8) % 32) * 64);
+    if (!data) return;
 
     // Draw a line
     if (bgCnt[bg] & BIT(7)) // 8-bit
@@ -247,12 +246,7 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
             // Get the data for the current tile
             // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
             unsigned int xOffset = (bgHOfs[bg] + i) % 512;
-            uint16_t tile = U8TO16(screen, ((xOffset / 8) % 32) * 2 + ((xOffset >= 256 && (bgCnt[bg] & BIT(14))) ? 0x800 : 0));
-
-            // Determine the palette index based on whether or not the tile is vertically flipped
-            uint8_t *indices = memory->getMappedVram(bgVramAddr + charBase + (tile & 0x03FF) * 64);
-            if (!indices) return;
-            indices += (tile & BIT(11)) ? ((7 - yOffset % 8) * 8) : ((yOffset % 8) * 8);
+            uint16_t tile = U8TO16(data, ((xOffset / 8) % 32) * 2 + ((xOffset >= 256 && (bgCnt[bg] & BIT(14))) ? 0x800 : 0));
 
             // Get the palette of the tile
             uint8_t *pal;
@@ -263,7 +257,7 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
                 unsigned int slot = (bg < 2 && (bgCnt[bg] & BIT(13))) ? (bg + 2) : bg;
 
                 // In extended palette mode, the tile can select from multiple 256-color palettes
-                if (!extPalettes[slot]) return;
+                if (!extPalettes[slot]) continue;
                 pal = &extPalettes[slot][((tile & 0xF000) >> 12) * 512];
             }
             else // Standard palette
@@ -271,12 +265,18 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
                 pal = palette;
             }
 
+            // Find the palette indeces for the right pixel row of the tile
+            // The tile can be vertically flipped
+            uint8_t *indices = memory->getMappedVram(bgVramAddr + charBase + (tile & 0x03FF) * 64);
+            if (!indices) continue;
+            indices += (tile & BIT(11)) ? ((7 - yOffset % 8) * 8) : ((yOffset % 8) * 8);
+
             for (int j = 0; j < 8; j++)
             {
-                // Determine the horizontal pixel offset based on whether or not the tile is horizontally flipped
+                // Draw the tile horizontally flipped if enabled
                 int offset = i - (xOffset % 8) + ((tile & BIT(10)) ? (7 - j) : j);
 
-                // Draw a pixel if one exists at the current position
+                // Draw a pixel
                 if (offset >= 0 && offset < 256 && indices[j])
                     layers[bg][line * 256 + offset] = U8TO16(pal, indices[j] * 2) | BIT(15);
             }
@@ -289,26 +289,27 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
             // Get the data for the current tile
             // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
             uint16_t xOffset = (bgHOfs[bg] + i) % 512;
-            uint16_t tile = U8TO16(screen, ((xOffset / 8) % 32) * 2 + ((xOffset >= 256 && (bgCnt[bg] & BIT(14))) ? 0x800 : 0));
-
-            // Determine the palette index based on whether or not the tile is vertically flipped
-            uint8_t *indices = memory->getMappedVram(bgVramAddr + charBase + (tile & 0x03FF) * 32);
-            if (!indices) return;
-            indices += (tile & BIT(11)) ? ((7 - yOffset % 8) * 4) : ((yOffset % 8) * 4);
+            uint16_t tile = U8TO16(data, ((xOffset / 8) % 32) * 2 + ((xOffset >= 256 && (bgCnt[bg] & BIT(14))) ? 0x800 : 0));
 
             // Get the palette of the tile
             // In 4-bit mode, the tile can select from multiple 16-color palettes
             uint8_t *pal = &palette[((tile & 0xF000) >> 12) * 32];
 
+            // Find the palette indeces for the right pixel row of the tile
+            // The tile can be vertically flipped
+            uint8_t *indices = memory->getMappedVram(bgVramAddr + charBase + (tile & 0x03FF) * 32);
+            if (!indices) return;
+            indices += (tile & BIT(11)) ? ((7 - yOffset % 8) * 4) : ((yOffset % 8) * 4);
+
             for (int j = 0; j < 8; j++)
             {
-                // Determine the horizontal pixel offset based on whether or not the tile is horizontally flipped
+                // Draw the tile horizontally flipped if enabled
                 int offset = i - (xOffset % 8) + ((tile & BIT(10)) ? (7 - j) : j);
 
-                // Get the appropriate palette index from the tile for the current position
+                // Extract the 4-bit palette index from the 8-bit value
                 uint8_t index = (j & 1) ? ((indices[j / 2] & 0xF0) >> 4) : (indices[j / 2] & 0x0F);
 
-                // Draw a pixel if one exists at the current position
+                // Draw a pixel
                 if (offset >= 0 && offset < 256 && index)
                     layers[bg][line * 256 + offset] = U8TO16(pal, index * 2) | BIT(15);
             }
@@ -325,27 +326,137 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
 {
     if (bgCnt[bg] & BIT(7)) // Bitmap
     {
+        // Get information about the bitmap data
         uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x4000;
+        unsigned int sizeX, sizeY;
+        switch ((bgCnt[bg] & 0xC000) >> 14)
+        {
+            case 0: sizeX = 128; sizeY = 128; break;
+            case 1: sizeX = 256; sizeY = 256; break;
+            case 2: sizeX = 512; sizeY = 256; break;
+            case 3: sizeX = 512; sizeY = 512; break;
+        }
+
+        // Get the bitmap data
         uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase);
         if (!data) return;
 
         if (bgCnt[bg] & BIT(2)) // Direct color bitmap
         {
+            // Draw a line
             for (int i = 0; i < 256; i++)
-                layers[bg][line * 256 + i] = U8TO16(data, (line * 256 + i) * 2);
+            {
+                // Get the rotscaled X coordinate relative to the background
+                int rotscaleX = i;
+
+                // Get the rotscaled Y coordinate relative to the background
+                int rotscaleY = line;
+
+                // Handle display area overflow
+                if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
+                {
+                    rotscaleX %= sizeX;
+                    rotscaleY %= sizeY;
+                }
+                else if (rotscaleX >= sizeX || rotscaleY >= sizeY) // Transparent
+                {
+                    continue;
+                }
+
+                // Draw a pixel
+                layers[bg][line * 256 + i] = U8TO16(data, (rotscaleY * sizeX + rotscaleX) * 2);
+            }
         }
         else // 256 color bitmap
         {
+            // Draw a line
             for (int i = 0; i < 256; i++)
             {
-                if (data[line * 256 + i])
-                    layers[bg][line * 256 + i] = U8TO16(palette, (data[line * 256 + i]) * 2) | BIT(15);
+                // Get the rotscaled X coordinate relative to the background
+                int rotscaleX = i;
+
+                // Get the rotscaled Y coordinate relative to the background
+                int rotscaleY = line;
+
+                // Handle display area overflow
+                if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
+                {
+                    rotscaleX %= sizeX;
+                    rotscaleY %= sizeY;
+                }
+                else if (rotscaleX >= sizeX || rotscaleY >= sizeY) // Transparent
+                {
+                    continue;
+                }
+
+                // Draw a pixel
+                if (data[rotscaleY * sizeX + rotscaleX])
+                    layers[bg][line * 256 + i] = U8TO16(palette, (data[rotscaleY * sizeX + rotscaleX]) * 2) | BIT(15);
             }
         }
     }
-    else // 16-bit affine
+    else // Extended affine
     {
-        // 16-bit affine backgrounds aren't implemented yet
+        // Get information about the tile data
+        uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
+        uint32_t charBase   = ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
+        unsigned int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
+
+        // Get the tile data
+        uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase);
+        if (!data) return;
+
+        // Draw a line
+        for (int i = 0; i <= 256; i++)
+        {
+            // Get the rotscaled X coordinate relative to the background
+            int rotscaleX = i;
+
+            // Get the rotscaled Y coordinate relative to the background
+            int rotscaleY = line;
+
+            // Handle display area overflow
+            if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
+            {
+                rotscaleX %= size;
+                rotscaleY %= size;
+            }
+            else if (rotscaleX >= size || rotscaleY >= size) // Transparent
+            {
+                continue;
+            }
+
+            // Get the data for the current tile
+            uint16_t tile = U8TO16(data, ((rotscaleY / 8) * (size / 8) + (rotscaleX / 8)) * 2);
+
+            // Get the palette of the tile
+            uint8_t *pal;
+            if (dispCnt & BIT(30)) // Extended palette
+            {
+                // Determine the extended palette slot
+                // Backgrounds 0 and 1 can alternatively use slots 2 and 3
+                unsigned int slot = (bg < 2 && (bgCnt[bg] & BIT(13))) ? (bg + 2) : bg;
+
+                // In extended palette mode, the tile can select from multiple 256-color palettes
+                if (!extPalettes[slot]) continue;
+                pal = &extPalettes[slot][((tile & 0xF000) >> 12) * 512];
+            }
+            else // Standard palette
+            {
+                pal = palette;
+            }
+
+            // Find the palette index for the right pixel of the tile
+            // The tile can be vertically or horizontally flipped
+            uint8_t *index = memory->getMappedVram(bgVramAddr + charBase + (tile & 0x03FF) * 64);
+            if (!index) continue;
+            index += ((tile & BIT(11)) ? (7 - rotscaleY % 8) : (rotscaleY % 8)) * 8;
+            index += ((tile & BIT(10)) ? (7 - rotscaleX % 8) : (rotscaleX % 8));
+
+            // Draw a pixel
+            if (*index)
+                layers[bg][line * 256 + i] = U8TO16(pal, *index * 2) | BIT(15);
+        }
     }
 }
 

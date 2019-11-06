@@ -35,8 +35,9 @@ class Gpu2D
 
         void setExtPalette(unsigned int slot, uint8_t *data) { extPalettes[slot] = data; }
 
-        uint8_t readDispCnt(unsigned int byte)                { return dispCnt   >> (byte * 8); }
-        uint8_t readBgCnt(unsigned int bg, unsigned int byte) { return bgCnt[bg] >> (byte * 8); }
+        uint8_t readDispCnt(unsigned int byte)                { return dispCnt      >> (byte * 8); }
+        uint8_t readBgCnt(unsigned int bg, unsigned int byte) { return bgCnt[bg]    >> (byte * 8); }
+        uint8_t readMasterBright(unsigned int byte)           { return masterBright >> (byte * 8); }
 
         void writeDispCnt(unsigned int byte, uint8_t value);
         void writeBgCnt(unsigned int bg, unsigned int byte, uint8_t value);
