@@ -714,6 +714,38 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x400001D: engineA->writeBgHOfs(3, address + i - 0x400001C, data);    break; // BG3HOFS (engine A)
             case 0x400001E:
             case 0x400001F: engineA->writeBgVOfs(3, address + i - 0x400001E, data);    break; // BG3VOFS (engine A)
+            case 0x4000020:
+            case 0x4000021: engineA->writeBgPA(2, address + i - 0x4000020, data);      break; // BG2PA (engine A)
+            case 0x4000022:
+            case 0x4000023: engineA->writeBgPB(2, address + i - 0x4000022, data);      break; // BG2PB (engine A)
+            case 0x4000024:
+            case 0x4000025: engineA->writeBgPC(2, address + i - 0x4000024, data);      break; // BG2PC (engine A)
+            case 0x4000026:
+            case 0x4000027: engineA->writeBgPD(2, address + i - 0x4000026, data);      break; // BG2PD (engine A)
+            case 0x4000028:
+            case 0x4000029:
+            case 0x400002A:
+            case 0x400002B: engineA->writeBgX(2, address + i - 0x4000028, data);       break; // BG2X (engine A)
+            case 0x400002C:
+            case 0x400002D:
+            case 0x400002E:
+            case 0x400002F: engineA->writeBgY(2, address + i - 0x400002C, data);       break; // BG2Y (engine A)
+            case 0x4000030:
+            case 0x4000031: engineA->writeBgPA(3, address + i - 0x4000030, data);      break; // BG3PA (engine A)
+            case 0x4000032:
+            case 0x4000033: engineA->writeBgPB(3, address + i - 0x4000032, data);      break; // BG3PB (engine A)
+            case 0x4000034:
+            case 0x4000035: engineA->writeBgPC(3, address + i - 0x4000034, data);      break; // BG3PC (engine A)
+            case 0x4000036:
+            case 0x4000037: engineA->writeBgPD(3, address + i - 0x4000036, data);      break; // BG3PD (engine A)
+            case 0x4000038:
+            case 0x4000039:
+            case 0x400003A:
+            case 0x400003B: engineA->writeBgX(3, address + i - 0x4000038, data);       break; // BG3X (engine A)
+            case 0x400003C:
+            case 0x400003D:
+            case 0x400003E:
+            case 0x400003F: engineA->writeBgY(3, address + i - 0x400003C, data);       break; // BG3Y (engine A)
             case 0x400006C:
             case 0x400006D: engineA->writeMasterBright(address + i - 0x400006C, data); break; // MASTER_BRIGHT (engine A)
             case 0x40000B0:
@@ -891,6 +923,38 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x400101D: engineB->writeBgHOfs(3, address + i - 0x400101C, data);    break; // BG3HOFS (engine B)
             case 0x400101E:
             case 0x400101F: engineB->writeBgVOfs(3, address + i - 0x400101E, data);    break; // BG3VOFS (engine B)
+            case 0x4001020:
+            case 0x4001021: engineB->writeBgPA(2, address + i - 0x4001020, data);      break; // BG2PA (engine B)
+            case 0x4001022:
+            case 0x4001023: engineB->writeBgPB(2, address + i - 0x4001022, data);      break; // BG2PB (engine B)
+            case 0x4001024:
+            case 0x4001025: engineB->writeBgPC(2, address + i - 0x4001024, data);      break; // BG2PC (engine B)
+            case 0x4001026:
+            case 0x4001027: engineB->writeBgPD(2, address + i - 0x4001026, data);      break; // BG2PD (engine B)
+            case 0x4001028:
+            case 0x4001029:
+            case 0x400102A:
+            case 0x400102B: engineB->writeBgX(2, address + i - 0x4001028, data);       break; // BG2X (engine B)
+            case 0x400102C:
+            case 0x400102D:
+            case 0x400102E:
+            case 0x400102F: engineB->writeBgY(2, address + i - 0x400102C, data);       break; // BG2Y (engine B)
+            case 0x4001030:
+            case 0x4001031: engineB->writeBgPA(3, address + i - 0x4001030, data);      break; // BG3PA (engine B)
+            case 0x4001032:
+            case 0x4001033: engineB->writeBgPB(3, address + i - 0x4001032, data);      break; // BG3PB (engine B)
+            case 0x4001034:
+            case 0x4001035: engineB->writeBgPC(3, address + i - 0x4001034, data);      break; // BG3PC (engine B)
+            case 0x4001036:
+            case 0x4001037: engineB->writeBgPD(3, address + i - 0x4001036, data);      break; // BG3PD (engine B)
+            case 0x4001038:
+            case 0x4001039:
+            case 0x400103A:
+            case 0x400103B: engineB->writeBgX(3, address + i - 0x4001038, data);       break; // BG3X (engine B)
+            case 0x400103C:
+            case 0x400103D:
+            case 0x400103E:
+            case 0x400103F: engineB->writeBgY(3, address + i - 0x400103C, data);       break; // BG3Y (engine B)
             case 0x400106C:
             case 0x400106D: engineB->writeMasterBright(address + i - 0x400106C, data); break; // MASTER_BRIGHT (engine B)
 

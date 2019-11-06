@@ -43,6 +43,12 @@ class Gpu2D
         void writeBgCnt(unsigned int bg, unsigned int byte, uint8_t value);
         void writeBgHOfs(unsigned int bg, unsigned int byte, uint8_t value);
         void writeBgVOfs(unsigned int bg, unsigned int byte, uint8_t value);
+        void writeBgX(unsigned int bg, unsigned int byte, uint8_t value);
+        void writeBgY(unsigned int bg, unsigned int byte, uint8_t value);
+        void writeBgPA(unsigned int bg, unsigned int byte, uint8_t value);
+        void writeBgPB(unsigned int bg, unsigned int byte, uint8_t value);
+        void writeBgPC(unsigned int bg, unsigned int byte, uint8_t value);
+        void writeBgPD(unsigned int bg, unsigned int byte, uint8_t value);
         void writeMasterBright(unsigned int byte, uint8_t value);
 
     private:
@@ -53,6 +59,12 @@ class Gpu2D
         uint16_t bgCnt[4] = {};
         uint16_t bgHOfs[4] = {};
         uint16_t bgVOfs[4] = {};
+        uint32_t bgX[2] = {};
+        uint32_t bgY[2] = {};
+        uint16_t bgPA[2] = {};
+        uint16_t bgPB[2] = {};
+        uint16_t bgPC[2] = {};
+        uint16_t bgPD[2] = {};
         uint16_t masterBright = 0;
 
         uint8_t *palette, *oam;

@@ -324,11 +324,31 @@ void Gpu2D::drawAffine(unsigned int bg, unsigned int line)
 
 void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
 {
+    // Get the rotscale reference points and convert them to floats
+    uint32_t rawRefers[2] = { bgX[bg - 2], bgY[bg - 2] };
+    float refers[2];
+    for (int j = 0; j < 2; j++)
+    {
+        refers[j] = (float)(rawRefers[j] & 0x000000FF) / 0x100; // Fractional
+        refers[j] += (rawRefers[j] & 0x07FFFF00) >> 8; // Integer
+        if (rawRefers[j] & BIT(27)) refers[j] -= 0x80000; // Sign
+    }
+
+    // Get the rotscale parameters and convert them to floats
+    uint16_t rawParams[4] = { bgPA[bg - 2], bgPB[bg - 2], bgPC[bg - 2], bgPD[bg - 2] };
+    float params[4];
+    for (int j = 0; j < 4; j++)
+    {
+        params[j] = (float)(rawParams[j] & 0x00FF) / 0x100; // Fractional
+        params[j] += (rawParams[j] & 0x7F00) >> 8; // Integer
+        if (rawParams[j] & BIT(15)) params[j] -= 0x80; // Sign
+    }
+
     if (bgCnt[bg] & BIT(7)) // Bitmap
     {
         // Get information about the bitmap data
         uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x4000;
-        unsigned int sizeX, sizeY;
+        int sizeX, sizeY;
         switch ((bgCnt[bg] & 0xC000) >> 14)
         {
             case 0: sizeX = 128; sizeY = 128; break;
@@ -341,24 +361,26 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
         uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase);
         if (!data) return;
 
+        // Calculate the scroll values
+        int scrollX = refers[0] + (params[0] * (sizeX / 2) + params[1] * (sizeY / 2));
+        int scrollY = refers[1] + (params[2] * (sizeX / 2) + params[3] * (sizeY / 2));
+
         if (bgCnt[bg] & BIT(2)) // Direct color bitmap
         {
             // Draw a line
             for (int i = 0; i < 256; i++)
             {
-                // Get the rotscaled X coordinate relative to the background
-                int rotscaleX = i;
-
-                // Get the rotscaled Y coordinate relative to the background
-                int rotscaleY = line;
+                // Calculate the rotscaled coordinates relative to the background
+                int rotscaleX = params[0] * (i - sizeX / 2) + params[1] * ((int)line - sizeX / 2) + scrollX;
+                int rotscaleY = params[2] * (i - sizeY / 2) + params[3] * ((int)line - sizeY / 2) + scrollY;
 
                 // Handle display area overflow
-                if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
+                if (bgCnt[bg] & BIT(13)) // Wraparound
                 {
                     rotscaleX %= sizeX;
                     rotscaleY %= sizeY;
                 }
-                else if (rotscaleX >= sizeX || rotscaleY >= sizeY) // Transparent
+                else if (rotscaleX < 0 || rotscaleX >= sizeX || rotscaleY < 0 || rotscaleY >= sizeY) // Transparent
                 {
                     continue;
                 }
@@ -372,19 +394,17 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
             // Draw a line
             for (int i = 0; i < 256; i++)
             {
-                // Get the rotscaled X coordinate relative to the background
-                int rotscaleX = i;
-
-                // Get the rotscaled Y coordinate relative to the background
-                int rotscaleY = line;
+                // Calculate the rotscaled coordinates relative to the background
+                int rotscaleX = params[0] * (i - sizeX / 2) + params[1] * ((int)line - sizeX / 2) + scrollX;
+                int rotscaleY = params[2] * (i - sizeY / 2) + params[3] * ((int)line - sizeY / 2) + scrollY;
 
                 // Handle display area overflow
-                if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
+                if (bgCnt[bg] & BIT(13)) // Wraparound
                 {
                     rotscaleX %= sizeX;
                     rotscaleY %= sizeY;
                 }
-                else if (rotscaleX >= sizeX || rotscaleY >= sizeY) // Transparent
+                else if (rotscaleX < 0 || rotscaleX >= sizeX || rotscaleY < 0 || rotscaleY >= sizeY) // Transparent
                 {
                     continue;
                 }
@@ -400,20 +420,22 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
         // Get information about the tile data
         uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
         uint32_t charBase   = ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
-        unsigned int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
+        int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
 
         // Get the tile data
         uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase);
         if (!data) return;
 
+        // Calculate the scroll values
+        int scrollX = refers[0] + params[0] * (size / 2) + params[1] * (size / 2);
+        int scrollY = refers[1] + params[2] * (size / 2) + params[3] * (size / 2);
+
         // Draw a line
         for (int i = 0; i <= 256; i++)
         {
-            // Get the rotscaled X coordinate relative to the background
-            int rotscaleX = i;
-
-            // Get the rotscaled Y coordinate relative to the background
-            int rotscaleY = line;
+            // Calculate the rotscaled coordinates relative to the background
+            int rotscaleX = params[0] * (i - size / 2) + params[1] * ((int)line - size / 2) + scrollX;
+            int rotscaleY = params[2] * (i - size / 2) + params[3] * ((int)line - size / 2) + scrollY;
 
             // Handle display area overflow
             if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
@@ -421,7 +443,7 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
                 rotscaleX %= size;
                 rotscaleY %= size;
             }
-            else if (rotscaleX >= size || rotscaleY >= size) // Transparent
+            else if (rotscaleX < 0 || rotscaleX >= size || rotscaleY < 0 || rotscaleY >= size) // Transparent
             {
                 continue;
             }
@@ -433,13 +455,9 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
             uint8_t *pal;
             if (dispCnt & BIT(30)) // Extended palette
             {
-                // Determine the extended palette slot
-                // Backgrounds 0 and 1 can alternatively use slots 2 and 3
-                unsigned int slot = (bg < 2 && (bgCnt[bg] & BIT(13))) ? (bg + 2) : bg;
-
                 // In extended palette mode, the tile can select from multiple 256-color palettes
-                if (!extPalettes[slot]) continue;
-                pal = &extPalettes[slot][((tile & 0xF000) >> 12) * 512];
+                if (!extPalettes[bg]) continue;
+                pal = &extPalettes[bg][((tile & 0xF000) >> 12) * 512];
             }
             else // Standard palette
             {
@@ -588,12 +606,12 @@ void Gpu2D::drawObjects(unsigned int line)
 
                 for (int j = 0; j < width2; j++)
                 {
-                    // Get the rotscaled X coordinate relative to the sprite
-                    int rotscaleX = (j - width2 / 2) * params[0] + (spriteY - height2 / 2) * params[1] + width / 2;
+                    // Calculate the rotscaled X coordinate relative to the sprite
+                    int rotscaleX = params[0] * (j - width2 / 2) + params[1] * (spriteY - height2 / 2) + width / 2;
                     if (rotscaleX < 0 || rotscaleX >= width) continue;
 
-                    // Get the rotscaled Y coordinate relative to the sprite
-                    int rotscaleY = (j - width2 / 2) * params[2] + (spriteY - height2 / 2) * params[3] + height / 2;
+                    // Calculate the rotscaled Y coordinate relative to the sprite
+                    int rotscaleY = params[2] * (j - width2 / 2) + params[3] * (spriteY - height2 / 2) + height / 2;
                     if (rotscaleY < 0 || rotscaleY >= height) continue;
 
                     // Get the appropriate palette index from the tile for the current position
@@ -614,12 +632,12 @@ void Gpu2D::drawObjects(unsigned int line)
 
                 for (int j = 0; j < width2; j++)
                 {
-                    // Get the rotscaled X coordinate relative to the sprite
-                    int rotscaleX = (j - width2 / 2) * params[0] + (spriteY - height2 / 2) * params[1] + width / 2;
+                    // Calculate the rotscaled X coordinate relative to the sprite
+                    int rotscaleX = params[0] * (j - width2 / 2) + params[1] * (spriteY - height2 / 2) + width / 2;
                     if (rotscaleX < 0 || rotscaleX >= width) continue;
 
-                    // Get the rotscaled Y coordinate relative to the sprite
-                    int rotscaleY = (j - width2 / 2) * params[2] + (spriteY - height2 / 2) * params[3] + height / 2;
+                    // Calculate the rotscaled Y coordinate relative to the sprite
+                    int rotscaleY = params[2] * (j - width2 / 2) + params[3] * (spriteY - height2 / 2) + height / 2;
                     if (rotscaleY < 0 || rotscaleY >= height) continue;
 
                     // Get the appropriate palette index from the tile for the current position
@@ -722,6 +740,44 @@ void Gpu2D::writeBgVOfs(unsigned int bg, unsigned int byte, uint8_t value)
     // Write to one of the BGVOFS registers
     uint16_t mask = 0x01FF & (0xFF << (byte * 8));
     bgVOfs[bg] = (bgVOfs[bg] & ~mask) | ((value << (byte * 8)) & mask);
+}
+
+void Gpu2D::writeBgX(unsigned int bg, unsigned int byte, uint8_t value)
+{
+    // Write to one of the BGX registers
+    uint32_t mask = 0x0FFFFFFF & (0xFF << (byte * 8));
+    bgX[bg - 2] = (bgX[bg - 2] & ~mask) | ((value << (byte * 8)) & mask);
+}
+
+void Gpu2D::writeBgY(unsigned int bg, unsigned int byte, uint8_t value)
+{
+    // Write to one of the BGY registers
+    uint32_t mask = 0x0FFFFFFF & (0xFF << (byte * 8));
+    bgY[bg - 2] = (bgY[bg - 2] & ~mask) | ((value << (byte * 8)) & mask);
+}
+
+void Gpu2D::writeBgPA(unsigned int bg, unsigned int byte, uint8_t value)
+{
+    // Write to one of the BGPA registers
+    bgPA[bg - 2] = (bgPA[bg - 2] & ~(0xFF << (byte * 8))) | (value << (byte * 8));
+}
+
+void Gpu2D::writeBgPB(unsigned int bg, unsigned int byte, uint8_t value)
+{
+    // Write to one of the BGPB registers
+    bgPB[bg - 2] = (bgPB[bg - 2] & ~(0xFF << (byte * 8))) | (value << (byte * 8));
+}
+
+void Gpu2D::writeBgPC(unsigned int bg, unsigned int byte, uint8_t value)
+{
+    // Write to one of the BGPC registers
+    bgPC[bg - 2] = (bgPC[bg - 2] & ~(0xFF << (byte * 8))) | (value << (byte * 8));
+}
+
+void Gpu2D::writeBgPD(unsigned int bg, unsigned int byte, uint8_t value)
+{
+    // Write to one of the BGPD registers
+    bgPD[bg - 2] = (bgPD[bg - 2] & ~(0xFF << (byte * 8))) | (value << (byte * 8));
 }
 
 void Gpu2D::writeMasterBright(unsigned int byte, uint8_t value)
