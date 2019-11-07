@@ -27,6 +27,7 @@ class Cp15;
 class Dma;
 class Gpu;
 class Gpu2D;
+class Gpu3D;
 class Input;
 class Interpreter;
 class Ipc;
@@ -38,8 +39,8 @@ class Timers;
 class Memory
 {
     public:
-        Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu,
-               Gpu2D *engineA, Gpu2D *engineB, Input *input, Interpreter *arm9, Interpreter *arm7,
+        Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA,
+               Gpu2D *engineB, Gpu3D *gpu3D, Input *input, Interpreter *arm9, Interpreter *arm7,
                Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Timers *timers9, Timers *timers7);
 
         template <typename T> T read(bool arm9, uint32_t address);
@@ -83,6 +84,7 @@ class Memory
         Dma *dma9, *dma7;
         Gpu *gpu;
         Gpu2D *engineA, *engineB;
+        Gpu3D *gpu3D;
         Input *input;
         Interpreter *arm9, *arm7;
         Ipc *ipc;

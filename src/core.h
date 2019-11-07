@@ -29,6 +29,7 @@
 #include "dma.h"
 #include "gpu.h"
 #include "gpu_2d.h"
+#include "gpu_3d.h"
 #include "input.h"
 #include "interpreter.h"
 #include "ipc.h"
@@ -69,6 +70,7 @@ class Core
         Dma dma9, dma7;
         Gpu gpu;
         Gpu2D engineA, engineB;
+        Gpu3D gpu3D;
         Input input;
         Interpreter arm9, arm7;
         Ipc ipc;

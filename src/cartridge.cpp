@@ -149,6 +149,7 @@ void Cartridge::writeAuxSpiData(uint8_t value)
     if (auxWriteCount == 0)
     {
         // On the first write, set the command byte
+        if (value == 0) return;
         auxCommand = value;
         auxAddress = 0;
         auxSpiData = 0;

@@ -27,6 +27,7 @@
 #include "dma.h"
 #include "gpu.h"
 #include "gpu_2d.h"
+#include "gpu_3d.h"
 #include "input.h"
 #include "interpreter.h"
 #include "ipc.h"
@@ -35,11 +36,11 @@
 #include "spi.h"
 #include "timers.h"
 
-Memory::Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu,
-               Gpu2D *engineA, Gpu2D *engineB, Input *input, Interpreter *arm9, Interpreter *arm7,
+Memory::Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA,
+               Gpu2D *engineB, Gpu3D *gpu3D, Input *input, Interpreter *arm9, Interpreter *arm7,
                Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Timers *timers9, Timers *timers7):
-               cart9(cart9), cart7(cart7), cp15(cp15), dma9(dma9), dma7(dma7), gpu(gpu),
-               engineA(engineA), engineB(engineB), input(input), arm9(arm9), arm7(arm7),
+               cart9(cart9), cart7(cart7), cp15(cp15), dma9(dma9), dma7(dma7), gpu(gpu), engineA(engineA),
+               engineB(engineB), gpu3D(gpu3D), input(input), arm9(arm9), arm7(arm7),
                ipc(ipc), math(math), rtc(rtc), spi(spi), timers9(timers9), timers7(timers7)
 {
     // Attempt to load the ARM9 BIOS
@@ -499,6 +500,10 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x4000300: data = arm9->readPostFlg();                                break; // POSTFLG (ARM9)
             case 0x4000304:
             case 0x4000305: data = gpu->readPowCnt1(address + i - 0x4000214);          break; // POWCNT1
+            case 0x4000600:
+            case 0x4000601:
+            case 0x4000602:
+            case 0x4000603: data = gpu3D->readGxStat(address + i - 0x4000600);         break; // GXSTAT
             case 0x4001000:
             case 0x4001001:
             case 0x4001002:
@@ -895,6 +900,222 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x4000300: arm9->writePostFlg(data);                                  break; // POSTFLG (ARM9)
             case 0x4000304:
             case 0x4000305: gpu->writePowCnt1(address + i - 0x4000214, data);          break; // POWCNT1
+            case 0x4000400:
+            case 0x4000401:
+            case 0x4000402:
+            case 0x4000403: gpu3D->writeGxFifo(address + i - 0x4000400, data);         break; // GXFIFO
+            case 0x4000404:
+            case 0x4000405:
+            case 0x4000406:
+            case 0x4000407: gpu3D->writeGxFifo(address + i - 0x4000404, data);         break; // GXFIFO
+            case 0x4000408:
+            case 0x4000409:
+            case 0x400040A:
+            case 0x400040B: gpu3D->writeGxFifo(address + i - 0x4000408, data);         break; // GXFIFO
+            case 0x400040C:
+            case 0x400040D:
+            case 0x400040E:
+            case 0x400040F: gpu3D->writeGxFifo(address + i - 0x400040C, data);         break; // GXFIFO
+            case 0x4000410:
+            case 0x4000411:
+            case 0x4000412:
+            case 0x4000413: gpu3D->writeGxFifo(address + i - 0x4000410, data);         break; // GXFIFO
+            case 0x4000414:
+            case 0x4000415:
+            case 0x4000416:
+            case 0x4000417: gpu3D->writeGxFifo(address + i - 0x4000414, data);         break; // GXFIFO
+            case 0x4000418:
+            case 0x4000419:
+            case 0x400041A:
+            case 0x400041B: gpu3D->writeGxFifo(address + i - 0x4000418, data);         break; // GXFIFO
+            case 0x400041C:
+            case 0x400041D:
+            case 0x400041E:
+            case 0x400041F: gpu3D->writeGxFifo(address + i - 0x400041C, data);         break; // GXFIFO
+            case 0x4000420:
+            case 0x4000421:
+            case 0x4000422:
+            case 0x4000423: gpu3D->writeGxFifo(address + i - 0x4000420, data);         break; // GXFIFO
+            case 0x4000424:
+            case 0x4000425:
+            case 0x4000426:
+            case 0x4000427: gpu3D->writeGxFifo(address + i - 0x4000424, data);         break; // GXFIFO
+            case 0x4000428:
+            case 0x4000429:
+            case 0x400042A:
+            case 0x400042B: gpu3D->writeGxFifo(address + i - 0x4000428, data);         break; // GXFIFO
+            case 0x400042C:
+            case 0x400042D:
+            case 0x400042E:
+            case 0x400042F: gpu3D->writeGxFifo(address + i - 0x400042C, data);         break; // GXFIFO
+            case 0x4000430:
+            case 0x4000431:
+            case 0x4000432:
+            case 0x4000433: gpu3D->writeGxFifo(address + i - 0x4000430, data);         break; // GXFIFO
+            case 0x4000434:
+            case 0x4000435:
+            case 0x4000436:
+            case 0x4000437: gpu3D->writeGxFifo(address + i - 0x4000434, data);         break; // GXFIFO
+            case 0x4000438:
+            case 0x4000439:
+            case 0x400043A:
+            case 0x400043B: gpu3D->writeGxFifo(address + i - 0x4000438, data);         break; // GXFIFO
+            case 0x400043C:
+            case 0x400043D:
+            case 0x400043E:
+            case 0x400043F: gpu3D->writeGxFifo(address + i - 0x400043C, data);         break; // GXFIFO
+            case 0x4000440:
+            case 0x4000441:
+            case 0x4000442:
+            case 0x4000443: gpu3D->writeMtxMode(address + i - 0x4000440, data);        break; // MTX_MODE
+            case 0x4000444:
+            case 0x4000445:
+            case 0x4000446:
+            case 0x4000447: gpu3D->writeMtxPush(address + i - 0x4000444, data);        break; // MTX_PUSH
+            case 0x4000448:
+            case 0x4000449:
+            case 0x400044A:
+            case 0x400044B: gpu3D->writeMtxPop(address + i - 0x4000448, data);         break; // MTX_POP
+            case 0x400044C:
+            case 0x400044D:
+            case 0x400044E:
+            case 0x400044F: gpu3D->writeMtxStore(address + i - 0x400044C, data);       break; // MTX_STORE
+            case 0x4000450:
+            case 0x4000451:
+            case 0x4000452:
+            case 0x4000453: gpu3D->writeMtxRestore(address + i - 0x4000450, data);     break; // MTX_RESTORE
+            case 0x4000454:
+            case 0x4000455:
+            case 0x4000456:
+            case 0x4000457: gpu3D->writeMtxIdentity(address + i - 0x4000454, data);    break; // MTX_IDENTITY
+            case 0x4000458:
+            case 0x4000459:
+            case 0x400045A:
+            case 0x400045B: gpu3D->writeMtxLoad44(address + i - 0x4000458, data);      break; // MTX_LOAD_4x4
+            case 0x400045C:
+            case 0x400045D:
+            case 0x400045E:
+            case 0x400045F: gpu3D->writeMtxLoad43(address + i - 0x400045C, data);      break; // MTX_LOAD_4x3
+            case 0x4000460:
+            case 0x4000461:
+            case 0x4000462:
+            case 0x4000463: gpu3D->writeMtxMult44(address + i - 0x4000460, data);      break; // MTX_MULT_4x4
+            case 0x4000464:
+            case 0x4000465:
+            case 0x4000466:
+            case 0x4000467: gpu3D->writeMtxMult43(address + i - 0x4000464, data);      break; // MTX_MULT_4x3
+            case 0x4000468:
+            case 0x4000469:
+            case 0x400046A:
+            case 0x400046B: gpu3D->writeMtxMult33(address + i - 0x4000468, data);      break; // MTX_MULT_3x3
+            case 0x400046C:
+            case 0x400046D:
+            case 0x400046E:
+            case 0x400046F: gpu3D->writeMtxScale(address + i - 0x400046C, data);       break; // MTX_SCALE
+            case 0x4000470:
+            case 0x4000471:
+            case 0x4000472:
+            case 0x4000473: gpu3D->writeMtxTrans(address + i - 0x4000470, data);       break; // MTX_TRANS
+            case 0x4000480:
+            case 0x4000481:
+            case 0x4000482:
+            case 0x4000483: gpu3D->writeColor(address + i - 0x4000480, data);          break; // COLOR
+            case 0x4000484:
+            case 0x4000485:
+            case 0x4000486:
+            case 0x4000487: gpu3D->writeNormal(address + i - 0x4000484, data);         break; // NORMAL
+            case 0x4000488:
+            case 0x4000489:
+            case 0x400048A:
+            case 0x400048B: gpu3D->writeTexCoord(address + i - 0x4000488, data);       break; // TEXCOORD
+            case 0x400048C:
+            case 0x400048D:
+            case 0x400048E:
+            case 0x400048F: gpu3D->writeVtx16(address + i - 0x400048C, data);          break; // VTX_16
+            case 0x4000490:
+            case 0x4000491:
+            case 0x4000492:
+            case 0x4000493: gpu3D->writeVtx10(address + i - 0x4000490, data);          break; // VTX_10
+            case 0x4000494:
+            case 0x4000495:
+            case 0x4000496:
+            case 0x4000497: gpu3D->writeVtxXY(address + i - 0x4000494, data);          break; // VTX_XY
+            case 0x4000498:
+            case 0x4000499:
+            case 0x400049A:
+            case 0x400049B: gpu3D->writeVtxXZ(address + i - 0x4000498, data);          break; // VTX_XZ
+            case 0x400049C:
+            case 0x400049D:
+            case 0x400049E:
+            case 0x400049F: gpu3D->writeVtxYZ(address + i - 0x400049C, data);          break; // VTX_YZ
+            case 0x40004A0:
+            case 0x40004A1:
+            case 0x40004A2:
+            case 0x40004A3: gpu3D->writeVtxDiff(address + i - 0x40004A0, data);        break; // VTX_DIFF
+            case 0x40004A4:
+            case 0x40004A5:
+            case 0x40004A6:
+            case 0x40004A7: gpu3D->writePolygonAttr(address + i - 0x40004A4, data);    break; // POLYGON_ATTR
+            case 0x40004A8:
+            case 0x40004A9:
+            case 0x40004AA:
+            case 0x40004AB: gpu3D->writeTexImageParam(address + i - 0x40004A8, data);  break; // TEXIMAGE_PARAM
+            case 0x40004AC:
+            case 0x40004AD:
+            case 0x40004AE:
+            case 0x40004AF: gpu3D->writePlttBase(address + i - 0x40004AC, data);       break; // PLTT_BASE
+            case 0x40004C0:
+            case 0x40004C1:
+            case 0x40004C2:
+            case 0x40004C3: gpu3D->writeDifAmb(address + i - 0x40004C0, data);         break; // DIF_AMB
+            case 0x40004C4:
+            case 0x40004C5:
+            case 0x40004C6:
+            case 0x40004C7: gpu3D->writeSpeEmi(address + i - 0x40004C4, data);         break; // SPE_EMI
+            case 0x40004C8:
+            case 0x40004C9:
+            case 0x40004CA:
+            case 0x40004CB: gpu3D->writeLightVector(address + i - 0x40004C8, data);    break; // LIGHT_VECTOR
+            case 0x40004CC:
+            case 0x40004CD:
+            case 0x40004CE:
+            case 0x40004CF: gpu3D->writeLightColor(address + i - 0x40004CC, data);     break; // LIGHT_COLOR
+            case 0x40004D0:
+            case 0x40004D1:
+            case 0x40004D2:
+            case 0x40004D3: gpu3D->writeShininess(address + i - 0x40004D0, data);      break; // SHININESS
+            case 0x4000500:
+            case 0x4000501:
+            case 0x4000502:
+            case 0x4000503: gpu3D->writeBeginVtxs(address + i - 0x4000500, data);      break; // BEGIN_VTXS
+            case 0x4000504:
+            case 0x4000505:
+            case 0x4000506:
+            case 0x4000507: gpu3D->writeEndVtxs(address + i - 0x4000504, data);        break; // END_VTXS
+            case 0x4000540:
+            case 0x4000541:
+            case 0x4000542:
+            case 0x4000543: gpu3D->writeSwapBuffers(address + i - 0x4000540, data);    break; // SWAP_BUFFERS
+            case 0x4000580:
+            case 0x4000581:
+            case 0x4000582:
+            case 0x4000583: gpu3D->writeViewport(address + i - 0x4000580, data);       break; // VIEWPORT
+            case 0x40005C0:
+            case 0x40005C1:
+            case 0x40005C2:
+            case 0x40005C3: gpu3D->writeBoxTest(address + i - 0x40005C0, data);        break; // BOX_TEST
+            case 0x40005C4:
+            case 0x40005C5:
+            case 0x40005C6:
+            case 0x40005C7: gpu3D->writePosTest(address + i - 0x40005C4, data);        break; // POS_TEST
+            case 0x40005C8:
+            case 0x40005C9:
+            case 0x40005CA:
+            case 0x40005CB: gpu3D->writeVecTest(address + i - 0x40005C8, data);        break; // VEC_TEST
+            case 0x4000600:
+            case 0x4000601:
+            case 0x4000602:
+            case 0x4000603: gpu3D->writeGxStat(address + i - 0x4000600, data);         break; // GXSTAT
             case 0x4001000:
             case 0x4001001:
             case 0x4001002:

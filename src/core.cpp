@@ -23,10 +23,11 @@
 #include "core.h"
 #include "defines.h"
 
-Core::Core(): cart9(&arm9, &memory), cart7(&arm7, &memory), cp15(&arm9), dma9(&cart9, &arm9, &memory), dma7(&cart7, &arm7, &memory),
-              gpu(&engineA, &engineB, &arm9, &arm7), engineA(true, &memory), engineB(false, &memory), arm9(&cp15, &memory),
-              arm7(&memory), ipc(&arm9, &arm7), memory(&cart9, &cart7, &cp15, &dma9, &dma7, &gpu, &engineA, &engineB, &input,
-              &arm9, &arm7, &ipc, &math, &rtc, &spi, &timers9, &timers7), spi(&arm7, firmware), timers9(&arm9), timers7(&arm7)
+Core::Core(): cart9(&arm9, &memory), cart7(&arm7, &memory), cp15(&arm9), dma9(&cart9, &arm9, &memory),
+              dma7(&cart7, &arm7, &memory), gpu(&engineA, &engineB, &arm9, &arm7), engineA(true, &memory),
+              engineB(false, &memory), gpu3D(&arm9), arm9(&cp15, &memory), arm7(&memory), ipc(&arm9, &arm7),
+              memory(&cart9, &cart7, &cp15, &dma9, &dma7, &gpu, &engineA, &engineB, &gpu3D, &input, &arm9, &arm7,
+              &ipc, &math, &rtc, &spi, &timers9, &timers7), spi(&arm7, firmware), timers9(&arm9), timers7(&arm7)
 {
     // Attempt to load the firmware
     FILE *firmwareFile = fopen("firmware.bin", "rb");
@@ -152,6 +153,7 @@ void Core::runFrame()
                 if (arm9.shouldRun())       arm9.runCycle();
                 if (dma9.shouldTransfer())  dma9.transfer();
                 if (timers9.shouldTick())   timers9.tick();
+                if (gpu3D.shouldRun())      gpu3D.runCycle();
             }
 
             // Run the ARM7
