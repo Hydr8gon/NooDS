@@ -23,13 +23,14 @@
 #include <cstdint>
 
 class Gpu2D;
+class Gpu3DRenderer;
 class Interpreter;
 
 class Gpu
 {
     public:
-        Gpu(Gpu2D *engineA, Gpu2D *engineB, Interpreter *arm9, Interpreter *arm7):
-            engineA(engineA), engineB(engineB), arm9(arm9), arm7(arm7) {}
+        Gpu(Gpu2D *engineA, Gpu2D *engineB, Gpu3DRenderer *gpu3DRenderer, Interpreter *arm9, Interpreter *arm7):
+            engineA(engineA), engineB(engineB), gpu3DRenderer(gpu3DRenderer), arm9(arm9), arm7(arm7) {}
 
         void scanline256();
         void scanline355();
@@ -53,6 +54,7 @@ class Gpu
         uint16_t powCnt1 = 0;
 
         Gpu2D *engineA, *engineB;
+        Gpu3DRenderer *gpu3DRenderer;
         Interpreter *arm9, *arm7;
 };
 

@@ -22,14 +22,20 @@
 
 #include <cstdint>
 
+#include "defines.h"
+
 class Memory;
+class Gpu3DRenderer;
 
 class Gpu2D
 {
     public:
-        Gpu2D(bool engineA, Memory *memory);
+        Gpu2D(Memory *memory);
+        Gpu2D(Gpu3DRenderer *gpu3DRenderer, Memory *memory);
 
         void drawScanline(unsigned int line);
+
+        bool is3DEnabled() { return dispCnt & BIT(3); }
 
         uint16_t *getFramebuffer() { return framebuffer; }
 
@@ -59,19 +65,19 @@ class Gpu2D
         uint16_t bgCnt[4] = {};
         uint16_t bgHOfs[4] = {};
         uint16_t bgVOfs[4] = {};
-        uint32_t bgX[2] = {};
-        uint32_t bgY[2] = {};
-        uint16_t bgPA[2] = {};
-        uint16_t bgPB[2] = {};
-        uint16_t bgPC[2] = {};
-        uint16_t bgPD[2] = {};
+        int32_t bgX[2] = {};
+        int32_t bgY[2] = {};
+        int16_t bgPA[2] = {};
+        int16_t bgPB[2] = {};
+        int16_t bgPC[2] = {};
+        int16_t bgPD[2] = {};
         uint16_t masterBright = 0;
 
         uint8_t *palette, *oam;
         uint32_t bgVramAddr, objVramAddr;
         uint8_t *extPalettes[5] = {};
 
-        bool engineA;
+        Gpu3DRenderer *gpu3DRenderer;
         Memory *memory;
 
         void drawText(unsigned int bg, unsigned int line);

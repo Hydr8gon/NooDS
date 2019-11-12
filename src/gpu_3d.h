@@ -27,10 +27,33 @@
 
 class Interpreter;
 
+struct Matrix
+{
+    int data[4 * 4] =
+    {
+        1 << 12, 0 << 12, 0 << 12, 0 << 12,
+        0 << 12, 1 << 12, 0 << 12, 0 << 12,
+        0 << 12, 0 << 12, 1 << 12, 0 << 12,
+        0 << 12, 0 << 12, 0 << 12, 1 << 12
+    };
+};
+
+struct Vertex
+{
+    int x = 0, y = 0, z = 0, w = 1 << 12;
+    uint16_t color = 0x7FFF;
+};
+
+struct Polygon
+{
+    unsigned int size = 0;
+    Vertex *vertices = nullptr;
+};
+
 struct Entry
 {
-    uint8_t command;
-    uint32_t param;
+    uint8_t command = 0;
+    uint32_t param = 0;
 };
 
 class Gpu3D
@@ -41,6 +64,9 @@ class Gpu3D
         void runCycle();
 
         bool shouldRun() { return gxStat & BIT(27); }
+
+        Polygon     *getPolygons()     { return polygonsOut;     }
+        unsigned int getPolygonCount() { return polygonCountOut; }
 
         uint8_t readGxStat(unsigned int byte) { return gxStat >> (byte * 8); }
 
@@ -85,9 +111,24 @@ class Gpu3D
         void writeGxStat(unsigned int byte, uint8_t value);
 
     private:
+        unsigned int matrixMode = 0;
+        Matrix temp;
+        Matrix projection;
+        Matrix coordStack[32];
+        Matrix direcStack[32];
+
+        Polygon polygons1[2048] = {}, polygons2[2048] = {};
+        Polygon *polygonsIn = polygons1, *polygonsOut = polygons2;
+        unsigned int polygonCountIn = 0, polygonCountOut = 0;
+
+        Vertex vertices1[6144] = {}, vertices2[6144] = {};
+        Vertex *verticesIn = vertices1, *verticesOut = vertices2;
+        unsigned int vertexCountIn = 0, vertexCountOut = 0;
+
         std::queue<Entry> fifo, pipe;
 
         unsigned int paramCounts[0x100] = {};
+        unsigned int paramCount = 0;
 
         uint32_t gxFifoCmds = 0;
         unsigned int gxFifoCount = 0;
@@ -133,6 +174,27 @@ class Gpu3D
         uint32_t gxStat = 0x04000000;
 
         Interpreter *arm9;
+
+        Matrix multiply(Matrix *mtx1, Matrix *mtx2);
+        Vertex multiply(Vertex *vtx, Matrix *mtx);
+
+        void mtxModeCmd(uint32_t param);
+        void mtxPushCmd();
+        void mtxPopCmd(uint32_t param);
+        void mtxStoreCmd(uint32_t param);
+        void mtxRestoreCmd(uint32_t param);
+        void mtxIdentityCmd();
+        void mtxLoad44Cmd(uint32_t param);
+        void mtxLoad43Cmd(uint32_t param);
+        void mtxMult44Cmd(uint32_t param);
+        void mtxMult43Cmd(uint32_t param);
+        void mtxMult33Cmd(uint32_t param);
+        void mtxScaleCmd(uint32_t param);
+        void mtxTransCmd(uint32_t param);
+        void colorCmd(uint32_t param);
+        void vtx16Cmd(uint32_t param);
+        void beginVtxsCmd(uint32_t param);
+        void swapBuffersCmd(uint32_t param);
 
         void addEntry(Entry entry);
 };

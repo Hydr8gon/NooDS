@@ -30,6 +30,7 @@
 #include "gpu.h"
 #include "gpu_2d.h"
 #include "gpu_3d.h"
+#include "gpu_3d_renderer.h"
 #include "input.h"
 #include "interpreter.h"
 #include "ipc.h"
@@ -71,6 +72,7 @@ class Core
         Gpu gpu;
         Gpu2D engineA, engineB;
         Gpu3D gpu3D;
+        Gpu3DRenderer gpu3DRenderer;
         Input input;
         Interpreter arm9, arm7;
         Ipc ipc;

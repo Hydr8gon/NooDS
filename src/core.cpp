@@ -24,10 +24,11 @@
 #include "defines.h"
 
 Core::Core(): cart9(&arm9, &memory), cart7(&arm7, &memory), cp15(&arm9), dma9(&cart9, &arm9, &memory),
-              dma7(&cart7, &arm7, &memory), gpu(&engineA, &engineB, &arm9, &arm7), engineA(true, &memory),
-              engineB(false, &memory), gpu3D(&arm9), arm9(&cp15, &memory), arm7(&memory), ipc(&arm9, &arm7),
-              memory(&cart9, &cart7, &cp15, &dma9, &dma7, &gpu, &engineA, &engineB, &gpu3D, &input, &arm9, &arm7,
-              &ipc, &math, &rtc, &spi, &timers9, &timers7), spi(&arm7, firmware), timers9(&arm9), timers7(&arm7)
+              dma7(&cart7, &arm7, &memory), gpu(&engineA, &engineB, &gpu3DRenderer, &arm9, &arm7),
+              engineA(&gpu3DRenderer, &memory), engineB(&memory), gpu3D(&arm9), gpu3DRenderer(&gpu3D),
+              arm9(&cp15, &memory), arm7(&memory), ipc(&arm9, &arm7), memory(&cart9, &cart7, &cp15,
+              &dma9, &dma7, &gpu, &engineA, &engineB, &gpu3D, &input, &arm9, &arm7, &ipc, &math,
+              &rtc, &spi, &timers9, &timers7), spi(&arm7, firmware), timers9(&arm9), timers7(&arm7)
 {
     // Attempt to load the firmware
     FILE *firmwareFile = fopen("firmware.bin", "rb");
@@ -65,9 +66,10 @@ Core::Core(std::string filename): Core()
     cart7.setRom(rom, romSize, save, saveSize);
 
     // Set some registers as the BIOS/firmware would
-    memory.write<uint8_t>(true,  0x4000247, 0x03); // WRAMCNT
-    memory.write<uint8_t>(true,  0x4000300, 0x01); // POSTFLG (ARM9)
-    memory.write<uint8_t>(false, 0x4000300, 0x01); // POSTFLG (ARM7)
+    memory.write<uint8_t>(true,  0x4000247,   0x03); // WRAMCNT
+    memory.write<uint8_t>(true,  0x4000300,   0x01); // POSTFLG (ARM9)
+    memory.write<uint8_t>(false, 0x4000300,   0x01); // POSTFLG (ARM7)
+    memory.write<uint16_t>(true, 0x4000304, 0x0001); // POWCNT1
     cp15.write(9, 1, 0, 0x027C0005); // Data TCM base/size
     cp15.write(9, 1, 1, 0x00000010); // Instruction TCM size
 

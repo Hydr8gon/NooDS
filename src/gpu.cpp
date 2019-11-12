@@ -22,6 +22,7 @@
 #include "gpu.h"
 #include "defines.h"
 #include "gpu_2d.h"
+#include "gpu_3d_renderer.h"
 #include "interpreter.h"
 
 void Gpu::scanline256()
@@ -32,6 +33,10 @@ void Gpu::scanline256()
         engineA->drawScanline(vCount);
         engineB->drawScanline(vCount);
     }
+
+    // Draw 3D scanlines 48 lines in advance
+    if (engineA->is3DEnabled() && ((vCount + 48) % 263) < 192)
+        gpu3DRenderer->drawScanline((vCount + 48) % 263);
 
     // Set the H-blank flag
     dispStat9 |= BIT(1);
