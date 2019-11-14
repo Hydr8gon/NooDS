@@ -1,0 +1,41 @@
+name: Automatic Builds
+on: [push]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install wxWidgets
+      run: sudo apt install libwxgtk3.0-dev -y
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Compile
+      run: make
+    - name: Upload
+      uses: actions/upload-artifact@master
+      with:
+        name: noods-linux
+        path: noods
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Download wxWidgets
+      run: choco install wxwidgets
+      shell: cmd
+    - name: Compile wxWidgets
+      run:  call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" & nmake.exe -f makefile.vc BUILD=release TARGET_CPU=x64
+      working-directory: C:\wxWidgets-3.1.2\build\msw
+      shell: cmd
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Compile
+      run: call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" & msbuild.exe noods.sln
+      shell: cmd
+    - name: Upload
+      uses: actions/upload-artifact@master
+      with:
+        name: noods-windows
+        path: x64/Release/noods.exe

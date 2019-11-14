@@ -44,7 +44,7 @@ struct Vertex
     uint16_t color = 0x7FFF;
 };
 
-struct Polygon
+struct _Polygon
 {
     unsigned int size = 0;
     Vertex *vertices = nullptr;
@@ -65,7 +65,7 @@ class Gpu3D
 
         bool shouldRun() { return gxStat & BIT(27); }
 
-        Polygon     *getPolygons()     { return polygonsOut;     }
+        _Polygon    *getPolygons()     { return polygonsOut;     }
         unsigned int getPolygonCount() { return polygonCountOut; }
 
         uint8_t readGxStat(unsigned int byte) { return gxStat >> (byte * 8); }
@@ -117,8 +117,8 @@ class Gpu3D
         Matrix coordStack[32];
         Matrix direcStack[32];
 
-        Polygon polygons1[2048] = {}, polygons2[2048] = {};
-        Polygon *polygonsIn = polygons1, *polygonsOut = polygons2;
+        _Polygon polygons1[2048] = {}, polygons2[2048] = {};
+        _Polygon *polygonsIn = polygons1, *polygonsOut = polygons2;
         unsigned int polygonCountIn = 0, polygonCountOut = 0;
 
         Vertex vertices1[6144] = {}, vertices2[6144] = {};

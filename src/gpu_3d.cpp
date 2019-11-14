@@ -608,7 +608,7 @@ void Gpu3D::swapBuffersCmd(uint32_t param)
     vertexCountIn = 0;
 
     // Swap the polygon buffers
-    Polygon *polygons = polygonsOut;
+    _Polygon *polygons = polygonsOut;
     polygonsOut = polygonsIn;
     polygonsIn = polygons;
     polygonCountOut = polygonCountIn;
