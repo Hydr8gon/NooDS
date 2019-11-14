@@ -18,6 +18,22 @@ jobs:
         name: noods-linux
         path: noods
 
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+    - name: Install wxWidgets
+      run: brew install wxmac
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Compile
+      run: make
+    - name: Upload
+      uses: actions/upload-artifact@master
+      with:
+        name: noods-mac
+        path: noods
+
   build-windows:
     runs-on: windows-latest
 
@@ -39,3 +55,21 @@ jobs:
       with:
         name: noods-windows
         path: x64/Release/noods.exe
+
+  build-switch:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install devkitPro pacman
+      run: wget https://github.com/devkitPro/pacman/releases/download/devkitpro-pacman-1.0.1/devkitpro-pacman.deb && sudo dpkg -i devkitpro-pacman.deb
+    - name: Install Switch dev tools
+      run: sudo dkp-pacman -S switch-dev --noconfirm
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Compile
+      run: export DEVKITPRO=/opt/devkitpro && make -f Makefile.switch
+    - name: Upload
+      uses: actions/upload-artifact@master
+      with:
+        name: noods-switch
+        path: noods.nro
