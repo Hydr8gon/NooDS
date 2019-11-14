@@ -54,18 +54,18 @@ class NooPanel: public wxPanel
     public:
         NooPanel(wxFrame *parent);
 
-        void draw(bool clear, wxPaintDC &pdc);
-
     private:
-        int x, y;
-        float scale;
+        int x = 0, y = 0;
+        float scale = 1.0f;
+        bool needsClear = false;
 
+        void clear(wxEraseEvent &event);
+        void draw(wxPaintEvent &event);
         void resize(wxSizeEvent &event);
         void pressKey(wxKeyEvent &event);
         void releaseKey(wxKeyEvent &event);
         void pressScreen(wxMouseEvent &event);
         void releaseScreen(wxMouseEvent &event);
-        void onPaint(wxPaintEvent &event);
 
         wxDECLARE_EVENT_TABLE();
 };
@@ -73,8 +73,8 @@ class NooPanel: public wxPanel
 class NooApp: public wxApp
 {
     private:
-        NooFrame *frame;
-        NooPanel *panel;
+        NooFrame *frame = nullptr;
+        NooPanel *panel = nullptr;
 
         bool OnInit();
         void requestDraw(wxIdleEvent &event);
@@ -90,13 +90,14 @@ EVT_CLOSE(NooFrame::stop)
 wxEND_EVENT_TABLE()
 
 wxBEGIN_EVENT_TABLE(NooPanel, wxPanel)
+EVT_ERASE_BACKGROUND(NooPanel::clear)
+EVT_PAINT(NooPanel::draw)
 EVT_SIZE(NooPanel::resize)
 EVT_KEY_DOWN(NooPanel::pressKey)
 EVT_KEY_UP(NooPanel::releaseKey)
 EVT_LEFT_DOWN(NooPanel::pressScreen)
 EVT_MOTION(NooPanel::pressScreen)
 EVT_LEFT_UP(NooPanel::releaseScreen)
-EVT_PAINT(NooPanel::onPaint)
 wxEND_EVENT_TABLE()
 
 bool NooApp::OnInit()
@@ -227,6 +228,7 @@ void NooFrame::stop(wxCloseEvent &event)
 
     // Close the core to ensure the save gets written
     if (core) delete core;
+    core = nullptr;
 
     event.Skip(true);
 }
@@ -238,13 +240,17 @@ NooPanel::NooPanel(wxFrame *parent): wxPanel(parent)
     SetFocus();
 }
 
-void NooPanel::onPaint(wxPaintEvent &event)
+void NooPanel::clear(wxEraseEvent &event)
 {
-    wxPaintDC pdc(this);
-    draw(true, pdc);
+    // Clearing the screen can cause flickering, so only do it when necessary (on resize)
+    if (needsClear)
+    {
+        needsClear = false;
+        event.Skip(true);
+    }
 }
 
-void NooPanel::draw(bool clear, wxPaintDC &dc)
+void NooPanel::draw(wxPaintEvent &event)
 {
     wxBitmap bmp(256, 192 * 2, 24);
     wxNativePixelData data(bmp);
@@ -266,8 +272,7 @@ void NooPanel::draw(bool clear, wxPaintDC &dc)
     }
 
     // Draw the bitmap
-    // Clearing can cause flickering, so only do it when necessary (on resize)
-    if (clear) dc.Clear();
+    wxPaintDC dc(this);
     dc.SetUserScale(scale, scale);
     dc.DrawBitmap(bmp, wxPoint(x, y));
 }
@@ -286,7 +291,7 @@ void NooPanel::resize(wxSizeEvent &event)
     x = ((float)size.x / scale - 256)     / 2;
     y = ((float)size.y / scale - 192 * 2) / 2;
 
-    Refresh();
+    needsClear = true;
 }
 
 void NooPanel::pressKey(wxKeyEvent &event)
