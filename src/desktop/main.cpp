@@ -54,7 +54,7 @@ class NooPanel: public wxPanel
     public:
         NooPanel(wxFrame *parent);
 
-        void draw(bool clear);
+        void draw(bool clear, wxPaintDC &pdc);
 
     private:
         int x, y;
@@ -65,6 +65,7 @@ class NooPanel: public wxPanel
         void releaseKey(wxKeyEvent &event);
         void pressScreen(wxMouseEvent &event);
         void releaseScreen(wxMouseEvent &event);
+        void onPaint(wxPaintEvent &event);
 
         wxDECLARE_EVENT_TABLE();
 };
@@ -82,8 +83,8 @@ class NooApp: public wxApp
 wxIMPLEMENT_APP(NooApp);
 
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
-EVT_MENU(0, NooFrame::loadRom)
-EVT_MENU(1, NooFrame::bootFirmware)
+EVT_MENU(1, NooFrame::loadRom)
+EVT_MENU(2, NooFrame::bootFirmware)
 EVT_MENU(wxID_EXIT, NooFrame::exit)
 EVT_CLOSE(NooFrame::stop)
 wxEND_EVENT_TABLE()
@@ -95,6 +96,7 @@ EVT_KEY_UP(NooPanel::releaseKey)
 EVT_LEFT_DOWN(NooPanel::pressScreen)
 EVT_MOTION(NooPanel::pressScreen)
 EVT_LEFT_UP(NooPanel::releaseScreen)
+EVT_PAINT(NooPanel::onPaint)
 wxEND_EVENT_TABLE()
 
 bool NooApp::OnInit()
@@ -103,7 +105,7 @@ bool NooApp::OnInit()
     frame = new NooFrame();
     panel = new NooPanel(frame);
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
-    sizer->Add(panel, 1, wxEXPAND);     
+    sizer->Add(panel, 1, wxEXPAND);
     frame->SetSizer(sizer);
     Connect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(NooApp::requestDraw));
 
@@ -113,7 +115,7 @@ bool NooApp::OnInit()
 void NooApp::requestDraw(wxIdleEvent &event)
 {
     // Refresh the display
-    panel->draw(false);
+    panel->Refresh();
     event.RequestMore();
 
     // Update the FPS in the window title if the core is running
@@ -124,8 +126,8 @@ NooFrame::NooFrame(): wxFrame(NULL, wxID_ANY, "", wxPoint(50, 50), wxSize(256, 1
 {
     // Set up the File menu
     wxMenu *fileMenu = new wxMenu();
-    fileMenu->Append(0, "&Load ROM");
-    fileMenu->Append(1, "&Boot Firmware");
+    fileMenu->Append(1, "&Load ROM");
+    fileMenu->Append(2, "&Boot Firmware");
     fileMenu->AppendSeparator();
     fileMenu->Append(wxID_EXIT);
 
@@ -236,7 +238,13 @@ NooPanel::NooPanel(wxFrame *parent): wxPanel(parent)
     SetFocus();
 }
 
-void NooPanel::draw(bool clear)
+void NooPanel::onPaint(wxPaintEvent &event)
+{
+    wxPaintDC pdc(this);
+    draw(true, pdc);
+}
+
+void NooPanel::draw(bool clear, wxPaintDC &dc)
 {
     wxBitmap bmp(256, 192 * 2, 24);
     wxNativePixelData data(bmp);
@@ -259,7 +267,6 @@ void NooPanel::draw(bool clear)
 
     // Draw the bitmap
     // Clearing can cause flickering, so only do it when necessary (on resize)
-    wxClientDC dc(this);
     if (clear) dc.Clear();
     dc.SetUserScale(scale, scale);
     dc.DrawBitmap(bmp, wxPoint(x, y));
@@ -279,7 +286,7 @@ void NooPanel::resize(wxSizeEvent &event)
     x = ((float)size.x / scale - 256)     / 2;
     y = ((float)size.y / scale - 192 * 2) / 2;
 
-    draw(true);
+    Refresh();
 }
 
 void NooPanel::pressKey(wxKeyEvent &event)
