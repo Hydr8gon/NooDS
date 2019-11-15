@@ -90,6 +90,11 @@ void Gpu3D::runCycle()
         case 0x1C: mtxTransCmd(entry.param);    break; // MTX_TRANS
         case 0x20: colorCmd(entry.param);       break; // COLOR
         case 0x23: vtx16Cmd(entry.param);       break; // VTX_16
+        case 0x24: vtx10Cmd(entry.param);       break; // VTX_10
+        case 0x25: vtxXYCmd(entry.param);       break; // VTX_XY
+        case 0x26: vtxXZCmd(entry.param);       break; // VTX_XZ
+        case 0x27: vtxYZCmd(entry.param);       break; // VTX_YZ
+        case 0x28: vtxDiffCmd(entry.param);     break; // VTX_DIFF
         case 0x40: beginVtxsCmd(entry.param);   break; // BEGIN_VTXS
         case 0x41:                              break; // END_VTXS
         case 0x50: swapBuffersCmd(entry.param); break; // SWAP_BUFFERS
@@ -157,6 +162,66 @@ Vertex Gpu3D::multiply(Vertex *vtx, Matrix *mtx)
     vertex.w = ((int64_t)vtx->x * mtx->data[3] + (int64_t)vtx->y * mtx->data[7] + (int64_t)vtx->z * mtx->data[11] + (int64_t)vtx->w * mtx->data[15]) >> 12;
 
     return vertex;
+}
+
+void Gpu3D::addVertex()
+{
+    last = verticesIn[vertexCountIn];
+
+    // Transform the vertex
+    verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &coordStack[(gxStat & 0x00001F00) >> 8]);
+    verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &projection);
+
+    // Move to the next polygon if one has been completed
+    if (size != 0 && polygonCountIn > 0 && polygonCountIn < 2048)
+    {
+        switch (polygonsIn[polygonCountIn - 1].type)
+        {
+            case 0: // Separate triangles
+                if (size % 3 == 0)
+                {
+                    polygonsIn[polygonCountIn].type = 0;
+                    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
+                    polygonCountIn++;
+                }
+                break;
+
+            case 1: // Separate quads
+                if (size % 4 == 0)
+                {
+                    polygonsIn[polygonCountIn].type = 1;
+                    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
+                    polygonCountIn++;
+                }
+                break;
+
+            case 2: // Triangle strips
+                if (size >= 3)
+                {
+                    polygonsIn[polygonCountIn].type = 2;
+                    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - 2];
+                    polygonCountIn++;
+                }
+                break;
+
+            case 3: // Quad strips
+                if (size >= 4 && size % 2 == 0)
+                {
+                    polygonsIn[polygonCountIn].type = 3;
+                    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - 2];
+                    polygonCountIn++;
+                }
+                break;
+        }
+    }
+
+    // Move to the next vertex
+    if (vertexCountIn < 6143)
+    {
+        vertexCountIn++;
+        verticesIn[vertexCountIn].color = 0x7FFF;
+        size++;
+    }
 }
 
 void Gpu3D::mtxModeCmd(uint32_t param)
@@ -573,18 +638,69 @@ void Gpu3D::vtx16Cmd(uint32_t param)
         verticesIn[vertexCountIn].z = (int16_t)(param & 0x0000FFFF);
         verticesIn[vertexCountIn].w = 1 << 12;
 
-        // Transform the vertex
-        verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &coordStack[(gxStat & 0x00001F00) >> 8]);
-        verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &projection);
-
-        // Move to the next vertex
-        if (vertexCountIn < 6144)
-        {
-            vertexCountIn++;
-            verticesIn[vertexCountIn].color = 0x7FFF;
-            polygonsIn[polygonCountIn - 1].size++;
-        }
+        addVertex();
     }
+}
+
+void Gpu3D::vtx10Cmd(uint32_t param)
+{
+    // Set the X, Y, Z and W coordinates
+    verticesIn[vertexCountIn].x = (int16_t)((param & 0x000003FF) << 6);
+    verticesIn[vertexCountIn].y = (int16_t)((param & 0x000FFC00) >> 4);
+    verticesIn[vertexCountIn].z = (int16_t)((param & 0x3FF00000) >> 14);
+    verticesIn[vertexCountIn].w = 1 << 12;
+
+    addVertex();
+}
+
+void Gpu3D::vtxXYCmd(uint32_t param)
+{
+    // Set the X, Y, and W coordinates and get the Z coordinate from the previous vertex
+    verticesIn[vertexCountIn].x = (int16_t)(param & 0x0000FFFF);
+    verticesIn[vertexCountIn].y = (int16_t)((param & 0xFFFF0000) >> 16);
+    verticesIn[vertexCountIn].z = last.z;
+    verticesIn[vertexCountIn].w = 1 << 12;
+
+    addVertex();
+}
+
+void Gpu3D::vtxXZCmd(uint32_t param)
+{
+    // Set the X, Z, and W coordinates and get the Y coordinate from the previous vertex
+    verticesIn[vertexCountIn].x = (int16_t)(param & 0x0000FFFF);
+    verticesIn[vertexCountIn].y = last.y;
+    verticesIn[vertexCountIn].z = (int16_t)((param & 0xFFFF0000) >> 16);
+    verticesIn[vertexCountIn].w = 1 << 12;
+
+    addVertex();
+}
+
+void Gpu3D::vtxYZCmd(uint32_t param)
+{
+    // Set the Y, Z, and W coordinates and get the X coordinate from the previous vertex
+    verticesIn[vertexCountIn].x = last.x;
+    verticesIn[vertexCountIn].y = (int16_t)(param & 0x0000FFFF);
+    verticesIn[vertexCountIn].z = (int16_t)((param & 0xFFFF0000) >> 16);
+    verticesIn[vertexCountIn].w = 1 << 12;
+
+    addVertex();
+}
+
+void Gpu3D::vtxDiffCmd(uint32_t param)
+{
+    // Get the X, Y and Z offsets
+    Vertex vertex;
+    vertex.x = ((int16_t)((param & 0x000003FF) << 6)  / 8) >> 3;
+    vertex.y = ((int16_t)((param & 0x000FFC00) >> 4)  / 8) >> 3;
+    vertex.z = ((int16_t)((param & 0x3FF00000) >> 14) / 8) >> 3;
+
+    // Add the offsets to the previous vertex to create a new vertex
+    verticesIn[vertexCountIn].x = last.x + vertex.x;
+    verticesIn[vertexCountIn].y = last.y + vertex.y;
+    verticesIn[vertexCountIn].z = last.z + vertex.z;
+    verticesIn[vertexCountIn].w = 1 << 12;
+
+    addVertex();
 }
 
 void Gpu3D::beginVtxsCmd(uint32_t param)
@@ -592,9 +708,10 @@ void Gpu3D::beginVtxsCmd(uint32_t param)
     // Start a new polygon
     if (polygonCountIn < 2048)
     {
-        polygonsIn[polygonCountIn].size = 0;
+        polygonsIn[polygonCountIn].type = param & 0x00000003;
         polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
         polygonCountIn++;
+        size = 0;
     }
 }
 
@@ -1072,7 +1189,7 @@ void Gpu3D::writeBeginVtxs(unsigned int byte, uint8_t value)
     if (byte == 3)
     {
         // Add an entry to the FIFO
-        Entry entry = { 0x40, difAmb };
+        Entry entry = { 0x40, beginVtxs };
         addEntry(entry);
     }
 }

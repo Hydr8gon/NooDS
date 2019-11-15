@@ -26,21 +26,64 @@
 
 void Gpu3DRenderer::drawScanline(unsigned int line)
 {
-    // Clear the line
+    // Clear the scanline
     memset(&lineCache[(line % 48) * 256], 0, 256 * sizeof(uint16_t));
 
-    // Draw the polygon vertices
+    // Draw the polygons
     for (int i = 0; i < gpu3D->getPolygonCount(); i++)
     {
-        for (int j = 0; j < gpu3D->getPolygons()[i].size; j++)
+        unsigned int type = gpu3D->getPolygons()[i].type;
+
+        for (int j = 1; j <= (3 + (type & 1)); j++)
         {
-            Vertex vertex = gpu3D->getPolygons()[i].vertices[j];
-            if (vertex.w != 0)
+            // Normalize the coordinates of a vertex
+            Vertex vertex1 = gpu3D->getPolygons()[i].vertices[j - 1];
+            if (vertex1.w == 0) continue;
+            int x0 = (( vertex1.x * 128) / vertex1.w) + 128;
+            int y0 = ((-vertex1.y * 96)  / vertex1.w) + 96;
+
+            // Normalize the coordinates of the next vertex
+            Vertex vertex2 = gpu3D->getPolygons()[i].vertices[j % (3 + (type & 1))];
+            if (vertex2.w == 0) continue;
+            int x1 = (( vertex2.x * 128) / vertex2.w) + 128;
+            int y1 = ((-vertex2.y * 96)  / vertex2.w) + 96;
+
+            // Draw a line between the vertices
+            if (((int)line >= y0 && (int)line <= y1) || ((int)line >= y1 && (int)line <= y0))
             {
-                int x = (( vertex.x * 128) / vertex.w) + 128;
-                int y = ((-vertex.y * 96)  / vertex.w) + 96;
-                if (line == y && x >= 0 && x < 256)
-                    lineCache[(line % 48) * 256 + x] = vertex.color | BIT(15);
+                int lx0, lx1;
+
+                // Swap the coordinates if necessary to ensure the leftmost one comes first
+                if (x0 > x1)
+                {
+                    int x = x0, y = y0;
+                    x0 = x1; y0 = y1;
+                    x1 = x;  y1 = y;
+                }
+
+                if (y0 == y1) // Horizontal line
+                {
+                    // The entire line exists on the current scanline
+                    lx0 = x0;
+                    lx1 = x1;
+                }
+                else
+                {
+                    // Calculate the length of the line segment that intersects with the current scanline
+                    int slope = ((x1 - x0) << 12) / (y1 - y0);
+                    lx0 = x0 + ((slope * ((int)line - y0)) >> 12);
+                    lx1 = x0 + ((slope * ((int)line - y0 + ((y0 < y1) ? 1 : -1))) >> 12);
+                    if (lx0 != lx1) lx1--;
+                    if (lx1 > x1) lx1 = x1;
+                }
+
+                // Stay within the screen bounds
+                if (lx0 <   0) lx0 =   0; else if (lx0 > 255) continue;
+                if (lx1 > 255) lx1 = 255; else if (lx1 <   0) continue;
+
+                // Draw a line segment
+                for (int x = lx0; x <= lx1; x++)
+                    lineCache[(line % 48) * 256 + x] = vertex1.color | BIT(15);
             }
         }
     }

@@ -46,7 +46,7 @@ struct Vertex
 
 struct _Polygon
 {
-    unsigned int size = 0;
+    unsigned int type = 0;
     Vertex *vertices = nullptr;
 };
 
@@ -112,18 +112,20 @@ class Gpu3D
 
     private:
         unsigned int matrixMode = 0;
-        Matrix temp;
         Matrix projection;
         Matrix coordStack[32];
         Matrix direcStack[32];
+        Matrix temp;
 
         _Polygon polygons1[2048] = {}, polygons2[2048] = {};
         _Polygon *polygonsIn = polygons1, *polygonsOut = polygons2;
         unsigned int polygonCountIn = 0, polygonCountOut = 0;
+        unsigned int size = 0;
 
         Vertex vertices1[6144] = {}, vertices2[6144] = {};
         Vertex *verticesIn = vertices1, *verticesOut = vertices2;
         unsigned int vertexCountIn = 0, vertexCountOut = 0;
+        Vertex last;
 
         std::queue<Entry> fifo, pipe;
 
@@ -178,6 +180,8 @@ class Gpu3D
         Matrix multiply(Matrix *mtx1, Matrix *mtx2);
         Vertex multiply(Vertex *vtx, Matrix *mtx);
 
+        void addVertex();
+
         void mtxModeCmd(uint32_t param);
         void mtxPushCmd();
         void mtxPopCmd(uint32_t param);
@@ -193,6 +197,11 @@ class Gpu3D
         void mtxTransCmd(uint32_t param);
         void colorCmd(uint32_t param);
         void vtx16Cmd(uint32_t param);
+        void vtx10Cmd(uint32_t param);
+        void vtxXYCmd(uint32_t param);
+        void vtxXZCmd(uint32_t param);
+        void vtxYZCmd(uint32_t param);
+        void vtxDiffCmd(uint32_t param);
         void beginVtxsCmd(uint32_t param);
         void swapBuffersCmd(uint32_t param);
 
