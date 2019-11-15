@@ -448,6 +448,14 @@ void Interpreter::runCycle()
                     strhPt(opcode, -rp(opcode)); // STRH Rd,[Rn],-Rm
                     break;
 
+                case 0x00D: case 0x02D:
+                    ldrdPt(opcode, -rp(opcode)); // LDRD Rd,[Rn],-Rm
+                    break;
+
+                case 0x00F: case 0x02F:
+                    strdPt(opcode, -rp(opcode)); // STRD Rd,[Rn],-Rm
+                    break;
+
                 case 0x010: case 0x018:
                     ands(opcode, lliS(opcode)); // ANDS Rd,Rn,Rm,LSL #i
                     break;
@@ -604,6 +612,14 @@ void Interpreter::runCycle()
                     strhPt(opcode, -ipH(opcode)); // STRH Rd,[Rn],-#i
                     break;
 
+                case 0x04D: case 0x06D:
+                    ldrdPt(opcode, -ipH(opcode)); // LDRD Rd,[Rn],-#i
+                    break;
+
+                case 0x04F: case 0x06F:
+                    strdPt(opcode, -ipH(opcode)); // STRD Rd,[Rn],-#i
+                    break;
+
                 case 0x050: case 0x058:
                     subs(opcode, lli(opcode)); // SUBS Rd,Rn,Rm,LSL #i
                     break;
@@ -750,6 +766,14 @@ void Interpreter::runCycle()
 
                 case 0x08B: case 0x0AB:
                     strhPt(opcode, rp(opcode)); // STRH Rd,[Rn],Rm
+                    break;
+
+                case 0x08D: case 0x0AD:
+                    ldrdPt(opcode, rp(opcode)); // LDRD Rd,[Rn],Rm
+                    break;
+
+                case 0x08F: case 0x0AF:
+                    strdPt(opcode, rp(opcode)); // STRD Rd,[Rn],Rm
                     break;
 
                 case 0x090: case 0x098:
@@ -912,6 +936,14 @@ void Interpreter::runCycle()
                     strhPt(opcode, ipH(opcode)); // STRH Rd,[Rn],#i
                     break;
 
+                case 0x0CD: case 0x0ED:
+                    ldrdPt(opcode, ipH(opcode)); // LDRD Rd,[Rn],#i
+                    break;
+
+                case 0x0CF: case 0x0EF:
+                    strdPt(opcode, ipH(opcode)); // STRD Rd,[Rn],#i
+                    break;
+
                 case 0x0D0: case 0x0D8:
                     sbcs(opcode, lli(opcode)); // SBCS Rd,Rn,Rm,LSL #i
                     break;
@@ -1056,8 +1088,16 @@ void Interpreter::runCycle()
                     smlabt(opcode); // SMLABT Rd,Rm,Rs,Rn
                     break;
 
+                case 0x10D:
+                    ldrdOf(opcode, -rp(opcode)); // LDRD Rd,[Rn,-Rm]
+                    break;
+
                 case 0x10E:
                     smlatt(opcode); // SMLATT Rd,Rm,Rs,Rn
+                    break;
+
+                case 0x10F:
+                    strdOf(opcode, -rp(opcode)); // STRD Rd,[Rn,-Rm]
                     break;
 
                 case 0x110: case 0x118:
@@ -1120,6 +1160,14 @@ void Interpreter::runCycle()
                     strhPr(opcode, -rp(opcode)); // STRH Rd,[Rn,-Rm]!
                     break;
 
+                case 0x12D:
+                    ldrdPr(opcode, -rp(opcode)); // LDRD Rd,[Rn,-Rm]!
+                    break;
+
+                case 0x12F:
+                    strdPr(opcode, -rp(opcode)); // STRD Rd,[Rn,-Rm]!
+                    break;
+
                 case 0x130: case 0x138:
                     teq(opcode, lliS(opcode)); // TEQ Rn,Rm,LSL #i
                     break;
@@ -1174,6 +1222,14 @@ void Interpreter::runCycle()
 
                 case 0x14B:
                     strhOf(opcode, -ipH(opcode)); // STRH Rd,[Rn,-#i]
+                    break;
+
+                case 0x14D:
+                    ldrdOf(opcode, -ipH(opcode)); // LDRD Rd,[Rn,-#i]
+                    break;
+
+                case 0x14F:
+                    strdOf(opcode, -ipH(opcode)); // STRD Rd,[Rn,-#i]
                     break;
 
                 case 0x150: case 0x158:
@@ -1244,8 +1300,16 @@ void Interpreter::runCycle()
                     smulbt(opcode); // SMULBT Rd,Rm,Rs
                     break;
 
+                case 0x16D:
+                    ldrdPr(opcode, -ipH(opcode)); // LDRD Rd,[Rn,-#i]!
+                    break;
+
                 case 0x16E:
                     smultt(opcode); // SMULTT Rd,Rm,Rs
+                    break;
+
+                case 0x16F:
+                    strdPr(opcode, -ipH(opcode)); // STRD Rd,[Rn,-#i]!
                     break;
 
                 case 0x170: case 0x178:
@@ -1328,6 +1392,14 @@ void Interpreter::runCycle()
                     strhOf(opcode, rp(opcode)); // STRH Rd,[Rn,Rm]
                     break;
 
+                case 0x18D:
+                    ldrdOf(opcode, rp(opcode)); // STRD Rd,[Rn,Rm]
+                    break;
+
+                case 0x18F:
+                    strdOf(opcode, rp(opcode)); // STRD Rd,[Rn,Rm]
+                    break;
+
                 case 0x190: case 0x198:
                     orrs(opcode, lliS(opcode)); // ORRS Rd,Rn,Rm,LSL #i
                     break;
@@ -1406,6 +1478,14 @@ void Interpreter::runCycle()
 
                 case 0x1AB:
                     strhPr(opcode, rp(opcode)); // STRH Rd,[Rn,Rm]!
+                    break;
+
+                case 0x1AD:
+                    ldrdPr(opcode, rp(opcode)); // STRD Rd,[Rn,Rm]!
+                    break;
+
+                case 0x1AF:
+                    strdPr(opcode, rp(opcode)); // STRD Rd,[Rn,Rm]!
                     break;
 
                 case 0x1B0: case 0x1B8:
@@ -1488,6 +1568,14 @@ void Interpreter::runCycle()
                     strhOf(opcode, ipH(opcode)); // STRH Rd,[Rn,#i]
                     break;
 
+                case 0x1CD:
+                    ldrdOf(opcode, ipH(opcode)); // STRD Rd,[Rn,#i]
+                    break;
+
+                case 0x1CF:
+                    strdOf(opcode, ipH(opcode)); // STRD Rd,[Rn,#i]
+                    break;
+
                 case 0x1D0: case 0x1D8:
                     bics(opcode, lliS(opcode)); // BICS Rd,Rn,Rm,LSL #i
                     break;
@@ -1566,6 +1654,14 @@ void Interpreter::runCycle()
 
                 case 0x1EB:
                     strhPr(opcode, ipH(opcode)); // STRH Rd,[Rn,#i]!
+                    break;
+
+                case 0x1ED:
+                    ldrdPr(opcode, ipH(opcode)); // STRD Rd,[Rn,Rm]!
+                    break;
+
+                case 0x1EF:
+                    strdPr(opcode, ipH(opcode)); // STRD Rd,[Rn,Rm]!
                     break;
 
                 case 0x1F0: case 0x1F8:

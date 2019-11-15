@@ -28,9 +28,9 @@ FORCE_INLINE uint32_t Interpreter::ip(uint32_t opcode) // #i (B/_)
     return opcode & 0x00000FFF;
 }
 
-FORCE_INLINE uint32_t Interpreter::ipH(uint32_t opcode) // #i (SB/SH/H)
+FORCE_INLINE uint32_t Interpreter::ipH(uint32_t opcode) // #i (SB/SH/H/D)
 {
-    // Immediate offset for signed and half-word transfers
+    // Immediate offset for signed, half-word, and double word transfers
     return ((opcode & 0x00000F00) >> 4) | (opcode & 0x0000000F);
 }
 
@@ -206,6 +206,34 @@ FORCE_INLINE void Interpreter::strOf(uint32_t opcode, uint32_t op2) // STR Rd,[R
     memory->write<uint32_t>(cp15, op1 + op2, op0);
 }
 
+FORCE_INLINE void Interpreter::ldrdOf(uint32_t opcode, uint32_t op2) // LDRD Rd,[Rn,op2]
+{
+    if (!cp15) return; // ARM9 exclusive
+
+    // Decode the other operands
+    uint8_t op0 = (opcode & 0x0000F000) >> 12;
+    if (op0 == 15) return;
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+
+    // Double word load, pre-adjust without writeback
+    *registers[op0]     = memory->read<uint32_t>(cp15, op1 + op2);
+    *registers[op0 + 1] = memory->read<uint32_t>(cp15, op1 + op2 + 4);
+}
+
+FORCE_INLINE void Interpreter::strdOf(uint32_t opcode, uint32_t op2) // STRD Rd,[Rn,op2]
+{
+    if (!cp15) return; // ARM9 exclusive
+
+    // Decode the other operands
+    uint8_t op0 = (opcode & 0x0000F000) >> 12;
+    if (op0 == 15) return;
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+
+    // Double word store, pre-adjust without writeback
+    memory->write<uint32_t>(cp15, op1 + op2,     *registers[op0]);
+    memory->write<uint32_t>(cp15, op1 + op2 + 4, *registers[op0 + 1]);
+}
+
 FORCE_INLINE void Interpreter::ldrsbPr(uint32_t opcode, uint32_t op2) // LDRSB Rd,[Rn,op2]!
 {
     // Decode the other operands
@@ -337,6 +365,36 @@ FORCE_INLINE void Interpreter::strPr(uint32_t opcode, uint32_t op2) // STR Rd,[R
     memory->write<uint32_t>(cp15, *op1, op0);
 }
 
+FORCE_INLINE void Interpreter::ldrdPr(uint32_t opcode, uint32_t op2) // LDRD Rd,[Rn,op2]!
+{
+    if (!cp15) return; // ARM9 exclusive
+
+    // Decode the other operands
+    uint8_t op0 = (opcode & 0x0000F000) >> 12;
+    if (op0 == 15) return;
+    uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+
+    // Double word load, pre-adjust with writeback
+    *op1 += op2;
+    *registers[op0]     = memory->read<uint32_t>(cp15, *op1);
+    *registers[op0 + 1] = memory->read<uint32_t>(cp15, *op1 + 4);
+}
+
+FORCE_INLINE void Interpreter::strdPr(uint32_t opcode, uint32_t op2) // STRD Rd,[Rn,op2]!
+{
+    if (!cp15) return; // ARM9 exclusive
+
+    // Decode the other operands
+    uint8_t op0 = (opcode & 0x0000F000) >> 12;
+    if (op0 == 15) return;
+    uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+
+    // Double word store, pre-adjust with writeback
+    *op1 += op2;
+    memory->write<uint32_t>(cp15, *op1,     *registers[op0]);
+    memory->write<uint32_t>(cp15, *op1 + 4, *registers[op0 + 1]);
+}
+
 FORCE_INLINE void Interpreter::ldrsbPt(uint32_t opcode, uint32_t op2) // LDRSB Rd,[Rn],op2
 {
     // Decode the other operands
@@ -465,6 +523,36 @@ FORCE_INLINE void Interpreter::strPt(uint32_t opcode, uint32_t op2) // STR Rd,[R
 
     // Word store, post-adjust
     memory->write<uint32_t>(cp15, *op1, op0);
+    *op1 += op2;
+}
+
+FORCE_INLINE void Interpreter::ldrdPt(uint32_t opcode, uint32_t op2) // LDRD Rd,[Rn],op2
+{
+    if (!cp15) return; // ARM9 exclusive
+
+    // Decode the other operands
+    uint8_t op0 = (opcode & 0x0000F000) >> 12;
+    if (op0 == 15) return;
+    uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+
+    // Double word load, post-adjust
+    *registers[op0]     = memory->read<uint32_t>(cp15, *op1);
+    *registers[op0 + 1] = memory->read<uint32_t>(cp15, *op1 + 4);
+    *op1 += op2;
+}
+
+FORCE_INLINE void Interpreter::strdPt(uint32_t opcode, uint32_t op2) // STRD Rd,[Rn],op2
+{
+    if (!cp15) return; // ARM9 exclusive
+
+    // Decode the other operands
+    uint8_t op0 = (opcode & 0x0000F000) >> 12;
+    if (op0 == 15) return;
+    uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+
+    // Double word store, post-adjust
+    memory->write<uint32_t>(cp15, *op1,     *registers[op0]);
+    memory->write<uint32_t>(cp15, *op1 + 4, *registers[op0 + 1]);
     *op1 += op2;
 }
 

@@ -219,7 +219,7 @@ void Gpu3D::addVertex()
     if (vertexCountIn < 6143)
     {
         vertexCountIn++;
-        verticesIn[vertexCountIn].color = 0x7FFF;
+        verticesIn[vertexCountIn].color = verticesIn[vertexCountIn - 1].color;
         size++;
     }
 }

@@ -197,6 +197,8 @@ class Interpreter
         void strhOf(uint32_t opcode, uint32_t op2);
         void ldrOf(uint32_t opcode, uint32_t op2);
         void strOf(uint32_t opcode, uint32_t op2);
+        void ldrdOf(uint32_t opcode, uint32_t op2);
+        void strdOf(uint32_t opcode, uint32_t op2);
         void ldrsbPr(uint32_t opcode, uint32_t op2);
         void ldrshPr(uint32_t opcode, uint32_t op2);
         void ldrbPr(uint32_t opcode, uint32_t op2);
@@ -205,6 +207,8 @@ class Interpreter
         void strhPr(uint32_t opcode, uint32_t op2);
         void ldrPr(uint32_t opcode, uint32_t op2);
         void strPr(uint32_t opcode, uint32_t op2);
+        void ldrdPr(uint32_t opcode, uint32_t op2);
+        void strdPr(uint32_t opcode, uint32_t op2);
         void ldrsbPt(uint32_t opcode, uint32_t op2);
         void ldrshPt(uint32_t opcode, uint32_t op2);
         void ldrbPt(uint32_t opcode, uint32_t op2);
@@ -213,6 +217,8 @@ class Interpreter
         void strhPt(uint32_t opcode, uint32_t op2);
         void ldrPt(uint32_t opcode, uint32_t op2);
         void strPt(uint32_t opcode, uint32_t op2);
+        void ldrdPt(uint32_t opcode, uint32_t op2);
+        void strdPt(uint32_t opcode, uint32_t op2);
 
         void swpb(uint32_t opcode);
         void swp(uint32_t opcode);
