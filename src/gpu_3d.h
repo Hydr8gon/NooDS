@@ -69,6 +69,7 @@ class Gpu3D
         unsigned int getPolygonCount() { return polygonCountOut; }
 
         uint8_t readGxStat(unsigned int byte) { return gxStat >> (byte * 8); }
+        uint8_t readClipMtxResult(unsigned int index, unsigned int byte);
 
         void writeGxFifo(unsigned int byte, uint8_t value);
         void writeMtxMode(unsigned int byte, uint8_t value);
@@ -112,9 +113,13 @@ class Gpu3D
 
     private:
         unsigned int matrixMode = 0;
-        Matrix projection;
-        Matrix coordStack[32];
-        Matrix direcStack[32];
+        unsigned int projPointer = 0, coordPointer = 0;
+        bool clipNeedsUpdate = false;
+        Matrix projection, projStack;
+        Matrix coordinate, coordStack[32];
+        Matrix directional, direcStack[32];
+        Matrix texture, texStack;
+        Matrix clip;
         Matrix temp;
 
         _Polygon polygons1[2048] = {}, polygons2[2048] = {};

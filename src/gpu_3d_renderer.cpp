@@ -34,16 +34,35 @@ void Gpu3DRenderer::drawScanline(unsigned int line)
     {
         unsigned int type = gpu3D->getPolygons()[i].type;
 
-        for (int j = 1; j <= (3 + (type & 1)); j++)
+        for (int j = 1; j <= 3 + (type & 1); j++)
         {
+            // Determine the vertex order
+            // Usually this is just clockwise, but quad strips are arranged in an "up-down" order
+            int j1, j2;
+            if (type != 3 || j % 2 == 1)
+            {
+                j1 = j - 1;
+                j2 = j % (3 + (type & 1));
+            }
+            else if (j == 2)
+            {
+                j1 = 1;
+                j2 = 3;
+            }
+            else if (j == 4)
+            {
+                j1 = 0;
+                j2 = 2;
+            }
+
             // Normalize the coordinates of a vertex
-            Vertex vertex1 = gpu3D->getPolygons()[i].vertices[j - 1];
+            Vertex vertex1 = gpu3D->getPolygons()[i].vertices[j1];
             if (vertex1.w == 0) continue;
             int x0 = (( vertex1.x * 128) / vertex1.w) + 128;
             int y0 = ((-vertex1.y * 96)  / vertex1.w) + 96;
 
             // Normalize the coordinates of the next vertex
-            Vertex vertex2 = gpu3D->getPolygons()[i].vertices[j % (3 + (type & 1))];
+            Vertex vertex2 = gpu3D->getPolygons()[i].vertices[j2];
             if (vertex2.w == 0) continue;
             int x1 = (( vertex2.x * 128) / vertex2.w) + 128;
             int y1 = ((-vertex2.y * 96)  / vertex2.w) + 96;

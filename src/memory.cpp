@@ -328,110 +328,110 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x4000000:
             case 0x4000001:
             case 0x4000002:
-            case 0x4000003: data = engineA->readDispCnt(address + i - 0x4000000);      break; // DISPCNT (engine A)
+            case 0x4000003: data = engineA->readDispCnt(address + i - 0x4000000);         break; // DISPCNT (engine A)
             case 0x4000004:
-            case 0x4000005: data = gpu->readDispStat9(address + i - 0x4000004);        break; // DISPSTAT (ARM9)
+            case 0x4000005: data = gpu->readDispStat9(address + i - 0x4000004);           break; // DISPSTAT (ARM9)
             case 0x4000006:
-            case 0x4000007: data = gpu->readVCount(address + i - 0x4000006);           break; // VCOUNT
+            case 0x4000007: data = gpu->readVCount(address + i - 0x4000006);              break; // VCOUNT
             case 0x4000008:
-            case 0x4000009: data = engineA->readBgCnt(0, address + i - 0x4000008);     break; // BG0CNT (engine A)
+            case 0x4000009: data = engineA->readBgCnt(0, address + i - 0x4000008);        break; // BG0CNT (engine A)
             case 0x400000A:
-            case 0x400000B: data = engineA->readBgCnt(1, address + i - 0x400000A);     break; // BG1CNT (engine A)
+            case 0x400000B: data = engineA->readBgCnt(1, address + i - 0x400000A);        break; // BG1CNT (engine A)
             case 0x400000C:
-            case 0x400000D: data = engineA->readBgCnt(2, address + i - 0x400000C);     break; // BG2CNT (engine A)
+            case 0x400000D: data = engineA->readBgCnt(2, address + i - 0x400000C);        break; // BG2CNT (engine A)
             case 0x400000E:
-            case 0x400000F: data = engineA->readBgCnt(3, address + i - 0x400000E);     break; // BG3CNT (engine A)
+            case 0x400000F: data = engineA->readBgCnt(3, address + i - 0x400000E);        break; // BG3CNT (engine A)
             case 0x400006C:
-            case 0x400006D: data = engineA->readMasterBright(address + i - 0x400006C); break; // MASTER_BRIGHT (engine A)
+            case 0x400006D: data = engineA->readMasterBright(address + i - 0x400006C);    break; // MASTER_BRIGHT (engine A)
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
-            case 0x40000B3: data = dma9->readDmaSad(0, address + i - 0x40000B0);       break; // DMA0SAD (ARM9)
+            case 0x40000B3: data = dma9->readDmaSad(0, address + i - 0x40000B0);          break; // DMA0SAD (ARM9)
             case 0x40000B4:
             case 0x40000B5:
             case 0x40000B6:
-            case 0x40000B7: data = dma9->readDmaDad(0, address + i - 0x40000B4);       break; // DMA0DAD (ARM9)
+            case 0x40000B7: data = dma9->readDmaDad(0, address + i - 0x40000B4);          break; // DMA0DAD (ARM9)
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
-            case 0x40000BB: data = dma9->readDmaCnt(0, address + i - 0x40000B8);       break; // DMA0CNT (ARM9)
+            case 0x40000BB: data = dma9->readDmaCnt(0, address + i - 0x40000B8);          break; // DMA0CNT (ARM9)
             case 0x40000BC:
             case 0x40000BD:
             case 0x40000BE:
-            case 0x40000BF: data = dma9->readDmaSad(1, address + i - 0x40000BC);       break; // DMA1SAD (ARM9)
+            case 0x40000BF: data = dma9->readDmaSad(1, address + i - 0x40000BC);          break; // DMA1SAD (ARM9)
             case 0x40000C0:
             case 0x40000C1:
             case 0x40000C2:
-            case 0x40000C3: data = dma9->readDmaDad(1, address + i - 0x40000C0);       break; // DMA1DAD (ARM9)
+            case 0x40000C3: data = dma9->readDmaDad(1, address + i - 0x40000C0);          break; // DMA1DAD (ARM9)
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
-            case 0x40000C7: data = dma9->readDmaCnt(1, address + i - 0x40000C4);       break; // DMA1CNT (ARM9)
+            case 0x40000C7: data = dma9->readDmaCnt(1, address + i - 0x40000C4);          break; // DMA1CNT (ARM9)
             case 0x40000C8:
             case 0x40000C9:
             case 0x40000CA:
-            case 0x40000CB: data = dma9->readDmaSad(2, address + i - 0x40000C8);       break; // DMA2SAD (ARM9)
+            case 0x40000CB: data = dma9->readDmaSad(2, address + i - 0x40000C8);          break; // DMA2SAD (ARM9)
             case 0x40000CC:
             case 0x40000CD:
             case 0x40000CE:
-            case 0x40000CF: data = dma9->readDmaDad(2, address + i - 0x40000CC);       break; // DMA2DAD (ARM9)
+            case 0x40000CF: data = dma9->readDmaDad(2, address + i - 0x40000CC);          break; // DMA2DAD (ARM9)
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
-            case 0x40000D3: data = dma9->readDmaCnt(2, address + i - 0x40000D0);       break; // DMA2CNT (ARM9)
+            case 0x40000D3: data = dma9->readDmaCnt(2, address + i - 0x40000D0);          break; // DMA2CNT (ARM9)
             case 0x40000D4:
             case 0x40000D5:
             case 0x40000D6:
-            case 0x40000D7: data = dma9->readDmaSad(3, address + i - 0x40000D4);       break; // DMA3SAD (ARM9)
+            case 0x40000D7: data = dma9->readDmaSad(3, address + i - 0x40000D4);          break; // DMA3SAD (ARM9)
             case 0x40000D8:
             case 0x40000D9:
             case 0x40000DA:
-            case 0x40000DB: data = dma9->readDmaDad(3, address + i - 0x40000D8);       break; // DMA3DAD (ARM9)
+            case 0x40000DB: data = dma9->readDmaDad(3, address + i - 0x40000D8);          break; // DMA3DAD (ARM9)
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
-            case 0x40000DF: data = dma9->readDmaCnt(3, address + i - 0x40000DC);       break; // DMA3CNT (ARM9)
+            case 0x40000DF: data = dma9->readDmaCnt(3, address + i - 0x40000DC);          break; // DMA3CNT (ARM9)
             case 0x40000E0:
             case 0x40000E1:
             case 0x40000E2:
-            case 0x40000E3: data = readDmaFill(0, address + i - 0x40000E0);            break; // DMA0FILL
+            case 0x40000E3: data = readDmaFill(0, address + i - 0x40000E0);               break; // DMA0FILL
             case 0x40000E4:
             case 0x40000E5:
             case 0x40000E6:
-            case 0x40000E7: data = readDmaFill(1, address + i - 0x40000E4);            break; // DMA1FILL
+            case 0x40000E7: data = readDmaFill(1, address + i - 0x40000E4);               break; // DMA1FILL
             case 0x40000E8:
             case 0x40000E9:
             case 0x40000EA:
-            case 0x40000EB: data = readDmaFill(2, address + i - 0x40000E8);            break; // DMA2FILL
+            case 0x40000EB: data = readDmaFill(2, address + i - 0x40000E8);               break; // DMA2FILL
             case 0x40000EC:
             case 0x40000ED:
             case 0x40000EE:
-            case 0x40000EF: data = readDmaFill(3, address + i - 0x40000EC);            break; // DMA3FILL
+            case 0x40000EF: data = readDmaFill(3, address + i - 0x40000EC);               break; // DMA3FILL
             case 0x4000100:
-            case 0x4000101: data = timers9->readTmCntL(0, address + i - 0x4000100);    break; // TM0CNT_L (ARM9)
-            case 0x4000102: data = timers9->readTmCntH(0);                             break; // TM0CNT_H (ARM9)
+            case 0x4000101: data = timers9->readTmCntL(0, address + i - 0x4000100);       break; // TM0CNT_L (ARM9)
+            case 0x4000102: data = timers9->readTmCntH(0);                                break; // TM0CNT_H (ARM9)
             case 0x4000104:
-            case 0x4000105: data = timers9->readTmCntL(1, address + i - 0x4000104);    break; // TM1CNT_L (ARM9)
-            case 0x4000106: data = timers9->readTmCntH(1);                             break; // TM1CNT_H (ARM9)
+            case 0x4000105: data = timers9->readTmCntL(1, address + i - 0x4000104);       break; // TM1CNT_L (ARM9)
+            case 0x4000106: data = timers9->readTmCntH(1);                                break; // TM1CNT_H (ARM9)
             case 0x4000108:
-            case 0x4000109: data = timers9->readTmCntL(2, address + i - 0x4000108);    break; // TM2CNT_L (ARM9)
-            case 0x400010A: data = timers9->readTmCntH(2);                             break; // TM2CNT_H (ARM9)
+            case 0x4000109: data = timers9->readTmCntL(2, address + i - 0x4000108);       break; // TM2CNT_L (ARM9)
+            case 0x400010A: data = timers9->readTmCntH(2);                                break; // TM2CNT_H (ARM9)
             case 0x400010C:
-            case 0x400010D: data = timers9->readTmCntL(3, address + i - 0x400010C);    break; // TM3CNT_L (ARM9)
-            case 0x400010E: data = timers9->readTmCntH(3);                             break; // TM3CNT_H (ARM9)
+            case 0x400010D: data = timers9->readTmCntL(3, address + i - 0x400010C);       break; // TM3CNT_L (ARM9)
+            case 0x400010E: data = timers9->readTmCntH(3);                                break; // TM3CNT_H (ARM9)
             case 0x4000130:
-            case 0x4000131: data = input->readKeyInput(address + i - 0x4000130);       break; // KEYINPUT
+            case 0x4000131: data = input->readKeyInput(address + i - 0x4000130);          break; // KEYINPUT
             case 0x4000180:
-            case 0x4000181: data = ipc->readIpcSync9(address + i - 0x4000180);         break; // IPCSYNC (ARM9)
+            case 0x4000181: data = ipc->readIpcSync9(address + i - 0x4000180);            break; // IPCSYNC (ARM9)
             case 0x4000184:
-            case 0x4000185: data = ipc->readIpcFifoCnt9(address + i - 0x4000184);      break; // IPCFIFOCNT (ARM9)
+            case 0x4000185: data = ipc->readIpcFifoCnt9(address + i - 0x4000184);         break; // IPCFIFOCNT (ARM9)
             case 0x40001A0:
-            case 0x40001A1: data = cart9->readAuxSpiCnt(address + i - 0x40001A0);      break; // AUXSPICNT (ARM9)
-            case 0x40001A2: data = cart9->readAuxSpiData();                            break; // AUXSPIDATA (ARM9)
+            case 0x40001A1: data = cart9->readAuxSpiCnt(address + i - 0x40001A0);         break; // AUXSPICNT (ARM9)
+            case 0x40001A2: data = cart9->readAuxSpiData();                               break; // AUXSPIDATA (ARM9)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: data = cart9->readRomCtrl(address + i - 0x40001A4);        break; // ROMCTRL (ARM9)
+            case 0x40001A7: data = cart9->readRomCtrl(address + i - 0x40001A4);           break; // ROMCTRL (ARM9)
             case 0x40001A8:
             case 0x40001A9:
             case 0x40001AA:
@@ -439,18 +439,18 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x40001AC:
             case 0x40001AD:
             case 0x40001AE:
-            case 0x40001AF: data = cart9->readRomCmdOut(address + i - 0x40001A8);      break; // ROMCMDOUT (ARM9)
-            case 0x4000208: data = arm9->readIme();                                    break; // IME (ARM9)
+            case 0x40001AF: data = cart9->readRomCmdOut(address + i - 0x40001A8);         break; // ROMCMDOUT (ARM9)
+            case 0x4000208: data = arm9->readIme();                                       break; // IME (ARM9)
             case 0x4000210:
             case 0x4000211:
             case 0x4000212:
-            case 0x4000213: data = arm9->readIe(address + i - 0x4000210);              break; // IE (ARM9)
+            case 0x4000213: data = arm9->readIe(address + i - 0x4000210);                 break; // IE (ARM9)
             case 0x4000214:
             case 0x4000215:
             case 0x4000216:
-            case 0x4000217: data = arm9->readIrf(address + i - 0x4000214);             break; // IF (ARM9)
+            case 0x4000217: data = arm9->readIrf(address + i - 0x4000214);                break; // IF (ARM9)
             case 0x4000280:
-            case 0x4000281: data = math->readDivCnt(address + i - 0x4000280);          break; // DIVCNT
+            case 0x4000281: data = math->readDivCnt(address + i - 0x4000280);             break; // DIVCNT
             case 0x4000290:
             case 0x4000291:
             case 0x4000292:
@@ -458,7 +458,7 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x4000294:
             case 0x4000295:
             case 0x4000296:
-            case 0x4000297: data = math->readDivNumer(address + i - 0x4000290);        break; // DIVNUMER
+            case 0x4000297: data = math->readDivNumer(address + i - 0x4000290);           break; // DIVNUMER
             case 0x4000298:
             case 0x4000299:
             case 0x400029A:
@@ -466,7 +466,7 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x400029C:
             case 0x400029D:
             case 0x400029E:
-            case 0x400029F: data = math->readDivDenom(address + i - 0x4000298);        break; // DIVDENOM
+            case 0x400029F: data = math->readDivDenom(address + i - 0x4000298);           break; // DIVDENOM
             case 0x40002A0:
             case 0x40002A1:
             case 0x40002A2:
@@ -474,7 +474,7 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x40002A4:
             case 0x40002A5:
             case 0x40002A6:
-            case 0x40002A7: data = math->readDivResult(address + i - 0x40002A0);       break; // DIVRESULT
+            case 0x40002A7: data = math->readDivResult(address + i - 0x40002A0);          break; // DIVRESULT
             case 0x40002A8:
             case 0x40002A9:
             case 0x40002AA:
@@ -482,13 +482,13 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x40002AC:
             case 0x40002AD:
             case 0x40002AE:
-            case 0x40002AF: data = math->readDivRemResult(address + i - 0x40002A8);    break; // DIVREMRESULT
+            case 0x40002AF: data = math->readDivRemResult(address + i - 0x40002A8);       break; // DIVREMRESULT
             case 0x40002B0:
-            case 0x40002B1: data = math->readSqrtCnt(address + i - 0x40002B0);         break; // SQRTCNT
+            case 0x40002B1: data = math->readSqrtCnt(address + i - 0x40002B0);            break; // SQRTCNT
             case 0x40002B4:
             case 0x40002B5:
             case 0x40002B6:
-            case 0x40002B7: data = math->readSqrtResult(address + i - 0x40002B4);      break; // SQRTRESULT
+            case 0x40002B7: data = math->readSqrtResult(address + i - 0x40002B4);         break; // SQRTRESULT
             case 0x40002B8:
             case 0x40002B9:
             case 0x40002BA:
@@ -496,36 +496,100 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x40002BC:
             case 0x40002BD:
             case 0x40002BE:
-            case 0x40002BF: data = math->readSqrtParam(address + i - 0x40002B8);       break; // SQRTPARAM
-            case 0x4000300: data = arm9->readPostFlg();                                break; // POSTFLG (ARM9)
+            case 0x40002BF: data = math->readSqrtParam(address + i - 0x40002B8);          break; // SQRTPARAM
+            case 0x4000300: data = arm9->readPostFlg();                                   break; // POSTFLG (ARM9)
             case 0x4000304:
-            case 0x4000305: data = gpu->readPowCnt1(address + i - 0x4000214);          break; // POWCNT1
+            case 0x4000305: data = gpu->readPowCnt1(address + i - 0x4000214);             break; // POWCNT1
             case 0x4000600:
             case 0x4000601:
             case 0x4000602:
-            case 0x4000603: data = gpu3D->readGxStat(address + i - 0x4000600);         break; // GXSTAT
+            case 0x4000603: data = gpu3D->readGxStat(address + i - 0x4000600);            break; // GXSTAT
+            case 0x4000640:
+            case 0x4000641:
+            case 0x4000642:
+            case 0x4000643: data = gpu3D->readClipMtxResult(0, address + i - 0x4000640);  break; // CLIPMTX_RESULT
+            case 0x4000644:
+            case 0x4000645:
+            case 0x4000646:
+            case 0x4000647: data = gpu3D->readClipMtxResult(1, address + i - 0x4000644);  break; // CLIPMTX_RESULT
+            case 0x4000648:
+            case 0x4000649:
+            case 0x400064A:
+            case 0x400064B: data = gpu3D->readClipMtxResult(2, address + i - 0x4000648);  break; // CLIPMTX_RESULT
+            case 0x400064C:
+            case 0x400064D:
+            case 0x400064E:
+            case 0x400064F: data = gpu3D->readClipMtxResult(3, address + i - 0x400064C);  break; // CLIPMTX_RESULT
+            case 0x4000650:
+            case 0x4000651:
+            case 0x4000652:
+            case 0x4000653: data = gpu3D->readClipMtxResult(4, address + i - 0x4000650);  break; // CLIPMTX_RESULT
+            case 0x4000654:
+            case 0x4000655:
+            case 0x4000656:
+            case 0x4000657: data = gpu3D->readClipMtxResult(5, address + i - 0x4000654);  break; // CLIPMTX_RESULT
+            case 0x4000658:
+            case 0x4000659:
+            case 0x400065A:
+            case 0x400065B: data = gpu3D->readClipMtxResult(6, address + i - 0x4000658);  break; // CLIPMTX_RESULT
+            case 0x400065C:
+            case 0x400065D:
+            case 0x400065E:
+            case 0x400065F: data = gpu3D->readClipMtxResult(7, address + i - 0x400065C);  break; // CLIPMTX_RESULT
+            case 0x4000660:
+            case 0x4000661:
+            case 0x4000662:
+            case 0x4000663: data = gpu3D->readClipMtxResult(8, address + i - 0x4000660);  break; // CLIPMTX_RESULT
+            case 0x4000664:
+            case 0x4000665:
+            case 0x4000666:
+            case 0x4000667: data = gpu3D->readClipMtxResult(9, address + i - 0x4000664);  break; // CLIPMTX_RESULT
+            case 0x4000668:
+            case 0x4000669:
+            case 0x400066A:
+            case 0x400066B: data = gpu3D->readClipMtxResult(10, address + i - 0x4000668); break; // CLIPMTX_RESULT
+            case 0x400066C:
+            case 0x400066D:
+            case 0x400066E:
+            case 0x400066F: data = gpu3D->readClipMtxResult(11, address + i - 0x400066C); break; // CLIPMTX_RESULT
+            case 0x4000670:
+            case 0x4000671:
+            case 0x4000672:
+            case 0x4000673: data = gpu3D->readClipMtxResult(12, address + i - 0x4000670); break; // CLIPMTX_RESULT
+            case 0x4000674:
+            case 0x4000675:
+            case 0x4000676:
+            case 0x4000677: data = gpu3D->readClipMtxResult(13, address + i - 0x4000674); break; // CLIPMTX_RESULT
+            case 0x4000678:
+            case 0x4000679:
+            case 0x400067A:
+            case 0x400067B: data = gpu3D->readClipMtxResult(14, address + i - 0x4000678); break; // CLIPMTX_RESULT
+            case 0x400067C:
+            case 0x400067D:
+            case 0x400067E:
+            case 0x400067F: data = gpu3D->readClipMtxResult(15, address + i - 0x400067C); break; // CLIPMTX_RESULT
             case 0x4001000:
             case 0x4001001:
             case 0x4001002:
-            case 0x4001003: data = engineB->readDispCnt(address + i - 0x4001000);      break; // DISPCNT (engine B)
+            case 0x4001003: data = engineB->readDispCnt(address + i - 0x4001000);         break; // DISPCNT (engine B)
             case 0x4001008:
-            case 0x4001009: data = engineB->readBgCnt(0, address + i - 0x4001008);     break; // BG0CNT (engine B)
+            case 0x4001009: data = engineB->readBgCnt(0, address + i - 0x4001008);        break; // BG0CNT (engine B)
             case 0x400100A:
-            case 0x400100B: data = engineB->readBgCnt(1, address + i - 0x400100A);     break; // BG1CNT (engine B)
+            case 0x400100B: data = engineB->readBgCnt(1, address + i - 0x400100A);        break; // BG1CNT (engine B)
             case 0x400100C:
-            case 0x400100D: data = engineB->readBgCnt(2, address + i - 0x400100C);     break; // BG2CNT (engine B)
+            case 0x400100D: data = engineB->readBgCnt(2, address + i - 0x400100C);        break; // BG2CNT (engine B)
             case 0x400100E:
-            case 0x400100F: data = engineB->readBgCnt(3, address + i - 0x400100E);     break; // BG3CNT (engine B)
+            case 0x400100F: data = engineB->readBgCnt(3, address + i - 0x400100E);        break; // BG3CNT (engine B)
             case 0x400106C:
-            case 0x400106D: data = engineB->readMasterBright(address + i - 0x400106C); break; // MASTER_BRIGHT (engine B)
+            case 0x400106D: data = engineB->readMasterBright(address + i - 0x400106C);    break; // MASTER_BRIGHT (engine B)
             case 0x4100000:
             case 0x4100001:
             case 0x4100002:
-            case 0x4100003: data = ipc->readIpcFifoRecv9(address + i - 0x4100000);     break; // IPCFIFORECV (ARM9)
+            case 0x4100003: data = ipc->readIpcFifoRecv9(address + i - 0x4100000);        break; // IPCFIFORECV (ARM9)
             case 0x4100010:
             case 0x4100011:
             case 0x4100012:
-            case 0x4100013: data = cart9->readRomDataIn(address + i - 0x4100010);      break; // ROMDATAIN (ARM9)
+            case 0x4100013: data = cart9->readRomDataIn(address + i - 0x4100010);         break; // ROMDATAIN (ARM9)
 
             default:
                 if (i == 0)

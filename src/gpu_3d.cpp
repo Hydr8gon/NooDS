@@ -104,7 +104,7 @@ void Gpu3D::runCycle()
             break;
     }
 
-    // Count how many parameters have been used
+    // Keep track of how many parameters have been sent
     paramCount++;
     if (paramCount >= paramCounts[entry.command])
         paramCount = 0;
@@ -114,14 +114,17 @@ void Gpu3D::runCycle()
     {
         for (int i = 0; i < ((fifo.size() > 2) ? 2 : fifo.size()); i++)
         {
-            entry = fifo.front();
+            pipe.push(fifo.front());
             fifo.pop();
-            pipe.push(entry);
         }
     }
 
+    // Update the counters
+    gxStat = (gxStat & ~0x00001F00) | (coordPointer << 8); // Coordinate stack pointer
+    gxStat = (gxStat & ~0x00002000) | (projPointer << 13); // Projection stack pointer
+    gxStat = (gxStat & ~0x01FF0000) | (fifo.size() << 16); // FIFO entries
+
     // Update the FIFO status
-    gxStat = (gxStat & ~0x01FF0000) | (fifo.size() << 16); // Count
     if (fifo.size() < 128) gxStat |=  BIT(25); // Less than half full
     if (fifo.size() == 0)  gxStat |=  BIT(26); // Empty
     if (pipe.size() == 0)  gxStat &= ~BIT(27); // Commands not executing
@@ -153,24 +156,32 @@ Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)
 
 Vertex Gpu3D::multiply(Vertex *vtx, Matrix *mtx)
 {
-    Vertex vertex = *vtx;
+    Vertex vertex;
 
     // Multiply a vertex with a matrix
     vertex.x = ((int64_t)vtx->x * mtx->data[0] + (int64_t)vtx->y * mtx->data[4] + (int64_t)vtx->z * mtx->data[8]  + (int64_t)vtx->w * mtx->data[12]) >> 12;
     vertex.y = ((int64_t)vtx->x * mtx->data[1] + (int64_t)vtx->y * mtx->data[5] + (int64_t)vtx->z * mtx->data[9]  + (int64_t)vtx->w * mtx->data[13]) >> 12;
     vertex.z = ((int64_t)vtx->x * mtx->data[2] + (int64_t)vtx->y * mtx->data[6] + (int64_t)vtx->z * mtx->data[10] + (int64_t)vtx->w * mtx->data[14]) >> 12;
     vertex.w = ((int64_t)vtx->x * mtx->data[3] + (int64_t)vtx->y * mtx->data[7] + (int64_t)vtx->z * mtx->data[11] + (int64_t)vtx->w * mtx->data[15]) >> 12;
+    vertex.color = vtx->color;
 
     return vertex;
 }
 
 void Gpu3D::addVertex()
 {
+    // Remember the pre-transformation vertex
     last = verticesIn[vertexCountIn];
 
+    // Update the clip matrix if necessary
+    if (clipNeedsUpdate)
+    {
+        clip = multiply(&coordinate, &projection);
+        clipNeedsUpdate = false;
+    }
+
     // Transform the vertex
-    verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &coordStack[(gxStat & 0x00001F00) >> 8]);
-    verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &projection);
+    verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &clip);
 
     // Move to the next polygon if one has been completed
     if (size != 0 && polygonCountIn > 0 && polygonCountIn < 2048)
@@ -236,33 +247,37 @@ void Gpu3D::mtxPushCmd()
     switch (matrixMode)
     {
         case 0: // Projection stack
-            // Increment the stack pointer or indicate an overflow error
-            // There's only one projection matrix, so no copying is needed
-            gxStat |= BIT((gxStat & BIT(13)) ? 15 : 13);
+            if (projPointer < 1)
+            {
+                // Push to the single projection stack slot and increment the pointer
+                projStack = projection;
+                projPointer++;
+            }
+            else
+            {
+                // Indicate a matrix stack overflow error
+                gxStat |= BIT(15);
+            }
             break;
 
         case 1: case 2: // Coordinate and directional stacks
-        {
-            int pointer = (gxStat & 0x00001F00) >> 8;
-
             // Indicate a matrix stack overflow error
             // Even though the 31st slot exists, it still causes an overflow error
-            if (pointer >= 30) gxStat |= BIT(15);
+            if (coordPointer >= 30) gxStat |= BIT(15);
 
-            if (pointer < 31)
+            // Push to the current coordinate and directional stack slots and increment the pointer
+            if (coordPointer < 31)
             {
-                // Increment the pointer and copy the old current matrix to the new current matrix
-                pointer++;
-                coordStack[pointer] = coordStack[pointer - 1];
-                direcStack[pointer] = direcStack[pointer - 1];
-                gxStat = (gxStat & ~0x00001F00) | ((pointer & 0x1F) << 8);
+                coordStack[coordPointer] = coordinate;
+                direcStack[coordPointer] = directional;
+                coordPointer++;
             }
-
             break;
-        }
 
         case 3: // Texture stack
-            printf("Unhandled GXFIFO matrix command in texture mode\n");
+            // Push to the single texture stack slot
+            // The texture stack doesn't have a pointer
+            texStack = texture;
             break;
     }
 }
@@ -273,32 +288,45 @@ void Gpu3D::mtxPopCmd(uint32_t param)
     switch (matrixMode)
     {
         case 0: // Projection stack
-            // Decrement the stack pointer or indicate an underflow error
-            if (gxStat & BIT(13)) gxStat &= ~BIT(13); else gxStat |= BIT(15);
-            break;
-
-        case 1: case 2: // Coordinate and directional stacks
-        {
-            int pointer = (gxStat & 0x00001F00) >> 8;
-            int8_t offset = ((param & BIT(5)) ? 0xC0 : 0) | (param & 0x0000003F);
-
-            if (pointer >= offset)
+            if (projPointer > 0)
             {
-                // Decrement the stack pointer
-                pointer -= offset;
-                gxStat = (gxStat & ~0x00001F00) | ((pointer & 0x1F) << 8);
+                // Pop from the single projection stack slot and decrement the pointer
+                // The parameter is ignored in projection mode
+                projPointer--;
+                projection = projStack;
+                clipNeedsUpdate = true;
             }
             else
             {
                 // Indicate a matrix stack underflow error
                 gxStat |= BIT(15);
             }
-
             break;
-       }
+
+        case 1: case 2: // Coordinate and directional stacks
+        {
+            // Calculate the stack address to pop from
+            int address = coordPointer - (int8_t)(((param & BIT(5)) ? 0xC0 : 0) | (param & 0x0000003F));
+
+            // Indicate a matrix stack underflow or overflow error
+            // Even though the 31st slot exists, it still causes an overflow error
+            if (address < 0 || address >= 30) gxStat |= BIT(15);
+
+            // Pop from the current coordinate and directional stack slots and update the pointer
+            if (address >= 0 && address < 31)
+            {
+                coordinate = coordStack[address];
+                directional = direcStack[address];
+                coordPointer = address;
+                clipNeedsUpdate = true;
+            }
+            break;
+        }
 
         case 3: // Texture stack
-            printf("Unhandled GXFIFO matrix command in texture mode\n");
+            // Pop from the single texture stack slot
+            // The texture stack doesn't have a pointer, and the parameter is ignored
+            texture = texStack;
             break;
     }
 }
@@ -308,23 +336,31 @@ void Gpu3D::mtxStoreCmd(uint32_t param)
     // Store a matrix to the stack
     switch (matrixMode)
     {
+        case 0: // Projection stack
+            // Store to the single projection stack slot
+            // The parameter is ignored in projection mode
+            projStack = projection;
+            break;
+
         case 1: case 2: // Coordinate and directional stacks
         {
-            int pointer = (gxStat & 0x00001F00) >> 8;
-            int offset = param & 0x0000001F;
+            // Get the stack address to store to
+            int address = param & 0x0000001F;
 
             // Indicate a matrix stack overflow error
             // Even though the 31st slot exists, it still causes an overflow error
-            if (offset == 31) gxStat |= BIT(15);
+            if (address == 31) gxStat |= BIT(15);
 
-            coordStack[offset] = coordStack[pointer];
-            direcStack[offset] = direcStack[pointer];
-
+            // Store to the current coordinate and directional stack slots
+            coordStack[address] = coordinate;
+            direcStack[address] = directional;
             break;
        }
 
         case 3: // Texture stack
-            printf("Unhandled GXFIFO matrix command in texture mode\n");
+            // Store to the single texture stack slot
+            // The parameter is ignored in texture mode
+            texStack = texture;
             break;
     }
 }
@@ -334,23 +370,33 @@ void Gpu3D::mtxRestoreCmd(uint32_t param)
     // Restore a matrix from the stack
     switch (matrixMode)
     {
+        case 0: // Projection stack
+            // Restore from the single projection stack slot
+            // The parameter is ignored in projection mode
+            projection = projStack;
+            clipNeedsUpdate = true;
+            break;
+
         case 1: case 2: // Coordinate and directional stacks
         {
-            int pointer = (gxStat & 0x00001F00) >> 8;
-            int offset = param & 0x0000001F;
+            // Get the stack address to store to
+            int address = param & 0x0000001F;
 
             // Indicate a matrix stack overflow error
             // Even though the 31st slot exists, it still causes an overflow error
-            if (pointer == 31) gxStat |= BIT(15);
+            if (address == 31) gxStat |= BIT(15);
 
-            coordStack[pointer] = coordStack[offset];
-            direcStack[pointer] = direcStack[offset];
-
+            // Restore from the current coordinate and directional stack slots
+            coordinate = coordStack[address];
+            directional = direcStack[address];
+            clipNeedsUpdate = true;
             break;
        }
 
         case 3: // Texture stack
-            printf("Unhandled GXFIFO matrix command in texture mode\n");
+            // Restore from the single texture stack slot
+            // The parameter is ignored in texture mode
+            texture = texStack;
             break;
     }
 }
@@ -362,83 +408,90 @@ void Gpu3D::mtxIdentityCmd()
     {
         case 0: // Projection stack
             projection = Matrix();
+            clipNeedsUpdate = true;
             break;
 
         case 1: // Coordinate stack
-            coordStack[(gxStat & 0x00001F00) >> 8] = Matrix();
+            coordinate = Matrix();
+            clipNeedsUpdate = true;
             break;
 
         case 2: // Coordinate and directional stacks
-        {
-            int pointer = (gxStat & 0x00001F00) >> 8;
-            coordStack[pointer] = Matrix();
-            direcStack[pointer] = Matrix();
+            coordinate = Matrix();
+            directional = Matrix();
+            clipNeedsUpdate = true;
             break;
-        }
 
         case 3: // Texture stack
-            printf("Unhandled GXFIFO matrix command in texture mode\n");
+            texture = Matrix();
             break;
     }
 }
 
 void Gpu3D::mtxLoad44Cmd(uint32_t param)
 {
+    // Store the paramaters to the temporary matrix
+    temp.data[paramCount] = param;
+
     // Set a 4x4 matrix
-    switch (matrixMode)
+    if (paramCount == 15)
     {
-        case 0: // Projection stack
-            projection.data[paramCount] = param;
-            break;
-
-        case 1: // Coordinate stack
-            coordStack[(gxStat & 0x00001F00) >> 8].data[paramCount] = param;
-            break;
-
-        case 2: // Coordinate and directional stack
+        switch (matrixMode)
         {
-            int pointer = (gxStat & 0x00001F00) >> 8;
-            coordStack[pointer].data[paramCount] = param;
-            direcStack[pointer].data[paramCount] = param;
-            break;
-        }
+            case 0: // Projection stack
+                projection = temp;
+                clipNeedsUpdate = true;
+                break;
 
-        case 3: // Texture stack
-            printf("Unhandled GXFIFO matrix command in texture mode\n");
-            break;
+            case 1: // Coordinate stack
+                coordinate = temp;
+                clipNeedsUpdate = true;
+                break;
+
+            case 2: // Coordinate and directional stack
+                coordinate = temp;
+                directional = temp;
+                clipNeedsUpdate = true;
+                break;
+
+            case 3: // Texture stack
+                texture = temp;
+                break;
+        }
     }
 }
 
 void Gpu3D::mtxLoad43Cmd(uint32_t param)
 {
+    // Store the paramaters to the temporary matrix
+    if (paramCount == 0) temp = Matrix();
+    temp.data[(paramCount / 3) * 4 + paramCount % 3] = param;
+
     // Set a 4x3 matrix
-    switch (matrixMode)
+    if (paramCount == 11)
     {
-        case 0: // Projection stack
-            if (paramCount == 0) projection = Matrix();
-            projection.data[(paramCount / 3) * 4 + paramCount % 3] = param;
-            break;
-
-        case 1: // Coordinate stack
+        switch (matrixMode)
         {
-            int pointer = (gxStat & 0x00001F00) >> 8;
-            if (paramCount == 0) coordStack[pointer] = Matrix();
-            coordStack[pointer].data[(paramCount / 3) * 4 + paramCount % 3] = param;
-            break;
-        }
+            case 0: // Projection stack
+                projection = temp;
+                clipNeedsUpdate = true;
+                break;
 
-        case 2: // Coordinate and directional stack
-        {
-            int pointer = (gxStat & 0x00001F00) >> 8;
-            if (paramCount == 0) coordStack[pointer] = Matrix();
-            coordStack[pointer].data[(paramCount / 3) * 4 + paramCount % 3] = param;
-            if (paramCount == 11) direcStack[pointer] = coordStack[pointer];
-            break;
-        }
+            case 1: // Coordinate stack
+                coordinate = temp;
+                clipNeedsUpdate = true;
+                break;
 
-        case 3: // Texture stack
-            printf("Unhandled GXFIFO matrix command in texture mode\n");
-            break;
+            case 2: // Coordinate and directional stack
+                coordinate = temp;
+                directional = temp;
+                clipNeedsUpdate = true;
+                break;
+
+            case 3: // Texture stack
+                texture = temp;
+                break;
+        }
     }
 }
 
@@ -447,32 +500,29 @@ void Gpu3D::mtxMult44Cmd(uint32_t param)
     // Store the paramaters to the temporary matrix
     temp.data[paramCount] = param;
 
+    // Multiply a matrix by a 4x4 matrix
     if (paramCount == 15)
     {
-        // Multiply a matrix by a 4x4 matrix
         switch (matrixMode)
         {
             case 0: // Projection stack
                 projection = multiply(&temp, &projection);
+                clipNeedsUpdate = true;
                 break;
 
             case 1: // Coordinate stack
-            {
-                int pointer = (gxStat & 0x00001F00) >> 8;
-                coordStack[pointer] = multiply(&temp, &coordStack[pointer]);
+                coordinate = multiply(&temp, &coordinate);
+                clipNeedsUpdate = true;
                 break;
-            }
 
             case 2: // Coordinate and directional stacks
-            {
-                int pointer = (gxStat & 0x00001F00) >> 8;
-                coordStack[pointer] = multiply(&temp, &coordStack[pointer]);
-                direcStack[pointer] = multiply(&temp, &direcStack[pointer]);
+                coordinate = multiply(&temp, &coordinate);
+                directional = multiply(&temp, &directional);
+                clipNeedsUpdate = true;
                 break;
-            }
 
             case 3: // Texture stack
-                printf("Unhandled GXFIFO matrix command in texture mode\n");
+                texture = multiply(&temp, &texture);
                 break;
         }
     }
@@ -484,32 +534,29 @@ void Gpu3D::mtxMult43Cmd(uint32_t param)
     if (paramCount == 0) temp = Matrix();
     temp.data[(paramCount / 3) * 4 + paramCount % 3] = param;
 
+    // Multiply a matrix by a 4x3 matrix
     if (paramCount == 11)
     {
-        // Multiply a matrix by a 4x3 matrix
         switch (matrixMode)
         {
             case 0: // Projection stack
                 projection = multiply(&temp, &projection);
+                clipNeedsUpdate = true;
                 break;
 
             case 1: // Coordinate stack
-            {
-                int pointer = (gxStat & 0x00001F00) >> 8;
-                coordStack[pointer] = multiply(&temp, &coordStack[pointer]);
+                coordinate = multiply(&temp, &coordinate);
+                clipNeedsUpdate = true;
                 break;
-            }
 
             case 2: // Coordinate and directional stacks
-            {
-                int pointer = (gxStat & 0x00001F00) >> 8;
-                coordStack[pointer] = multiply(&temp, &coordStack[pointer]);
-                direcStack[pointer] = multiply(&temp, &direcStack[pointer]);
+                coordinate = multiply(&temp, &coordinate);
+                directional = multiply(&temp, &directional);
+                clipNeedsUpdate = true;
                 break;
-            }
 
             case 3: // Texture stack
-                printf("Unhandled GXFIFO matrix command in texture mode\n");
+                texture = multiply(&temp, &texture);
                 break;
         }
     }
@@ -521,32 +568,29 @@ void Gpu3D::mtxMult33Cmd(uint32_t param)
     if (paramCount == 0) temp = Matrix();
     temp.data[(paramCount / 3) * 4 + paramCount % 3] = param;
 
+    // Multiply a matrix by a 3x3 matrix
     if (paramCount == 8)
     {
-        // Multiply a matrix by a 3x3 matrix
         switch (matrixMode)
         {
             case 0: // Projection stack
                 projection = multiply(&temp, &projection);
+                clipNeedsUpdate = true;
                 break;
 
             case 1: // Coordinate stack
-            {
-                int pointer = (gxStat & 0x00001F00) >> 8;
-                coordStack[pointer] = multiply(&temp, &coordStack[pointer]);
+                coordinate = multiply(&temp, &coordinate);
+                clipNeedsUpdate = true;
                 break;
-            }
 
             case 2: // Coordinate and directional stacks
-            {
-                int pointer = (gxStat & 0x00001F00) >> 8;
-                coordStack[pointer] = multiply(&temp, &coordStack[pointer]);
-                direcStack[pointer] = multiply(&temp, &direcStack[pointer]);
+                coordinate = multiply(&temp, &coordinate);
+                directional = multiply(&temp, &directional);
+                clipNeedsUpdate = true;
                 break;
-            }
 
             case 3: // Texture stack
-                printf("Unhandled GXFIFO matrix command in texture mode\n");
+                texture = multiply(&temp, &texture);
                 break;
         }
     }
@@ -558,24 +602,23 @@ void Gpu3D::mtxScaleCmd(uint32_t param)
     if (paramCount == 0) temp = Matrix();
     temp.data[paramCount * 5] = param;
 
+    // Multiply a matrix by a scale matrix
     if (paramCount == 2)
     {
-        // Multiply a matrix by a scale matrix
         switch (matrixMode)
         {
             case 0: // Projection stack
                 projection = multiply(&temp, &projection);
+                clipNeedsUpdate = true;
                 break;
 
             case 1: case 2: // Coordinate stack
-            {
-                int pointer = (gxStat & 0x00001F00) >> 8;
-                coordStack[pointer] = multiply(&temp, &coordStack[pointer]);
+                coordinate = multiply(&temp, &coordinate);
+                clipNeedsUpdate = true;
                 break;
-            }
 
             case 3: // Texture stack
-                printf("Unhandled GXFIFO matrix command in texture mode\n");
+                texture = multiply(&temp, &texture);
                 break;
         }
     }
@@ -587,32 +630,29 @@ void Gpu3D::mtxTransCmd(uint32_t param)
     if (paramCount == 0) temp = Matrix();
     temp.data[12 + paramCount] = param;
 
+    // Multiply a matrix by a translation matrix
     if (paramCount == 2)
     {
-        // Multiply a matrix by a translation matrix
         switch (matrixMode)
         {
             case 0: // Projection stack
                 projection = multiply(&temp, &projection);
+                clipNeedsUpdate = true;
                 break;
 
             case 1: // Coordinate stack
-            {
-                int pointer = (gxStat & 0x00001F00) >> 8;
-                coordStack[pointer] = multiply(&temp, &coordStack[pointer]);
+                coordinate = multiply(&temp, &coordinate);
+                clipNeedsUpdate = true;
                 break;
-            }
 
             case 2: // Coordinate and directional stacks
-            {
-                int pointer = (gxStat & 0x00001F00) >> 8;
-                coordStack[pointer] = multiply(&temp, &coordStack[pointer]);
-                direcStack[pointer] = multiply(&temp, &direcStack[pointer]);
+                coordinate = multiply(&temp, &coordinate);
+                directional = multiply(&temp, &directional);
+                clipNeedsUpdate = true;
                 break;
-            }
 
             case 3: // Texture stack
-                printf("Unhandled GXFIFO matrix command in texture mode\n");
+                texture = multiply(&temp, &texture);
                 break;
         }
     }
@@ -1281,4 +1321,17 @@ void Gpu3D::writeGxStat(unsigned int byte, uint8_t value)
     // Write to the GXSTAT register
     uint32_t mask = 0xC0000000 & (0xFF << (byte * 8));
     gxStat = (gxStat & ~mask) | ((value << (byte * 8)) & mask);
+}
+
+uint8_t Gpu3D::readClipMtxResult(unsigned int index, unsigned int byte)
+{
+    // Update the clip matrix if necessary
+    if (clipNeedsUpdate)
+    {
+        clip = multiply(&coordinate, &projection);
+        clipNeedsUpdate = false;
+    }
+
+    // Read from one of the CLIPMTX_RESULT registers
+    return clip.data[index] >> (byte * 8);
 }
