@@ -24,86 +24,226 @@
 #include "defines.h"
 #include "gpu_3d.h"
 
-void Gpu3DRenderer::drawScanline(unsigned int line)
+void Gpu3DRenderer::drawScanline(int line)
 {
     // Clear the scanline
     memset(&lineCache[(line % 48) * 256], 0, 256 * sizeof(uint16_t));
 
+    // "Empty" the Z-buffer by setting all values to maximum
+    for (int i = 0; i < 256; i++)
+        zBuffer[i] = 0x7FFFFFFF;
+
     // Draw the polygons
     for (int i = 0; i < gpu3D->getPolygonCount(); i++)
     {
-        unsigned int type = gpu3D->getPolygons()[i].type;
+        // Get the triangle vertices
+        Vertex v1 = normalize(gpu3D->getPolygons()[i].vertices[0]);
+        Vertex v2 = normalize(gpu3D->getPolygons()[i].vertices[1]);
+        Vertex v3 = normalize(gpu3D->getPolygons()[i].vertices[2]);
 
-        for (int j = 1; j <= 3 + (type & 1); j++)
+        if (gpu3D->getPolygons()[i].type & 1) // Quad
         {
-            // Determine the vertex order
-            // Usually this is just clockwise, but quad strips are arranged in an "up-down" order
-            int j1, j2;
-            if (type != 3 || j % 2 == 1)
+            // Get the quad's fourth vertex
+            Vertex v4 = normalize(gpu3D->getPolygons()[i].vertices[3]);
+
+            // Sort the vertices in order of increasing Y values
+            if (v2.y < v1.y)
             {
-                j1 = j - 1;
-                j2 = j % (3 + (type & 1));
+                Vertex v = v1;
+                v1 = v2;
+                v2 = v;
             }
-            else if (j == 2)
+            if (v3.y < v1.y)
             {
-                j1 = 1;
-                j2 = 3;
+                Vertex v = v1;
+                v1 = v3;
+                v3 = v;
             }
-            else if (j == 4)
+            if (v4.y < v1.y)
             {
-                j1 = 0;
-                j2 = 2;
+                Vertex v = v1;
+                v1 = v4;
+                v4 = v;
             }
-
-            // Normalize the coordinates of a vertex
-            Vertex vertex1 = gpu3D->getPolygons()[i].vertices[j1];
-            if (vertex1.w == 0) continue;
-            int x0 = (( vertex1.x * 128) / vertex1.w) + 128;
-            int y0 = ((-vertex1.y * 96)  / vertex1.w) + 96;
-
-            // Normalize the coordinates of the next vertex
-            Vertex vertex2 = gpu3D->getPolygons()[i].vertices[j2];
-            if (vertex2.w == 0) continue;
-            int x1 = (( vertex2.x * 128) / vertex2.w) + 128;
-            int y1 = ((-vertex2.y * 96)  / vertex2.w) + 96;
-
-            // Draw a line between the vertices
-            if (((int)line >= y0 && (int)line <= y1) || ((int)line >= y1 && (int)line <= y0))
+            if (v3.y < v2.y)
             {
-                int lx0, lx1;
-
-                // Swap the coordinates if necessary to ensure the leftmost one comes first
-                if (x0 > x1)
-                {
-                    int x = x0, y = y0;
-                    x0 = x1; y0 = y1;
-                    x1 = x;  y1 = y;
-                }
-
-                if (y0 == y1) // Horizontal line
-                {
-                    // The entire line exists on the current scanline
-                    lx0 = x0;
-                    lx1 = x1;
-                }
-                else
-                {
-                    // Calculate the length of the line segment that intersects with the current scanline
-                    int slope = ((x1 - x0) << 12) / (y1 - y0);
-                    lx0 = x0 + ((slope * ((int)line - y0)) >> 12);
-                    lx1 = x0 + ((slope * ((int)line - y0 + ((y0 < y1) ? 1 : -1))) >> 12);
-                    if (lx0 != lx1) lx1--;
-                    if (lx1 > x1) lx1 = x1;
-                }
-
-                // Stay within the screen bounds
-                if (lx0 <   0) lx0 =   0; else if (lx0 > 255) continue;
-                if (lx1 > 255) lx1 = 255; else if (lx1 <   0) continue;
-
-                // Draw a line segment
-                for (int x = lx0; x <= lx1; x++)
-                    lineCache[(line % 48) * 256 + x] = vertex1.color | BIT(15);
+                Vertex v = v2;
+                v2 = v3;
+                v3 = v;
             }
+            if (v4.y < v2.y)
+            {
+                Vertex v = v2;
+                v2 = v4;
+                v4 = v;
+            }
+            if (v4.y < v3.y)
+            {
+                Vertex v = v3;
+                v3 = v4;
+                v4 = v;
+            }
+
+            // Ensure the quad intersects with the current scanline
+            if (line < v1.y || line > v4.y) continue;
+
+            // Calculate the Z value of the cross products
+            // These determine the posistions of V2 and V3 relative to the line between V1 and V4
+            int cross2 = (v2.x - v1.x) * (v4.y - v1.y) - (v2.y - v1.y) * (v4.x - v1.x);
+            int cross3 = (v3.x - v1.x) * (v4.y - v1.y) - (v3.y - v1.y) * (v4.x - v1.x);
+
+            // Rasterize the quad
+            if (cross2 > 0 && cross3 <= 0) // V2 is on the right, V3 is on the left
+            {
+                if (line < v2.y) // Above V2
+                    rasterize(line, v1, v3, v1, v2);
+                else if (line < v3.y) // Above V3
+                    rasterize(line, v1, v3, v2, v4);
+                else // Below V3
+                    rasterize(line, v3, v4, v2, v4);
+            }
+            else if (cross2 <= 0 && cross3 > 0) // V2 is on the left, V3 is on the right
+            {
+                if (line < v2.y) // Above V2
+                    rasterize(line, v1, v2, v1, v3);
+                else if (line < v3.y) // Above V3
+                    rasterize(line, v2, v4, v1, v3);
+                else // Below V3
+                    rasterize(line, v2, v4, v3, v4);
+            }
+            else if (cross2 > 0 && cross3 > 0) // V2 and V3 are on the right
+            {
+                if (line < v2.y) // Above V2
+                    rasterize(line, v1, v4, v1, v2);
+                else if (line < v3.y) // Above V3
+                    rasterize(line, v1, v4, v2, v3);
+                else // Below V3
+                    rasterize(line, v1, v4, v3, v4);
+            }
+            else if (cross2 <= 0 && cross3 <= 0) // V2 and V3 are on the left
+            {
+                if (line < v2.y) // Above V2
+                    rasterize(line, v1, v2, v1, v4);
+                else if (line < v3.y) // Above V3
+                    rasterize(line, v2, v3, v1, v4);
+                else // Below V3
+                    rasterize(line, v3, v4, v1, v4);
+            }
+        }
+        else // Triangle
+        {
+            // Sort the vertices in order of increasing Y values
+            if (v2.y < v1.y)
+            {
+                Vertex v = v1;
+                v1 = v2;
+                v2 = v;
+            }
+            if (v3.y < v1.y)
+            {
+                Vertex v = v1;
+                v1 = v3;
+                v3 = v;
+            }
+            if (v3.y < v2.y)
+            {
+                Vertex v = v2;
+                v2 = v3;
+                v3 = v;
+            }
+
+            // Ensure the triangle intersects with the current scanline
+            if (line < v1.y || line > v3.y) continue;
+
+            // Calculate the Z value of the cross product
+            // This determines the posistion of V2 relative to the line between V1 and V3
+            int cross2 = (v2.x - v1.x) * (v3.y - v1.y) - (v2.y - v1.y) * (v3.x - v1.x);
+
+            // Rasterize the triangle
+            if (cross2 > 0) // V2 is on the right
+            {
+                if (line < v2.y) // Above V2
+                    rasterize(line, v1, v3, v1, v2);
+                else // Below V2
+                    rasterize(line, v1, v3, v2, v3);
+            }
+            else // V2 is on the left
+            {
+                if (line < v2.y) // Above V2
+                    rasterize(line, v1, v2, v1, v3);
+                else // Below V2
+                    rasterize(line, v2, v3, v1, v3);
+            }
+        }
+    }
+}
+
+Vertex Gpu3DRenderer::normalize(Vertex vertex)
+{
+    // Normalize a vertex's X and Y coordinates and convert them to DS screen coordinates
+    if (vertex.w != 0)
+    {
+        vertex.x = (( vertex.x * 128) / vertex.w) + 128;
+        vertex.y = ((-vertex.y *  96) / vertex.w) +  96;
+    }
+
+    return vertex;
+}
+
+int Gpu3DRenderer::interpolate(int min, int max, int start, int current, int end)
+{
+    // Calculate the gradient
+    // This is the percentage distance between the start and end positions
+    float gradient = (start == end) ? 0 : ((float)(current - start) / (end - start));
+
+    // Keep the gradient within bounds
+    if (gradient > 1)
+        gradient = 1;
+    else if (gradient < 0)
+        gradient = 0;
+
+    // Calculate a new value between the min and max values
+    return min + gradient * (max - min);
+}
+
+uint16_t Gpu3DRenderer::interpolateColor(uint16_t min, uint16_t max, int start, int current, int end)
+{
+    // Apply interpolation separately on the RGB values
+    int r = interpolate((min >>  0) & 0x1F, (max >>  0) & 0x1F, start, current, end);
+    int g = interpolate((min >>  5) & 0x1F, (max >>  5) & 0x1F, start, current, end);
+    int b = interpolate((min >> 10) & 0x1F, (max >> 10) & 0x1F, start, current, end);
+    return (b << 10) | (g << 5) | r | BIT(15);
+}
+
+void Gpu3DRenderer::rasterize(int line, Vertex v1, Vertex v2, Vertex v3, Vertex v4)
+{
+    // Calculate the X bounds between the line between V1 and V2 and the line between V3 and V4
+    int lx0 = interpolate(v1.x, v2.x, v1.y, line, v2.y);
+    int lx1 = interpolate(v3.x, v4.x, v3.y, line, v4.y);
+
+    // Stay within the screen bounds
+    if (lx0 <   0) lx0 =   0; else if (lx0 > 255) return;
+    if (lx1 > 255) lx1 = 255; else if (lx1 <   0) return;
+
+    // Draw a line segment
+    for (int x = lx0; x <= lx1; x++)
+    {
+        // Calculate the Z value of the current pixel
+        int z1 = interpolate(v1.z, v2.z, v1.y, line, v2.y);
+        int z2 = interpolate(v3.z, v4.z, v3.y, line, v4.y);
+        int z  = interpolate(z1, z2, lx0, x, lx1);
+
+        // Draw a new pixel if the previous one is behind the new one
+        if (zBuffer[x] >= z)
+        {
+            // Calculate the vertex color
+            uint16_t color1 = interpolateColor(v1.color, v2.color, v1.y, line, v2.y);
+            uint16_t color2 = interpolateColor(v3.color, v4.color, v3.y, line, v4.y);
+            uint16_t color  = interpolateColor(color1, color2, lx0, x, lx1);
+
+            // Draw a pixel
+            lineCache[(line % 48) * 256 + x] = color;
+            zBuffer[x] = z;
         }
     }
 }

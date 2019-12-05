@@ -22,23 +22,28 @@
 
 #include <cstdint>
 
-#include "defines.h"
-
 class Gpu3D;
+struct Vertex;
 
 class Gpu3DRenderer
 {
     public:
         Gpu3DRenderer(Gpu3D *gpu3D): gpu3D(gpu3D) {};
 
-        void drawScanline(unsigned int line);
+        void drawScanline(int line);
 
         uint16_t *getLineCache() { return lineCache; }
 
     private:
         uint16_t lineCache[48 * 256] = {};
+        int zBuffer[256] = {};
 
         Gpu3D *gpu3D;
+
+        Vertex normalize(Vertex vertex);
+        int interpolate(int min, int max, int start, int current, int end);
+        uint16_t interpolateColor(uint16_t min, uint16_t max, int start, int current, int end);
+        void rasterize(int line, Vertex v1, Vertex v2, Vertex v3, Vertex v4);
 };
 
 #endif // GPU_3D_RENDERER_H
