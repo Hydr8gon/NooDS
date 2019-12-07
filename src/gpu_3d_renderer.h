@@ -24,6 +24,7 @@
 
 class Gpu3D;
 struct Vertex;
+struct _Polygon;
 
 class Gpu3DRenderer
 {
@@ -43,7 +44,8 @@ class Gpu3DRenderer
         Vertex normalize(Vertex vertex);
         int interpolate(int min, int max, int start, int current, int end);
         uint16_t interpolateColor(uint16_t min, uint16_t max, int start, int current, int end);
-        void rasterize(int line, Vertex v1, Vertex v2, Vertex v3, Vertex v4);
+        uint16_t readTexture(_Polygon *polygon, int s, int t);
+        void rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v2, Vertex *v3, Vertex *v4);
 };
 
 #endif // GPU_3D_RENDERER_H

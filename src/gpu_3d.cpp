@@ -75,29 +75,32 @@ void Gpu3D::runCycle()
     // Execute the geometry command
     switch (entry.command)
     {
-        case 0x10: mtxModeCmd(entry.param);     break; // MTX_MODE
-        case 0x11: mtxPushCmd();                break; // MTX_PUSH
-        case 0x12: mtxPopCmd(entry.param);      break; // MTX_POP
-        case 0x13: mtxStoreCmd(entry.param);    break; // MTX_STORE
-        case 0x14: mtxRestoreCmd(entry.param);  break; // MTX_RESTORE
-        case 0x15: mtxIdentityCmd();            break; // MTX_IDENTITY
-        case 0x16: mtxLoad44Cmd(entry.param);   break; // MTX_LOAD_4x4
-        case 0x17: mtxLoad43Cmd(entry.param);   break; // MTX_LOAD_4x3
-        case 0x18: mtxMult44Cmd(entry.param);   break; // MTX_MULT_4x4
-        case 0x19: mtxMult43Cmd(entry.param);   break; // MTX_MULT_4x3
-        case 0x1A: mtxMult33Cmd(entry.param);   break; // MTX_MULT_3x3
-        case 0x1B: mtxScaleCmd(entry.param);    break; // MTX_SCALE
-        case 0x1C: mtxTransCmd(entry.param);    break; // MTX_TRANS
-        case 0x20: colorCmd(entry.param);       break; // COLOR
-        case 0x23: vtx16Cmd(entry.param);       break; // VTX_16
-        case 0x24: vtx10Cmd(entry.param);       break; // VTX_10
-        case 0x25: vtxXYCmd(entry.param);       break; // VTX_XY
-        case 0x26: vtxXZCmd(entry.param);       break; // VTX_XZ
-        case 0x27: vtxYZCmd(entry.param);       break; // VTX_YZ
-        case 0x28: vtxDiffCmd(entry.param);     break; // VTX_DIFF
-        case 0x40: beginVtxsCmd(entry.param);   break; // BEGIN_VTXS
-        case 0x41:                              break; // END_VTXS
-        case 0x50: swapBuffersCmd(entry.param); break; // SWAP_BUFFERS
+        case 0x10: mtxModeCmd(entry.param);       break; // MTX_MODE
+        case 0x11: mtxPushCmd();                  break; // MTX_PUSH
+        case 0x12: mtxPopCmd(entry.param);        break; // MTX_POP
+        case 0x13: mtxStoreCmd(entry.param);      break; // MTX_STORE
+        case 0x14: mtxRestoreCmd(entry.param);    break; // MTX_RESTORE
+        case 0x15: mtxIdentityCmd();              break; // MTX_IDENTITY
+        case 0x16: mtxLoad44Cmd(entry.param);     break; // MTX_LOAD_4x4
+        case 0x17: mtxLoad43Cmd(entry.param);     break; // MTX_LOAD_4x3
+        case 0x18: mtxMult44Cmd(entry.param);     break; // MTX_MULT_4x4
+        case 0x19: mtxMult43Cmd(entry.param);     break; // MTX_MULT_4x3
+        case 0x1A: mtxMult33Cmd(entry.param);     break; // MTX_MULT_3x3
+        case 0x1B: mtxScaleCmd(entry.param);      break; // MTX_SCALE
+        case 0x1C: mtxTransCmd(entry.param);      break; // MTX_TRANS
+        case 0x20: colorCmd(entry.param);         break; // COLOR
+        case 0x22: texCoordCmd(entry.param);      break; // TEXCOORD
+        case 0x23: vtx16Cmd(entry.param);         break; // VTX_16
+        case 0x24: vtx10Cmd(entry.param);         break; // VTX_10
+        case 0x25: vtxXYCmd(entry.param);         break; // VTX_XY
+        case 0x26: vtxXZCmd(entry.param);         break; // VTX_XZ
+        case 0x27: vtxYZCmd(entry.param);         break; // VTX_YZ
+        case 0x28: vtxDiffCmd(entry.param);       break; // VTX_DIFF
+        case 0x2A: texImageParamCmd(entry.param); break; // TEXIMAGE_PARAM
+        case 0x2B: plttBaseCmd(entry.param);      break; // PLTT_BASE
+        case 0x40: beginVtxsCmd(entry.param);     break; // BEGIN_VTXS
+        case 0x41:                                break; // END_VTXS
+        case 0x50: swapBuffersCmd(entry.param);   break; // SWAP_BUFFERS
 
         default:
             printf("Unknown GXFIFO command: 0x%X\n", entry.command);
@@ -156,14 +159,13 @@ Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)
 
 Vertex Gpu3D::multiply(Vertex *vtx, Matrix *mtx)
 {
-    Vertex vertex;
+    Vertex vertex = *vtx;
 
     // Multiply a vertex with a matrix
     vertex.x = ((int64_t)vtx->x * mtx->data[0] + (int64_t)vtx->y * mtx->data[4] + (int64_t)vtx->z * mtx->data[8]  + (int64_t)vtx->w * mtx->data[12]) >> 12;
     vertex.y = ((int64_t)vtx->x * mtx->data[1] + (int64_t)vtx->y * mtx->data[5] + (int64_t)vtx->z * mtx->data[9]  + (int64_t)vtx->w * mtx->data[13]) >> 12;
     vertex.z = ((int64_t)vtx->x * mtx->data[2] + (int64_t)vtx->y * mtx->data[6] + (int64_t)vtx->z * mtx->data[10] + (int64_t)vtx->w * mtx->data[14]) >> 12;
     vertex.w = ((int64_t)vtx->x * mtx->data[3] + (int64_t)vtx->y * mtx->data[7] + (int64_t)vtx->z * mtx->data[11] + (int64_t)vtx->w * mtx->data[15]) >> 12;
-    vertex.color = vtx->color;
 
     return vertex;
 }
@@ -180,6 +182,11 @@ void Gpu3D::addVertex()
         clipNeedsUpdate = false;
     }
 
+    // Set the vertex parameters
+    verticesIn[vertexCountIn].color = (savedColor & 0x00007FFF);
+    verticesIn[vertexCountIn].s = (int16_t)(savedTexCoord & 0x0000FFFF);
+    verticesIn[vertexCountIn].t = (int16_t)((savedTexCoord & 0xFFFF0000) >> 16);
+
     // Transform the vertex
     verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &clip);
 
@@ -188,41 +195,10 @@ void Gpu3D::addVertex()
     {
         switch (polygonsIn[polygonCountIn - 1].type)
         {
-            case 0: // Separate triangles
-                if (size % 3 == 0)
-                {
-                    polygonsIn[polygonCountIn].type = 0;
-                    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
-                    polygonCountIn++;
-                }
-                break;
-
-            case 1: // Separate quads
-                if (size % 4 == 0)
-                {
-                    polygonsIn[polygonCountIn].type = 1;
-                    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
-                    polygonCountIn++;
-                }
-                break;
-
-            case 2: // Triangle strips
-                if (size >= 3)
-                {
-                    polygonsIn[polygonCountIn].type = 2;
-                    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - 2];
-                    polygonCountIn++;
-                }
-                break;
-
-            case 3: // Quad strips
-                if (size >= 4 && size % 2 == 0)
-                {
-                    polygonsIn[polygonCountIn].type = 3;
-                    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - 2];
-                    polygonCountIn++;
-                }
-                break;
+            case 0: if (size % 3 == 0)              addPolygon(0, 0); break; // Separate triangles
+            case 1: if (size % 4 == 0)              addPolygon(1, 0); break; // Separate quads
+            case 2: if (size >= 3)                  addPolygon(2, 2); break; // Triangle strips
+            case 3: if (size >= 4 && size % 2 == 0) addPolygon(3, 2); break; // Quad strips
         }
     }
 
@@ -230,9 +206,31 @@ void Gpu3D::addVertex()
     if (vertexCountIn < 6143)
     {
         vertexCountIn++;
-        verticesIn[vertexCountIn].color = verticesIn[vertexCountIn - 1].color;
         size++;
     }
+}
+
+void Gpu3D::addPolygon(int type, int vertexOffset)
+{
+    // Set the polygon parameters
+    polygonsIn[polygonCountIn].type = type;
+    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - vertexOffset];
+
+    // Set the texture parameters
+    int address = (savedTexImageParam & 0x0000FFFF) * 8;
+    polygonsIn[polygonCountIn].texData = &texData[address / 0x20000][address % 0x20000];
+    polygonsIn[polygonCountIn].sizeS = 8 << ((savedTexImageParam & 0x00700000) >> 20);
+    polygonsIn[polygonCountIn].sizeT = 8 << ((savedTexImageParam & 0x03800000) >> 23);
+    polygonsIn[polygonCountIn].texFormat = (savedTexImageParam & 0x1C000000) >> 26;
+    polygonsIn[polygonCountIn].transparent = savedTexImageParam & BIT(29);
+
+    // Set the texture palette base
+    address = (savedPlttBase & 0x00000FFF) * ((polygonsIn[polygonCountIn].texFormat == 2) ? 8 : 16);
+    polygonsIn[polygonCountIn].texPalette = &texPalette[address / 0x4000][address % 0x4000];
+
+    // Move to the next polygon
+    if (polygonCountIn < 2047)
+        polygonCountIn++;
 }
 
 void Gpu3D::mtxModeCmd(uint32_t param)
@@ -661,7 +659,13 @@ void Gpu3D::mtxTransCmd(uint32_t param)
 void Gpu3D::colorCmd(uint32_t param)
 {
     // Set the vertex color
-    verticesIn[vertexCountIn].color = param & 0x00007FFF;
+    savedColor = param;
+}
+
+void Gpu3D::texCoordCmd(uint32_t param)
+{
+    // Set the vertex texture coordinates
+    savedTexCoord = param;
 }
 
 void Gpu3D::vtx16Cmd(uint32_t param)
@@ -743,16 +747,23 @@ void Gpu3D::vtxDiffCmd(uint32_t param)
     addVertex();
 }
 
+void Gpu3D::texImageParamCmd(uint32_t param)
+{
+    // Set the texture image parameters
+    savedTexImageParam = param;
+}
+
+void Gpu3D::plttBaseCmd(uint32_t param)
+{
+    // Set the texture palette base
+    savedPlttBase = param;
+}
+
 void Gpu3D::beginVtxsCmd(uint32_t param)
 {
     // Start a new polygon
-    if (polygonCountIn < 2048)
-    {
-        polygonsIn[polygonCountIn].type = param & 0x00000003;
-        polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
-        polygonCountIn++;
-        size = 0;
-    }
+    addPolygon(param & 0x00000003, 0);
+    size = 0;
 }
 
 void Gpu3D::swapBuffersCmd(uint32_t param)

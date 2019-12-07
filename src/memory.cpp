@@ -1387,6 +1387,7 @@ void Memory::writeVramCntA(uint8_t value)
             case 0: vramBases[0] = 0x6800000;                            return; // Plain ARM9 access
             case 1: vramBases[0] = 0x6000000 + 0x20000 * ofs;            return; // Engine A BG VRAM
             case 2: vramBases[0] = 0x6400000 + 0x20000 * (ofs & BIT(0)); return; // Engine A OBJ VRAM
+            case 3: gpu3D->setTexData(ofs, vramA);                       break;  // 3D texture data
 
             default:
                 printf("Unknown VRAM A MST: %d\n", mst);
@@ -1409,6 +1410,7 @@ void Memory::writeVramCntB(uint8_t value)
             case 0: vramBases[1] = 0x6820000;                            return; // Plain ARM9 access
             case 1: vramBases[1] = 0x6000000 + 0x20000 * ofs;            return; // Engine A BG VRAM
             case 2: vramBases[1] = 0x6400000 + 0x20000 * (ofs & BIT(0)); return; // Engine A OBJ VRAM
+            case 3: gpu3D->setTexData(ofs, vramB);                       break;  // 3D texture data
 
             default:
                 printf("Unknown VRAM B MST: %d\n", mst);
@@ -1431,6 +1433,7 @@ void Memory::writeVramCntC(uint8_t value)
             case 0: vramBases[2] = 0x6840000;                            vramStat &= ~BIT(0); return; // Plain ARM9 access
             case 1: vramBases[2] = 0x6000000 + 0x20000 * ofs;            vramStat &= ~BIT(0); return; // Engine A BG VRAM
             case 2: vramBases[2] = 0x6000000 + 0x20000 * (ofs & BIT(0)); vramStat |=  BIT(0); return; // Plain ARM7 access
+            case 3: gpu3D->setTexData(ofs, vramC);                       vramStat &= ~BIT(0); break;  // 3D texture data
             case 4: vramBases[2] = 0x6200000;                            vramStat &= ~BIT(0); return; // Engine B BG VRAM
 
             default:
@@ -1454,6 +1457,7 @@ void Memory::writeVramCntD(uint8_t value)
             case 0: vramBases[3] = 0x6860000;                            vramStat &= ~BIT(1); return; // Plain ARM9 access
             case 1: vramBases[3] = 0x6000000 + 0x20000 * ofs;            vramStat &= ~BIT(1); return; // Engine A BG VRAM
             case 2: vramBases[3] = 0x6000000 + 0x20000 * (ofs & BIT(0)); vramStat |=  BIT(1); return; // Plain ARM7 access
+            case 3: gpu3D->setTexData(ofs, vramD);                       vramStat &= ~BIT(0); break;  // 3D texture data
             case 4: vramBases[3] = 0x6600000;                            vramStat &= ~BIT(1); return; // Engine B OBJ VRAM
 
             default:
@@ -1476,6 +1480,11 @@ void Memory::writeVramCntE(uint8_t value)
             case 0: vramBases[4] = 0x6880000; return; // Plain ARM9 access
             case 1: vramBases[4] = 0x6000000; return; // Engine A BG VRAM
             case 2: vramBases[4] = 0x6400000; return; // Engine A OBJ VRAM
+
+            case 3: // 3D texture palette
+                for (int i = 0; i < 4; i++)
+                    gpu3D->setTexPalette(i, &vramE[0x4000 * i]);
+                break;
 
             case 4: // Engine A BG extended palette
                 for (int i = 0; i < 4; i++)
@@ -1503,6 +1512,7 @@ void Memory::writeVramCntF(uint8_t value)
             case 0: vramBases[5] = 0x6890000;                                                     return; // Plain ARM9 access
             case 1: vramBases[5] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0)); return; // Engine A BG VRAM
             case 2: vramBases[5] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0)); return; // Engine A OBJ VRAM
+            case 3: gpu3D->setTexPalette((ofs & BIT(1)) * 2 + (ofs & BIT(0)), vramF);             break;  // 3D texture palette
             case 5: engineA->setExtPalette(4, vramF);                                             break;  // Engine A OBJ extended palette
 
             case 4: // Engine A BG extended palette
@@ -1531,6 +1541,7 @@ void Memory::writeVramCntG(uint8_t value)
             case 0: vramBases[6] = 0x6894000;                                                     return; // Plain ARM9 access
             case 1: vramBases[6] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0)); return; // Engine A BG VRAM
             case 2: vramBases[6] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0)); return; // Engine A OBJ VRAM
+            case 3: gpu3D->setTexPalette((ofs & BIT(1)) * 2 + (ofs & BIT(0)), vramG);             break;  // 3D texture palette
             case 5: engineA->setExtPalette(4, vramG);                                             break;  // Engine A OBJ extended palette
 
             case 4: // Engine A BG extended palette

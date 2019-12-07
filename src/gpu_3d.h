@@ -41,13 +41,18 @@ struct Matrix
 struct Vertex
 {
     int x = 0, y = 0, z = 0, w = 1 << 12;
-    uint16_t color = 0x7FFF;
+    uint16_t color = 0;
+    int s = 0, t = 0;
 };
 
 struct _Polygon
 {
     unsigned int type = 0;
     Vertex *vertices = nullptr;
+    uint8_t *texData = nullptr, *texPalette = nullptr;
+    int sizeS = 0, sizeT = 0;
+    int texFormat = 0;
+    bool transparent = false;
 };
 
 struct Entry
@@ -67,6 +72,9 @@ class Gpu3D
 
         _Polygon    *getPolygons()     { return polygonsOut;     }
         unsigned int getPolygonCount() { return polygonCountOut; }
+
+        void setTexData(unsigned int slot, uint8_t *data)    { texData[slot]    = data; }
+        void setTexPalette(unsigned int slot, uint8_t *data) { texPalette[slot] = data; }
 
         uint8_t readGxStat(unsigned int byte) { return gxStat >> (byte * 8); }
         uint8_t readClipMtxResult(unsigned int index, unsigned int byte);
@@ -132,6 +140,14 @@ class Gpu3D
         unsigned int vertexCountIn = 0, vertexCountOut = 0;
         Vertex last;
 
+        uint8_t *texData[4] = {};
+        uint8_t *texPalette[6] = {};
+
+        uint32_t savedColor = 0x7FFF;
+        uint32_t savedTexCoord = 0;
+        uint32_t savedTexImageParam = 0;
+        uint32_t savedPlttBase = 0;
+
         std::queue<Entry> fifo, pipe;
 
         unsigned int paramCounts[0x100] = {};
@@ -186,6 +202,7 @@ class Gpu3D
         Vertex multiply(Vertex *vtx, Matrix *mtx);
 
         void addVertex();
+        void addPolygon(int type, int vertexOffset);
 
         void mtxModeCmd(uint32_t param);
         void mtxPushCmd();
@@ -201,12 +218,15 @@ class Gpu3D
         void mtxScaleCmd(uint32_t param);
         void mtxTransCmd(uint32_t param);
         void colorCmd(uint32_t param);
+        void texCoordCmd(uint32_t param);
         void vtx16Cmd(uint32_t param);
         void vtx10Cmd(uint32_t param);
         void vtxXYCmd(uint32_t param);
         void vtxXZCmd(uint32_t param);
         void vtxYZCmd(uint32_t param);
         void vtxDiffCmd(uint32_t param);
+        void texImageParamCmd(uint32_t param);
+        void plttBaseCmd(uint32_t param);
         void beginVtxsCmd(uint32_t param);
         void swapBuffersCmd(uint32_t param);
 
