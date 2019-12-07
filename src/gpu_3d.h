@@ -147,6 +147,7 @@ class Gpu3D
         uint32_t savedTexCoord = 0;
         uint32_t savedTexImageParam = 0;
         uint32_t savedPlttBase = 0;
+        uint32_t savedBeginVtxs = 0;
 
         std::queue<Entry> fifo, pipe;
 
@@ -202,7 +203,7 @@ class Gpu3D
         Vertex multiply(Vertex *vtx, Matrix *mtx);
 
         void addVertex();
-        void addPolygon(int type, int vertexOffset);
+        void addPolygon(int type, int vertexCount);
 
         void mtxModeCmd(uint32_t param);
         void mtxPushCmd();

@@ -190,31 +190,30 @@ void Gpu3D::addVertex()
     // Transform the vertex
     verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &clip);
 
-    // Move to the next polygon if one has been completed
-    if (size != 0 && polygonCountIn > 0 && polygonCountIn < 2048)
-    {
-        switch (polygonsIn[polygonCountIn - 1].type)
-        {
-            case 0: if (size % 3 == 0)              addPolygon(0, 0); break; // Separate triangles
-            case 1: if (size % 4 == 0)              addPolygon(1, 0); break; // Separate quads
-            case 2: if (size >= 3)                  addPolygon(2, 2); break; // Triangle strips
-            case 3: if (size >= 4 && size % 2 == 0) addPolygon(3, 2); break; // Quad strips
-        }
-    }
-
     // Move to the next vertex
-    if (vertexCountIn < 6143)
+    vertexCountIn++;
+    size++;
+
+    // Move to the next polygon if one has been completed
+    if (size > 0)
     {
-        vertexCountIn++;
-        size++;
+        switch (savedBeginVtxs)
+        {
+            case 0: if (size % 3 == 0)              addPolygon(0, 3); break; // Separate triangles
+            case 1: if (size % 4 == 0)              addPolygon(1, 4); break; // Separate quads
+            case 2: if (size >= 3)                  addPolygon(2, 3); break; // Triangle strips
+            case 3: if (size >= 4 && size % 2 == 0) addPolygon(3, 4); break; // Quad strips
+        }
     }
 }
 
-void Gpu3D::addPolygon(int type, int vertexOffset)
+void Gpu3D::addPolygon(int type, int vertexCount)
 {
+    if (polygonCountIn == 2048) return;
+
     // Set the polygon parameters
     polygonsIn[polygonCountIn].type = type;
-    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - vertexOffset];
+    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - vertexCount];
 
     // Set the texture parameters
     int address = (savedTexImageParam & 0x0000FFFF) * 8;
@@ -229,8 +228,7 @@ void Gpu3D::addPolygon(int type, int vertexOffset)
     polygonsIn[polygonCountIn].texPalette = &texPalette[address / 0x4000][address % 0x4000];
 
     // Move to the next polygon
-    if (polygonCountIn < 2047)
-        polygonCountIn++;
+    polygonCountIn++;
 }
 
 void Gpu3D::mtxModeCmd(uint32_t param)
@@ -670,6 +668,8 @@ void Gpu3D::texCoordCmd(uint32_t param)
 
 void Gpu3D::vtx16Cmd(uint32_t param)
 {
+    if (vertexCountIn == 6144) return;
+
     if (paramCount == 0)
     {
         // Set the X and Y coordinates
@@ -688,6 +688,8 @@ void Gpu3D::vtx16Cmd(uint32_t param)
 
 void Gpu3D::vtx10Cmd(uint32_t param)
 {
+    if (vertexCountIn == 6144) return;
+
     // Set the X, Y, Z and W coordinates
     verticesIn[vertexCountIn].x = (int16_t)((param & 0x000003FF) << 6);
     verticesIn[vertexCountIn].y = (int16_t)((param & 0x000FFC00) >> 4);
@@ -699,6 +701,8 @@ void Gpu3D::vtx10Cmd(uint32_t param)
 
 void Gpu3D::vtxXYCmd(uint32_t param)
 {
+    if (vertexCountIn == 6144) return;
+
     // Set the X, Y, and W coordinates and get the Z coordinate from the previous vertex
     verticesIn[vertexCountIn].x = (int16_t)(param & 0x0000FFFF);
     verticesIn[vertexCountIn].y = (int16_t)((param & 0xFFFF0000) >> 16);
@@ -710,6 +714,8 @@ void Gpu3D::vtxXYCmd(uint32_t param)
 
 void Gpu3D::vtxXZCmd(uint32_t param)
 {
+    if (vertexCountIn == 6144) return;
+
     // Set the X, Z, and W coordinates and get the Y coordinate from the previous vertex
     verticesIn[vertexCountIn].x = (int16_t)(param & 0x0000FFFF);
     verticesIn[vertexCountIn].y = last.y;
@@ -721,6 +727,8 @@ void Gpu3D::vtxXZCmd(uint32_t param)
 
 void Gpu3D::vtxYZCmd(uint32_t param)
 {
+    if (vertexCountIn == 6144) return;
+
     // Set the Y, Z, and W coordinates and get the X coordinate from the previous vertex
     verticesIn[vertexCountIn].x = last.x;
     verticesIn[vertexCountIn].y = (int16_t)(param & 0x0000FFFF);
@@ -732,6 +740,8 @@ void Gpu3D::vtxYZCmd(uint32_t param)
 
 void Gpu3D::vtxDiffCmd(uint32_t param)
 {
+    if (vertexCountIn == 6144) return;
+
     // Get the X, Y and Z offsets
     Vertex vertex;
     vertex.x = ((int16_t)((param & 0x000003FF) << 6)  / 8) >> 3;
@@ -761,8 +771,8 @@ void Gpu3D::plttBaseCmd(uint32_t param)
 
 void Gpu3D::beginVtxsCmd(uint32_t param)
 {
-    // Start a new polygon
-    addPolygon(param & 0x00000003, 0);
+    // Begin a new vertex list
+    savedBeginVtxs = param & 0x00000003;
     size = 0;
 }
 
