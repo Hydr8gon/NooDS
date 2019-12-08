@@ -18,6 +18,7 @@
 */
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #include "gpu_3d_renderer.h"
@@ -182,9 +183,15 @@ void Gpu3DRenderer::drawScanline(int line)
 
 Vertex Gpu3DRenderer::normalize(Vertex vertex)
 {
-    // Normalize a vertex's X and Y coordinates and convert them to DS screen coordinates
+    // Normalize a vertex's coordinates and convert them to DS screen coordinates
     if (vertex.w != 0)
     {
+        if (vertex.w < 0)
+        {
+            vertex.w = -vertex.w;
+            vertex.z = -vertex.z;
+        }
+
         vertex.x = (( vertex.x * 128) / vertex.w) + 128;
         vertex.y = ((-vertex.y *  96) / vertex.w) +  96;
     }
@@ -252,15 +259,20 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
     int lx1 = interpolate(v3->x, v4->x, v3->y, line, v4->y);
 
     // Draw a line segment
-    for (int x = ((lx0 < 0) ? 0 : lx0); x < ((lx1 > 255) ? 255 : lx1); x++)
+    for (int x = ((lx0 < 0) ? 0 : lx0); x < ((lx1 > 256) ? 256 : lx1); x++)
     {
         // Calculate the Z value of the current pixel
         int z1 = interpolate(v1->z, v2->z, v1->y, line, v2->y);
         int z2 = interpolate(v3->z, v4->z, v3->y, line, v4->y);
         int z  = interpolate(z1, z2, lx0, x, lx1);
 
-        // Draw a new pixel if the previous one is behind the new one
-        if (zBuffer[x] >= z)
+        // Calculate the W value of the current pixel
+        int w1 = interpolate(v1->w, v2->w, v1->y, line, v2->y);
+        int w2 = interpolate(v3->w, v4->w, v3->y, line, v4->y);
+        int w  = interpolate(w1, w2, lx0, x, lx1);
+
+        // Draw a new pixel if the old one is behind the new one and the Z value is in range
+        if (zBuffer[x] >= z && abs(z) <= abs(w))
         {
             uint16_t color;
 
