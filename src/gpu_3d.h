@@ -29,7 +29,7 @@ class Interpreter;
 
 struct Matrix
 {
-    int data[4 * 4] =
+    int64_t data[4 * 4] =
     {
         1 << 12, 0 << 12, 0 << 12, 0 << 12,
         0 << 12, 1 << 12, 0 << 12, 0 << 12,
@@ -40,16 +40,16 @@ struct Matrix
 
 struct Vertex
 {
-    int x = 0, y = 0, z = 0, w = 1 << 12;
+    int64_t x = 0, y = 0, z = 0, w = 1 << 12;
     uint16_t color = 0;
-    int s = 0, t = 0;
+    int64_t s = 0, t = 0;
 };
 
 struct _Polygon
 {
     unsigned int type = 0;
     Vertex *vertices = nullptr;
-    uint8_t *texData = nullptr, *texPalette = nullptr;
+    uint32_t texDataAddr = 0, texPaletteAddr = 0;
     int sizeS = 0, sizeT = 0;
     int texFormat = 0;
     bool transparent = false;
@@ -72,6 +72,9 @@ class Gpu3D
 
         _Polygon    *getPolygons()     { return polygonsOut;     }
         unsigned int getPolygonCount() { return polygonCountOut; }
+
+        uint8_t *getTexData(uint32_t address)    { return &texData[address / 0x20000][address % 0x20000];  }
+        uint8_t *getTexPalette(uint32_t address) { return &texPalette[address / 0x4000][address % 0x4000]; }
 
         void setTexData(unsigned int slot, uint8_t *data)    { texData[slot]    = data; }
         void setTexPalette(unsigned int slot, uint8_t *data) { texPalette[slot] = data; }

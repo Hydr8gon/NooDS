@@ -40,14 +40,14 @@ void Gpu3DRenderer::drawScanline(int line)
         _Polygon polygon = gpu3D->getPolygons()[i];
 
         // Get the triangle vertices
-        Vertex v1 = normalize(polygon.vertices[0]);
-        Vertex v2 = normalize(polygon.vertices[1]);
-        Vertex v3 = normalize(polygon.vertices[2]);
+        Vertex v1 = polygon.vertices[0];
+        Vertex v2 = polygon.vertices[1];
+        Vertex v3 = polygon.vertices[2];
 
         if (polygon.type & 1) // Quad
         {
             // Get the quad's fourth vertex
-            Vertex v4 = normalize(polygon.vertices[3]);
+            Vertex v4 = polygon.vertices[3];
 
             // Sort the vertices in order of increasing Y values
             if (v2.y < v1.y)
@@ -181,24 +181,6 @@ void Gpu3DRenderer::drawScanline(int line)
     }
 }
 
-Vertex Gpu3DRenderer::normalize(Vertex vertex)
-{
-    // Normalize a vertex's coordinates and convert them to DS screen coordinates
-    if (vertex.w != 0)
-    {
-        if (vertex.w < 0)
-        {
-            vertex.w = -vertex.w;
-            vertex.z = -vertex.z;
-        }
-
-        vertex.x = (( vertex.x * 128) / vertex.w) + 128;
-        vertex.y = ((-vertex.y *  96) / vertex.w) +  96;
-    }
-
-    return vertex;
-}
-
 int Gpu3DRenderer::interpolate(int min, int max, int start, int current, int end)
 {
     // Calculate the gradient
@@ -226,29 +208,140 @@ uint16_t Gpu3DRenderer::interpolateColor(uint16_t min, uint16_t max, int start, 
 
 uint16_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
 {
-    s %= polygon->sizeS;
-    t %= polygon->sizeT;
+    s = (unsigned int)s % polygon->sizeS;
+    t = (unsigned int)t % polygon->sizeT;
 
     switch (polygon->texFormat)
     {
+        case 1: // A3I5 translucent
+        {
+            // Get the 8-bit palette index
+            uint32_t address = polygon->texDataAddr + (t * polygon->sizeS + s);
+            uint8_t index = *gpu3D->getTexData(address);
+
+            // Get the palette
+            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr);
+
+            // Return the palette color or a transparent pixel
+            return ((index & 0xE0) == 0) ? 0 : U8TO16(palette, (index & 0x1F) * 2) | BIT(15);
+        }
+
+        case 2: // 4-color palette
+        {
+            // Get the 2-bit palette index
+            uint32_t address = polygon->texDataAddr + (t * polygon->sizeS + s) / 4;
+            uint8_t index = (*gpu3D->getTexData(address) >> ((s % 4) * 2)) & 0x03;
+
+            // Get the palette
+            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr);
+
+            // Return the palette color or a transparent pixel if enabled
+            return (polygon->transparent && index == 0) ? 0 : U8TO16(palette, index * 2) | BIT(15);
+        }
+
         case 3: // 16-color palette
         {
-            uint8_t index = polygon->texData[(t * polygon->sizeS + s) / 2];
-            if (s % 2 == 0) index &= 0x0F; else index >>= 4;
-            if (polygon->transparent && index == 0) return 0; else
-            return U8TO16(polygon->texPalette, index * 2) | BIT(15);
+            // Get the 4-bit palette index
+            uint32_t address = polygon->texDataAddr + (t * polygon->sizeS + s) / 2;
+            uint8_t index = (*gpu3D->getTexData(address) >> ((s % 2) * 4)) & 0x0F;
+
+            // Get the palette
+            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr);
+
+            // Return the palette color or a transparent pixel if enabled
+            return (polygon->transparent && index == 0) ? 0 : U8TO16(palette, index * 2) | BIT(15);
         }
 
         case 4: // 256-color palette
         {
-            uint8_t index = polygon->texData[t * polygon->sizeS + s];
-            if (polygon->transparent && index == 0) return 0; else
-            return U8TO16(polygon->texPalette, index * 2) | BIT(15);
+            // Get the 8-bit palette index
+            uint32_t address = polygon->texDataAddr + (t * polygon->sizeS + s);
+            uint8_t index = *gpu3D->getTexData(address);
+
+            // Get the palette
+            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr);
+
+            // Return the palette color or a transparent pixel if enabled
+            return (polygon->transparent && index == 0) ? 0 : U8TO16(palette, index * 2) | BIT(15);
         }
 
-        default:
-            printf("Unknown texture format: %d\n", polygon->texFormat);
-            return 0xFFFF;
+        case 5: // 4x4 compressed
+        {
+            // Get the 2-bit palette index
+            int tile = (t / 4) * (polygon->sizeS / 4) + (s / 4);
+            uint32_t address = polygon->texDataAddr + (tile * 4 + t % 4);
+            uint8_t index = (*gpu3D->getTexData(address) >> ((s % 4) * 2)) & 0x03;
+
+            // Get the palette, using the base for the tile stored in slot 1
+            address = 0x20000 + (polygon->texDataAddr % 0x20000) / 2 + ((polygon->texDataAddr / 0x20000 == 2) ? 0x10000 : 0);
+            uint16_t palBase = U8TO16(gpu3D->getTexData(address), tile * 2);
+            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr + (palBase & 0x3FFF) * 4);
+
+            // Return the palette color or a transparent or interpolated color based on the mode
+            switch ((palBase & 0xC000) >> 14) // Interpolation mode
+            {
+                case 0:
+                    return (index == 3) ? 0 : (U8TO16(palette, index * 2) | BIT(15));
+
+                case 1:
+                    switch (index)
+                    {
+                        case 2:
+                        {
+                            uint16_t color1 = U8TO16(palette, 0 * 2) | BIT(15);
+                            uint16_t color2 = U8TO16(palette, 1 * 2) | BIT(15);
+                            return interpolateColor(color1, color2, 0, 1, 2);
+                        }
+
+                        case 3:
+                            return 0;
+
+                        default:
+                            return U8TO16(palette, index * 2) | BIT(15);
+                    }
+
+                case 2:
+                    return U8TO16(palette, index * 2) | BIT(15);
+
+                case 3:
+                    switch (index)
+                    {
+                        case 2:
+                        {
+                            uint16_t color1 = U8TO16(palette, 0 * 2) | BIT(15);
+                            uint16_t color2 = U8TO16(palette, 1 * 2) | BIT(15);
+                            return interpolateColor(color1, color2, 0, 3, 8);
+                        }
+
+                        case 3:
+                        {
+                            uint16_t color1 = U8TO16(palette, 0 * 2) | BIT(15);
+                            uint16_t color2 = U8TO16(palette, 1 * 2) | BIT(15);
+                            return interpolateColor(color1, color2, 0, 5, 8);
+                        }
+
+                        default:
+                            return U8TO16(palette, index * 2) | BIT(15);
+                    }
+            }
+        }
+
+        case 6: // A5I3 translucent
+        {
+            // Get the 8-bit palette index
+            uint32_t address = polygon->texDataAddr + (t * polygon->sizeS + s);
+            uint8_t index = *gpu3D->getTexData(address);
+
+            // Get the palette
+            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr);
+
+            // Return the palette color or a transparent pixel
+            return ((index & 0xF8) == 0) ? 0 : U8TO16(palette, (index & 0x07) * 2) | BIT(15);
+        }
+
+        default: // Direct color
+            // Return the direct color
+            return U8TO16(gpu3D->getTexData(polygon->texDataAddr), (t * polygon->sizeS + s) * 2);
     }
 }
 

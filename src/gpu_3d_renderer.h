@@ -41,7 +41,6 @@ class Gpu3DRenderer
 
         Gpu3D *gpu3D;
 
-        Vertex normalize(Vertex vertex);
         int interpolate(int min, int max, int start, int current, int end);
         uint16_t interpolateColor(uint16_t min, uint16_t max, int start, int current, int end);
         uint16_t readTexture(_Polygon *polygon, int s, int t);

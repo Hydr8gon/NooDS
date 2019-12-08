@@ -150,7 +150,7 @@ Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)
         for (int x = 0; x < 4; x++)
         {
             for (int i = 0; i < 4; i++)
-                matrix.data[y * 4 + x] += ((int64_t)mtx1->data[y * 4 + i] * mtx2->data[i * 4 + x]) >> 12;
+                matrix.data[y * 4 + x] += (mtx1->data[y * 4 + i] * mtx2->data[i * 4 + x]) >> 12;
         }
     }
 
@@ -162,10 +162,10 @@ Vertex Gpu3D::multiply(Vertex *vtx, Matrix *mtx)
     Vertex vertex = *vtx;
 
     // Multiply a vertex with a matrix
-    vertex.x = ((int64_t)vtx->x * mtx->data[0] + (int64_t)vtx->y * mtx->data[4] + (int64_t)vtx->z * mtx->data[8]  + (int64_t)vtx->w * mtx->data[12]) >> 12;
-    vertex.y = ((int64_t)vtx->x * mtx->data[1] + (int64_t)vtx->y * mtx->data[5] + (int64_t)vtx->z * mtx->data[9]  + (int64_t)vtx->w * mtx->data[13]) >> 12;
-    vertex.z = ((int64_t)vtx->x * mtx->data[2] + (int64_t)vtx->y * mtx->data[6] + (int64_t)vtx->z * mtx->data[10] + (int64_t)vtx->w * mtx->data[14]) >> 12;
-    vertex.w = ((int64_t)vtx->x * mtx->data[3] + (int64_t)vtx->y * mtx->data[7] + (int64_t)vtx->z * mtx->data[11] + (int64_t)vtx->w * mtx->data[15]) >> 12;
+    vertex.x = (vtx->x * mtx->data[0] + vtx->y * mtx->data[4] + vtx->z * mtx->data[8]  + vtx->w * mtx->data[12]) >> 12;
+    vertex.y = (vtx->x * mtx->data[1] + vtx->y * mtx->data[5] + vtx->z * mtx->data[9]  + vtx->w * mtx->data[13]) >> 12;
+    vertex.z = (vtx->x * mtx->data[2] + vtx->y * mtx->data[6] + vtx->z * mtx->data[10] + vtx->w * mtx->data[14]) >> 12;
+    vertex.w = (vtx->x * mtx->data[3] + vtx->y * mtx->data[7] + vtx->z * mtx->data[11] + vtx->w * mtx->data[15]) >> 12;
 
     return vertex;
 }
@@ -189,6 +189,19 @@ void Gpu3D::addVertex()
 
     // Transform the vertex
     verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &clip);
+
+    // Normalize the vertex and convert its X and Y coordinates to DS screen coordinates
+    if (verticesIn[vertexCountIn].w != 0)
+    {
+        if (verticesIn[vertexCountIn].w < 0)
+        {
+            verticesIn[vertexCountIn].w = -verticesIn[vertexCountIn].w;
+            verticesIn[vertexCountIn].z = -verticesIn[vertexCountIn].z;
+        }
+
+        verticesIn[vertexCountIn].x = (( verticesIn[vertexCountIn].x * 128) / verticesIn[vertexCountIn].w) + 128;
+        verticesIn[vertexCountIn].y = ((-verticesIn[vertexCountIn].y *  96) / verticesIn[vertexCountIn].w) +  96;
+    }
 
     // Move to the next vertex
     vertexCountIn++;
@@ -216,16 +229,12 @@ void Gpu3D::addPolygon(int type, int vertexCount)
     polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - vertexCount];
 
     // Set the texture parameters
-    int address = (savedTexImageParam & 0x0000FFFF) * 8;
-    polygonsIn[polygonCountIn].texData = &texData[address / 0x20000][address % 0x20000];
+    polygonsIn[polygonCountIn].texDataAddr = (savedTexImageParam & 0x0000FFFF) * 8;
     polygonsIn[polygonCountIn].sizeS = 8 << ((savedTexImageParam & 0x00700000) >> 20);
     polygonsIn[polygonCountIn].sizeT = 8 << ((savedTexImageParam & 0x03800000) >> 23);
     polygonsIn[polygonCountIn].texFormat = (savedTexImageParam & 0x1C000000) >> 26;
     polygonsIn[polygonCountIn].transparent = savedTexImageParam & BIT(29);
-
-    // Set the texture palette base
-    address = (savedPlttBase & 0x00000FFF) * ((polygonsIn[polygonCountIn].texFormat == 2) ? 8 : 16);
-    polygonsIn[polygonCountIn].texPalette = &texPalette[address / 0x4000][address % 0x4000];
+    polygonsIn[polygonCountIn].texPaletteAddr = (savedPlttBase & 0x00000FFF) * ((polygonsIn[polygonCountIn].texFormat == 2) ? 8 : 16);
 
     // Move to the next polygon
     polygonCountIn++;
@@ -427,7 +436,7 @@ void Gpu3D::mtxIdentityCmd()
 void Gpu3D::mtxLoad44Cmd(uint32_t param)
 {
     // Store the paramaters to the temporary matrix
-    temp.data[paramCount] = param;
+    temp.data[paramCount] = (int32_t)param;
 
     // Set a 4x4 matrix
     if (paramCount == 15)
@@ -461,7 +470,7 @@ void Gpu3D::mtxLoad43Cmd(uint32_t param)
 {
     // Store the paramaters to the temporary matrix
     if (paramCount == 0) temp = Matrix();
-    temp.data[(paramCount / 3) * 4 + paramCount % 3] = param;
+    temp.data[(paramCount / 3) * 4 + paramCount % 3] = (int32_t)param;
 
     // Set a 4x3 matrix
     if (paramCount == 11)
@@ -494,7 +503,7 @@ void Gpu3D::mtxLoad43Cmd(uint32_t param)
 void Gpu3D::mtxMult44Cmd(uint32_t param)
 {
     // Store the paramaters to the temporary matrix
-    temp.data[paramCount] = param;
+    temp.data[paramCount] = (int32_t)param;
 
     // Multiply a matrix by a 4x4 matrix
     if (paramCount == 15)
@@ -528,7 +537,7 @@ void Gpu3D::mtxMult43Cmd(uint32_t param)
 {
     // Store the paramaters to the temporary matrix
     if (paramCount == 0) temp = Matrix();
-    temp.data[(paramCount / 3) * 4 + paramCount % 3] = param;
+    temp.data[(paramCount / 3) * 4 + paramCount % 3] = (int32_t)param;
 
     // Multiply a matrix by a 4x3 matrix
     if (paramCount == 11)
@@ -562,7 +571,7 @@ void Gpu3D::mtxMult33Cmd(uint32_t param)
 {
     // Store the paramaters to the temporary matrix
     if (paramCount == 0) temp = Matrix();
-    temp.data[(paramCount / 3) * 4 + paramCount % 3] = param;
+    temp.data[(paramCount / 3) * 4 + paramCount % 3] = (int32_t)param;
 
     // Multiply a matrix by a 3x3 matrix
     if (paramCount == 8)
@@ -596,7 +605,7 @@ void Gpu3D::mtxScaleCmd(uint32_t param)
 {
     // Store the paramaters to the temporary matrix
     if (paramCount == 0) temp = Matrix();
-    temp.data[paramCount * 5] = param;
+    temp.data[paramCount * 5] = (int32_t)param;
 
     // Multiply a matrix by a scale matrix
     if (paramCount == 2)
@@ -624,7 +633,7 @@ void Gpu3D::mtxTransCmd(uint32_t param)
 {
     // Store the paramaters to the temporary matrix
     if (paramCount == 0) temp = Matrix();
-    temp.data[12 + paramCount] = param;
+    temp.data[12 + paramCount] = (int32_t)param;
 
     // Multiply a matrix by a translation matrix
     if (paramCount == 2)
