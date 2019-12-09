@@ -37,7 +37,7 @@ class Gpu2D
 
         bool is3DEnabled() { return dispCnt & BIT(3); }
 
-        uint16_t *getFramebuffer() { return framebuffer; }
+        uint32_t *getFramebuffer() { return framebuffer; }
 
         void setExtPalette(unsigned int slot, uint8_t *data) { extPalettes[slot] = data; }
 
@@ -58,8 +58,8 @@ class Gpu2D
         void writeMasterBright(unsigned int byte, uint8_t value);
 
     private:
-        uint16_t framebuffer[256 * 192] = {};
-        uint16_t layers[8][256 * 192] = {};
+        uint32_t framebuffer[256 * 192] = {};
+        uint32_t layers[8][256 * 192] = {};
 
         uint32_t dispCnt = 0;
         uint16_t bgCnt[4] = {};
@@ -79,6 +79,8 @@ class Gpu2D
 
         Gpu3DRenderer *gpu3DRenderer;
         Memory *memory;
+
+        uint32_t rgb5ToRgb6(uint32_t color);
 
         void drawText(unsigned int bg, unsigned int line);
         void drawAffine(unsigned int bg, unsigned int line);

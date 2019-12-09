@@ -33,17 +33,18 @@ class Gpu3DRenderer
 
         void drawScanline(int line);
 
-        uint16_t *getLineCache() { return lineCache; }
+        uint32_t *getLineCache() { return lineCache; }
 
     private:
-        uint16_t lineCache[48 * 256] = {};
+        uint32_t lineCache[48 * 256] = {};
         int zBuffer[256] = {};
 
         Gpu3D *gpu3D;
 
+        uint32_t rgb5ToRgb6(uint32_t color);
         int interpolate(int min, int max, int start, int current, int end);
-        uint16_t interpolateColor(uint16_t min, uint16_t max, int start, int current, int end);
-        uint16_t readTexture(_Polygon *polygon, int s, int t);
+        uint32_t interpolateColor(uint32_t min, uint32_t max, int start, int current, int end);
+        uint32_t readTexture(_Polygon *polygon, int s, int t);
         void rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v2, Vertex *v3, Vertex *v4);
 };
 

@@ -33,12 +33,12 @@ void runCore(void *args)
         core->runFrame();
 }
 
-uint32_t bgr5ToRgba8(uint16_t color)
+uint32_t rgb6ToRgba8(uint32_t color)
 {
-    // Convert a BGR5 value to an RGBA8 value
-    uint8_t r = ((color >>  0) & 0x1F) * 255 / 31;
-    uint8_t g = ((color >>  5) & 0x1F) * 255 / 31;
-    uint8_t b = ((color >> 10) & 0x1F) * 255 / 31;
+    // Convert an RGB6 value to an RGBA8 value
+    uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
+    uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
+    uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
     return (0xFF << 24) | (b << 16) | (g << 8) | r;
 }
 
@@ -116,13 +116,13 @@ int main()
         // Draw the display
         uint32_t stride;
         uint32_t *switchBuf = (uint32_t*)framebufferBegin(&fb, &stride);
-        uint16_t *coreBuf = core->getFramebuffer();
+        uint32_t *coreBuf = core->getFramebuffer();
         for (int y = 0; y < 192 * 2; y++)
         {
             for (int x = 0; x < 256 * 2; x++)
             {
-                switchBuf[(y + 168) * stride / sizeof(uint32_t) + (x + 128)] = bgr5ToRgba8(coreBuf[(y / 2) * 256 + (x / 2)]);
-                switchBuf[(y + 168) * stride / sizeof(uint32_t) + (x + 640)] = bgr5ToRgba8(coreBuf[((y / 2) + 192) * 256 + (x / 2)]);
+                switchBuf[(y + 168) * stride / sizeof(uint32_t) + (x + 128)] = rgb6ToRgba8(coreBuf[(y / 2) * 256 + (x / 2)]);
+                switchBuf[(y + 168) * stride / sizeof(uint32_t) + (x + 640)] = rgb6ToRgba8(coreBuf[((y / 2) + 192) * 256 + (x / 2)]);
             }
         }
         framebufferEnd(&fb);

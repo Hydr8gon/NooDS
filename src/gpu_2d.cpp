@@ -43,13 +43,24 @@ Gpu2D::Gpu2D(Gpu3DRenderer *gpu3DRenderer, Memory *memory): gpu3DRenderer(gpu3DR
     objVramAddr = 0x6400000;
 }
 
+uint32_t Gpu2D::rgb5ToRgb6(uint32_t color)
+{
+    // Convert an RGB5 value to an RGB6 value (the way the 2D engine does it)
+    uint8_t r = ((color >>  0) & 0x1F) * 2;
+    uint8_t g = ((color >>  5) & 0x1F) * 2;
+    uint8_t b = ((color >> 10) & 0x1F) * 2;
+    uint8_t a = ((color >> 15) & 0x01);
+    return (a << 18) | (b << 12) | (g << 6) | r;
+}
+
 void Gpu2D::drawScanline(unsigned int line)
 {
     switch ((dispCnt & 0x00030000) >> 16) // Display mode
     {
         case 0: // Display off
             // Fill the display with white
-            memset(&framebuffer[line * 256], 0xFF, 256 * sizeof(uint16_t));
+            for (int i = 0; i < 256; i++)
+                framebuffer[line * 256 + i] = 0x7FFFF;
             break;
 
         case 1: // Graphics display
@@ -57,7 +68,7 @@ void Gpu2D::drawScanline(unsigned int line)
             if (line == 0)
             {
                 for (int i = 0; i < 8; i++)
-                    memset(layers[i], 0, 256 * 192 * sizeof(uint16_t));
+                    memset(layers[i], 0, 256 * 192 * sizeof(uint32_t));
             }
 
             // Draw the background layers
@@ -118,12 +129,12 @@ void Gpu2D::drawScanline(unsigned int line)
             for (int i = 0; i < 256; i++)
             {
                 // Clear the screen using the first palette entry
-                framebuffer[line * 256 + i] = U8TO16(palette, 0) & ~BIT(15);
+                framebuffer[line * 256 + i] = rgb5ToRgb6(U8TO16(palette, 0)) & ~BIT(18);
 
                 for (int j = 0; j < 4; j++)
                 {
                     // Check for visible pixels in the object layers
-                    if (layers[4 + j][line * 256 + i] & BIT(15))
+                    if (layers[4 + j][line * 256 + i] & BIT(18))
                     {
                         framebuffer[line * 256 + i] = layers[4 + j][line * 256 + i];
                         break;
@@ -133,7 +144,7 @@ void Gpu2D::drawScanline(unsigned int line)
                     // The BG layers can be rearranged, so they need to be checked in the correct order
                     for (int k = 0; k < 4; k++)
                     {
-                        if ((bgCnt[k] & 0x0003) == j && (dispCnt & BIT(8 + k)) && (layers[k][line * 256 + i] & BIT(15)))
+                        if ((bgCnt[k] & 0x0003) == j && (dispCnt & BIT(8 + k)) && (layers[k][line * 256 + i] & BIT(18)))
                         {
                             framebuffer[line * 256 + i] = layers[k][line * 256 + i];
                             break;
@@ -141,7 +152,7 @@ void Gpu2D::drawScanline(unsigned int line)
                     }
 
                     // Move to the next pixel once the current one has been filled
-                    if (framebuffer[line * 256 + i] & BIT(15))
+                    if (framebuffer[line * 256 + i] & BIT(18))
                         break;
                 }
             }
@@ -153,7 +164,7 @@ void Gpu2D::drawScanline(unsigned int line)
             // Draw raw bitmap data from a VRAM block
             uint8_t *data = memory->getVramBlock((dispCnt & 0x000C0000) >> 18);
             for (int i = 0; i < 256; i++)
-                framebuffer[line * 256 + i] = U8TO16(data, (line * 256 + i) * 2);
+                framebuffer[line * 256 + i] = rgb5ToRgb6(U8TO16(data, (line * 256 + i) * 2));
             break;
         }
 
@@ -176,16 +187,16 @@ void Gpu2D::drawScanline(unsigned int line)
             for (int i = 0; i < 256; i++)
             {
                 // Extract the RGB values
-                uint16_t *pixel = &framebuffer[line * 256 + i];
-                uint8_t r = ((*pixel >>  0) & 0x1F);
-                uint8_t g = ((*pixel >>  5) & 0x1F);
-                uint8_t b = ((*pixel >> 10) & 0x1F);
+                uint32_t *pixel = &framebuffer[line * 256 + i];
+                uint8_t r = (*pixel >>  0) & 0x3F;
+                uint8_t g = (*pixel >>  6) & 0x3F;
+                uint8_t b = (*pixel >> 12) & 0x3F;
 
                 // Adjust the values and put them back
-                r += (31 - r) * factor;
-                g += (31 - g) * factor;
-                b += (31 - b) * factor;
-                *pixel = (b << 10) | (g << 5) | r;
+                r += (63 - r) * factor;
+                g += (63 - g) * factor;
+                b += (63 - b) * factor;
+                *pixel = (b << 12) | (g << 6) | r;
             }
 
             break;
@@ -201,16 +212,16 @@ void Gpu2D::drawScanline(unsigned int line)
             for (int i = 0; i < 256; i++)
             {
                 // Extract the RGB values
-                uint16_t *pixel = &framebuffer[line * 256 + i];
-                uint8_t r = ((*pixel >>  0) & 0x1F);
-                uint8_t g = ((*pixel >>  5) & 0x1F);
-                uint8_t b = ((*pixel >> 10) & 0x1F);
+                uint32_t *pixel = &framebuffer[line * 256 + i];
+                uint8_t r = (*pixel >>  0) & 0x3F;
+                uint8_t g = (*pixel >>  6) & 0x3F;
+                uint8_t b = (*pixel >> 12) & 0x3F;
 
                 // Adjust the values and put them back
                 r -= r * factor;
                 g -= g * factor;
                 b -= b * factor;
-                *pixel = (b << 10) | (g << 5) | r;
+                *pixel = (b << 12) | (g << 6) | r;
             }
 
             break;
@@ -223,7 +234,7 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
     // If 3D is enabled, render it to BG0 in text mode
     if (bg == 0 && (dispCnt & BIT(3)))
     {
-        memcpy(&layers[bg][line * 256], &gpu3DRenderer->getLineCache()[(line % 48) * 256], 256 * sizeof(uint16_t));
+        memcpy(&layers[bg][line * 256], &gpu3DRenderer->getLineCache()[(line % 48) * 256], 256 * sizeof(uint32_t));
         return;
     }
 
@@ -281,7 +292,7 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
 
                 // Draw a pixel
                 if (offset >= 0 && offset < 256 && indices[j])
-                    layers[bg][line * 256 + offset] = U8TO16(pal, indices[j] * 2) | BIT(15);
+                    layers[bg][line * 256 + offset] = rgb5ToRgb6(U8TO16(pal, indices[j] * 2)) | BIT(18);
             }
         }
     }
@@ -314,7 +325,7 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
 
                 // Draw a pixel
                 if (offset >= 0 && offset < 256 && index)
-                    layers[bg][line * 256 + offset] = U8TO16(pal, index * 2) | BIT(15);
+                    layers[bg][line * 256 + offset] = rgb5ToRgb6(U8TO16(pal, index * 2)) | BIT(18);
             }
         }
     }
@@ -369,7 +380,7 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
                 }
 
                 // Draw a pixel
-                layers[bg][line * 256 + i] = U8TO16(data, (rotscaleY * sizeX + rotscaleX) * 2);
+                layers[bg][line * 256 + i] = rgb5ToRgb6(U8TO16(data, (rotscaleY * sizeX + rotscaleX) * 2));
             }
         }
         else // 256 color bitmap
@@ -394,7 +405,7 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
 
                 // Draw a pixel
                 if (data[rotscaleY * sizeX + rotscaleX])
-                    layers[bg][line * 256 + i] = U8TO16(palette, (data[rotscaleY * sizeX + rotscaleX]) * 2) | BIT(15);
+                    layers[bg][line * 256 + i] = rgb5ToRgb6(U8TO16(palette, (data[rotscaleY * sizeX + rotscaleX]) * 2)) | BIT(18);
             }
         }
     }
@@ -456,7 +467,7 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
 
             // Draw a pixel
             if (*index)
-                layers[bg][line * 256 + i] = U8TO16(pal, *index * 2) | BIT(15);
+                layers[bg][line * 256 + i] = rgb5ToRgb6(U8TO16(pal, *index * 2)) | BIT(18);
         }
     }
 }
@@ -555,7 +566,7 @@ void Gpu2D::drawObjects(unsigned int line)
         if (x >= 256) x -= 512;
 
         // Determine the layer to draw to based on the priority of the object
-        uint16_t *layer = layers[4 + ((object[2] & 0x0C00) >> 10)];
+        uint32_t *layer = layers[4 + ((object[2] & 0x0C00) >> 10)];
 
         // Draw the object
         if (object[0] & BIT(8)) // Rotscale
@@ -597,7 +608,7 @@ void Gpu2D::drawObjects(unsigned int line)
 
                     // Draw a pixel if one exists at the current position
                     if (x + j >= 0 && x + j < 256 && index)
-                        layer[line * 256 + x + j] = U8TO16(pal, index * 2) | BIT(15);
+                        layer[line * 256 + x + j] = rgb5ToRgb6(U8TO16(pal, index * 2)) | BIT(18);
                 }
             }
             else // 4-bit
@@ -624,7 +635,7 @@ void Gpu2D::drawObjects(unsigned int line)
 
                     // Draw a pixel if one exists at the current position
                     if (x + j >= 0 && x + j < 256 && index)
-                        layer[line * 256 + x + j] = U8TO16(pal, index * 2) | BIT(15);
+                        layer[line * 256 + x + j] = rgb5ToRgb6(U8TO16(pal, index * 2)) | BIT(18);
                 }
             }
         }
@@ -660,7 +671,7 @@ void Gpu2D::drawObjects(unsigned int line)
 
                 // Draw a pixel if one exists at the current position
                 if (offset >= 0 && offset < 256 && index)
-                    layer[line * 256 + offset] = U8TO16(pal, index * 2) | BIT(15);
+                    layer[line * 256 + offset] = rgb5ToRgb6(U8TO16(pal, index * 2)) | BIT(18);
             }
         }
         else // 4-bit
@@ -687,7 +698,7 @@ void Gpu2D::drawObjects(unsigned int line)
 
                 // Draw a pixel if one exists at the current position
                 if (offset >= 0 && offset < 256 && index)
-                    layer[line * 256 + offset] = U8TO16(pal, index * 2) | BIT(15);
+                    layer[line * 256 + offset] = rgb5ToRgb6(U8TO16(pal, index * 2)) | BIT(18);
             }
         }
     }

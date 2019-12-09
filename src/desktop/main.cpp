@@ -262,11 +262,11 @@ void NooPanel::draw(wxPaintEvent &event)
         wxNativePixelData::Iterator pixel = iter;
         for (int x = 0; x < 256; x++, pixel++)
         {
-            // Convert the color values from 5-bit to 8-bit
-            uint16_t color = core ? core->getFramebuffer()[y * 256 + x] : 0;
-            pixel.Red()   = ((color >>  0) & 0x1F) * 255 / 31;
-            pixel.Green() = ((color >>  5) & 0x1F) * 255 / 31;
-            pixel.Blue()  = ((color >> 10) & 0x1F) * 255 / 31;
+            // Convert the color values from 6-bit to 8-bit
+            uint32_t color = core ? core->getFramebuffer()[y * 256 + x] : 0;
+            pixel.Red()   = ((color >>  0) & 0x3F) * 255 / 63;
+            pixel.Green() = ((color >>  6) & 0x3F) * 255 / 63;
+            pixel.Blue()  = ((color >> 12) & 0x3F) * 255 / 63;
         }
         iter.OffsetY(data, 1);
     }

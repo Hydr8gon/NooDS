@@ -35,7 +35,7 @@ class Gpu
         void scanline256();
         void scanline355();
 
-        uint16_t *getFramebuffer() { return framebuffer; }
+        uint32_t *getFramebuffer() { return framebuffer; }
 
         uint8_t readDispStat9(unsigned int byte) { return dispStat9 >> (byte * 8); }
         uint8_t readDispStat7(unsigned int byte) { return dispStat7 >> (byte * 8); }
@@ -47,7 +47,7 @@ class Gpu
         void writePowCnt1(unsigned int byte, uint8_t value);
 
     private:
-        uint16_t framebuffer[256 * 192 * 2] = {};
+        uint32_t framebuffer[256 * 192 * 2] = {};
 
         uint16_t dispStat9 = 0, dispStat7 = 0;
         uint16_t vCount = 0;

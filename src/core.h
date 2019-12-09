@@ -54,7 +54,7 @@ class Core
         void pressScreen(int x, int y)    { input.pressScreen();   spi.setTouch(x, y); }
         void releaseScreen()              { input.releaseScreen(); spi.clearTouch();   }
 
-        uint16_t *getFramebuffer() { return gpu.getFramebuffer(); }
+        uint32_t *getFramebuffer() { return gpu.getFramebuffer(); }
         unsigned int getFps()      { return fps;                  }
 
     private:

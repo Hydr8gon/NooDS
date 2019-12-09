@@ -90,18 +90,18 @@ void Gpu::scanline355()
         {
             if (powCnt1 & BIT(15)) // Display swap
             {
-                memcpy(&framebuffer[0],         engineA->getFramebuffer(), 256 * 192 * sizeof(uint16_t));
-                memcpy(&framebuffer[256 * 192], engineB->getFramebuffer(), 256 * 192 * sizeof(uint16_t));
+                memcpy(&framebuffer[0],         engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                memcpy(&framebuffer[256 * 192], engineB->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
             }
             else
             {
-                memcpy(&framebuffer[0],         engineB->getFramebuffer(), 256 * 192 * sizeof(uint16_t));
-                memcpy(&framebuffer[256 * 192], engineA->getFramebuffer(), 256 * 192 * sizeof(uint16_t));
+                memcpy(&framebuffer[0],         engineB->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                memcpy(&framebuffer[256 * 192], engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
             }
         }
         else
         {
-            memset(framebuffer, 0, 256 * 192 * 2 * sizeof(uint16_t));
+            memset(framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
         }
 
         // Start the next frame
