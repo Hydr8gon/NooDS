@@ -34,8 +34,6 @@ class Cartridge
 
         void setRom(uint8_t *rom, unsigned int romSize, uint8_t *save, unsigned int saveSize);
 
-        bool transferReady() { return romCtrl & BIT(23); }
-
         uint8_t readAuxSpiCnt(unsigned int byte) { return auxSpiCnt >> (byte * 8); }
         uint8_t readAuxSpiData()                 { return auxSpiData;              }
         uint8_t readRomCtrl(unsigned int byte)   { return romCtrl   >> (byte * 8); }

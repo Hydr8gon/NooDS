@@ -22,6 +22,7 @@
 #include "dma.h"
 #include "defines.h"
 #include "cartridge.h"
+#include "gpu_3d.h"
 #include "interpreter.h"
 #include "memory.h"
 
@@ -34,7 +35,7 @@ void Dma::transfer()
 
         // Determine the transfer mode
         unsigned int mode;
-        if (cpu->isArm9())
+        if (gpu3D) // ARM9
         {
             mode = (dmaCnt[i] & 0x38000000) >> 27;
         }
@@ -59,12 +60,18 @@ void Dma::transfer()
 
             case 5: // DS cartridge slot
                 // Only transfer when a word from the cart is ready
-                if (!cart->transferReady())
+                if (!(cart->readRomCtrl(2) & BIT(7)))
+                    continue;
+                break;
+
+            case 7: // Geometry command FIFO
+                // Only transfer when the FIFO is less than half full
+                if (!(gpu3D->readGxStat(3) & BIT(1)))
                     continue;
                 break;
 
             default:
-                printf("Unknown ARM%d DMA transfer timing: %d\n", (cpu->isArm9() ? 9 : 7), mode);
+                printf("Unknown ARM%d DMA transfer timing: %d\n", (gpu3D ? 9 : 7), mode);
 
                 // Pretend that the transfer completed
                 dmaCnt[i] &= ~BIT(31);
@@ -84,7 +91,7 @@ void Dma::transfer()
             for (unsigned int j = 0; j < wordCounts[i]; j++)
             {
                 // Transfer a word
-                memory->write<uint32_t>(cpu->isArm9(), dstAddrs[i], memory->read<uint32_t>(cpu->isArm9(), srcAddrs[i]));
+                memory->write<uint32_t>(gpu3D, dstAddrs[i], memory->read<uint32_t>(gpu3D, srcAddrs[i]));
 
                 // Adjust the source address
                 if (srcAddrCnt == 0) // Increment
@@ -97,6 +104,18 @@ void Dma::transfer()
                     dstAddrs[i] += 4;
                 else if (dstAddrCnt == 1) // Decrement
                     dstAddrs[i] -= 4;
+
+                // In gometry command FIFO mode, only 112 words are sent at a time
+                if (mode == 7)
+                {
+                    gxFifoCount++;
+                    if (gxFifoCount == 112)
+                    {
+                        wordCounts[i] -= 112;
+                        gxFifoCount = 0;
+                        return;
+                    }
+                }
             }
         }
         else // Half-word transfer
@@ -104,7 +123,7 @@ void Dma::transfer()
             for (unsigned int j = 0; j < wordCounts[i]; j++)
             {
                 // Transfer a half-word
-                memory->write<uint16_t>(cpu->isArm9(), dstAddrs[i], memory->read<uint16_t>(cpu->isArm9(), srcAddrs[i]));
+                memory->write<uint16_t>(gpu3D, dstAddrs[i], memory->read<uint16_t>(gpu3D, srcAddrs[i]));
 
                 // Adjust the source address
                 if (srcAddrCnt == 0) // Increment
@@ -117,6 +136,18 @@ void Dma::transfer()
                     dstAddrs[i] += 2;
                 else if (dstAddrCnt == 1) // Decrement
                     dstAddrs[i] -= 2;
+
+                // In gometry command FIFO mode, only 112 words are sent at a time
+                if (mode == 7)
+                {
+                    gxFifoCount++;
+                    if (gxFifoCount == 112)
+                    {
+                        wordCounts[i] -= 112;
+                        gxFifoCount = 0;
+                        return;
+                    }
+                }
             }
         }
 
@@ -132,6 +163,7 @@ void Dma::transfer()
             // End the transfer
             dmaCnt[i] &= ~BIT(31);
             enabled &= ~BIT(i);
+            gxFifoCount = 0;
         }
 
         // Trigger an end of transfer IRQ if enabled
@@ -143,14 +175,14 @@ void Dma::transfer()
 void Dma::writeDmaSad(unsigned int channel, unsigned int byte, uint8_t value)
 {
     // Write to one of the DMASAD registers
-    uint32_t mask = (cpu->isArm9() ? 0x0FFFFFFF : 0x07FFFFFF) & (0xFF << (byte * 8));
+    uint32_t mask = (gpu3D ? 0x0FFFFFFF : 0x07FFFFFF) & (0xFF << (byte * 8));
     dmaSad[channel] = (dmaSad[channel] & ~mask) | ((value << (byte * 8)) & mask);
 }
 
 void Dma::writeDmaDad(unsigned int channel, unsigned int byte, uint8_t value)
 {
     // Write to one of the DMADAD registers
-    uint32_t mask = (cpu->isArm9() ? 0x0FFFFFFF : 0x07FFFFFF) & (0xFF << (byte * 8));
+    uint32_t mask = (gpu3D ? 0x0FFFFFFF : 0x07FFFFFF) & (0xFF << (byte * 8));
     dmaDad[channel] = (dmaDad[channel] & ~mask) | ((value << (byte * 8)) & mask);
 }
 
@@ -171,6 +203,6 @@ void Dma::writeDmaCnt(unsigned int channel, unsigned int byte, uint8_t value)
     }
 
     // Write to one of the DMACNT registers
-    uint32_t mask = (cpu->isArm9() ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF)) & (0xFF << (byte * 8));
+    uint32_t mask = (gpu3D ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF)) & (0xFF << (byte * 8));
     dmaCnt[channel] = (dmaCnt[channel] & ~mask) | ((value << (byte * 8)) & mask);
 }

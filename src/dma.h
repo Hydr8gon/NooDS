@@ -23,13 +23,15 @@
 #include <cstdint>
 
 class Cartridge;
+class Gpu3D;
 class Interpreter;
 class Memory;
 
 class Dma
 {
     public:
-        Dma(Cartridge *cart, Interpreter *cpu, Memory *memory): cart(cart), cpu(cpu), memory(memory) {}
+        Dma(Cartridge *cart, Gpu3D *gpu3D, Interpreter *cpu, Memory *memory):
+            cart(cart), gpu3D(gpu3D), cpu(cpu), memory(memory) {}
 
         void transfer();
 
@@ -53,7 +55,10 @@ class Dma
         uint32_t wordCounts[4] = {};
         uint8_t enabled = 0;
 
+        int gxFifoCount = 0;
+
         Cartridge *cart;
+        Gpu3D *gpu3D;
         Interpreter *cpu;
         Memory *memory;
 };

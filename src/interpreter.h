@@ -40,7 +40,6 @@ class Interpreter
         void halt()                          { halted = true;   }
         void sendInterrupt(unsigned int bit) { irf |= BIT(bit); }
 
-        bool isArm9()          { return cp15;     }
         bool shouldRun()       { return !halted;  }
         bool shouldInterrupt() { return ie & irf; }
 
