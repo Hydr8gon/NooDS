@@ -914,8 +914,13 @@ void Gpu3D::addEntry(Entry entry)
         // Update the FIFO status
         gxStat |= BIT(27); // Commands executing
     }
-    else if (fifo.size() < 256)
+    else
     {
+        // If the FIFO is full, free space by running cycles
+        // On real hardware, a GXFIFO overflow would halt the CPU until space is free
+        while (fifo.size() >= 256)
+            runCycle();
+
         // Move data into the FIFO
         fifo.push(entry);
 
