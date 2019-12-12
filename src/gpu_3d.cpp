@@ -212,20 +212,122 @@ void Gpu3D::addVertex()
     {
         switch (savedBeginVtxs)
         {
-            case 0: if (size % 3 == 0)              addPolygon(0, 3); break; // Separate triangles
-            case 1: if (size % 4 == 0)              addPolygon(1, 4); break; // Separate quads
-            case 2: if (size >= 3)                  addPolygon(2, 3); break; // Triangle strips
-            case 3: if (size >= 4 && size % 2 == 0) addPolygon(3, 4); break; // Quad strips
+            case 0: if (size % 3 == 0)              addPolygon(); break; // Separate triangles
+            case 1: if (size % 4 == 0)              addPolygon(); break; // Separate quads
+            case 2: if (size >= 3)                  addPolygon(); break; // Triangle strips
+            case 3: if (size >= 4 && size % 2 == 0) addPolygon(); break; // Quad strips
         }
     }
 }
 
-void Gpu3D::addPolygon(int type, int vertexCount)
+void Gpu3D::addPolygon()
 {
     if (polygonCountIn == 2048) return;
 
+    int vertexCount = 3 + (savedBeginVtxs & 1);
+
+    // Check if all of a polygon's vertices are off-screen to the left
+    // Off-screen is assumed, and set to false as soon as one vertex isn't
+    bool offscreen = true;
+    for (int i = 1; i <= vertexCount; i++)
+    {
+        if (verticesIn[vertexCountIn - i].x >= 0)
+        {
+            offscreen = false;
+            break;
+        }
+    }
+
+    // Check if all of a polygon's vertices are off-screen to the right
+    // An X value of 256 is technically off-screen, but the DS seems to count it as on-screen
+    if (!offscreen)
+    {
+        offscreen = true;
+        for (int i = 1; i <= vertexCount; i++)
+        {
+            if (verticesIn[vertexCountIn - i].x <= 256)
+            {
+                offscreen = false;
+                break;
+            }
+        }
+    }
+
+    // Check if all of a polygon's vertices are off-screen to the top
+    if (!offscreen)
+    {
+        offscreen = true;
+        for (int i = 1; i <= vertexCount; i++)
+        {
+            if (verticesIn[vertexCountIn - i].y >= 0)
+            {
+                offscreen = false;
+                break;
+            }
+        }
+    }
+
+    // Check if all of a polygon's vertices are off-screen to the bottom
+    // A Y value of 192 is technically off-screen, but the DS seems to count it as on-screen
+    if (!offscreen)
+    {
+        offscreen = true;
+        for (int i = 1; i <= vertexCount; i++)
+        {
+            if (verticesIn[vertexCountIn - i].y <= 192)
+            {
+                offscreen = false;
+                break;
+            }
+        }
+    }
+
+    // Don't add an off-screen polygon to memory, and deal with its vertices
+    if (offscreen)
+    {
+        switch (savedBeginVtxs)
+        {
+            case 0: case 1: // Separate polygons
+                // Discard the vertices
+                vertexCountIn -= vertexCount;
+                return;
+
+            case 2: // Triangle strips
+                if (size == 3)
+                {
+                    // Discard the first vertex, but keep the other 2
+                    // These vertices are kept in case the next triangle goes back on-screen
+                    verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 2];
+                    verticesIn[vertexCountIn - 2] = verticesIn[vertexCountIn - 1];
+                    vertexCountIn--;
+                }
+                else
+                {
+                    // End the previous strip, and start a new one with the last 2 vertices
+                    // These vertices are kept in case the next triangle goes back on-screen
+                    verticesIn[vertexCountIn - 1] = verticesIn[vertexCountIn - 2];
+                    verticesIn[vertexCountIn - 0] = verticesIn[vertexCountIn - 1];
+                    vertexCountIn++;
+                }
+                size = 2;
+                return;
+
+            case 3: // Quad strips
+                if (size == 4)
+                {
+                    // Discard the first 2 vertices, but keep the other 2
+                    // These vertices are kept in case the next quad goes back on-screen
+                    verticesIn[vertexCountIn - 4] = verticesIn[vertexCountIn - 2];
+                    verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 1];
+                    vertexCountIn -= 2;
+                }
+                size = 2;
+                return;
+        }
+    }
+
     // Set the polygon parameters
-    polygonsIn[polygonCountIn].type = type;
+    polygonsIn[polygonCountIn].type = savedBeginVtxs;
     polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - vertexCount];
 
     // Set the texture parameters

@@ -206,7 +206,7 @@ class Gpu3D
         Vertex multiply(Vertex *vtx, Matrix *mtx);
 
         void addVertex();
-        void addPolygon(int type, int vertexCount);
+        void addPolygon();
 
         void mtxModeCmd(uint32_t param);
         void mtxPushCmd();
