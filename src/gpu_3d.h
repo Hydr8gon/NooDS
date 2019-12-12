@@ -50,6 +50,8 @@ struct _Polygon
     unsigned int type = 0;
     Vertex *vertices = nullptr;
     uint32_t texDataAddr = 0, texPaletteAddr = 0;
+    bool repeatS = false, repeatT = false;
+    bool flipS = false, flipT = false;
     int sizeS = 0, sizeT = 0;
     int texFormat = 0;
     bool transparent = false;

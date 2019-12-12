@@ -332,6 +332,10 @@ void Gpu3D::addPolygon()
 
     // Set the texture parameters
     polygonsIn[polygonCountIn].texDataAddr = (savedTexImageParam & 0x0000FFFF) * 8;
+    polygonsIn[polygonCountIn].repeatS = savedTexImageParam & BIT(16);
+    polygonsIn[polygonCountIn].repeatT = savedTexImageParam & BIT(17);
+    polygonsIn[polygonCountIn].flipS = savedTexImageParam & BIT(18);
+    polygonsIn[polygonCountIn].flipT = savedTexImageParam & BIT(19);
     polygonsIn[polygonCountIn].sizeS = 8 << ((savedTexImageParam & 0x00700000) >> 20);
     polygonsIn[polygonCountIn].sizeT = 8 << ((savedTexImageParam & 0x03800000) >> 23);
     polygonsIn[polygonCountIn].texFormat = (savedTexImageParam & 0x1C000000) >> 26;

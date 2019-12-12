@@ -37,17 +37,17 @@ void Gpu3DRenderer::drawScanline(int line)
     // Draw the polygons
     for (int i = 0; i < gpu3D->getPolygonCount(); i++)
     {
-        _Polygon polygon = gpu3D->getPolygons()[i];
+        _Polygon *polygon = &gpu3D->getPolygons()[i];
 
         // Get the triangle vertices
-        Vertex v1 = polygon.vertices[0];
-        Vertex v2 = polygon.vertices[1];
-        Vertex v3 = polygon.vertices[2];
+        Vertex v1 = polygon->vertices[0];
+        Vertex v2 = polygon->vertices[1];
+        Vertex v3 = polygon->vertices[2];
 
-        if (polygon.type & 1) // Quad
+        if (polygon->type & 1) // Quad
         {
             // Get the quad's fourth vertex
-            Vertex v4 = polygon.vertices[3];
+            Vertex v4 = polygon->vertices[3];
 
             // Sort the vertices in order of increasing Y values
             if (v2.y < v1.y)
@@ -99,38 +99,38 @@ void Gpu3DRenderer::drawScanline(int line)
             if (cross2 > 0 && cross3 <= 0) // V2 is on the right, V3 is on the left
             {
                 if (line < v2.y) // Above V2
-                    rasterize(line, &polygon, &v1, &v3, &v1, &v2);
+                    rasterize(line, polygon, &v1, &v3, &v1, &v2);
                 else if (line < v3.y) // Above V3
-                    rasterize(line, &polygon, &v1, &v3, &v2, &v4);
+                    rasterize(line, polygon, &v1, &v3, &v2, &v4);
                 else // Below V3
-                    rasterize(line, &polygon, &v3, &v4, &v2, &v4);
+                    rasterize(line, polygon, &v3, &v4, &v2, &v4);
             }
             else if (cross2 <= 0 && cross3 > 0) // V2 is on the left, V3 is on the right
             {
                 if (line < v2.y) // Above V2
-                    rasterize(line, &polygon, &v1, &v2, &v1, &v3);
+                    rasterize(line, polygon, &v1, &v2, &v1, &v3);
                 else if (line < v3.y) // Above V3
-                    rasterize(line, &polygon, &v2, &v4, &v1, &v3);
+                    rasterize(line, polygon, &v2, &v4, &v1, &v3);
                 else // Below V3
-                    rasterize(line, &polygon, &v2, &v4, &v3, &v4);
+                    rasterize(line, polygon, &v2, &v4, &v3, &v4);
             }
             else if (cross2 > 0 && cross3 > 0) // V2 and V3 are on the right
             {
                 if (line < v2.y) // Above V2
-                    rasterize(line, &polygon, &v1, &v4, &v1, &v2);
+                    rasterize(line, polygon, &v1, &v4, &v1, &v2);
                 else if (line < v3.y) // Above V3
-                    rasterize(line, &polygon, &v1, &v4, &v2, &v3);
+                    rasterize(line, polygon, &v1, &v4, &v2, &v3);
                 else // Below V3
-                    rasterize(line, &polygon, &v1, &v4, &v3, &v4);
+                    rasterize(line, polygon, &v1, &v4, &v3, &v4);
             }
             else if (cross2 <= 0 && cross3 <= 0) // V2 and V3 are on the left
             {
                 if (line < v2.y) // Above V2
-                    rasterize(line, &polygon, &v1, &v2, &v1, &v4);
+                    rasterize(line, polygon, &v1, &v2, &v1, &v4);
                 else if (line < v3.y) // Above V3
-                    rasterize(line, &polygon, &v2, &v3, &v1, &v4);
+                    rasterize(line, polygon, &v2, &v3, &v1, &v4);
                 else // Below V3
-                    rasterize(line, &polygon, &v3, &v4, &v1, &v4);
+                    rasterize(line, polygon, &v3, &v4, &v1, &v4);
             }
         }
         else // Triangle
@@ -166,16 +166,16 @@ void Gpu3DRenderer::drawScanline(int line)
             if (cross2 > 0) // V2 is on the right
             {
                 if (line < v2.y) // Above V2
-                    rasterize(line, &polygon, &v1, &v3, &v1, &v2);
+                    rasterize(line, polygon, &v1, &v3, &v1, &v2);
                 else // Below V2
-                    rasterize(line, &polygon, &v1, &v3, &v2, &v3);
+                    rasterize(line, polygon, &v1, &v3, &v2, &v3);
             }
             else // V2 is on the left
             {
                 if (line < v2.y) // Above V2
-                    rasterize(line, &polygon, &v1, &v2, &v1, &v3);
+                    rasterize(line, polygon, &v1, &v2, &v1, &v3);
                 else // Below V2
-                    rasterize(line, &polygon, &v2, &v3, &v1, &v3);
+                    rasterize(line, polygon, &v2, &v3, &v1, &v3);
             }
         }
     }
@@ -218,8 +218,49 @@ uint32_t Gpu3DRenderer::interpolateColor(uint32_t min, uint32_t max, int start, 
 
 uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
 {
-    s = (unsigned int)s % polygon->sizeS;
-    t = (unsigned int)t % polygon->sizeT;
+    // Handle S-coordinate overflows
+    if (polygon->repeatS)
+    {
+        // Flip the S-coordinate every second repeat
+        if (polygon->flipS && (s / polygon->sizeS) % 2 != 0)
+            s = polygon->sizeS - 1 - s;
+
+        // Wrap the S-coordinate
+        s %= polygon->sizeS;
+        if (s < 0) s += polygon->sizeS;
+    }
+    else if (s < 0)
+    {
+        // Clamp the S-coordinate on the left
+        s = 0;
+    }
+    else if (s >= polygon->sizeS)
+    {
+        // Clamp the S-coordinate on the right
+        s = polygon->sizeS - 1;
+    }
+
+    // Handle T-coordinate overflows
+    if (polygon->repeatT)
+    {
+        // Flip the T-coordinate every second repeat
+        if (polygon->flipT && (t / polygon->sizeT) % 2 != 0)
+            t = polygon->sizeT - 1 - t;
+
+        // Wrap the T-coordinate
+        t %= polygon->sizeT;
+        if (t < 0) t += polygon->sizeT;
+    }
+    else if (t < 0)
+    {
+        // Clamp the T-coordinate on the top
+        t = 0;
+    }
+    else if (t >= polygon->sizeT)
+    {
+        // Clamp the T-coordinate on the bottom
+        t = polygon->sizeT - 1;
+    }
 
     switch (polygon->texFormat)
     {
