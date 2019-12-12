@@ -77,7 +77,7 @@ int main()
     framebufferMakeLinear(&fb);
 
     // Start the emulator
-    threadCreate(&coreThread, runCore, NULL, 0x8000, 0x30, 1);
+    threadCreate(&coreThread, runCore, NULL, NULL, 0x8000, 0x30, 1);
     threadStart(&coreThread);
     appletLockExit();
 
