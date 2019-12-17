@@ -47,7 +47,7 @@ struct Vertex
 
 struct _Polygon
 {
-    unsigned int type = 0;
+    unsigned int size = 0;
     Vertex *vertices = nullptr;
     uint32_t texDataAddr = 0, texPaletteAddr = 0;
     bool repeatS = false, repeatT = false;
@@ -209,6 +209,9 @@ class Gpu3D
 
         void addVertex();
         void addPolygon();
+
+        Vertex intersection(Vertex *v0, Vertex *v1, int64_t val0, int64_t val1);
+        bool clipPolygon(Vertex *unclipped, Vertex *clipped, int side);
 
         void mtxModeCmd(uint32_t param);
         void mtxPushCmd();

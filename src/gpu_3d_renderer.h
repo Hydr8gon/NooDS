@@ -37,7 +37,7 @@ class Gpu3DRenderer
 
     private:
         uint32_t lineCache[48 * 256] = {};
-        int zBuffer[256] = {};
+        int depthBuffer[256] = {};
 
         Gpu3D *gpu3D;
 
@@ -45,7 +45,7 @@ class Gpu3DRenderer
         int interpolate(int min, int max, int start, int current, int end);
         uint32_t interpolateColor(uint32_t min, uint32_t max, int start, int current, int end);
         uint32_t readTexture(_Polygon *polygon, int s, int t);
-        void rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v2, Vertex *v3, Vertex *v4);
+        void rasterize(int line, _Polygon *polygon, Vertex *v0, Vertex *v1, Vertex *v2, Vertex *v3);
 };
 
 #endif // GPU_3D_RENDERER_H

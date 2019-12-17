@@ -182,26 +182,13 @@ void Gpu3D::addVertex()
         clipNeedsUpdate = false;
     }
 
+    // Transform the vertex
+    verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &clip);
+
     // Set the vertex parameters
     verticesIn[vertexCountIn].color = (savedColor & 0x00007FFF);
     verticesIn[vertexCountIn].s = (int16_t)(savedTexCoord & 0x0000FFFF);
     verticesIn[vertexCountIn].t = (int16_t)((savedTexCoord & 0xFFFF0000) >> 16);
-
-    // Transform the vertex
-    verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &clip);
-
-    // Normalize the vertex and convert its X and Y coordinates to DS screen coordinates
-    if (verticesIn[vertexCountIn].w != 0)
-    {
-        if (verticesIn[vertexCountIn].w < 0)
-        {
-            verticesIn[vertexCountIn].w = -verticesIn[vertexCountIn].w;
-            verticesIn[vertexCountIn].z = -verticesIn[vertexCountIn].z;
-        }
-
-        verticesIn[vertexCountIn].x = (( verticesIn[vertexCountIn].x * 128) / verticesIn[vertexCountIn].w) + 128;
-        verticesIn[vertexCountIn].y = ((-verticesIn[vertexCountIn].y *  96) / verticesIn[vertexCountIn].w) +  96;
-    }
 
     // Move to the next vertex
     vertexCountIn++;
@@ -222,68 +209,39 @@ void Gpu3D::addVertex()
 
 void Gpu3D::addPolygon()
 {
-    if (polygonCountIn == 2048) return;
+    if (polygonCountIn >= 2048) return;
 
+    // Set the polygon parameters
     int vertexCount = 3 + (savedBeginVtxs & 1);
+    polygonsIn[polygonCountIn].size = vertexCount;
+    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - vertexCount];
 
-    // Check if all of a polygon's vertices are off-screen to the left
-    // Off-screen is assumed, and set to false as soon as one vertex isn't
-    bool offscreen = true;
-    for (int i = 1; i <= vertexCount; i++)
+    // Save a copy of the unclipped vertices
+    Vertex unclipped[vertexCount];
+    for (int i = 0; i < vertexCount; i++)
+        unclipped[i] = polygonsIn[polygonCountIn].vertices[i];
+
+    // Rearrange quad strip vertices to work with the clipping algorithm
+    if (savedBeginVtxs == 3)
     {
-        if (verticesIn[vertexCountIn - i].x >= 0)
-        {
-            offscreen = false;
-            break;
-        }
+        Vertex vertex = unclipped[2];
+        unclipped[2] = unclipped[3];
+        unclipped[3] = vertex;
     }
 
-    // Check if all of a polygon's vertices are off-screen to the right
-    // An X value of 256 is technically off-screen, but the DS seems to count it as on-screen
-    if (!offscreen)
-    {
-        offscreen = true;
-        for (int i = 1; i <= vertexCount; i++)
-        {
-            if (verticesIn[vertexCountIn - i].x <= 256)
-            {
-                offscreen = false;
-                break;
-            }
-        }
-    }
+    Vertex temp[8];
+    Vertex clipped[8];
 
-    // Check if all of a polygon's vertices are off-screen to the top
-    if (!offscreen)
-    {
-        offscreen = true;
-        for (int i = 1; i <= vertexCount; i++)
-        {
-            if (verticesIn[vertexCountIn - i].y >= 0)
-            {
-                offscreen = false;
-                break;
-            }
-        }
-    }
+    // Clip the polygon on all 6 sides of the view area
+    bool clip = clipPolygon(unclipped, temp, 0);
+    clip |= clipPolygon(temp, clipped, 1);
+    clip |= clipPolygon(clipped, temp, 2);
+    clip |= clipPolygon(temp, clipped, 3);
+    clip |= clipPolygon(clipped, temp, 4);
+    clip |= clipPolygon(temp, clipped, 5);
 
-    // Check if all of a polygon's vertices are off-screen to the bottom
-    // A Y value of 192 is technically off-screen, but the DS seems to count it as on-screen
-    if (!offscreen)
-    {
-        offscreen = true;
-        for (int i = 1; i <= vertexCount; i++)
-        {
-            if (verticesIn[vertexCountIn - i].y <= 192)
-            {
-                offscreen = false;
-                break;
-            }
-        }
-    }
-
-    // Don't add an off-screen polygon to memory, and deal with its vertices
-    if (offscreen)
+    // Discard polygons that are completely outside of the view area
+    if (polygonsIn[polygonCountIn].size == 0)
     {
         switch (savedBeginVtxs)
         {
@@ -293,42 +251,99 @@ void Gpu3D::addPolygon()
                 return;
 
             case 2: // Triangle strips
-                if (size == 3)
+                if (size == 3) // First triangle in the strip
                 {
-                    // Discard the first vertex, but keep the other 2
-                    // These vertices are kept in case the next triangle goes back on-screen
+                    // Discard the first vertex, but keep the other 2 for the next triangle
                     verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 2];
                     verticesIn[vertexCountIn - 2] = verticesIn[vertexCountIn - 1];
                     vertexCountIn--;
+                    size--;
                 }
                 else
                 {
                     // End the previous strip, and start a new one with the last 2 vertices
-                    // These vertices are kept in case the next triangle goes back on-screen
                     verticesIn[vertexCountIn - 1] = verticesIn[vertexCountIn - 2];
                     verticesIn[vertexCountIn - 0] = verticesIn[vertexCountIn - 1];
                     vertexCountIn++;
+                    size = 2;
                 }
-                size = 2;
                 return;
 
             case 3: // Quad strips
-                if (size == 4)
+                if (size == 4) // First quad in the strip
                 {
-                    // Discard the first 2 vertices, but keep the other 2
-                    // These vertices are kept in case the next quad goes back on-screen
+                    // Discard the first 2 vertices, but keep the other 2 for the next quad
                     verticesIn[vertexCountIn - 4] = verticesIn[vertexCountIn - 2];
                     verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 1];
                     vertexCountIn -= 2;
+                    size -= 2;
                 }
-                size = 2;
+                else
+                {
+                    // End the previous strip, and start a new one with the last 2 vertices
+                    size = 2;
+                }
                 return;
         }
     }
 
-    // Set the polygon parameters
-    polygonsIn[polygonCountIn].type = savedBeginVtxs;
-    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - vertexCount];
+    // Update the vertices of clipped polygons
+    if (clip)
+    {
+        switch (savedBeginVtxs)
+        {
+            case 0: case 1: // Separate polygons
+                // Remove the unclipped vertices
+                vertexCountIn -= vertexCount;
+                polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
+
+                // Add the clipped vertices
+                for (int i = 0; i < polygonsIn[polygonCountIn].size; i++)
+                {
+                    verticesIn[vertexCountIn] = clipped[i];
+                    vertexCountIn++;
+                }
+                break;
+
+            case 2: // Triangle strips
+                // Remove the unclipped vertices
+                vertexCountIn -= (size == 3) ? 3 : 1;
+                polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
+
+                // Add the clipped vertices
+                for (int i = 0; i < polygonsIn[polygonCountIn].size; i++)
+                {
+                    verticesIn[vertexCountIn] = clipped[i];
+                    vertexCountIn++;
+                }
+
+                // End the previous strip, and start a new one with the last 2 vertices
+                verticesIn[vertexCountIn + 0] = unclipped[1];
+                verticesIn[vertexCountIn + 1] = unclipped[2];
+                vertexCountIn += 2;
+                size = 2;
+                break;
+
+            case 3: // Quad strips
+                // Remove the unclipped vertices
+                vertexCountIn -= (size == 4) ? 4 : 2;
+                polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
+
+                // Add the clipped vertices
+                for (int i = 0; i < polygonsIn[polygonCountIn].size; i++)
+                {
+                    verticesIn[vertexCountIn] = clipped[i];
+                    vertexCountIn++;
+                }
+
+                // End the previous strip, and start a new one with the last 2 vertices
+                verticesIn[vertexCountIn + 0] = unclipped[3];
+                verticesIn[vertexCountIn + 1] = unclipped[2];
+                vertexCountIn += 2;
+                size = 2;
+                break;
+        }
+    }
 
     // Set the texture parameters
     polygonsIn[polygonCountIn].texDataAddr = (savedTexImageParam & 0x0000FFFF) * 8;
@@ -344,6 +359,82 @@ void Gpu3D::addPolygon()
 
     // Move to the next polygon
     polygonCountIn++;
+}
+
+Vertex Gpu3D::intersection(Vertex *v0, Vertex *v1, int64_t val0, int64_t val1)
+{
+    Vertex vertex;
+
+    // Calculate the interpolation coefficients
+    int64_t d0 = val0 + v0->w;
+    int64_t d1 = val1 + v1->w;
+    if (d1 == d0) return *v0;
+
+    // Interpolate the vertex coordinates
+    vertex.x = ((v0->x * d1) - (v1->x * d0)) / (d1 - d0);
+    vertex.y = ((v0->y * d1) - (v1->y * d0)) / (d1 - d0);
+    vertex.z = ((v0->z * d1) - (v1->z * d0)) / (d1 - d0);
+    vertex.w = ((v0->w * d1) - (v1->w * d0)) / (d1 - d0);
+    vertex.s = ((v0->s * d1) - (v1->s * d0)) / (d1 - d0);
+    vertex.t = ((v0->t * d1) - (v1->t * d0)) / (d1 - d0);
+
+    // Interpolate the vertex color
+    uint8_t r = ((((v0->color >>  0) & 0x1F) * d1) - (((v1->color >>  0) & 0x1F) * d0)) / (d1 - d0);
+    uint8_t g = ((((v0->color >>  5) & 0x1F) * d1) - (((v1->color >>  5) & 0x1F) * d0)) / (d1 - d0);
+    uint8_t b = ((((v0->color >> 10) & 0x1F) * d1) - (((v1->color >> 10) & 0x1F) * d0)) / (d1 - d0);
+    vertex.color = (b << 10) | (g << 5) | r;
+
+    return vertex;
+}
+
+bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int side)
+{
+    bool clip = false;
+
+    int vertexCount = polygonsIn[polygonCountIn].size;
+    polygonsIn[polygonCountIn].size = 0;
+
+    // Clip a polygon using the Sutherland-Hodgman algorithm
+    for (int i = 0; i < vertexCount; i++)
+    {
+        // Get the unclipped vertices 
+        Vertex *current = &unclipped[i];
+        Vertex *previous = &unclipped[(i - 1 + vertexCount) % vertexCount];
+
+        // Choose which coordinates to check based on the current side being clipped against
+        int64_t currentVal, previousVal;
+        switch (side)
+        {
+            case 0:  currentVal =  current->x; previousVal =  previous->x; break;
+            case 1:  currentVal = -current->x; previousVal = -previous->x; break;
+            case 2:  currentVal =  current->y; previousVal =  previous->y; break;
+            case 3:  currentVal = -current->y; previousVal = -previous->y; break;
+            case 4:  currentVal =  current->z; previousVal =  previous->z; break;
+            default: currentVal = -current->z; previousVal = -previous->z; break;
+        }
+
+        // Add the clipped vertices
+        if (currentVal >= -current->w) // Current vertex in bounds
+        {
+            if (previousVal < -previous->w) // Previous vertex not in bounds
+            {
+                clipped[polygonsIn[polygonCountIn].size] = intersection(current, previous, currentVal, previousVal);
+                polygonsIn[polygonCountIn].size++;
+                clip = true;
+            }
+
+            clipped[polygonsIn[polygonCountIn].size] = *current;
+            polygonsIn[polygonCountIn].size++;
+        }
+        else if (previousVal >= -previous->w) // Previous vertex in bounds
+        {
+            clipped[polygonsIn[polygonCountIn].size] = intersection(current, previous, currentVal, previousVal);
+            polygonsIn[polygonCountIn].size++;
+            clip = true;
+        }
+    }
+
+    return clip;
 }
 
 void Gpu3D::mtxModeCmd(uint32_t param)
@@ -783,7 +874,7 @@ void Gpu3D::texCoordCmd(uint32_t param)
 
 void Gpu3D::vtx16Cmd(uint32_t param)
 {
-    if (vertexCountIn == 6144) return;
+    if (vertexCountIn >= 6144) return;
 
     if (paramCount == 0)
     {
@@ -803,7 +894,7 @@ void Gpu3D::vtx16Cmd(uint32_t param)
 
 void Gpu3D::vtx10Cmd(uint32_t param)
 {
-    if (vertexCountIn == 6144) return;
+    if (vertexCountIn >= 6144) return;
 
     // Set the X, Y, Z and W coordinates
     verticesIn[vertexCountIn].x = (int16_t)((param & 0x000003FF) << 6);
@@ -816,7 +907,7 @@ void Gpu3D::vtx10Cmd(uint32_t param)
 
 void Gpu3D::vtxXYCmd(uint32_t param)
 {
-    if (vertexCountIn == 6144) return;
+    if (vertexCountIn >= 6144) return;
 
     // Set the X, Y, and W coordinates and get the Z coordinate from the previous vertex
     verticesIn[vertexCountIn].x = (int16_t)(param & 0x0000FFFF);
@@ -829,7 +920,7 @@ void Gpu3D::vtxXYCmd(uint32_t param)
 
 void Gpu3D::vtxXZCmd(uint32_t param)
 {
-    if (vertexCountIn == 6144) return;
+    if (vertexCountIn >= 6144) return;
 
     // Set the X, Z, and W coordinates and get the Y coordinate from the previous vertex
     verticesIn[vertexCountIn].x = (int16_t)(param & 0x0000FFFF);
@@ -842,7 +933,7 @@ void Gpu3D::vtxXZCmd(uint32_t param)
 
 void Gpu3D::vtxYZCmd(uint32_t param)
 {
-    if (vertexCountIn == 6144) return;
+    if (vertexCountIn >= 6144) return;
 
     // Set the Y, Z, and W coordinates and get the X coordinate from the previous vertex
     verticesIn[vertexCountIn].x = last.x;
@@ -855,7 +946,7 @@ void Gpu3D::vtxYZCmd(uint32_t param)
 
 void Gpu3D::vtxDiffCmd(uint32_t param)
 {
-    if (vertexCountIn == 6144) return;
+    if (vertexCountIn >= 6144) return;
 
     // Get the X, Y and Z offsets
     Vertex vertex;
@@ -886,6 +977,11 @@ void Gpu3D::plttBaseCmd(uint32_t param)
 
 void Gpu3D::beginVtxsCmd(uint32_t param)
 {
+    // Clipping a polygon strip starts a new strip with the last 2 vertices of the old one
+    // Discard these vertices if they're unused
+    if (size == 2 && vertexCountIn >= 2)
+        vertexCountIn -= 2;
+
     // Begin a new vertex list
     savedBeginVtxs = param & 0x00000003;
     size = 0;
@@ -893,6 +989,16 @@ void Gpu3D::beginVtxsCmd(uint32_t param)
 
 void Gpu3D::swapBuffersCmd(uint32_t param)
 {
+    // Normalize and convert the vertices' X and Y coordinates to DS screen coordinates
+    for (int i = 0; i < vertexCountIn; i++)
+    {
+        if (verticesIn[i].w != 0)
+        {
+            verticesIn[i].x = (( verticesIn[i].x * 128) / verticesIn[i].w) + 128;
+            verticesIn[i].y = ((-verticesIn[i].y *  96) / verticesIn[i].w) +  96;
+        }
+    }
+
     // Swap the vertex buffers
     Vertex *vertices = verticesOut;
     verticesOut = verticesIn;
