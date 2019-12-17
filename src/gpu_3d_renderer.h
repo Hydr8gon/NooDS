@@ -42,9 +42,15 @@ class Gpu3DRenderer
         Gpu3D *gpu3D;
 
         uint32_t rgb5ToRgb6(uint32_t color);
-        int interpolate(int min, int max, int start, int current, int end);
-        uint32_t interpolateColor(uint32_t min, uint32_t max, int start, int current, int end);
+
+        int interpolateW(int w0, int w1, int x0, int x, int x1);
+        int interpolate(int val0, int val1, int x0, int x, int x1);
+        int interpolate(int val0, int val1, int x0, int x, int x1, int w0, int w, int w1);
+        uint32_t interpolateColor(uint32_t col0, uint32_t col1, int x0, int x, int x1);
+        uint32_t interpolateColor(uint32_t col0, uint32_t col1, int x0, int x, int x1, int w0, int w, int w1);
+
         uint32_t readTexture(_Polygon *polygon, int s, int t);
+
         void rasterize(int line, _Polygon *polygon, Vertex *v0, Vertex *v1, Vertex *v2, Vertex *v3);
 };
 

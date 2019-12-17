@@ -113,28 +113,54 @@ void Gpu3DRenderer::drawScanline(int line)
     }
 }
 
-int Gpu3DRenderer::interpolate(int min, int max, int start, int current, int end)
+int Gpu3DRenderer::interpolateW(int w0, int w1, int x0, int x, int x1)
 {
-    // Calculate the gradient
-    // This is the percentage distance between the start and end positions
-    float gradient = (start == end) ? 0 : ((float)(current - start) / (end - start));
+    // Get the parameters
+    float gradient = (x0 == x1) ? 0 : ((float)(x - x0) / (x1 - x0));
+    float min = w0 ? (1.0f / w0) : 0;
+    float max = w1 ? (1.0f / w1) : 0;
 
-    // Keep the gradient within bounds
-    if (gradient > 1)
-        gradient = 1;
-    else if (gradient < 0)
-        gradient = 0;
-
-    // Calculate a new value between the min and max values
-    return min + gradient * (max - min);
+    // Interpolate a new value between the min and max values
+    float result = min + gradient * (max - min);
+    return result ? (1.0f / result) : 0;
 }
 
-uint32_t Gpu3DRenderer::interpolateColor(uint32_t min, uint32_t max, int start, int current, int end)
+int Gpu3DRenderer::interpolate(int val0, int val1, int x0, int x, int x1)
+{
+    // Get the parameters
+    float gradient = (x0 == x1) ? 0 : ((float)(x - x0) / (x1 - x0));
+
+    // Interpolate a new value between the min and max values
+    return val0 + gradient * (val1 - val0);
+}
+
+int Gpu3DRenderer::interpolate(int val0, int val1, int x0, int x, int x1, int w0, int w, int w1)
+{
+    // Get the parameters
+    float gradient = (x0 == x1) ? 0 : ((float)(x - x0) / (x1 - x0));
+    float min = w0 ? ((float)val0 / w0) : 0;
+    float max = w1 ? ((float)val1 / w1) : 0;
+
+    // Interpolate a new value between the min and max values
+    float result = min + gradient * (max - min);
+    return result * w;
+}
+
+uint32_t Gpu3DRenderer::interpolateColor(uint32_t col0, uint32_t col1, int x0, int x, int x1)
 {
     // Apply interpolation separately on the RGB values
-    int r = interpolate((min >>  0) & 0x3F, (max >>  0) & 0x3F, start, current, end);
-    int g = interpolate((min >>  6) & 0x3F, (max >>  6) & 0x3F, start, current, end);
-    int b = interpolate((min >> 12) & 0x3F, (max >> 12) & 0x3F, start, current, end);
+    int r = interpolate((col0 >>  0) & 0x3F, (col1 >>  0) & 0x3F, x0, x, x1);
+    int g = interpolate((col0 >>  6) & 0x3F, (col1 >>  6) & 0x3F, x0, x, x1);
+    int b = interpolate((col0 >> 12) & 0x3F, (col1 >> 12) & 0x3F, x0, x, x1);
+    return BIT(18) | (b << 12) | (g << 6) | r;
+}
+
+uint32_t Gpu3DRenderer::interpolateColor(uint32_t col0, uint32_t col1, int x0, int x, int x1, int w0, int w, int w1)
+{
+    // Apply interpolation separately on the RGB values
+    int r = interpolate((col0 >>  0) & 0x3F, (col1 >>  0) & 0x3F, x0, x, x1, w0, w, w1);
+    int g = interpolate((col0 >>  6) & 0x3F, (col1 >>  6) & 0x3F, x0, x, x1, w0, w, w1);
+    int b = interpolate((col0 >> 12) & 0x3F, (col1 >> 12) & 0x3F, x0, x, x1, w0, w, w1);
     return BIT(18) | (b << 12) | (g << 6) | r;
 }
 
@@ -261,9 +287,9 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
                     {
                         case 2:
                         {
-                            uint32_t color1 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
-                            uint32_t color2 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
-                            return interpolateColor(color1, color2, 0, 1, 2);
+                            uint32_t col0 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
+                            uint32_t col1 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
+                            return interpolateColor(col0, col1, 0, 1, 2);
                         }
 
                         case 3:
@@ -281,16 +307,16 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
                     {
                         case 2:
                         {
-                            uint32_t color1 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
-                            uint32_t color2 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
-                            return interpolateColor(color1, color2, 0, 3, 8);
+                            uint32_t col0 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
+                            uint32_t col1 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
+                            return interpolateColor(col0, col1, 0, 3, 8);
                         }
 
                         case 3:
                         {
-                            uint32_t color1 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
-                            uint32_t color2 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
-                            return interpolateColor(color1, color2, 0, 5, 8);
+                            uint32_t col0 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
+                            uint32_t col1 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
+                            return interpolateColor(col0, col1, 0, 5, 8);
                         }
 
                         default:
@@ -332,6 +358,11 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v0, Vertex *v
         int z1 = interpolate(v2->z, v3->z, v2->y, line, v3->y);
         int z  = interpolate(z0, z1, lx0, x, lx1);
 
+        // Calculate the W value of the current pixel
+        int w0 = interpolateW(v0->w, v1->w, v0->y, line, v1->y);
+        int w1 = interpolateW(v2->w, v3->w, v2->y, line, v3->y);
+        int w  = interpolateW(w0, w1, lx0, x, lx1);
+
         // Draw a new pixel if the old one is behind the new one
         if (depthBuffer[x] >= z)
         {
@@ -341,21 +372,21 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v0, Vertex *v
             if (polygon->texFormat == 0) // No texture
             {
                 // Interpolate the vertex colors
-                uint32_t color0 = interpolateColor(rgb5ToRgb6(v0->color), rgb5ToRgb6(v1->color), v0->y, line, v1->y);
-                uint32_t color1 = interpolateColor(rgb5ToRgb6(v2->color), rgb5ToRgb6(v3->color), v2->y, line, v3->y);
-                color = interpolateColor(color0, color1, lx0, x, lx1);
+                uint32_t col0 = interpolateColor(rgb5ToRgb6(v0->color), rgb5ToRgb6(v1->color), v0->y, line, v1->y, v0->w, w0, v1->w);
+                uint32_t col1 = interpolateColor(rgb5ToRgb6(v2->color), rgb5ToRgb6(v3->color), v2->y, line, v3->y, v2->w, w1, v3->w);
+                color = interpolateColor(col0, col1, lx0, x, lx1, w0, w, w1);
             }
             else
             {
                 // Interpolate the texture S coordinate
-                int s0 = interpolate(v0->s, v1->s, v0->y, line, v1->y);
-                int s1 = interpolate(v2->s, v3->s, v2->y, line, v3->y);
-                int s  = interpolate(s0, s1, lx0, x, lx1);
+                int s0 = interpolate(v0->s, v1->s, v0->y, line, v1->y, v0->w, w0, v1->w);
+                int s1 = interpolate(v2->s, v3->s, v2->y, line, v3->y, v2->w, w1, v3->w);
+                int s  = interpolate(s0, s1, lx0, x, lx1, w0, w, w1);
 
                 // Interpolate the texture T coordinate
-                int t0 = interpolate(v0->t, v1->t, v0->y, line, v1->y);
-                int t1 = interpolate(v2->t, v3->t, v2->y, line, v3->y);
-                int t  = interpolate(t0, t1, lx0, x, lx1);
+                int t0 = interpolate(v0->t, v1->t, v0->y, line, v1->y, v0->w, w0, v1->w);
+                int t1 = interpolate(v2->t, v3->t, v2->y, line, v3->y, v2->w, w1, v3->w);
+                int t  = interpolate(t0, t1, lx0, x, lx1, w0, w, w1);
 
                 // Read the color from a texture
                 color = readTexture(polygon, s >> 4, t >> 4);
