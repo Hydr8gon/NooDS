@@ -50,18 +50,18 @@ void Gpu3DRenderer::drawScanline(int line)
         _Polygon *polygon = &gpu3D->getPolygons()[i];
 
         // Get the polygon vertices
-        Vertex vertices[polygon->size];
+        Vertex *vertices[8];
         for (int j = 0; j < polygon->size; j++)
-            vertices[j] = polygon->vertices[j];
+            vertices[j] = &polygon->vertices[j];
 
         // Sort the vertices in order of increasing Y values
         for (int j = 0; j < polygon->size - 1; j++)
         {
             for (int k = j + 1; k < polygon->size; k++)
             {
-                if (vertices[k].y < vertices[j].y)
+                if (vertices[k]->y < vertices[j]->y)
                 {
-                    Vertex vertex = vertices[j];
+                    Vertex *vertex = vertices[j];
                     vertices[j] = vertices[k];
                     vertices[k] = vertex;
                 }
@@ -69,22 +69,22 @@ void Gpu3DRenderer::drawScanline(int line)
         }
 
         // Ensure the polygon intersects with the current scanline
-        if (line < vertices[0].y || line >= vertices[polygon->size - 1].y)
+        if (line < vertices[0]->y || line >= vertices[polygon->size - 1]->y)
             continue;
 
         // Calculate the cross products of the middle vertices
         // These determine whether a vertex is on the left or right of the middle of its polygon
-        int crosses[polygon->size - 2];
+        int crosses[6];
         for (int j = 0; j < polygon->size - 2; j++)
         {
-            crosses[j] = (vertices[j + 1].x - vertices[0].x) * (vertices[polygon->size - 1].y - vertices[0].y) -
-                         (vertices[j + 1].y - vertices[0].y) * (vertices[polygon->size - 1].x - vertices[0].x);
+            crosses[j] = (vertices[j + 1]->x - vertices[0]->x) * (vertices[polygon->size - 1]->y - vertices[0]->y) -
+                         (vertices[j + 1]->y - vertices[0]->y) * (vertices[polygon->size - 1]->x - vertices[0]->x);
         }
 
         // Rasterize the polygon
         for (int j = 1; j < polygon->size; j++)
         {
-            if (line < vertices[j].y)
+            if (line < vertices[j]->y)
             {
                 // The highest point equal or below j on the left
                 int v1;
@@ -106,7 +106,7 @@ void Gpu3DRenderer::drawScanline(int line)
                 for (v2 = v3 - 1; v2 >= 0; v2--)
                     if (v2 == 0 || crosses[v2 - 1] > 0) break;
 
-                rasterize(line, polygon, &vertices[v0], &vertices[v1], &vertices[v2], &vertices[v3]);
+                rasterize(line, polygon, vertices[v0], vertices[v1], vertices[v2], vertices[v3]);
                 break;
             }
         }

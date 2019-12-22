@@ -216,8 +216,11 @@ void Gpu3D::addPolygon()
     polygonsIn[polygonCountIn].size = vertexCount;
     polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - vertexCount];
 
+    Vertex unclipped[8];
+    Vertex clipped[8];
+    Vertex temp[8];
+
     // Save a copy of the unclipped vertices
-    Vertex unclipped[vertexCount];
     for (int i = 0; i < vertexCount; i++)
         unclipped[i] = polygonsIn[polygonCountIn].vertices[i];
 
@@ -228,9 +231,6 @@ void Gpu3D::addPolygon()
         unclipped[2] = unclipped[3];
         unclipped[3] = vertex;
     }
-
-    Vertex temp[8];
-    Vertex clipped[8];
 
     // Clip the polygon on all 6 sides of the view area
     bool clip = clipPolygon(unclipped, temp, 0);
