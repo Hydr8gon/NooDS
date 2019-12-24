@@ -390,7 +390,7 @@ void Gpu3D::addPolygon()
     polygonsIn[polygonCountIn].sizeT = 8 << ((savedTexImageParam & 0x03800000) >> 23);
     polygonsIn[polygonCountIn].texFormat = (savedTexImageParam & 0x1C000000) >> 26;
     polygonsIn[polygonCountIn].transparent = savedTexImageParam & BIT(29);
-    polygonsIn[polygonCountIn].texPaletteAddr = (savedPlttBase & 0x00000FFF) * ((polygonsIn[polygonCountIn].texFormat == 2) ? 8 : 16);
+    polygonsIn[polygonCountIn].texPaletteAddr = (savedPlttBase & 0x00001FFF) * ((polygonsIn[polygonCountIn].texFormat == 2) ? 8 : 16);
 
     // Move to the next polygon
     polygonCountIn++;
