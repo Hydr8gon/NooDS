@@ -373,6 +373,9 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
                 {
                     rotscaleX %= sizeX;
                     rotscaleY %= sizeY;
+
+                    if (rotscaleX < 0) rotscaleX += sizeX;
+                    if (rotscaleY < 0) rotscaleY += sizeY;
                 }
                 else if (rotscaleX < 0 || rotscaleX >= sizeX || rotscaleY < 0 || rotscaleY >= sizeY) // Transparent
                 {
@@ -397,6 +400,9 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
                 {
                     rotscaleX %= sizeX;
                     rotscaleY %= sizeY;
+
+                    if (rotscaleX < 0) rotscaleX += sizeX;
+                    if (rotscaleY < 0) rotscaleY += sizeY;
                 }
                 else if (rotscaleX < 0 || rotscaleX >= sizeX || rotscaleY < 0 || rotscaleY >= sizeY) // Transparent
                 {
@@ -436,6 +442,9 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
             {
                 rotscaleX %= size;
                 rotscaleY %= size;
+
+                if (rotscaleX < 0) rotscaleX += size;
+                if (rotscaleY < 0) rotscaleY += size;
             }
             else if (rotscaleX < 0 || rotscaleX >= size || rotscaleY < 0 || rotscaleY >= size) // Transparent
             {
