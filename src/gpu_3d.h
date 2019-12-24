@@ -41,7 +41,7 @@ struct Matrix
 struct Vertex
 {
     int64_t x = 0, y = 0, z = 0, w = 1 << 12;
-    uint16_t color = 0;
+    uint32_t color = 0;
     int64_t s = 0, t = 0;
 };
 

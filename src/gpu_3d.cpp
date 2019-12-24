@@ -215,8 +215,13 @@ void Gpu3D::addVertex()
     // Transform the vertex
     verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &clip);
 
-    // Set the vertex parameters
-    verticesIn[vertexCountIn].color = (savedColor & 0x00007FFF);
+    // Set the vertex color (converted from RGB5 to RGB6)
+    uint8_t r = ((savedColor >>  0) & 0x1F); r = r * 2 + (r + 31) / 32;
+    uint8_t g = ((savedColor >>  5) & 0x1F); g = g * 2 + (g + 31) / 32;
+    uint8_t b = ((savedColor >> 10) & 0x1F); b = b * 2 + (b + 31) / 32;
+    verticesIn[vertexCountIn].color = (b << 12) | (g << 6) | r;
+
+    // Set the vertex texture coordinates
     verticesIn[vertexCountIn].s = (int16_t)(savedTexCoord & 0x0000FFFF);
     verticesIn[vertexCountIn].t = (int16_t)((savedTexCoord & 0xFFFF0000) >> 16);
 
@@ -409,10 +414,10 @@ Vertex Gpu3D::intersection(Vertex *v0, Vertex *v1, int64_t val0, int64_t val1)
     vertex.t = ((v0->t * d1) - (v1->t * d0)) / (d1 - d0);
 
     // Interpolate the vertex color
-    uint8_t r = ((((v0->color >>  0) & 0x1F) * d1) - (((v1->color >>  0) & 0x1F) * d0)) / (d1 - d0);
-    uint8_t g = ((((v0->color >>  5) & 0x1F) * d1) - (((v1->color >>  5) & 0x1F) * d0)) / (d1 - d0);
-    uint8_t b = ((((v0->color >> 10) & 0x1F) * d1) - (((v1->color >> 10) & 0x1F) * d0)) / (d1 - d0);
-    vertex.color = (b << 10) | (g << 5) | r;
+    uint8_t r = ((((v0->color >>  0) & 0x3F) * d1) - (((v1->color >>  0) & 0x3F) * d0)) / (d1 - d0);
+    uint8_t g = ((((v0->color >>  6) & 0x3F) * d1) - (((v1->color >>  6) & 0x3F) * d0)) / (d1 - d0);
+    uint8_t b = ((((v0->color >> 12) & 0x3F) * d1) - (((v1->color >> 12) & 0x3F) * d0)) / (d1 - d0);
+    vertex.color = (b << 12) | (g << 6) | r;
 
     return vertex;
 }
@@ -899,7 +904,26 @@ void Gpu3D::colorCmd(uint32_t param)
 void Gpu3D::texCoordCmd(uint32_t param)
 {
     // Set the vertex texture coordinates
-    savedTexCoord = param;
+    if (((savedTexImageParam & 0xC0000000) >> 30) == 1) // TexCoord transformation
+    {
+        // Create a vertex with the texture coordinates
+        Vertex vertex;
+        vertex.x = ((int16_t)(param & 0x0000FFFF)) << 8;
+        vertex.y = ((int16_t)((param & 0xFFFF0000) >> 16)) << 8;
+        vertex.z = 1 << 8;
+        vertex.w = 1 << 8;
+
+        // Multiply the vertex with the texture matrix
+        vertex = multiply(&vertex, &texture);
+
+        // Save the transformed coordinates
+        savedTexCoord = (((vertex.y >> 8) & 0xFFFF) << 16) | ((vertex.x >> 8) & 0xFFFF);
+    }
+    else
+    {
+        // Save the untransformed coordinates
+        savedTexCoord = param;
+    }
 }
 
 void Gpu3D::vtx16Cmd(uint32_t param)

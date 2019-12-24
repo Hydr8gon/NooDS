@@ -372,8 +372,8 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v0, Vertex *v
             if (polygon->texFormat == 0) // No texture
             {
                 // Interpolate the vertex colors
-                uint32_t col0 = interpolateColor(rgb5ToRgb6(v0->color), rgb5ToRgb6(v1->color), v0->y, line, v1->y, v0->w, w0, v1->w);
-                uint32_t col1 = interpolateColor(rgb5ToRgb6(v2->color), rgb5ToRgb6(v3->color), v2->y, line, v3->y, v2->w, w1, v3->w);
+                uint32_t col0 = interpolateColor(v0->color, v1->color, v0->y, line, v1->y, v0->w, w0, v1->w);
+                uint32_t col1 = interpolateColor(v2->color, v3->color, v2->y, line, v3->y, v2->w, w1, v3->w);
                 color = interpolateColor(col0, col1, lx0, x, lx1, w0, w, w1);
             }
             else
