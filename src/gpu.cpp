@@ -17,11 +17,13 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <cstdio>
 #include <cstring>
 
 #include "gpu.h"
 #include "defines.h"
 #include "gpu_2d.h"
+#include "gpu_3d.h"
 #include "gpu_3d_renderer.h"
 #include "interpreter.h"
 
@@ -127,6 +129,9 @@ void Gpu::scanline355()
                 arm9->sendInterrupt(0);
             if (dispStat7 & BIT(3))
                 arm7->sendInterrupt(0);
+
+            if (gpu3D->shouldSwap())
+                gpu3D->swapBuffers();
         }
     }
 

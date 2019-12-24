@@ -140,6 +140,36 @@ void Gpu3D::runCycle()
     }
 }
 
+void Gpu3D::swapBuffers()
+{
+    // Normalize and convert the vertices' X and Y coordinates to DS screen coordinates
+    for (int i = 0; i < vertexCountIn; i++)
+    {
+        if (verticesIn[i].w != 0)
+        {
+            verticesIn[i].x = (( verticesIn[i].x * 128) / verticesIn[i].w) + 128;
+            verticesIn[i].y = ((-verticesIn[i].y *  96) / verticesIn[i].w) +  96;
+        }
+    }
+
+    // Swap the vertex buffers
+    Vertex *vertices = verticesOut;
+    verticesOut = verticesIn;
+    verticesIn = vertices;
+    vertexCountOut = vertexCountIn;
+    vertexCountIn = 0;
+
+    // Swap the polygon buffers
+    _Polygon *polygons = polygonsOut;
+    polygonsOut = polygonsIn;
+    polygonsIn = polygons;
+    polygonCountOut = polygonCountIn;
+    polygonCountIn = 0;
+
+    // Unhalt the geometry engine
+    halted = false;
+}
+
 Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)
 {
     Matrix matrix = {{}};
@@ -989,29 +1019,9 @@ void Gpu3D::beginVtxsCmd(uint32_t param)
 
 void Gpu3D::swapBuffersCmd(uint32_t param)
 {
-    // Normalize and convert the vertices' X and Y coordinates to DS screen coordinates
-    for (int i = 0; i < vertexCountIn; i++)
-    {
-        if (verticesIn[i].w != 0)
-        {
-            verticesIn[i].x = (( verticesIn[i].x * 128) / verticesIn[i].w) + 128;
-            verticesIn[i].y = ((-verticesIn[i].y *  96) / verticesIn[i].w) +  96;
-        }
-    }
-
-    // Swap the vertex buffers
-    Vertex *vertices = verticesOut;
-    verticesOut = verticesIn;
-    verticesIn = vertices;
-    vertexCountOut = vertexCountIn;
-    vertexCountIn = 0;
-
-    // Swap the polygon buffers
-    _Polygon *polygons = polygonsOut;
-    polygonsOut = polygonsIn;
-    polygonsIn = polygons;
-    polygonCountOut = polygonCountIn;
-    polygonCountIn = 0;
+    // Halt the geometry engine
+    // The buffers will be swapped and the engine unhalted on next V-blank
+    halted = true;
 }
 
 void Gpu3D::addEntry(Entry entry)
@@ -1497,12 +1507,12 @@ void Gpu3D::writeEndVtxs(unsigned int byte, uint8_t value)
 void Gpu3D::writeSwapBuffers(unsigned int byte, uint8_t value)
 {
     // Write to the SWAP_BUFFERS register
-    swapBuffers = (swapBuffers & ~(0xFF << (byte * 8))) | (value << (byte * 8));
+    _swapBuffers = (_swapBuffers & ~(0xFF << (byte * 8))) | (value << (byte * 8));
 
     if (byte == 3)
     {
         // Add an entry to the FIFO
-        Entry entry = { 0x50, swapBuffers };
+        Entry entry = { 0x50, _swapBuffers };
         addEntry(entry);
     }
 }

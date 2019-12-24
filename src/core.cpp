@@ -24,7 +24,7 @@
 #include "defines.h"
 
 Core::Core(): cart9(&arm9, &memory), cart7(&arm7, &memory), cp15(&arm9), dma9(&cart9, &gpu3D, &arm9, &memory),
-              dma7(&cart7, nullptr, &arm7, &memory), gpu(&engineA, &engineB, &gpu3DRenderer, &arm9, &arm7),
+              dma7(&cart7, nullptr, &arm7, &memory), gpu(&engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9, &arm7),
               engineA(&gpu3DRenderer, &memory), engineB(&memory), gpu3D(&arm9), gpu3DRenderer(&gpu3D),
               arm9(&cp15, &memory), arm7(&memory), ipc(&arm9, &arm7), memory(&cart9, &cart7, &cp15,
               &dma9, &dma7, &gpu, &engineA, &engineB, &gpu3D, &input, &arm9, &arm7, &ipc, &math,

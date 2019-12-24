@@ -69,8 +69,10 @@ class Gpu3D
         Gpu3D(Interpreter *arm9);
 
         void runCycle();
+        void swapBuffers();
 
-        bool shouldRun() { return gxStat & BIT(27); }
+        bool shouldRun()  { return !halted && (gxStat & BIT(27)); }
+        bool shouldSwap() { return  halted; }
 
         _Polygon    *getPolygons()     { return polygonsOut;     }
         unsigned int getPolygonCount() { return polygonCountOut; }
@@ -125,6 +127,8 @@ class Gpu3D
         void writeGxStat(unsigned int byte, uint8_t value);
 
     private:
+        bool halted = false;
+
         unsigned int matrixMode = 0;
         unsigned int projPointer = 0, coordPointer = 0;
         bool clipNeedsUpdate = false;
@@ -195,7 +199,7 @@ class Gpu3D
         uint32_t shininess = 0;
         uint32_t beginVtxs = 0;
         uint32_t endVtxs = 0;
-        uint32_t swapBuffers = 0;
+        uint32_t _swapBuffers = 0;
         uint32_t viewport = 0;
         uint32_t boxTest = 0;
         uint32_t posTest = 0;
