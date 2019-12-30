@@ -43,7 +43,7 @@ class Gpu3DRenderer
 
         uint32_t rgb5ToRgb6(uint32_t color);
 
-        int interpolateW(int w0, int w1, int x0, int x, int x1);
+        int interpolateDepth(int w0, int w1, int x0, int x, int x1);
         int interpolate(int val0, int val1, int x0, int x, int x1);
         int interpolate(int val0, int val1, int x0, int x, int x1, int w0, int w, int w1);
         uint32_t interpolateColor(uint32_t col0, uint32_t col1, int x0, int x, int x1);

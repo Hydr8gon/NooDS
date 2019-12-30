@@ -113,37 +113,44 @@ void Gpu3DRenderer::drawScanline(int line)
     }
 }
 
-int Gpu3DRenderer::interpolateW(int w0, int w1, int x0, int x, int x1)
+int Gpu3DRenderer::interpolateDepth(int w0, int w1, int x0, int x, int x1)
 {
-    // Get the parameters
-    float gradient = (x0 == x1) ? 0 : ((float)(x - x0) / (x1 - x0));
-    float min = w0 ? (1.0f / w0) : 0;
-    float max = w1 ? (1.0f / w1) : 0;
+    // Reduce precision to 16-bits to avoid overflow
+    int count = 0;
+    while (w0 != (int16_t)w0 || w1 != (int16_t)w1)
+    {
+        w0 >>= 4;
+        w1 >>= 4;
+        count += 4;
+    }
 
     // Interpolate a new value between the min and max values
-    float result = min + gradient * (max - min);
-    return result ? (1.0f / result) : 0;
+    int result = w1 + (w0 - w1) * (x - x0) / (x1 - x0);
+    return result ? ((w0 * w1 / result) << count) : 0;
 }
 
 int Gpu3DRenderer::interpolate(int val0, int val1, int x0, int x, int x1)
 {
-    // Get the parameters
-    float gradient = (x0 == x1) ? 0 : ((float)(x - x0) / (x1 - x0));
-
     // Interpolate a new value between the min and max values
-    return val0 + gradient * (val1 - val0);
+    return val0 + (val1 - val0) * (x - x0) / (x1 - x0);
 }
 
 int Gpu3DRenderer::interpolate(int val0, int val1, int x0, int x, int x1, int w0, int w, int w1)
 {
+    // Reduce precision to 16-bits to avoid overflow
+    while (w0 != (int16_t)w0 || w1 != (int16_t)w1)
+    {
+        w0 >>= 4;
+        w1 >>= 4;
+        w >>= 4;
+    }
+
     // Get the parameters
-    float gradient = (x0 == x1) ? 0 : ((float)(x - x0) / (x1 - x0));
-    float min = w0 ? ((float)val0 / w0) : 0;
-    float max = w1 ? ((float)val1 / w1) : 0;
+    int min = w0 ? (val0 * w / w0) : 0;
+    int max = w1 ? (val1 * w / w1) : 0;
 
     // Interpolate a new value between the min and max values
-    float result = min + gradient * (max - min);
-    return result * w;
+    return min + (max - min) * (x - x0) / (x1 - x0);
 }
 
 uint32_t Gpu3DRenderer::interpolateColor(uint32_t col0, uint32_t col1, int x0, int x, int x1)
@@ -352,22 +359,26 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v0, Vertex *v
     int lx0 = interpolate(v0->x, v1->x, v0->y, line, v1->y);
     int lx1 = interpolate(v2->x, v3->x, v2->y, line, v3->y);
 
+    // Calculate the Z values of the polygon edges on the current line
+    int z0 = interpolate(v0->z, v1->z, v0->y, line, v1->y);
+    int z1 = interpolate(v2->z, v3->z, v2->y, line, v3->y);
+
+    // Calculate the W values of the polygon edges on the current line
+    int w0 = interpolateDepth(v0->w, v1->w, v0->y, line, v1->y);
+    int w1 = interpolateDepth(v2->w, v3->w, v2->y, line, v3->y);
+
     // Draw a line segment
-    for (int x = ((lx0 < 0) ? 0 : lx0); x < ((lx1 > 256) ? 256 : lx1); x++)
+    for (int x = lx0; x < lx1; x++)
     {
         // Calculate the Z value of the current pixel
-        int z0 = interpolate(v0->z, v1->z, v0->y, line, v1->y);
-        int z1 = interpolate(v2->z, v3->z, v2->y, line, v3->y);
-        int z  = interpolate(z0, z1, lx0, x, lx1);
-
-        // Calculate the W value of the current pixel
-        int w0 = interpolateW(v0->w, v1->w, v0->y, line, v1->y);
-        int w1 = interpolateW(v2->w, v3->w, v2->y, line, v3->y);
-        int w  = interpolateW(w0, w1, lx0, x, lx1);
+        int z = interpolate(z0, z1, lx0, x, lx1);
 
         // Draw a new pixel if the old one is behind the new one
         if (depthBuffer[x] >= z)
         {
+            // Calculate the W value of the current pixel
+            int w = interpolateDepth(w0, w1, lx0, x, lx1);
+
             uint32_t color;
 
             // Calculate the pixel color
