@@ -142,14 +142,12 @@ void Gpu3D::runCycle()
 
 void Gpu3D::swapBuffers()
 {
-    // Normalize and convert the vertices' X and Y coordinates to DS screen coordinates
+    // Normalize the vertices and convert the X and Y coordinates to DS screen coordinates
     for (int i = 0; i < vertexCountIn; i++)
     {
-        if (verticesIn[i].w != 0)
-        {
-            verticesIn[i].x = (( verticesIn[i].x * 128) / verticesIn[i].w) + 128;
-            verticesIn[i].y = ((-verticesIn[i].y *  96) / verticesIn[i].w) +  96;
-        }
+        verticesIn[i].x = (( verticesIn[i].x *    128) / verticesIn[i].w) +    128;
+        verticesIn[i].y = ((-verticesIn[i].y *     96) / verticesIn[i].w) +     96;
+        verticesIn[i].z = (((verticesIn[i].z * 0x4000) / verticesIn[i].w) + 0x3FFF) * 0x200;
     }
 
     // Swap the vertex buffers
@@ -168,6 +166,9 @@ void Gpu3D::swapBuffers()
 
     // Unhalt the geometry engine
     halted = false;
+
+    // Update the saved paramater value
+    savedSwapBuffers = nextSwapBuffers;
 }
 
 Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)
@@ -1046,6 +1047,9 @@ void Gpu3D::swapBuffersCmd(uint32_t param)
     // Halt the geometry engine
     // The buffers will be swapped and the engine unhalted on next V-blank
     halted = true;
+
+    // Set the next frame's parameter
+    nextSwapBuffers = param;
 }
 
 void Gpu3D::addEntry(Entry entry)

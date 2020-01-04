@@ -74,8 +74,9 @@ class Gpu3D
         bool shouldRun()  { return !halted && (gxStat & BIT(27)); }
         bool shouldSwap() { return  halted; }
 
-        _Polygon    *getPolygons()     { return polygonsOut;     }
-        unsigned int getPolygonCount() { return polygonCountOut; }
+        _Polygon    *getPolygons()     { return polygonsOut;               }
+        unsigned int getPolygonCount() { return polygonCountOut;           }
+        bool         getWBufEnabled()  { return savedSwapBuffers & BIT(1); }
 
         uint8_t *getTexData(uint32_t address)    { return &texData[address / 0x20000][address % 0x20000];  }
         uint8_t *getTexPalette(uint32_t address) { return &texPalette[address / 0x4000][address % 0x4000]; }
@@ -157,6 +158,7 @@ class Gpu3D
         uint32_t savedTexImageParam = 0;
         uint32_t savedPlttBase = 0;
         uint32_t savedBeginVtxs = 0;
+        uint32_t savedSwapBuffers = 0, nextSwapBuffers = 0;
 
         std::queue<Entry> fifo, pipe;
 

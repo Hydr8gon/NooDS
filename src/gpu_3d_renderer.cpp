@@ -113,7 +113,7 @@ void Gpu3DRenderer::drawScanline(int line)
     }
 }
 
-int Gpu3DRenderer::interpolateDepth(int w0, int w1, int x0, int x, int x1)
+int Gpu3DRenderer::interpolateW(int w0, int w1, int x0, int x, int x1)
 {
     // Reduce precision to 16-bits to avoid overflow
     int count = 0;
@@ -360,24 +360,28 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v0, Vertex *v
     int lx1 = interpolate(v2->x, v3->x, v2->y, line, v3->y);
 
     // Calculate the Z values of the polygon edges on the current line
-    int z0 = interpolate(v0->z, v1->z, v0->y, line, v1->y);
-    int z1 = interpolate(v2->z, v3->z, v2->y, line, v3->y);
+    int z0, z1;
+    if (!gpu3D->getWBufEnabled())
+    {
+        z0 = interpolate(v0->z, v1->z, v0->y, line, v1->y);
+        z1 = interpolate(v2->z, v3->z, v2->y, line, v3->y);
+    }
 
     // Calculate the W values of the polygon edges on the current line
-    int w0 = interpolateDepth(v0->w, v1->w, v0->y, line, v1->y);
-    int w1 = interpolateDepth(v2->w, v3->w, v2->y, line, v3->y);
+    int w0 = interpolateW(v0->w, v1->w, v0->y, line, v1->y);
+    int w1 = interpolateW(v2->w, v3->w, v2->y, line, v3->y);
 
     // Draw a line segment
     for (int x = lx0; x < lx1; x++)
     {
-        // Calculate the Z value of the current pixel
-        int z = interpolate(z0, z1, lx0, x, lx1);
+        // Calculate the depth value of the current pixel
+        int depth = gpu3D->getWBufEnabled() ? interpolateW(w0, w1, lx0, x, lx1) : interpolate(z0, z1, lx0, x, lx1);
 
         // Draw a new pixel if the old one is behind the new one
-        if (depthBuffer[x] >= z)
+        if (depthBuffer[x] >= depth)
         {
             // Calculate the W value of the current pixel
-            int w = interpolateDepth(w0, w1, lx0, x, lx1);
+            int w = gpu3D->getWBufEnabled() ? depth : interpolateW(w0, w1, lx0, x, lx1);
 
             uint32_t color;
 
@@ -409,7 +413,7 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v0, Vertex *v
             if (color & BIT(18))
             {
                 lineCache[(line % 48) * 256 + x] = color;
-                depthBuffer[x] = z;
+                depthBuffer[x] = depth;
             }
         }
     }
