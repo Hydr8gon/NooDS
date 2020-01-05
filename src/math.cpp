@@ -72,42 +72,68 @@ void Math::squareRoot()
     }
 }
 
-void Math::writeDivCnt(uint8_t value)
+void Math::writeDivCnt(uint16_t mask, uint16_t value)
 {
     // Write to the DIVCNT register
-    divCnt = (divCnt & ~0x03) | (value & 0x03);
+    mask &= 0x0003;
+    divCnt = (divCnt & ~mask) | (value & mask);
 
     divide();
 }
 
-void Math::writeDivNumer(unsigned int byte, uint8_t value)
+void Math::writeDivNumerL(uint32_t mask, uint32_t value)
 {
     // Write to the DIVNUMER register
-    divNumer = (divNumer & ~((uint64_t)0xFF << (byte * 8))) | ((uint64_t)value << (byte * 8));
+    divNumer = (divNumer & ~((uint64_t)mask)) | (value & mask);
 
     divide();
 }
 
-void Math::writeDivDenom(unsigned int byte, uint8_t value)
+void Math::writeDivNumerH(uint32_t mask, uint32_t value)
+{
+    // Write to the DIVNUMER register
+    divNumer = (divNumer & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
+
+    divide();
+}
+
+void Math::writeDivDenomL(uint32_t mask, uint32_t value)
 {
     // Write to the DIVDENOM register
-    divDenom = (divDenom & ~((uint64_t)0xFF << (byte * 8))) | ((uint64_t)value << (byte * 8));
+    divDenom = (divDenom & ~((uint64_t)mask)) | (value & mask);
 
     divide();
 }
 
-void Math::writeSqrtCnt(uint8_t value)
+void Math::writeDivDenomH(uint32_t mask, uint32_t value)
+{
+    // Write to the DIVDENOM register
+    divDenom = (divDenom & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
+
+    divide();
+}
+
+void Math::writeSqrtCnt(uint16_t mask, uint16_t value)
 {
     // Write to the SQRTCNT register
-    sqrtCnt = (sqrtCnt & ~0x01) | (value & 0x01);
+    mask &= 0x0001;
+    sqrtCnt = (sqrtCnt & ~mask) | (value & mask);
 
     squareRoot();
 }
 
-void Math::writeSqrtParam(unsigned int byte, uint8_t value)
+void Math::writeSqrtParamL(uint32_t mask, uint32_t value)
+{
+    // Write to the DIVDENOM register
+    sqrtParam = (sqrtParam & ~((uint64_t)mask)) | (value & mask);
+
+    squareRoot();
+}
+
+void Math::writeSqrtParamH(uint32_t mask, uint32_t value)
 {
     // Write to the SQRTPARAM register
-    sqrtParam = (sqrtParam & ~((uint64_t)0xFF << (byte * 8))) | ((uint64_t)value << (byte * 8));
+    sqrtParam = (sqrtParam & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
 
     squareRoot();
 }

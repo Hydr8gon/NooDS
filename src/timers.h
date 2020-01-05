@@ -34,15 +34,15 @@ class Timers
 
         bool shouldTick() { return enabled; }
 
-        uint8_t readTmCntL(unsigned int timer, unsigned int byte) { return tmCntL[timer] >> (byte * 8); }
-        uint8_t readTmCntH(unsigned int timer)                    { return tmCntH[timer];               }
+        uint16_t readTmCntL(unsigned int timer) { return tmCntL[timer]; }
+        uint16_t readTmCntH(unsigned int timer) { return tmCntH[timer]; }
 
-        void writeTmCntL(unsigned int timer, unsigned int byte, uint8_t value);
-        void writeTmCntH(unsigned int timer, uint8_t value);
+        void writeTmCntL(unsigned int timer, uint16_t mask, uint16_t value);
+        void writeTmCntH(unsigned int timer, uint16_t mask, uint16_t value);
 
     private:
         uint16_t tmCntL[4] = {};
-        uint8_t tmCntH[4] = {};
+        uint16_t tmCntH[4] = {};
 
         uint16_t reloads[4] = {};
         uint16_t scalers[4] = {};

@@ -1079,536 +1079,307 @@ void Gpu3D::addEntry(Entry entry)
     }
 }
 
-void Gpu3D::writeGxFifo(unsigned int byte, uint8_t value)
+void Gpu3D::writeGxFifo(uint32_t mask, uint32_t value)
 {
-    // Write to the GXFIFO register
-    gxFifo = (gxFifo & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
+    if (gxFifoCmds == 0)
     {
-        if (gxFifoCmds == 0)
-        {
-            // Start a transfer
-            gxFifoCmds = gxFifo;
-        }
-        else
-        {
-            // Add a command parameter
-            Entry entry = { (uint8_t)gxFifoCmds, gxFifo };
-            addEntry(entry);
-            gxFifoCount++;
+        // Start a transfer
+        gxFifoCmds = value & mask;
+    }
+    else
+    {
+        // Add a command parameter
+        Entry entry = { (uint8_t)gxFifoCmds, value & mask };
+        addEntry(entry);
+        gxFifoCount++;
 
-            // Move to the next command once all parameters have been sent
-            if (gxFifoCount == paramCounts[gxFifoCmds & 0xFF])
-            {
-                gxFifoCmds >>= 8;
-                gxFifoCount = 0;
-            }
-        }
-
-        // Add entries for commands with no parameters
-        while (gxFifoCmds != 0 && paramCounts[gxFifoCmds & 0xFF] == 0)
+        // Move to the next command once all parameters have been sent
+        if (gxFifoCount == paramCounts[gxFifoCmds & 0xFF])
         {
-            Entry entry = { (uint8_t)gxFifoCmds, 0 };
-            addEntry(entry);
             gxFifoCmds >>= 8;
+            gxFifoCount = 0;
         }
     }
-}
 
-void Gpu3D::writeMtxMode(unsigned int byte, uint8_t value)
-{
-    // Write to the MTX_MODE register
-    mtxMode = (mtxMode & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
+    // Add entries for commands with no parameters
+    while (gxFifoCmds != 0 && paramCounts[gxFifoCmds & 0xFF] == 0)
     {
-        // Add an entry to the FIFO
-        Entry entry = { 0x10, mtxMode };
+        Entry entry = { (uint8_t)gxFifoCmds, 0 };
         addEntry(entry);
+        gxFifoCmds >>= 8;
     }
 }
 
-void Gpu3D::writeMtxPush(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxMode(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_PUSH register
-    mtxPush = (mtxPush & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x11, mtxPush };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x10, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxPop(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxPush(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_POP register
-    mtxPop = (mtxPop & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x12, mtxPop };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x11, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxStore(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxPop(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_STORE register
-    mtxStore = (mtxStore & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x13, mtxStore };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x12, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxRestore(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxStore(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_RESTORE register
-    mtxRestore = (mtxRestore & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x14, mtxRestore };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x13, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxIdentity(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxRestore(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_IDENTITY register
-    mtxIdentity = (mtxIdentity & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x15, mtxIdentity };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x14, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxLoad44(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxIdentity(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_LOAD_4x4 register
-    mtxLoad44 = (mtxLoad44 & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x16, mtxLoad44 };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x15, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxLoad43(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxLoad44(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_LOAD_4x3 register
-    mtxLoad43 = (mtxLoad43 & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x17, mtxLoad43 };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x16, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxMult44(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxLoad43(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_MULT_4x4 register
-    mtxMult44 = (mtxMult44 & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x18, mtxMult44 };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x17, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxMult43(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxMult44(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_MULT_4x3 register
-    mtxMult43 = (mtxMult43 & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x19, mtxMult43 };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x18, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxMult33(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxMult43(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_MULT_3x3 register
-    mtxMult33 = (mtxMult33 & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x1A, mtxMult33 };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x19, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxScale(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxMult33(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_SCALE register
-    mtxScale = (mtxScale & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x1B, mtxScale };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x1A, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeMtxTrans(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxScale(uint32_t mask, uint32_t value)
 {
-    // Write to the MTX_TRANS register
-    mtxTrans = (mtxTrans & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x1C, mtxTrans };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x1B, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeColor(unsigned int byte, uint8_t value)
+void Gpu3D::writeMtxTrans(uint32_t mask, uint32_t value)
 {
-    // Write to the COLOR register
-    color = (color & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x20, color };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x1C, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeNormal(unsigned int byte, uint8_t value)
+void Gpu3D::writeColor(uint32_t mask, uint32_t value)
 {
-    // Write to the NORMAL register
-    normal = (normal & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x21, normal };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x20, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeTexCoord(unsigned int byte, uint8_t value)
+void Gpu3D::writeNormal(uint32_t mask, uint32_t value)
 {
-    // Write to the TEXCOORD register
-    texCoord = (texCoord & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x22, texCoord };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x21, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeVtx16(unsigned int byte, uint8_t value)
+void Gpu3D::writeTexCoord(uint32_t mask, uint32_t value)
 {
-    // Write to the VTX_16 register
-    vtx16 = (vtx16 & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x23, vtx16 };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x22, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeVtx10(unsigned int byte, uint8_t value)
+void Gpu3D::writeVtx16(uint32_t mask, uint32_t value)
 {
-    // Write to the VTX_10 register
-    vtx10 = (vtx10 & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x24, vtx10 };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x23, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeVtxXY(unsigned int byte, uint8_t value)
+void Gpu3D::writeVtx10(uint32_t mask, uint32_t value)
 {
-    // Write to the VTX_XY register
-    vtxXY = (vtxXY & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x25, vtxXY };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x24, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeVtxXZ(unsigned int byte, uint8_t value)
+void Gpu3D::writeVtxXY(uint32_t mask, uint32_t value)
 {
-    // Write to the VTX_XZ register
-    vtxXZ = (vtxXZ & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x26, vtxXZ };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x25, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeVtxYZ(unsigned int byte, uint8_t value)
+void Gpu3D::writeVtxXZ(uint32_t mask, uint32_t value)
 {
-    // Write to the VTX_XZ register
-    vtxYZ = (vtxYZ & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x27, vtxYZ };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x26, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeVtxDiff(unsigned int byte, uint8_t value)
+void Gpu3D::writeVtxYZ(uint32_t mask, uint32_t value)
 {
-    // Write to the VTX_DIFF register
-    vtxDiff = (vtxDiff & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x28, vtxDiff };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x27, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writePolygonAttr(unsigned int byte, uint8_t value)
+void Gpu3D::writeVtxDiff(uint32_t mask, uint32_t value)
 {
-    // Write to the POLYGON_ATTR register
-    polygonAttr = (polygonAttr & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x29, polygonAttr };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x28, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeTexImageParam(unsigned int byte, uint8_t value)
+void Gpu3D::writePolygonAttr(uint32_t mask, uint32_t value)
 {
-    // Write to the TEXIMAGE_PARAM register
-    texImageParam = (texImageParam & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x2A, texImageParam };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x29, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writePlttBase(unsigned int byte, uint8_t value)
+void Gpu3D::writeTexImageParam(uint32_t mask, uint32_t value)
 {
-    // Write to the PLTT_BASE register
-    plttBase = (plttBase & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x2B, plttBase };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x2A, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeDifAmb(unsigned int byte, uint8_t value)
+void Gpu3D::writePlttBase(uint32_t mask, uint32_t value)
 {
-    // Write to the DIF_AMB register
-    difAmb = (difAmb & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x30, difAmb };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x2B, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeSpeEmi(unsigned int byte, uint8_t value)
+void Gpu3D::writeDifAmb(uint32_t mask, uint32_t value)
 {
-    // Write to the SPE_EMI register
-    speEmi = (speEmi & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x31, speEmi };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x30, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeLightVector(unsigned int byte, uint8_t value)
+void Gpu3D::writeSpeEmi(uint32_t mask, uint32_t value)
 {
-    // Write to the LIGHT_VECTOR register
-    lightVector = (lightVector & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x32, lightVector };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x31, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeLightColor(unsigned int byte, uint8_t value)
+void Gpu3D::writeLightVector(uint32_t mask, uint32_t value)
 {
-    // Write to the LIGHT_COLOR register
-    lightColor = (lightColor & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x33, lightColor };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x32, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeShininess(unsigned int byte, uint8_t value)
+void Gpu3D::writeLightColor(uint32_t mask, uint32_t value)
 {
-    // Write to the SHININESS register
-    shininess = (shininess & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x34, shininess };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x33, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeBeginVtxs(unsigned int byte, uint8_t value)
+void Gpu3D::writeShininess(uint32_t mask, uint32_t value)
 {
-    // Write to the BEGIN_VTXS register
-    beginVtxs = (beginVtxs & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x40, beginVtxs };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x34, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeEndVtxs(unsigned int byte, uint8_t value)
+void Gpu3D::writeBeginVtxs(uint32_t mask, uint32_t value)
 {
-    // Write to the END_VTXS register
-    endVtxs = (endVtxs & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x41, endVtxs };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x40, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeSwapBuffers(unsigned int byte, uint8_t value)
+void Gpu3D::writeEndVtxs(uint32_t mask, uint32_t value)
 {
-    // Write to the SWAP_BUFFERS register
-    _swapBuffers = (_swapBuffers & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x50, _swapBuffers };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x41, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeViewport(unsigned int byte, uint8_t value)
+void Gpu3D::writeSwapBuffers(uint32_t mask, uint32_t value)
 {
-    // Write to the VIEWPORT register
-    viewport = (viewport & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x60, viewport };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x50, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeBoxTest(unsigned int byte, uint8_t value)
+void Gpu3D::writeViewport(uint32_t mask, uint32_t value)
 {
-    // Write to the BOX_TEST register
-    boxTest = (boxTest & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x70, boxTest };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x60, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writePosTest(unsigned int byte, uint8_t value)
+void Gpu3D::writeBoxTest(uint32_t mask, uint32_t value)
 {
-    // Write to the POS_TEST register
-    posTest = (posTest & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x71, posTest };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x70, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeVecTest(unsigned int byte, uint8_t value)
+void Gpu3D::writePosTest(uint32_t mask, uint32_t value)
 {
-    // Write to the VEC_TEST register
-    vecTest = (vecTest & ~(0xFF << (byte * 8))) | (value << (byte * 8));
-
-    if (byte == 3)
-    {
-        // Add an entry to the FIFO
-        Entry entry = { 0x72, vecTest };
-        addEntry(entry);
-    }
+    // Add an entry to the FIFO
+    Entry entry = { 0x71, value & mask };
+    addEntry(entry);
 }
 
-void Gpu3D::writeGxStat(unsigned int byte, uint8_t value)
+void Gpu3D::writeVecTest(uint32_t mask, uint32_t value)
+{
+    // Add an entry to the FIFO
+    Entry entry = { 0x72, value & mask };
+    addEntry(entry);
+}
+
+void Gpu3D::writeGxStat(uint32_t mask, uint32_t value)
 {
     // Clear the error bit and reset the projection stack pointer
-    if (byte == 1 && (value & BIT(7)))
-        gxStat &= ~0x0000A000;
+    if (value & BIT(15)) gxStat &= ~0x0000A000;
 
     // Write to the GXSTAT register
-    uint32_t mask = 0xC0000000 & (0xFF << (byte * 8));
-    gxStat = (gxStat & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0xC0000000;
+    gxStat = (gxStat & ~mask) | (value & mask);
 }
 
-uint8_t Gpu3D::readClipMtxResult(unsigned int index, unsigned int byte)
+uint32_t Gpu3D::readClipMtxResult(unsigned int index)
 {
     // Update the clip matrix if necessary
     if (clipNeedsUpdate)
@@ -1618,5 +1389,5 @@ uint8_t Gpu3D::readClipMtxResult(unsigned int index, unsigned int byte)
     }
 
     // Read from one of the CLIPMTX_RESULT registers
-    return clip.data[index] >> (byte * 8);
+    return clip.data[index];
 }

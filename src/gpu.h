@@ -38,14 +38,14 @@ class Gpu
 
         uint32_t *getFramebuffer() { return framebuffer; }
 
-        uint8_t readDispStat9(unsigned int byte) { return dispStat9 >> (byte * 8); }
-        uint8_t readDispStat7(unsigned int byte) { return dispStat7 >> (byte * 8); }
-        uint8_t readVCount(unsigned int byte)    { return vCount    >> (byte * 8); }
-        uint8_t readPowCnt1(unsigned int byte)   { return powCnt1   >> (byte * 8); }
+        uint16_t readDispStat9() { return dispStat9; }
+        uint16_t readDispStat7() { return dispStat7; }
+        uint16_t readVCount()    { return vCount;    }
+        uint16_t readPowCnt1()   { return powCnt1;   }
 
-        void writeDispStat9(unsigned int byte, uint8_t value);
-        void writeDispStat7(unsigned int byte, uint8_t value);
-        void writePowCnt1(unsigned int byte, uint8_t value);
+        void writeDispStat9(uint16_t mask, uint16_t value);
+        void writeDispStat7(uint16_t mask, uint16_t value);
+        void writePowCnt1(uint16_t mask, uint16_t value);
 
     private:
         uint32_t framebuffer[256 * 192 * 2] = {};

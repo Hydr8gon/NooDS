@@ -41,21 +41,21 @@ class Gpu2D
 
         void setExtPalette(unsigned int slot, uint8_t *data) { extPalettes[slot] = data; }
 
-        uint8_t readDispCnt(unsigned int byte)                { return dispCnt      >> (byte * 8); }
-        uint8_t readBgCnt(unsigned int bg, unsigned int byte) { return bgCnt[bg]    >> (byte * 8); }
-        uint8_t readMasterBright(unsigned int byte)           { return masterBright >> (byte * 8); }
+        uint32_t readDispCnt()              { return dispCnt;      }
+        uint16_t readBgCnt(unsigned int bg) { return bgCnt[bg];    }
+        uint16_t readMasterBright()         { return masterBright; }
 
-        void writeDispCnt(unsigned int byte, uint8_t value);
-        void writeBgCnt(unsigned int bg, unsigned int byte, uint8_t value);
-        void writeBgHOfs(unsigned int bg, unsigned int byte, uint8_t value);
-        void writeBgVOfs(unsigned int bg, unsigned int byte, uint8_t value);
-        void writeBgX(unsigned int bg, unsigned int byte, uint8_t value);
-        void writeBgY(unsigned int bg, unsigned int byte, uint8_t value);
-        void writeBgPA(unsigned int bg, unsigned int byte, uint8_t value);
-        void writeBgPB(unsigned int bg, unsigned int byte, uint8_t value);
-        void writeBgPC(unsigned int bg, unsigned int byte, uint8_t value);
-        void writeBgPD(unsigned int bg, unsigned int byte, uint8_t value);
-        void writeMasterBright(unsigned int byte, uint8_t value);
+        void writeDispCnt(uint32_t mask, uint32_t value);
+        void writeBgCnt(unsigned int bg, uint16_t mask, uint16_t value);
+        void writeBgHOfs(unsigned int bg, uint16_t mask, uint16_t value);
+        void writeBgVOfs(unsigned int bg, uint16_t mask, uint16_t value);
+        void writeBgX(unsigned int bg, uint32_t mask, uint32_t value);
+        void writeBgY(unsigned int bg, uint32_t mask, uint32_t value);
+        void writeBgPA(unsigned int bg, uint16_t mask, uint16_t value);
+        void writeBgPB(unsigned int bg, uint16_t mask, uint16_t value);
+        void writeBgPC(unsigned int bg, uint16_t mask, uint16_t value);
+        void writeBgPD(unsigned int bg, uint16_t mask, uint16_t value);
+        void writeMasterBright(uint16_t mask, uint16_t value);
 
     private:
         uint32_t framebuffer[256 * 192] = {};

@@ -317,289 +317,305 @@ uint8_t *Memory::getVramBlock(unsigned int block)
 template <typename T> T Memory::ioRead9(uint32_t address)
 {
     T value = 0;
+    int i = 0;
 
-    // Form an LSB-first value from the data of the ARM9 I/O registers
-    for (unsigned int i = 0; i < sizeof(T); i++)
+    // Read a value from one or more ARM9 I/O registers
+    while (i < sizeof(T))
     {
-        uint8_t data = 0;
+        uint32_t base = address + i;
+        unsigned int size;
+        uint32_t data;
 
-        switch (address + i)
+        switch (base)
         {
             case 0x4000000:
             case 0x4000001:
             case 0x4000002:
-            case 0x4000003: data = engineA->readDispCnt(address + i - 0x4000000);         break; // DISPCNT (engine A)
+            case 0x4000003: base -= 0x4000000; size = 4; data = engineA->readDispCnt();       break; // DISPCNT (engine A)
             case 0x4000004:
-            case 0x4000005: data = gpu->readDispStat9(address + i - 0x4000004);           break; // DISPSTAT (ARM9)
+            case 0x4000005: base -= 0x4000004; size = 2; data = gpu->readDispStat9();         break; // DISPSTAT (ARM9)
             case 0x4000006:
-            case 0x4000007: data = gpu->readVCount(address + i - 0x4000006);              break; // VCOUNT
+            case 0x4000007: base -= 0x4000006; size = 2; data = gpu->readVCount();            break; // VCOUNT
             case 0x4000008:
-            case 0x4000009: data = engineA->readBgCnt(0, address + i - 0x4000008);        break; // BG0CNT (engine A)
+            case 0x4000009: base -= 0x4000008; size = 2; data = engineA->readBgCnt(0);        break; // BG0CNT (engine A)
             case 0x400000A:
-            case 0x400000B: data = engineA->readBgCnt(1, address + i - 0x400000A);        break; // BG1CNT (engine A)
+            case 0x400000B: base -= 0x400000A; size = 2; data = engineA->readBgCnt(1);        break; // BG1CNT (engine A)
             case 0x400000C:
-            case 0x400000D: data = engineA->readBgCnt(2, address + i - 0x400000C);        break; // BG2CNT (engine A)
+            case 0x400000D: base -= 0x400000C; size = 2; data = engineA->readBgCnt(2);        break; // BG2CNT (engine A)
             case 0x400000E:
-            case 0x400000F: data = engineA->readBgCnt(3, address + i - 0x400000E);        break; // BG3CNT (engine A)
+            case 0x400000F: base -= 0x400000E; size = 2; data = engineA->readBgCnt(3);        break; // BG3CNT (engine A)
             case 0x400006C:
-            case 0x400006D: data = engineA->readMasterBright(address + i - 0x400006C);    break; // MASTER_BRIGHT (engine A)
+            case 0x400006D: base -= 0x400006C; size = 2; data = engineA->readMasterBright();  break; // MASTER_BRIGHT (engine A)
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
-            case 0x40000B3: data = dma9->readDmaSad(0, address + i - 0x40000B0);          break; // DMA0SAD (ARM9)
+            case 0x40000B3: base -= 0x40000B0; size = 4; data = dma9->readDmaSad(0);          break; // DMA0SAD (ARM9)
             case 0x40000B4:
             case 0x40000B5:
             case 0x40000B6:
-            case 0x40000B7: data = dma9->readDmaDad(0, address + i - 0x40000B4);          break; // DMA0DAD (ARM9)
+            case 0x40000B7: base -= 0x40000B4; size = 4; data = dma9->readDmaDad(0);          break; // DMA0DAD (ARM9)
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
-            case 0x40000BB: data = dma9->readDmaCnt(0, address + i - 0x40000B8);          break; // DMA0CNT (ARM9)
+            case 0x40000BB: base -= 0x40000B8; size = 4; data = dma9->readDmaCnt(0);          break; // DMA0CNT (ARM9)
             case 0x40000BC:
             case 0x40000BD:
             case 0x40000BE:
-            case 0x40000BF: data = dma9->readDmaSad(1, address + i - 0x40000BC);          break; // DMA1SAD (ARM9)
+            case 0x40000BF: base -= 0x40000BC; size = 4; data = dma9->readDmaSad(1);          break; // DMA1SAD (ARM9)
             case 0x40000C0:
             case 0x40000C1:
             case 0x40000C2:
-            case 0x40000C3: data = dma9->readDmaDad(1, address + i - 0x40000C0);          break; // DMA1DAD (ARM9)
+            case 0x40000C3: base -= 0x40000C0; size = 4; data = dma9->readDmaDad(1);          break; // DMA1DAD (ARM9)
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
-            case 0x40000C7: data = dma9->readDmaCnt(1, address + i - 0x40000C4);          break; // DMA1CNT (ARM9)
+            case 0x40000C7: base -= 0x40000C4; size = 4; data = dma9->readDmaCnt(1);          break; // DMA1CNT (ARM9)
             case 0x40000C8:
             case 0x40000C9:
             case 0x40000CA:
-            case 0x40000CB: data = dma9->readDmaSad(2, address + i - 0x40000C8);          break; // DMA2SAD (ARM9)
+            case 0x40000CB: base -= 0x40000C8; size = 4; data = dma9->readDmaSad(2);          break; // DMA2SAD (ARM9)
             case 0x40000CC:
             case 0x40000CD:
             case 0x40000CE:
-            case 0x40000CF: data = dma9->readDmaDad(2, address + i - 0x40000CC);          break; // DMA2DAD (ARM9)
+            case 0x40000CF: base -= 0x40000CC; size = 4; data = dma9->readDmaDad(2);          break; // DMA2DAD (ARM9)
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
-            case 0x40000D3: data = dma9->readDmaCnt(2, address + i - 0x40000D0);          break; // DMA2CNT (ARM9)
+            case 0x40000D3: base -= 0x40000D0; size = 4; data = dma9->readDmaCnt(2);          break; // DMA2CNT (ARM9)
             case 0x40000D4:
             case 0x40000D5:
             case 0x40000D6:
-            case 0x40000D7: data = dma9->readDmaSad(3, address + i - 0x40000D4);          break; // DMA3SAD (ARM9)
+            case 0x40000D7: base -= 0x40000D4; size = 4; data = dma9->readDmaSad(3);          break; // DMA3SAD (ARM9)
             case 0x40000D8:
             case 0x40000D9:
             case 0x40000DA:
-            case 0x40000DB: data = dma9->readDmaDad(3, address + i - 0x40000D8);          break; // DMA3DAD (ARM9)
+            case 0x40000DB: base -= 0x40000D8; size = 4; data = dma9->readDmaDad(3);          break; // DMA3DAD (ARM9)
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
-            case 0x40000DF: data = dma9->readDmaCnt(3, address + i - 0x40000DC);          break; // DMA3CNT (ARM9)
+            case 0x40000DF: base -= 0x40000DC; size = 4; data = dma9->readDmaCnt(3);          break; // DMA3CNT (ARM9)
             case 0x40000E0:
             case 0x40000E1:
             case 0x40000E2:
-            case 0x40000E3: data = readDmaFill(0, address + i - 0x40000E0);               break; // DMA0FILL
+            case 0x40000E3: base -= 0x40000E0; size = 4; data = readDmaFill(0);               break; // DMA0FILL
             case 0x40000E4:
             case 0x40000E5:
             case 0x40000E6:
-            case 0x40000E7: data = readDmaFill(1, address + i - 0x40000E4);               break; // DMA1FILL
+            case 0x40000E7: base -= 0x40000E4; size = 4; data = readDmaFill(1);               break; // DMA1FILL
             case 0x40000E8:
             case 0x40000E9:
             case 0x40000EA:
-            case 0x40000EB: data = readDmaFill(2, address + i - 0x40000E8);               break; // DMA2FILL
+            case 0x40000EB: base -= 0x40000E8; size = 4; data = readDmaFill(2);               break; // DMA2FILL
             case 0x40000EC:
             case 0x40000ED:
             case 0x40000EE:
-            case 0x40000EF: data = readDmaFill(3, address + i - 0x40000EC);               break; // DMA3FILL
+            case 0x40000EF: base -= 0x40000EC; size = 4; data = readDmaFill(3);               break; // DMA3FILL
             case 0x4000100:
-            case 0x4000101: data = timers9->readTmCntL(0, address + i - 0x4000100);       break; // TM0CNT_L (ARM9)
-            case 0x4000102: data = timers9->readTmCntH(0);                                break; // TM0CNT_H (ARM9)
+            case 0x4000101: base -= 0x4000100; size = 2; data = timers9->readTmCntL(0);       break; // TM0CNT_L (ARM9)
+            case 0x4000102:
+            case 0x4000103: base -= 0x4000102; size = 2; data = timers9->readTmCntH(0);       break; // TM0CNT_H (ARM9)
             case 0x4000104:
-            case 0x4000105: data = timers9->readTmCntL(1, address + i - 0x4000104);       break; // TM1CNT_L (ARM9)
-            case 0x4000106: data = timers9->readTmCntH(1);                                break; // TM1CNT_H (ARM9)
+            case 0x4000105: base -= 0x4000104; size = 2; data = timers9->readTmCntL(1);       break; // TM1CNT_L (ARM9)
+            case 0x4000106:
+            case 0x4000107: base -= 0x4000106; size = 2; data = timers9->readTmCntH(1);       break; // TM1CNT_H (ARM9)
             case 0x4000108:
-            case 0x4000109: data = timers9->readTmCntL(2, address + i - 0x4000108);       break; // TM2CNT_L (ARM9)
-            case 0x400010A: data = timers9->readTmCntH(2);                                break; // TM2CNT_H (ARM9)
+            case 0x4000109: base -= 0x4000108; size = 2; data = timers9->readTmCntL(2);       break; // TM2CNT_L (ARM9)
+            case 0x400010A:
+            case 0x400010B: base -= 0x400010A; size = 2; data = timers9->readTmCntH(2);       break; // TM2CNT_H (ARM9)
             case 0x400010C:
-            case 0x400010D: data = timers9->readTmCntL(3, address + i - 0x400010C);       break; // TM3CNT_L (ARM9)
-            case 0x400010E: data = timers9->readTmCntH(3);                                break; // TM3CNT_H (ARM9)
+            case 0x400010D: base -= 0x400010C; size = 2; data = timers9->readTmCntL(3);       break; // TM3CNT_L (ARM9)
+            case 0x400010E:
+            case 0x400010F: base -= 0x400010E; size = 2; data = timers9->readTmCntH(3);       break; // TM3CNT_H (ARM9)
             case 0x4000130:
-            case 0x4000131: data = input->readKeyInput(address + i - 0x4000130);          break; // KEYINPUT
+            case 0x4000131: base -= 0x4000130; size = 2; data = input->readKeyInput();        break; // KEYINPUT
             case 0x4000180:
-            case 0x4000181: data = ipc->readIpcSync9(address + i - 0x4000180);            break; // IPCSYNC (ARM9)
+            case 0x4000181: base -= 0x4000180; size = 2; data = ipc->readIpcSync9();          break; // IPCSYNC (ARM9)
             case 0x4000184:
-            case 0x4000185: data = ipc->readIpcFifoCnt9(address + i - 0x4000184);         break; // IPCFIFOCNT (ARM9)
+            case 0x4000185: base -= 0x4000184; size = 2; data = ipc->readIpcFifoCnt9();       break; // IPCFIFOCNT (ARM9)
             case 0x40001A0:
-            case 0x40001A1: data = cart9->readAuxSpiCnt(address + i - 0x40001A0);         break; // AUXSPICNT (ARM9)
-            case 0x40001A2: data = cart9->readAuxSpiData();                               break; // AUXSPIDATA (ARM9)
+            case 0x40001A1: base -= 0x40001A0; size = 2; data = cart9->readAuxSpiCnt();       break; // AUXSPICNT (ARM9)
+            case 0x40001A2: base -= 0x40001A2; size = 1; data = cart9->readAuxSpiData();      break; // AUXSPIDATA (ARM9)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: data = cart9->readRomCtrl(address + i - 0x40001A4);           break; // ROMCTRL (ARM9)
+            case 0x40001A7: base -= 0x40001A4; size = 4; data = cart9->readRomCtrl();         break; // ROMCTRL (ARM9)
             case 0x40001A8:
             case 0x40001A9:
             case 0x40001AA:
-            case 0x40001AB:
+            case 0x40001AB: base -= 0x40001A8; size = 4; data = cart9->readRomCmdOutL();      break; // ROMCMDOUT_L (ARM9)
             case 0x40001AC:
             case 0x40001AD:
             case 0x40001AE:
-            case 0x40001AF: data = cart9->readRomCmdOut(address + i - 0x40001A8);         break; // ROMCMDOUT (ARM9)
-            case 0x4000208: data = arm9->readIme();                                       break; // IME (ARM9)
+            case 0x40001AF: base -= 0x40001AC; size = 4; data = cart9->readRomCmdOutH();      break; // ROMCMDOUT_H (ARM9)
+            case 0x4000208: base -= 0x4000208; size = 1; data = arm9->readIme();              break; // IME (ARM9)
             case 0x4000210:
             case 0x4000211:
             case 0x4000212:
-            case 0x4000213: data = arm9->readIe(address + i - 0x4000210);                 break; // IE (ARM9)
+            case 0x4000213: base -= 0x4000210; size = 4; data = arm9->readIe();               break; // IE (ARM9)
             case 0x4000214:
             case 0x4000215:
             case 0x4000216:
-            case 0x4000217: data = arm9->readIrf(address + i - 0x4000214);                break; // IF (ARM9)
+            case 0x4000217: base -= 0x4000214; size = 4; data = arm9->readIrf();              break; // IF (ARM9)
             case 0x4000280:
-            case 0x4000281: data = math->readDivCnt(address + i - 0x4000280);             break; // DIVCNT
+            case 0x4000281: base -= 0x4000280; size = 2; data = math->readDivCnt();           break; // DIVCNT
             case 0x4000290:
             case 0x4000291:
             case 0x4000292:
-            case 0x4000293:
+            case 0x4000293: base -= 0x4000290; size = 4; data = math->readDivNumerL();        break; // DIVNUMER_L
             case 0x4000294:
             case 0x4000295:
             case 0x4000296:
-            case 0x4000297: data = math->readDivNumer(address + i - 0x4000290);           break; // DIVNUMER
+            case 0x4000297: base -= 0x4000294; size = 4; data = math->readDivNumerH();        break; // DIVNUMER_H
             case 0x4000298:
             case 0x4000299:
             case 0x400029A:
-            case 0x400029B:
+            case 0x400029B: base -= 0x4000298; size = 4; data = math->readDivDenomL();        break; // DIVDENOM_L
             case 0x400029C:
             case 0x400029D:
             case 0x400029E:
-            case 0x400029F: data = math->readDivDenom(address + i - 0x4000298);           break; // DIVDENOM
+            case 0x400029F: base -= 0x400029C; size = 4; data = math->readDivDenomH();        break; // DIVDENOM_H
             case 0x40002A0:
             case 0x40002A1:
             case 0x40002A2:
-            case 0x40002A3:
+            case 0x40002A3: base -= 0x40002A0; size = 4; data = math->readDivResultL();       break; // DIVRESULT_L
             case 0x40002A4:
             case 0x40002A5:
             case 0x40002A6:
-            case 0x40002A7: data = math->readDivResult(address + i - 0x40002A0);          break; // DIVRESULT
+            case 0x40002A7: base -= 0x40002A4; size = 4; data = math->readDivResultH();       break; // DIVRESULT_H
             case 0x40002A8:
             case 0x40002A9:
             case 0x40002AA:
-            case 0x40002AB:
+            case 0x40002AB: base -= 0x40002A8; size = 4; data = math->readDivRemResultL();    break; // DIVREMRESULT_L
             case 0x40002AC:
             case 0x40002AD:
             case 0x40002AE:
-            case 0x40002AF: data = math->readDivRemResult(address + i - 0x40002A8);       break; // DIVREMRESULT
+            case 0x40002AF: base -= 0x40002AC; size = 4; data = math->readDivRemResultH();    break; // DIVREMRESULT_H
             case 0x40002B0:
-            case 0x40002B1: data = math->readSqrtCnt(address + i - 0x40002B0);            break; // SQRTCNT
+            case 0x40002B1: base -= 0x40002B0; size = 2; data = math->readSqrtCnt();          break; // SQRTCNT
             case 0x40002B4:
             case 0x40002B5:
             case 0x40002B6:
-            case 0x40002B7: data = math->readSqrtResult(address + i - 0x40002B4);         break; // SQRTRESULT
+            case 0x40002B7: base -= 0x40002B4; size = 4; data = math->readSqrtResult();       break; // SQRTRESULT
             case 0x40002B8:
             case 0x40002B9:
             case 0x40002BA:
-            case 0x40002BB:
+            case 0x40002BB: base -= 0x40002B8; size = 4; data = math->readSqrtParamL();       break; // SQRTPARAM_L
             case 0x40002BC:
             case 0x40002BD:
             case 0x40002BE:
-            case 0x40002BF: data = math->readSqrtParam(address + i - 0x40002B8);          break; // SQRTPARAM
-            case 0x4000300: data = arm9->readPostFlg();                                   break; // POSTFLG (ARM9)
+            case 0x40002BF: base -= 0x40002BC; size = 4; data = math->readSqrtParamH();       break; // SQRTPARAM_H
+            case 0x4000300: base -= 0x4000300; size = 1; data = arm9->readPostFlg();          break; // POSTFLG (ARM9)
             case 0x4000304:
-            case 0x4000305: data = gpu->readPowCnt1(address + i - 0x4000214);             break; // POWCNT1
+            case 0x4000305: base -= 0x4000304; size = 2; data = gpu->readPowCnt1();           break; // POWCNT1
             case 0x4000600:
             case 0x4000601:
             case 0x4000602:
-            case 0x4000603: data = gpu3D->readGxStat(address + i - 0x4000600);            break; // GXSTAT
+            case 0x4000603: base -= 0x4000600; size = 4; data = gpu3D->readGxStat();          break; // GXSTAT
             case 0x4000640:
             case 0x4000641:
             case 0x4000642:
-            case 0x4000643: data = gpu3D->readClipMtxResult(0, address + i - 0x4000640);  break; // CLIPMTX_RESULT
+            case 0x4000643: base -= 0x4000640; size = 4; data = gpu3D->readClipMtxResult(0);  break; // CLIPMTX_RESULT
             case 0x4000644:
             case 0x4000645:
             case 0x4000646:
-            case 0x4000647: data = gpu3D->readClipMtxResult(1, address + i - 0x4000644);  break; // CLIPMTX_RESULT
+            case 0x4000647: base -= 0x4000644; size = 4; data = gpu3D->readClipMtxResult(1);  break; // CLIPMTX_RESULT
             case 0x4000648:
             case 0x4000649:
             case 0x400064A:
-            case 0x400064B: data = gpu3D->readClipMtxResult(2, address + i - 0x4000648);  break; // CLIPMTX_RESULT
+            case 0x400064B: base -= 0x4000648; size = 4; data = gpu3D->readClipMtxResult(2);  break; // CLIPMTX_RESULT
             case 0x400064C:
             case 0x400064D:
             case 0x400064E:
-            case 0x400064F: data = gpu3D->readClipMtxResult(3, address + i - 0x400064C);  break; // CLIPMTX_RESULT
+            case 0x400064F: base -= 0x400064C; size = 4; data = gpu3D->readClipMtxResult(3);  break; // CLIPMTX_RESULT
             case 0x4000650:
             case 0x4000651:
             case 0x4000652:
-            case 0x4000653: data = gpu3D->readClipMtxResult(4, address + i - 0x4000650);  break; // CLIPMTX_RESULT
+            case 0x4000653: base -= 0x4000650; size = 4; data = gpu3D->readClipMtxResult(4);  break; // CLIPMTX_RESULT
             case 0x4000654:
             case 0x4000655:
             case 0x4000656:
-            case 0x4000657: data = gpu3D->readClipMtxResult(5, address + i - 0x4000654);  break; // CLIPMTX_RESULT
+            case 0x4000657: base -= 0x4000654; size = 4; data = gpu3D->readClipMtxResult(5);  break; // CLIPMTX_RESULT
             case 0x4000658:
             case 0x4000659:
             case 0x400065A:
-            case 0x400065B: data = gpu3D->readClipMtxResult(6, address + i - 0x4000658);  break; // CLIPMTX_RESULT
+            case 0x400065B: base -= 0x4000658; size = 4; data = gpu3D->readClipMtxResult(6);  break; // CLIPMTX_RESULT
             case 0x400065C:
             case 0x400065D:
             case 0x400065E:
-            case 0x400065F: data = gpu3D->readClipMtxResult(7, address + i - 0x400065C);  break; // CLIPMTX_RESULT
+            case 0x400065F: base -= 0x400065C; size = 4; data = gpu3D->readClipMtxResult(7);  break; // CLIPMTX_RESULT
             case 0x4000660:
             case 0x4000661:
             case 0x4000662:
-            case 0x4000663: data = gpu3D->readClipMtxResult(8, address + i - 0x4000660);  break; // CLIPMTX_RESULT
+            case 0x4000663: base -= 0x4000660; size = 4; data = gpu3D->readClipMtxResult(8);  break; // CLIPMTX_RESULT
             case 0x4000664:
             case 0x4000665:
             case 0x4000666:
-            case 0x4000667: data = gpu3D->readClipMtxResult(9, address + i - 0x4000664);  break; // CLIPMTX_RESULT
+            case 0x4000667: base -= 0x4000664; size = 4; data = gpu3D->readClipMtxResult(9);  break; // CLIPMTX_RESULT
             case 0x4000668:
             case 0x4000669:
             case 0x400066A:
-            case 0x400066B: data = gpu3D->readClipMtxResult(10, address + i - 0x4000668); break; // CLIPMTX_RESULT
+            case 0x400066B: base -= 0x4000668; size = 4; data = gpu3D->readClipMtxResult(10); break; // CLIPMTX_RESULT
             case 0x400066C:
             case 0x400066D:
             case 0x400066E:
-            case 0x400066F: data = gpu3D->readClipMtxResult(11, address + i - 0x400066C); break; // CLIPMTX_RESULT
+            case 0x400066F: base -= 0x400066C; size = 4; data = gpu3D->readClipMtxResult(11); break; // CLIPMTX_RESULT
             case 0x4000670:
             case 0x4000671:
             case 0x4000672:
-            case 0x4000673: data = gpu3D->readClipMtxResult(12, address + i - 0x4000670); break; // CLIPMTX_RESULT
+            case 0x4000673: base -= 0x4000670; size = 4; data = gpu3D->readClipMtxResult(12); break; // CLIPMTX_RESULT
             case 0x4000674:
             case 0x4000675:
             case 0x4000676:
-            case 0x4000677: data = gpu3D->readClipMtxResult(13, address + i - 0x4000674); break; // CLIPMTX_RESULT
+            case 0x4000677: base -= 0x4000674; size = 4; data = gpu3D->readClipMtxResult(13); break; // CLIPMTX_RESULT
             case 0x4000678:
             case 0x4000679:
             case 0x400067A:
-            case 0x400067B: data = gpu3D->readClipMtxResult(14, address + i - 0x4000678); break; // CLIPMTX_RESULT
+            case 0x400067B: base -= 0x4000678; size = 4; data = gpu3D->readClipMtxResult(14); break; // CLIPMTX_RESULT
             case 0x400067C:
             case 0x400067D:
             case 0x400067E:
-            case 0x400067F: data = gpu3D->readClipMtxResult(15, address + i - 0x400067C); break; // CLIPMTX_RESULT
+            case 0x400067F: base -= 0x400067C; size = 4; data = gpu3D->readClipMtxResult(15); break; // CLIPMTX_RESULT
             case 0x4001000:
             case 0x4001001:
             case 0x4001002:
-            case 0x4001003: data = engineB->readDispCnt(address + i - 0x4001000);         break; // DISPCNT (engine B)
+            case 0x4001003: base -= 0x4001000; size = 4; data = engineB->readDispCnt();       break; // DISPCNT (engine B)
             case 0x4001008:
-            case 0x4001009: data = engineB->readBgCnt(0, address + i - 0x4001008);        break; // BG0CNT (engine B)
+            case 0x4001009: base -= 0x4001008; size = 2; data = engineB->readBgCnt(0);        break; // BG0CNT (engine B)
             case 0x400100A:
-            case 0x400100B: data = engineB->readBgCnt(1, address + i - 0x400100A);        break; // BG1CNT (engine B)
+            case 0x400100B: base -= 0x400100A; size = 2; data = engineB->readBgCnt(1);        break; // BG1CNT (engine B)
             case 0x400100C:
-            case 0x400100D: data = engineB->readBgCnt(2, address + i - 0x400100C);        break; // BG2CNT (engine B)
+            case 0x400100D: base -= 0x400100C; size = 2; data = engineB->readBgCnt(2);        break; // BG2CNT (engine B)
             case 0x400100E:
-            case 0x400100F: data = engineB->readBgCnt(3, address + i - 0x400100E);        break; // BG3CNT (engine B)
+            case 0x400100F: base -= 0x400100E; size = 2; data = engineB->readBgCnt(3);        break; // BG3CNT (engine B)
             case 0x400106C:
-            case 0x400106D: data = engineB->readMasterBright(address + i - 0x400106C);    break; // MASTER_BRIGHT (engine B)
+            case 0x400106D: base -= 0x400106C; size = 2; data = engineB->readMasterBright();  break; // MASTER_BRIGHT (engine B)
             case 0x4100000:
             case 0x4100001:
             case 0x4100002:
-            case 0x4100003: data = ipc->readIpcFifoRecv9(address + i - 0x4100000);        break; // IPCFIFORECV (ARM9)
+            case 0x4100003: base -= 0x4100000; size = 4; data = ipc->readIpcFifoRecv9();      break; // IPCFIFORECV (ARM9)
             case 0x4100010:
             case 0x4100011:
             case 0x4100012:
-            case 0x4100013: data = cart9->readRomDataIn(address + i - 0x4100010);         break; // ROMDATAIN (ARM9)
+            case 0x4100013: base -= 0x4100010; size = 4; data = cart9->readRomDataIn();       break; // ROMDATAIN (ARM9)
 
             default:
+            {
+                // Handle unknown reads by returning 0
                 if (i == 0)
                 {
                     printf("Unknown ARM9 I/O register read: 0x%X\n", address);
                     return 0;
                 }
+
+                // Ignore unknown reads if they occur after the first byte
+                // This is in case, for example, a 16-bit register is accessed with a 32-bit read
+                i++;
+                continue;
+            }
         }
 
-        value |= data << (i * 8);
+        value |= (data >> (base * 8)) << (i * 8);
+        i += size - base;
     }
 
     return value;
@@ -608,137 +624,153 @@ template <typename T> T Memory::ioRead9(uint32_t address)
 template <typename T> T Memory::ioRead7(uint32_t address)
 {
     T value = 0;
+    int i = 0;
 
-    // Form an LSB-first value from the data of the ARM7 I/O registers
-    for (unsigned int i = 0; i < sizeof(T); i++)
+    // Read a value from one or more ARM7 I/O registers
+    while (i < sizeof(T))
     {
-        uint8_t data = 0;
+        uint32_t base = address + i;
+        unsigned int size;
+        uint32_t data;
 
-        switch (address + i)
+        switch (base)
         {
             case 0x4000004:
-            case 0x4000005: data = gpu->readDispStat7(address + i - 0x4000004);     break; // DISPSTAT (ARM7)
+            case 0x4000005: base -= 0x4000004; size = 2; data = gpu->readDispStat7();    break; // DISPSTAT (ARM7)
             case 0x4000006:
-            case 0x4000007: data = gpu->readVCount(address + i - 0x4000006);        break; // VCOUNT
+            case 0x4000007: base -= 0x4000006; size = 2; data = gpu->readVCount();       break; // VCOUNT
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
-            case 0x40000B3: data = dma7->readDmaSad(0, address + i - 0x40000B0);    break; // DMA0SAD (ARM7)
+            case 0x40000B3: base -= 0x40000B0; size = 4; data = dma7->readDmaSad(0);     break; // DMA0SAD (ARM7)
             case 0x40000B4:
             case 0x40000B5:
             case 0x40000B6:
-            case 0x40000B7: data = dma7->readDmaDad(0, address + i - 0x40000B4);    break; // DMA0DAD (ARM7)
+            case 0x40000B7: base -= 0x40000B4; size = 4; data = dma7->readDmaDad(0);     break; // DMA0DAD (ARM7)
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
-            case 0x40000BB: data = dma7->readDmaCnt(0, address + i - 0x40000B8);    break; // DMA0CNT (ARM7)
+            case 0x40000BB: base -= 0x40000B8; size = 4; data = dma7->readDmaCnt(0);     break; // DMA0CNT (ARM7)
             case 0x40000BC:
             case 0x40000BD:
             case 0x40000BE:
-            case 0x40000BF: data = dma7->readDmaSad(1, address + i - 0x40000BC);    break; // DMA1SAD (ARM7)
+            case 0x40000BF: base -= 0x40000BC; size = 4; data = dma7->readDmaSad(1);     break; // DMA1SAD (ARM7)
             case 0x40000C0:
             case 0x40000C1:
             case 0x40000C2:
-            case 0x40000C3: data = dma7->readDmaDad(1, address + i - 0x40000C0);    break; // DMA1DAD (ARM7)
+            case 0x40000C3: base -= 0x40000C0; size = 4; data = dma7->readDmaDad(1);     break; // DMA1DAD (ARM7)
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
-            case 0x40000C7: data = dma7->readDmaCnt(1, address + i - 0x40000C4);    break; // DMA1CNT (ARM7)
+            case 0x40000C7: base -= 0x40000C4; size = 4; data = dma7->readDmaCnt(1);     break; // DMA1CNT (ARM7)
             case 0x40000C8:
             case 0x40000C9:
             case 0x40000CA:
-            case 0x40000CB: data = dma7->readDmaSad(2, address + i - 0x40000C8);    break; // DMA2SAD (ARM7)
+            case 0x40000CB: base -= 0x40000C8; size = 4; data = dma7->readDmaSad(2);     break; // DMA2SAD (ARM7)
             case 0x40000CC:
             case 0x40000CD:
             case 0x40000CE:
-            case 0x40000CF: data = dma7->readDmaDad(2, address + i - 0x40000CC);    break; // DMA2DAD (ARM7)
+            case 0x40000CF: base -= 0x40000CC; size = 4; data = dma7->readDmaDad(2);     break; // DMA2DAD (ARM7)
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
-            case 0x40000D3: data = dma7->readDmaCnt(2, address + i - 0x40000D0);    break; // DMA2CNT (ARM7)
+            case 0x40000D3: base -= 0x40000D0; size = 4; data = dma7->readDmaCnt(2);     break; // DMA2CNT (ARM7)
             case 0x40000D4:
             case 0x40000D5:
             case 0x40000D6:
-            case 0x40000D7: data = dma7->readDmaSad(3, address + i - 0x40000D4);    break; // DMA3SAD (ARM7)
+            case 0x40000D7: base -= 0x40000D4; size = 4; data = dma7->readDmaSad(3);     break; // DMA3SAD (ARM7)
             case 0x40000D8:
             case 0x40000D9:
             case 0x40000DA:
-            case 0x40000DB: data = dma7->readDmaDad(3, address + i - 0x40000D8);    break; // DMA3DAD (ARM7)
+            case 0x40000DB: base -= 0x40000D8; size = 4; data = dma7->readDmaDad(3);     break; // DMA3DAD (ARM7)
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
-            case 0x40000DF: data = dma7->readDmaCnt(3, address + i - 0x40000DC);    break; // DMA3CNT (ARM7)
+            case 0x40000DF: base -= 0x40000DC; size = 4; data = dma7->readDmaCnt(3);     break; // DMA3CNT (ARM7)
             case 0x4000100:
-            case 0x4000101: data = timers7->readTmCntL(0, address + i - 0x4000100); break; // TM0CNT_L (ARM7)
-            case 0x4000102: data = timers7->readTmCntH(0);                          break; // TM0CNT_H (ARM7)
+            case 0x4000101: base -= 0x4000100; size = 2; data = timers7->readTmCntL(0);  break; // TM0CNT_L (ARM7)
+            case 0x4000102:
+            case 0x4000103: base -= 0x4000102; size = 2; data = timers7->readTmCntH(0);  break; // TM0CNT_H (ARM7)
             case 0x4000104:
-            case 0x4000105: data = timers7->readTmCntL(1, address + i - 0x4000104); break; // TM1CNT_L (ARM7)
-            case 0x4000106: data = timers7->readTmCntH(1);                          break; // TM1CNT_H (ARM7)
+            case 0x4000105: base -= 0x4000104; size = 2; data = timers7->readTmCntL(1);  break; // TM1CNT_L (ARM7)
+            case 0x4000106:
+            case 0x4000107: base -= 0x4000106; size = 2; data = timers7->readTmCntH(1);  break; // TM1CNT_H (ARM7)
             case 0x4000108:
-            case 0x4000109: data = timers7->readTmCntL(2, address + i - 0x4000108); break; // TM2CNT_L (ARM7)
-            case 0x400010A: data = timers7->readTmCntH(2);                          break; // TM2CNT_H (ARM7)
+            case 0x4000109: base -= 0x4000108; size = 2; data = timers7->readTmCntL(2);  break; // TM2CNT_L (ARM7)
+            case 0x400010A:
+            case 0x400010B: base -= 0x400010A; size = 2; data = timers7->readTmCntH(2);  break; // TM2CNT_H (ARM7)
             case 0x400010C:
-            case 0x400010D: data = timers7->readTmCntL(3, address + i - 0x400010C); break; // TM3CNT_L (ARM7)
-            case 0x400010E: data = timers7->readTmCntH(3);                          break; // TM3CNT_H (ARM7)
+            case 0x400010D: base -= 0x400010C; size = 2; data = timers7->readTmCntL(3);  break; // TM3CNT_L (ARM7)
+            case 0x400010E:
+            case 0x400010F: base -= 0x400010E; size = 2; data = timers7->readTmCntH(3);  break; // TM3CNT_H (ARM7)
             case 0x4000130:
-            case 0x4000131: data = input->readKeyInput(address + i - 0x4000130);    break; // KEYINPUT
+            case 0x4000131: base -= 0x4000130; size = 2; data = input->readKeyInput();   break; // KEYINPUT
             case 0x4000136:
-            case 0x4000137: data = input->readExtKeyIn(address + i - 0x4000136);    break; // EXTKEYIN
-            case 0x4000138: data = rtc->readRtc();                                  break; // RTC
+            case 0x4000137: base -= 0x4000136; size = 2; data = input->readExtKeyIn();   break; // EXTKEYIN
+            case 0x4000138: base -= 0x4000138; size = 1; data = rtc->readRtc();          break; // RTC
             case 0x4000180:
-            case 0x4000181: data = ipc->readIpcSync7(address + i - 0x4000180);      break; // IPCSYNC (ARM7)
+            case 0x4000181: base -= 0x4000180; size = 2; data = ipc->readIpcSync7();     break; // IPCSYNC (ARM7)
             case 0x4000184:
-            case 0x4000185: data = ipc->readIpcFifoCnt7(address + i - 0x4000184);   break; // IPCFIFOCNT (ARM7)
+            case 0x4000185: base -= 0x4000184; size = 2; data = ipc->readIpcFifoCnt7();  break; // IPCFIFOCNT (ARM7)
             case 0x40001A0:
-            case 0x40001A1: data = cart7->readAuxSpiCnt(address + i - 0x40001A0);   break; // AUXSPICNT (ARM7)
-            case 0x40001A2: data = cart7->readAuxSpiData();                         break; // AUXSPIDATA (ARM7)
+            case 0x40001A1: base -= 0x40001A0; size = 2; data = cart7->readAuxSpiCnt();  break; // AUXSPICNT (ARM7)
+            case 0x40001A2: base -= 0x40001A2; size = 1; data = cart7->readAuxSpiData(); break; // AUXSPIDATA (ARM7)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: data = cart7->readRomCtrl(address + i - 0x40001A4);     break; // ROMCTRL (ARM7)
+            case 0x40001A7: base -= 0x40001A4; size = 4; data = cart7->readRomCtrl();    break; // ROMCTRL (ARM7)
             case 0x40001A8:
             case 0x40001A9:
             case 0x40001AA:
-            case 0x40001AB:
+            case 0x40001AB: base -= 0x40001A8; size = 4; data = cart7->readRomCmdOutL(); break; // ROMCMDOUT_L (ARM7)
             case 0x40001AC:
             case 0x40001AD:
             case 0x40001AE:
-            case 0x40001AF: data = cart7->readRomCmdOut(address + i - 0x40001A8);   break; // ROMCMDOUT (ARM7)
+            case 0x40001AF: base -= 0x40001AC; size = 4; data = cart7->readRomCmdOutH(); break; // ROMCMDOUT_H (ARM7)
             case 0x40001C0:
-            case 0x40001C1: data = spi->readSpiCnt(address + i - 0x40001C0);        break; // SPICNT
-            case 0x40001C2: data = spi->readSpiData();                              break; // SPIDATA
-            case 0x4000208: data = arm7->readIme();                                 break; // IME (ARM7)
+            case 0x40001C1: base -= 0x40001C0; size = 2; data = spi->readSpiCnt();       break; // SPICNT
+            case 0x40001C2: base -= 0x40001C2; size = 1; data = spi->readSpiData();      break; // SPIDATA
+            case 0x4000208: base -= 0x4000208; size = 1; data = arm7->readIme();         break; // IME (ARM7)
             case 0x4000210:
             case 0x4000211:
             case 0x4000212:
-            case 0x4000213: data = arm7->readIe(address + i - 0x4000210);           break; // IE (ARM7)
+            case 0x4000213: base -= 0x4000210; size = 4; data = arm7->readIe();          break; // IE (ARM7)
             case 0x4000214:
             case 0x4000215:
             case 0x4000216:
-            case 0x4000217: data = arm7->readIrf(address + i - 0x4000214);          break; // IF (ARM7)
-            case 0x4000241: data = readWramStat();                                  break; // WRAMSTAT
-            case 0x4000300: data = arm7->readPostFlg();                             break; // POSTFLG (ARM7)
-            case 0x4000301: data = readHaltCnt();                                   break; // HALTCNT
+            case 0x4000217: base -= 0x4000214; size = 4; data = arm7->readIrf();         break; // IF (ARM7)
+            case 0x4000241: base -= 0x4000241; size = 1; data = readWramStat();          break; // WRAMSTAT
+            case 0x4000300: base -= 0x4000300; size = 1; data = arm7->readPostFlg();     break; // POSTFLG (ARM7)
+            case 0x4000301: base -= 0x4000301; size = 1; data = readHaltCnt();           break; // HALTCNT
             case 0x4000504:
-            case 0x4000505: data = readSoundBias(address + i - 0x4000504);          break; // SOUNDBIAS
+            case 0x4000505: base -= 0x4000504; size = 2; data = readSoundBias();         break; // SOUNDBIAS
             case 0x4100000:
             case 0x4100001:
             case 0x4100002:
-            case 0x4100003: data = ipc->readIpcFifoRecv7(address + i - 0x4100000);  break; // IPCFIFORECV (ARM7)
+            case 0x4100003: base -= 0x4100000; size = 4; data = ipc->readIpcFifoRecv7(); break; // IPCFIFORECV (ARM7)
             case 0x4100010:
             case 0x4100011:
             case 0x4100012:
-            case 0x4100013: data = cart7->readRomDataIn(address + i - 0x4100010);   break; // ROMDATAIN (ARM7)
+            case 0x4100013: base -= 0x4100010; size = 4; data = cart7->readRomDataIn();  break; // ROMDATAIN (ARM7)
 
             default:
+            {
+                // Handle unknown reads by returning 0
                 if (i == 0)
                 {
                     printf("Unknown ARM7 I/O register read: 0x%X\n", address);
                     return 0;
                 }
+
+                // Ignore unknown reads if they occur after the first byte
+                // This is in case, for example, a 16-bit register is accessed with a 32-bit read
+                i++;
+                continue;
+            }
         }
 
-        value |= data << (i * 8);
+        value |= (data >> (base * 8)) << (i * 8);
+        i += size - base;
     }
 
     return value;
@@ -746,632 +778,672 @@ template <typename T> T Memory::ioRead7(uint32_t address)
 
 template <typename T> void Memory::ioWrite9(uint32_t address, T value)
 {
-    // Write an LSB-first value to the data of the ARM9 I/O registers
-    for (unsigned int i = 0; i < sizeof(T); i++)
-    {
-        uint8_t data = value >> (i * 8);
+    int i = 0;
 
-        switch (address + i)
+    // Write a value to one or more ARM9 I/O registers
+    while (i < sizeof(T))
+    {
+        uint32_t base = address + i;
+        unsigned int size;
+        uint32_t mask = (1L << ((sizeof(T) - i) * 8)) - 1;
+        uint32_t data = value >> (i * 8);
+
+        switch (base)
         {
             case 0x4000000:
             case 0x4000001:
             case 0x4000002:
-            case 0x4000003: engineA->writeDispCnt(address + i - 0x4000000, data);      break; // DISPCNT (engine A)
+            case 0x4000003: base -= 0x4000000; size = 4; engineA->writeDispCnt(mask << (base * 8), data << (base * 8));      break; // DISPCNT (engine A)
             case 0x4000004:
-            case 0x4000005: gpu->writeDispStat9(address + i - 0x4000004, data);        break; // DISPSTAT (ARM9)
+            case 0x4000005: base -= 0x4000004; size = 2; gpu->writeDispStat9(mask << (base * 8), data << (base * 8));        break; // DISPSTAT (ARM9)
             case 0x4000008:
-            case 0x4000009: engineA->writeBgCnt(0, address + i - 0x4000008, data);     break; // BG0CNT (engine A)
+            case 0x4000009: base -= 0x4000008; size = 2; engineA->writeBgCnt(0, mask << (base * 8), data << (base * 8));     break; // BG0CNT (engine A)
             case 0x400000A:
-            case 0x400000B: engineA->writeBgCnt(1, address + i - 0x400000A, data);     break; // BG1CNT (engine A)
+            case 0x400000B: base -= 0x400000A; size = 2; engineA->writeBgCnt(1, mask << (base * 8), data << (base * 8));     break; // BG1CNT (engine A)
             case 0x400000C:
-            case 0x400000D: engineA->writeBgCnt(2, address + i - 0x400000C, data);     break; // BG2CNT (engine A)
+            case 0x400000D: base -= 0x400000C; size = 2; engineA->writeBgCnt(2, mask << (base * 8), data << (base * 8));     break; // BG2CNT (engine A)
             case 0x400000E:
-            case 0x400000F: engineA->writeBgCnt(3, address + i - 0x400000E, data);     break; // BG3CNT (engine A)
+            case 0x400000F: base -= 0x400000E; size = 2; engineA->writeBgCnt(3, mask << (base * 8), data << (base * 8));     break; // BG3CNT (engine A)
             case 0x4000010:
-            case 0x4000011: engineA->writeBgHOfs(0, address + i - 0x4000010, data);    break; // BG0HOFS (engine A)
+            case 0x4000011: base -= 0x4000010; size = 2; engineA->writeBgHOfs(0, mask << (base * 8), data << (base * 8));    break; // BG0HOFS (engine A)
             case 0x4000012:
-            case 0x4000013: engineA->writeBgVOfs(0, address + i - 0x4000012, data);    break; // BG0VOFS (engine A)
+            case 0x4000013: base -= 0x4000012; size = 2; engineA->writeBgVOfs(0, mask << (base * 8), data << (base * 8));    break; // BG0VOFS (engine A)
             case 0x4000014:
-            case 0x4000015: engineA->writeBgHOfs(1, address + i - 0x4000014, data);    break; // BG1HOFS (engine A)
+            case 0x4000015: base -= 0x4000014; size = 2; engineA->writeBgHOfs(1, mask << (base * 8), data << (base * 8));    break; // BG1HOFS (engine A)
             case 0x4000016:
-            case 0x4000017: engineA->writeBgVOfs(1, address + i - 0x4000016, data);    break; // BG1VOFS (engine A)
+            case 0x4000017: base -= 0x4000016; size = 2; engineA->writeBgVOfs(1, mask << (base * 8), data << (base * 8));    break; // BG1VOFS (engine A)
             case 0x4000018:
-            case 0x4000019: engineA->writeBgHOfs(2, address + i - 0x4000018, data);    break; // BG2HOFS (engine A)
+            case 0x4000019: base -= 0x4000018; size = 2; engineA->writeBgHOfs(2, mask << (base * 8), data << (base * 8));    break; // BG2HOFS (engine A)
             case 0x400001A:
-            case 0x400001B: engineA->writeBgVOfs(2, address + i - 0x400001A, data);    break; // BG2VOFS (engine A)
+            case 0x400001B: base -= 0x400001A; size = 2; engineA->writeBgVOfs(2, mask << (base * 8), data << (base * 8));    break; // BG2VOFS (engine A)
             case 0x400001C:
-            case 0x400001D: engineA->writeBgHOfs(3, address + i - 0x400001C, data);    break; // BG3HOFS (engine A)
+            case 0x400001D: base -= 0x400001C; size = 2; engineA->writeBgHOfs(3, mask << (base * 8), data << (base * 8));    break; // BG3HOFS (engine A)
             case 0x400001E:
-            case 0x400001F: engineA->writeBgVOfs(3, address + i - 0x400001E, data);    break; // BG3VOFS (engine A)
+            case 0x400001F: base -= 0x400001E; size = 2; engineA->writeBgVOfs(3, mask << (base * 8), data << (base * 8));    break; // BG3VOFS (engine A)
             case 0x4000020:
-            case 0x4000021: engineA->writeBgPA(2, address + i - 0x4000020, data);      break; // BG2PA (engine A)
+            case 0x4000021: base -= 0x4000020; size = 2; engineA->writeBgPA(2, mask << (base * 8), data << (base * 8));      break; // BG2PA (engine A)
             case 0x4000022:
-            case 0x4000023: engineA->writeBgPB(2, address + i - 0x4000022, data);      break; // BG2PB (engine A)
+            case 0x4000023: base -= 0x4000022; size = 2; engineA->writeBgPB(2, mask << (base * 8), data << (base * 8));      break; // BG2PB (engine A)
             case 0x4000024:
-            case 0x4000025: engineA->writeBgPC(2, address + i - 0x4000024, data);      break; // BG2PC (engine A)
+            case 0x4000025: base -= 0x4000024; size = 2; engineA->writeBgPC(2, mask << (base * 8), data << (base * 8));      break; // BG2PC (engine A)
             case 0x4000026:
-            case 0x4000027: engineA->writeBgPD(2, address + i - 0x4000026, data);      break; // BG2PD (engine A)
+            case 0x4000027: base -= 0x4000026; size = 2; engineA->writeBgPD(2, mask << (base * 8), data << (base * 8));      break; // BG2PD (engine A)
             case 0x4000028:
             case 0x4000029:
             case 0x400002A:
-            case 0x400002B: engineA->writeBgX(2, address + i - 0x4000028, data);       break; // BG2X (engine A)
+            case 0x400002B: base -= 0x4000028; size = 4; engineA->writeBgX(2, mask << (base * 8), data << (base * 8));       break; // BG2X (engine A)
             case 0x400002C:
             case 0x400002D:
             case 0x400002E:
-            case 0x400002F: engineA->writeBgY(2, address + i - 0x400002C, data);       break; // BG2Y (engine A)
+            case 0x400002F: base -= 0x400002C; size = 4; engineA->writeBgY(2, mask << (base * 8), data << (base * 8));       break; // BG2Y (engine A)
             case 0x4000030:
-            case 0x4000031: engineA->writeBgPA(3, address + i - 0x4000030, data);      break; // BG3PA (engine A)
+            case 0x4000031: base -= 0x4000030; size = 2; engineA->writeBgPA(3, mask << (base * 8), data << (base * 8));      break; // BG3PA (engine A)
             case 0x4000032:
-            case 0x4000033: engineA->writeBgPB(3, address + i - 0x4000032, data);      break; // BG3PB (engine A)
+            case 0x4000033: base -= 0x4000032; size = 2; engineA->writeBgPB(3, mask << (base * 8), data << (base * 8));      break; // BG3PB (engine A)
             case 0x4000034:
-            case 0x4000035: engineA->writeBgPC(3, address + i - 0x4000034, data);      break; // BG3PC (engine A)
+            case 0x4000035: base -= 0x4000034; size = 2; engineA->writeBgPC(3, mask << (base * 8), data << (base * 8));      break; // BG3PC (engine A)
             case 0x4000036:
-            case 0x4000037: engineA->writeBgPD(3, address + i - 0x4000036, data);      break; // BG3PD (engine A)
+            case 0x4000037: base -= 0x4000036; size = 2; engineA->writeBgPD(3, mask << (base * 8), data << (base * 8));      break; // BG3PD (engine A)
             case 0x4000038:
             case 0x4000039:
             case 0x400003A:
-            case 0x400003B: engineA->writeBgX(3, address + i - 0x4000038, data);       break; // BG3X (engine A)
+            case 0x400003B: base -= 0x4000038; size = 4; engineA->writeBgX(3, mask << (base * 8), data << (base * 8));       break; // BG3X (engine A)
             case 0x400003C:
             case 0x400003D:
             case 0x400003E:
-            case 0x400003F: engineA->writeBgY(3, address + i - 0x400003C, data);       break; // BG3Y (engine A)
+            case 0x400003F: base -= 0x400003C; size = 4; engineA->writeBgY(3, mask << (base * 8), data << (base * 8));       break; // BG3Y (engine A)
             case 0x400006C:
-            case 0x400006D: engineA->writeMasterBright(address + i - 0x400006C, data); break; // MASTER_BRIGHT (engine A)
+            case 0x400006D: base -= 0x400006C; size = 2; engineA->writeMasterBright(mask << (base * 8), data << (base * 8)); break; // MASTER_BRIGHT (engine A)
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
-            case 0x40000B3: dma9->writeDmaSad(0, address + i - 0x40000B0, data);       break; // DMA0SAD (ARM9)
+            case 0x40000B3: base -= 0x40000B0; size = 4; dma9->writeDmaSad(0, mask << (base * 8), data << (base * 8));       break; // DMA0SAD (ARM9)
             case 0x40000B4:
             case 0x40000B5:
             case 0x40000B6:
-            case 0x40000B7: dma9->writeDmaDad(0, address + i - 0x40000B4, data);       break; // DMA0DAD (ARM9)
+            case 0x40000B7: base -= 0x40000B4; size = 4; dma9->writeDmaDad(0, mask << (base * 8), data << (base * 8));       break; // DMA0DAD (ARM9)
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
-            case 0x40000BB: dma9->writeDmaCnt(0, address + i - 0x40000B8, data);       break; // DMA0CNT (ARM9)
+            case 0x40000BB: base -= 0x40000B8; size = 4; dma9->writeDmaCnt(0, mask << (base * 8), data << (base * 8));       break; // DMA0CNT (ARM9)
             case 0x40000BC:
             case 0x40000BD:
             case 0x40000BE:
-            case 0x40000BF: dma9->writeDmaSad(1, address + i - 0x40000BC, data);       break; // DMA1SAD (ARM9)
+            case 0x40000BF: base -= 0x40000BC; size = 4; dma9->writeDmaSad(1, mask << (base * 8), data << (base * 8));       break; // DMA1SAD (ARM9)
             case 0x40000C0:
             case 0x40000C1:
             case 0x40000C2:
-            case 0x40000C3: dma9->writeDmaDad(1, address + i - 0x40000C0, data);       break; // DMA1DAD (ARM9)
+            case 0x40000C3: base -= 0x40000C0; size = 4; dma9->writeDmaDad(1, mask << (base * 8), data << (base * 8));       break; // DMA1DAD (ARM9)
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
-            case 0x40000C7: dma9->writeDmaCnt(1, address + i - 0x40000C4, data);       break; // DMA1CNT (ARM9)
+            case 0x40000C7: base -= 0x40000C4; size = 4; dma9->writeDmaCnt(1, mask << (base * 8), data << (base * 8));       break; // DMA1CNT (ARM9)
             case 0x40000C8:
             case 0x40000C9:
             case 0x40000CA:
-            case 0x40000CB: dma9->writeDmaSad(2, address + i - 0x40000C8, data);       break; // DMA2SAD (ARM9)
+            case 0x40000CB: base -= 0x40000C8; size = 4; dma9->writeDmaSad(2, mask << (base * 8), data << (base * 8));       break; // DMA2SAD (ARM9)
             case 0x40000CC:
             case 0x40000CD:
             case 0x40000CE:
-            case 0x40000CF: dma9->writeDmaDad(2, address + i - 0x40000CC, data);       break; // DMA2DAD (ARM9)
+            case 0x40000CF: base -= 0x40000CC; size = 4; dma9->writeDmaDad(2, mask << (base * 8), data << (base * 8));       break; // DMA2DAD (ARM9)
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
-            case 0x40000D3: dma9->writeDmaCnt(2, address + i - 0x40000D0, data);       break; // DMA2CNT (ARM9)
+            case 0x40000D3: base -= 0x40000D0; size = 4; dma9->writeDmaCnt(2, mask << (base * 8), data << (base * 8));       break; // DMA2CNT (ARM9)
             case 0x40000D4:
             case 0x40000D5:
             case 0x40000D6:
-            case 0x40000D7: dma9->writeDmaSad(3, address + i - 0x40000D4, data);       break; // DMA3SAD (ARM9)
+            case 0x40000D7: base -= 0x40000D4; size = 4; dma9->writeDmaSad(3, mask << (base * 8), data << (base * 8));       break; // DMA3SAD (ARM9)
             case 0x40000D8:
             case 0x40000D9:
             case 0x40000DA:
-            case 0x40000DB: dma9->writeDmaDad(3, address + i - 0x40000D8, data);       break; // DMA3DAD (ARM9)
+            case 0x40000DB: base -= 0x40000D8; size = 4; dma9->writeDmaDad(3, mask << (base * 8), data << (base * 8));       break; // DMA3DAD (ARM9)
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
-            case 0x40000DF: dma9->writeDmaCnt(3, address + i - 0x40000DC, data);       break; // DMA3CNT (ARM9)
+            case 0x40000DF: base -= 0x40000DC; size = 4; dma9->writeDmaCnt(3, mask << (base * 8), data << (base * 8));       break; // DMA3CNT (ARM9)
             case 0x40000E0:
             case 0x40000E1:
             case 0x40000E2:
-            case 0x40000E3: writeDmaFill(0, address + i - 0x40000E0, data);            break; // DMA0FILL
+            case 0x40000E3: base -= 0x40000E0; size = 4; writeDmaFill(0, mask << (base * 8), data << (base * 8));            break; // DMA0FILL
             case 0x40000E4:
             case 0x40000E5:
             case 0x40000E6:
-            case 0x40000E7: writeDmaFill(1, address + i - 0x40000E4, data);            break; // DMA1FILL
+            case 0x40000E7: base -= 0x40000E4; size = 4; writeDmaFill(1, mask << (base * 8), data << (base * 8));            break; // DMA1FILL
             case 0x40000E8:
             case 0x40000E9:
             case 0x40000EA:
-            case 0x40000EB: writeDmaFill(2, address + i - 0x40000E8, data);            break; // DMA2FILL
+            case 0x40000EB: base -= 0x40000E8; size = 4; writeDmaFill(2, mask << (base * 8), data << (base * 8));            break; // DMA2FILL
             case 0x40000EC:
             case 0x40000ED:
             case 0x40000EE:
-            case 0x40000EF: writeDmaFill(3, address + i - 0x40000EC, data);            break; // DMA3FILL
+            case 0x40000EF: base -= 0x40000EC; size = 4; writeDmaFill(3, mask << (base * 8), data << (base * 8));            break; // DMA3FILL
             case 0x4000100:
-            case 0x4000101: timers9->writeTmCntL(0, address + i - 0x4000100, data);    break; // TM0CNT_L (ARM9)
-            case 0x4000102: timers9->writeTmCntH(0, data);                             break; // TM0CNT_H (ARM9)
+            case 0x4000101: base -= 0x4000100; size = 2; timers9->writeTmCntL(0, mask << (base * 8), data << (base * 8));    break; // TM0CNT_L (ARM9)
+            case 0x4000102:
+            case 0x4000103: base -= 0x4000102; size = 2; timers9->writeTmCntH(0, mask << (base * 8), data << (base * 8));    break; // TM0CNT_H (ARM9)
             case 0x4000104:
-            case 0x4000105: timers9->writeTmCntL(1, address + i - 0x4000104, data);    break; // TM1CNT_L (ARM9)
-            case 0x4000106: timers9->writeTmCntH(1, data);                             break; // TM1CNT_H (ARM9)
+            case 0x4000105: base -= 0x4000104; size = 2; timers9->writeTmCntL(1, mask << (base * 8), data << (base * 8));    break; // TM1CNT_L (ARM9)
+            case 0x4000106:
+            case 0x4000107: base -= 0x4000106; size = 2; timers9->writeTmCntH(1, mask << (base * 8), data << (base * 8));    break; // TM1CNT_H (ARM9)
             case 0x4000108:
-            case 0x4000109: timers9->writeTmCntL(2, address + i - 0x4000108, data);    break; // TM2CNT_L (ARM9)
-            case 0x400010A: timers9->writeTmCntH(2, data);                             break; // TM2CNT_H (ARM9)
+            case 0x4000109: base -= 0x4000108; size = 2; timers9->writeTmCntL(2, mask << (base * 8), data << (base * 8));    break; // TM2CNT_L (ARM9)
+            case 0x400010A:
+            case 0x400010B: base -= 0x400010A; size = 2; timers9->writeTmCntH(2, mask << (base * 8), data << (base * 8));    break; // TM2CNT_H (ARM9)
             case 0x400010C:
-            case 0x400010D: timers9->writeTmCntL(3, address + i - 0x400010C, data);    break; // TM3CNT_L (ARM9)
-            case 0x400010E: timers9->writeTmCntH(3, data);                             break; // TM3CNT_H (ARM9)
+            case 0x400010D: base -= 0x400010C; size = 2; timers9->writeTmCntL(3, mask << (base * 8), data << (base * 8));    break; // TM3CNT_L (ARM9)
+            case 0x400010E:
+            case 0x400010F: base -= 0x400010E; size = 2; timers9->writeTmCntH(3, mask << (base * 8), data << (base * 8));    break; // TM3CNT_H (ARM9)
             case 0x4000180:
-            case 0x4000181: ipc->writeIpcSync9(address + i - 0x4000180, data);         break; // IPCSYNC (ARM9)
+            case 0x4000181: base -= 0x4000180; size = 2; ipc->writeIpcSync9(mask << (base * 8), data << (base * 8));         break; // IPCSYNC (ARM9)
             case 0x4000184:
-            case 0x4000185: ipc->writeIpcFifoCnt9(address + i - 0x4000184, data);      break; // IPCFIFOCNT (ARM9)
+            case 0x4000185: base -= 0x4000184; size = 2; ipc->writeIpcFifoCnt9(mask << (base * 8), data << (base * 8));      break; // IPCFIFOCNT (ARM9)
             case 0x4000188:
             case 0x4000189:
             case 0x400018A:
-            case 0x400018B: ipc->writeIpcFifoSend9(address + i - 0x4000188, data);     break; // IPCFIFOSEND (ARM9)
+            case 0x400018B: base -= 0x4000188; size = 4; ipc->writeIpcFifoSend9(mask << (base * 8), data << (base * 8));     break; // IPCFIFOSEND (ARM9)
             case 0x40001A0:
-            case 0x40001A1: cart9->writeAuxSpiCnt(address + i - 0x40001A0, data);      break; // AUXSPICNT (ARM9)
-            case 0x40001A2: cart9->writeAuxSpiData(data);                              break; // AUXSPIDATA (ARM9)
+            case 0x40001A1: base -= 0x40001A0; size = 2; cart9->writeAuxSpiCnt(mask << (base * 8), data << (base * 8));      break; // AUXSPICNT (ARM9)
+            case 0x40001A2: base -= 0x40001A2; size = 1; cart9->writeAuxSpiData(data << (base * 8));                         break; // AUXSPIDATA (ARM9)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: cart9->writeRomCtrl(address + i - 0x40001A4, data);        break; // ROMCTRL (ARM9)
+            case 0x40001A7: base -= 0x40001A4; size = 4; cart9->writeRomCtrl(mask << (base * 8), data << (base * 8));        break; // ROMCTRL (ARM9)
             case 0x40001A8:
             case 0x40001A9:
             case 0x40001AA:
-            case 0x40001AB:
+            case 0x40001AB: base -= 0x40001A8; size = 4; cart9->writeRomCmdOutL(mask << (base * 8), data << (base * 8));     break; // ROMCMDOUT_L (ARM9)
             case 0x40001AC:
             case 0x40001AD:
             case 0x40001AE:
-            case 0x40001AF: cart9->writeRomCmdOut(address + i - 0x40001A8, data);      break; // ROMCMDOUT (ARM9)
-            case 0x4000208: arm9->writeIme(data);                                      break; // IME (ARM9)
+            case 0x40001AF: base -= 0x40001AC; size = 4; cart9->writeRomCmdOutH(mask << (base * 8), data << (base * 8));     break; // ROMCMDOUT_H (ARM9)
+            case 0x4000208: base -= 0x4000208; size = 1; arm9->writeIme(data << (base * 8));                                 break; // IME (ARM9)
             case 0x4000210:
             case 0x4000211:
             case 0x4000212:
-            case 0x4000213: arm9->writeIe(address + i - 0x4000210, data);              break; // IE (ARM9)
+            case 0x4000213: base -= 0x4000210; size = 4; arm9->writeIe(mask << (base * 8), data << (base * 8));              break; // IE (ARM9)
             case 0x4000214:
             case 0x4000215:
             case 0x4000216:
-            case 0x4000217: arm9->writeIrf(address + i - 0x4000214, data);             break; // IF (ARM9)
-            case 0x4000240: writeVramCntA(value);                                      break; // VRAMCNT_A
-            case 0x4000241: writeVramCntB(value);                                      break; // VRAMCNT_B
-            case 0x4000242: writeVramCntC(value);                                      break; // VRAMCNT_C
-            case 0x4000243: writeVramCntD(value);                                      break; // VRAMCNT_D
-            case 0x4000244: writeVramCntE(value);                                      break; // VRAMCNT_E
-            case 0x4000245: writeVramCntF(value);                                      break; // VRAMCNT_F
-            case 0x4000246: writeVramCntG(value);                                      break; // VRAMCNT_G
-            case 0x4000247: writeWramCnt(value);                                       break; // WRAMCNT
-            case 0x4000248: writeVramCntH(value);                                      break; // VRAMCNT_H
-            case 0x4000249: writeVramCntI(value);                                      break; // VRAMCNT_I
-            case 0x4000280: math->writeDivCnt(data);                                   break; // DIVCNT
+            case 0x4000217: base -= 0x4000214; size = 4; arm9->writeIrf(mask << (base * 8), data << (base * 8));             break; // IF (ARM9)
+            case 0x4000240: base -= 0x4000240; size = 1; writeVramCntA(data << (base * 8));                                  break; // VRAMCNT_A
+            case 0x4000241: base -= 0x4000241; size = 1; writeVramCntB(data << (base * 8));                                  break; // VRAMCNT_B
+            case 0x4000242: base -= 0x4000242; size = 1; writeVramCntC(data << (base * 8));                                  break; // VRAMCNT_C
+            case 0x4000243: base -= 0x4000243; size = 1; writeVramCntD(data << (base * 8));                                  break; // VRAMCNT_D
+            case 0x4000244: base -= 0x4000244; size = 1; writeVramCntE(data << (base * 8));                                  break; // VRAMCNT_E
+            case 0x4000245: base -= 0x4000245; size = 1; writeVramCntF(data << (base * 8));                                  break; // VRAMCNT_F
+            case 0x4000246: base -= 0x4000246; size = 1; writeVramCntG(data << (base * 8));                                  break; // VRAMCNT_G
+            case 0x4000247: base -= 0x4000247; size = 1; writeWramCnt(data << (base * 8));                                   break; // WRAMCNT
+            case 0x4000248: base -= 0x4000248; size = 1; writeVramCntH(data << (base * 8));                                  break; // VRAMCNT_H
+            case 0x4000249: base -= 0x4000249; size = 1; writeVramCntI(data << (base * 8));                                  break; // VRAMCNT_I
+            case 0x4000280:
+            case 0x4000281: base -= 0x4000280; size = 2; math->writeDivCnt(mask << (base * 8), data << (base * 8));          break; // DIVCNT
             case 0x4000290:
             case 0x4000291:
             case 0x4000292:
-            case 0x4000293:
+            case 0x4000293: base -= 0x4000290; size = 4; math->writeDivNumerL(mask << (base * 8), data << (base * 8));       break; // DIVNUMER_L
             case 0x4000294:
             case 0x4000295:
             case 0x4000296:
-            case 0x4000297: math->writeDivNumer(address + i - 0x4000290, data);        break; // DIVNUMER
+            case 0x4000297: base -= 0x4000294; size = 4; math->writeDivNumerH(mask << (base * 8), data << (base * 8));       break; // DIVNUMER_H
             case 0x4000298:
             case 0x4000299:
             case 0x400029A:
-            case 0x400029B:
+            case 0x400029B: base -= 0x4000298; size = 4; math->writeDivDenomL(mask << (base * 8), data << (base * 8));       break; // DIVDENOM_L
             case 0x400029C:
             case 0x400029D:
             case 0x400029E:
-            case 0x400029F: math->writeDivDenom(address + i - 0x4000298, data);        break; // DIVDENOM
-            case 0x40002B0: math->writeSqrtCnt(data);                                  break; // SQRTCNT
+            case 0x400029F: base -= 0x400029C; size = 4; math->writeDivDenomH(mask << (base * 8), data << (base * 8));       break; // DIVDENOM_H
+            case 0x40002B0:
+            case 0x40002B1: base -= 0x40002B0; size = 2; math->writeSqrtCnt(mask << (base * 8), data << (base * 8));         break; // SQRTCNT
             case 0x40002B8:
             case 0x40002B9:
             case 0x40002BA:
-            case 0x40002BB:
+            case 0x40002BB: base -= 0x40002B8; size = 4; math->writeSqrtParamL(mask << (base * 8), data << (base * 8));      break; // SQRTPARAM_L
             case 0x40002BC:
             case 0x40002BD:
             case 0x40002BE:
-            case 0x40002BF: math->writeSqrtParam(address + i - 0x40002B8, data);       break; // SQRTPARAM
-            case 0x4000300: arm9->writePostFlg(data);                                  break; // POSTFLG (ARM9)
+            case 0x40002BF: base -= 0x40002BC; size = 4; math->writeSqrtParamH(mask << (base * 8), data << (base * 8));      break; // SQRTPARAM_H
+            case 0x4000300: base -= 0x4000300; size = 1; arm9->writePostFlg(data << (base * 8));                             break; // POSTFLG (ARM9)
             case 0x4000304:
-            case 0x4000305: gpu->writePowCnt1(address + i - 0x4000214, data);          break; // POWCNT1
+            case 0x4000305: base -= 0x4000304; size = 2; gpu->writePowCnt1(mask << (base * 8), data << (base * 8));          break; // POWCNT1
             case 0x4000400:
             case 0x4000401:
             case 0x4000402:
-            case 0x4000403: gpu3D->writeGxFifo(address + i - 0x4000400, data);         break; // GXFIFO
+            case 0x4000403: base -= 0x4000400; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000404:
             case 0x4000405:
             case 0x4000406:
-            case 0x4000407: gpu3D->writeGxFifo(address + i - 0x4000404, data);         break; // GXFIFO
+            case 0x4000407: base -= 0x4000404; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000408:
             case 0x4000409:
             case 0x400040A:
-            case 0x400040B: gpu3D->writeGxFifo(address + i - 0x4000408, data);         break; // GXFIFO
+            case 0x400040B: base -= 0x4000408; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x400040C:
             case 0x400040D:
             case 0x400040E:
-            case 0x400040F: gpu3D->writeGxFifo(address + i - 0x400040C, data);         break; // GXFIFO
+            case 0x400040F: base -= 0x400040C; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000410:
             case 0x4000411:
             case 0x4000412:
-            case 0x4000413: gpu3D->writeGxFifo(address + i - 0x4000410, data);         break; // GXFIFO
+            case 0x4000413: base -= 0x4000410; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000414:
             case 0x4000415:
             case 0x4000416:
-            case 0x4000417: gpu3D->writeGxFifo(address + i - 0x4000414, data);         break; // GXFIFO
+            case 0x4000417: base -= 0x4000414; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000418:
             case 0x4000419:
             case 0x400041A:
-            case 0x400041B: gpu3D->writeGxFifo(address + i - 0x4000418, data);         break; // GXFIFO
+            case 0x400041B: base -= 0x4000418; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x400041C:
             case 0x400041D:
             case 0x400041E:
-            case 0x400041F: gpu3D->writeGxFifo(address + i - 0x400041C, data);         break; // GXFIFO
+            case 0x400041F: base -= 0x400041C; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000420:
             case 0x4000421:
             case 0x4000422:
-            case 0x4000423: gpu3D->writeGxFifo(address + i - 0x4000420, data);         break; // GXFIFO
+            case 0x4000423: base -= 0x4000420; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000424:
             case 0x4000425:
             case 0x4000426:
-            case 0x4000427: gpu3D->writeGxFifo(address + i - 0x4000424, data);         break; // GXFIFO
+            case 0x4000427: base -= 0x4000424; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000428:
             case 0x4000429:
             case 0x400042A:
-            case 0x400042B: gpu3D->writeGxFifo(address + i - 0x4000428, data);         break; // GXFIFO
+            case 0x400042B: base -= 0x4000428; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x400042C:
             case 0x400042D:
             case 0x400042E:
-            case 0x400042F: gpu3D->writeGxFifo(address + i - 0x400042C, data);         break; // GXFIFO
+            case 0x400042F: base -= 0x400042C; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000430:
             case 0x4000431:
             case 0x4000432:
-            case 0x4000433: gpu3D->writeGxFifo(address + i - 0x4000430, data);         break; // GXFIFO
+            case 0x4000433: base -= 0x4000430; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000434:
             case 0x4000435:
             case 0x4000436:
-            case 0x4000437: gpu3D->writeGxFifo(address + i - 0x4000434, data);         break; // GXFIFO
+            case 0x4000437: base -= 0x4000434; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000438:
             case 0x4000439:
             case 0x400043A:
-            case 0x400043B: gpu3D->writeGxFifo(address + i - 0x4000438, data);         break; // GXFIFO
+            case 0x400043B: base -= 0x4000438; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x400043C:
             case 0x400043D:
             case 0x400043E:
-            case 0x400043F: gpu3D->writeGxFifo(address + i - 0x400043C, data);         break; // GXFIFO
+            case 0x400043F: base -= 0x400043C; size = 4; gpu3D->writeGxFifo(mask << (base * 8), data << (base * 8));         break; // GXFIFO
             case 0x4000440:
             case 0x4000441:
             case 0x4000442:
-            case 0x4000443: gpu3D->writeMtxMode(address + i - 0x4000440, data);        break; // MTX_MODE
+            case 0x4000443: base -= 0x4000440; size = 4; gpu3D->writeMtxMode(mask << (base * 8), data << (base * 8));        break; // MTX_MODE
             case 0x4000444:
             case 0x4000445:
             case 0x4000446:
-            case 0x4000447: gpu3D->writeMtxPush(address + i - 0x4000444, data);        break; // MTX_PUSH
+            case 0x4000447: base -= 0x4000444; size = 4; gpu3D->writeMtxPush(mask << (base * 8), data << (base * 8));        break; // MTX_PUSH
             case 0x4000448:
             case 0x4000449:
             case 0x400044A:
-            case 0x400044B: gpu3D->writeMtxPop(address + i - 0x4000448, data);         break; // MTX_POP
+            case 0x400044B: base -= 0x4000448; size = 4; gpu3D->writeMtxPop(mask << (base * 8), data << (base * 8));         break; // MTX_POP
             case 0x400044C:
             case 0x400044D:
             case 0x400044E:
-            case 0x400044F: gpu3D->writeMtxStore(address + i - 0x400044C, data);       break; // MTX_STORE
+            case 0x400044F: base -= 0x400044C; size = 4; gpu3D->writeMtxStore(mask << (base * 8), data << (base * 8));       break; // MTX_STORE
             case 0x4000450:
             case 0x4000451:
             case 0x4000452:
-            case 0x4000453: gpu3D->writeMtxRestore(address + i - 0x4000450, data);     break; // MTX_RESTORE
+            case 0x4000453: base -= 0x4000450; size = 4; gpu3D->writeMtxRestore(mask << (base * 8), data << (base * 8));     break; // MTX_RESTORE
             case 0x4000454:
             case 0x4000455:
             case 0x4000456:
-            case 0x4000457: gpu3D->writeMtxIdentity(address + i - 0x4000454, data);    break; // MTX_IDENTITY
+            case 0x4000457: base -= 0x4000454; size = 4; gpu3D->writeMtxIdentity(mask << (base * 8), data << (base * 8));    break; // MTX_IDENTITY
             case 0x4000458:
             case 0x4000459:
             case 0x400045A:
-            case 0x400045B: gpu3D->writeMtxLoad44(address + i - 0x4000458, data);      break; // MTX_LOAD_4x4
+            case 0x400045B: base -= 0x4000458; size = 4; gpu3D->writeMtxLoad44(mask << (base * 8), data << (base * 8));      break; // MTX_LOAD_4x4
             case 0x400045C:
             case 0x400045D:
             case 0x400045E:
-            case 0x400045F: gpu3D->writeMtxLoad43(address + i - 0x400045C, data);      break; // MTX_LOAD_4x3
+            case 0x400045F: base -= 0x400045C; size = 4; gpu3D->writeMtxLoad43(mask << (base * 8), data << (base * 8));      break; // MTX_LOAD_4x3
             case 0x4000460:
             case 0x4000461:
             case 0x4000462:
-            case 0x4000463: gpu3D->writeMtxMult44(address + i - 0x4000460, data);      break; // MTX_MULT_4x4
+            case 0x4000463: base -= 0x4000460; size = 4; gpu3D->writeMtxMult44(mask << (base * 8), data << (base * 8));      break; // MTX_MULT_4x4
             case 0x4000464:
             case 0x4000465:
             case 0x4000466:
-            case 0x4000467: gpu3D->writeMtxMult43(address + i - 0x4000464, data);      break; // MTX_MULT_4x3
+            case 0x4000467: base -= 0x4000464; size = 4; gpu3D->writeMtxMult43(mask << (base * 8), data << (base * 8));      break; // MTX_MULT_4x3
             case 0x4000468:
             case 0x4000469:
             case 0x400046A:
-            case 0x400046B: gpu3D->writeMtxMult33(address + i - 0x4000468, data);      break; // MTX_MULT_3x3
+            case 0x400046B: base -= 0x4000468; size = 4; gpu3D->writeMtxMult33(mask << (base * 8), data << (base * 8));      break; // MTX_MULT_3x3
             case 0x400046C:
             case 0x400046D:
             case 0x400046E:
-            case 0x400046F: gpu3D->writeMtxScale(address + i - 0x400046C, data);       break; // MTX_SCALE
+            case 0x400046F: base -= 0x400046C; size = 4; gpu3D->writeMtxScale(mask << (base * 8), data << (base * 8));       break; // MTX_SCALE
             case 0x4000470:
             case 0x4000471:
             case 0x4000472:
-            case 0x4000473: gpu3D->writeMtxTrans(address + i - 0x4000470, data);       break; // MTX_TRANS
+            case 0x4000473: base -= 0x4000470; size = 4; gpu3D->writeMtxTrans(mask << (base * 8), data << (base * 8));       break; // MTX_TRANS
             case 0x4000480:
             case 0x4000481:
             case 0x4000482:
-            case 0x4000483: gpu3D->writeColor(address + i - 0x4000480, data);          break; // COLOR
+            case 0x4000483: base -= 0x4000480; size = 4; gpu3D->writeColor(mask << (base * 8), data << (base * 8));          break; // COLOR
             case 0x4000484:
             case 0x4000485:
             case 0x4000486:
-            case 0x4000487: gpu3D->writeNormal(address + i - 0x4000484, data);         break; // NORMAL
+            case 0x4000487: base -= 0x4000484; size = 4; gpu3D->writeNormal(mask << (base * 8), data << (base * 8));         break; // NORMAL
             case 0x4000488:
             case 0x4000489:
             case 0x400048A:
-            case 0x400048B: gpu3D->writeTexCoord(address + i - 0x4000488, data);       break; // TEXCOORD
+            case 0x400048B: base -= 0x4000488; size = 4; gpu3D->writeTexCoord(mask << (base * 8), data << (base * 8));       break; // TEXCOORD
             case 0x400048C:
             case 0x400048D:
             case 0x400048E:
-            case 0x400048F: gpu3D->writeVtx16(address + i - 0x400048C, data);          break; // VTX_16
+            case 0x400048F: base -= 0x400048C; size = 4; gpu3D->writeVtx16(mask << (base * 8), data << (base * 8));          break; // VTX_16
             case 0x4000490:
             case 0x4000491:
             case 0x4000492:
-            case 0x4000493: gpu3D->writeVtx10(address + i - 0x4000490, data);          break; // VTX_10
+            case 0x4000493: base -= 0x4000490; size = 4; gpu3D->writeVtx10(mask << (base * 8), data << (base * 8));          break; // VTX_10
             case 0x4000494:
             case 0x4000495:
             case 0x4000496:
-            case 0x4000497: gpu3D->writeVtxXY(address + i - 0x4000494, data);          break; // VTX_XY
+            case 0x4000497: base -= 0x4000494; size = 4; gpu3D->writeVtxXY(mask << (base * 8), data << (base * 8));          break; // VTX_XY
             case 0x4000498:
             case 0x4000499:
             case 0x400049A:
-            case 0x400049B: gpu3D->writeVtxXZ(address + i - 0x4000498, data);          break; // VTX_XZ
+            case 0x400049B: base -= 0x4000498; size = 4; gpu3D->writeVtxXZ(mask << (base * 8), data << (base * 8));          break; // VTX_XZ
             case 0x400049C:
             case 0x400049D:
             case 0x400049E:
-            case 0x400049F: gpu3D->writeVtxYZ(address + i - 0x400049C, data);          break; // VTX_YZ
+            case 0x400049F: base -= 0x400049C; size = 4; gpu3D->writeVtxYZ(mask << (base * 8), data << (base * 8));          break; // VTX_YZ
             case 0x40004A0:
             case 0x40004A1:
             case 0x40004A2:
-            case 0x40004A3: gpu3D->writeVtxDiff(address + i - 0x40004A0, data);        break; // VTX_DIFF
+            case 0x40004A3: base -= 0x40004A0; size = 4; gpu3D->writeVtxDiff(mask << (base * 8), data << (base * 8));        break; // VTX_DIFF
             case 0x40004A4:
             case 0x40004A5:
             case 0x40004A6:
-            case 0x40004A7: gpu3D->writePolygonAttr(address + i - 0x40004A4, data);    break; // POLYGON_ATTR
+            case 0x40004A7: base -= 0x40004A4; size = 4; gpu3D->writePolygonAttr(mask << (base * 8), data << (base * 8));    break; // POLYGON_ATTR
             case 0x40004A8:
             case 0x40004A9:
             case 0x40004AA:
-            case 0x40004AB: gpu3D->writeTexImageParam(address + i - 0x40004A8, data);  break; // TEXIMAGE_PARAM
+            case 0x40004AB: base -= 0x40004A8; size = 4; gpu3D->writeTexImageParam(mask << (base * 8), data << (base * 8));  break; // TEXIMAGE_PARAM
             case 0x40004AC:
             case 0x40004AD:
             case 0x40004AE:
-            case 0x40004AF: gpu3D->writePlttBase(address + i - 0x40004AC, data);       break; // PLTT_BASE
+            case 0x40004AF: base -= 0x40004AC; size = 4; gpu3D->writePlttBase(mask << (base * 8), data << (base * 8));       break; // PLTT_BASE
             case 0x40004C0:
             case 0x40004C1:
             case 0x40004C2:
-            case 0x40004C3: gpu3D->writeDifAmb(address + i - 0x40004C0, data);         break; // DIF_AMB
+            case 0x40004C3: base -= 0x40004C0; size = 4; gpu3D->writeDifAmb(mask << (base * 8), data << (base * 8));         break; // DIF_AMB
             case 0x40004C4:
             case 0x40004C5:
             case 0x40004C6:
-            case 0x40004C7: gpu3D->writeSpeEmi(address + i - 0x40004C4, data);         break; // SPE_EMI
+            case 0x40004C7: base -= 0x40004C4; size = 4; gpu3D->writeSpeEmi(mask << (base * 8), data << (base * 8));         break; // SPE_EMI
             case 0x40004C8:
             case 0x40004C9:
             case 0x40004CA:
-            case 0x40004CB: gpu3D->writeLightVector(address + i - 0x40004C8, data);    break; // LIGHT_VECTOR
+            case 0x40004CB: base -= 0x40004C8; size = 4; gpu3D->writeLightVector(mask << (base * 8), data << (base * 8));    break; // LIGHT_VECTOR
             case 0x40004CC:
             case 0x40004CD:
             case 0x40004CE:
-            case 0x40004CF: gpu3D->writeLightColor(address + i - 0x40004CC, data);     break; // LIGHT_COLOR
+            case 0x40004CF: base -= 0x40004CC; size = 4; gpu3D->writeLightColor(mask << (base * 8), data << (base * 8));     break; // LIGHT_COLOR
             case 0x40004D0:
             case 0x40004D1:
             case 0x40004D2:
-            case 0x40004D3: gpu3D->writeShininess(address + i - 0x40004D0, data);      break; // SHININESS
+            case 0x40004D3: base -= 0x40004D0; size = 4; gpu3D->writeShininess(mask << (base * 8), data << (base * 8));      break; // SHININESS
             case 0x4000500:
             case 0x4000501:
             case 0x4000502:
-            case 0x4000503: gpu3D->writeBeginVtxs(address + i - 0x4000500, data);      break; // BEGIN_VTXS
+            case 0x4000503: base -= 0x4000500; size = 4; gpu3D->writeBeginVtxs(mask << (base * 8), data << (base * 8));      break; // BEGIN_VTXS
             case 0x4000504:
             case 0x4000505:
             case 0x4000506:
-            case 0x4000507: gpu3D->writeEndVtxs(address + i - 0x4000504, data);        break; // END_VTXS
+            case 0x4000507: base -= 0x4000504; size = 4; gpu3D->writeEndVtxs(mask << (base * 8), data << (base * 8));        break; // END_VTXS
             case 0x4000540:
             case 0x4000541:
             case 0x4000542:
-            case 0x4000543: gpu3D->writeSwapBuffers(address + i - 0x4000540, data);    break; // SWAP_BUFFERS
+            case 0x4000543: base -= 0x4000540; size = 4; gpu3D->writeSwapBuffers(mask << (base * 8), data << (base * 8));    break; // SWAP_BUFFERS
             case 0x4000580:
             case 0x4000581:
             case 0x4000582:
-            case 0x4000583: gpu3D->writeViewport(address + i - 0x4000580, data);       break; // VIEWPORT
+            case 0x4000583: base -= 0x4000580; size = 4; gpu3D->writeViewport(mask << (base * 8), data << (base * 8));       break; // VIEWPORT
             case 0x40005C0:
             case 0x40005C1:
             case 0x40005C2:
-            case 0x40005C3: gpu3D->writeBoxTest(address + i - 0x40005C0, data);        break; // BOX_TEST
+            case 0x40005C3: base -= 0x40005C0; size = 4; gpu3D->writeBoxTest(mask << (base * 8), data << (base * 8));        break; // BOX_TEST
             case 0x40005C4:
             case 0x40005C5:
             case 0x40005C6:
-            case 0x40005C7: gpu3D->writePosTest(address + i - 0x40005C4, data);        break; // POS_TEST
+            case 0x40005C7: base -= 0x40005C4; size = 4; gpu3D->writePosTest(mask << (base * 8), data << (base * 8));        break; // POS_TEST
             case 0x40005C8:
             case 0x40005C9:
             case 0x40005CA:
-            case 0x40005CB: gpu3D->writeVecTest(address + i - 0x40005C8, data);        break; // VEC_TEST
+            case 0x40005CB: base -= 0x40005C8; size = 4; gpu3D->writeVecTest(mask << (base * 8), data << (base * 8));        break; // VEC_TEST
             case 0x4000600:
             case 0x4000601:
             case 0x4000602:
-            case 0x4000603: gpu3D->writeGxStat(address + i - 0x4000600, data);         break; // GXSTAT
+            case 0x4000603: base -= 0x4000600; size = 4; gpu3D->writeGxStat(mask << (base * 8), data << (base * 8));         break; // GXSTAT
             case 0x4001000:
             case 0x4001001:
             case 0x4001002:
-            case 0x4001003: engineB->writeDispCnt(address + i - 0x4001000, data);      break; // DISPCNT (engine B)
+            case 0x4001003: base -= 0x4001000; size = 4; engineB->writeDispCnt(mask << (base * 8), data << (base * 8));      break; // DISPCNT (engine B)
             case 0x4001008:
-            case 0x4001009: engineB->writeBgCnt(0, address + i - 0x4001008, data);     break; // BG0CNT (engine B)
+            case 0x4001009: base -= 0x4001008; size = 2; engineB->writeBgCnt(0, mask << (base * 8), data << (base * 8));     break; // BG0CNT (engine B)
             case 0x400100A:
-            case 0x400100B: engineB->writeBgCnt(1, address + i - 0x400100A, data);     break; // BG1CNT (engine B)
+            case 0x400100B: base -= 0x400100A; size = 2; engineB->writeBgCnt(1, mask << (base * 8), data << (base * 8));     break; // BG1CNT (engine B)
             case 0x400100C:
-            case 0x400100D: engineB->writeBgCnt(2, address + i - 0x400100C, data);     break; // BG2CNT (engine B)
+            case 0x400100D: base -= 0x400100C; size = 2; engineB->writeBgCnt(2, mask << (base * 8), data << (base * 8));     break; // BG2CNT (engine B)
             case 0x400100E:
-            case 0x400100F: engineB->writeBgCnt(3, address + i - 0x400100E, data);     break; // BG3CNT (engine B)
+            case 0x400100F: base -= 0x400100E; size = 2; engineB->writeBgCnt(3, mask << (base * 8), data << (base * 8));     break; // BG3CNT (engine B)
             case 0x4001010:
-            case 0x4001011: engineB->writeBgHOfs(0, address + i - 0x4001010, data);    break; // BG0HOFS (engine B)
+            case 0x4001011: base -= 0x4001010; size = 2; engineB->writeBgHOfs(0, mask << (base * 8), data << (base * 8));    break; // BG0HOFS (engine B)
             case 0x4001012:
-            case 0x4001013: engineB->writeBgVOfs(0, address + i - 0x4001012, data);    break; // BG0VOFS (engine B)
+            case 0x4001013: base -= 0x4001012; size = 2; engineB->writeBgVOfs(0, mask << (base * 8), data << (base * 8));    break; // BG0VOFS (engine B)
             case 0x4001014:
-            case 0x4001015: engineB->writeBgHOfs(1, address + i - 0x4001014, data);    break; // BG1HOFS (engine B)
+            case 0x4001015: base -= 0x4001014; size = 2; engineB->writeBgHOfs(1, mask << (base * 8), data << (base * 8));    break; // BG1HOFS (engine B)
             case 0x4001016:
-            case 0x4001017: engineB->writeBgVOfs(1, address + i - 0x4001016, data);    break; // BG1VOFS (engine B)
+            case 0x4001017: base -= 0x4001016; size = 2; engineB->writeBgVOfs(1, mask << (base * 8), data << (base * 8));    break; // BG1VOFS (engine B)
             case 0x4001018:
-            case 0x4001019: engineB->writeBgHOfs(2, address + i - 0x4001018, data);    break; // BG2HOFS (engine B)
+            case 0x4001019: base -= 0x4001018; size = 2; engineB->writeBgHOfs(2, mask << (base * 8), data << (base * 8));    break; // BG2HOFS (engine B)
             case 0x400101A:
-            case 0x400101B: engineB->writeBgVOfs(2, address + i - 0x400101A, data);    break; // BG2VOFS (engine B)
+            case 0x400101B: base -= 0x400101A; size = 2; engineB->writeBgVOfs(2, mask << (base * 8), data << (base * 8));    break; // BG2VOFS (engine B)
             case 0x400101C:
-            case 0x400101D: engineB->writeBgHOfs(3, address + i - 0x400101C, data);    break; // BG3HOFS (engine B)
+            case 0x400101D: base -= 0x400101C; size = 2; engineB->writeBgHOfs(3, mask << (base * 8), data << (base * 8));    break; // BG3HOFS (engine B)
             case 0x400101E:
-            case 0x400101F: engineB->writeBgVOfs(3, address + i - 0x400101E, data);    break; // BG3VOFS (engine B)
+            case 0x400101F: base -= 0x400101E; size = 2; engineB->writeBgVOfs(3, mask << (base * 8), data << (base * 8));    break; // BG3VOFS (engine B)
             case 0x4001020:
-            case 0x4001021: engineB->writeBgPA(2, address + i - 0x4001020, data);      break; // BG2PA (engine B)
+            case 0x4001021: base -= 0x4001020; size = 2; engineB->writeBgPA(2, mask << (base * 8), data << (base * 8));      break; // BG2PA (engine B)
             case 0x4001022:
-            case 0x4001023: engineB->writeBgPB(2, address + i - 0x4001022, data);      break; // BG2PB (engine B)
+            case 0x4001023: base -= 0x4001022; size = 2; engineB->writeBgPB(2, mask << (base * 8), data << (base * 8));      break; // BG2PB (engine B)
             case 0x4001024:
-            case 0x4001025: engineB->writeBgPC(2, address + i - 0x4001024, data);      break; // BG2PC (engine B)
+            case 0x4001025: base -= 0x4001024; size = 2; engineB->writeBgPC(2, mask << (base * 8), data << (base * 8));      break; // BG2PC (engine B)
             case 0x4001026:
-            case 0x4001027: engineB->writeBgPD(2, address + i - 0x4001026, data);      break; // BG2PD (engine B)
+            case 0x4001027: base -= 0x4001026; size = 2; engineB->writeBgPD(2, mask << (base * 8), data << (base * 8));      break; // BG2PD (engine B)
             case 0x4001028:
             case 0x4001029:
             case 0x400102A:
-            case 0x400102B: engineB->writeBgX(2, address + i - 0x4001028, data);       break; // BG2X (engine B)
+            case 0x400102B: base -= 0x4001028; size = 4; engineB->writeBgX(2, mask << (base * 8), data << (base * 8));       break; // BG2X (engine B)
             case 0x400102C:
             case 0x400102D:
             case 0x400102E:
-            case 0x400102F: engineB->writeBgY(2, address + i - 0x400102C, data);       break; // BG2Y (engine B)
+            case 0x400102F: base -= 0x400102C; size = 4; engineB->writeBgY(2, mask << (base * 8), data << (base * 8));       break; // BG2Y (engine B)
             case 0x4001030:
-            case 0x4001031: engineB->writeBgPA(3, address + i - 0x4001030, data);      break; // BG3PA (engine B)
+            case 0x4001031: base -= 0x4001030; size = 2; engineB->writeBgPA(3, mask << (base * 8), data << (base * 8));      break; // BG3PA (engine B)
             case 0x4001032:
-            case 0x4001033: engineB->writeBgPB(3, address + i - 0x4001032, data);      break; // BG3PB (engine B)
+            case 0x4001033: base -= 0x4001032; size = 2; engineB->writeBgPB(3, mask << (base * 8), data << (base * 8));      break; // BG3PB (engine B)
             case 0x4001034:
-            case 0x4001035: engineB->writeBgPC(3, address + i - 0x4001034, data);      break; // BG3PC (engine B)
+            case 0x4001035: base -= 0x4001034; size = 2; engineB->writeBgPC(3, mask << (base * 8), data << (base * 8));      break; // BG3PC (engine B)
             case 0x4001036:
-            case 0x4001037: engineB->writeBgPD(3, address + i - 0x4001036, data);      break; // BG3PD (engine B)
+            case 0x4001037: base -= 0x4001036; size = 2; engineB->writeBgPD(3, mask << (base * 8), data << (base * 8));      break; // BG3PD (engine B)
             case 0x4001038:
             case 0x4001039:
             case 0x400103A:
-            case 0x400103B: engineB->writeBgX(3, address + i - 0x4001038, data);       break; // BG3X (engine B)
+            case 0x400103B: base -= 0x4001038; size = 4; engineB->writeBgX(3, mask << (base * 8), data << (base * 8));       break; // BG3X (engine B)
             case 0x400103C:
             case 0x400103D:
             case 0x400103E:
-            case 0x400103F: engineB->writeBgY(3, address + i - 0x400103C, data);       break; // BG3Y (engine B)
+            case 0x400103F: base -= 0x400103C; size = 4; engineB->writeBgY(3, mask << (base * 8), data << (base * 8));       break; // BG3Y (engine B)
             case 0x400106C:
-            case 0x400106D: engineB->writeMasterBright(address + i - 0x400106C, data); break; // MASTER_BRIGHT (engine B)
+            case 0x400106D: base -= 0x400106C; size = 2; engineB->writeMasterBright(mask << (base * 8), data << (base * 8)); break; // MASTER_BRIGHT (engine B)
 
             default:
+            {
+                // Catch unknown writes
                 if (i == 0)
                 {
                     printf("Unknown ARM9 I/O register write: 0x%X\n", address);
                     return;
                 }
+
+                // Ignore unknown writes if they occur after the first byte
+                // This is in case, for example, a 16-bit register is accessed with a 32-bit write
+                i++;
+                continue;
+            }
         }
+
+        i += size - base;
     }
 }
 
 template <typename T> void Memory::ioWrite7(uint32_t address, T value)
 {
-    // Write an LSB-first value to the data of the ARM7 I/O registers
-    for (unsigned int i = 0; i < sizeof(T); i++)
-    {
-        uint8_t data = value >> (i * 8);
+    int i = 0;
 
-        switch (address + i)
+    // Write a value to one or more ARM7 I/O registers
+    while (i < sizeof(T))
+    {
+        uint32_t base = address + i;
+        unsigned int size;
+        uint32_t mask = (1L << ((sizeof(T) - i) * 8)) - 1;
+        uint32_t data = value >> (i * 8);
+
+        switch (base)
         {
             case 0x4000004:
-            case 0x4000005: gpu->writeDispStat7(address + i - 0x4000004, data);     break; // DISPSTAT (ARM7)
+            case 0x4000005: base -= 0x4000004; size = 2; gpu->writeDispStat7(mask << (base * 8), data << (base * 8));     break; // DISPSTAT (ARM7)
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
-            case 0x40000B3: dma7->writeDmaSad(0, address + i - 0x40000B0, data);    break; // DMA0SAD (ARM7)
+            case 0x40000B3: base -= 0x40000B0; size = 4; dma7->writeDmaSad(0, mask << (base * 8), data << (base * 8));    break; // DMA0SAD (ARM7)
             case 0x40000B4:
             case 0x40000B5:
             case 0x40000B6:
-            case 0x40000B7: dma7->writeDmaDad(0, address + i - 0x40000B4, data);    break; // DMA0DAD (ARM7)
+            case 0x40000B7: base -= 0x40000B4; size = 4; dma7->writeDmaDad(0, mask << (base * 8), data << (base * 8));    break; // DMA0DAD (ARM7)
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
-            case 0x40000BB: dma7->writeDmaCnt(0, address + i - 0x40000B8, data);    break; // DMA0CNT (ARM7)
+            case 0x40000BB: base -= 0x40000B8; size = 4; dma7->writeDmaCnt(0, mask << (base * 8), data << (base * 8));    break; // DMA0CNT (ARM7)
             case 0x40000BC:
             case 0x40000BD:
             case 0x40000BE:
-            case 0x40000BF: dma7->writeDmaSad(1, address + i - 0x40000BC, data);    break; // DMA1SAD (ARM7)
+            case 0x40000BF: base -= 0x40000BC; size = 4; dma7->writeDmaSad(1, mask << (base * 8), data << (base * 8));    break; // DMA1SAD (ARM7)
             case 0x40000C0:
             case 0x40000C1:
             case 0x40000C2:
-            case 0x40000C3: dma7->writeDmaDad(1, address + i - 0x40000C0, data);    break; // DMA1DAD (ARM7)
+            case 0x40000C3: base -= 0x40000C0; size = 4; dma7->writeDmaDad(1, mask << (base * 8), data << (base * 8));    break; // DMA1DAD (ARM7)
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
-            case 0x40000C7: dma7->writeDmaCnt(1, address + i - 0x40000C4, data);    break; // DMA1CNT (ARM7)
+            case 0x40000C7: base -= 0x40000C4; size = 4; dma7->writeDmaCnt(1, mask << (base * 8), data << (base * 8));    break; // DMA1CNT (ARM7)
             case 0x40000C8:
             case 0x40000C9:
             case 0x40000CA:
-            case 0x40000CB: dma7->writeDmaSad(2, address + i - 0x40000C8, data);    break; // DMA2SAD (ARM7)
+            case 0x40000CB: base -= 0x40000C8; size = 4; dma7->writeDmaSad(2, mask << (base * 8), data << (base * 8));    break; // DMA2SAD (ARM7)
             case 0x40000CC:
             case 0x40000CD:
             case 0x40000CE:
-            case 0x40000CF: dma7->writeDmaDad(2, address + i - 0x40000CC, data);    break; // DMA2DAD (ARM7)
+            case 0x40000CF: base -= 0x40000CC; size = 4; dma7->writeDmaDad(2, mask << (base * 8), data << (base * 8));    break; // DMA2DAD (ARM7)
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
-            case 0x40000D3: dma7->writeDmaCnt(2, address + i - 0x40000D0, data);    break; // DMA2CNT (ARM7)
+            case 0x40000D3: base -= 0x40000D0; size = 4; dma7->writeDmaCnt(2, mask << (base * 8), data << (base * 8));    break; // DMA2CNT (ARM7)
             case 0x40000D4:
             case 0x40000D5:
             case 0x40000D6:
-            case 0x40000D7: dma7->writeDmaSad(3, address + i - 0x40000D4, data);    break; // DMA3SAD (ARM7)
+            case 0x40000D7: base -= 0x40000D4; size = 4; dma7->writeDmaSad(3, mask << (base * 8), data << (base * 8));    break; // DMA3SAD (ARM7)
             case 0x40000D8:
             case 0x40000D9:
             case 0x40000DA:
-            case 0x40000DB: dma7->writeDmaDad(3, address + i - 0x40000D8, data);    break; // DMA3DAD (ARM7)
+            case 0x40000DB: base -= 0x40000D8; size = 4; dma7->writeDmaDad(3, mask << (base * 8), data << (base * 8));    break; // DMA3DAD (ARM7)
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
-            case 0x40000DF: dma7->writeDmaCnt(3, address + i - 0x40000DC, data);    break; // DMA3CNT (ARM7)
+            case 0x40000DF: base -= 0x40000DC; size = 4; dma7->writeDmaCnt(3, mask << (base * 8), data << (base * 8));    break; // DMA3CNT (ARM7)
             case 0x4000100:
-            case 0x4000101: timers7->writeTmCntL(0, address + i - 0x4000100, data); break; // TM0CNT_L (ARM7)
-            case 0x4000102: timers7->writeTmCntH(0, data);                          break; // TM0CNT_H (ARM7)
+            case 0x4000101: base -= 0x4000100; size = 2; timers7->writeTmCntL(0, mask << (base * 8), data << (base * 8)); break; // TM0CNT_L (ARM7)
+            case 0x4000102:
+            case 0x4000103: base -= 0x4000102; size = 2; timers7->writeTmCntH(0, mask << (base * 8), data << (base * 8)); break; // TM0CNT_H (ARM7)
             case 0x4000104:
-            case 0x4000105: timers7->writeTmCntL(1, address + i - 0x4000104, data); break; // TM1CNT_L (ARM7)
-            case 0x4000106: timers7->writeTmCntH(1, data);                          break; // TM1CNT_H (ARM7)
+            case 0x4000105: base -= 0x4000104; size = 2; timers7->writeTmCntL(1, mask << (base * 8), data << (base * 8)); break; // TM1CNT_L (ARM7)
+            case 0x4000106:
+            case 0x4000107: base -= 0x4000106; size = 2; timers7->writeTmCntH(1, mask << (base * 8), data << (base * 8)); break; // TM1CNT_H (ARM7)
             case 0x4000108:
-            case 0x4000109: timers7->writeTmCntL(2, address + i - 0x4000108, data); break; // TM2CNT_L (ARM7)
-            case 0x400010A: timers7->writeTmCntH(2, data);                          break; // TM2CNT_H (ARM7)
+            case 0x4000109: base -= 0x4000108; size = 2; timers7->writeTmCntL(2, mask << (base * 8), data << (base * 8)); break; // TM2CNT_L (ARM7)
+            case 0x400010A:
+            case 0x400010B: base -= 0x400010A; size = 2; timers7->writeTmCntH(2, mask << (base * 8), data << (base * 8)); break; // TM2CNT_H (ARM7)
             case 0x400010C:
-            case 0x400010D: timers7->writeTmCntL(3, address + i - 0x400010C, data); break; // TM3CNT_L (ARM7)
-            case 0x400010E: timers7->writeTmCntH(3, data);                          break; // TM3CNT_H (ARM7)
-            case 0x4000138: rtc->writeRtc(value);                                   break; // RTC
+            case 0x400010D: base -= 0x400010C; size = 2; timers7->writeTmCntL(3, mask << (base * 8), data << (base * 8)); break; // TM3CNT_L (ARM7)
+            case 0x400010E:
+            case 0x400010F: base -= 0x400010E; size = 2; timers7->writeTmCntH(3, mask << (base * 8), data << (base * 8)); break; // TM3CNT_H (ARM7)
+            case 0x4000138: base -= 0x4000138; size = 1; rtc->writeRtc(data << (base * 8));                               break; // RTC
             case 0x4000180:
-            case 0x4000181: ipc->writeIpcSync7(address + i - 0x4000180, data);      break; // IPCSYNC (ARM7)
+            case 0x4000181: base -= 0x4000180; size = 2; ipc->writeIpcSync7(mask << (base * 8), data << (base * 8));      break; // IPCSYNC (ARM7)
             case 0x4000184:
-            case 0x4000185: ipc->writeIpcFifoCnt7(address + i - 0x4000184, data);   break; // IPCFIFOCNT (ARM7)
+            case 0x4000185: base -= 0x4000184; size = 2; ipc->writeIpcFifoCnt7(mask << (base * 8), data << (base * 8));   break; // IPCFIFOCNT (ARM7)
             case 0x4000188:
             case 0x4000189:
             case 0x400018A:
-            case 0x400018B: ipc->writeIpcFifoSend7(address + i - 0x4000188, data);  break; // IPCFIFOSEND (ARM7)
+            case 0x400018B: base -= 0x4000188; size = 4; ipc->writeIpcFifoSend7(mask << (base * 8), data << (base * 8));  break; // IPCFIFOSEND (ARM7)
             case 0x40001A0:
-            case 0x40001A1: cart7->writeAuxSpiCnt(address + i - 0x40001A0, data);   break; // AUXSPICNT (ARM7)
-            case 0x40001A2: cart7->writeAuxSpiData(data);                           break; // AUXSPIDATA (ARM7)
+            case 0x40001A1: base -= 0x40001A0; size = 2; cart7->writeAuxSpiCnt(mask << (base * 8), data << (base * 8));   break; // AUXSPICNT (ARM7)
+            case 0x40001A2: base -= 0x40001A2; size = 1; cart7->writeAuxSpiData(data << (base * 8));                      break; // AUXSPIDATA (ARM7)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: cart7->writeRomCtrl(address + i - 0x40001A4, data);     break; // ROMCTRL (ARM7)
+            case 0x40001A7: base -= 0x40001A4; size = 4; cart7->writeRomCtrl(mask << (base * 8), data << (base * 8));     break; // ROMCTRL (ARM7)
             case 0x40001A8:
             case 0x40001A9:
             case 0x40001AA:
-            case 0x40001AB:
+            case 0x40001AB: base -= 0x40001A8; size = 4; cart7->writeRomCmdOutL(mask << (base * 8), data << (base * 8));  break; // ROMCMDOUT_L (ARM7)
             case 0x40001AC:
             case 0x40001AD:
             case 0x40001AE:
-            case 0x40001AF: cart7->writeRomCmdOut(address + i - 0x40001A8, data);   break; // ROMCMDOUT (ARM7)
+            case 0x40001AF: base -= 0x40001AC; size = 4; cart7->writeRomCmdOutH(mask << (base * 8), data << (base * 8));  break; // ROMCMDOUT_H (ARM7)
             case 0x40001C0:
-            case 0x40001C1: spi->writeSpiCnt(address + i - 0x40001C0, data);        break; // SPICNT
-            case 0x40001C2: spi->writeSpiData(data);                                break; // SPIDATA
-            case 0x4000208: arm7->writeIme(data);                                   break; // IME (ARM7)
+            case 0x40001C1: base -= 0x40001C0; size = 2; spi->writeSpiCnt(mask << (base * 8), data << (base * 8));        break; // SPICNT
+            case 0x40001C2: base -= 0x40001C2; size = 1; spi->writeSpiData(data << (base * 8));                           break; // SPIDATA
+            case 0x4000208: base -= 0x4000208; size = 1; arm7->writeIme(data << (base * 8));                              break; // IME (ARM7)
             case 0x4000210:
             case 0x4000211:
             case 0x4000212:
-            case 0x4000213: arm7->writeIe(address + i - 0x4000210, data);           break; // IE (ARM7)
+            case 0x4000213: base -= 0x4000210; size = 4; arm7->writeIe(mask << (base * 8), data << (base * 8));           break; // IE (ARM7)
             case 0x4000214:
             case 0x4000215:
             case 0x4000216:
-            case 0x4000217: arm7->writeIrf(address + i - 0x4000214, data);          break; // IF (ARM7)
-            case 0x4000300: arm7->writePostFlg(data);                               break; // POSTFLG (ARM7)
-            case 0x4000301: writeHaltCnt(data);                                     break; // HALTCNT
+            case 0x4000217: base -= 0x4000214; size = 4; arm7->writeIrf(mask << (base * 8), data << (base * 8));          break; // IF (ARM7)
+            case 0x4000300: base -= 0x4000300; size = 1; arm7->writePostFlg(data << (base * 8));                          break; // POSTFLG (ARM7)
+            case 0x4000301: base -= 0x4000301; size = 1; writeHaltCnt(data << (base * 8));                                break; // HALTCNT
             case 0x4000504:
-            case 0x4000505: writeSoundBias(address + i - 0x4000504, data);          break; // SOUNDBIAS
+            case 0x4000505: base -= 0x4000504; size = 2; writeSoundBias(mask << (base * 8), data << (base * 8));          break; // SOUNDBIAS
 
             default:
+            {
+                // Catch unknown writes
                 if (i == 0)
                 {
                     printf("Unknown ARM7 I/O register write: 0x%X\n", address);
                     return;
                 }
+
+                // Ignore unknown writes if they occur after the first byte
+                // This is in case, for example, a 16-bit register is accessed with a 32-bit write
+                i++;
+                continue;
+            }
         }
+
+        i += size - base;
     }
 }
 
@@ -1610,10 +1682,10 @@ void Memory::writeVramCntI(uint8_t value)
     vramBases[8] = 0;
 }
 
-void Memory::writeDmaFill(unsigned int channel, unsigned int byte, uint8_t value)
+void Memory::writeDmaFill(unsigned int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMAFILL registers
-    dmaFill[channel] = (dmaFill[channel] & ~(0xFF << (byte * 8))) | (value << (byte * 8));
+    dmaFill[channel] = (dmaFill[channel] & ~mask) | (value & mask);
 }
 
 void Memory::writeHaltCnt(uint8_t value)
@@ -1637,10 +1709,10 @@ void Memory::writeHaltCnt(uint8_t value)
     }
 }
 
-void Memory::writeSoundBias(unsigned int byte, uint8_t value)
+void Memory::writeSoundBias(uint16_t mask, uint16_t value)
 {
     // Write to the SOUNDBIAS register
     // This doesn't do anything yet, but some programs expect it to be writable
-    uint16_t mask = 0x03FF & (0xFF << (byte * 8));
-    soundBias = (soundBias & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0x03FF;
+    soundBias = (soundBias & ~mask) | (value & mask);
 }

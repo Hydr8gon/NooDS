@@ -3092,18 +3092,18 @@ void Interpreter::writeIme(uint8_t value)
     ime = value & 0x01;
 }
 
-void Interpreter::writeIe(unsigned int byte, uint8_t value)
+void Interpreter::writeIe(uint32_t mask, uint32_t value)
 {
     // Write to the IE register
-    uint32_t mask = (cp15 ? 0x003F3F7F : 0x01FF3FFF) & (0xFF << (byte * 8));
-    ie = (ie & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= (cp15 ? 0x003F3F7F : 0x01FF3FFF);
+    ie = (ie & ~mask) | (value & mask);
 }
 
-void Interpreter::writeIrf(unsigned int byte, uint8_t value)
+void Interpreter::writeIrf(uint32_t mask, uint32_t value)
 {
     // Write to the IF register
     // Setting a bit actually clears it to acknowledge an interrupt
-    irf &= ~(value << (byte * 8));
+    irf &= ~(value & mask);
 }
 
 void Interpreter::writePostFlg(uint8_t value)

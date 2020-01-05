@@ -32,10 +32,10 @@ class Spi
         void setTouch(int x, int y);
         void clearTouch();
 
-        uint8_t readSpiCnt(unsigned int byte) { return spiCnt >> (byte * 8); }
-        uint8_t readSpiData()                 { return spiData;              }
+        uint16_t readSpiCnt()  { return spiCnt;  }
+        uint8_t  readSpiData() { return spiData; }
 
-        void writeSpiCnt(unsigned int byte, uint8_t value);
+        void writeSpiCnt(uint16_t mask, uint16_t value);
         void writeSpiData(uint8_t value);
 
     private:

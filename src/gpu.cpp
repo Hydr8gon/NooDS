@@ -140,23 +140,23 @@ void Gpu::scanline355()
     dispStat7 &= ~BIT(1);
 }
 
-void Gpu::writeDispStat9(unsigned int byte, uint8_t value)
+void Gpu::writeDispStat9(uint16_t mask, uint16_t value)
 {
     // Write to the ARM9's DISPSTAT register
-    uint16_t mask = 0xFFB8 & (0xFF << (byte * 8));
-    dispStat9 = (dispStat9 & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0xFFB8;
+    dispStat9 = (dispStat9 & ~mask) | (value & mask);
 }
 
-void Gpu::writeDispStat7(unsigned int byte, uint8_t value)
+void Gpu::writeDispStat7(uint16_t mask, uint16_t value)
 {
     // Write to the ARM7's DISPSTAT register
-    uint16_t mask = 0xFFB8 & (0xFF << (byte * 8));
-    dispStat7 = (dispStat7 & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0xFFB8;
+    dispStat7 = (dispStat7 & ~mask) | (value & mask);
 }
 
-void Gpu::writePowCnt1(unsigned int byte, uint8_t value)
+void Gpu::writePowCnt1(uint16_t mask, uint16_t value)
 {
     // Write to the POWCNT1 register
-    uint16_t mask = 0x820F & (0xFF << (byte * 8));
-    powCnt1 = (powCnt1 & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0x820F;
+    powCnt1 = (powCnt1 & ~mask) | (value & mask);
 }

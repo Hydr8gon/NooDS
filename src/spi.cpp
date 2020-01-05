@@ -54,11 +54,11 @@ void Spi::clearTouch()
     touchY = 0xFFF;
 }
 
-void Spi::writeSpiCnt(unsigned int byte, uint8_t value)
+void Spi::writeSpiCnt(uint16_t mask, uint16_t value)
 {
     // Write to the SPICNT register
-    uint16_t mask = 0xCF03 & (0xFF << (byte * 8));
-    spiCnt = (spiCnt & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0xCF03;
+    spiCnt = (spiCnt & ~mask) | (value & mask);
 }
 
 void Spi::writeSpiData(uint8_t value)

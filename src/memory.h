@@ -98,10 +98,10 @@ class Memory
         template <typename T> void ioWrite9(uint32_t address, T value);
         template <typename T> void ioWrite7(uint32_t address, T value);
 
-        uint8_t readWramStat()                                       { return wramStat;                       }
-        uint8_t readDmaFill(unsigned int channel, unsigned int byte) { return dmaFill[channel] >> (byte * 8); }
-        uint8_t readHaltCnt()                                        { return haltCnt;                        }
-        uint8_t readSoundBias(unsigned int byte)                     { return soundBias        >> (byte * 8); }
+        uint8_t  readWramStat()                    { return wramStat;         }
+        uint32_t readDmaFill(unsigned int channel) { return dmaFill[channel]; }
+        uint8_t  readHaltCnt()                     { return haltCnt;          }
+        uint16_t readSoundBias()                   { return soundBias;        }
 
         void writeVramCntA(uint8_t value);
         void writeVramCntB(uint8_t value);
@@ -113,9 +113,9 @@ class Memory
         void writeWramCnt(uint8_t value);
         void writeVramCntH(uint8_t value);
         void writeVramCntI(uint8_t value);
-        void writeDmaFill(unsigned int channel, unsigned int byte, uint8_t value);
+        void writeDmaFill(unsigned int channel, uint32_t mask, uint32_t value);
         void writeHaltCnt(uint8_t value);
-        void writeSoundBias(unsigned int byte, uint8_t value);
+        void writeSoundBias(uint16_t mask, uint16_t value);
 };
 
 #endif // MEMORY_H

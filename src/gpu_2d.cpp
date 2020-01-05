@@ -713,80 +713,80 @@ void Gpu2D::drawObjects(unsigned int line)
     }
 }
 
-void Gpu2D::writeDispCnt(unsigned int byte, uint8_t value)
+void Gpu2D::writeDispCnt(uint32_t mask, uint32_t value)
 {
     // Write to the DISPCNT register
-    uint32_t mask = (gpu3DRenderer ? 0xFFFFFFFF : 0xC0B1FFF7) & (0xFF << (byte * 8));
-    dispCnt = (dispCnt & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= (gpu3DRenderer ? 0xFFFFFFFF : 0xC0B1FFF7);
+    dispCnt = (dispCnt & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgCnt(unsigned int bg, unsigned int byte, uint8_t value)
+void Gpu2D::writeBgCnt(unsigned int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGCNT registers
-    bgCnt[bg] = (bgCnt[bg] & ~(0xFF << (byte * 8))) | (value << (byte * 8));
+    bgCnt[bg] = (bgCnt[bg] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgHOfs(unsigned int bg, unsigned int byte, uint8_t value)
+void Gpu2D::writeBgHOfs(unsigned int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGHOFS registers
-    uint16_t mask = 0x01FF & (0xFF << (byte * 8));
-    bgHOfs[bg] = (bgHOfs[bg] & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0x01FF;
+    bgHOfs[bg] = (bgHOfs[bg] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgVOfs(unsigned int bg, unsigned int byte, uint8_t value)
+void Gpu2D::writeBgVOfs(unsigned int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGVOFS registers
-    uint16_t mask = 0x01FF & (0xFF << (byte * 8));
-    bgVOfs[bg] = (bgVOfs[bg] & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0x01FF;
+    bgVOfs[bg] = (bgVOfs[bg] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgX(unsigned int bg, unsigned int byte, uint8_t value)
+void Gpu2D::writeBgX(unsigned int bg, uint32_t mask, uint32_t value)
 {
     // Write to one of the BGX registers
-    uint32_t mask = 0x0FFFFFFF & (0xFF << (byte * 8));
-    bgX[bg - 2] = (bgX[bg - 2] & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0x0FFFFFFF;
+    bgX[bg - 2] = (bgX[bg - 2] & ~mask) | (value & mask);
 
     // Extend the sign to 32 bits
     if (bgX[bg - 2] & BIT(27)) bgX[bg - 2] |= 0xF0000000; else bgX[bg - 2] &= ~0xF0000000;
 }
 
-void Gpu2D::writeBgY(unsigned int bg, unsigned int byte, uint8_t value)
+void Gpu2D::writeBgY(unsigned int bg, uint32_t mask, uint32_t value)
 {
     // Write to one of the BGY registers
-    uint32_t mask = 0x0FFFFFFF & (0xFF << (byte * 8));
-    bgY[bg - 2] = (bgY[bg - 2] & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0x0FFFFFFF;
+    bgY[bg - 2] = (bgY[bg - 2] & ~mask) | (value & mask);
 
     // Extend the sign to 32 bits
     if (bgY[bg - 2] & BIT(27)) bgY[bg - 2] |= 0xF0000000; else bgY[bg - 2] &= ~0xF0000000;
 }
 
-void Gpu2D::writeBgPA(unsigned int bg, unsigned int byte, uint8_t value)
+void Gpu2D::writeBgPA(unsigned int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGPA registers
-    bgPA[bg - 2] = (bgPA[bg - 2] & ~(0xFF << (byte * 8))) | (value << (byte * 8));
+    bgPA[bg - 2] = (bgPA[bg - 2] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgPB(unsigned int bg, unsigned int byte, uint8_t value)
+void Gpu2D::writeBgPB(unsigned int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGPB registers
-    bgPB[bg - 2] = (bgPB[bg - 2] & ~(0xFF << (byte * 8))) | (value << (byte * 8));
+    bgPB[bg - 2] = (bgPB[bg - 2] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgPC(unsigned int bg, unsigned int byte, uint8_t value)
+void Gpu2D::writeBgPC(unsigned int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGPC registers
-    bgPC[bg - 2] = (bgPC[bg - 2] & ~(0xFF << (byte * 8))) | (value << (byte * 8));
+    bgPC[bg - 2] = (bgPC[bg - 2] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgPD(unsigned int bg, unsigned int byte, uint8_t value)
+void Gpu2D::writeBgPD(unsigned int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGPD registers
-    bgPD[bg - 2] = (bgPD[bg - 2] & ~(0xFF << (byte * 8))) | (value << (byte * 8));
+    bgPD[bg - 2] = (bgPD[bg - 2] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeMasterBright(unsigned int byte, uint8_t value)
+void Gpu2D::writeMasterBright(uint16_t mask, uint16_t value)
 {
     // Write to the MASTER_BRIGHT register
-    uint16_t mask = 0xC01F & (0xFF << (byte * 8));
-    masterBright = (masterBright & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= 0xC01F;
+    masterBright = (masterBright & ~mask) | (value & mask);
 }

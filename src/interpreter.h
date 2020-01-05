@@ -43,14 +43,14 @@ class Interpreter
         bool shouldRun()       { return !halted;  }
         bool shouldInterrupt() { return ie & irf; }
 
-        uint8_t readIme()                  { return ime;               }
-        uint8_t readIe(unsigned int byte)  { return ie  >> (byte * 8); }
-        uint8_t readIrf(unsigned int byte) { return irf >> (byte * 8); }
-        uint8_t readPostFlg()              { return postFlg;           }
+        uint8_t  readIme()     { return ime;     }
+        uint32_t readIe()      { return ie;      }
+        uint32_t readIrf()     { return irf;     }
+        uint8_t  readPostFlg() { return postFlg; }
 
         void writeIme(uint8_t value);
-        void writeIe(unsigned int byte, uint8_t value);
-        void writeIrf(unsigned int byte, uint8_t value);
+        void writeIe(uint32_t mask, uint32_t value);
+        void writeIrf(uint32_t mask, uint32_t value);
         void writePostFlg(uint8_t value);
 
     private:

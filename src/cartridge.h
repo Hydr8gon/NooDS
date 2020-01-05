@@ -34,16 +34,18 @@ class Cartridge
 
         void setRom(uint8_t *rom, unsigned int romSize, uint8_t *save, unsigned int saveSize);
 
-        uint8_t readAuxSpiCnt(unsigned int byte) { return auxSpiCnt >> (byte * 8); }
-        uint8_t readAuxSpiData()                 { return auxSpiData;              }
-        uint8_t readRomCtrl(unsigned int byte)   { return romCtrl   >> (byte * 8); }
-        uint8_t readRomCmdOut(unsigned int byte) { return romCmdOut >> (byte * 8); }
-        uint8_t readRomDataIn(unsigned int byte);
+        uint16_t readAuxSpiCnt()  { return auxSpiCnt;       }
+        uint8_t  readAuxSpiData() { return auxSpiData;      }
+        uint32_t readRomCtrl()    { return romCtrl;         }
+        uint32_t readRomCmdOutL() { return romCmdOut;       }
+        uint32_t readRomCmdOutH() { return romCmdOut >> 32; }
+        uint32_t readRomDataIn();
 
-        void writeAuxSpiCnt(unsigned int byte, uint8_t value);
+        void writeAuxSpiCnt(uint16_t mask, uint16_t value);
         void writeAuxSpiData(uint8_t value);
-        void writeRomCtrl(unsigned int byte, uint8_t value);
-        void writeRomCmdOut(unsigned int byte, uint8_t value);
+        void writeRomCtrl(uint32_t mask, uint32_t value);
+        void writeRomCmdOutL(uint32_t mask, uint32_t value);
+        void writeRomCmdOutH(uint32_t mask, uint32_t value);
 
     private:
         uint64_t command = 0;
@@ -61,7 +63,6 @@ class Cartridge
         uint8_t auxSpiData = 0;
         uint32_t romCtrl = 0;
         uint64_t romCmdOut = 0;
-        uint32_t romDataIn = 0;
 
         uint8_t *rom = nullptr, *save = nullptr;
         unsigned int romSize = 0, saveSize = 0;

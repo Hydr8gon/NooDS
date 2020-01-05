@@ -60,13 +60,13 @@ void Dma::transfer()
 
             case 5: // DS cartridge slot
                 // Only transfer when a word from the cart is ready
-                if (!(cart->readRomCtrl(2) & BIT(7)))
+                if (!(cart->readRomCtrl() & BIT(23)))
                     continue;
                 break;
 
             case 7: // Geometry command FIFO
                 // Only transfer when the FIFO is less than half full
-                if (!(gpu3D->readGxStat(3) & BIT(1)))
+                if (!(gpu3D->readGxStat() & BIT(25)))
                     continue;
                 break;
 
@@ -172,37 +172,39 @@ void Dma::transfer()
     }
 }
 
-void Dma::writeDmaSad(unsigned int channel, unsigned int byte, uint8_t value)
+void Dma::writeDmaSad(unsigned int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMASAD registers
-    uint32_t mask = (gpu3D ? 0x0FFFFFFF : 0x07FFFFFF) & (0xFF << (byte * 8));
-    dmaSad[channel] = (dmaSad[channel] & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= (gpu3D ? 0x0FFFFFFF : 0x07FFFFFF);
+    dmaSad[channel] = (dmaSad[channel] & ~mask) | (value & mask);
 }
 
-void Dma::writeDmaDad(unsigned int channel, unsigned int byte, uint8_t value)
+void Dma::writeDmaDad(unsigned int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMADAD registers
-    uint32_t mask = (gpu3D ? 0x0FFFFFFF : 0x07FFFFFF) & (0xFF << (byte * 8));
-    dmaDad[channel] = (dmaDad[channel] & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= (gpu3D ? 0x0FFFFFFF : 0x07FFFFFF);
+    dmaDad[channel] = (dmaDad[channel] & ~mask) | (value & mask);
 }
 
-void Dma::writeDmaCnt(unsigned int channel, unsigned int byte, uint8_t value)
+void Dma::writeDmaCnt(unsigned int channel, uint32_t mask, uint32_t value)
 {
-    if (byte == 3)
-    {
-        // Enable or disable the channel
-        if (value & BIT(7)) enabled |= BIT(channel); else enabled &= ~BIT(channel);
+    bool reload = false;
 
-        // Reload the internal registers if the enable bit changes from 0 to 1
-        if (!(dmaCnt[channel] & BIT(31)) && (value & BIT(7)))
-        {
-            dstAddrs[channel] = dmaDad[channel];
-            srcAddrs[channel] = dmaSad[channel];
-            wordCounts[channel] = dmaCnt[channel] & 0x001FFFFF;
-        }
-    }
+    // Enable or disable the channel
+    if (value & BIT(31)) enabled |= BIT(channel); else enabled &= ~BIT(channel);
+
+    // Reload the internal registers if the enable bit changes from 0 to 1
+    if (!(dmaCnt[channel] & BIT(31)) && (value & BIT(31)))
+        reload = true;
 
     // Write to one of the DMACNT registers
-    uint32_t mask = (gpu3D ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF)) & (0xFF << (byte * 8));
-    dmaCnt[channel] = (dmaCnt[channel] & ~mask) | ((value << (byte * 8)) & mask);
+    mask &= (gpu3D ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF));
+    dmaCnt[channel] = (dmaCnt[channel] & ~mask) | (value & mask);
+
+    if (!reload) return;
+
+    // Reload the internal registers
+    dstAddrs[channel] = dmaDad[channel];
+    srcAddrs[channel] = dmaSad[channel];
+    wordCounts[channel] = dmaCnt[channel] & 0x001FFFFF;
 }

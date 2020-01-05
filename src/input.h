@@ -30,8 +30,8 @@ class Input
         void pressScreen();
         void releaseScreen();
 
-        uint8_t readKeyInput(unsigned int byte) { return keyInput >> (byte * 8); }
-        uint8_t readExtKeyIn(unsigned int byte) { return extKeyIn >> (byte * 8); }
+        uint16_t readKeyInput() { return keyInput; }
+        uint16_t readExtKeyIn() { return extKeyIn; }
 
     private:
         uint16_t keyInput = 0x03FF;

@@ -25,20 +25,28 @@
 class Math
 {
     public:
-        uint8_t readDivCnt(unsigned int byte)       { return divCnt       >> (byte * 8); }
-        uint8_t readDivNumer(unsigned int byte)     { return divNumer     >> (byte * 8); }
-        uint8_t readDivDenom(unsigned int byte)     { return divDenom     >> (byte * 8); }
-        uint8_t readDivResult(unsigned int byte)    { return divResult    >> (byte * 8); }
-        uint8_t readDivRemResult(unsigned int byte) { return divRemResult >> (byte * 8); }
-        uint8_t readSqrtCnt(unsigned int byte)      { return sqrtCnt      >> (byte * 8); }
-        uint8_t readSqrtResult(unsigned int byte)   { return sqrtResult   >> (byte * 8); }
-        uint8_t readSqrtParam(unsigned int byte)    { return sqrtParam    >> (byte * 8); }
+        uint16_t readDivCnt()        { return divCnt;             }
+        uint32_t readDivNumerL()     { return divNumer;           }
+        uint32_t readDivNumerH()     { return divNumer     >> 32; }
+        uint32_t readDivDenomL()     { return divDenom;           }
+        uint32_t readDivDenomH()     { return divDenom     >> 32; }
+        uint32_t readDivResultL()    { return divResult;          }
+        uint32_t readDivResultH()    { return divResult    >> 32; }
+        uint32_t readDivRemResultL() { return divRemResult;       }
+        uint32_t readDivRemResultH() { return divRemResult >> 32; }
+        uint16_t readSqrtCnt()       { return sqrtCnt;            }
+        uint32_t readSqrtResult()    { return sqrtResult;         }
+        uint32_t readSqrtParamL()    { return sqrtParam;          }
+        uint32_t readSqrtParamH()    { return sqrtParam    >> 32; }
 
-        void writeDivCnt(uint8_t value);
-        void writeDivNumer(unsigned int byte, uint8_t value);
-        void writeDivDenom(unsigned int byte, uint8_t value);
-        void writeSqrtCnt(uint8_t value);
-        void writeSqrtParam(unsigned int byte, uint8_t value);
+        void writeDivCnt(uint16_t mask, uint16_t value);
+        void writeDivNumerL(uint32_t mask, uint32_t value);
+        void writeDivNumerH(uint32_t mask, uint32_t value);
+        void writeDivDenomL(uint32_t mask, uint32_t value);
+        void writeDivDenomH(uint32_t mask, uint32_t value);
+        void writeSqrtCnt(uint16_t mask, uint16_t value);
+        void writeSqrtParamL(uint32_t mask, uint32_t value);
+        void writeSqrtParamH(uint32_t mask, uint32_t value);
 
     private:
         uint16_t divCnt = 0;
