@@ -37,14 +37,14 @@ void Spi::setTouch(int x, int y)
     uint8_t  scrY2 = firmware[0x3FF63];
 
     // Ensure the coordinates are within bounds
-    if (x < 0) x = 0; else if (x > 255) x = 255;
-    if (y < 0) y = 0; else if (y > 191) y = 191;
+    // A one pixel border around the screen is ignored to avoid potential underflow/overflow
+    // This should be fine; GBATEK says that pressing near the screen borders may be impossible anyways
+    if (x < 1) x = 1; else if (x > 254) x = 254;
+    if (y < 1) y = 1; else if (y > 190) y = 190;
 
     // Convert the coordinates to ADC values
-    if (scrX2 - scrX1 != 0)
-        touchX = (x - (scrX1 - 1)) * (adcX2 - adcX1) / (scrX2 - scrX1) + adcX1;
-    if (scrY2 - scrY1 != 0)
-        touchY = (y - (scrY1 - 1)) * (adcY2 - adcY1) / (scrY2 - scrY1) + adcY1;
+    touchX = (x - (scrX1 - 1)) * (adcX2 - adcX1) / (scrX2 - scrX1) + adcX1;
+    touchY = (y - (scrY1 - 1)) * (adcY2 - adcY1) / (scrY2 - scrY1) + adcY1;
 }
 
 void Spi::clearTouch()

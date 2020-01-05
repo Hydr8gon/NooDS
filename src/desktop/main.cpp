@@ -321,8 +321,7 @@ void NooPanel::releaseKey(wxKeyEvent &event)
 void NooPanel::pressScreen(wxMouseEvent &event)
 {
     // Ensure the left mouse button is clicked
-    if (!core || (!event.LeftDown() && !event.Dragging()))
-        return;
+    if (!core || !event.LeftIsDown()) return;
 
     // Determine the touch position relative to the emulated touch screen
     int touchX = (float)event.GetX() / scale - x;
