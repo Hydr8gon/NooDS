@@ -58,6 +58,8 @@ struct _Polygon
     int size = 0;
     Vertex *vertices = nullptr;
 
+    int mode = 0;
+
     uint32_t textureAddr = 0, paletteAddr = 0;
     int sizeS = 0, sizeT = 0;
     bool repeatS = false, repeatT = false;
@@ -162,6 +164,15 @@ class Gpu3D
         int polygonType = 0;
         int textureCoordMode = 0;
 
+        uint32_t polygonAttr = 0;
+        uint8_t enabledLights = 0;
+
+        uint32_t diffuseColor = 0, ambientColor = 0;
+        uint32_t specularColor = 0, emissionColor = 0;
+        Vertex lightVector[4], halfVector[4];
+        uint32_t lightColor[4] = {};
+        uint8_t shininess[128] = {};
+
         uint32_t gxFifo = 0x00000000;
         uint32_t gxStat = 0x04000000;
 
@@ -171,6 +182,8 @@ class Gpu3D
 
         Matrix multiply(Matrix *mtx1, Matrix *mtx2);
         Vertex multiply(Vertex *vtx, Matrix *mtx);
+
+        uint32_t rgb5ToRgb6(uint16_t color);
 
         void addVertex();
         void addPolygon();
@@ -199,8 +212,14 @@ class Gpu3D
         void vtxXZCmd(uint32_t param);
         void vtxYZCmd(uint32_t param);
         void vtxDiffCmd(uint32_t param);
+        void polygonAttrCmd(uint32_t param);
         void texImageParamCmd(uint32_t param);
         void plttBaseCmd(uint32_t param);
+        void difAmbCmd(uint32_t param);
+        void speEmiCmd(uint32_t param);
+        void lightVectorCmd(uint32_t param);
+        void lightColorCmd(uint32_t param);
+        void shininessCmd(uint32_t param);
         void beginVtxsCmd(uint32_t param);
         void swapBuffersCmd(uint32_t param);
 

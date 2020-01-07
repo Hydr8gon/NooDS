@@ -410,17 +410,13 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
             // Calculate the W value of the current pixel
             int w = polygon->wBuffer ? (depth >> wShift) : interpolateW(w1, w2, x1, x, x2);
 
-            uint32_t color;
+            // Interpolate the vertex color
+            uint32_t c1 = interpolateColor(v1->color, v2->color, v1->y, line, v2->y, vw[0], w1, vw[1]);
+            uint32_t c2 = interpolateColor(v3->color, v4->color, v3->y, line, v4->y, vw[2], w2, vw[3]);
+            uint32_t color = interpolateColor(c1, c2, x1, x, x2, w1, w, w2);
 
-            // Calculate the pixel color
-            if (polygon->textureFmt == 0) // No texture
-            {
-                // Interpolate the vertex colors
-                uint32_t c1 = interpolateColor(v1->color, v2->color, v1->y, line, v2->y, vw[0], w1, vw[1]);
-                uint32_t c2 = interpolateColor(v3->color, v4->color, v3->y, line, v4->y, vw[2], w2, vw[3]);
-                color = interpolateColor(c1, c2, x1, x, x2, w1, w, w2);
-            }
-            else
+            // Blend the texture with the vertex color
+            if (polygon->textureFmt != 0)
             {
                 // Interpolate the texture S coordinate
                 int s1 = interpolate(v1->s, v2->s, v1->y, line, v2->y, vw[0], w1, vw[1]);
@@ -432,8 +428,28 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
                 int t2 = interpolate(v3->t, v4->t, v3->y, line, v4->y, vw[2], w2, vw[3]);
                 int t  = interpolate(t1, t2, x1, x, x2, w1, w, w2);
 
-                // Read the color from a texture
-                color = readTexture(polygon, s >> 4, t >> 4);
+                // Read a texel from the texture
+                uint32_t texel = readTexture(polygon, s >> 4, t >> 4);
+
+                // Apply blending
+                switch (polygon->mode)
+                {
+                    case 0: // Modulation
+                    {
+                        uint8_t r = ((((texel >>  0) & 0x3F) + 1) * (((color >>  0) & 0x3F) + 1) - 1) / 64;
+                        uint8_t g = ((((texel >>  6) & 0x3F) + 1) * (((color >>  6) & 0x3F) + 1) - 1) / 64;
+                        uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
+                        color = (texel & BIT(18)) | (b << 12) | (g << 6) | r;
+                        break;
+                    }
+
+                    default:
+                    {
+                        printf("Unimplemented 3D lighting mode: %d\n", polygon->mode);
+                        color = texel;
+                        break;
+                    }
+                }
             }
 
             // Draw a pixel

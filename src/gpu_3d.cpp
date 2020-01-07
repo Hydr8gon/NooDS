@@ -66,6 +66,15 @@ Gpu3D::Gpu3D(Interpreter *arm9): arm9(arm9)
     paramCounts[0x72] = 1;
 }
 
+uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
+{
+    // Convert an RGB5 value to an RGB6 value (the way the 3D engine does it)
+    uint8_t r = ((color >>  0) & 0x1F); r = r * 2 + (r + 31) / 32;
+    uint8_t g = ((color >>  5) & 0x1F); g = g * 2 + (g + 31) / 32;
+    uint8_t b = ((color >> 10) & 0x1F); b = b * 2 + (b + 31) / 32;
+    return (b << 12) | (g << 6) | r;
+}
+
 void Gpu3D::runCycle()
 {
     // Fetch the next geometry command
@@ -96,8 +105,14 @@ void Gpu3D::runCycle()
         case 0x26: vtxXZCmd(entry.param);         break; // VTX_XZ
         case 0x27: vtxYZCmd(entry.param);         break; // VTX_YZ
         case 0x28: vtxDiffCmd(entry.param);       break; // VTX_DIFF
+        case 0x29: polygonAttrCmd(entry.param);   break; // POLYGON_ATTR
         case 0x2A: texImageParamCmd(entry.param); break; // TEXIMAGE_PARAM
         case 0x2B: plttBaseCmd(entry.param);      break; // PLTT_BASE
+        case 0x30: difAmbCmd(entry.param);        break; // DIF_AMB
+        case 0x31: speEmiCmd(entry.param);        break; // SPE_EMI
+        case 0x32: lightVectorCmd(entry.param);   break; // LIGHT_VECTOR
+        case 0x33: lightColorCmd(entry.param);    break; // LIGHT_COLOR
+        case 0x34: shininessCmd(entry.param);     break; // SHININESS
         case 0x40: beginVtxsCmd(entry.param);     break; // BEGIN_VTXS
         case 0x41:                                break; // END_VTXS
         case 0x50: swapBuffersCmd(entry.param);   break; // SWAP_BUFFERS
@@ -968,11 +983,8 @@ void Gpu3D::mtxTransCmd(uint32_t param)
 
 void Gpu3D::colorCmd(uint32_t param)
 {
-    // Set the vertex color (converted from RGB5 to RGB6)
-    uint8_t r = ((param >>  0) & 0x1F); r = r * 2 + (r + 31) / 32;
-    uint8_t g = ((param >>  5) & 0x1F); g = g * 2 + (g + 31) / 32;
-    uint8_t b = ((param >> 10) & 0x1F); b = b * 2 + (b + 31) / 32;
-    savedVertex.color = (b << 12) | (g << 6) | r;
+    // Set the vertex color
+    savedVertex.color = rgb5ToRgb6(param);
 }
 
 void Gpu3D::texCoordCmd(uint32_t param)
@@ -1057,11 +1069,18 @@ void Gpu3D::vtxYZCmd(uint32_t param)
 void Gpu3D::vtxDiffCmd(uint32_t param)
 {
     // Add offsets to the X, Y, and Z coordinates
-    savedVertex.x += ((int16_t)((param & 0x000003FF) << 6)  / 8) >> 3;
-    savedVertex.y += ((int16_t)((param & 0x000FFC00) >> 4)  / 8) >> 3;
+    savedVertex.x += ((int16_t)((param & 0x000003FF) <<  6) / 8) >> 3;
+    savedVertex.y += ((int16_t)((param & 0x000FFC00) >>  4) / 8) >> 3;
     savedVertex.z += ((int16_t)((param & 0x3FF00000) >> 14) / 8) >> 3;
 
     addVertex();
+}
+
+void Gpu3D::polygonAttrCmd(uint32_t param)
+{
+    // Set the polygon attributes
+    // Values are not actually applied until the next vertex list
+    polygonAttr = param;
 }
 
 void Gpu3D::texImageParamCmd(uint32_t param)
@@ -1085,6 +1104,57 @@ void Gpu3D::plttBaseCmd(uint32_t param)
     savedPolygon.paletteAddr = param & 0x00001FFF;
 }
 
+void Gpu3D::difAmbCmd(uint32_t param)
+{
+    // Set the diffuse and ambient reflection colors
+    diffuseColor = rgb5ToRgb6(param >>  0);
+    ambientColor = rgb5ToRgb6(param >> 16);
+
+    // Directly set the vertex color
+    if (param & BIT(15))
+        savedVertex.color = diffuseColor;
+}
+
+void Gpu3D::speEmiCmd(uint32_t param)
+{
+    // Set the specular reflection and emission colors
+    specularColor = rgb5ToRgb6(param >>  0);
+    emissionColor = rgb5ToRgb6(param >> 16);
+}
+
+void Gpu3D::lightVectorCmd(uint32_t param)
+{
+    // Set one of the light vectors
+    lightVector[param >> 30].x = ((int16_t)((param & 0x000003FF) <<  6)) >> 3;
+    lightVector[param >> 30].y = ((int16_t)((param & 0x000FFC00) >>  4)) >> 3;
+    lightVector[param >> 30].z = ((int16_t)((param & 0x3FF00000) >> 14)) >> 3;
+    lightVector[param >> 30].w = 0;
+
+    // Multiply the light vector by the directional matrix
+    lightVector[param >> 30] = multiply(&lightVector[param >> 30], &direction);
+
+    // Set one of the half vectors
+    halfVector[param >> 30].x = (lightVector[param >> 30].x)             / 2;
+    halfVector[param >> 30].y = (lightVector[param >> 30].y)             / 2;
+    halfVector[param >> 30].z = (lightVector[param >> 30].z - (1 << 12)) / 2;
+    halfVector[param >> 30].w = 0;
+}
+
+void Gpu3D::lightColorCmd(uint32_t param)
+{
+    // Set one of the light colors
+    lightColor[param >> 30] = rgb5ToRgb6(param);
+}
+
+void Gpu3D::shininessCmd(uint32_t param)
+{
+    // Set the values of the specular reflection shininess table
+    shininess[paramCount * 4 + 0] = param >>  0;
+    shininess[paramCount * 4 + 1] = param >>  8;
+    shininess[paramCount * 4 + 2] = param >> 16;
+    shininess[paramCount * 4 + 3] = param >> 24;
+}
+
 void Gpu3D::beginVtxsCmd(uint32_t param)
 {
     // Clipping a polygon strip starts a new strip with the last 2 vertices of the old one
@@ -1095,6 +1165,10 @@ void Gpu3D::beginVtxsCmd(uint32_t param)
     // Begin a new vertex list
     polygonType = param & 0x00000003;
     vertexCount = 0;
+
+    // Apply the polygon attributes
+    enabledLights = (polygonAttr & 0x0000000F);
+    savedPolygon.mode = (polygonAttr & 0x00000030) >> 4;
 }
 
 void Gpu3D::swapBuffersCmd(uint32_t param)
