@@ -37,13 +37,13 @@ class Dma
 
         bool shouldTransfer() { return enabled; }
 
-        uint32_t readDmaSad(unsigned int channel) { return dmaSad[channel]; }
-        uint32_t readDmaDad(unsigned int channel) { return dmaDad[channel]; }
-        uint32_t readDmaCnt(unsigned int channel) { return dmaCnt[channel]; }
+        uint32_t readDmaSad(int channel) { return dmaSad[channel]; }
+        uint32_t readDmaDad(int channel) { return dmaDad[channel]; }
+        uint32_t readDmaCnt(int channel) { return dmaCnt[channel]; }
 
-        void writeDmaSad(unsigned int channel, uint32_t mask, uint32_t value);
-        void writeDmaDad(unsigned int channel, uint32_t mask, uint32_t value);
-        void writeDmaCnt(unsigned int channel, uint32_t mask, uint32_t value);
+        void writeDmaSad(int channel, uint32_t mask, uint32_t value);
+        void writeDmaDad(int channel, uint32_t mask, uint32_t value);
+        void writeDmaCnt(int channel, uint32_t mask, uint32_t value);
 
     private:
         uint32_t dmaSad[4] = {};

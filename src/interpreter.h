@@ -37,8 +37,8 @@ class Interpreter
         void runCycle();
         void interrupt();
 
-        void halt()                          { halted = true;   }
-        void sendInterrupt(unsigned int bit) { irf |= BIT(bit); }
+        void halt()                 { halted = true;   }
+        void sendInterrupt(int bit) { irf |= BIT(bit); }
 
         bool shouldRun()       { return !halted;  }
         bool shouldInterrupt() { return ie & irf; }

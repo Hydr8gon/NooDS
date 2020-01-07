@@ -103,8 +103,10 @@ void Gpu3D::runCycle()
         case 0x50: swapBuffersCmd(entry.param);   break; // SWAP_BUFFERS
 
         default:
+        {
             printf("Unknown GXFIFO command: 0x%X\n", entry.command);
             break;
+        }
     }
 
     // Keep track of how many parameters have been sent
@@ -123,9 +125,9 @@ void Gpu3D::runCycle()
     }
 
     // Update the counters
-    gxStat = (gxStat & ~0x00001F00) | (coordPointer << 8); // Coordinate stack pointer
-    gxStat = (gxStat & ~0x00002000) | (projPointer << 13); // Projection stack pointer
-    gxStat = (gxStat & ~0x01FF0000) | (fifo.size() << 16); // FIFO entries
+    gxStat = (gxStat & ~0x00001F00) | (coordinatePtr <<  8); // Coordinate stack pointer
+    gxStat = (gxStat & ~0x00002000) | (projectionPtr << 13); // Projection stack pointer
+    gxStat = (gxStat & ~0x01FF0000) | (fifo.size()   << 16); // FIFO entries
 
     // Update the FIFO status
     if (fifo.size() < 128) gxStat |=  BIT(25); // Less than half full
@@ -156,6 +158,7 @@ void Gpu3D::swapBuffers()
     verticesIn = vertices;
     vertexCountOut = vertexCountIn;
     vertexCountIn = 0;
+    vertexCount = 0;
 
     // Swap the polygon buffers
     _Polygon *polygons = polygonsOut;
@@ -166,22 +169,21 @@ void Gpu3D::swapBuffers()
 
     // Unhalt the geometry engine
     halted = false;
-
-    // Update the saved paramater value
-    savedSwapBuffers = nextSwapBuffers;
 }
 
 Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)
 {
-    Matrix matrix = {{}};
+    Matrix matrix;
 
     // Multiply 2 matrices
     for (int y = 0; y < 4; y++)
     {
         for (int x = 0; x < 4; x++)
         {
-            for (int i = 0; i < 4; i++)
-                matrix.data[y * 4 + x] += (mtx1->data[y * 4 + i] * mtx2->data[i * 4 + x]) >> 12;
+            int64_t *index = &matrix.data[y * 4 + x];
+            *index = 0;
+            for (int i = 0; i < 4; i++) *index += mtx1->data[y * 4 + i] * mtx2->data[i * 4 + x];
+            *index >>= 12;
         }
     }
 
@@ -203,43 +205,33 @@ Vertex Gpu3D::multiply(Vertex *vtx, Matrix *mtx)
 
 void Gpu3D::addVertex()
 {
-    // Remember the pre-transformation vertex
-    last = verticesIn[vertexCountIn];
+    if (vertexCountIn >= 6144) return;
+
+    // Set the new vertex
+    verticesIn[vertexCountIn] = savedVertex;
+    verticesIn[vertexCountIn].w = 1 << 12;
 
     // Update the clip matrix if necessary
-    if (clipNeedsUpdate)
+    if (clipDirty)
     {
         clip = multiply(&coordinate, &projection);
-        clipNeedsUpdate = false;
+        clipDirty = false;
     }
 
     // Transform the vertex
     verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &clip);
 
-    // Set the vertex color (converted from RGB5 to RGB6)
-    uint8_t r = ((savedColor >>  0) & 0x1F); r = r * 2 + (r + 31) / 32;
-    uint8_t g = ((savedColor >>  5) & 0x1F); g = g * 2 + (g + 31) / 32;
-    uint8_t b = ((savedColor >> 10) & 0x1F); b = b * 2 + (b + 31) / 32;
-    verticesIn[vertexCountIn].color = (b << 12) | (g << 6) | r;
-
-    // Set the vertex texture coordinates
-    verticesIn[vertexCountIn].s = (int16_t)(savedTexCoord & 0x0000FFFF);
-    verticesIn[vertexCountIn].t = (int16_t)((savedTexCoord & 0xFFFF0000) >> 16);
-
     // Move to the next vertex
     vertexCountIn++;
-    size++;
+    vertexCount++;
 
     // Move to the next polygon if one has been completed
-    if (size > 0)
+    switch (polygonType)
     {
-        switch (savedBeginVtxs)
-        {
-            case 0: if (size % 3 == 0)              addPolygon(); break; // Separate triangles
-            case 1: if (size % 4 == 0)              addPolygon(); break; // Separate quads
-            case 2: if (size >= 3)                  addPolygon(); break; // Triangle strips
-            case 3: if (size >= 4 && size % 2 == 0) addPolygon(); break; // Quad strips
-        }
+        case 0: if (vertexCount % 3 == 0)                     addPolygon(); break; // Separate triangles
+        case 1: if (vertexCount % 4 == 0)                     addPolygon(); break; // Separate quads
+        case 2: if (vertexCount >= 3)                         addPolygon(); break; // Triangle strips
+        case 3: if (vertexCount >= 4 && vertexCount % 2 == 0) addPolygon(); break; // Quad strips
     }
 }
 
@@ -247,21 +239,21 @@ void Gpu3D::addPolygon()
 {
     if (polygonCountIn >= 2048) return;
 
-    // Set the polygon parameters
-    int vertexCount = 3 + (savedBeginVtxs & 1);
-    polygonsIn[polygonCountIn].size = vertexCount;
-    polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn - vertexCount];
+    // Set the polygon vertex information
+    int size = 3 + (polygonType & 1);
+    savedPolygon.size = size;
+    savedPolygon.vertices = &verticesIn[vertexCountIn - size];
 
     Vertex unclipped[8];
     Vertex clipped[8];
     Vertex temp[8];
 
     // Save a copy of the unclipped vertices
-    for (int i = 0; i < vertexCount; i++)
-        unclipped[i] = polygonsIn[polygonCountIn].vertices[i];
+    for (int i = 0; i < size; i++)
+        unclipped[i] = savedPolygon.vertices[i];
 
     // Rearrange quad strip vertices to work with the clipping algorithm
-    if (savedBeginVtxs == 3)
+    if (polygonType == 3)
     {
         Vertex vertex = unclipped[2];
         unclipped[2] = unclipped[3];
@@ -277,147 +269,159 @@ void Gpu3D::addPolygon()
     clip |= clipPolygon(temp, clipped, 5);
 
     // Discard polygons that are completely outside of the view area
-    if (polygonsIn[polygonCountIn].size == 0)
+    if (savedPolygon.size == 0)
     {
-        switch (savedBeginVtxs)
+        switch (polygonType)
         {
             case 0: case 1: // Separate polygons
+            {
                 // Discard the vertices
-                vertexCountIn -= vertexCount;
+                vertexCountIn -= size;
                 return;
+            }
 
             case 2: // Triangle strips
-                if (size == 3) // First triangle in the strip
+            {
+                if (vertexCount == 3) // First triangle in the strip
                 {
                     // Discard the first vertex, but keep the other 2 for the next triangle
                     verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 2];
                     verticesIn[vertexCountIn - 2] = verticesIn[vertexCountIn - 1];
                     vertexCountIn--;
-                    size--;
+                    vertexCount--;
                 }
-                else
+                else if (vertexCountIn < 6144)
                 {
                     // End the previous strip, and start a new one with the last 2 vertices
                     verticesIn[vertexCountIn - 1] = verticesIn[vertexCountIn - 2];
                     verticesIn[vertexCountIn - 0] = verticesIn[vertexCountIn - 1];
                     vertexCountIn++;
-                    size = 2;
+                    vertexCount = 2;
                 }
                 return;
+            }
 
             case 3: // Quad strips
-                if (size == 4) // First quad in the strip
+            {
+                if (vertexCount == 4) // First quad in the strip
                 {
                     // Discard the first 2 vertices, but keep the other 2 for the next quad
                     verticesIn[vertexCountIn - 4] = verticesIn[vertexCountIn - 2];
                     verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 1];
                     vertexCountIn -= 2;
-                    size -= 2;
+                    vertexCount -= 2;
                 }
                 else
                 {
                     // End the previous strip, and start a new one with the last 2 vertices
-                    size = 2;
+                    vertexCount = 2;
                 }
                 return;
+            }
         }
     }
 
     // Update the vertices of clipped polygons
     if (clip)
     {
-        switch (savedBeginVtxs)
+        switch (polygonType)
         {
             case 0: case 1: // Separate polygons
+            {
                 // Remove the unclipped vertices
-                vertexCountIn -= vertexCount;
-                polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
+                vertexCountIn -= size;
 
                 // Add the clipped vertices
-                for (int i = 0; i < polygonsIn[polygonCountIn].size; i++)
+                for (int i = 0; i < savedPolygon.size; i++)
                 {
+                    if (vertexCountIn >= 6144) return;
                     verticesIn[vertexCountIn] = clipped[i];
                     vertexCountIn++;
                 }
                 break;
+            }
 
             case 2: // Triangle strips
+            {
                 // Remove the unclipped vertices
-                vertexCountIn -= (size == 3) ? 3 : 1;
-                polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
+                vertexCountIn -= (vertexCount == 3) ? 3 : 1;
+                savedPolygon.vertices = &verticesIn[vertexCountIn];
 
                 // Add the clipped vertices
-                for (int i = 0; i < polygonsIn[polygonCountIn].size; i++)
+                for (int i = 0; i < savedPolygon.size; i++)
                 {
+                    if (vertexCountIn >= 6144) return;
                     verticesIn[vertexCountIn] = clipped[i];
                     vertexCountIn++;
                 }
 
                 // End the previous strip, and start a new one with the last 2 vertices
-                verticesIn[vertexCountIn + 0] = unclipped[1];
-                verticesIn[vertexCountIn + 1] = unclipped[2];
-                vertexCountIn += 2;
-                size = 2;
+                for (int i = 0; i < 2; i++)
+                {
+                    if (vertexCountIn >= 6144) return;
+                    verticesIn[vertexCountIn] = unclipped[1 + i];
+                    vertexCountIn++;
+                }
+                vertexCount = 2;
                 break;
+            }
 
             case 3: // Quad strips
+            {
                 // Remove the unclipped vertices
-                vertexCountIn -= (size == 4) ? 4 : 2;
-                polygonsIn[polygonCountIn].vertices = &verticesIn[vertexCountIn];
+                vertexCountIn -= (vertexCount == 4) ? 4 : 2;
+                savedPolygon.vertices = &verticesIn[vertexCountIn];
 
                 // Add the clipped vertices
-                for (int i = 0; i < polygonsIn[polygonCountIn].size; i++)
+                for (int i = 0; i < savedPolygon.size; i++)
                 {
+                    if (vertexCountIn >= 6144) return;
                     verticesIn[vertexCountIn] = clipped[i];
                     vertexCountIn++;
                 }
 
                 // End the previous strip, and start a new one with the last 2 vertices
-                verticesIn[vertexCountIn + 0] = unclipped[3];
-                verticesIn[vertexCountIn + 1] = unclipped[2];
-                vertexCountIn += 2;
-                size = 2;
+                for (int i = 0; i < 2; i++)
+                {
+                    if (vertexCountIn >= 6144) return;
+                    verticesIn[vertexCountIn] = unclipped[3 - i];
+                    vertexCountIn++;
+                }
+                vertexCount = 2;
                 break;
+            }
         }
     }
 
-    // Set the texture parameters
-    polygonsIn[polygonCountIn].texDataAddr = (savedTexImageParam & 0x0000FFFF) * 8;
-    polygonsIn[polygonCountIn].repeatS = savedTexImageParam & BIT(16);
-    polygonsIn[polygonCountIn].repeatT = savedTexImageParam & BIT(17);
-    polygonsIn[polygonCountIn].flipS = savedTexImageParam & BIT(18);
-    polygonsIn[polygonCountIn].flipT = savedTexImageParam & BIT(19);
-    polygonsIn[polygonCountIn].sizeS = 8 << ((savedTexImageParam & 0x00700000) >> 20);
-    polygonsIn[polygonCountIn].sizeT = 8 << ((savedTexImageParam & 0x03800000) >> 23);
-    polygonsIn[polygonCountIn].texFormat = (savedTexImageParam & 0x1C000000) >> 26;
-    polygonsIn[polygonCountIn].transparent = savedTexImageParam & BIT(29);
-    polygonsIn[polygonCountIn].texPaletteAddr = (savedPlttBase & 0x00001FFF) * ((polygonsIn[polygonCountIn].texFormat == 2) ? 8 : 16);
+    // Set the new polygon
+    polygonsIn[polygonCountIn] = savedPolygon;
+    polygonsIn[polygonCountIn].paletteAddr *= ((savedPolygon.textureFmt == 2) ? 8 : 16);
 
     // Move to the next polygon
     polygonCountIn++;
 }
 
-Vertex Gpu3D::intersection(Vertex *v0, Vertex *v1, int64_t val0, int64_t val1)
+Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int64_t val1, int64_t val2)
 {
     Vertex vertex;
 
     // Calculate the interpolation coefficients
-    int64_t d0 = val0 + v0->w;
-    int64_t d1 = val1 + v1->w;
-    if (d1 == d0) return *v0;
+    int64_t d1 = val1 + vtx1->w;
+    int64_t d2 = val2 + vtx2->w;
+    if (d2 == d1) return *vtx1;
 
     // Interpolate the vertex coordinates
-    vertex.x = ((v0->x * d1) - (v1->x * d0)) / (d1 - d0);
-    vertex.y = ((v0->y * d1) - (v1->y * d0)) / (d1 - d0);
-    vertex.z = ((v0->z * d1) - (v1->z * d0)) / (d1 - d0);
-    vertex.w = ((v0->w * d1) - (v1->w * d0)) / (d1 - d0);
-    vertex.s = ((v0->s * d1) - (v1->s * d0)) / (d1 - d0);
-    vertex.t = ((v0->t * d1) - (v1->t * d0)) / (d1 - d0);
+    vertex.x = ((vtx1->x * d2) - (vtx2->x * d1)) / (d2 - d1);
+    vertex.y = ((vtx1->y * d2) - (vtx2->y * d1)) / (d2 - d1);
+    vertex.z = ((vtx1->z * d2) - (vtx2->z * d1)) / (d2 - d1);
+    vertex.w = ((vtx1->w * d2) - (vtx2->w * d1)) / (d2 - d1);
+    vertex.s = ((vtx1->s * d2) - (vtx2->s * d1)) / (d2 - d1);
+    vertex.t = ((vtx1->t * d2) - (vtx2->t * d1)) / (d2 - d1);
 
     // Interpolate the vertex color
-    uint8_t r = ((((v0->color >>  0) & 0x3F) * d1) - (((v1->color >>  0) & 0x3F) * d0)) / (d1 - d0);
-    uint8_t g = ((((v0->color >>  6) & 0x3F) * d1) - (((v1->color >>  6) & 0x3F) * d0)) / (d1 - d0);
-    uint8_t b = ((((v0->color >> 12) & 0x3F) * d1) - (((v1->color >> 12) & 0x3F) * d0)) / (d1 - d0);
+    uint8_t r = ((((vtx1->color >>  0) & 0x3F) * d2) - (((vtx2->color >>  0) & 0x3F) * d1)) / (d2 - d1);
+    uint8_t g = ((((vtx1->color >>  6) & 0x3F) * d2) - (((vtx2->color >>  6) & 0x3F) * d1)) / (d2 - d1);
+    uint8_t b = ((((vtx1->color >> 12) & 0x3F) * d2) - (((vtx2->color >> 12) & 0x3F) * d1)) / (d2 - d1);
     vertex.color = (b << 12) | (g << 6) | r;
 
     return vertex;
@@ -427,15 +431,15 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int side)
 {
     bool clip = false;
 
-    int vertexCount = polygonsIn[polygonCountIn].size;
-    polygonsIn[polygonCountIn].size = 0;
+    int size = savedPolygon.size;
+    savedPolygon.size = 0;
 
     // Clip a polygon using the Sutherland-Hodgman algorithm
-    for (int i = 0; i < vertexCount; i++)
+    for (int i = 0; i < size; i++)
     {
         // Get the unclipped vertices 
         Vertex *current = &unclipped[i];
-        Vertex *previous = &unclipped[(i - 1 + vertexCount) % vertexCount];
+        Vertex *previous = &unclipped[(i - 1 + size) % size];
 
         // Choose which coordinates to check based on the current side being clipped against
         int64_t currentVal, previousVal;
@@ -454,18 +458,18 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int side)
         {
             if (previousVal < -previous->w) // Previous vertex not in bounds
             {
-                clipped[polygonsIn[polygonCountIn].size] = intersection(current, previous, currentVal, previousVal);
-                polygonsIn[polygonCountIn].size++;
+                clipped[savedPolygon.size] = intersection(current, previous, currentVal, previousVal);
+                savedPolygon.size++;
                 clip = true;
             }
 
-            clipped[polygonsIn[polygonCountIn].size] = *current;
-            polygonsIn[polygonCountIn].size++;
+            clipped[savedPolygon.size] = *current;
+            savedPolygon.size++;
         }
         else if (previousVal >= -previous->w) // Previous vertex in bounds
         {
-            clipped[polygonsIn[polygonCountIn].size] = intersection(current, previous, currentVal, previousVal);
-            polygonsIn[polygonCountIn].size++;
+            clipped[savedPolygon.size] = intersection(current, previous, currentVal, previousVal);
+            savedPolygon.size++;
             clip = true;
         }
     }
@@ -485,11 +489,12 @@ void Gpu3D::mtxPushCmd()
     switch (matrixMode)
     {
         case 0: // Projection stack
-            if (projPointer < 1)
+        {
+            if (projectionPtr < 1)
             {
                 // Push to the single projection stack slot and increment the pointer
-                projStack = projection;
-                projPointer++;
+                projectionStack = projection;
+                projectionPtr++;
             }
             else
             {
@@ -497,26 +502,30 @@ void Gpu3D::mtxPushCmd()
                 gxStat |= BIT(15);
             }
             break;
+        }
 
         case 1: case 2: // Coordinate and directional stacks
+        {
             // Indicate a matrix stack overflow error
             // Even though the 31st slot exists, it still causes an overflow error
-            if (coordPointer >= 30) gxStat |= BIT(15);
+            if (coordinatePtr >= 30) gxStat |= BIT(15);
 
             // Push to the current coordinate and directional stack slots and increment the pointer
-            if (coordPointer < 31)
+            if (coordinatePtr < 31)
             {
-                coordStack[coordPointer] = coordinate;
-                direcStack[coordPointer] = directional;
-                coordPointer++;
+                coordinateStack[coordinatePtr] = coordinate;
+                directionStack[coordinatePtr] = direction;
+                coordinatePtr++;
             }
             break;
+        }
 
         case 3: // Texture stack
+        {
             // Push to the single texture stack slot
-            // The texture stack doesn't have a pointer
-            texStack = texture;
+            textureStack = texture;
             break;
+        }
     }
 }
 
@@ -526,13 +535,13 @@ void Gpu3D::mtxPopCmd(uint32_t param)
     switch (matrixMode)
     {
         case 0: // Projection stack
-            if (projPointer > 0)
+        {
+            if (projectionPtr > 0)
             {
                 // Pop from the single projection stack slot and decrement the pointer
-                // The parameter is ignored in projection mode
-                projPointer--;
-                projection = projStack;
-                clipNeedsUpdate = true;
+                projectionPtr--;
+                projection = projectionStack;
+                clipDirty = true;
             }
             else
             {
@@ -540,11 +549,12 @@ void Gpu3D::mtxPopCmd(uint32_t param)
                 gxStat |= BIT(15);
             }
             break;
+        }
 
         case 1: case 2: // Coordinate and directional stacks
         {
             // Calculate the stack address to pop from
-            int address = coordPointer - (int8_t)(((param & BIT(5)) ? 0xC0 : 0) | (param & 0x0000003F));
+            int address = coordinatePtr - (((param & BIT(5)) ? 0xFFFFFFC0 : 0) | (param & 0x0000003F));
 
             // Indicate a matrix stack underflow or overflow error
             // Even though the 31st slot exists, it still causes an overflow error
@@ -553,19 +563,20 @@ void Gpu3D::mtxPopCmd(uint32_t param)
             // Pop from the current coordinate and directional stack slots and update the pointer
             if (address >= 0 && address < 31)
             {
-                coordinate = coordStack[address];
-                directional = direcStack[address];
-                coordPointer = address;
-                clipNeedsUpdate = true;
+                coordinate = coordinateStack[address];
+                direction = directionStack[address];
+                coordinatePtr = address;
+                clipDirty = true;
             }
             break;
         }
 
         case 3: // Texture stack
+        {
             // Pop from the single texture stack slot
-            // The texture stack doesn't have a pointer, and the parameter is ignored
-            texture = texStack;
+            texture = textureStack;
             break;
+        }
     }
 }
 
@@ -575,10 +586,11 @@ void Gpu3D::mtxStoreCmd(uint32_t param)
     switch (matrixMode)
     {
         case 0: // Projection stack
+        {
             // Store to the single projection stack slot
-            // The parameter is ignored in projection mode
-            projStack = projection;
+            projectionStack = projection;
             break;
+        }
 
         case 1: case 2: // Coordinate and directional stacks
         {
@@ -590,16 +602,17 @@ void Gpu3D::mtxStoreCmd(uint32_t param)
             if (address == 31) gxStat |= BIT(15);
 
             // Store to the current coordinate and directional stack slots
-            coordStack[address] = coordinate;
-            direcStack[address] = directional;
+            coordinateStack[address] = coordinate;
+            directionStack[address] = direction;
             break;
-       }
+        }
 
         case 3: // Texture stack
+        {
             // Store to the single texture stack slot
-            // The parameter is ignored in texture mode
-            texStack = texture;
+            textureStack = texture;
             break;
+        }
     }
 }
 
@@ -609,11 +622,12 @@ void Gpu3D::mtxRestoreCmd(uint32_t param)
     switch (matrixMode)
     {
         case 0: // Projection stack
+        {
             // Restore from the single projection stack slot
-            // The parameter is ignored in projection mode
-            projection = projStack;
-            clipNeedsUpdate = true;
+            projection = projectionStack;
+            clipDirty = true;
             break;
+        }
 
         case 1: case 2: // Coordinate and directional stacks
         {
@@ -625,17 +639,18 @@ void Gpu3D::mtxRestoreCmd(uint32_t param)
             if (address == 31) gxStat |= BIT(15);
 
             // Restore from the current coordinate and directional stack slots
-            coordinate = coordStack[address];
-            directional = direcStack[address];
-            clipNeedsUpdate = true;
+            coordinate = coordinateStack[address];
+            direction = directionStack[address];
+            clipDirty = true;
             break;
        }
 
         case 3: // Texture stack
+        {
             // Restore from the single texture stack slot
-            // The parameter is ignored in texture mode
-            texture = texStack;
+            texture = textureStack;
             break;
+        }
     }
 }
 
@@ -645,24 +660,32 @@ void Gpu3D::mtxIdentityCmd()
     switch (matrixMode)
     {
         case 0: // Projection stack
+        {
             projection = Matrix();
-            clipNeedsUpdate = true;
+            clipDirty = true;
             break;
+        }
 
         case 1: // Coordinate stack
+        {
             coordinate = Matrix();
-            clipNeedsUpdate = true;
+            clipDirty = true;
             break;
+        }
 
         case 2: // Coordinate and directional stacks
+        {
             coordinate = Matrix();
-            directional = Matrix();
-            clipNeedsUpdate = true;
+            direction = Matrix();
+            clipDirty = true;
             break;
+        }
 
         case 3: // Texture stack
+        {
             texture = Matrix();
             break;
+        }
     }
 }
 
@@ -671,30 +694,37 @@ void Gpu3D::mtxLoad44Cmd(uint32_t param)
     // Store the paramaters to the temporary matrix
     temp.data[paramCount] = (int32_t)param;
 
+    if (paramCount < 15) return;
+
     // Set a 4x4 matrix
-    if (paramCount == 15)
+    switch (matrixMode)
     {
-        switch (matrixMode)
+        case 0: // Projection stack
         {
-            case 0: // Projection stack
-                projection = temp;
-                clipNeedsUpdate = true;
-                break;
+            projection = temp;
+            clipDirty = true;
+            break;
+        }
 
-            case 1: // Coordinate stack
-                coordinate = temp;
-                clipNeedsUpdate = true;
-                break;
+        case 1: // Coordinate stack
+        {
+            coordinate = temp;
+            clipDirty = true;
+            break;
+        }
 
-            case 2: // Coordinate and directional stack
-                coordinate = temp;
-                directional = temp;
-                clipNeedsUpdate = true;
-                break;
+        case 2: // Coordinate and directional stacks
+        {
+            coordinate = temp;
+            direction = temp;
+            clipDirty = true;
+            break;
+        }
 
-            case 3: // Texture stack
-                texture = temp;
-                break;
+        case 3: // Texture stack
+        {
+            texture = temp;
+            break;
         }
     }
 }
@@ -705,30 +735,37 @@ void Gpu3D::mtxLoad43Cmd(uint32_t param)
     if (paramCount == 0) temp = Matrix();
     temp.data[(paramCount / 3) * 4 + paramCount % 3] = (int32_t)param;
 
+    if (paramCount < 11) return;
+
     // Set a 4x3 matrix
-    if (paramCount == 11)
+    switch (matrixMode)
     {
-        switch (matrixMode)
+        case 0: // Projection stack
         {
-            case 0: // Projection stack
-                projection = temp;
-                clipNeedsUpdate = true;
-                break;
+            projection = temp;
+            clipDirty = true;
+            break;
+        }
 
-            case 1: // Coordinate stack
-                coordinate = temp;
-                clipNeedsUpdate = true;
-                break;
+        case 1: // Coordinate stack
+        {
+            coordinate = temp;
+            clipDirty = true;
+            break;
+        }
 
-            case 2: // Coordinate and directional stack
-                coordinate = temp;
-                directional = temp;
-                clipNeedsUpdate = true;
-                break;
+        case 2: // Coordinate and directional stacks
+        {
+            coordinate = temp;
+            direction = temp;
+            clipDirty = true;
+            break;
+        }
 
-            case 3: // Texture stack
-                texture = temp;
-                break;
+        case 3: // Texture stack
+        {
+            texture = temp;
+            break;
         }
     }
 }
@@ -738,30 +775,37 @@ void Gpu3D::mtxMult44Cmd(uint32_t param)
     // Store the paramaters to the temporary matrix
     temp.data[paramCount] = (int32_t)param;
 
+    if (paramCount < 15) return;
+
     // Multiply a matrix by a 4x4 matrix
-    if (paramCount == 15)
+    switch (matrixMode)
     {
-        switch (matrixMode)
+        case 0: // Projection stack
         {
-            case 0: // Projection stack
-                projection = multiply(&temp, &projection);
-                clipNeedsUpdate = true;
-                break;
+            projection = multiply(&temp, &projection);
+            clipDirty = true;
+            break;
+        }
 
-            case 1: // Coordinate stack
-                coordinate = multiply(&temp, &coordinate);
-                clipNeedsUpdate = true;
-                break;
+        case 1: // Coordinate stack
+        {
+            coordinate = multiply(&temp, &coordinate);
+            clipDirty = true;
+            break;
+        }
 
-            case 2: // Coordinate and directional stacks
-                coordinate = multiply(&temp, &coordinate);
-                directional = multiply(&temp, &directional);
-                clipNeedsUpdate = true;
-                break;
+        case 2: // Coordinate and directional stacks
+        {
+            coordinate = multiply(&temp, &coordinate);
+            direction = multiply(&temp, &direction);
+            clipDirty = true;
+            break;
+        }
 
-            case 3: // Texture stack
-                texture = multiply(&temp, &texture);
-                break;
+        case 3: // Texture stack
+        {
+            texture = multiply(&temp, &texture);
+            break;
         }
     }
 }
@@ -772,30 +816,37 @@ void Gpu3D::mtxMult43Cmd(uint32_t param)
     if (paramCount == 0) temp = Matrix();
     temp.data[(paramCount / 3) * 4 + paramCount % 3] = (int32_t)param;
 
+    if (paramCount < 11) return;
+
     // Multiply a matrix by a 4x3 matrix
-    if (paramCount == 11)
+    switch (matrixMode)
     {
-        switch (matrixMode)
+        case 0: // Projection stack
         {
-            case 0: // Projection stack
-                projection = multiply(&temp, &projection);
-                clipNeedsUpdate = true;
-                break;
+            projection = multiply(&temp, &projection);
+            clipDirty = true;
+            break;
+        }
 
-            case 1: // Coordinate stack
-                coordinate = multiply(&temp, &coordinate);
-                clipNeedsUpdate = true;
-                break;
+        case 1: // Coordinate stack
+        {
+            coordinate = multiply(&temp, &coordinate);
+            clipDirty = true;
+            break;
+        }
 
-            case 2: // Coordinate and directional stacks
-                coordinate = multiply(&temp, &coordinate);
-                directional = multiply(&temp, &directional);
-                clipNeedsUpdate = true;
-                break;
+        case 2: // Coordinate and directional stacks
+        {
+            coordinate = multiply(&temp, &coordinate);
+            direction = multiply(&temp, &direction);
+            clipDirty = true;
+            break;
+        }
 
-            case 3: // Texture stack
-                texture = multiply(&temp, &texture);
-                break;
+        case 3: // Texture stack
+        {
+            texture = multiply(&temp, &texture);
+            break;
         }
     }
 }
@@ -806,30 +857,37 @@ void Gpu3D::mtxMult33Cmd(uint32_t param)
     if (paramCount == 0) temp = Matrix();
     temp.data[(paramCount / 3) * 4 + paramCount % 3] = (int32_t)param;
 
+    if (paramCount < 8) return;
+
     // Multiply a matrix by a 3x3 matrix
-    if (paramCount == 8)
+    switch (matrixMode)
     {
-        switch (matrixMode)
+        case 0: // Projection stack
         {
-            case 0: // Projection stack
-                projection = multiply(&temp, &projection);
-                clipNeedsUpdate = true;
-                break;
+            projection = multiply(&temp, &projection);
+            clipDirty = true;
+            break;
+        }
 
-            case 1: // Coordinate stack
-                coordinate = multiply(&temp, &coordinate);
-                clipNeedsUpdate = true;
-                break;
+        case 1: // Coordinate stack
+        {
+            coordinate = multiply(&temp, &coordinate);
+            clipDirty = true;
+            break;
+        }
 
-            case 2: // Coordinate and directional stacks
-                coordinate = multiply(&temp, &coordinate);
-                directional = multiply(&temp, &directional);
-                clipNeedsUpdate = true;
-                break;
+        case 2: // Coordinate and directional stacks
+        {
+            coordinate = multiply(&temp, &coordinate);
+            direction = multiply(&temp, &direction);
+            clipDirty = true;
+            break;
+        }
 
-            case 3: // Texture stack
-                texture = multiply(&temp, &texture);
-                break;
+        case 3: // Texture stack
+        {
+            texture = multiply(&temp, &texture);
+            break;
         }
     }
 }
@@ -840,24 +898,29 @@ void Gpu3D::mtxScaleCmd(uint32_t param)
     if (paramCount == 0) temp = Matrix();
     temp.data[paramCount * 5] = (int32_t)param;
 
+    if (paramCount < 2) return;
+
     // Multiply a matrix by a scale matrix
-    if (paramCount == 2)
+    switch (matrixMode)
     {
-        switch (matrixMode)
+        case 0: // Projection stack
         {
-            case 0: // Projection stack
-                projection = multiply(&temp, &projection);
-                clipNeedsUpdate = true;
-                break;
+            projection = multiply(&temp, &projection);
+            clipDirty = true;
+            break;
+        }
 
-            case 1: case 2: // Coordinate stack
-                coordinate = multiply(&temp, &coordinate);
-                clipNeedsUpdate = true;
-                break;
+        case 1: case 2: // Coordinate stack
+        {
+            coordinate = multiply(&temp, &coordinate);
+            clipDirty = true;
+            break;
+        }
 
-            case 3: // Texture stack
-                texture = multiply(&temp, &texture);
-                break;
+        case 3: // Texture stack
+        {
+            texture = multiply(&temp, &texture);
+            break;
         }
     }
 }
@@ -868,49 +931,63 @@ void Gpu3D::mtxTransCmd(uint32_t param)
     if (paramCount == 0) temp = Matrix();
     temp.data[12 + paramCount] = (int32_t)param;
 
+    if (paramCount < 2) return;
+
     // Multiply a matrix by a translation matrix
-    if (paramCount == 2)
+    switch (matrixMode)
     {
-        switch (matrixMode)
+        case 0: // Projection stack
         {
-            case 0: // Projection stack
-                projection = multiply(&temp, &projection);
-                clipNeedsUpdate = true;
-                break;
+            projection = multiply(&temp, &projection);
+            clipDirty = true;
+            break;
+        }
 
-            case 1: // Coordinate stack
-                coordinate = multiply(&temp, &coordinate);
-                clipNeedsUpdate = true;
-                break;
+        case 1: // Coordinate stack
+        {
+            coordinate = multiply(&temp, &coordinate);
+            clipDirty = true;
+            break;
+        }
 
-            case 2: // Coordinate and directional stacks
-                coordinate = multiply(&temp, &coordinate);
-                directional = multiply(&temp, &directional);
-                clipNeedsUpdate = true;
-                break;
+        case 2: // Coordinate and directional stacks
+        {
+            coordinate = multiply(&temp, &coordinate);
+            direction = multiply(&temp, &direction);
+            clipDirty = true;
+            break;
+        }
 
-            case 3: // Texture stack
-                texture = multiply(&temp, &texture);
-                break;
+        case 3: // Texture stack
+        {
+            texture = multiply(&temp, &texture);
+            break;
         }
     }
 }
 
 void Gpu3D::colorCmd(uint32_t param)
 {
-    // Set the vertex color
-    savedColor = param;
+    // Set the vertex color (converted from RGB5 to RGB6)
+    uint8_t r = ((param >>  0) & 0x1F); r = r * 2 + (r + 31) / 32;
+    uint8_t g = ((param >>  5) & 0x1F); g = g * 2 + (g + 31) / 32;
+    uint8_t b = ((param >> 10) & 0x1F); b = b * 2 + (b + 31) / 32;
+    savedVertex.color = (b << 12) | (g << 6) | r;
 }
 
 void Gpu3D::texCoordCmd(uint32_t param)
 {
     // Set the vertex texture coordinates
-    if (((savedTexImageParam & 0xC0000000) >> 30) == 1) // TexCoord transformation
+    savedVertex.s = (int16_t)(param >>  0);
+    savedVertex.t = (int16_t)(param >> 16);
+
+    // Transform the texture coordinates
+    if (textureCoordMode == 1)
     {
         // Create a vertex with the texture coordinates
         Vertex vertex;
-        vertex.x = ((int16_t)(param & 0x0000FFFF)) << 8;
-        vertex.y = ((int16_t)((param & 0xFFFF0000) >> 16)) << 8;
+        vertex.x = savedVertex.s << 8;
+        vertex.y = savedVertex.t << 8;
         vertex.z = 1 << 8;
         vertex.w = 1 << 8;
 
@@ -918,30 +995,23 @@ void Gpu3D::texCoordCmd(uint32_t param)
         vertex = multiply(&vertex, &texture);
 
         // Save the transformed coordinates
-        savedTexCoord = (((vertex.y >> 8) & 0xFFFF) << 16) | ((vertex.x >> 8) & 0xFFFF);
-    }
-    else
-    {
-        // Save the untransformed coordinates
-        savedTexCoord = param;
+        savedVertex.s = vertex.x >> 8;
+        savedVertex.t = vertex.y >> 8;
     }
 }
 
 void Gpu3D::vtx16Cmd(uint32_t param)
 {
-    if (vertexCountIn >= 6144) return;
-
     if (paramCount == 0)
     {
         // Set the X and Y coordinates
-        verticesIn[vertexCountIn].x = (int16_t)(param & 0x0000FFFF);
-        verticesIn[vertexCountIn].y = (int16_t)((param & 0xFFFF0000) >> 16);
+        savedVertex.x = (int16_t)(param >>  0);
+        savedVertex.y = (int16_t)(param >> 16);
     }
     else
     {
-        // Set the Z and W coordinates
-        verticesIn[vertexCountIn].z = (int16_t)(param & 0x0000FFFF);
-        verticesIn[vertexCountIn].w = 1 << 12;
+        // Set the Z coordinate
+        savedVertex.z = (int16_t)param;
 
         addVertex();
     }
@@ -949,107 +1019,92 @@ void Gpu3D::vtx16Cmd(uint32_t param)
 
 void Gpu3D::vtx10Cmd(uint32_t param)
 {
-    if (vertexCountIn >= 6144) return;
-
-    // Set the X, Y, Z and W coordinates
-    verticesIn[vertexCountIn].x = (int16_t)((param & 0x000003FF) << 6);
-    verticesIn[vertexCountIn].y = (int16_t)((param & 0x000FFC00) >> 4);
-    verticesIn[vertexCountIn].z = (int16_t)((param & 0x3FF00000) >> 14);
-    verticesIn[vertexCountIn].w = 1 << 12;
+    // Set the X, Y, and Z coordinates
+    savedVertex.x = (int16_t)((param & 0x000003FF) << 6);
+    savedVertex.y = (int16_t)((param & 0x000FFC00) >> 4);
+    savedVertex.z = (int16_t)((param & 0x3FF00000) >> 14);
 
     addVertex();
 }
 
 void Gpu3D::vtxXYCmd(uint32_t param)
 {
-    if (vertexCountIn >= 6144) return;
-
-    // Set the X, Y, and W coordinates and get the Z coordinate from the previous vertex
-    verticesIn[vertexCountIn].x = (int16_t)(param & 0x0000FFFF);
-    verticesIn[vertexCountIn].y = (int16_t)((param & 0xFFFF0000) >> 16);
-    verticesIn[vertexCountIn].z = last.z;
-    verticesIn[vertexCountIn].w = 1 << 12;
+    // Set the X and Y coordinates
+    savedVertex.x = (int16_t)(param >>  0);
+    savedVertex.y = (int16_t)(param >> 16);
 
     addVertex();
 }
 
 void Gpu3D::vtxXZCmd(uint32_t param)
 {
-    if (vertexCountIn >= 6144) return;
-
-    // Set the X, Z, and W coordinates and get the Y coordinate from the previous vertex
-    verticesIn[vertexCountIn].x = (int16_t)(param & 0x0000FFFF);
-    verticesIn[vertexCountIn].y = last.y;
-    verticesIn[vertexCountIn].z = (int16_t)((param & 0xFFFF0000) >> 16);
-    verticesIn[vertexCountIn].w = 1 << 12;
+    // Set the X and Z coordinates
+    savedVertex.x = (int16_t)(param >>  0);
+    savedVertex.z = (int16_t)(param >> 16);
 
     addVertex();
 }
 
 void Gpu3D::vtxYZCmd(uint32_t param)
 {
-    if (vertexCountIn >= 6144) return;
-
-    // Set the Y, Z, and W coordinates and get the X coordinate from the previous vertex
-    verticesIn[vertexCountIn].x = last.x;
-    verticesIn[vertexCountIn].y = (int16_t)(param & 0x0000FFFF);
-    verticesIn[vertexCountIn].z = (int16_t)((param & 0xFFFF0000) >> 16);
-    verticesIn[vertexCountIn].w = 1 << 12;
+    // Set the Y and Z coordinates
+    savedVertex.y = (int16_t)(param >>  0);
+    savedVertex.z = (int16_t)(param >> 16);
 
     addVertex();
 }
 
 void Gpu3D::vtxDiffCmd(uint32_t param)
 {
-    if (vertexCountIn >= 6144) return;
-
-    // Get the X, Y and Z offsets
-    Vertex vertex;
-    vertex.x = ((int16_t)((param & 0x000003FF) << 6)  / 8) >> 3;
-    vertex.y = ((int16_t)((param & 0x000FFC00) >> 4)  / 8) >> 3;
-    vertex.z = ((int16_t)((param & 0x3FF00000) >> 14) / 8) >> 3;
-
-    // Add the offsets to the previous vertex to create a new vertex
-    verticesIn[vertexCountIn].x = last.x + vertex.x;
-    verticesIn[vertexCountIn].y = last.y + vertex.y;
-    verticesIn[vertexCountIn].z = last.z + vertex.z;
-    verticesIn[vertexCountIn].w = 1 << 12;
+    // Add offsets to the X, Y, and Z coordinates
+    savedVertex.x += ((int16_t)((param & 0x000003FF) << 6)  / 8) >> 3;
+    savedVertex.y += ((int16_t)((param & 0x000FFC00) >> 4)  / 8) >> 3;
+    savedVertex.z += ((int16_t)((param & 0x3FF00000) >> 14) / 8) >> 3;
 
     addVertex();
 }
 
 void Gpu3D::texImageParamCmd(uint32_t param)
 {
-    // Set the texture image parameters
-    savedTexImageParam = param;
+    // Set the texture parameters
+    savedPolygon.textureAddr = (param & 0x0000FFFF) * 8;
+    savedPolygon.sizeS = 8 << ((param & 0x00700000) >> 20);
+    savedPolygon.sizeT = 8 << ((param & 0x03800000) >> 23);
+    savedPolygon.repeatS = param & BIT(16);
+    savedPolygon.repeatT = param & BIT(17);
+    savedPolygon.flipS = param & BIT(18);
+    savedPolygon.flipT = param & BIT(19);
+    savedPolygon.textureFmt = (param & 0x1C000000) >> 26;
+    savedPolygon.transparent0 = param & BIT(29);
+    textureCoordMode = (param & 0xC0000000) >> 30;
 }
 
 void Gpu3D::plttBaseCmd(uint32_t param)
 {
-    // Set the texture palette base
-    savedPlttBase = param;
+    // Set the palette base address
+    savedPolygon.paletteAddr = param & 0x00001FFF;
 }
 
 void Gpu3D::beginVtxsCmd(uint32_t param)
 {
     // Clipping a polygon strip starts a new strip with the last 2 vertices of the old one
     // Discard these vertices if they're unused
-    if (size == 2 && vertexCountIn >= 2)
-        vertexCountIn -= 2;
+    if (vertexCount < 3 + (polygonType & 1))
+        vertexCountIn -= vertexCount;
 
     // Begin a new vertex list
-    savedBeginVtxs = param & 0x00000003;
-    size = 0;
+    polygonType = param & 0x00000003;
+    vertexCount = 0;
 }
 
 void Gpu3D::swapBuffersCmd(uint32_t param)
 {
+    // Set the W-buffering toggle
+    savedPolygon.wBuffer = param & BIT(1);
+
     // Halt the geometry engine
     // The buffers will be swapped and the engine unhalted on next V-blank
     halted = true;
-
-    // Set the next frame's parameter
-    nextSwapBuffers = param;
 }
 
 void Gpu3D::addEntry(Entry entry)
@@ -1081,313 +1136,329 @@ void Gpu3D::addEntry(Entry entry)
 
 void Gpu3D::writeGxFifo(uint32_t mask, uint32_t value)
 {
-    if (gxFifoCmds == 0)
+    if (gxFifo == 0)
     {
-        // Start a transfer
-        gxFifoCmds = value & mask;
+        // Read new packed commands
+        gxFifo = value & mask;
     }
     else
     {
         // Add a command parameter
-        Entry entry = { (uint8_t)gxFifoCmds, value & mask };
+        Entry entry(gxFifo, value & mask);
         addEntry(entry);
         gxFifoCount++;
 
         // Move to the next command once all parameters have been sent
-        if (gxFifoCount == paramCounts[gxFifoCmds & 0xFF])
+        if (gxFifoCount == paramCounts[gxFifo & 0xFF])
         {
-            gxFifoCmds >>= 8;
+            gxFifo >>= 8;
             gxFifoCount = 0;
         }
     }
 
     // Add entries for commands with no parameters
-    while (gxFifoCmds != 0 && paramCounts[gxFifoCmds & 0xFF] == 0)
+    while (gxFifo != 0 && paramCounts[gxFifo & 0xFF] == 0)
     {
-        Entry entry = { (uint8_t)gxFifoCmds, 0 };
+        Entry entry(gxFifo, 0);
         addEntry(entry);
-        gxFifoCmds >>= 8;
+        gxFifo >>= 8;
     }
 }
 
 void Gpu3D::writeMtxMode(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x10, value & mask };
+    Entry entry(0x10, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxPush(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x11, value & mask };
+    Entry entry(0x11, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxPop(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x12, value & mask };
+    Entry entry(0x12, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxStore(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x13, value & mask };
+    Entry entry(0x13, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxRestore(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x14, value & mask };
+    Entry entry(0x14, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxIdentity(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x15, value & mask };
+    Entry entry(0x15, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxLoad44(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x16, value & mask };
+    Entry entry(0x16, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxLoad43(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x17, value & mask };
+    Entry entry(0x17, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxMult44(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x18, value & mask };
+    Entry entry(0x18, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxMult43(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x19, value & mask };
+    Entry entry(0x19, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxMult33(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x1A, value & mask };
+    Entry entry(0x1A, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxScale(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x1B, value & mask };
+    Entry entry(0x1B, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeMtxTrans(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x1C, value & mask };
+    Entry entry(0x1C, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeColor(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x20, value & mask };
+    Entry entry(0x20, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeNormal(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x21, value & mask };
+    Entry entry(0x21, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeTexCoord(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x22, value & mask };
+    Entry entry(0x22, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeVtx16(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x23, value & mask };
+    Entry entry(0x23, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeVtx10(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x24, value & mask };
+    Entry entry(0x24, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeVtxXY(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x25, value & mask };
+    Entry entry(0x25, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeVtxXZ(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x26, value & mask };
+    Entry entry(0x26, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeVtxYZ(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x27, value & mask };
+    Entry entry(0x27, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeVtxDiff(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x28, value & mask };
+    Entry entry(0x28, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writePolygonAttr(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x29, value & mask };
+    Entry entry(0x29, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeTexImageParam(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x2A, value & mask };
+    Entry entry(0x2A, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writePlttBase(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x2B, value & mask };
+    Entry entry(0x2B, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeDifAmb(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x30, value & mask };
+    Entry entry(0x30, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeSpeEmi(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x31, value & mask };
+    Entry entry(0x31, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeLightVector(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x32, value & mask };
+    Entry entry(0x32, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeLightColor(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x33, value & mask };
+    Entry entry(0x33, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeShininess(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x34, value & mask };
+    Entry entry(0x34, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeBeginVtxs(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x40, value & mask };
+    Entry entry(0x40, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeEndVtxs(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x41, value & mask };
+    Entry entry(0x41, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeSwapBuffers(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x50, value & mask };
+    Entry entry(0x50, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeViewport(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x60, value & mask };
+    Entry entry(0x60, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeBoxTest(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x70, value & mask };
+    Entry entry(0x70, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writePosTest(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x71, value & mask };
+    Entry entry(0x71, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeVecTest(uint32_t mask, uint32_t value)
 {
     // Add an entry to the FIFO
-    Entry entry = { 0x72, value & mask };
+    Entry entry(0x72, value & mask);
     addEntry(entry);
 }
 
 void Gpu3D::writeGxStat(uint32_t mask, uint32_t value)
 {
     // Clear the error bit and reset the projection stack pointer
-    if (value & BIT(15)) gxStat &= ~0x0000A000;
+    if (value & BIT(15))
+    {
+        gxStat &= ~0x0000A000;
+        projectionPtr = 0;
+    }
 
     // Write to the GXSTAT register
     mask &= 0xC0000000;
     gxStat = (gxStat & ~mask) | (value & mask);
 }
 
-uint32_t Gpu3D::readClipMtxResult(unsigned int index)
+uint32_t Gpu3D::readRamCount()
+{
+    // Read from the RAM_COUNT register
+    return (vertexCountIn << 16) | polygonCountIn;
+}
+
+uint32_t Gpu3D::readClipMtxResult(int index)
 {
     // Update the clip matrix if necessary
-    if (clipNeedsUpdate)
+    if (clipDirty)
     {
         clip = multiply(&coordinate, &projection);
-        clipNeedsUpdate = false;
+        clipDirty = false;
     }
 
     // Read from one of the CLIPMTX_RESULT registers
     return clip.data[index];
+}
+
+uint32_t Gpu3D::readVecMtxResult(int index)
+{
+    // Read from one of the VECMTX_RESULT registers
+    return direction.data[(index / 3) * 4 + index % 3];
 }

@@ -25,7 +25,7 @@
 #include "defines.h"
 #include "gpu_3d.h"
 
-uint32_t Gpu3DRenderer::rgb5ToRgb6(uint32_t color)
+uint32_t Gpu3DRenderer::rgb5ToRgb6(uint16_t color)
 {
     // Convert an RGB5 value to an RGB6 value (the way the 3D engine does it)
     uint8_t r = ((color >>  0) & 0x1F); r = r * 2 + (r + 31) / 32;
@@ -42,7 +42,7 @@ void Gpu3DRenderer::drawScanline(int line)
 
     // "Empty" the depth buffer by setting all values to maximum
     for (int i = 0; i < 256; i++)
-        depthBuffer[i] = 0x7FFFFFFF;
+        depthBuffer[i] = 0xFFFFFF;
 
     // Draw the polygons
     for (int i = 0; i < gpu3D->getPolygonCount(); i++)
@@ -68,7 +68,7 @@ void Gpu3DRenderer::drawScanline(int line)
             }
         }
 
-        // Ensure the polygon intersects with the current scanline
+        // Check if the polygon intersects with the current scanline
         if (line < vertices[0]->y || line >= vertices[polygon->size - 1]->y)
             continue;
 
@@ -86,88 +86,87 @@ void Gpu3DRenderer::drawScanline(int line)
         {
             if (line < vertices[j]->y)
             {
-                // The highest point equal or below j on the left
-                int v1;
-                for (v1 = j; v1 < polygon->size; v1++)
-                    if (v1 == polygon->size - 1 || crosses[v1 - 1] <= 0) break;
+                int v1, v2, v3, v4;
 
-                // The lowest point above v1 on the left
-                int v0;
-                for (v0 = v1 - 1; v0 >= 0; v0--)
-                    if (v0 == 0 || crosses[v0 - 1] <= 0) break;
+                // Find the bottom vertex of the left side of the polygon on the current line
+                // This is equal to the highest point equal or below j on the left
+                for (v2 = j; v2 < polygon->size; v2++)
+                    if (v2 == polygon->size - 1 || crosses[v2 - 1] <= 0) break;
 
-                // The highest point equal or below j on the right
-                int v3;
-                for (v3 = j; v3 < polygon->size; v3++)
-                    if (v3 == polygon->size - 1 || crosses[v3 - 1] > 0) break;
+                // Find the top vertex of the left side of the polygon on the current line
+                // This is equal to the lowest point above v2 on the left
+                for (v1 = v2 - 1; v1 >= 0; v1--)
+                    if (v1 == 0 || crosses[v1 - 1] <= 0) break;
 
-                // The lowest point above v3 on the right
-                int v2;
-                for (v2 = v3 - 1; v2 >= 0; v2--)
-                    if (v2 == 0 || crosses[v2 - 1] > 0) break;
+                // Find the bottom vertex of the right side of the polygon on the current line
+                // This is equal to the highest point equal or below j on the right
+                for (v4 = j; v4 < polygon->size; v4++)
+                    if (v4 == polygon->size - 1 || crosses[v4 - 1] > 0) break;
 
-                rasterize(line, polygon, vertices[v0], vertices[v1], vertices[v2], vertices[v3]);
+                // Find the top vertex of the right side of the polygon on the current line
+                // This is equal to the lowest point above v4 on the right
+                for (v3 = v4 - 1; v3 >= 0; v3--)
+                    if (v3 == 0 || crosses[v3 - 1] > 0) break;
+
+                rasterize(line, polygon, vertices[v1], vertices[v2], vertices[v3], vertices[v4]);
                 break;
             }
         }
     }
 }
 
-int Gpu3DRenderer::interpolateW(int w0, int w1, int x0, int x, int x1)
+uint8_t *Gpu3DRenderer::getTexture(uint32_t address)
 {
-    // Reduce precision to 16-bits to avoid overflow
-    int count = 0;
-    while (w0 != (int16_t)w0 || w1 != (int16_t)w1)
-    {
-        w0 >>= 4;
-        w1 >>= 4;
-        count += 4;
-    }
-
-    // Interpolate a new value between the min and max values
-    int result = w1 + (w0 - w1) * (x - x0) / (x1 - x0);
-    return result ? ((w0 * w1 / result) << count) : 0;
+    // Get a pointer to texture data
+    uint8_t *slot = textures[address / 0x20000];
+    return slot ? &slot[address % 0x20000] : nullptr;
 }
 
-int Gpu3DRenderer::interpolate(int val0, int val1, int x0, int x, int x1)
+uint8_t *Gpu3DRenderer::getPalette(uint32_t address)
 {
-    // Interpolate a new value between the min and max values
-    return val0 + (val1 - val0) * (x - x0) / (x1 - x0);
+    // Get a pointer to palette data
+    uint8_t *slot = palettes[address / 0x4000];
+    return slot ? &slot[address % 0x4000] : nullptr;
 }
 
-int Gpu3DRenderer::interpolate(int val0, int val1, int x0, int x, int x1, int w0, int w, int w1)
+int Gpu3DRenderer::interpolateW(int w1, int w2, int x1, int x, int x2)
 {
-    // Reduce precision to 16-bits to avoid overflow
-    while (w0 != (int16_t)w0 || w1 != (int16_t)w1)
-    {
-        w0 >>= 4;
-        w1 >>= 4;
-        w >>= 4;
-    }
+    // Interpolate a new value between the min and max values
+    int result = w2 + (w1 - w2) * (x - x1) / (x2 - x1);
+    return result ? (w1 * w2 / result) : 0;
+}
 
+int Gpu3DRenderer::interpolate(int v1, int v2, int x1, int x, int x2)
+{
+    // Interpolate a new value between the min and max values
+    return v1 + (v2 - v1) * (x - x1) / (x2 - x1);
+}
+
+int Gpu3DRenderer::interpolate(int v1, int v2, int x1, int x, int x2, int w1, int w, int w2)
+{
     // Get the parameters
-    int min = w0 ? (val0 * w / w0) : 0;
-    int max = w1 ? (val1 * w / w1) : 0;
+    int min = w1 ? (v1 * w / w1) : 0;
+    int max = w2 ? (v2 * w / w2) : 0;
 
     // Interpolate a new value between the min and max values
-    return min + (max - min) * (x - x0) / (x1 - x0);
+    return min + (max - min) * (x - x1) / (x2 - x1);
 }
 
-uint32_t Gpu3DRenderer::interpolateColor(uint32_t col0, uint32_t col1, int x0, int x, int x1)
+uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2)
 {
     // Apply interpolation separately on the RGB values
-    int r = interpolate((col0 >>  0) & 0x3F, (col1 >>  0) & 0x3F, x0, x, x1);
-    int g = interpolate((col0 >>  6) & 0x3F, (col1 >>  6) & 0x3F, x0, x, x1);
-    int b = interpolate((col0 >> 12) & 0x3F, (col1 >> 12) & 0x3F, x0, x, x1);
+    int r = interpolate((c1 >>  0) & 0x3F, (c2 >>  0) & 0x3F, x1, x, x2);
+    int g = interpolate((c1 >>  6) & 0x3F, (c2 >>  6) & 0x3F, x1, x, x2);
+    int b = interpolate((c1 >> 12) & 0x3F, (c2 >> 12) & 0x3F, x1, x, x2);
     return BIT(18) | (b << 12) | (g << 6) | r;
 }
 
-uint32_t Gpu3DRenderer::interpolateColor(uint32_t col0, uint32_t col1, int x0, int x, int x1, int w0, int w, int w1)
+uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2, int w1, int w, int w2)
 {
     // Apply interpolation separately on the RGB values
-    int r = interpolate((col0 >>  0) & 0x3F, (col1 >>  0) & 0x3F, x0, x, x1, w0, w, w1);
-    int g = interpolate((col0 >>  6) & 0x3F, (col1 >>  6) & 0x3F, x0, x, x1, w0, w, w1);
-    int b = interpolate((col0 >> 12) & 0x3F, (col1 >> 12) & 0x3F, x0, x, x1, w0, w, w1);
+    int r = interpolate((c1 >>  0) & 0x3F, (c2 >>  0) & 0x3F, x1, x, x2, w1, w, w2);
+    int g = interpolate((c1 >>  6) & 0x3F, (c2 >>  6) & 0x3F, x1, x, x2, w1, w, w2);
+    int b = interpolate((c1 >> 12) & 0x3F, (c2 >> 12) & 0x3F, x1, x, x2, w1, w, w2);
     return BIT(18) | (b << 12) | (g << 6) | r;
 }
 
@@ -219,16 +218,20 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
         t = polygon->sizeT - 1;
     }
 
-    switch (polygon->texFormat)
+    // Decode a texel
+    switch (polygon->textureFmt)
     {
         case 1: // A3I5 translucent
         {
             // Get the 8-bit palette index
-            uint32_t address = polygon->texDataAddr + (t * polygon->sizeS + s);
-            uint8_t index = *gpu3D->getTexData(address);
+            uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s);
+            uint8_t *data = getTexture(address);
+            if (!data) return 0;
+            uint8_t index = *data;
 
             // Get the palette
-            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr);
+            uint8_t *palette = getPalette(polygon->paletteAddr);
+            if (!palette) return 0;
 
             // Return the palette color or a transparent pixel
             return ((index & 0xE0) == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, (index & 0x1F) * 2)) | BIT(18));
@@ -237,173 +240,197 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
         case 2: // 4-color palette
         {
             // Get the 2-bit palette index
-            uint32_t address = polygon->texDataAddr + (t * polygon->sizeS + s) / 4;
-            uint8_t index = (*gpu3D->getTexData(address) >> ((s % 4) * 2)) & 0x03;
+            uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s) / 4;
+            uint8_t *data = getTexture(address);
+            if (!data) return 0;
+            uint8_t index = (*data >> ((s % 4) * 2)) & 0x03;
 
             // Get the palette
-            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr);
+            uint8_t *palette = getPalette(polygon->paletteAddr);
+            if (!palette) return 0;
 
             // Return the palette color or a transparent pixel if enabled
-            return (polygon->transparent && index == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
+            return (polygon->transparent0 && index == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
         }
 
         case 3: // 16-color palette
         {
             // Get the 4-bit palette index
-            uint32_t address = polygon->texDataAddr + (t * polygon->sizeS + s) / 2;
-            uint8_t index = (*gpu3D->getTexData(address) >> ((s % 2) * 4)) & 0x0F;
+            uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s) / 2;
+            uint8_t *data = getTexture(address);
+            if (!data) return 0;
+            uint8_t index = (*data >> ((s % 2) * 4)) & 0x0F;
 
             // Get the palette
-            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr);
+            uint8_t *palette = getPalette(polygon->paletteAddr);
+            if (!palette) return 0;
 
             // Return the palette color or a transparent pixel if enabled
-            return (polygon->transparent && index == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
+            return (polygon->transparent0 && index == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
         }
 
         case 4: // 256-color palette
         {
             // Get the 8-bit palette index
-            uint32_t address = polygon->texDataAddr + (t * polygon->sizeS + s);
-            uint8_t index = *gpu3D->getTexData(address);
+            uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s);
+            uint8_t *data = getTexture(address);
+            if (!data) return 0;
+            uint8_t index = *data;
 
             // Get the palette
-            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr);
+            uint8_t *palette = getPalette(polygon->paletteAddr);
+            if (!palette) return 0;
 
             // Return the palette color or a transparent pixel if enabled
-            return (polygon->transparent && index == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
+            return (polygon->transparent0 && index == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
         }
 
         case 5: // 4x4 compressed
         {
             // Get the 2-bit palette index
             int tile = (t / 4) * (polygon->sizeS / 4) + (s / 4);
-            uint32_t address = polygon->texDataAddr + (tile * 4 + t % 4);
-            uint8_t index = (*gpu3D->getTexData(address) >> ((s % 4) * 2)) & 0x03;
+            uint32_t address = polygon->textureAddr + (tile * 4 + t % 4);
+            uint8_t *data = getTexture(address);
+            if (!data) return 0;
+            uint8_t index = (*data >> ((s % 4) * 2)) & 0x03;
 
             // Get the palette, using the base for the tile stored in slot 1
-            address = 0x20000 + (polygon->texDataAddr % 0x20000) / 2 + ((polygon->texDataAddr / 0x20000 == 2) ? 0x10000 : 0);
-            uint16_t palBase = U8TO16(gpu3D->getTexData(address), tile * 2);
-            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr + (palBase & 0x3FFF) * 4);
+            address = 0x20000 + (polygon->textureAddr % 0x20000) / 2 + ((polygon->textureAddr / 0x20000 == 2) ? 0x10000 : 0);
+            uint16_t palBase = U8TO16(getTexture(address), tile * 2);
+            uint8_t *palette = getPalette(polygon->paletteAddr + (palBase & 0x3FFF) * 4);
+            if (!palette) return 0;
 
             // Return the palette color or a transparent or interpolated color based on the mode
             switch ((palBase & 0xC000) >> 14) // Interpolation mode
             {
-                case 0:
-                    return (index == 3) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
+                case 0: return (index == 3) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
+                case 2: return rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18);
 
                 case 1:
+                {
                     switch (index)
                     {
                         case 2:
                         {
-                            uint32_t col0 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
-                            uint32_t col1 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
-                            return interpolateColor(col0, col1, 0, 1, 2);
+                            uint32_t c1 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
+                            uint32_t c2 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
+                            return interpolateColor(c1, c2, 0, 1, 2);
                         }
 
-                        case 3:
-                            return 0;
-
-                        default:
-                            return rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18);
+                        case 3:  return 0;
+                        default: return rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18);
                     }
-
-                case 2:
-                    return rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18);
+                }
 
                 case 3:
+                {
                     switch (index)
                     {
                         case 2:
                         {
-                            uint32_t col0 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
-                            uint32_t col1 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
-                            return interpolateColor(col0, col1, 0, 3, 8);
+                            uint32_t c1 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
+                            uint32_t c2 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
+                            return interpolateColor(c1, c2, 0, 3, 8);
                         }
 
                         case 3:
                         {
-                            uint32_t col0 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
-                            uint32_t col1 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
-                            return interpolateColor(col0, col1, 0, 5, 8);
+                            uint32_t c1 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
+                            uint32_t c2 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
+                            return interpolateColor(c1, c2, 0, 5, 8);
                         }
 
-                        default:
-                            return rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18);
+                        default: return rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18);
                     }
+                }
             }
         }
 
         case 6: // A5I3 translucent
         {
             // Get the 8-bit palette index
-            uint32_t address = polygon->texDataAddr + (t * polygon->sizeS + s);
-            uint8_t index = *gpu3D->getTexData(address);
+            uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s);
+            uint8_t *data = getTexture(address);
+            if (!data) return 0;
+            uint8_t index = *data;
 
             // Get the palette
-            uint8_t *palette = gpu3D->getTexPalette(polygon->texPaletteAddr);
+            uint8_t *palette = getPalette(polygon->paletteAddr);
+            if (!palette) return 0;
 
             // Return the palette color or a transparent pixel
             return ((index & 0xF8) == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, (index & 0x07) * 2)) | BIT(18));
         }
 
         default: // Direct color
+        {
             // Return the direct color
-            return rgb5ToRgb6(U8TO16(gpu3D->getTexData(polygon->texDataAddr), (t * polygon->sizeS + s) * 2));
+            uint8_t *data = getTexture(polygon->textureAddr);
+            return data ? rgb5ToRgb6(U8TO16(data, (t * polygon->sizeS + s) * 2)) : 0;
+        }
     }
 }
 
-void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v0, Vertex *v1, Vertex *v2, Vertex *v3)
+void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v2, Vertex *v3, Vertex *v4)
 {
-    // Calculate the X bounds between the line between V0 and V1 and the line between V2 and V3
-    int lx0 = interpolate(v0->x, v1->x, v0->y, line, v1->y);
-    int lx1 = interpolate(v2->x, v3->x, v2->y, line, v3->y);
-
-    // Calculate the Z values of the polygon edges on the current line
-    int z0, z1;
-    if (!gpu3D->getWBufEnabled())
+    // "Normalize" the W values by reducing them to 16-bits
+    int64_t vw[] = { v1->w, v2->w, v3->w, v4->w };
+    int wShift = 0;
+    for (int i = 0; i < 4; i++)
     {
-        z0 = interpolate(v0->z, v1->z, v0->y, line, v1->y);
-        z1 = interpolate(v2->z, v3->z, v2->y, line, v3->y);
+        while (vw[i] != (int16_t)vw[i])
+        {
+            for (int j = 0; j < 4; j++)
+                vw[j] >>= 4;
+            wShift += 4;
+        }
     }
 
+    // Calculate the X bounds of the polygon on the current line
+    int x1 = interpolate(v1->x, v2->x, v1->y, line, v2->y);
+    int x2 = interpolate(v3->x, v4->x, v3->y, line, v4->y);
+
+    // Calculate the Z values of the polygon edges on the current line
+    int z1 = polygon->wBuffer ? 0 : interpolate(v1->z, v2->z, v1->y, line, v2->y);
+    int z2 = polygon->wBuffer ? 0 : interpolate(v3->z, v4->z, v3->y, line, v4->y);
+
     // Calculate the W values of the polygon edges on the current line
-    int w0 = interpolateW(v0->w, v1->w, v0->y, line, v1->y);
-    int w1 = interpolateW(v2->w, v3->w, v2->y, line, v3->y);
+    int w1 = interpolateW(vw[0], vw[1], v1->y, line, v2->y);
+    int w2 = interpolateW(vw[2], vw[3], v3->y, line, v4->y);
 
     // Draw a line segment
-    for (int x = lx0; x < lx1; x++)
+    for (int x = x1; x < x2; x++)
     {
         // Calculate the depth value of the current pixel
-        int depth = gpu3D->getWBufEnabled() ? interpolateW(w0, w1, lx0, x, lx1) : interpolate(z0, z1, lx0, x, lx1);
+        int depth = polygon->wBuffer ? (interpolateW(w1, w2, x1, x, x2) << wShift) : interpolate(z1, z2, x1, x, x2);
 
         // Draw a new pixel if the old one is behind the new one
         if (depthBuffer[x] >= depth)
         {
             // Calculate the W value of the current pixel
-            int w = gpu3D->getWBufEnabled() ? depth : interpolateW(w0, w1, lx0, x, lx1);
+            int w = polygon->wBuffer ? (depth >> wShift) : interpolateW(w1, w2, x1, x, x2);
 
             uint32_t color;
 
             // Calculate the pixel color
-            if (polygon->texFormat == 0) // No texture
+            if (polygon->textureFmt == 0) // No texture
             {
                 // Interpolate the vertex colors
-                uint32_t col0 = interpolateColor(v0->color, v1->color, v0->y, line, v1->y, v0->w, w0, v1->w);
-                uint32_t col1 = interpolateColor(v2->color, v3->color, v2->y, line, v3->y, v2->w, w1, v3->w);
-                color = interpolateColor(col0, col1, lx0, x, lx1, w0, w, w1);
+                uint32_t c1 = interpolateColor(v1->color, v2->color, v1->y, line, v2->y, vw[0], w1, vw[1]);
+                uint32_t c2 = interpolateColor(v3->color, v4->color, v3->y, line, v4->y, vw[2], w2, vw[3]);
+                color = interpolateColor(c1, c2, x1, x, x2, w1, w, w2);
             }
             else
             {
                 // Interpolate the texture S coordinate
-                int s0 = interpolate(v0->s, v1->s, v0->y, line, v1->y, v0->w, w0, v1->w);
-                int s1 = interpolate(v2->s, v3->s, v2->y, line, v3->y, v2->w, w1, v3->w);
-                int s  = interpolate(s0, s1, lx0, x, lx1, w0, w, w1);
+                int s1 = interpolate(v1->s, v2->s, v1->y, line, v2->y, vw[0], w1, vw[1]);
+                int s2 = interpolate(v3->s, v4->s, v3->y, line, v4->y, vw[2], w2, vw[3]);
+                int s  = interpolate(s1, s2, x1, x, x2, w1, w, w2);
 
                 // Interpolate the texture T coordinate
-                int t0 = interpolate(v0->t, v1->t, v0->y, line, v1->y, v0->w, w0, v1->w);
-                int t1 = interpolate(v2->t, v3->t, v2->y, line, v3->y, v2->w, w1, v3->w);
-                int t  = interpolate(t0, t1, lx0, x, lx1, w0, w, w1);
+                int t1 = interpolate(v1->t, v2->t, v1->y, line, v2->y, vw[0], w1, vw[1]);
+                int t2 = interpolate(v3->t, v4->t, v3->y, line, v4->y, vw[2], w2, vw[3]);
+                int t  = interpolate(t1, t2, x1, x, x2, w1, w, w2);
 
                 // Read the color from a texture
                 color = readTexture(polygon, s >> 4, t >> 4);

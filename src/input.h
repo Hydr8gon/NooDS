@@ -25,8 +25,8 @@
 class Input
 {
     public:
-        void pressKey(unsigned int key);
-        void releaseKey(unsigned int key);
+        void pressKey(int key);
+        void releaseKey(int key);
         void pressScreen();
         void releaseScreen();
 

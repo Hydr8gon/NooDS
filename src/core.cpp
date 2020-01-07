@@ -24,10 +24,10 @@
 #include "defines.h"
 
 Core::Core(): cart9(&arm9, &memory), cart7(&arm7, &memory), cp15(&arm9), dma9(&cart9, &gpu3D, &arm9, &memory),
-              dma7(&cart7, nullptr, &arm7, &memory), gpu(&engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9, &arm7),
-              engineA(&gpu3DRenderer, &memory), engineB(&memory), gpu3D(&arm9), gpu3DRenderer(&gpu3D),
-              arm9(&cp15, &memory), arm7(&memory), ipc(&arm9, &arm7), memory(&cart9, &cart7, &cp15,
-              &dma9, &dma7, &gpu, &engineA, &engineB, &gpu3D, &input, &arm9, &arm7, &ipc, &math,
+              dma7(&cart7, nullptr, &arm7, &memory), gpu(&engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9,
+              &arm7), engineA(&gpu3DRenderer, &memory), engineB(&memory), gpu3D(&arm9), gpu3DRenderer(&gpu3D),
+              arm9(&cp15, &memory), arm7(&memory), ipc(&arm9, &arm7), memory(&cart9, &cart7, &cp15, &dma9,
+              &dma7, &gpu, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &input, &arm9, &arm7, &ipc, &math,
               &rtc, &spi, &timers9, &timers7), spi(&arm7, firmware), timers9(&arm9), timers7(&arm7)
 {
     // Attempt to load the firmware
@@ -43,7 +43,7 @@ Core::Core(std::string filename): Core()
     FILE *romFile = fopen(filename.c_str(), "rb");
     if (!romFile) throw new std::exception;
     fseek(romFile, 0, SEEK_END);
-    unsigned int romSize = ftell(romFile);
+    uint32_t romSize = ftell(romFile);
     fseek(romFile, 0, SEEK_SET);
     rom = new uint8_t[romSize];
     fread(rom, sizeof(uint8_t), romSize, romFile);
@@ -98,15 +98,15 @@ Core::Core(std::string filename): Core()
         memory.write<uint8_t>(true, 0x27FFE00 + i, rom[i]);
 
     // Load the initial ARM9 code into memory
-    for (unsigned int i = 0; i < size9; i++)
+    for (uint32_t i = 0; i < size9; i++)
         memory.write<uint8_t>(true, ramAddr9 + i, rom[offset9 + i]);
 
     // Load the initial ARM7 code into memory
-    for (unsigned int i = 0; i < size7; i++)
+    for (uint32_t i = 0; i < size7; i++)
         memory.write<uint8_t>(false, ramAddr7 + i, rom[offset7 + i]);
 
     // Load the user settings into memory
-    for (unsigned int i = 0; i < 0x70; i++)
+    for (uint32_t i = 0; i < 0x70; i++)
         memory.write<uint8_t>(true, 0x27FFC80 + i, firmware[0x3FF00 + i]);
 
     // Set some memory values as the BIOS/firmware would

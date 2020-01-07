@@ -24,7 +24,7 @@
 #include "interpreter.h"
 #include "memory.h"
 
-void Cartridge::setRom(uint8_t *rom, unsigned int romSize, uint8_t *save, unsigned int saveSize)
+void Cartridge::setRom(uint8_t *rom, uint32_t romSize, uint8_t *save, uint32_t saveSize)
 {
     this->rom = rom;
     this->romSize = romSize;
@@ -76,7 +76,7 @@ uint64_t Cartridge::decrypt64(uint64_t value)
     return ((uint64_t)(y ^ encTable[0x00]) << 32) | (x ^ encTable[0x01]);
 }
 
-void Cartridge::initKeycode(unsigned int level)
+void Cartridge::initKeycode(int level)
 {
     // Initialize the Blowfish encryption table
     // This is a translation of the pseudocode from GBATEK to C++
@@ -165,9 +165,11 @@ void Cartridge::writeAuxSpiData(uint8_t value)
         switch (saveSize)
         {
             case 0x2000: case 0x10000: // EEPROM 8KB, 64KB
+            {
                 switch (auxCommand)
                 {
                     case 0x03: // Read from memory
+                    {
                         if (auxWriteCount < 3)
                         {
                             // On writes 2-3, set the 2 byte address to read from
@@ -181,8 +183,10 @@ void Cartridge::writeAuxSpiData(uint8_t value)
                             auxAddress++;
                         }
                         break;
+                    }
 
                     case 0x02: // Write to memory
+                    {
                         if (auxWriteCount < 3)
                         {
                             // On writes 2-3, set the 2 byte address to write to
@@ -197,18 +201,24 @@ void Cartridge::writeAuxSpiData(uint8_t value)
                             auxSpiData = 0;
                         }
                         break;
+                    }
 
                     default:
+                    {
                         printf("Write to AUX SPI with unknown EEPROM command: 0x%X\n", auxCommand);
                         auxSpiData = 0;
                         break;
+                    }
                 }
                 break;
+            }
 
             case 0x40000: case 0x80000: // FLASH 256KB, 512KB
+            {
                 switch (auxCommand)
                 {
                     case 0x03: // Read data bytes
+                    {
                         if (auxWriteCount < 4)
                         {
                             // On writes 2-4, set the 3 byte address to read from
@@ -222,9 +232,11 @@ void Cartridge::writeAuxSpiData(uint8_t value)
                             auxAddress++;
                         }
                         break;
+                    }
 
                     case 0x0A: // Page write
                     case 0x02: // Page program
+                    {
                         if (auxWriteCount < 4)
                         {
                             // On writes 2-4, set the 3 byte address to write to
@@ -239,17 +251,23 @@ void Cartridge::writeAuxSpiData(uint8_t value)
                             auxSpiData = 0;
                         }
                         break;
+                    }
 
                     default:
+                    {
                         printf("Write to AUX SPI with unknown FLASH command: 0x%X\n", auxCommand);
                         auxSpiData = 0;
                         break;
+                    }
                 }
                 break;
+            }
 
             default:
+            {
                 printf("Write to AUX SPI with unknown save type\n");
                 break;
+            }
         }
     }
 

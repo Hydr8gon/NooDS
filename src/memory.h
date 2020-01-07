@@ -28,6 +28,7 @@ class Dma;
 class Gpu;
 class Gpu2D;
 class Gpu3D;
+class Gpu3DRenderer;
 class Input;
 class Interpreter;
 class Ipc;
@@ -40,14 +41,14 @@ class Memory
 {
     public:
         Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA,
-               Gpu2D *engineB, Gpu3D *gpu3D, Input *input, Interpreter *arm9, Interpreter *arm7,
-               Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Timers *timers9, Timers *timers7);
+               Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9,
+               Interpreter *arm7, Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Timers *timers9, Timers *timers7);
 
         template <typename T> T read(bool arm9, uint32_t address);
         template <typename T> void write(bool arm9, uint32_t address, T value);
 
         uint8_t *getMappedVram(uint32_t address);
-        uint8_t *getVramBlock(unsigned int block);
+        uint8_t *getVramBlock(int block);
         uint8_t *getPalette() { return palette; }
         uint8_t *getOam() { return oam; }
 
@@ -85,6 +86,7 @@ class Memory
         Gpu *gpu;
         Gpu2D *engineA, *engineB;
         Gpu3D *gpu3D;
+        Gpu3DRenderer *gpu3DRenderer;
         Input *input;
         Interpreter *arm9, *arm7;
         Ipc *ipc;
@@ -98,10 +100,10 @@ class Memory
         template <typename T> void ioWrite9(uint32_t address, T value);
         template <typename T> void ioWrite7(uint32_t address, T value);
 
-        uint8_t  readWramStat()                    { return wramStat;         }
-        uint32_t readDmaFill(unsigned int channel) { return dmaFill[channel]; }
-        uint8_t  readHaltCnt()                     { return haltCnt;          }
-        uint16_t readSoundBias()                   { return soundBias;        }
+        uint8_t  readWramStat()           { return wramStat;         }
+        uint32_t readDmaFill(int channel) { return dmaFill[channel]; }
+        uint8_t  readHaltCnt()            { return haltCnt;          }
+        uint16_t readSoundBias()          { return soundBias;        }
 
         void writeVramCntA(uint8_t value);
         void writeVramCntB(uint8_t value);
@@ -113,7 +115,7 @@ class Memory
         void writeWramCnt(uint8_t value);
         void writeVramCntH(uint8_t value);
         void writeVramCntI(uint8_t value);
-        void writeDmaFill(unsigned int channel, uint32_t mask, uint32_t value);
+        void writeDmaFill(int channel, uint32_t mask, uint32_t value);
         void writeHaltCnt(uint8_t value);
         void writeSoundBias(uint16_t mask, uint16_t value);
 };

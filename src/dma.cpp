@@ -34,7 +34,7 @@ void Dma::transfer()
         if (!(enabled & BIT(i))) continue;
 
         // Determine the transfer mode
-        unsigned int mode;
+        int mode;
         if (gpu3D) // ARM9
         {
             mode = (dmaCnt[i] & 0x38000000) >> 27;
@@ -55,22 +55,29 @@ void Dma::transfer()
         switch (mode)
         {
             case 0: // Start immediately
+            {
                 // Transfer now
                 break;
+            }
 
             case 5: // DS cartridge slot
+            {
                 // Only transfer when a word from the cart is ready
                 if (!(cart->readRomCtrl() & BIT(23)))
                     continue;
                 break;
+            }
 
             case 7: // Geometry command FIFO
+            {
                 // Only transfer when the FIFO is less than half full
                 if (!(gpu3D->readGxStat() & BIT(25)))
                     continue;
                 break;
+            }
 
             default:
+            {
                 printf("Unknown ARM%d DMA transfer timing: %d\n", (gpu3D ? 9 : 7), mode);
 
                 // Pretend that the transfer completed
@@ -78,12 +85,12 @@ void Dma::transfer()
                 enabled &= ~BIT(i);
                 if (dmaCnt[i] & BIT(30))
                     cpu->sendInterrupt(8 + i);
-
                 continue;
+            }
         }
 
-        unsigned int dstAddrCnt = (dmaCnt[i] & 0x00600000) >> 21;
-        unsigned int srcAddrCnt = (dmaCnt[i] & 0x01800000) >> 23;
+        int dstAddrCnt = (dmaCnt[i] & 0x00600000) >> 21;
+        int srcAddrCnt = (dmaCnt[i] & 0x01800000) >> 23;
 
         // Perform the transfer
         if (dmaCnt[i] & BIT(26)) // Whole word transfer
@@ -172,21 +179,21 @@ void Dma::transfer()
     }
 }
 
-void Dma::writeDmaSad(unsigned int channel, uint32_t mask, uint32_t value)
+void Dma::writeDmaSad(int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMASAD registers
     mask &= (gpu3D ? 0x0FFFFFFF : 0x07FFFFFF);
     dmaSad[channel] = (dmaSad[channel] & ~mask) | (value & mask);
 }
 
-void Dma::writeDmaDad(unsigned int channel, uint32_t mask, uint32_t value)
+void Dma::writeDmaDad(int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMADAD registers
     mask &= (gpu3D ? 0x0FFFFFFF : 0x07FFFFFF);
     dmaDad[channel] = (dmaDad[channel] & ~mask) | (value & mask);
 }
 
-void Dma::writeDmaCnt(unsigned int channel, uint32_t mask, uint32_t value)
+void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value)
 {
     bool reload = false;
 

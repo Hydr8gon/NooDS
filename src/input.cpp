@@ -20,7 +20,7 @@
 #include "input.h"
 #include "defines.h"
 
-void Input::pressKey(unsigned int key)
+void Input::pressKey(int key)
 {
     // Clear key bits to indicate presses
     if (key < 10) // A, B, select, start, right, left, up, down, R, L
@@ -29,7 +29,7 @@ void Input::pressKey(unsigned int key)
         extKeyIn &= ~BIT(key - 10);
 }
 
-void Input::releaseKey(unsigned int key)
+void Input::releaseKey(int key)
 {
     // Set key bits to indicate releases
     if (key < 10) // A, B, select, start, right, left, up, down, R, L

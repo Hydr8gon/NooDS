@@ -32,7 +32,7 @@ class Cartridge
     public:
         Cartridge(Interpreter *cpu, Memory *memory): cpu(cpu), memory(memory) {}
 
-        void setRom(uint8_t *rom, unsigned int romSize, uint8_t *save, unsigned int saveSize);
+        void setRom(uint8_t *rom, uint32_t romSize, uint8_t *save, uint32_t saveSize);
 
         uint16_t readAuxSpiCnt()  { return auxSpiCnt;       }
         uint8_t  readAuxSpiData() { return auxSpiData;      }
@@ -49,7 +49,7 @@ class Cartridge
 
     private:
         uint64_t command = 0;
-        unsigned int blockSize = 0, readCount = 0;
+        int blockSize = 0, readCount = 0;
         bool encrypted = false;
 
         uint32_t encTable[0x412] = {};
@@ -57,7 +57,7 @@ class Cartridge
 
         uint8_t auxCommand = 0;
         uint32_t auxAddress = 0;
-        unsigned int auxWriteCount = 0;
+        int auxWriteCount = 0;
 
         uint16_t auxSpiCnt = 0;
         uint8_t auxSpiData = 0;
@@ -65,14 +65,14 @@ class Cartridge
         uint64_t romCmdOut = 0;
 
         uint8_t *rom = nullptr, *save = nullptr;
-        unsigned int romSize = 0, saveSize = 0;
+        int romSize = 0, saveSize = 0;
 
         Interpreter *cpu;
         Memory *memory;
 
         uint64_t encrypt64(uint64_t value);
         uint64_t decrypt64(uint64_t value);
-        void initKeycode(unsigned int level);
+        void initKeycode(int level);
         void applyKeycode();
 };
 

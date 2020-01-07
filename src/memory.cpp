@@ -28,6 +28,7 @@
 #include "gpu.h"
 #include "gpu_2d.h"
 #include "gpu_3d.h"
+#include "gpu_3d_renderer.h"
 #include "input.h"
 #include "interpreter.h"
 #include "ipc.h"
@@ -37,11 +38,11 @@
 #include "timers.h"
 
 Memory::Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA,
-               Gpu2D *engineB, Gpu3D *gpu3D, Input *input, Interpreter *arm9, Interpreter *arm7,
-               Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Timers *timers9, Timers *timers7):
+               Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9,
+               Interpreter *arm7, Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Timers *timers9, Timers *timers7):
                cart9(cart9), cart7(cart7), cp15(cp15), dma9(dma9), dma7(dma7), gpu(gpu), engineA(engineA),
-               engineB(engineB), gpu3D(gpu3D), input(input), arm9(arm9), arm7(arm7),
-               ipc(ipc), math(math), rtc(rtc), spi(spi), timers9(timers9), timers7(timers7)
+               engineB(engineB), gpu3D(gpu3D), gpu3DRenderer(gpu3DRenderer), input(input), arm9(arm9),
+               arm7(arm7), ipc(ipc), math(math), rtc(rtc), spi(spi), timers9(timers9), timers7(timers7)
 {
     // Attempt to load the ARM9 BIOS
     FILE *bios9File = fopen("bios9.bin", "rb");
@@ -81,10 +82,13 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
             switch (address & 0xFF000000)
             {
                 case 0x02000000: // Main RAM
+                {
                     data = &ram[address % 0x400000];
                     break;
+                }
 
                 case 0x03000000: // Shared WRAM
+                {
                     switch (wramStat)
                     {
                         case 0: data = &wram[address % 0x8000];
@@ -92,29 +96,43 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
                         case 2: data = &wram[address % 0x4000];
                     }
                     break;
+                }
 
                 case 0x04000000: // I/O registers
+                {
                     return ioRead9<T>(address);
+                }
 
                 case 0x05000000: // Palettes
+                {
                     data = &palette[address % 0x800];
                     break;
+                }
 
                 case 0x06000000: // VRAM
+                {
                     data = getMappedVram(address);
                     break;
+                }
 
                 case 0x07000000: // OAM
+                {
                     data = &oam[address % 0x800];
                     break;
+                }
 
                 case 0x08000000: case 0x0A000000: // GBA slot
-                    return (T)0xFFFFFFFF; // As if nothing is inserted in the GBA slot
+                {
+                    // Return endless 0xFFs as if nothing is inserted in the GBA slot
+                    return (T)0xFFFFFFFF;
+                }
 
                 case 0xFF000000: // ARM9 BIOS
+                {
                     if ((address & 0xFFFF8000) == 0xFFFF0000)
                         data = &bios9[address & 0xFFFF];
                     break;
+                }
             }
         }
     }
@@ -124,15 +142,20 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
         switch (address & 0xFF000000)
         {
             case 0x00000000: // ARM7 BIOS
+            {
                 if (address < 0x4000)
                     data = &bios7[address];
                 break;
+            }
 
             case 0x02000000: // Main RAM
+            {
                 data = &ram[address % 0x400000];
                 break;
+            }
 
             case 0x03000000: // WRAM
+            {
                 if (!(address & 0x00800000)) // Shared WRAM
                 {
                     switch (wramStat)
@@ -144,19 +167,27 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
                 }
                 if (!data) data = &wram7[address % 0x10000]; // ARM7 WRAM
                 break;
+            }
 
             case 0x04000000: // I/O registers
+            {
                 return ioRead7<T>(address);
+            }
 
-            case 0x06000000: // VRAM
+            case 0x06000000: // VRAMs
+            {
                 if (address >= vramBases[2] && address < vramBases[2] + 0x20000 && (vramStat & BIT(0))) // VRAM block C
                     data = &vramC[address - vramBases[2]];
                 else if (address >= vramBases[3] && address < vramBases[3] + 0x20000 && (vramStat & BIT(1))) // VRAM block D
                     data = &vramD[address - vramBases[3]];
                 break;
+            }
 
             case 0x08000000: case 0x0A000000: // GBA slot
-                return (T)0xFFFFFFFF; // As if nothing is inserted in the GBA slot
+            {
+                // Return endless 0xFFs as if nothing is inserted in the GBA slot
+                return (T)0xFFFFFFFF;
+            }
         }
     }
 
@@ -199,10 +230,13 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
             switch (address & 0xFF000000)
             {
                 case 0x02000000: // Main RAM
+                {
                     data = &ram[address % 0x400000];
                     break;
+                }
 
                 case 0x03000000: // Shared WRAM
+                {
                     switch (wramStat)
                     {
                         case 0: data = &wram[address % 0x8000];
@@ -210,22 +244,31 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
                         case 2: data = &wram[address % 0x4000];
                     }
                     break;
+                }
 
                 case 0x04000000: // I/O registers
+                {
                     ioWrite9<T>(address, value);
                     return;
+                }
 
                 case 0x05000000: // Palettes
+                {
                     data = &palette[address % 0x800];
                     break;
+                }
 
                 case 0x06000000: // VRAM
+                {
                     data = getMappedVram(address);
                     break;
+                }
 
                 case 0x07000000: // OAM
+                {
                     data = &oam[address % 0x800];
                     break;
+                }
             }
         }
     }
@@ -235,10 +278,13 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
         switch (address & 0xFF000000)
         {
             case 0x02000000: // Main RAM
+            {
                 data = &ram[address % 0x400000];
                 break;
+            }
 
             case 0x03000000: // WRAM
+            {
                 if (!(address & 0x00800000)) // Shared WRAM
                 {
                     switch (wramStat)
@@ -250,17 +296,22 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
                 }
                 if (!data) data = &wram7[address % 0x10000]; // ARM7 WRAM
                 break;
+            }
 
             case 0x04000000: // I/O registers
+            {
                 ioWrite7<T>(address, value);
                 return;
+            }
 
             case 0x06000000: // VRAM
+            {
                 if (address >= vramBases[2] && address < vramBases[2] + 0x20000 && (vramStat & BIT(0))) // VRAM block C
                     data = &vramC[address - vramBases[2]];
                 else if (address >= vramBases[3] && address < vramBases[3] + 0x20000 && (vramStat & BIT(1))) // VRAM block D
                     data = &vramD[address - vramBases[3]];
                 break;
+            }
         }
     }
 
@@ -300,7 +351,7 @@ uint8_t *Memory::getMappedVram(uint32_t address)
     return nullptr;
 }
 
-uint8_t *Memory::getVramBlock(unsigned int block)
+uint8_t *Memory::getVramBlock(int block)
 {
     // Get a pointer to a VRAM block
     // Only blocks A through D are ever directly needed externally
@@ -317,7 +368,7 @@ uint8_t *Memory::getVramBlock(unsigned int block)
 template <typename T> T Memory::ioRead9(uint32_t address)
 {
     T value = 0;
-    int i = 0;
+    unsigned int i = 0;
 
     // Read a value from one or more ARM9 I/O registers
     while (i < sizeof(T))
@@ -511,6 +562,10 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x4000601:
             case 0x4000602:
             case 0x4000603: base -= 0x4000600; size = 4; data = gpu3D->readGxStat();          break; // GXSTAT
+            case 0x4000604:
+            case 0x4000605:
+            case 0x4000606:
+            case 0x4000607: base -= 0x4000604; size = 4; data = gpu3D->readRamCount();        break; // RAM_COUNT
             case 0x4000640:
             case 0x4000641:
             case 0x4000642:
@@ -575,6 +630,42 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x400067D:
             case 0x400067E:
             case 0x400067F: base -= 0x400067C; size = 4; data = gpu3D->readClipMtxResult(15); break; // CLIPMTX_RESULT
+            case 0x4000680:
+            case 0x4000681:
+            case 0x4000682:
+            case 0x4000683: base -= 0x4000680; size = 4; data = gpu3D->readVecMtxResult(0);   break; // VECMTX_RESULT
+            case 0x4000684:
+            case 0x4000685:
+            case 0x4000686:
+            case 0x4000687: base -= 0x4000684; size = 4; data = gpu3D->readVecMtxResult(1);   break; // VECMTX_RESULT
+            case 0x4000688:
+            case 0x4000689:
+            case 0x400068A:
+            case 0x400068B: base -= 0x4000688; size = 4; data = gpu3D->readVecMtxResult(2);   break; // VECMTX_RESULT
+            case 0x400068C:
+            case 0x400068D:
+            case 0x400068E:
+            case 0x400068F: base -= 0x400068C; size = 4; data = gpu3D->readVecMtxResult(3);   break; // VECMTX_RESULT
+            case 0x4000690:
+            case 0x4000691:
+            case 0x4000692:
+            case 0x4000693: base -= 0x4000690; size = 4; data = gpu3D->readVecMtxResult(4);   break; // VECMTX_RESULT
+            case 0x4000694:
+            case 0x4000695:
+            case 0x4000696:
+            case 0x4000697: base -= 0x4000694; size = 4; data = gpu3D->readVecMtxResult(5);   break; // VECMTX_RESULT
+            case 0x4000698:
+            case 0x4000699:
+            case 0x400069A:
+            case 0x400069B: base -= 0x4000698; size = 4; data = gpu3D->readVecMtxResult(6);   break; // VECMTX_RESULT
+            case 0x400069C:
+            case 0x400069D:
+            case 0x400069E:
+            case 0x400069F: base -= 0x400069C; size = 4; data = gpu3D->readVecMtxResult(7);   break; // VECMTX_RESULT
+            case 0x40006A0:
+            case 0x40006A1:
+            case 0x40006A2:
+            case 0x40006A3: base -= 0x40006A0; size = 4; data = gpu3D->readVecMtxResult(8);   break; // VECMTX_RESULT
             case 0x4001000:
             case 0x4001001:
             case 0x4001002:
@@ -624,7 +715,7 @@ template <typename T> T Memory::ioRead9(uint32_t address)
 template <typename T> T Memory::ioRead7(uint32_t address)
 {
     T value = 0;
-    int i = 0;
+    unsigned int i = 0;
 
     // Read a value from one or more ARM7 I/O registers
     while (i < sizeof(T))
@@ -778,7 +869,7 @@ template <typename T> T Memory::ioRead7(uint32_t address)
 
 template <typename T> void Memory::ioWrite9(uint32_t address, T value)
 {
-    int i = 0;
+    unsigned int i = 0;
 
     // Write a value to one or more ARM9 I/O registers
     while (i < sizeof(T))
@@ -1308,7 +1399,7 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
 
 template <typename T> void Memory::ioWrite7(uint32_t address, T value)
 {
-    int i = 0;
+    unsigned int i = 0;
 
     // Write a value to one or more ARM7 I/O registers
     while (i < sizeof(T))
@@ -1459,11 +1550,13 @@ void Memory::writeVramCntA(uint8_t value)
             case 0: vramBases[0] = 0x6800000;                            return; // Plain ARM9 access
             case 1: vramBases[0] = 0x6000000 + 0x20000 * ofs;            return; // Engine A BG VRAM
             case 2: vramBases[0] = 0x6400000 + 0x20000 * (ofs & BIT(0)); return; // Engine A OBJ VRAM
-            case 3: gpu3D->setTexData(ofs, vramA);                       break;  // 3D texture data
+            case 3: gpu3DRenderer->setTexture(ofs, vramA);               break;  // 3D texture data
 
             default:
+            {
                 printf("Unknown VRAM A MST: %d\n", mst);
                 break;
+            }
         }
     }
 
@@ -1482,11 +1575,13 @@ void Memory::writeVramCntB(uint8_t value)
             case 0: vramBases[1] = 0x6820000;                            return; // Plain ARM9 access
             case 1: vramBases[1] = 0x6000000 + 0x20000 * ofs;            return; // Engine A BG VRAM
             case 2: vramBases[1] = 0x6400000 + 0x20000 * (ofs & BIT(0)); return; // Engine A OBJ VRAM
-            case 3: gpu3D->setTexData(ofs, vramB);                       break;  // 3D texture data
+            case 3: gpu3DRenderer->setTexture(ofs, vramB);               break;  // 3D texture data
 
             default:
+            {
                 printf("Unknown VRAM B MST: %d\n", mst);
                 break;
+            }
         }
     }
 
@@ -1505,12 +1600,14 @@ void Memory::writeVramCntC(uint8_t value)
             case 0: vramBases[2] = 0x6840000;                            vramStat &= ~BIT(0); return; // Plain ARM9 access
             case 1: vramBases[2] = 0x6000000 + 0x20000 * ofs;            vramStat &= ~BIT(0); return; // Engine A BG VRAM
             case 2: vramBases[2] = 0x6000000 + 0x20000 * (ofs & BIT(0)); vramStat |=  BIT(0); return; // Plain ARM7 access
-            case 3: gpu3D->setTexData(ofs, vramC);                       vramStat &= ~BIT(0); break;  // 3D texture data
+            case 3: gpu3DRenderer->setTexture(ofs, vramC);               vramStat &= ~BIT(0); break;  // 3D texture data
             case 4: vramBases[2] = 0x6200000;                            vramStat &= ~BIT(0); return; // Engine B BG VRAM
 
             default:
+            {
                 printf("Unknown VRAM C MST: %d\n", mst);
                 break;
+            }
         }
     }
 
@@ -1529,12 +1626,14 @@ void Memory::writeVramCntD(uint8_t value)
             case 0: vramBases[3] = 0x6860000;                            vramStat &= ~BIT(1); return; // Plain ARM9 access
             case 1: vramBases[3] = 0x6000000 + 0x20000 * ofs;            vramStat &= ~BIT(1); return; // Engine A BG VRAM
             case 2: vramBases[3] = 0x6000000 + 0x20000 * (ofs & BIT(0)); vramStat |=  BIT(1); return; // Plain ARM7 access
-            case 3: gpu3D->setTexData(ofs, vramD);                       vramStat &= ~BIT(0); break;  // 3D texture data
+            case 3: gpu3DRenderer->setTexture(ofs, vramD);               vramStat &= ~BIT(0); break;  // 3D texture data
             case 4: vramBases[3] = 0x6600000;                            vramStat &= ~BIT(1); return; // Engine B OBJ VRAM
 
             default:
+            {
                 printf("Unknown VRAM D MST: %d\n", mst);
                 break;
+            }
         }
     }
 
@@ -1554,18 +1653,24 @@ void Memory::writeVramCntE(uint8_t value)
             case 2: vramBases[4] = 0x6400000; return; // Engine A OBJ VRAM
 
             case 3: // 3D texture palette
+            {
                 for (int i = 0; i < 4; i++)
-                    gpu3D->setTexPalette(i, &vramE[0x4000 * i]);
+                    gpu3DRenderer->setPalette(i, &vramE[0x4000 * i]);
                 break;
+            }
 
             case 4: // Engine A BG extended palette
+            {
                 for (int i = 0; i < 4; i++)
                     engineA->setExtPalette(i, &vramE[0x2000 * i]);
                 break;
+            }
 
             default:
+            {
                 printf("Unknown VRAM E MST: %d\n", mst);
                 break;
+            }
         }
     }
 
@@ -1584,17 +1689,21 @@ void Memory::writeVramCntF(uint8_t value)
             case 0: vramBases[5] = 0x6890000;                                                     return; // Plain ARM9 access
             case 1: vramBases[5] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0)); return; // Engine A BG VRAM
             case 2: vramBases[5] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0)); return; // Engine A OBJ VRAM
-            case 3: gpu3D->setTexPalette((ofs & BIT(1)) * 2 + (ofs & BIT(0)), vramF);             break;  // 3D texture palette
+            case 3: gpu3DRenderer->setPalette((ofs & BIT(1)) * 2 + (ofs & BIT(0)), vramF);        break;  // 3D texture palette
             case 5: engineA->setExtPalette(4, vramF);                                             break;  // Engine A OBJ extended palette
 
             case 4: // Engine A BG extended palette
+            {
                 for (int i = 0; i < 2; i++)
                     engineA->setExtPalette((ofs & BIT(0)) * 2 + i, &vramF[0x2000 * i]);
                 break;
+            }
 
             default:
+            {
                 printf("Unknown VRAM F MST: %d\n", mst);
                 break;
+            }
         }
     }
 
@@ -1613,17 +1722,21 @@ void Memory::writeVramCntG(uint8_t value)
             case 0: vramBases[6] = 0x6894000;                                                     return; // Plain ARM9 access
             case 1: vramBases[6] = 0x6000000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0)); return; // Engine A BG VRAM
             case 2: vramBases[6] = 0x6400000 + 0x8000 * (ofs & BIT(1)) + 0x4000 * (ofs & BIT(0)); return; // Engine A OBJ VRAM
-            case 3: gpu3D->setTexPalette((ofs & BIT(1)) * 2 + (ofs & BIT(0)), vramG);             break;  // 3D texture palette
+            case 3: gpu3DRenderer->setPalette((ofs & BIT(1)) * 2 + (ofs & BIT(0)), vramG);        break;  // 3D texture palette
             case 5: engineA->setExtPalette(4, vramG);                                             break;  // Engine A OBJ extended palette
 
             case 4: // Engine A BG extended palette
+            {
                 for (int i = 0; i < 2; i++)
                     engineA->setExtPalette((ofs & BIT(0)) * 2 + i, &vramG[0x2000 * i]);
                 break;
+            }
 
             default:
+            {
                 printf("Unknown VRAM G MST: %d\n", mst);
                 break;
+            }
         }
     }
 
@@ -1647,13 +1760,17 @@ void Memory::writeVramCntH(uint8_t value)
             case 1: vramBases[7] = 0x6200000; return; // Engine B BG VRAM
 
             case 2: // Engine B BG extended palette
+            {
                 for (int i = 0; i < 4; i++)
                     engineB->setExtPalette(i, &vramH[0x2000 * i]);
                 break;
+            }
  
             default:
+            {
                 printf("Unknown VRAM H MST: %d\n", mst);
                 break;
+            }
         }
     }
 
@@ -1674,15 +1791,17 @@ void Memory::writeVramCntI(uint8_t value)
             case 3: engineB->setExtPalette(4, vramI); break;  // Engine B OBJ extended palette
  
             default:
+            {
                 printf("Unknown VRAM I MST: %d\n", mst);
                 break;
+            }
         }
     }
 
     vramBases[8] = 0;
 }
 
-void Memory::writeDmaFill(unsigned int channel, uint32_t mask, uint32_t value)
+void Memory::writeDmaFill(int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMAFILL registers
     dmaFill[channel] = (dmaFill[channel] & ~mask) | (value & mask);
@@ -1696,16 +1815,14 @@ void Memory::writeHaltCnt(uint8_t value)
     // Change the ARM7's power mode
     switch (haltCnt >> 6)
     {
-        case 0: // None
-            break;
-
-        case 2: // Halt
-            arm7->halt();
-            break;
+        case 0:               break; // None
+        case 2: arm7->halt(); break; // Halt
 
         default:
+        {
             printf("Unknown ARM7 power mode: %d\n", haltCnt >> 6);
             break;
+        }
     }
 }
 

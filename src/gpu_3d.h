@@ -27,6 +27,14 @@
 
 class Interpreter;
 
+struct Entry
+{
+    Entry(uint8_t command, uint32_t param): command(command), param(param) {}
+
+    uint8_t command;
+    uint32_t param;
+};
+
 struct Matrix
 {
     int64_t data[4 * 4] =
@@ -40,28 +48,26 @@ struct Matrix
 
 struct Vertex
 {
-    int64_t x = 0, y = 0, z = 0, w = 1 << 12;
-    uint32_t color = 0;
+    int64_t x = 0, y = 0, z = 0, w = 0;
     int64_t s = 0, t = 0;
+    uint32_t color = 0;
 };
 
 struct _Polygon
 {
-    unsigned int size = 0;
+    int size = 0;
     Vertex *vertices = nullptr;
-    uint32_t texDataAddr = 0, texPaletteAddr = 0;
+
+    uint32_t textureAddr = 0, paletteAddr = 0;
+    int sizeS = 0, sizeT = 0;
     bool repeatS = false, repeatT = false;
     bool flipS = false, flipT = false;
-    int sizeS = 0, sizeT = 0;
-    int texFormat = 0;
-    bool transparent = false;
+    int textureFmt = 0;
+    bool transparent0 = false;
+
+    bool wBuffer = false;
 };
 
-struct Entry
-{
-    uint8_t command = 0;
-    uint32_t param = 0;
-};
 
 class Gpu3D
 {
@@ -72,20 +78,15 @@ class Gpu3D
         void swapBuffers();
 
         bool shouldRun()  { return !halted && (gxStat & BIT(27)); }
-        bool shouldSwap() { return  halted; }
+        bool shouldSwap() { return  halted;                       }
 
-        _Polygon    *getPolygons()     { return polygonsOut;               }
-        unsigned int getPolygonCount() { return polygonCountOut;           }
-        bool         getWBufEnabled()  { return savedSwapBuffers & BIT(1); }
-
-        uint8_t *getTexData(uint32_t address)    { return &texData[address / 0x20000][address % 0x20000];  }
-        uint8_t *getTexPalette(uint32_t address) { return &texPalette[address / 0x4000][address % 0x4000]; }
-
-        void setTexData(unsigned int slot, uint8_t *data)    { texData[slot]    = data; }
-        void setTexPalette(unsigned int slot, uint8_t *data) { texPalette[slot] = data; }
+        _Polygon *getPolygons()     { return polygonsOut;     }
+        int       getPolygonCount() { return polygonCountOut; }
 
         uint32_t readGxStat() { return gxStat; }
-        uint32_t readClipMtxResult(unsigned int index);
+        uint32_t readRamCount();
+        uint32_t readClipMtxResult(int index);
+        uint32_t readVecMtxResult(int index);
 
         void writeGxFifo(uint32_t mask, uint32_t value);
         void writeMtxMode(uint32_t mask, uint32_t value);
@@ -130,45 +131,41 @@ class Gpu3D
     private:
         bool halted = false;
 
-        unsigned int matrixMode = 0;
-        unsigned int projPointer = 0, coordPointer = 0;
-        bool clipNeedsUpdate = false;
-        Matrix projection, projStack;
-        Matrix coordinate, coordStack[32];
-        Matrix directional, direcStack[32];
-        Matrix texture, texStack;
+        std::queue<Entry> fifo, pipe;
+
+        int paramCounts[0x100] = {};
+        int paramCount = 0;
+
+        int matrixMode = 0;
+        int projectionPtr = 0, coordinatePtr = 0;
+        bool clipDirty = false;
+
+        Matrix projection, projectionStack;
+        Matrix coordinate, coordinateStack[32];
+        Matrix direction, directionStack[32];
+        Matrix texture, textureStack;
         Matrix clip;
         Matrix temp;
 
-        _Polygon polygons1[2048] = {}, polygons2[2048] = {};
-        _Polygon *polygonsIn = polygons1, *polygonsOut = polygons2;
-        unsigned int polygonCountIn = 0, polygonCountOut = 0;
-        unsigned int size = 0;
-
-        Vertex vertices1[6144] = {}, vertices2[6144] = {};
+        Vertex vertices1[6144], vertices2[6144];
         Vertex *verticesIn = vertices1, *verticesOut = vertices2;
-        unsigned int vertexCountIn = 0, vertexCountOut = 0;
-        Vertex last;
+        int vertexCountIn = 0, vertexCountOut = 0;
 
-        uint8_t *texData[4] = {};
-        uint8_t *texPalette[6] = {};
+        _Polygon polygons1[2048], polygons2[2048];
+        _Polygon *polygonsIn = polygons1, *polygonsOut = polygons2;
+        int polygonCountIn = 0, polygonCountOut = 0;
 
-        uint32_t savedColor = 0x7FFF;
-        uint32_t savedTexCoord = 0;
-        uint32_t savedTexImageParam = 0;
-        uint32_t savedPlttBase = 0;
-        uint32_t savedBeginVtxs = 0;
-        uint32_t savedSwapBuffers = 0, nextSwapBuffers = 0;
+        Vertex savedVertex;
+        _Polygon savedPolygon;
 
-        std::queue<Entry> fifo, pipe;
+        int vertexCount = 0;
+        int polygonType = 0;
+        int textureCoordMode = 0;
 
-        unsigned int paramCounts[0x100] = {};
-        unsigned int paramCount = 0;
-
-        uint32_t gxFifoCmds = 0;
-        unsigned int gxFifoCount = 0;
-
+        uint32_t gxFifo = 0x00000000;
         uint32_t gxStat = 0x04000000;
+
+        int gxFifoCount = 0;
 
         Interpreter *arm9;
 
@@ -178,7 +175,7 @@ class Gpu3D
         void addVertex();
         void addPolygon();
 
-        Vertex intersection(Vertex *v0, Vertex *v1, int64_t val0, int64_t val1);
+        Vertex intersection(Vertex *vtx1, Vertex *vtx2, int64_t val1, int64_t val2);
         bool clipPolygon(Vertex *unclipped, Vertex *clipped, int side);
 
         void mtxModeCmd(uint32_t param);
@@ -211,3 +208,4 @@ class Gpu3D
 };
 
 #endif // GPU_3D_H
+

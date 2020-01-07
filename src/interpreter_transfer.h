@@ -1540,9 +1540,9 @@ FORCE_INLINE void Interpreter::mrc(uint32_t opcode) // MRC Pn,<cpopc>,Rd,Cn,Cm,<
 
     // Decode the operands
     uint32_t *op2 = registers[(opcode & 0x0000F000) >> 12];
-    unsigned int op3 = (opcode & 0x000F0000) >> 16;
-    unsigned int op4 = opcode & 0x0000000F;
-    unsigned int op5 = (opcode & 0x000000E0) >> 5;
+    int op3 = (opcode & 0x000F0000) >> 16;
+    int op4 = opcode & 0x0000000F;
+    int op5 = (opcode & 0x000000E0) >> 5;
 
     // Read from a CP15 register
     *op2 = cp15->read(op3, op4, op5);
@@ -1554,9 +1554,9 @@ FORCE_INLINE void Interpreter::mcr(uint32_t opcode) // MCR Pn,<cpopc>,Rd,Cn,Cm,<
 
     // Decode the operands
     uint32_t op2 = *registers[(opcode & 0x0000F000) >> 12];
-    unsigned int op3 = (opcode & 0x000F0000) >> 16;
-    unsigned int op4 = opcode & 0x0000000F;
-    unsigned int op5 = (opcode & 0x000000E0) >> 5;
+    int op3 = (opcode & 0x000F0000) >> 16;
+    int op4 = opcode & 0x0000000F;
+    int op5 = (opcode & 0x000000E0) >> 5;
 
     // Write to a CP15 register
     cp15->write(op3, op4, op5, op2);

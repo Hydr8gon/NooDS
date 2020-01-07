@@ -2996,12 +2996,14 @@ bool Interpreter::condition(uint32_t opcode)
         case 0xE: return true;                                                            // AL
 
         default: // Reserved
+        {
             // The ARM9-exclusive BLX instruction uses condition code 0xF, so let it run
             if ((opcode & 0x0E000000) == 0x0A000000)
                 return true;
 
             printf("Unknown ARM%d ARM opcode: 0x%X\n", (cp15 ? 9 : 7), opcode);
             return false;
+        }
     }
 }
 

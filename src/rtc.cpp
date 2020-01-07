@@ -23,27 +23,27 @@
 #include "rtc.h"
 #include "defines.h"
 
+// I find GBATEK's RTC documentation to be lacking, so here's a quick summary of how the I/O works
+//
+// Bits 2 and 6 are connected to the CS pinout
+// Bit 6 should always be set, so setting bit 2 to 1 or 0 causes CS to be high or low, respectively
+//
+// Bits 1 and 5 are connected to the SCK pinout
+// Bit 5 should always be set, so setting bit 1 to 1 or 0 causes SCK to be high or low, respectively
+//
+// Bits 0 and 4 are connected to the SIO pinout
+// Bit 4 indicates data direction; 0 is read, and 1 is write
+// Bit 0 is where data sent from the RTC is read, and where data sent to the RTC is written
+//
+// To start a transfer, switch CS from low to high
+// To end a transfer, switch CS from high to low
+//
+// To transfer a bit, set SCK to low and then high (it should be high when the transfer starts)
+// When writing a bit to the RTC, you should set bit 0 at the same time as setting SCK to low
+// When reading a bit from the RTC, you should read bit 0 after setting SCK to low (or high?)
+
 void Rtc::writeRtc(uint8_t value)
 {
-    // I find GBATEK's RTC documentation to be lacking, so here's a quick summary of how the I/O works
-    //
-    // Bits 2 and 6 are connected to the CS pinout
-    // Bit 6 should always be set, so setting bit 2 to 1 or 0 causes CS to be high or low, respectively
-    //
-    // Bits 1 and 5 are connected to the SCK pinout
-    // Bit 5 should always be set, so setting bit 1 to 1 or 0 causes SCK to be high or low, respectively
-    //
-    // Bits 0 and 4 are connected to the SIO pinout
-    // Bit 4 indicates data direction; 0 is read, and 1 is write
-    // Bit 0 is where data sent from the RTC is read, and where data sent to the RTC is written
-    //
-    // To start a transfer, switch CS from low to high
-    // To end a transfer, switch CS from high to low
-    //
-    // To transfer a bit, set SCK to low and then high (it should be high when the transfer starts)
-    // When writing a bit to the RTC, you should set bit 0 at the same time as setting SCK to low
-    // When reading a bit from the RTC, you should read bit 0 after setting SCK to low (or high?)
-
     if (value & BIT(2)) // CS high
     {
         if ((rtc & BIT(1)) && !(value & BIT(1))) // SCK high to low
@@ -64,10 +64,13 @@ void Rtc::writeRtc(uint8_t value)
                     switch ((command & 0x0E) >> 1) // Register select
                     {
                         case 0: // Status register 1
+                        {
                             value |= ((status1 >> (writeCount - 8)) & BIT(0));
                             break;
+                        }
 
                         case 2: // Date and time
+                        {
                             // Update the date and time
                             if (writeCount == 8)
                             {
@@ -96,8 +99,10 @@ void Rtc::writeRtc(uint8_t value)
 
                             value |= ((dateTime[(writeCount / 8) - 1] >> (writeCount % 8)) & BIT(0));
                             break;
+                        }
 
                         case 3: // Time
+                        {
                             // Update the time
                             if (writeCount == 8)
                             {
@@ -120,10 +125,13 @@ void Rtc::writeRtc(uint8_t value)
 
                             value |= ((dateTime[(writeCount / 8) - 5] >> (writeCount % 8)) & BIT(0));
                             break;
+                        }
 
                         default:
+                        {
                             printf("Read from unknown RTC registers: %d\n", (command & 0x0E) >> 1);
                             break;
+                        }
                     }
                 }
                 else // Write
@@ -132,14 +140,18 @@ void Rtc::writeRtc(uint8_t value)
                     switch ((command & 0x0E) >> 1) // Register select
                     {
                         case 0: // Status register 1
+                        {
                             // Only write to the writable bits 1 through 3
                             if (writeCount - 8 >= 1 && writeCount - 8 <= 3)
                                 status1 = (status1 & ~BIT(writeCount - 8)) | ((value & BIT(0)) << (writeCount - 8));
                             break;
+                        }
 
                         default:
+                        {
                             printf("Write to unknown RTC registers: %d\n", (command & 0x0E) >> 1);
                             break;
+                        }
                     }
                 }
 

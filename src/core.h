@@ -49,21 +49,21 @@ class Core
 
         void runFrame();
 
-        void pressKey(unsigned int key)   { input.pressKey(key);                       }
-        void releaseKey(unsigned int key) { input.releaseKey(key);                     }
-        void pressScreen(int x, int y)    { input.pressScreen();   spi.setTouch(x, y); }
-        void releaseScreen()              { input.releaseScreen(); spi.clearTouch();   }
+        void pressKey(int key)         { input.pressKey(key);                       }
+        void releaseKey(int key)       { input.releaseKey(key);                     }
+        void pressScreen(int x, int y) { input.pressScreen();   spi.setTouch(x, y); }
+        void releaseScreen()           { input.releaseScreen(); spi.clearTouch();   }
 
         uint32_t *getFramebuffer() { return gpu.getFramebuffer(); }
-        unsigned int getFps()      { return fps;                  }
+        int       getFps()         { return fps;                  }
 
     private:
-        unsigned int fps = 0, fpsCount = 0;
+        int fps = 0, fpsCount = 0;
         std::chrono::steady_clock::time_point lastFrameTime, lastFpsTime;
 
         uint8_t firmware[0x40000] = {};
         uint8_t *rom = nullptr, *save = nullptr;
-        unsigned int saveSize = 0;
+        uint32_t saveSize = 0;
         std::string saveName;
 
         Cartridge cart9, cart7;

@@ -34,11 +34,11 @@ class Timers
 
         bool shouldTick() { return enabled; }
 
-        uint16_t readTmCntL(unsigned int timer) { return tmCntL[timer]; }
-        uint16_t readTmCntH(unsigned int timer) { return tmCntH[timer]; }
+        uint16_t readTmCntL(int timer) { return tmCntL[timer]; }
+        uint16_t readTmCntH(int timer) { return tmCntH[timer]; }
 
-        void writeTmCntL(unsigned int timer, uint16_t mask, uint16_t value);
-        void writeTmCntH(unsigned int timer, uint16_t mask, uint16_t value);
+        void writeTmCntL(int timer, uint16_t mask, uint16_t value);
+        void writeTmCntH(int timer, uint16_t mask, uint16_t value);
 
     private:
         uint16_t tmCntL[4] = {};

@@ -82,9 +82,11 @@ void Spi::writeSpiData(uint8_t value)
         switch ((spiCnt & 0x0300) >> 8) // Device
         {
             case 1: // Firmware
+            {
                 switch (command)
                 {
                     case 0x03: // Read data bytes
+                    {
                         if (writeCount < 4)
                         {
                             // On writes 2-4, set the 3 byte address to read from
@@ -100,38 +102,52 @@ void Spi::writeSpiData(uint8_t value)
                             address += (spiCnt & BIT(10)) ? 2 : 1;
                         }
                         break;
+                    }
 
                     default:
+                    {
                         printf("Write to SPI with unknown firmware command: 0x%X\n", command);
                         spiData = 0;
                         break;
+                    }
                 }
                 break;
+            }
 
             case 2: // Touchscreen
+            {
                 switch ((command & 0x70) >> 4) // Channel
                 {
                     case 1: // Y-coordinate
+                    {
                         // Send the ADC Y coordinate MSB first, with 3 dummy bits in front
                         spiData = ((touchY << 11) & 0xFF00) | ((touchY >> 5) & 0x00FF) >> ((writeCount - 1) % 2);
                         break;
+                    }
 
                     case 5: // X-coordinate
+                    {
                         // Send the ADC X coordinate MSB first, with 3 dummy bits in front
                         spiData = ((touchX << 11) & 0xFF00) | ((touchX >> 5) & 0x00FF) >> ((writeCount - 1) % 2);
                         break;
+                    }
 
                     default:
+                    {
                         printf("Write to SPI with unknown touchscreen channel: %d\n", (command & 0x70) >> 4);
                         spiData = 0;
                         break;
+                    }
                 }
                 break;
+            }
 
             default:
+            {
                 printf("Write to SPI with unknown device: %d\n", (spiCnt & 0x0300) >> 8);
                 spiData = 0;
                 break;
+            }
         }
     }
 

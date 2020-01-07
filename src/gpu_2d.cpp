@@ -43,7 +43,7 @@ Gpu2D::Gpu2D(Gpu3DRenderer *gpu3DRenderer, Memory *memory): gpu3DRenderer(gpu3DR
     objVramAddr = 0x6400000;
 }
 
-uint32_t Gpu2D::rgb5ToRgb6(uint32_t color)
+uint32_t Gpu2D::rgb5ToRgb6(uint16_t color)
 {
     // Convert an RGB5 value to an RGB6 value (the way the 2D engine does it)
     uint8_t r = ((color >>  0) & 0x1F) * 2;
@@ -53,7 +53,7 @@ uint32_t Gpu2D::rgb5ToRgb6(uint32_t color)
     return (a << 18) | (b << 12) | (g << 6) | r;
 }
 
-void Gpu2D::drawScanline(unsigned int line)
+void Gpu2D::drawScanline(int line)
 {
     switch ((dispCnt & 0x00030000) >> 16) // Display mode
     {
@@ -229,7 +229,7 @@ void Gpu2D::drawScanline(unsigned int line)
     }
 }
 
-void Gpu2D::drawText(unsigned int bg, unsigned int line)
+void Gpu2D::drawText(int bg, int line)
 {
     // If 3D is enabled, render it to BG0 in text mode
     if (bg == 0 && (dispCnt & BIT(3)))
@@ -244,7 +244,7 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
 
     // If the Y-offset exceeds 256 and the background is 512 pixels tall, move to the next 256x256 section
     // If the background is 512 pixels wide, move 2 sections to skip the second X section
-    unsigned int yOffset = (line + bgVOfs[bg]) % 512;
+    int yOffset = (line + bgVOfs[bg]) % 512;
     if (yOffset >= 256 && (bgCnt[bg] & BIT(15)))
         screenBase += (bgCnt[bg] & BIT(14)) ? 0x1000 : 0x800;
 
@@ -259,7 +259,7 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
         {
             // Get the data for the current tile
             // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
-            unsigned int xOffset = (bgHOfs[bg] + i) % 512;
+            int xOffset = (bgHOfs[bg] + i) % 512;
             uint16_t tile = U8TO16(data, ((xOffset / 8) % 32) * 2 + ((xOffset >= 256 && (bgCnt[bg] & BIT(14))) ? 0x800 : 0));
 
             // Get the palette of the tile
@@ -268,7 +268,7 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
             {
                 // Determine the extended palette slot
                 // Backgrounds 0 and 1 can alternatively use slots 2 and 3
-                unsigned int slot = (bg < 2 && (bgCnt[bg] & BIT(13))) ? (bg + 2) : bg;
+                int slot = (bg < 2 && (bgCnt[bg] & BIT(13))) ? (bg + 2) : bg;
 
                 // In extended palette mode, the tile can select from multiple 256-color palettes
                 if (!extPalettes[slot]) continue;
@@ -331,12 +331,12 @@ void Gpu2D::drawText(unsigned int bg, unsigned int line)
     }
 }
 
-void Gpu2D::drawAffine(unsigned int bg, unsigned int line)
+void Gpu2D::drawAffine(int bg, int line)
 {
     // Affine backgrounds aren't implemented yet
 }
 
-void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
+void Gpu2D::drawExtended(int bg, int line)
 {
     if (bgCnt[bg] & BIT(7)) // Bitmap
     {
@@ -356,8 +356,8 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
         if (!data) return;
 
         // Calculate the scroll values
-        int scrollX = bgX[bg - 2] + ((int)bgPA[bg - 2] * (sizeX / 2) + (int)bgPB[bg - 2] * (sizeY / 2));
-        int scrollY = bgY[bg - 2] + ((int)bgPC[bg - 2] * (sizeX / 2) + (int)bgPD[bg - 2] * (sizeY / 2));
+        int scrollX = bgX[bg - 2] + (bgPA[bg - 2] * (sizeX / 2) + bgPB[bg - 2] * (sizeY / 2));
+        int scrollY = bgY[bg - 2] + (bgPC[bg - 2] * (sizeX / 2) + bgPD[bg - 2] * (sizeY / 2));
 
         if (bgCnt[bg] & BIT(2)) // Direct color bitmap
         {
@@ -365,8 +365,8 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
             for (int i = 0; i < 256; i++)
             {
                 // Calculate the rotscaled coordinates relative to the background
-                int rotscaleX = ((int)bgPA[bg - 2] * (i - sizeX / 2) + (int)bgPB[bg - 2] * ((int)line - sizeX / 2) + scrollX) >> 8;
-                int rotscaleY = ((int)bgPC[bg - 2] * (i - sizeY / 2) + (int)bgPD[bg - 2] * ((int)line - sizeY / 2) + scrollY) >> 8;
+                int rotscaleX = (bgPA[bg - 2] * (i - sizeX / 2) + bgPB[bg - 2] * (line - sizeX / 2) + scrollX) >> 8;
+                int rotscaleY = (bgPC[bg - 2] * (i - sizeY / 2) + bgPD[bg - 2] * (line - sizeY / 2) + scrollY) >> 8;
 
                 // Handle display area overflow
                 if (bgCnt[bg] & BIT(13)) // Wraparound
@@ -392,8 +392,8 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
             for (int i = 0; i < 256; i++)
             {
                 // Calculate the rotscaled coordinates relative to the background
-                int rotscaleX = ((int)bgPA[bg - 2] * (i - sizeX / 2) + (int)bgPB[bg - 2] * ((int)line - sizeX / 2) + scrollX) >> 8;
-                int rotscaleY = ((int)bgPC[bg - 2] * (i - sizeY / 2) + (int)bgPD[bg - 2] * ((int)line - sizeY / 2) + scrollY) >> 8;
+                int rotscaleX = (bgPA[bg - 2] * (i - sizeX / 2) + bgPB[bg - 2] * (line - sizeX / 2) + scrollX) >> 8;
+                int rotscaleY = (bgPC[bg - 2] * (i - sizeY / 2) + bgPD[bg - 2] * (line - sizeY / 2) + scrollY) >> 8;
 
                 // Handle display area overflow
                 if (bgCnt[bg] & BIT(13)) // Wraparound
@@ -427,15 +427,15 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
         if (!data) return;
 
         // Calculate the scroll values
-        int scrollX = bgX[bg - 2] + ((int)bgPA[bg - 2] * (size / 2) + (int)bgPB[bg - 2] * (size / 2));
-        int scrollY = bgY[bg - 2] + ((int)bgPC[bg - 2] * (size / 2) + (int)bgPD[bg - 2] * (size / 2));
+        int scrollX = bgX[bg - 2] + (bgPA[bg - 2] * (size / 2) + bgPB[bg - 2] * (size / 2));
+        int scrollY = bgY[bg - 2] + (bgPC[bg - 2] * (size / 2) + bgPD[bg - 2] * (size / 2));
 
         // Draw a line
-        for (int i = 0; i <= 256; i++)
+        for (int i = 0; i < 256; i++)
         {
             // Calculate the rotscaled coordinates relative to the background
-            int rotscaleX = ((int)bgPA[bg - 2] * (i - size / 2) + (int)bgPB[bg - 2] * ((int)line - size / 2) + scrollX) >> 8;
-            int rotscaleY = ((int)bgPC[bg - 2] * (i - size / 2) + (int)bgPD[bg - 2] * ((int)line - size / 2) + scrollY) >> 8;
+            int rotscaleX = (bgPA[bg - 2] * (i - size / 2) + bgPB[bg - 2] * (line - size / 2) + scrollX) >> 8;
+            int rotscaleY = (bgPC[bg - 2] * (i - size / 2) + bgPD[bg - 2] * (line - size / 2) + scrollY) >> 8;
 
             // Handle display area overflow
             if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
@@ -481,7 +481,7 @@ void Gpu2D::drawExtended(unsigned int bg, unsigned int line)
     }
 }
 
-void Gpu2D::drawObjects(unsigned int line)
+void Gpu2D::drawObjects(int line)
 {
     // Loop through the 128 sprites in OAM, in order of priority from high to low
     for (int i = 127; i >= 0; i--)
@@ -587,7 +587,7 @@ void Gpu2D::drawObjects(unsigned int line)
 
             if (object[0] & BIT(13)) // 8-bit
             {
-                unsigned int mapWidth = (dispCnt & BIT(4)) ? width : 128;
+                int mapWidth = (dispCnt & BIT(4)) ? width : 128;
 
                 // Get the palette of the object
                 uint8_t *pal;
@@ -622,7 +622,7 @@ void Gpu2D::drawObjects(unsigned int line)
             }
             else // 4-bit
             {
-                unsigned int mapWidth = (dispCnt & BIT(4)) ? width : 256;
+                int mapWidth = (dispCnt & BIT(4)) ? width : 256;
 
                 // Get the palette of the object
                 // In 4-bit mode, the object can select from multiple 16-color palettes
@@ -651,7 +651,7 @@ void Gpu2D::drawObjects(unsigned int line)
         else if (object[0] & BIT(13)) // 8-bit
         {
             // Adjust the current tile to align with the current Y coordinate relative to the object
-            unsigned int mapWidth = (dispCnt & BIT(4)) ? width : 128;
+            int mapWidth = (dispCnt & BIT(4)) ? width : 128;
             if (object[1] & BIT(13)) // Vertical flip
                 tile += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 8;
             else
@@ -686,7 +686,7 @@ void Gpu2D::drawObjects(unsigned int line)
         else // 4-bit
         {
             // Adjust the current tile to align with the current Y coordinate relative to the object
-            unsigned int mapWidth = (dispCnt & BIT(4)) ? width : 256;
+            int mapWidth = (dispCnt & BIT(4)) ? width : 256;
             if (object[1] & BIT(13)) // Vertical flip
                 tile += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 4;
             else
@@ -720,27 +720,27 @@ void Gpu2D::writeDispCnt(uint32_t mask, uint32_t value)
     dispCnt = (dispCnt & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgCnt(unsigned int bg, uint16_t mask, uint16_t value)
+void Gpu2D::writeBgCnt(int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGCNT registers
     bgCnt[bg] = (bgCnt[bg] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgHOfs(unsigned int bg, uint16_t mask, uint16_t value)
+void Gpu2D::writeBgHOfs(int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGHOFS registers
     mask &= 0x01FF;
     bgHOfs[bg] = (bgHOfs[bg] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgVOfs(unsigned int bg, uint16_t mask, uint16_t value)
+void Gpu2D::writeBgVOfs(int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGVOFS registers
     mask &= 0x01FF;
     bgVOfs[bg] = (bgVOfs[bg] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgX(unsigned int bg, uint32_t mask, uint32_t value)
+void Gpu2D::writeBgX(int bg, uint32_t mask, uint32_t value)
 {
     // Write to one of the BGX registers
     mask &= 0x0FFFFFFF;
@@ -750,7 +750,7 @@ void Gpu2D::writeBgX(unsigned int bg, uint32_t mask, uint32_t value)
     if (bgX[bg - 2] & BIT(27)) bgX[bg - 2] |= 0xF0000000; else bgX[bg - 2] &= ~0xF0000000;
 }
 
-void Gpu2D::writeBgY(unsigned int bg, uint32_t mask, uint32_t value)
+void Gpu2D::writeBgY(int bg, uint32_t mask, uint32_t value)
 {
     // Write to one of the BGY registers
     mask &= 0x0FFFFFFF;
@@ -760,25 +760,25 @@ void Gpu2D::writeBgY(unsigned int bg, uint32_t mask, uint32_t value)
     if (bgY[bg - 2] & BIT(27)) bgY[bg - 2] |= 0xF0000000; else bgY[bg - 2] &= ~0xF0000000;
 }
 
-void Gpu2D::writeBgPA(unsigned int bg, uint16_t mask, uint16_t value)
+void Gpu2D::writeBgPA(int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGPA registers
     bgPA[bg - 2] = (bgPA[bg - 2] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgPB(unsigned int bg, uint16_t mask, uint16_t value)
+void Gpu2D::writeBgPB(int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGPB registers
     bgPB[bg - 2] = (bgPB[bg - 2] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgPC(unsigned int bg, uint16_t mask, uint16_t value)
+void Gpu2D::writeBgPC(int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGPC registers
     bgPC[bg - 2] = (bgPC[bg - 2] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgPD(unsigned int bg, uint16_t mask, uint16_t value)
+void Gpu2D::writeBgPD(int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGPD registers
     bgPD[bg - 2] = (bgPD[bg - 2] & ~mask) | (value & mask);

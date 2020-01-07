@@ -29,8 +29,8 @@ class Cp15
     public:
         Cp15(Interpreter *arm9): arm9(arm9) {}
 
-        uint32_t read(unsigned int cn, unsigned int cm, unsigned int cp);
-        void write(unsigned int cn, unsigned int cm, unsigned int cp, uint32_t value);
+        uint32_t read(int cn, int cm, int cp);
+        void write(int cn, int cm, int cp, uint32_t value);
 
         uint32_t getExceptionAddr() { return exceptionAddr; }
         bool getDtcmEnabled()       { return dtcmEnabled;   }

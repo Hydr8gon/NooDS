@@ -23,7 +23,7 @@
 #include "defines.h"
 #include "interpreter.h"
 
-uint32_t Cp15::read(unsigned int cn, unsigned int cm, unsigned int cp)
+uint32_t Cp15::read(int cn, int cm, int cp)
 {
     // Read a value from a CP15 register
     switch ((cn << 16) | (cm << 8) | (cp << 0))
@@ -35,46 +35,58 @@ uint32_t Cp15::read(unsigned int cn, unsigned int cm, unsigned int cp)
         case 0x090101: return itcmReg;    // Instruction TCM size
 
         default:
+        {
             printf("Unknown CP15 register read: C%d,C%d,%d\n", cn, cm, cp);
             return 0;
+        }
     }
 }
 
-void Cp15::write(unsigned int cn, unsigned int cm, unsigned int cp, uint32_t value)
+void Cp15::write(int cn, int cm, int cp, uint32_t value)
 {
     // Write a value to a CP15 register
     switch ((cn << 16) | (cm << 8) | (cp << 0))
     {
         case 0x010000: // Control
+        {
             // Some control bits are read only, so only set the writeable ones
             ctrlReg = (ctrlReg & ~0x000FF085) | (value & 0x000FF085);
             exceptionAddr = (ctrlReg & BIT(13)) ? 0xFFFF0000 : 0x00000000;
             dtcmEnabled = (ctrlReg & BIT(16));
             itcmEnabled = (ctrlReg & BIT(18));
             return;
+        }
 
         case 0x090100: // Data TCM base/size
+        {
             // DTCM size is calculated as 512 shifted left N bits, with a minimum of 4KB
             dtcmReg = value;
             dtcmAddr = dtcmReg & 0xFFFFF000;
             dtcmSize = 0x200 << ((dtcmReg & 0x0000003E) >> 1);
             if (dtcmSize < 0x1000) dtcmSize = 0x1000;
             return;
+        }
 
         case 0x070004: case 0x070802: // Wait for interrupt
+        {
             arm9->halt();
             return;
+        }
 
         case 0x090101: // Instruction TCM size
+        {
             // ITCM base is fixed, so that part of the value is unused
             // ITCM size is calculated as 512 shifted left N bits, with a minimum of 4KB
             itcmReg = value;
             itcmSize = 0x200 << ((itcmReg & 0x0000003E) >> 1);
             if (itcmSize < 0x1000) itcmSize = 0x1000;
             return;
+        }
 
         default:
+        {
             printf("Unknown CP15 register write: C%d,C%d,%d\n", cn, cm, cp);
             return;
+        }
     }
 }

@@ -35,23 +35,32 @@ class Gpu3DRenderer
 
         uint32_t *getLineCache() { return lineCache; }
 
+        void setTexture(int slot, uint8_t *data) { textures[slot] = data; }
+        void setPalette(int slot, uint8_t *data) { palettes[slot] = data; }
+
     private:
         uint32_t lineCache[48 * 256] = {};
         int depthBuffer[256] = {};
 
+        uint8_t *textures[4] = {};
+        uint8_t *palettes[6] = {};
+
         Gpu3D *gpu3D;
 
-        uint32_t rgb5ToRgb6(uint32_t color);
+        uint32_t rgb5ToRgb6(uint16_t color);
 
-        int interpolateW(int w0, int w1, int x0, int x, int x1);
-        int interpolate(int val0, int val1, int x0, int x, int x1);
-        int interpolate(int val0, int val1, int x0, int x, int x1, int w0, int w, int w1);
-        uint32_t interpolateColor(uint32_t col0, uint32_t col1, int x0, int x, int x1);
-        uint32_t interpolateColor(uint32_t col0, uint32_t col1, int x0, int x, int x1, int w0, int w, int w1);
+        uint8_t *getTexture(uint32_t address);
+        uint8_t *getPalette(uint32_t address);
+
+        int interpolateW(int w1, int w2, int x1, int x, int x2);
+        int interpolate(int v1, int v2, int x1, int x, int x2);
+        int interpolate(int v1, int v2, int x1, int x, int x2, int w1, int w, int w2);
+        uint32_t interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2);
+        uint32_t interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2, int w1, int w, int w2);
 
         uint32_t readTexture(_Polygon *polygon, int s, int t);
 
-        void rasterize(int line, _Polygon *polygon, Vertex *v0, Vertex *v1, Vertex *v2, Vertex *v3);
+        void rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v2, Vertex *v3, Vertex *v4);
 };
 
 #endif // GPU_3D_RENDERER_H

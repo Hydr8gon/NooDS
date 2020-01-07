@@ -57,7 +57,7 @@ CFLAGS	:=	-g -Wall -Ofast -ffunction-sections \
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ #-DDEBUG
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=c++14
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=c++11
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)

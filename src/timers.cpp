@@ -119,14 +119,14 @@ void Timers::doubleTick()
     }
 }
 
-void Timers::writeTmCntL(unsigned int timer, uint16_t mask, uint16_t value)
+void Timers::writeTmCntL(int timer, uint16_t mask, uint16_t value)
 {
     // Write to one of the TMCNT_L registers
     // The value gets redirected and used as the reload value
     reloads[timer] = (reloads[timer] & ~mask) | (value & mask);
 }
 
-void Timers::writeTmCntH(unsigned int timer, uint16_t mask, uint16_t value)
+void Timers::writeTmCntH(int timer, uint16_t mask, uint16_t value)
 {
     // Set the timer enabled bit
     // A timer in count-up mode is disabled because its ticking is handled by the previous timer
