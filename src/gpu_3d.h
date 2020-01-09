@@ -169,6 +169,7 @@ class Gpu3D
 
         uint32_t diffuseColor = 0, ambientColor = 0;
         uint32_t specularColor = 0, emissionColor = 0;
+        bool shininessEnabled = false;
         Vertex lightVector[4], halfVector[4];
         uint32_t lightColor[4] = {};
         uint8_t shininess[128] = {};
@@ -182,6 +183,7 @@ class Gpu3D
 
         Matrix multiply(Matrix *mtx1, Matrix *mtx2);
         Vertex multiply(Vertex *vtx, Matrix *mtx);
+        int64_t multiply(Vertex *vec1, Vertex *vec2);
 
         uint32_t rgb5ToRgb6(uint16_t color);
 
@@ -205,6 +207,7 @@ class Gpu3D
         void mtxScaleCmd(uint32_t param);
         void mtxTransCmd(uint32_t param);
         void colorCmd(uint32_t param);
+        void normalCmd(uint32_t param);
         void texCoordCmd(uint32_t param);
         void vtx16Cmd(uint32_t param);
         void vtx10Cmd(uint32_t param);

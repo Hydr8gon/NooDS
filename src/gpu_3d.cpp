@@ -98,6 +98,7 @@ void Gpu3D::runCycle()
         case 0x1B: mtxScaleCmd(entry.param);      break; // MTX_SCALE
         case 0x1C: mtxTransCmd(entry.param);      break; // MTX_TRANS
         case 0x20: colorCmd(entry.param);         break; // COLOR
+        case 0x21: normalCmd(entry.param);        break; // NORMAL
         case 0x22: texCoordCmd(entry.param);      break; // TEXCOORD
         case 0x23: vtx16Cmd(entry.param);         break; // VTX_16
         case 0x24: vtx10Cmd(entry.param);         break; // VTX_10
@@ -216,6 +217,12 @@ Vertex Gpu3D::multiply(Vertex *vtx, Matrix *mtx)
     vertex.w = (vtx->x * mtx->data[3] + vtx->y * mtx->data[7] + vtx->z * mtx->data[11] + vtx->w * mtx->data[15]) >> 12;
 
     return vertex;
+}
+
+int64_t Gpu3D::multiply(Vertex *vec1, Vertex *vec2)
+{
+    // Multiply 2 vectors
+    return (vec1->x * vec2->x + vec1->y * vec2->y + vec1->z * vec2->z) >> 12;
 }
 
 void Gpu3D::addVertex()
@@ -987,6 +994,62 @@ void Gpu3D::colorCmd(uint32_t param)
     savedVertex.color = rgb5ToRgb6(param);
 }
 
+void Gpu3D::normalCmd(uint32_t param)
+{
+    // Get the normal vector
+    Vertex normalVector;
+    normalVector.x = ((int16_t)((param & 0x000003FF) <<  6)) >> 3;
+    normalVector.y = ((int16_t)((param & 0x000FFC00) >>  4)) >> 3;
+    normalVector.z = ((int16_t)((param & 0x3FF00000) >> 14)) >> 3;
+
+    // Multiply the normal vector with the directional matrix
+    normalVector = multiply(&normalVector, &direction);
+
+    // Set the base vertex color
+    savedVertex.color = emissionColor;
+
+    // Calculate the vertex color
+    // This is a translation of the pseudocode from GBATEK to C++
+    for (int i = 0; i < 4; i++)
+    {
+        if (enabledLights & BIT(i))
+        {
+            int diffuseLevel = -multiply(&lightVector[i], &normalVector);
+            if (diffuseLevel < (0 << 12)) diffuseLevel = (0 << 12);
+            if (diffuseLevel > (1 << 12)) diffuseLevel = (1 << 12);
+
+            int shininessLevel = -multiply(&halfVector[i], &normalVector);
+            if (shininessLevel < (0 << 12)) shininessLevel = (0 << 12);
+            if (shininessLevel > (1 << 12)) shininessLevel = (1 << 12);
+            shininessLevel = (shininessLevel * shininessLevel) >> 12;
+
+            if (shininessEnabled) shininessLevel = shininess[shininessLevel >> 5] << 4;
+
+            int r = (savedVertex.color >>  0) & 0x3F;
+            int g = (savedVertex.color >>  6) & 0x3F;
+            int b = (savedVertex.color >> 12) & 0x3F;
+
+            r += (((specularColor >>  0) & 0x3F) * ((lightColor[i] >>  0) & 0x3F) * shininessLevel) >> 18;
+            g += (((specularColor >>  6) & 0x3F) * ((lightColor[i] >>  6) & 0x3F) * shininessLevel) >> 18;
+            b += (((specularColor >> 12) & 0x3F) * ((lightColor[i] >> 12) & 0x3F) * shininessLevel) >> 18;
+
+            r += (((diffuseColor >>  0) & 0x3F) * ((lightColor[i] >>  0) & 0x3F) * diffuseLevel) >> 18;
+            g += (((diffuseColor >>  6) & 0x3F) * ((lightColor[i] >>  6) & 0x3F) * diffuseLevel) >> 18;
+            b += (((diffuseColor >> 12) & 0x3F) * ((lightColor[i] >> 12) & 0x3F) * diffuseLevel) >> 18;
+
+            r += ((ambientColor >>  0) & 0x3F) * ((lightColor[i] >>  0) & 0x3F) >> 6;
+            g += ((ambientColor >>  6) & 0x3F) * ((lightColor[i] >>  6) & 0x3F) >> 6;
+            b += ((ambientColor >> 12) & 0x3F) * ((lightColor[i] >> 12) & 0x3F) >> 6;
+
+            if (r < 0) r = 0; if (r > 0x3F) r = 0x3F;
+            if (g < 0) g = 0; if (g > 0x3F) g = 0x3F;
+            if (b < 0) b = 0; if (b > 0x3F) b = 0x3F;
+
+            savedVertex.color = (b << 12) | (g << 6) | r;
+        }
+    }
+}
+
 void Gpu3D::texCoordCmd(uint32_t param)
 {
     // Set the vertex texture coordinates
@@ -1120,6 +1183,9 @@ void Gpu3D::speEmiCmd(uint32_t param)
     // Set the specular reflection and emission colors
     specularColor = rgb5ToRgb6(param >>  0);
     emissionColor = rgb5ToRgb6(param >> 16);
+
+    // Set the shininess table toggle
+    shininessEnabled = param & BIT(15);
 }
 
 void Gpu3D::lightVectorCmd(uint32_t param)
