@@ -876,7 +876,7 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
     {
         uint32_t base = address + i;
         unsigned int size;
-        uint32_t mask = (1L << ((sizeof(T) - i) * 8)) - 1;
+        uint32_t mask = ((uint64_t)1 << ((sizeof(T) - i) * 8)) - 1;
         uint32_t data = value >> (i * 8);
 
         switch (base)
@@ -1406,7 +1406,7 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
     {
         uint32_t base = address + i;
         unsigned int size;
-        uint32_t mask = (1L << ((sizeof(T) - i) * 8)) - 1;
+        uint32_t mask = ((uint64_t)1 << ((sizeof(T) - i) * 8)) - 1;
         uint32_t data = value >> (i * 8);
 
         switch (base)
