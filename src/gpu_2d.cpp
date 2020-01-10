@@ -179,10 +179,9 @@ void Gpu2D::drawScanline(int line)
     {
         case 1: // Up
         {
-            // Calculate the brightness factor
-            float factor = (masterBright & 0x001F);
+            // Get the brightness factor
+            int factor = (masterBright & 0x001F);
             if (factor > 16) factor = 16;
-            factor /= 16;
 
             for (int i = 0; i < 256; i++)
             {
@@ -193,9 +192,9 @@ void Gpu2D::drawScanline(int line)
                 uint8_t b = (*pixel >> 12) & 0x3F;
 
                 // Adjust the values and put them back
-                r += (63 - r) * factor;
-                g += (63 - g) * factor;
-                b += (63 - b) * factor;
+                r += (63 - r) * factor / 16;
+                g += (63 - g) * factor / 16;
+                b += (63 - b) * factor / 16;
                 *pixel = (b << 12) | (g << 6) | r;
             }
 
@@ -204,10 +203,9 @@ void Gpu2D::drawScanline(int line)
 
         case 2: // Down
         {
-            // Calculate the brightness factor
-            float factor = (masterBright & 0x001F);
+            // Get the brightness factor
+            int factor = (masterBright & 0x001F);
             if (factor > 16) factor = 16;
-            factor /= 16;
 
             for (int i = 0; i < 256; i++)
             {
@@ -218,9 +216,9 @@ void Gpu2D::drawScanline(int line)
                 uint8_t b = (*pixel >> 12) & 0x3F;
 
                 // Adjust the values and put them back
-                r -= r * factor;
-                g -= g * factor;
-                b -= b * factor;
+                r -= r * factor / 16;
+                g -= g * factor / 16;
+                b -= b * factor / 16;
                 *pixel = (b << 12) | (g << 6) | r;
             }
 

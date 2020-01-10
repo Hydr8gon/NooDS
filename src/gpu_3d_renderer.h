@@ -38,6 +38,11 @@ class Gpu3DRenderer
         void setTexture(int slot, uint8_t *data) { textures[slot] = data; }
         void setPalette(int slot, uint8_t *data) { palettes[slot] = data; }
 
+        uint16_t readDisp3DCnt() { return disp3DCnt; }
+
+        void writeDisp3DCnt(uint16_t mask, uint16_t value);
+        void writeToonTable(int index, uint16_t mask, uint16_t value);
+
     private:
         uint32_t lineCache[48 * 256] = {};
         int depthBuffer[256] = {};
@@ -45,9 +50,12 @@ class Gpu3DRenderer
         uint8_t *textures[4] = {};
         uint8_t *palettes[6] = {};
 
+        uint16_t disp3DCnt = 0;
+        uint32_t toonTable[32] = {};
+
         Gpu3D *gpu3D;
 
-        uint32_t rgb5ToRgb6(uint16_t color);
+        uint32_t rgba5ToRgba6(uint32_t color);
 
         uint8_t *getTexture(uint32_t address);
         uint8_t *getPalette(uint32_t address);

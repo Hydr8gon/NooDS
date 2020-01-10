@@ -25,13 +25,13 @@
 #include "defines.h"
 #include "gpu_3d.h"
 
-uint32_t Gpu3DRenderer::rgb5ToRgb6(uint16_t color)
+uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 {
-    // Convert an RGB5 value to an RGB6 value (the way the 3D engine does it)
+    // Convert an RGBA5 value to an RGBA6 value (the way the 3D engine does it)
     uint8_t r = ((color >>  0) & 0x1F); r = r * 2 + (r + 31) / 32;
     uint8_t g = ((color >>  5) & 0x1F); g = g * 2 + (g + 31) / 32;
     uint8_t b = ((color >> 10) & 0x1F); b = b * 2 + (b + 31) / 32;
-    uint8_t a = ((color >> 15) & 0x01);
+    uint8_t a = ((color >> 15) & 0x1F); a = a * 2 + (a + 31) / 32;
     return (a << 18) | (b << 12) | (g << 6) | r;
 }
 
@@ -158,7 +158,7 @@ uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x
     int r = interpolate((c1 >>  0) & 0x3F, (c2 >>  0) & 0x3F, x1, x, x2);
     int g = interpolate((c1 >>  6) & 0x3F, (c2 >>  6) & 0x3F, x1, x, x2);
     int b = interpolate((c1 >> 12) & 0x3F, (c2 >> 12) & 0x3F, x1, x, x2);
-    return BIT(18) | (b << 12) | (g << 6) | r;
+    return (0x3F << 18) | (b << 12) | (g << 6) | r;
 }
 
 uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2, int w1, int w, int w2)
@@ -167,7 +167,7 @@ uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x
     int r = interpolate((c1 >>  0) & 0x3F, (c2 >>  0) & 0x3F, x1, x, x2, w1, w, w2);
     int g = interpolate((c1 >>  6) & 0x3F, (c2 >>  6) & 0x3F, x1, x, x2, w1, w, w2);
     int b = interpolate((c1 >> 12) & 0x3F, (c2 >> 12) & 0x3F, x1, x, x2, w1, w, w2);
-    return BIT(18) | (b << 12) | (g << 6) | r;
+    return (0x3F << 18) | (b << 12) | (g << 6) | r;
 }
 
 uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
@@ -233,8 +233,10 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
             uint8_t *palette = getPalette(polygon->paletteAddr);
             if (!palette) return 0;
 
-            // Return the palette color or a transparent pixel
-            return ((index & 0xE0) == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, (index & 0x1F) * 2)) | BIT(18));
+            // Return the palette color
+            uint16_t color = U8TO16(palette, (index & 0x1F) * 2) & ~BIT(15);
+            uint8_t alpha = (index >> 5) * 4 + (index >> 5) / 2;
+            return rgba5ToRgba6((alpha << 15) | color);
         }
 
         case 2: // 4-color palette
@@ -245,12 +247,16 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
             if (!data) return 0;
             uint8_t index = (*data >> ((s % 4) * 2)) & 0x03;
 
+            // Return a transparent pixel if enabled
+            if (polygon->transparent0 && index == 0)
+                return 0;
+
             // Get the palette
             uint8_t *palette = getPalette(polygon->paletteAddr);
             if (!palette) return 0;
 
-            // Return the palette color or a transparent pixel if enabled
-            return (polygon->transparent0 && index == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
+            // Return the palette color
+            return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
         }
 
         case 3: // 16-color palette
@@ -261,12 +267,16 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
             if (!data) return 0;
             uint8_t index = (*data >> ((s % 2) * 4)) & 0x0F;
 
+            // Return a transparent pixel if enabled
+            if (polygon->transparent0 && index == 0)
+                return 0;
+
             // Get the palette
             uint8_t *palette = getPalette(polygon->paletteAddr);
             if (!palette) return 0;
 
-            // Return the palette color or a transparent pixel if enabled
-            return (polygon->transparent0 && index == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
+            // Return the palette color
+            return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
         }
 
         case 4: // 256-color palette
@@ -277,12 +287,16 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
             if (!data) return 0;
             uint8_t index = *data;
 
+            // Return a transparent pixel if enabled
+            if (polygon->transparent0 && index == 0)
+                return 0;
+
             // Get the palette
             uint8_t *palette = getPalette(polygon->paletteAddr);
             if (!palette) return 0;
 
-            // Return the palette color or a transparent pixel if enabled
-            return (polygon->transparent0 && index == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
+            // Return the palette color
+            return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
         }
 
         case 5: // 4x4 compressed
@@ -303,8 +317,11 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
             // Return the palette color or a transparent or interpolated color based on the mode
             switch ((palBase & 0xC000) >> 14) // Interpolation mode
             {
-                case 0: return (index == 3) ? 0 : (rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18));
-                case 2: return rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18);
+                case 0:
+                {
+                    if (index == 3) return 0;
+                    return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
+                }
 
                 case 1:
                 {
@@ -312,14 +329,26 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
                     {
                         case 2:
                         {
-                            uint32_t c1 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
-                            uint32_t c2 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
+                            uint32_t c1 = rgba5ToRgba6(U8TO16(palette, 0));
+                            uint32_t c2 = rgba5ToRgba6(U8TO16(palette, 2));
                             return interpolateColor(c1, c2, 0, 1, 2);
                         }
 
-                        case 3:  return 0;
-                        default: return rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18);
+                        case 3:
+                        {
+                            return 0;
+                        }
+
+                        default:
+                        {
+                            return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
+                        }
                     }
+                }
+
+                case 2:
+                {
+                    return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
                 }
 
                 case 3:
@@ -328,19 +357,22 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
                     {
                         case 2:
                         {
-                            uint32_t c1 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
-                            uint32_t c2 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
+                            uint32_t c1 = rgba5ToRgba6(U8TO16(palette, 0));
+                            uint32_t c2 = rgba5ToRgba6(U8TO16(palette, 2));
                             return interpolateColor(c1, c2, 0, 3, 8);
                         }
 
                         case 3:
                         {
-                            uint32_t c1 = rgb5ToRgb6(U8TO16(palette, 0 * 2));
-                            uint32_t c2 = rgb5ToRgb6(U8TO16(palette, 1 * 2));
+                            uint32_t c1 = rgba5ToRgba6(U8TO16(palette, 0));
+                            uint32_t c2 = rgba5ToRgba6(U8TO16(palette, 2));
                             return interpolateColor(c1, c2, 0, 5, 8);
                         }
 
-                        default: return rgb5ToRgb6(U8TO16(palette, index * 2)) | BIT(18);
+                        default:
+                        {
+                            return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
+                        }
                     }
                 }
             }
@@ -358,15 +390,22 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
             uint8_t *palette = getPalette(polygon->paletteAddr);
             if (!palette) return 0;
 
-            // Return the palette color or a transparent pixel
-            return ((index & 0xF8) == 0) ? 0 : (rgb5ToRgb6(U8TO16(palette, (index & 0x07) * 2)) | BIT(18));
+            // Return the palette color
+            uint16_t color = U8TO16(palette, (index & 0x07) * 2) & ~BIT(15);
+            uint8_t alpha = index >> 3;
+            return rgba5ToRgba6((alpha << 15) | color);
         }
 
         default: // Direct color
         {
-            // Return the direct color
+            // Get the color data
             uint8_t *data = getTexture(polygon->textureAddr);
-            return data ? rgb5ToRgb6(U8TO16(data, (t * polygon->sizeS + s) * 2)) : 0;
+            if (!data) return 0;
+
+            // Return the direct color
+            uint16_t color = U8TO16(data, (t * polygon->sizeS + s) * 2);
+            uint8_t alpha = (color & BIT(15)) ? 0x1F : 0;
+            return rgba5ToRgba6((alpha << 15) | color);
         }
     }
 }
@@ -431,7 +470,8 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
                 // Read a texel from the texture
                 uint32_t texel = readTexture(polygon, s >> 4, t >> 4);
 
-                // Apply blending
+                // Apply texture blending
+                // These formulas are a translation of the pseudocode from GBATEK to C++
                 switch (polygon->mode)
                 {
                     case 0: // Modulation
@@ -439,25 +479,68 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
                         uint8_t r = ((((texel >>  0) & 0x3F) + 1) * (((color >>  0) & 0x3F) + 1) - 1) / 64;
                         uint8_t g = ((((texel >>  6) & 0x3F) + 1) * (((color >>  6) & 0x3F) + 1) - 1) / 64;
                         uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
-                        color = (texel & BIT(18)) | (b << 12) | (g << 6) | r;
+                        uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
+                        color = (a << 18) | (b << 12) | (g << 6) | r;
                         break;
                     }
 
-                    default:
+                    case 1: // Decal
+                    case 3: // Shadow
                     {
-                        printf("Unimplemented 3D lighting mode: %d\n", polygon->mode);
-                        color = texel;
+                        uint8_t at = ((texel >> 18) & 0x3F);
+                        uint8_t r = (((texel >>  0) & 0x3F) * at + ((color >>  0) & 0x3F) * (63 - at)) / 64;
+                        uint8_t g = (((texel >>  6) & 0x3F) * at + ((color >>  6) & 0x3F) * (63 - at)) / 64;
+                        uint8_t b = (((texel >> 12) & 0x3F) * at + ((color >> 12) & 0x3F) * (63 - at)) / 64;
+                        uint8_t a =  ((color >> 18) & 0x3F);
+                        color = (a << 18) | (b << 12) | (g << 6) | r;
+                        break;
+                    }
+
+                    case 2: // Toon/Highlight
+                    {
+                        uint8_t rv = (((color >>  0) & 0x3F) / 2);
+                        uint8_t r = ((((texel >>  0) & 0x3F) + 1) * (((toonTable[rv] >>  0) & 0x3F) + 1) - 1) / 64;
+                        uint8_t g = ((((texel >>  6) & 0x3F) + 1) * (((toonTable[rv] >>  6) & 0x3F) + 1) - 1) / 64;
+                        uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((toonTable[rv] >> 12) & 0x3F) + 1) - 1) / 64;
+                        uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color         >> 18) & 0x3F) + 1) - 1) / 64;
+
+                        if (disp3DCnt & BIT(1))
+                        {
+                            r += ((toonTable[rv] >>  0) & 0x3F); if (r > 63) r = 63;
+                            g += ((toonTable[rv] >>  6) & 0x3F); if (g > 63) g = 63;
+                            b += ((toonTable[rv] >> 12) & 0x3F); if (b > 63) b = 63;
+                        }
+
+                        color = (a << 18) | (b << 12) | (g << 6) | r;
                         break;
                     }
                 }
             }
 
             // Draw a pixel
-            if (color & BIT(18))
+            if (color & 0xFC0000)
             {
-                lineCache[(line % 48) * 256 + x] = color;
+                lineCache[(line % 48) * 256 + x] = color | BIT(18);
                 depthBuffer[x] = depth;
             }
         }
     }
+}
+
+void Gpu3DRenderer::writeDisp3DCnt(uint16_t mask, uint16_t value)
+{
+    // If any of the error bits are set, acknowledge the errors by clearing them
+    if (value & BIT(12)) disp3DCnt &= ~BIT(12);
+    if (value & BIT(13)) disp3DCnt &= ~BIT(13);
+
+    // Write to the DISP3DCNT register
+    mask &= 0x4FFF;
+    disp3DCnt = (disp3DCnt & ~mask) | (value & mask);
+}
+
+void Gpu3DRenderer::writeToonTable(int index, uint16_t mask, uint16_t value)
+{
+    // Write to one of the TOON_TABLE registers
+    mask &= 0x7FFF;
+    toonTable[index] = rgba5ToRgba6(value & mask);
 }
