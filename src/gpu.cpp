@@ -27,6 +27,15 @@
 #include "gpu_3d_renderer.h"
 #include "interpreter.h"
 
+uint16_t Gpu::rgb6ToRgb5(uint32_t color)
+{
+    // Convert an RGB6 value to an RGB5 value
+    uint8_t r = ((color >>  0) & 0x3F) / 2;
+    uint8_t g = ((color >>  6) & 0x3F) / 2;
+    uint8_t b = ((color >> 12) & 0x3F) / 2;
+    return BIT(15) | (b << 10) | (g << 5) | r;
+}
+
 void Gpu::scanline256()
 {
     // Draw visible scanlines
@@ -34,6 +43,123 @@ void Gpu::scanline256()
     {
         engineA->drawScanline(vCount);
         engineB->drawScanline(vCount);
+
+        // Start a display capture at the beginning of the frame if one was requested
+        if (vCount == 0 && (dispCapCnt & BIT(31)))
+            displayCapture = true;
+
+        // Perform a display capture
+        if (displayCapture)
+        {
+            // Get the capture destination
+            uint8_t *block = memory->getVramBlock((dispCapCnt & 0x00030000) >> 16);
+            uint32_t writeOffset = (dispCapCnt & 0x000C0000) >> 3;
+
+            // Determine the capture size
+            int width, height;
+            switch ((dispCapCnt & 0x00300000) >> 20) // Capture size
+            {
+                case 0: width = 128; height = 128; break;
+                case 1: width = 256; height =  64; break;
+                case 2: width = 256; height = 128; break;
+                case 3: width = 256; height = 192; break;
+            }
+
+            // Copy the source contents to memory as a 15-bit bitmap
+            switch ((dispCapCnt & 0x60000000) >> 29) // Capture source
+            {
+                case 0: // Source A
+                {
+                    // Choose from 2D engine A or the 3D engine
+                    uint32_t *source;
+                    if (dispCapCnt & BIT(24))
+                        source = &engineA->getFramebuffer()[vCount * 256];
+                    else
+                        source = &gpu3DRenderer->getLineCache()[(vCount % 48) * 256];
+
+                    // Copy a scanline to memory
+                    for (int i = 0; i < width; i++)
+                    {
+                        uint16_t color = rgb6ToRgb5(source[i]);
+                        block[(writeOffset + (vCount * width + i) * 2 + 0) % 0x20000] = color >> 0;
+                        block[(writeOffset + (vCount * width + i) * 2 + 1) % 0x20000] = color >> 8;
+                    }
+
+                    break;
+                }
+
+                case 1: // Source B
+                {
+                    if (dispCapCnt & BIT(25))
+                    {
+                        printf("Unimplemented display capture source: display FIFO\n");
+                        break;
+                    }
+
+                    // Get the VRAM source address
+                    uint32_t readOffset = (dispCapCnt & 0x0C000000) >> 11;
+
+                    // Copy a scanline to memory
+                    for (int i = 0; i < width; i++)
+                    {
+                        uint16_t color = U8TO16(block, (readOffset + (vCount * width + i) * 2) % 0x20000);
+                        block[(writeOffset + (vCount * width + i) * 2 + 0) % 0x20000] = color >> 0;
+                        block[(writeOffset + (vCount * width + i) * 2 + 1) % 0x20000] = color >> 8;
+                    }
+
+                    break;
+                }
+
+                default: // Blended
+                {
+                    if (dispCapCnt & BIT(25))
+                    {
+                        printf("Unimplemented display capture source: display FIFO\n");
+                        break;
+                    }
+
+                    // Choose from 2D engine A or the 3D engine
+                    uint32_t *source;
+                    if (dispCapCnt & BIT(24))
+                        source = &engineA->getFramebuffer()[vCount * 256];
+                    else
+                        source = &gpu3DRenderer->getLineCache()[(vCount % 48) * 256];
+
+                    // Get the VRAM source address
+                    uint32_t readOffset = (dispCapCnt & 0x0C000000) >> 11;
+
+                    // Copy a scanline to memory
+                    for (int i = 0; i < width; i++)
+                    {
+                        // Get colors from the two sources
+                        uint16_t c1 = rgb6ToRgb5(source[i]);
+                        uint16_t c2 = U8TO16(block, (readOffset + (vCount * width + i) * 2) % 0x20000);
+
+                        // Get the blending factors for the two sources
+                        int eva = (dispCapCnt & 0x0000001F) >> 0; if (eva > 16) eva = 16;
+                        int evb = (dispCapCnt & 0x00001F00) >> 8; if (evb > 16) evb = 16;
+
+                        // Blend the color values
+                        uint8_t r = (((c1 >>  0) & 0x1F) * eva + ((c2 >>  0) & 0x1F) * evb) / 16;
+                        uint8_t g = (((c1 >>  5) & 0x1F) * eva + ((c2 >>  5) & 0x1F) * evb) / 16;
+                        uint8_t b = (((c1 >> 10) & 0x1F) * eva + ((c2 >> 10) & 0x1F) * evb) / 16;
+
+                        uint16_t color = BIT(15) | (b << 10) | (g << 5) | r;
+                        block[(writeOffset + (vCount * width + i) * 2 + 0) % 0x20000] = color >> 0;
+                        block[(writeOffset + (vCount * width + i) * 2 + 1) % 0x20000] = color >> 8;
+                    }
+
+                    break;
+                }
+            }
+
+            // End the display capture
+            if (vCount + 1 == height)
+            {
+                displayCapture = false;
+                dispCapCnt &= ~BIT(31);
+            }
+        }
     }
 
     // Draw 3D scanlines 48 lines in advance
@@ -152,6 +278,13 @@ void Gpu::writeDispStat7(uint16_t mask, uint16_t value)
     // Write to the ARM7's DISPSTAT register
     mask &= 0xFFB8;
     dispStat7 = (dispStat7 & ~mask) | (value & mask);
+}
+
+void Gpu::writeDispCapCnt(uint32_t mask, uint32_t value)
+{
+    // Write to the DISPCAPCNT register
+    mask &= 0xEF3F1F1F;
+    dispCapCnt = (dispCapCnt & ~mask) | (value & mask);
 }
 
 void Gpu::writePowCnt1(uint16_t mask, uint16_t value)

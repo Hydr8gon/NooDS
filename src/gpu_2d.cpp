@@ -169,9 +169,11 @@ void Gpu2D::drawScanline(int line)
         }
 
         case 3: // Main memory display
-            printf("Unsupported engine %c display mode: main memory\n", (gpu3DRenderer ? 'A' : 'B'));
+        {
+            printf("Unimplemented engine %c display mode: display FIFO\n", (gpu3DRenderer ? 'A' : 'B'));
             dispCnt &= ~0x00030000;
             break;
+        }
     }
 
     // Adjust the master brightness

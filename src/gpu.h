@@ -26,38 +26,49 @@ class Gpu2D;
 class Gpu3D;
 class Gpu3DRenderer;
 class Interpreter;
+class Memory;
 
 class Gpu
 {
     public:
-        Gpu(Gpu2D *engineA, Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer, Interpreter *arm9, Interpreter *arm7):
-            engineA(engineA), engineB(engineB), gpu3D(gpu3D), gpu3DRenderer(gpu3DRenderer), arm9(arm9), arm7(arm7) {}
+        Gpu(Gpu2D *engineA, Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer,
+            Interpreter *arm9, Interpreter *arm7, Memory *memory):
+            engineA(engineA), engineB(engineB), gpu3D(gpu3D), gpu3DRenderer(gpu3DRenderer),
+            arm9(arm9), arm7(arm7), memory(memory) {}
 
         void scanline256();
         void scanline355();
 
         uint32_t *getFramebuffer() { return framebuffer; }
 
-        uint16_t readDispStat9() { return dispStat9; }
-        uint16_t readDispStat7() { return dispStat7; }
-        uint16_t readVCount()    { return vCount;    }
-        uint16_t readPowCnt1()   { return powCnt1;   }
+        uint16_t readDispStat9()  { return dispStat9;  }
+        uint16_t readDispStat7()  { return dispStat7;  }
+        uint16_t readVCount()     { return vCount;     }
+        uint32_t readDispCapCnt() { return dispCapCnt; }
+        uint16_t readPowCnt1()    { return powCnt1;    }
 
         void writeDispStat9(uint16_t mask, uint16_t value);
         void writeDispStat7(uint16_t mask, uint16_t value);
+        void writeDispCapCnt(uint32_t mask, uint32_t value);
         void writePowCnt1(uint16_t mask, uint16_t value);
 
     private:
         uint32_t framebuffer[256 * 192 * 2] = {};
 
+        bool displayCapture = false;
+
         uint16_t dispStat9 = 0, dispStat7 = 0;
         uint16_t vCount = 0;
+        uint32_t dispCapCnt = 0;
         uint16_t powCnt1 = 0;
 
         Gpu2D *engineA, *engineB;
         Gpu3D *gpu3D;
         Gpu3DRenderer *gpu3DRenderer;
         Interpreter *arm9, *arm7;
+        Memory *memory;
+
+        uint16_t rgb6ToRgb5(uint32_t color);
 };
 
 #endif // GPU_H
