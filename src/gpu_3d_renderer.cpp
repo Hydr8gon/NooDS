@@ -158,7 +158,7 @@ uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x
     int r = interpolate((c1 >>  0) & 0x3F, (c2 >>  0) & 0x3F, x1, x, x2);
     int g = interpolate((c1 >>  6) & 0x3F, (c2 >>  6) & 0x3F, x1, x, x2);
     int b = interpolate((c1 >> 12) & 0x3F, (c2 >> 12) & 0x3F, x1, x, x2);
-    return (0x3F << 18) | (b << 12) | (g << 6) | r;
+    return (c1 & 0xFC0000) | (b << 12) | (g << 6) | r;
 }
 
 uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2, int w1, int w, int w2)
@@ -167,7 +167,7 @@ uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x
     int r = interpolate((c1 >>  0) & 0x3F, (c2 >>  0) & 0x3F, x1, x, x2, w1, w, w2);
     int g = interpolate((c1 >>  6) & 0x3F, (c2 >>  6) & 0x3F, x1, x, x2, w1, w, w2);
     int b = interpolate((c1 >> 12) & 0x3F, (c2 >> 12) & 0x3F, x1, x, x2, w1, w, w2);
-    return (0x3F << 18) | (b << 12) | (g << 6) | r;
+    return (c1 & 0xFC0000) | (b << 12) | (g << 6) | r;
 }
 
 uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
@@ -329,8 +329,8 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
                     {
                         case 2:
                         {
-                            uint32_t c1 = rgba5ToRgba6(U8TO16(palette, 0));
-                            uint32_t c2 = rgba5ToRgba6(U8TO16(palette, 2));
+                            uint32_t c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
+                            uint32_t c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
                             return interpolateColor(c1, c2, 0, 1, 2);
                         }
 
@@ -357,15 +357,15 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
                     {
                         case 2:
                         {
-                            uint32_t c1 = rgba5ToRgba6(U8TO16(palette, 0));
-                            uint32_t c2 = rgba5ToRgba6(U8TO16(palette, 2));
+                            uint32_t c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
+                            uint32_t c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
                             return interpolateColor(c1, c2, 0, 3, 8);
                         }
 
                         case 3:
                         {
-                            uint32_t c1 = rgba5ToRgba6(U8TO16(palette, 0));
-                            uint32_t c2 = rgba5ToRgba6(U8TO16(palette, 2));
+                            uint32_t c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
+                            uint32_t c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
                             return interpolateColor(c1, c2, 0, 5, 8);
                         }
 
@@ -520,8 +520,18 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
             // Draw a pixel
             if (color & 0xFC0000)
             {
-                lineCache[(line % 48) * 256 + x] = color | BIT(18);
-                depthBuffer[x] = depth;
+                uint32_t *pixel = &lineCache[(line % 48) * 256 + x];
+
+                if ((color >> 18) < 0x3F && (*pixel & 0xFC0000)) // Alpha blending
+                {
+                    *pixel = BIT(18) | interpolateColor(*pixel, color, 0, color >> 18, 63);
+                    if (polygon->transNewDepth) depthBuffer[x] = depth;
+                }
+                else
+                {
+                    *pixel = BIT(18) | color;
+                    depthBuffer[x] = depth;
+                }
             }
         }
     }

@@ -59,6 +59,7 @@ struct _Polygon
     Vertex *vertices = nullptr;
 
     int mode = 0;
+    bool transNewDepth = false;
 
     uint32_t textureAddr = 0, paletteAddr = 0;
     int sizeS = 0, sizeT = 0;
