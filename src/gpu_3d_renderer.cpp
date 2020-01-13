@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 #include "gpu_3d_renderer.h"
 #include "defines.h"
@@ -44,75 +45,23 @@ void Gpu3DRenderer::drawScanline(int line)
     for (int i = 0; i < 256; i++)
         depthBuffer[i] = 0xFFFFFF;
 
-    // Draw the polygons
+    std::vector<_Polygon*> translucent;
+
+    // Draw the solid polygons
     for (int i = 0; i < gpu3D->getPolygonCount(); i++)
     {
         _Polygon *polygon = &gpu3D->getPolygons()[i];
 
-        // Get the polygon vertices
-        Vertex *vertices[8];
-        for (int j = 0; j < polygon->size; j++)
-            vertices[j] = &polygon->vertices[j];
-
-        // Sort the vertices in order of increasing Y values
-        for (int j = 0; j < polygon->size - 1; j++)
-        {
-            for (int k = j + 1; k < polygon->size; k++)
-            {
-                if (vertices[k]->y < vertices[j]->y)
-                {
-                    Vertex *vertex = vertices[j];
-                    vertices[j] = vertices[k];
-                    vertices[k] = vertex;
-                }
-            }
-        }
-
-        // Check if the polygon intersects with the current scanline
-        if (line < vertices[0]->y || line >= vertices[polygon->size - 1]->y)
-            continue;
-
-        // Calculate the cross products of the middle vertices
-        // These determine whether a vertex is on the left or right of the middle of its polygon
-        int crosses[6];
-        for (int j = 0; j < polygon->size - 2; j++)
-        {
-            crosses[j] = (vertices[j + 1]->x - vertices[0]->x) * (vertices[polygon->size - 1]->y - vertices[0]->y) -
-                         (vertices[j + 1]->y - vertices[0]->y) * (vertices[polygon->size - 1]->x - vertices[0]->x);
-        }
-
-        // Rasterize the polygon
-        for (int j = 1; j < polygon->size; j++)
-        {
-            if (line < vertices[j]->y)
-            {
-                int v1, v2, v3, v4;
-
-                // Find the bottom vertex of the left side of the polygon on the current line
-                // This is equal to the highest point equal or below j on the left
-                for (v2 = j; v2 < polygon->size; v2++)
-                    if (v2 == polygon->size - 1 || crosses[v2 - 1] <= 0) break;
-
-                // Find the top vertex of the left side of the polygon on the current line
-                // This is equal to the lowest point above v2 on the left
-                for (v1 = v2 - 1; v1 >= 0; v1--)
-                    if (v1 == 0 || crosses[v1 - 1] <= 0) break;
-
-                // Find the bottom vertex of the right side of the polygon on the current line
-                // This is equal to the highest point equal or below j on the right
-                for (v4 = j; v4 < polygon->size; v4++)
-                    if (v4 == polygon->size - 1 || crosses[v4 - 1] > 0) break;
-
-                // Find the top vertex of the right side of the polygon on the current line
-                // This is equal to the lowest point above v4 on the right
-                for (v3 = v4 - 1; v3 >= 0; v3--)
-                    if (v3 == 0 || crosses[v3 - 1] > 0) break;
-
-                rasterize(line, polygon, vertices[v1], vertices[v2], vertices[v3], vertices[v4]);
-                break;
-            }
-        }
+        // If the polygon is translucent, save it for later
+        if ((polygon->vertices[0].color >> 18) < 0x3F)
+            translucent.push_back(polygon);
+        else
+            drawPolygon(line, polygon);
     }
+
+    // Draw the translucent polygons
+    for (int i = 0; i < translucent.size(); i++)
+        drawPolygon(line, translucent[i]);
 }
 
 uint8_t *Gpu3DRenderer::getTexture(uint32_t address)
@@ -410,6 +359,72 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
     }
 }
 
+void Gpu3DRenderer::drawPolygon(int line, _Polygon *polygon)
+{
+    // Get the polygon vertices
+    Vertex *vertices[8];
+    for (int j = 0; j < polygon->size; j++)
+        vertices[j] = &polygon->vertices[j];
+
+    // Sort the vertices in order of increasing Y values
+    for (int j = 0; j < polygon->size - 1; j++)
+    {
+        for (int k = j + 1; k < polygon->size; k++)
+        {
+            if (vertices[k]->y < vertices[j]->y)
+            {
+                Vertex *vertex = vertices[j];
+                vertices[j] = vertices[k];
+                vertices[k] = vertex;
+            }
+        }
+    }
+
+    // Check if the polygon intersects with the current scanline
+    if (line < vertices[0]->y || line >= vertices[polygon->size - 1]->y)
+        return;
+
+    // Calculate the cross products of the middle vertices
+    // These determine whether a vertex is on the left or right of the middle of its polygon
+    int crosses[6];
+    for (int j = 0; j < polygon->size - 2; j++)
+    {
+        crosses[j] = (vertices[j + 1]->x - vertices[0]->x) * (vertices[polygon->size - 1]->y - vertices[0]->y) -
+                     (vertices[j + 1]->y - vertices[0]->y) * (vertices[polygon->size - 1]->x - vertices[0]->x);
+    }
+
+    // Rasterize the polygon
+    for (int j = 1; j < polygon->size; j++)
+    {
+        if (line < vertices[j]->y)
+        {
+            int v1, v2, v3, v4;
+            // Find the bottom vertex of the left side of the polygon on the current line
+            // This is equal to the highest point equal or below j on the left
+            for (v2 = j; v2 < polygon->size; v2++)
+                if (v2 == polygon->size - 1 || crosses[v2 - 1] <= 0) break;
+
+            // Find the top vertex of the left side of the polygon on the current line
+            // This is equal to the lowest point above v2 on the left
+            for (v1 = v2 - 1; v1 >= 0; v1--)
+                if (v1 == 0 || crosses[v1 - 1] <= 0) break;
+
+            // Find the bottom vertex of the right side of the polygon on the current line
+            // This is equal to the highest point equal or below j on the right
+            for (v4 = j; v4 < polygon->size; v4++)
+                if (v4 == polygon->size - 1 || crosses[v4 - 1] > 0) break;
+
+            // Find the top vertex of the right side of the polygon on the current line
+            // This is equal to the lowest point above v4 on the right
+            for (v3 = v4 - 1; v3 >= 0; v3--)
+                if (v3 == 0 || crosses[v3 - 1] > 0) break;
+
+            rasterize(line, polygon, vertices[v1], vertices[v2], vertices[v3], vertices[v4]);
+            break;
+        }
+    }
+}
+
 void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v2, Vertex *v3, Vertex *v4)
 {
     // "Normalize" the W values by reducing them to 16-bits
@@ -444,7 +459,8 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
         int depth = polygon->wBuffer ? (interpolateW(w1, w2, x1, x, x2) << wShift) : interpolate(z1, z2, x1, x, x2);
 
         // Draw a new pixel if the old one is behind the new one
-        if (depthBuffer[x] >= depth)
+        // The polygon can optionally use an "equal" depth test, which has a margin of 0x200
+        if ((polygon->depthTestEqual && depthBuffer[x] - 0x200 >= depth) || depthBuffer[x] > depth)
         {
             // Calculate the W value of the current pixel
             int w = polygon->wBuffer ? (depth >> wShift) : interpolateW(w1, w2, x1, x, x2);

@@ -68,6 +68,7 @@ class Gpu3DRenderer
 
         uint32_t readTexture(_Polygon *polygon, int s, int t);
 
+        void drawPolygon(int line, _Polygon *polygon);
         void rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v2, Vertex *v3, Vertex *v4);
 };
 
