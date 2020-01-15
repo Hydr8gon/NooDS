@@ -17,6 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include "portaudio.h"
 #include <thread>
 #include <wx/wx.h>
 #include <wx/rawbmp.h>
@@ -27,12 +28,26 @@ const char keyMap[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', '
 
 Core *core;
 std::thread *coreThread;
+PaStream *stream;
 bool running;
 
 void runCore()
 {
     while (running)
         core->runFrame();
+}
+
+int audioCallback(const void *in, void *out, unsigned long frames,
+                  const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data)
+{
+    int16_t *curOut = (int16_t*)out;
+    for (int i = 0; i < frames; i++)
+    {
+        uint32_t sample = running ? core->getSample() : 0;
+        curOut[i * 2 + 0] = sample >>  0;
+        curOut[i * 2 + 1] = sample >> 16;
+    }
+    return 0;
 }
 
 class NooFrame: public wxFrame
@@ -109,6 +124,11 @@ bool NooApp::OnInit()
     sizer->Add(panel, 1, wxEXPAND);
     frame->SetSizer(sizer);
     Connect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(NooApp::requestDraw));
+
+    // Start the audio service
+    Pa_Initialize();
+    Pa_OpenDefaultStream(&stream, 0, 2, paInt16, 32768, 1024, audioCallback, NULL);
+    Pa_StartStream(stream);
 
     return true;
 }

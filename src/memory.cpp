@@ -35,14 +35,15 @@
 #include "math.h"
 #include "rtc.h"
 #include "spi.h"
+#include "spu.h"
 #include "timers.h"
 
 Memory::Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA,
                Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9,
-               Interpreter *arm7, Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Timers *timers9, Timers *timers7):
+               Interpreter *arm7, Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Spu *spu, Timers *timers9, Timers *timers7):
                cart9(cart9), cart7(cart7), cp15(cp15), dma9(dma9), dma7(dma7), gpu(gpu), engineA(engineA),
                engineB(engineB), gpu3D(gpu3D), gpu3DRenderer(gpu3DRenderer), input(input), arm9(arm9),
-               arm7(arm7), ipc(ipc), math(math), rtc(rtc), spi(spi), timers9(timers9), timers7(timers7)
+               arm7(arm7), ipc(ipc), math(math), rtc(rtc), spi(spi), spu(spu), timers9(timers9), timers7(timers7)
 {
     // Attempt to load the ARM9 BIOS
     FILE *bios9File = fopen("bios9.bin", "rb");
@@ -839,8 +840,74 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4000241: base -= 0x4000241; size = 1; data = readWramStat();          break; // WRAMSTAT
             case 0x4000300: base -= 0x4000300; size = 1; data = arm7->readPostFlg();     break; // POSTFLG (ARM7)
             case 0x4000301: base -= 0x4000301; size = 1; data = readHaltCnt();           break; // HALTCNT
+            case 0x4000400:
+            case 0x4000401:
+            case 0x4000402:
+            case 0x4000403: base -= 0x4000400; size = 4; data = spu->readSoundCnt(0);    break; // SOUND0CNT
+            case 0x4000410:
+            case 0x4000411:
+            case 0x4000412:
+            case 0x4000413: base -= 0x4000410; size = 4; data = spu->readSoundCnt(1);    break; // SOUND1CNT
+            case 0x4000420:
+            case 0x4000421:
+            case 0x4000422:
+            case 0x4000423: base -= 0x4000420; size = 4; data = spu->readSoundCnt(2);    break; // SOUND2CNT
+            case 0x4000430:
+            case 0x4000431:
+            case 0x4000432:
+            case 0x4000433: base -= 0x4000430; size = 4; data = spu->readSoundCnt(3);    break; // SOUND3CNT
+            case 0x4000440:
+            case 0x4000441:
+            case 0x4000442:
+            case 0x4000443: base -= 0x4000440; size = 4; data = spu->readSoundCnt(4);    break; // SOUND4CNT
+            case 0x4000450:
+            case 0x4000451:
+            case 0x4000452:
+            case 0x4000453: base -= 0x4000450; size = 4; data = spu->readSoundCnt(5);    break; // SOUND5CNT
+            case 0x4000460:
+            case 0x4000461:
+            case 0x4000462:
+            case 0x4000463: base -= 0x4000460; size = 4; data = spu->readSoundCnt(6);    break; // SOUND6CNT
+            case 0x4000470:
+            case 0x4000471:
+            case 0x4000472:
+            case 0x4000473: base -= 0x4000470; size = 4; data = spu->readSoundCnt(7);    break; // SOUND7CNT
+            case 0x4000480:
+            case 0x4000481:
+            case 0x4000482:
+            case 0x4000483: base -= 0x4000480; size = 4; data = spu->readSoundCnt(8);    break; // SOUND8CNT
+            case 0x4000490:
+            case 0x4000491:
+            case 0x4000492:
+            case 0x4000493: base -= 0x4000490; size = 4; data = spu->readSoundCnt(9);    break; // SOUND9CNT
+            case 0x40004A0:
+            case 0x40004A1:
+            case 0x40004A2:
+            case 0x40004A3: base -= 0x40004A0; size = 4; data = spu->readSoundCnt(10);   break; // SOUND10CNT
+            case 0x40004B0:
+            case 0x40004B1:
+            case 0x40004B2:
+            case 0x40004B3: base -= 0x40004B0; size = 4; data = spu->readSoundCnt(11);   break; // SOUND11CNT
+            case 0x40004C0:
+            case 0x40004C1:
+            case 0x40004C2:
+            case 0x40004C3: base -= 0x40004C0; size = 4; data = spu->readSoundCnt(12);   break; // SOUND12CNT
+            case 0x40004D0:
+            case 0x40004D1:
+            case 0x40004D2:
+            case 0x40004D3: base -= 0x40004D0; size = 4; data = spu->readSoundCnt(13);   break; // SOUND13CNT
+            case 0x40004E0:
+            case 0x40004E1:
+            case 0x40004E2:
+            case 0x40004E3: base -= 0x40004E0; size = 4; data = spu->readSoundCnt(14);   break; // SOUND14CNT
+            case 0x40004F0:
+            case 0x40004F1:
+            case 0x40004F2:
+            case 0x40004F3: base -= 0x40004F0; size = 4; data = spu->readSoundCnt(15);   break; // SOUND15CNT
+            case 0x4000500:
+            case 0x4000501: base -= 0x4000500; size = 2; data = spu->readMainSoundCnt(); break; // SOUNDCNT
             case 0x4000504:
-            case 0x4000505: base -= 0x4000504; size = 2; data = readSoundBias();         break; // SOUNDBIAS
+            case 0x4000505: base -= 0x4000504; size = 2; data = spu->readSoundBias();    break; // SOUNDBIAS
             case 0x4100000:
             case 0x4100001:
             case 0x4100002:
@@ -1591,8 +1658,266 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4000217: base -= 0x4000214; size = 4; arm7->writeIrf(mask << (base * 8), data << (base * 8));          break; // IF (ARM7)
             case 0x4000300: base -= 0x4000300; size = 1; arm7->writePostFlg(data << (base * 8));                          break; // POSTFLG (ARM7)
             case 0x4000301: base -= 0x4000301; size = 1; writeHaltCnt(data << (base * 8));                                break; // HALTCNT
+            case 0x4000400:
+            case 0x4000401:
+            case 0x4000402:
+            case 0x4000403: base -= 0x4000400; size = 4; spu->writeSoundCnt(0, mask << (base * 8), data << (base * 8));   break; // SOUND0CNT
+            case 0x4000404:
+            case 0x4000405:
+            case 0x4000406:
+            case 0x4000407: base -= 0x4000404; size = 4; spu->writeSoundSad(0, mask << (base * 8), data << (base * 8));   break; // SOUND0SAD
+            case 0x4000408:
+            case 0x4000409: base -= 0x4000408; size = 2; spu->writeSoundTmr(0, mask << (base * 8), data << (base * 8));   break; // SOUND0TMR
+            case 0x400040A:
+            case 0x400040B: base -= 0x400040A; size = 2; spu->writeSoundPnt(0, mask << (base * 8), data << (base * 8));   break; // SOUND0PNT
+            case 0x400040C:
+            case 0x400040D:
+            case 0x400040E:
+            case 0x400040F: base -= 0x400040C; size = 4; spu->writeSoundLen(0, mask << (base * 8), data << (base * 8));   break; // SOUND0LEN
+            case 0x4000410:
+            case 0x4000411:
+            case 0x4000412:
+            case 0x4000413: base -= 0x4000410; size = 4; spu->writeSoundCnt(1, mask << (base * 8), data << (base * 8));   break; // SOUND1CNT
+            case 0x4000414:
+            case 0x4000415:
+            case 0x4000416:
+            case 0x4000417: base -= 0x4000414; size = 4; spu->writeSoundSad(1, mask << (base * 8), data << (base * 8));   break; // SOUND1SAD
+            case 0x4000418:
+            case 0x4000419: base -= 0x4000418; size = 2; spu->writeSoundTmr(1, mask << (base * 8), data << (base * 8));   break; // SOUND1TMR
+            case 0x400041A:
+            case 0x400041B: base -= 0x400041A; size = 2; spu->writeSoundPnt(1, mask << (base * 8), data << (base * 8));   break; // SOUND1PNT
+            case 0x400041C:
+            case 0x400041D:
+            case 0x400041E:
+            case 0x400041F: base -= 0x400041C; size = 4; spu->writeSoundLen(1, mask << (base * 8), data << (base * 8));   break; // SOUND1LEN
+            case 0x4000420:
+            case 0x4000421:
+            case 0x4000422:
+            case 0x4000423: base -= 0x4000420; size = 4; spu->writeSoundCnt(2, mask << (base * 8), data << (base * 8));   break; // SOUND2CNT
+            case 0x4000424:
+            case 0x4000425:
+            case 0x4000426:
+            case 0x4000427: base -= 0x4000424; size = 4; spu->writeSoundSad(2, mask << (base * 8), data << (base * 8));   break; // SOUND2SAD
+            case 0x4000428:
+            case 0x4000429: base -= 0x4000428; size = 2; spu->writeSoundTmr(2, mask << (base * 8), data << (base * 8));   break; // SOUND2TMR
+            case 0x400042A:
+            case 0x400042B: base -= 0x400042A; size = 2; spu->writeSoundPnt(2, mask << (base * 8), data << (base * 8));   break; // SOUND2PNT
+            case 0x400042C:
+            case 0x400042D:
+            case 0x400042E:
+            case 0x400042F: base -= 0x400042C; size = 4; spu->writeSoundLen(2, mask << (base * 8), data << (base * 8));   break; // SOUND2LEN
+            case 0x4000430:
+            case 0x4000431:
+            case 0x4000432:
+            case 0x4000433: base -= 0x4000430; size = 4; spu->writeSoundCnt(3, mask << (base * 8), data << (base * 8));   break; // SOUND3CNT
+            case 0x4000434:
+            case 0x4000435:
+            case 0x4000436:
+            case 0x4000437: base -= 0x4000434; size = 4; spu->writeSoundSad(3, mask << (base * 8), data << (base * 8));   break; // SOUND3SAD
+            case 0x4000438:
+            case 0x4000439: base -= 0x4000438; size = 2; spu->writeSoundTmr(3, mask << (base * 8), data << (base * 8));   break; // SOUND3TMR
+            case 0x400043A:
+            case 0x400043B: base -= 0x400043A; size = 2; spu->writeSoundPnt(3, mask << (base * 8), data << (base * 8));   break; // SOUND3PNT
+            case 0x400043C:
+            case 0x400043D:
+            case 0x400043E:
+            case 0x400043F: base -= 0x400043C; size = 4; spu->writeSoundLen(3, mask << (base * 8), data << (base * 8));   break; // SOUND3LEN
+            case 0x4000440:
+            case 0x4000441:
+            case 0x4000442:
+            case 0x4000443: base -= 0x4000440; size = 4; spu->writeSoundCnt(4, mask << (base * 8), data << (base * 8));   break; // SOUND4CNT
+            case 0x4000444:
+            case 0x4000445:
+            case 0x4000446:
+            case 0x4000447: base -= 0x4000444; size = 4; spu->writeSoundSad(4, mask << (base * 8), data << (base * 8));   break; // SOUND4SAD
+            case 0x4000448:
+            case 0x4000449: base -= 0x4000448; size = 2; spu->writeSoundTmr(4, mask << (base * 8), data << (base * 8));   break; // SOUND4TMR
+            case 0x400044A:
+            case 0x400044B: base -= 0x400044A; size = 2; spu->writeSoundPnt(4, mask << (base * 8), data << (base * 8));   break; // SOUND4PNT
+            case 0x400044C:
+            case 0x400044D:
+            case 0x400044E:
+            case 0x400044F: base -= 0x400044C; size = 4; spu->writeSoundLen(4, mask << (base * 8), data << (base * 8));   break; // SOUND4LEN
+            case 0x4000450:
+            case 0x4000451:
+            case 0x4000452:
+            case 0x4000453: base -= 0x4000450; size = 4; spu->writeSoundCnt(5, mask << (base * 8), data << (base * 8));   break; // SOUND5CNT
+            case 0x4000454:
+            case 0x4000455:
+            case 0x4000456:
+            case 0x4000457: base -= 0x4000454; size = 4; spu->writeSoundSad(5, mask << (base * 8), data << (base * 8));   break; // SOUND5SAD
+            case 0x4000458:
+            case 0x4000459: base -= 0x4000458; size = 2; spu->writeSoundTmr(5, mask << (base * 8), data << (base * 8));   break; // SOUND5TMR
+            case 0x400045A:
+            case 0x400045B: base -= 0x400045A; size = 2; spu->writeSoundPnt(5, mask << (base * 8), data << (base * 8));   break; // SOUND5PNT
+            case 0x400045C:
+            case 0x400045D:
+            case 0x400045E:
+            case 0x400045F: base -= 0x400045C; size = 4; spu->writeSoundLen(5, mask << (base * 8), data << (base * 8));   break; // SOUND5LEN
+            case 0x4000460:
+            case 0x4000461:
+            case 0x4000462:
+            case 0x4000463: base -= 0x4000460; size = 4; spu->writeSoundCnt(6, mask << (base * 8), data << (base * 8));   break; // SOUND6CNT
+            case 0x4000464:
+            case 0x4000465:
+            case 0x4000466:
+            case 0x4000467: base -= 0x4000464; size = 4; spu->writeSoundSad(6, mask << (base * 8), data << (base * 8));   break; // SOUND6SAD
+            case 0x4000468:
+            case 0x4000469: base -= 0x4000468; size = 2; spu->writeSoundTmr(6, mask << (base * 8), data << (base * 8));   break; // SOUND6TMR
+            case 0x400046A:
+            case 0x400046B: base -= 0x400046A; size = 2; spu->writeSoundPnt(6, mask << (base * 8), data << (base * 8));   break; // SOUND6PNT
+            case 0x400046C:
+            case 0x400046D:
+            case 0x400046E:
+            case 0x400046F: base -= 0x400046C; size = 4; spu->writeSoundLen(6, mask << (base * 8), data << (base * 8));   break; // SOUND6LEN
+            case 0x4000470:
+            case 0x4000471:
+            case 0x4000472:
+            case 0x4000473: base -= 0x4000470; size = 4; spu->writeSoundCnt(7, mask << (base * 8), data << (base * 8));   break; // SOUND7CNT
+            case 0x4000474:
+            case 0x4000475:
+            case 0x4000476:
+            case 0x4000477: base -= 0x4000474; size = 4; spu->writeSoundSad(7, mask << (base * 8), data << (base * 8));   break; // SOUND7SAD
+            case 0x4000478:
+            case 0x4000479: base -= 0x4000478; size = 2; spu->writeSoundTmr(7, mask << (base * 8), data << (base * 8));   break; // SOUND7TMR
+            case 0x400047A:
+            case 0x400047B: base -= 0x400047A; size = 2; spu->writeSoundPnt(7, mask << (base * 8), data << (base * 8));   break; // SOUND7PNT
+            case 0x400047C:
+            case 0x400047D:
+            case 0x400047E:
+            case 0x400047F: base -= 0x400047C; size = 4; spu->writeSoundLen(7, mask << (base * 8), data << (base * 8));   break; // SOUND7LEN
+            case 0x4000480:
+            case 0x4000481:
+            case 0x4000482:
+            case 0x4000483: base -= 0x4000480; size = 4; spu->writeSoundCnt(8, mask << (base * 8), data << (base * 8));   break; // SOUND8CNT
+            case 0x4000484:
+            case 0x4000485:
+            case 0x4000486:
+            case 0x4000487: base -= 0x4000484; size = 4; spu->writeSoundSad(8, mask << (base * 8), data << (base * 8));   break; // SOUND8SAD
+            case 0x4000488:
+            case 0x4000489: base -= 0x4000488; size = 2; spu->writeSoundTmr(8, mask << (base * 8), data << (base * 8));   break; // SOUND8TMR
+            case 0x400048A:
+            case 0x400048B: base -= 0x400048A; size = 2; spu->writeSoundPnt(8, mask << (base * 8), data << (base * 8));   break; // SOUND8PNT
+            case 0x400048C:
+            case 0x400048D:
+            case 0x400048E:
+            case 0x400048F: base -= 0x400048C; size = 4; spu->writeSoundLen(8, mask << (base * 8), data << (base * 8));   break; // SOUND8LEN
+            case 0x4000490:
+            case 0x4000491:
+            case 0x4000492:
+            case 0x4000493: base -= 0x4000490; size = 4; spu->writeSoundCnt(9, mask << (base * 8), data << (base * 8));   break; // SOUND9CNT
+            case 0x4000494:
+            case 0x4000495:
+            case 0x4000496:
+            case 0x4000497: base -= 0x4000494; size = 4; spu->writeSoundSad(9, mask << (base * 8), data << (base * 8));   break; // SOUND9SAD
+            case 0x4000498:
+            case 0x4000499: base -= 0x4000498; size = 2; spu->writeSoundTmr(9, mask << (base * 8), data << (base * 8));   break; // SOUND9TMR
+            case 0x400049A:
+            case 0x400049B: base -= 0x400049A; size = 2; spu->writeSoundPnt(9, mask << (base * 8), data << (base * 8));   break; // SOUND9PNT
+            case 0x400049C:
+            case 0x400049D:
+            case 0x400049E:
+            case 0x400049F: base -= 0x400049C; size = 4; spu->writeSoundLen(9, mask << (base * 8), data << (base * 8));   break; // SOUND9LEN
+            case 0x40004A0:
+            case 0x40004A1:
+            case 0x40004A2:
+            case 0x40004A3: base -= 0x40004A0; size = 4; spu->writeSoundCnt(10, mask << (base * 8), data << (base * 8));  break; // SOUND10CNT
+            case 0x40004A4:
+            case 0x40004A5:
+            case 0x40004A6:
+            case 0x40004A7: base -= 0x40004A4; size = 4; spu->writeSoundSad(10, mask << (base * 8), data << (base * 8));  break; // SOUND10SAD
+            case 0x40004A8:
+            case 0x40004A9: base -= 0x40004A8; size = 2; spu->writeSoundTmr(10, mask << (base * 8), data << (base * 8));  break; // SOUND10TMR
+            case 0x40004AA:
+            case 0x40004AB: base -= 0x40004AA; size = 2; spu->writeSoundPnt(10, mask << (base * 8), data << (base * 8));  break; // SOUND10PNT
+            case 0x40004AC:
+            case 0x40004AD:
+            case 0x40004AE:
+            case 0x40004AF: base -= 0x40004AC; size = 4; spu->writeSoundLen(10, mask << (base * 8), data << (base * 8));  break; // SOUND10LEN
+            case 0x40004B0:
+            case 0x40004B1:
+            case 0x40004B2:
+            case 0x40004B3: base -= 0x40004B0; size = 4; spu->writeSoundCnt(11, mask << (base * 8), data << (base * 8));  break; // SOUND11CNT
+            case 0x40004B4:
+            case 0x40004B5:
+            case 0x40004B6:
+            case 0x40004B7: base -= 0x40004B4; size = 4; spu->writeSoundSad(11, mask << (base * 8), data << (base * 8));  break; // SOUND11SAD
+            case 0x40004B8:
+            case 0x40004B9: base -= 0x40004B8; size = 2; spu->writeSoundTmr(11, mask << (base * 8), data << (base * 8));  break; // SOUND11TMR
+            case 0x40004BA:
+            case 0x40004BB: base -= 0x40004BA; size = 2; spu->writeSoundPnt(11, mask << (base * 8), data << (base * 8));  break; // SOUND11PNT
+            case 0x40004BC:
+            case 0x40004BD:
+            case 0x40004BE:
+            case 0x40004BF: base -= 0x40004BC; size = 4; spu->writeSoundLen(11, mask << (base * 8), data << (base * 8));  break; // SOUND11LEN
+            case 0x40004C0:
+            case 0x40004C1:
+            case 0x40004C2:
+            case 0x40004C3: base -= 0x40004C0; size = 4; spu->writeSoundCnt(12, mask << (base * 8), data << (base * 8));  break; // SOUND12CNT
+            case 0x40004C4:
+            case 0x40004C5:
+            case 0x40004C6:
+            case 0x40004C7: base -= 0x40004C4; size = 4; spu->writeSoundSad(12, mask << (base * 8), data << (base * 8));  break; // SOUND12SAD
+            case 0x40004C8:
+            case 0x40004C9: base -= 0x40004C8; size = 2; spu->writeSoundTmr(12, mask << (base * 8), data << (base * 8));  break; // SOUND12TMR
+            case 0x40004CA:
+            case 0x40004CB: base -= 0x40004CA; size = 2; spu->writeSoundPnt(12, mask << (base * 8), data << (base * 8));  break; // SOUND12PNT
+            case 0x40004CC:
+            case 0x40004CD:
+            case 0x40004CE:
+            case 0x40004CF: base -= 0x40004CC; size = 4; spu->writeSoundLen(12, mask << (base * 8), data << (base * 8));  break; // SOUND12LEN
+            case 0x40004D0:
+            case 0x40004D1:
+            case 0x40004D2:
+            case 0x40004D3: base -= 0x40004D0; size = 4; spu->writeSoundCnt(13, mask << (base * 8), data << (base * 8));  break; // SOUND13CNT
+            case 0x40004D4:
+            case 0x40004D5:
+            case 0x40004D6:
+            case 0x40004D7: base -= 0x40004D4; size = 4; spu->writeSoundSad(13, mask << (base * 8), data << (base * 8));  break; // SOUND13SAD
+            case 0x40004D8:
+            case 0x40004D9: base -= 0x40004D8; size = 2; spu->writeSoundTmr(13, mask << (base * 8), data << (base * 8));  break; // SOUND13TMR
+            case 0x40004DA:
+            case 0x40004DB: base -= 0x40004DA; size = 2; spu->writeSoundPnt(13, mask << (base * 8), data << (base * 8));  break; // SOUND13PNT
+            case 0x40004DC:
+            case 0x40004DD:
+            case 0x40004DE:
+            case 0x40004DF: base -= 0x40004DC; size = 4; spu->writeSoundLen(13, mask << (base * 8), data << (base * 8));  break; // SOUND13LEN
+            case 0x40004E0:
+            case 0x40004E1:
+            case 0x40004E2:
+            case 0x40004E3: base -= 0x40004E0; size = 4; spu->writeSoundCnt(14, mask << (base * 8), data << (base * 8));  break; // SOUND14CNT
+            case 0x40004E4:
+            case 0x40004E5:
+            case 0x40004E6:
+            case 0x40004E7: base -= 0x40004E4; size = 4; spu->writeSoundSad(14, mask << (base * 8), data << (base * 8));  break; // SOUND14SAD
+            case 0x40004E8:
+            case 0x40004E9: base -= 0x40004E8; size = 2; spu->writeSoundTmr(14, mask << (base * 8), data << (base * 8));  break; // SOUND14TMR
+            case 0x40004EA:
+            case 0x40004EB: base -= 0x40004EA; size = 2; spu->writeSoundPnt(14, mask << (base * 8), data << (base * 8));  break; // SOUND14PNT
+            case 0x40004EC:
+            case 0x40004ED:
+            case 0x40004EE:
+            case 0x40004EF: base -= 0x40004EC; size = 4; spu->writeSoundLen(14, mask << (base * 8), data << (base * 8));  break; // SOUND14LEN
+            case 0x40004F0:
+            case 0x40004F1:
+            case 0x40004F2:
+            case 0x40004F3: base -= 0x40004F0; size = 4; spu->writeSoundCnt(15, mask << (base * 8), data << (base * 8));  break; // SOUND15CNT
+            case 0x40004F4:
+            case 0x40004F5:
+            case 0x40004F6:
+            case 0x40004F7: base -= 0x40004F4; size = 4; spu->writeSoundSad(15, mask << (base * 8), data << (base * 8));  break; // SOUND15SAD
+            case 0x40004F8:
+            case 0x40004F9: base -= 0x40004F8; size = 2; spu->writeSoundTmr(15, mask << (base * 8), data << (base * 8));  break; // SOUND15TMR
+            case 0x40004FA:
+            case 0x40004FB: base -= 0x40004FA; size = 2; spu->writeSoundPnt(15, mask << (base * 8), data << (base * 8));  break; // SOUND15PNT
+            case 0x40004FC:
+            case 0x40004FD:
+            case 0x40004FE:
+            case 0x40004FF: base -= 0x40004FC; size = 4; spu->writeSoundLen(15, mask << (base * 8), data << (base * 8));  break; // SOUND15LEN
+            case 0x4000500:
+            case 0x4000501: base -= 0x4000500; size = 2; spu->writeMainSoundCnt(mask << (base * 8), data << (base * 8));  break; // SOUNDCNT
             case 0x4000504:
-            case 0x4000505: base -= 0x4000504; size = 2; writeSoundBias(mask << (base * 8), data << (base * 8));          break; // SOUNDBIAS
+            case 0x4000505: base -= 0x4000504; size = 2; spu->writeSoundBias(mask << (base * 8), data << (base * 8));     break; // SOUNDBIAS
 
             default:
             {
@@ -1900,12 +2225,4 @@ void Memory::writeHaltCnt(uint8_t value)
             break;
         }
     }
-}
-
-void Memory::writeSoundBias(uint16_t mask, uint16_t value)
-{
-    // Write to the SOUNDBIAS register
-    // This doesn't do anything yet, but some programs expect it to be writable
-    mask &= 0x03FF;
-    soundBias = (soundBias & ~mask) | (value & mask);
 }

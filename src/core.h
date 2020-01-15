@@ -38,6 +38,7 @@
 #include "memory.h"
 #include "rtc.h"
 #include "spi.h"
+#include "spu.h"
 #include "timers.h"
 
 class Core
@@ -55,6 +56,7 @@ class Core
         void releaseScreen()           { input.releaseScreen(); spi.clearTouch();   }
 
         uint32_t *getFramebuffer() { return gpu.getFramebuffer(); }
+        uint32_t  getSample()      { return spu.getSample();      }
         int       getFps()         { return fps;                  }
 
     private:
@@ -80,6 +82,7 @@ class Core
         Memory memory;
         Rtc rtc;
         Spi spi;
+        Spu spu;
         Timers timers9, timers7;
 };
 

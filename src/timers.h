@@ -30,7 +30,6 @@ class Timers
         Timers(Interpreter *cpu): cpu(cpu) {}
 
         void tick();
-        void doubleTick();
 
         bool shouldTick() { return enabled; }
 

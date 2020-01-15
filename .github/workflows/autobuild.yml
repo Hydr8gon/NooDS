@@ -8,6 +8,8 @@ jobs:
     steps:
     - name: Install wxWidgets
       run: sudo apt install libwxgtk3.0-dev -y
+    - name: Install PortAudio
+      run: sudo apt install portaudio19-dev -y
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
@@ -24,6 +26,8 @@ jobs:
     steps:
     - name: Install wxWidgets
       run: brew install wxmac
+    - name: Install PortAudio
+      run: brew install portaudio
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
@@ -42,8 +46,20 @@ jobs:
       run: choco install wxwidgets
       shell: cmd
     - name: Compile wxWidgets
-      run:  call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" & nmake.exe -f makefile.vc BUILD=release TARGET_CPU=x64
+      run: call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" & nmake.exe -f makefile.vc BUILD=release TARGET_CPU=x64
       working-directory: C:\wxWidgets-3.1.2\build\msw
+      shell: cmd
+    - name: Download PortAudio
+      run: git clone https://git.assembla.com/portaudio.git -b pa_stable_v190600_20161030
+      working-directory: C:\
+      shell: cmd
+    - name: Configure PortAudio
+      run: call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" & cmake .. -G "Visual Studio 16 2019"
+      working-directory: C:\portaudio\build
+      shell: cmd
+    - name: Compile PortAudio
+      run: call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" & msbuild.exe portaudio.sln /property:Configuration=Release
+      working-directory: C:\portaudio\build
       shell: cmd
     - name: Checkout
       uses: actions/checkout@v1

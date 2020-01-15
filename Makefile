@@ -1,7 +1,7 @@
 NAME	:= noods
 SOURCES := src src/desktop
 ARGS    := -Ofast -no-pie -std=c++11 #-DDEBUG
-LIBS    := `wx-config --cxxflags --libs`
+LIBS    := `wx-config --cxxflags --libs` -lportaudio
 
 CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
 HFILES   := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.h))

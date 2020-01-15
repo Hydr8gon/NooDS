@@ -17,20 +17,54 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <cstring>
 #include <switch.h>
+#include <malloc.h>
 
 #include "../core.h"
 
 const uint32_t keyMap[] = { KEY_A, KEY_B, KEY_MINUS, KEY_PLUS, KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN, KEY_ZR, KEY_ZL, KEY_X, KEY_Y };
 
 Core *core;
-Thread coreThread;
+Thread coreThread, audioThread;
 bool running = true;
+
+AudioOutBuffer audioBuffers[2];
+AudioOutBuffer *audioReleasedBuffer;
+s16 *audioData[2];
+u32 count;
 
 void runCore(void *args)
 {
     while (running)
         core->runFrame();
+}
+
+void outputAudio(void *args)
+{
+    while (running)
+    {
+        audoutWaitPlayFinish(&audioReleasedBuffer, &count, U64_MAX);
+
+        // The NDS sample rate is 32768Hz, but audout uses 48000Hz
+        // 1024 samples at 48000Hz is equal to ~700 samples at 32768Hz
+
+        // Get 700 samples at the original rate
+        uint32_t original[700];
+        for (int i = 0; i < 700; i++)
+            original[i] = core->getSample();
+
+        // Stretch the 700 samples out to 1024 samples in the audio buffer
+        int16_t *buffer = (int16_t*)audioReleasedBuffer->buffer;
+        for (int i = 0; i < 1024; i++)
+        {
+            uint32_t sample = original[i * 700 / 1024];
+            buffer[i * 2 + 0] = sample >>  0;
+            buffer[i * 2 + 1] = sample >> 16;
+        }
+
+        audoutAppendAudioOutBuffer(audioReleasedBuffer);
+    }
 }
 
 uint32_t rgb6ToRgba8(uint32_t color)
@@ -76,7 +110,29 @@ int main()
     framebufferCreate(&fb, win, 1280, 720, PIXEL_FORMAT_RGBA_8888, 2);
     framebufferMakeLinear(&fb);
 
-    // Start the emulator
+    audoutInitialize();
+    audoutStartAudioOut();
+
+    // Setup the audio buffer
+    for (int i = 0; i < 2; i++)
+    {
+        int size = 1024 * 2 * sizeof(s16);
+        int alignedSize = (size + 0xFFF) & ~0xFFF;
+        audioData[i] = (s16*)memalign(0x1000, size);
+        memset(audioData[i], 0, alignedSize);
+        audioBuffers[i].next = NULL;
+        audioBuffers[i].buffer = audioData[i];
+        audioBuffers[i].buffer_size = alignedSize;
+        audioBuffers[i].data_size = size;
+        audioBuffers[i].data_offset = 0;
+        audoutAppendAudioOutBuffer(&audioBuffers[i]);
+    }
+
+    // Start the audio thread
+    threadCreate(&audioThread, outputAudio, NULL, NULL, 0x8000, 0x30, 2);
+    threadStart(&audioThread);
+
+    // Start the emulator thread
     threadCreate(&coreThread, runCore, NULL, NULL, 0x8000, 0x30, 1);
     threadStart(&coreThread);
     appletLockExit();
@@ -133,6 +189,8 @@ int main()
     threadWaitForExit(&coreThread);
     threadClose(&coreThread);
     delete core;
+    audoutStopAudioOut();
+    audoutExit();
     framebufferClose(&fb);
     clkrstSetClockRate(&cpuSession, 1020000000);
     clkrstExit();

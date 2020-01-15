@@ -27,8 +27,8 @@ Core::Core(): cart9(&arm9, &memory), cart7(&arm7, &memory), cp15(&arm9), dma9(&c
               dma7(&cart7, nullptr, &arm7, &memory), gpu(&engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9,
               &arm7, &memory), engineA(&gpu3DRenderer, &memory), engineB(&memory), gpu3D(&arm9), gpu3DRenderer(&gpu3D),
               arm9(&cp15, &memory), arm7(&memory), ipc(&arm9, &arm7), memory(&cart9, &cart7, &cp15, &dma9,
-              &dma7, &gpu, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &input, &arm9, &arm7, &ipc, &math,
-              &rtc, &spi, &timers9, &timers7), spi(&arm7, firmware), timers9(&arm9), timers7(&arm7)
+              &dma7, &gpu, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &input, &arm9, &arm7, &ipc, &math, &rtc,
+              &spi, &spu, &timers9, &timers7), spi(&arm7, firmware), spu(&memory), timers9(&arm9), timers7(&arm7)
 {
     // Attempt to load the firmware
     FILE *firmwareFile = fopen("firmware.bin", "rb");
@@ -148,21 +148,23 @@ void Core::runFrame()
     {
         for (int j = 0; j < 355 * 3; j++) // 355 dots per scanline, 3 ARM7 cycles each
         {
-            // Run the ARM9 at twice the speed of the ARM7
             for (int k = 0; k < 2; k++)
             {
+                // Run the ARM9 at twice the speed of the ARM7
                 if (arm9.shouldInterrupt()) arm9.interrupt();
                 if (arm9.shouldRun())       arm9.runCycle();
                 if (dma9.shouldTransfer())  dma9.transfer();
-                if (timers9.shouldTick())   timers9.tick();
                 if (gpu3D.shouldRun())      gpu3D.runCycle();
+
+                // Run both the ARM9 and ARM7 timers at ARM9 speed
+                if (timers9.shouldTick())   timers9.tick();
+                if (timers7.shouldTick())   timers7.tick();
             }
 
             // Run the ARM7
             if (arm7.shouldInterrupt()) arm7.interrupt();
             if (arm7.shouldRun())       arm7.runCycle();
             if (dma7.shouldTransfer())  dma7.transfer();
-            if (timers7.shouldTick())   timers7.doubleTick();
 
             // The end of the visible scanline
             if (j == 256 * 3)

@@ -70,55 +70,6 @@ void Timers::tick()
     }
 }
 
-void Timers::doubleTick()
-{
-    for (int i = 0; i < 4; i++)
-    {
-        // Only tick enabled timers
-        if (!(enabled & BIT(i)))
-            continue;
-
-        // Timers can tick at frequencies of f/1, f/64, f/256, or f/1024
-        // For slower frequencies, increment the scaler value until it reaches the desired amount, and only then tick
-        if ((tmCntH[i] & 0x0003) > 0)
-        {
-            scalers[i] += 2;
-            if (scalers[i] >= 0x10 << ((tmCntH[i] & 0x0003) * 2))
-                scalers[i] = 0;
-            else
-                continue;
-        }
-
-        // Increment twice and handle overflows
-        tmCntL[i] += 2;
-        if (tmCntL[i] < 2) // Overflow
-        {
-            // Reload the timer
-            tmCntL[i] += reloads[i];
-
-            // Trigger a timer overflow IRQ if enabled
-            if (tmCntH[i] & BIT(6))
-                cpu->sendInterrupt(3 + i);
-
-            // In count-up timing mode, the timer only ticks when the previous timer overflows
-            // If the next timer has count-up timing enabled, tick it now
-            if (i < 3 && (tmCntH[i + 1] & BIT(2)))
-            {
-                tmCntL[i + 1]++;
-                if (tmCntL[i + 1] == 0) // Overflow
-                {
-                    // Reload the timer
-                    tmCntL[i + 1] = reloads[i + 1];
-
-                    // Trigger a timer overflow IRQ if enabled
-                    if (tmCntH[i + 1] & BIT(6))
-                        cpu->sendInterrupt(4 + i);
-                }
-            }
-        }
-    }
-}
-
 void Timers::writeTmCntL(int timer, uint16_t mask, uint16_t value)
 {
     // Write to one of the TMCNT_L registers
