@@ -23,6 +23,23 @@
 #include "defines.h"
 #include "memory.h"
 
+const int Spu::indexTable[] =
+{
+    -1, -1, -1, -1, 2, 4, 6, 8
+};
+
+const int16_t Spu::adpcmTable[] =
+{
+    0x0007, 0x0008, 0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x0010, 0x0011, 0x0013, 0x0015,
+    0x0017, 0x0019, 0x001C, 0x001F, 0x0022, 0x0025, 0x0029, 0x002D, 0x0032, 0x0037, 0x003C, 0x0042,
+    0x0049, 0x0050, 0x0058, 0x0061, 0x006B, 0x0076, 0x0082, 0x008F, 0x009D, 0x00AD, 0x00BE, 0x00D1,
+    0x00E6, 0x00FD, 0x0117, 0x0133, 0x0151, 0x0173, 0x0198, 0x01C1, 0x01EE, 0x0220, 0x0256, 0x0292,
+    0x02D4, 0x031C, 0x036C, 0x03C3, 0x0424, 0x048E, 0x0502, 0x0583, 0x0610, 0x06AB, 0x0756, 0x0812,
+    0x08E0, 0x09C3, 0x0ABD, 0x0BD0, 0x0CFF, 0x0E4C, 0x0FBA, 0x114C, 0x1307, 0x14EE, 0x1706, 0x1954,
+    0x1BDC, 0x1EA5, 0x21B6, 0x2515, 0x28CA, 0x2CDF, 0x315B, 0x364B, 0x3BB9, 0x41B2, 0x4844, 0x4F7E,
+    0x5771, 0x602F, 0x69CE, 0x7462, 0x7FFF
+};
+
 uint32_t Spu::getSample()
 {
     int64_t sampleLeft = 0;
@@ -55,6 +72,13 @@ uint32_t Spu::getSample()
                 break;
             }
 
+            case 2: // ADPCM
+            {
+                data = adpcmValue[i];
+                size = 0;
+                break;
+            }
+
             default:
             {
                 printf("SPU channel %d: unimplemented format: %d\n", i, (soundCnt[i] & 0x60000000) >> 29);
@@ -77,13 +101,67 @@ uint32_t Spu::getSample()
                 soundCurrent[i] += size;
                 soundTimers[i] = soundTmr[i];
 
+                // Decode ADPCM audio
+                if (((soundCnt[i] & 0x60000000) >> 29) == 2)
+                {
+                    // Get the 4-bit ADPCM data
+                    uint8_t adpcmData = memory->read<uint8_t>(false, soundCurrent[i]);
+                    adpcmData = adpcmToggle[i] ? ((adpcmData & 0xF0) >> 4) : (adpcmData & 0x0F);
+
+                    // Calculate the sample difference
+                    int32_t diff = adpcmTable[adpcmIndex[i]] / 8;
+                    if (adpcmData & BIT(0)) diff += adpcmTable[adpcmIndex[i]] / 4;
+                    if (adpcmData & BIT(1)) diff += adpcmTable[adpcmIndex[i]] / 2;
+                    if (adpcmData & BIT(2)) diff += adpcmTable[adpcmIndex[i]] / 1;
+
+                    // Apply the sample difference to the sample
+                    if (adpcmData & BIT(3))
+                    {
+                        adpcmValue[i] += diff;
+                        if (adpcmValue[i] > 0x7FFF) adpcmValue[i] = 0x7FFF;
+                    }
+                    else
+                    {
+                        adpcmValue[i] -= diff;
+                        if (adpcmValue[i] < -0x7FFF) adpcmValue[i] = -0x7FFF;
+                    }
+
+                    // Calculate the next index
+                    adpcmIndex[i] += indexTable[adpcmData & 0x7];
+                    if (adpcmIndex[i] <  0) adpcmIndex[i] =  0;
+                    if (adpcmIndex[i] > 88) adpcmIndex[i] = 88;
+
+                    // Move to the next 4-bit ADPCM data
+                    adpcmToggle[i] = !adpcmToggle[i];
+                    if (!adpcmToggle[i]) soundCurrent[i]++;
+
+                    // Save the ADPCM values from the loop position
+                    if (soundCurrent[i] == soundSad[i] + soundPnt[i] * 4 && !adpcmToggle[i])
+                    {
+                        adpcmLoopValue[i] = adpcmValue[i];
+                        adpcmLoopIndex[i] = adpcmIndex[i];
+                    }
+                }
+
                 // Repeat or end the sound if the end of the data is reached
                 if (soundCurrent[i] == soundSad[i] + (soundPnt[i] + soundLen[i]) * 4)
                 {
-                   if ((soundCnt[i] & 0x18000000) >> 27 == 1) // Loop infinite
+                    if ((soundCnt[i] & 0x18000000) >> 27 == 1) // Loop infinite
+                    {
                         soundCurrent[i] = soundSad[i] + soundPnt[i] * 4;
+
+                        // Restore the ADPCM values from the loop position
+                        if (((soundCnt[i] & 0x60000000) >> 29) == 2)
+                        {
+                            adpcmValue[i] = adpcmLoopValue[i];
+                            adpcmIndex[i] = adpcmLoopIndex[i];
+                            adpcmToggle[i] = false;
+                        }
+                    }
                     else // One-shot
+                    {
                         soundCnt[i] &= ~BIT(31);
+                    }
                 }
             }
         }
@@ -138,6 +216,17 @@ void Spu::writeSoundCnt(int channel, uint32_t mask, uint32_t value)
     {
         soundCurrent[channel] = soundSad[channel];
         soundTimers[channel] = soundTmr[channel];
+
+        // Read the ADPCM header
+        if (((soundCnt[channel] & 0x60000000) >> 29) == 2)
+        {
+            adpcmValue[channel] = (int16_t)soundSad[channel];
+            adpcmIndex[channel] = soundSad[channel] >> 16;
+            if (adpcmIndex[channel] <  0) adpcmIndex[channel] =  0;
+            if (adpcmIndex[channel] > 88) adpcmIndex[channel] = 88;
+            adpcmToggle[channel] = false;
+            soundCurrent[channel] += 4;
+        }
     }
 
     // Write to one of the SOUNDCNT registers

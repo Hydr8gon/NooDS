@@ -44,6 +44,13 @@ class Spu
         void writeSoundBias(uint16_t mask, uint16_t value);
 
     private:
+        static const int indexTable[8];
+        static const int16_t adpcmTable[89];
+
+        int32_t adpcmValue[16] = {}, adpcmLoopValue[16] = {};
+        int adpcmIndex[16] = {}, adpcmLoopIndex[16] = {};
+        bool adpcmToggle[16] = {};
+
         uint32_t soundCurrent[16] = {};
         uint16_t soundTimers[16] = {};
 
