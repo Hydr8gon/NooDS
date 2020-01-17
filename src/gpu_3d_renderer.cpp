@@ -107,7 +107,8 @@ uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x
     int r = interpolate((c1 >>  0) & 0x3F, (c2 >>  0) & 0x3F, x1, x, x2);
     int g = interpolate((c1 >>  6) & 0x3F, (c2 >>  6) & 0x3F, x1, x, x2);
     int b = interpolate((c1 >> 12) & 0x3F, (c2 >> 12) & 0x3F, x1, x, x2);
-    return (c1 & 0xFC0000) | (b << 12) | (g << 6) | r;
+    int a = (((c1 >> 18) & 0x3F) > ((c2 >> 18) & 0x3F)) ? ((c1 >> 18) & 0x3F) : ((c2 >> 18) & 0x3F);
+    return (a << 18) | (b << 12) | (g << 6) | r;
 }
 
 uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2, int w1, int w, int w2)
@@ -116,7 +117,8 @@ uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x
     int r = interpolate((c1 >>  0) & 0x3F, (c2 >>  0) & 0x3F, x1, x, x2, w1, w, w2);
     int g = interpolate((c1 >>  6) & 0x3F, (c2 >>  6) & 0x3F, x1, x, x2, w1, w, w2);
     int b = interpolate((c1 >> 12) & 0x3F, (c2 >> 12) & 0x3F, x1, x, x2, w1, w, w2);
-    return (c1 & 0xFC0000) | (b << 12) | (g << 6) | r;
+    int a = (((c1 >> 18) & 0x3F) > ((c2 >> 18) & 0x3F)) ? ((c1 >> 18) & 0x3F) : ((c2 >> 18) & 0x3F);
+    return (a << 18) | (b << 12) | (g << 6) | r;
 }
 
 uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
@@ -540,12 +542,12 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
 
                 if ((color >> 18) < 0x3F && (*pixel & 0xFC0000)) // Alpha blending
                 {
-                    *pixel = BIT(18) | interpolateColor(*pixel, color, 0, color >> 18, 63);
+                    *pixel = interpolateColor(*pixel, color, 0, color >> 18, 63);
                     if (polygon->transNewDepth) depthBuffer[x] = depth;
                 }
                 else
                 {
-                    *pixel = BIT(18) | color;
+                    *pixel = color;
                     depthBuffer[x] = depth;
                 }
             }

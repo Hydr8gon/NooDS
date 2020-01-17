@@ -80,7 +80,8 @@ class Gpu2D
         Gpu3DRenderer *gpu3DRenderer;
         Memory *memory;
 
-        uint32_t rgb5ToRgb6(uint16_t color);
+        uint32_t rgb5ToRgba6(uint16_t color);
+        uint32_t alphaBlend(uint32_t c1, uint32_t c2);
 
         void drawText(int bg, int line);
         void drawAffine(int bg, int line);
