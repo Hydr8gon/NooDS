@@ -1177,6 +1177,12 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x4000300: base -= 0x4000300; size = 1; arm9->writePostFlg(data << (base * 8));                                    break; // POSTFLG (ARM9)
             case 0x4000304:
             case 0x4000305: base -= 0x4000304; size = 2; gpu->writePowCnt1(mask << (base * 8), data << (base * 8));                 break; // POWCNT1
+            case 0x4000350:
+            case 0x4000351:
+            case 0x4000352:
+            case 0x4000353: base -= 0x4000350; size = 4; gpu3DRenderer->writeClearColor(mask << (base * 8), data << (base * 8));    break; // CLEAR_COLOR
+            case 0x4000354:
+            case 0x4000355: base -= 0x4000354; size = 2; gpu3DRenderer->writeClearDepth(mask << (base * 8), data << (base * 8));    break; // CLEAR_DEPTH
             case 0x4000380:
             case 0x4000381: base -= 0x4000380; size = 2; gpu3DRenderer->writeToonTable(0,  mask << (base * 8), data << (base * 8)); break; // TOON_TABLE
             case 0x4000382:

@@ -18,8 +18,6 @@
 */
 
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <vector>
 
 #include "gpu_3d_renderer.h"
@@ -38,12 +36,12 @@ uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 
 void Gpu3DRenderer::drawScanline(int line)
 {
-    // Clear the scanline
-    memset(&lineCache[(line % 48) * 256], 0, 256 * sizeof(uint32_t));
-
-    // "Empty" the depth buffer by setting all values to maximum
+    // Clear the scanline and depth buffer with the clear values
     for (int i = 0; i < 256; i++)
-        depthBuffer[i] = 0xFFFFFF;
+    {
+        lineCache[(line % 48) * 256 + i] = clearColor;
+        depthBuffer[i] = clearDepth;
+    }
 
     std::vector<_Polygon*> translucent;
 
@@ -564,6 +562,18 @@ void Gpu3DRenderer::writeDisp3DCnt(uint16_t mask, uint16_t value)
     // Write to the DISP3DCNT register
     mask &= 0x4FFF;
     disp3DCnt = (disp3DCnt & ~mask) | (value & mask);
+}
+
+void Gpu3DRenderer::writeClearColor(uint32_t mask, uint32_t value)
+{
+    // Write to the CLEAR_COLOR register
+    clearColor = rgba5ToRgba6((((value & mask) & 0x001F0000) >> 1) | ((value & mask) & 0x00007FFF));
+}
+
+void Gpu3DRenderer::writeClearDepth(uint16_t mask, uint16_t value)
+{
+    // Write to the CLEAR_DEPTH register
+    clearDepth = ((value & mask) * 0x200) + (((value & mask) + 1) / 0x8000) * 0x1FF;
 }
 
 void Gpu3DRenderer::writeToonTable(int index, uint16_t mask, uint16_t value)
