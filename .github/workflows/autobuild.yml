@@ -6,6 +6,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Update package lists
+      run: sudo apt update
     - name: Install wxWidgets
       run: sudo apt install libwxgtk3.0-dev -y
     - name: Install PortAudio
