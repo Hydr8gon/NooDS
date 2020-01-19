@@ -66,10 +66,11 @@ Core::Core(std::string filename): Core()
     cart7.setRom(rom, romSize, save, saveSize);
 
     // Set some registers as the BIOS/firmware would
-    memory.write<uint8_t>(true,  0x4000247,   0x03); // WRAMCNT
-    memory.write<uint8_t>(true,  0x4000300,   0x01); // POSTFLG (ARM9)
-    memory.write<uint8_t>(false, 0x4000300,   0x01); // POSTFLG (ARM7)
-    memory.write<uint16_t>(true, 0x4000304, 0x0001); // POWCNT1
+    memory.write<uint8_t>(true,   0x4000247,   0x03); // WRAMCNT
+    memory.write<uint8_t>(true,   0x4000300,   0x01); // POSTFLG (ARM9)
+    memory.write<uint8_t>(false,  0x4000300,   0x01); // POSTFLG (ARM7)
+    memory.write<uint16_t>(true,  0x4000304, 0x0001); // POWCNT1
+    memory.write<uint16_t>(false, 0x4000504, 0x0200); // SOUNDBIAS
     cp15.write(9, 1, 0, 0x027C0005); // Data TCM base/size
     cp15.write(9, 1, 1, 0x00000010); // Instruction TCM size
 
