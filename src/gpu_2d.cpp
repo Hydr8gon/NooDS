@@ -53,29 +53,20 @@ uint32_t Gpu2D::rgb5ToRgba6(uint16_t color)
     return (a << 18) | (b << 12) | (g << 6) | r;
 }
 
-uint32_t Gpu2D::alphaBlend(uint32_t c1, uint32_t c2)
-{
-    // Alpha blend a background color with a foreground color
-    uint8_t r = ((c1 >>  0) & 0x3F) + (((c2 >>  0) & 0x3F) - ((c1 >>  0) & 0x3F)) * ((c2 >> 18) & 0x3F) / 63;
-    uint8_t g = ((c1 >>  6) & 0x3F) + (((c2 >>  6) & 0x3F) - ((c1 >>  6) & 0x3F)) * ((c2 >> 18) & 0x3F) / 63;
-    uint8_t b = ((c1 >> 12) & 0x3F) + (((c2 >> 12) & 0x3F) - ((c1 >> 12) & 0x3F)) * ((c2 >> 18) & 0x3F) / 63;
-    if (r < 0) r = 0; if (r > 0x3F) r = 0x3F;
-    if (g < 0) g = 0; if (g > 0x3F) g = 0x3F;
-    if (b < 0) b = 0; if (b > 0x3F) b = 0x3F;
-    return 0xFC0000 | (b << 12) | (g << 6) | r;
-}
-
 void Gpu2D::drawScanline(int line)
 {
     switch ((dispCnt & 0x00030000) >> 16) // Display mode
     {
         case 0: // Display off
+        {
             // Fill the display with white
             for (int i = 0; i < 256; i++)
                 framebuffer[line * 256 + i] = 0x7FFFF;
             break;
+        }
 
         case 1: // Graphics display
+        {
             // Clear the layers at the start of the frame
             if (line == 0)
             {
@@ -140,8 +131,27 @@ void Gpu2D::drawScanline(int line)
             // Copy the pixels from the highest priority layer to the framebuffer
             for (int i = 0; i < 256; i++)
             {
+                uint32_t *pixel = &framebuffer[line * 256 + i];
+                uint32_t bldPixel1 = 0, bldPixel2 = 0;
+                int bldLayer = 0, bldLayer1 = 0, bldLayer2 = 0;
+
                 // Clear the screen using the first palette entry
-                framebuffer[line * 256 + i] = rgb5ToRgba6(U8TO16(palette, 0) & ~BIT(15));
+                *pixel = rgb5ToRgba6(U8TO16(palette, 0) & ~BIT(15));
+                bldLayer++;
+
+                // Use the backdrop as blending pixel 1 if enabled
+                if (bldCnt & BIT(5))
+                {
+                    bldPixel1 = *pixel;
+                    bldLayer1 = bldLayer;
+                }
+
+                // Use the backdrop as blending pixel 2 if enabled
+                if (bldCnt & BIT(13))
+                {
+                    bldPixel2 = *pixel;
+                    bldLayer2 = bldLayer;
+                }
 
                 for (int j = 3; j >= 0; j--)
                 {
@@ -151,19 +161,104 @@ void Gpu2D::drawScanline(int line)
                     {
                         if ((bgCnt[k] & 0x0003) == j && (dispCnt & BIT(8 + k)) && (layers[k][line * 256 + i] & 0xFC0000))
                         {
-                            uint32_t *pixel = &framebuffer[line * 256 + i];
-                            uint32_t color = layers[k][line * 256 + i];
-                            *pixel = ((color >> 18) < 0x3F) ? alphaBlend(*pixel, color) : color;
+                            // Draw a pixel from a background layer
+                            *pixel = layers[k][line * 256 + i];
+                            bldLayer++;
+
+                            // Blend the 3D layer
+                            // This is similar to 2D alpha blending, except it uses the 3D alpha value
+                            int eva = ((*pixel >> 18) & 0x3F) + 1;
+                            if ((*pixel & BIT(24)) && (eva > 1) && (eva <= 0x3F) && bldLayer2 == bldLayer - 1)
+                            {
+                                int evb = 64 - eva;
+                                int r = ((*pixel >>  0) & 0x3F) * eva / 64 + ((bldPixel2 >>  0) & 0x3F) * evb / 64; if (r > 63) r = 63;
+                                int g = ((*pixel >>  6) & 0x3F) * eva / 64 + ((bldPixel2 >>  6) & 0x3F) * evb / 64; if (g > 63) g = 63;
+                                int b = ((*pixel >> 12) & 0x3F) * eva / 64 + ((bldPixel2 >> 12) & 0x3F) * evb / 64; if (b > 63) b = 63;
+                                *pixel = BIT(24) | 0xFC0000 | (b << 12) | (g << 6) | r;
+                            }
+
+                            // Use the background as blending pixel 1 if enabled
+                            // The 3D layer is ignored for 2D alpha blending, but not for brightness increase/decrease
+                            if ((bldCnt & BIT(k)) && (!(*pixel & BIT(24)) || ((bldCnt & 0x00C0) >> 6) >= 2))
+                            {
+                                bldPixel1 = *pixel;
+                                bldLayer1 = bldLayer;
+                            }
+
+                            // Use the background as blending pixel 2 if enabled
+                            if (bldCnt & BIT(8 + k))
+                            {
+                                bldPixel2 = *pixel;
+                                bldLayer2 = bldLayer;
+                            }
                         }
                     }
 
                     // Check for visible pixels in the object layers
                     if (layers[4 + j][line * 256 + i] & 0xFC0000)
-                        framebuffer[line * 256 + i] = layers[4 + j][line * 256 + i];
+                    {
+                        // Draw a pixel from an object layer
+                        *pixel = layers[4 + j][line * 256 + i];
+                        bldLayer++;
+
+                        // Use the object as blending pixel 1 if enabled
+                        if (bldCnt & BIT(4))
+                        {
+                            bldPixel1 = *pixel;
+                            bldLayer1 = bldLayer;
+                        }
+
+                        // Use the object as blending pixel 2 if enabled
+                        if (bldCnt & BIT(12))
+                        {
+                            bldPixel2 = *pixel;
+                            bldLayer2 = bldLayer;
+                        }
+                    }
+                }
+
+                // Apply 2D blending effects
+                if (bldLayer1 == bldLayer)
+                {
+                    switch ((bldCnt & 0x00C0) >> 6)
+                    {
+                        case 1: // Alpha blending
+                        {
+                            if (bldLayer2 == bldLayer1 - 1)
+                            {
+                                int eva = (bldAlpha & 0x001F) >> 0; if (eva > 16) eva = 16;
+                                int evb = (bldAlpha & 0x1F00) >> 8; if (evb > 16) evb = 16;
+                                int r = ((bldPixel1 >>  0) & 0x3F) * eva / 16 + ((bldPixel2 >>  0) & 0x3F) * evb / 16; if (r > 63) r = 63;
+                                int g = ((bldPixel1 >>  6) & 0x3F) * eva / 16 + ((bldPixel2 >>  6) & 0x3F) * evb / 16; if (g > 63) g = 63;
+                                int b = ((bldPixel1 >> 12) & 0x3F) * eva / 16 + ((bldPixel2 >> 12) & 0x3F) * evb / 16; if (b > 63) b = 63;
+                                *pixel = 0xFC0000 | (b << 12) | (g << 6) | r;
+                            }
+                            break;
+                        }
+
+                        case 2: // Brightness increase
+                        {
+                            int r = (bldPixel1 >>  0) & 0x3F; r += (63 - r) * bldY / 16;
+                            int g = (bldPixel1 >>  6) & 0x3F; g += (63 - g) * bldY / 16;
+                            int b = (bldPixel1 >> 12) & 0x3F; b += (63 - b) * bldY / 16;
+                            *pixel = 0xFC0000 | (b << 12) | (g << 6) | r;
+                            break;
+                        }
+
+                        case 3: // Brightness decrease
+                        {
+                            int r = (bldPixel1 >>  0) & 0x3F; r -= r * bldY / 16;
+                            int g = (bldPixel1 >>  6) & 0x3F; g -= g * bldY / 16;
+                            int b = (bldPixel1 >> 12) & 0x3F; b -= b * bldY / 16;
+                            *pixel = 0xFC0000 | (b << 12) | (g << 6) | r;
+                            break;
+                        }
+                    }
                 }
             }
 
             break;
+        }
 
         case 2: // VRAM display
         {
@@ -746,26 +841,6 @@ void Gpu2D::writeBgVOfs(int bg, uint16_t mask, uint16_t value)
     bgVOfs[bg] = (bgVOfs[bg] & ~mask) | (value & mask);
 }
 
-void Gpu2D::writeBgX(int bg, uint32_t mask, uint32_t value)
-{
-    // Write to one of the BGX registers
-    mask &= 0x0FFFFFFF;
-    bgX[bg - 2] = (bgX[bg - 2] & ~mask) | (value & mask);
-
-    // Extend the sign to 32 bits
-    if (bgX[bg - 2] & BIT(27)) bgX[bg - 2] |= 0xF0000000; else bgX[bg - 2] &= ~0xF0000000;
-}
-
-void Gpu2D::writeBgY(int bg, uint32_t mask, uint32_t value)
-{
-    // Write to one of the BGY registers
-    mask &= 0x0FFFFFFF;
-    bgY[bg - 2] = (bgY[bg - 2] & ~mask) | (value & mask);
-
-    // Extend the sign to 32 bits
-    if (bgY[bg - 2] & BIT(27)) bgY[bg - 2] |= 0xF0000000; else bgY[bg - 2] &= ~0xF0000000;
-}
-
 void Gpu2D::writeBgPA(int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGPA registers
@@ -788,6 +863,47 @@ void Gpu2D::writeBgPD(int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGPD registers
     bgPD[bg - 2] = (bgPD[bg - 2] & ~mask) | (value & mask);
+}
+
+void Gpu2D::writeBgX(int bg, uint32_t mask, uint32_t value)
+{
+    // Write to one of the BGX registers
+    mask &= 0x0FFFFFFF;
+    bgX[bg - 2] = (bgX[bg - 2] & ~mask) | (value & mask);
+
+    // Extend the sign to 32 bits
+    if (bgX[bg - 2] & BIT(27)) bgX[bg - 2] |= 0xF0000000; else bgX[bg - 2] &= ~0xF0000000;
+}
+
+void Gpu2D::writeBgY(int bg, uint32_t mask, uint32_t value)
+{
+    // Write to one of the BGY registers
+    mask &= 0x0FFFFFFF;
+    bgY[bg - 2] = (bgY[bg - 2] & ~mask) | (value & mask);
+
+    // Extend the sign to 32 bits
+    if (bgY[bg - 2] & BIT(27)) bgY[bg - 2] |= 0xF0000000; else bgY[bg - 2] &= ~0xF0000000;
+}
+
+void Gpu2D::writeBldCnt(uint16_t mask, uint16_t value)
+{
+    // Write to the BLDCNT register
+    mask &= 0x3FFF;
+    bldCnt = (bldCnt & ~mask) | (value & mask);
+}
+
+void Gpu2D::writeBldAlpha(uint16_t mask, uint16_t value)
+{
+    // Write to the BLDALPHA register
+    mask &= 0x1F1F;
+    bldAlpha = (bldAlpha & ~mask) | (value & mask);
+}
+
+void Gpu2D::writeBldY(uint8_t value)
+{
+    // Write to the BLDY register
+    bldY = value & 0x1F;
+    if (bldY > 16) bldY = 16;
 }
 
 void Gpu2D::writeMasterBright(uint16_t mask, uint16_t value)

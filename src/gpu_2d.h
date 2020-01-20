@@ -43,18 +43,23 @@ class Gpu2D
 
         uint32_t readDispCnt()      { return dispCnt;      }
         uint16_t readBgCnt(int bg)  { return bgCnt[bg];    }
+        uint16_t readBldCnt()       { return bldCnt;       }
+        uint16_t readBldAlpha()     { return bldAlpha;     }
         uint16_t readMasterBright() { return masterBright; }
 
         void writeDispCnt(uint32_t mask, uint32_t value);
         void writeBgCnt(int bg, uint16_t mask, uint16_t value);
         void writeBgHOfs(int bg, uint16_t mask, uint16_t value);
         void writeBgVOfs(int bg, uint16_t mask, uint16_t value);
-        void writeBgX(int bg, uint32_t mask, uint32_t value);
-        void writeBgY(int bg, uint32_t mask, uint32_t value);
         void writeBgPA(int bg, uint16_t mask, uint16_t value);
         void writeBgPB(int bg, uint16_t mask, uint16_t value);
         void writeBgPC(int bg, uint16_t mask, uint16_t value);
         void writeBgPD(int bg, uint16_t mask, uint16_t value);
+        void writeBgX(int bg, uint32_t mask, uint32_t value);
+        void writeBgY(int bg, uint32_t mask, uint32_t value);
+        void writeBldCnt(uint16_t mask, uint16_t value);
+        void writeBldAlpha(uint16_t mask, uint16_t value);
+        void writeBldY(uint8_t value);
         void writeMasterBright(uint16_t mask, uint16_t value);
 
     private:
@@ -65,12 +70,15 @@ class Gpu2D
         uint16_t bgCnt[4] = {};
         uint16_t bgHOfs[4] = {};
         uint16_t bgVOfs[4] = {};
-        int32_t bgX[2] = {};
-        int32_t bgY[2] = {};
         int16_t bgPA[2] = {};
         int16_t bgPB[2] = {};
         int16_t bgPC[2] = {};
         int16_t bgPD[2] = {};
+        int32_t bgX[2] = {};
+        int32_t bgY[2] = {};
+        uint16_t bldCnt = 0;
+        uint16_t bldAlpha = 0;
+        uint8_t bldY = 0;
         uint16_t masterBright = 0;
 
         uint8_t *palette, *oam;
@@ -81,7 +89,6 @@ class Gpu2D
         Memory *memory;
 
         uint32_t rgb5ToRgba6(uint16_t color);
-        uint32_t alphaBlend(uint32_t c1, uint32_t c2);
 
         void drawText(int bg, int line);
         void drawAffine(int bg, int line);

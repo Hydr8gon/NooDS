@@ -534,18 +534,19 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
             }
 
             // Draw a pixel
+            // 3D pixels are marked with an extra bit as an indicator for 2D blending
             if (color & 0xFC0000)
             {
                 uint32_t *pixel = &lineCache[(line % 48) * 256 + x];
 
                 if ((color >> 18) < 0x3F && (*pixel & 0xFC0000)) // Alpha blending
                 {
-                    *pixel = interpolateColor(*pixel, color, 0, color >> 18, 63);
+                    *pixel = BIT(24) | interpolateColor(*pixel, color, 0, color >> 18, 63);
                     if (polygon->transNewDepth) depthBuffer[x] = depth;
                 }
                 else
                 {
-                    *pixel = color;
+                    *pixel = BIT(24) | color;
                     depthBuffer[x] = depth;
                 }
             }

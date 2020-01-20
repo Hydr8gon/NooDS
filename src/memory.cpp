@@ -396,6 +396,10 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x400000D: base -= 0x400000C; size = 2; data = engineA->readBgCnt(2);        break; // BG2CNT (engine A)
             case 0x400000E:
             case 0x400000F: base -= 0x400000E; size = 2; data = engineA->readBgCnt(3);        break; // BG3CNT (engine A)
+            case 0x4000050:
+            case 0x4000051: base -= 0x4000050; size = 2; data = engineA->readBldCnt();        break; // BLDCNT (engine A)
+            case 0x4000052:
+            case 0x4000053: base -= 0x4000052; size = 2; data = engineA->readBldAlpha();      break; // BLDALPHA (engine A)
             case 0x4000060:
             case 0x4000061: base -= 0x4000060; size = 2; gpu3DRenderer->readDisp3DCnt();      break; // DISP3DCNT
             case 0x4000064:
@@ -685,6 +689,10 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x400100D: base -= 0x400100C; size = 2; data = engineB->readBgCnt(2);        break; // BG2CNT (engine B)
             case 0x400100E:
             case 0x400100F: base -= 0x400100E; size = 2; data = engineB->readBgCnt(3);        break; // BG3CNT (engine B)
+            case 0x4001050:
+            case 0x4001051: base -= 0x4001050; size = 2; data = engineB->readBldCnt();        break; // BLDCNT (engine B)
+            case 0x4001052:
+            case 0x4001053: base -= 0x4001052; size = 2; data = engineB->readBldAlpha();      break; // BLDALPHA (engine B)
             case 0x400106C:
             case 0x400106D: base -= 0x400106C; size = 2; data = engineB->readMasterBright();  break; // MASTER_BRIGHT (engine B)
             case 0x4100000:
@@ -1016,6 +1024,11 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x400003D:
             case 0x400003E:
             case 0x400003F: base -= 0x400003C; size = 4; engineA->writeBgY(3, mask << (base * 8), data << (base * 8));              break; // BG3Y (engine A)
+            case 0x4000050:
+            case 0x4000051: base -= 0x4000050; size = 2; engineA->writeBldCnt(mask << (base * 8), data << (base * 8));              break; // BLDCNT (engine A)
+            case 0x4000052:
+            case 0x4000053: base -= 0x4000052; size = 2; engineA->writeBldAlpha(mask << (base * 8), data << (base * 8));            break; // BLDALPHA (engine A)
+            case 0x4000054: base -= 0x4000054; size = 1; engineA->writeBldY(data << (base * 8));                                    break; // BLDY (engine A)
             case 0x4000060:
             case 0x4000061: base -= 0x4000060; size = 2; gpu3DRenderer->writeDisp3DCnt(mask << (base * 8), data << (base * 8));     break; // DISP3DCNT
             case 0x4000064:
@@ -1523,6 +1536,11 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x400103D:
             case 0x400103E:
             case 0x400103F: base -= 0x400103C; size = 4; engineB->writeBgY(3, mask << (base * 8), data << (base * 8));              break; // BG3Y (engine B)
+            case 0x4001050:
+            case 0x4001051: base -= 0x4001050; size = 2; engineB->writeBldCnt(mask << (base * 8), data << (base * 8));              break; // BLDCNT (engine B)
+            case 0x4001052:
+            case 0x4001053: base -= 0x4001052; size = 2; engineB->writeBldAlpha(mask << (base * 8), data << (base * 8));            break; // BLDALPHA (engine B)
+            case 0x4001054: base -= 0x4001054; size = 1; engineB->writeBldY(data << (base * 8));                                    break; // BLDY (engine B)
             case 0x400106C:
             case 0x400106D: base -= 0x400106C; size = 2; engineB->writeMasterBright(mask << (base * 8), data << (base * 8));        break; // MASTER_BRIGHT (engine B)
 
