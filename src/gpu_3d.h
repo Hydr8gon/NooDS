@@ -163,11 +163,13 @@ class Gpu3D
         _Polygon savedPolygon;
 
         int vertexCount = 0;
+        bool clockwise = false;
         int polygonType = 0;
         int textureCoordMode = 0;
 
         uint32_t polygonAttr = 0;
         uint8_t enabledLights = 0;
+        bool renderBack = false, renderFront = false;
 
         uint32_t diffuseColor = 0, ambientColor = 0;
         uint32_t specularColor = 0, emissionColor = 0;

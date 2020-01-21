@@ -50,8 +50,8 @@ void Gpu3DRenderer::drawScanline(int line)
     {
         _Polygon *polygon = &gpu3D->getPolygons()[i];
 
-        // If the polygon is translucent, save it for later
-        if ((polygon->vertices[0].color >> 18) < 0x3F)
+        // If the polygon is translucent, save it for last
+        if ((polygon->vertices[0].color >> 18) < 0x3F || polygon->textureFmt == 1 || polygon->textureFmt == 6)
             translucent.push_back(polygon);
         else
             drawPolygon(line, polygon);

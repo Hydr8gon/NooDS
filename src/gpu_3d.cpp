@@ -163,8 +163,8 @@ void Gpu3D::swapBuffers()
     // Normalize the vertices and convert the X and Y coordinates to DS screen coordinates
     for (int i = 0; i < vertexCountIn; i++)
     {
-        verticesIn[i].x = (( verticesIn[i].x *    128) / verticesIn[i].w) +    128;
-        verticesIn[i].y = ((-verticesIn[i].y *     96) / verticesIn[i].w) +     96;
+        verticesIn[i].x = (((verticesIn[i].x *    128) / verticesIn[i].w) +    128);
+        verticesIn[i].y = (((verticesIn[i].y *    -96) / verticesIn[i].w) +     96);
         verticesIn[i].z = (((verticesIn[i].z * 0x4000) / verticesIn[i].w) + 0x3FFF) * 0x200;
     }
 
@@ -274,7 +274,7 @@ void Gpu3D::addPolygon()
     for (int i = 0; i < size; i++)
         unclipped[i] = savedPolygon.vertices[i];
 
-    // Rearrange quad strip vertices to work with the clipping algorithm
+    // Rearrange quad strip vertices to be counter-clockwise
     if (polygonType == 3)
     {
         Vertex vertex = unclipped[2];
@@ -290,8 +290,26 @@ void Gpu3D::addPolygon()
     clip |= clipPolygon(clipped, temp, 4);
     clip |= clipPolygon(temp, clipped, 5);
 
-    // Discard polygons that are completely outside of the view area
-    if (savedPolygon.size == 0)
+    // Calculate the cross product of the normalized polygon vertices to determine orientation
+    int cross = 0;
+    if (savedPolygon.size >= 3)
+    {
+        cross = (clipped[1].x * 128 / clipped[1].w - clipped[0].x * 128 / clipped[0].w) *
+                (clipped[2].y * -96 / clipped[2].w - clipped[0].y * -96 / clipped[0].w) -
+                (clipped[1].y * -96 / clipped[1].w - clipped[0].y * -96 / clipped[0].w) *
+                (clipped[2].x * 128 / clipped[2].w - clipped[0].x * 128 / clipped[0].w);
+    }
+
+    // Every other polygon strip is stored clockwise instead of counter-clockwise
+    // Keep track of this, and reverse the cross product of clockwise polygons to accomodate
+    if (polygonType == 2)
+    {
+        if (clockwise) cross = -cross;
+        clockwise = !clockwise;
+    }
+
+    // Discard polygons that are outside of the view area or should be culled
+    if (savedPolygon.size == 0 || (!renderFront && cross < 0) || (!renderBack && cross > 0))
     {
         switch (polygonType)
         {
@@ -315,8 +333,8 @@ void Gpu3D::addPolygon()
                 else if (vertexCountIn < 6144)
                 {
                     // End the previous strip, and start a new one with the last 2 vertices
-                    verticesIn[vertexCountIn - 1] = verticesIn[vertexCountIn - 2];
                     verticesIn[vertexCountIn - 0] = verticesIn[vertexCountIn - 1];
+                    verticesIn[vertexCountIn - 1] = verticesIn[vertexCountIn - 2];
                     vertexCountIn++;
                     vertexCount = 2;
                 }
@@ -1231,10 +1249,13 @@ void Gpu3D::beginVtxsCmd(uint32_t param)
     // Begin a new vertex list
     polygonType = param & 0x00000003;
     vertexCount = 0;
+    clockwise = false;
 
     // Apply the polygon attributes
-    enabledLights = (polygonAttr & 0x0000000F);
+    enabledLights = polygonAttr & 0x0000000F;
     savedPolygon.mode = (polygonAttr & 0x00000030) >> 4;
+    renderBack = polygonAttr & BIT(6);
+    renderFront = polygonAttr & BIT(7);
     savedPolygon.transNewDepth = polygonAttr & BIT(11);
     savedPolygon.depthTestEqual = polygonAttr & BIT(14);
     int a = (polygonAttr & 0x001F0000) >> 16; a = a * 2 + (a + 31) / 32;
