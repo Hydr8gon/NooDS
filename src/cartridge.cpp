@@ -164,7 +164,91 @@ void Cartridge::writeAuxSpiData(uint8_t value)
     {
         switch (saveSize)
         {
-            case 0x2000: case 0x10000: // EEPROM 8KB, 64KB
+            case 0x200: // EEPROM 0.5KB
+            {
+                switch (auxCommand)
+                {
+                    case 0x03: // Read from lower memory
+                    {
+                        if (auxWriteCount < 2)
+                        {
+                            // On the second write, set the 1 byte address to read from
+                            auxAddress = value;
+                            auxSpiData = 0;
+                        }
+                        else
+                        {
+                            // On writes 3+, read data from the save and send it back
+                            auxSpiData = (auxAddress < 0x100) ? save[auxAddress] : 0;
+                            auxAddress++;
+                        }
+                        break;
+                    }
+
+                    case 0x0B: // Read from upper memory
+                    {
+                        if (auxWriteCount < 2)
+                        {
+                            // On the second write, set the 1 byte address to read from
+                            auxAddress = 0x100 + value;
+                            auxSpiData = 0;
+                        }
+                        else
+                        {
+                            // On writes 3+, read data from the save and send it back
+                            auxSpiData = (auxAddress < 0x200) ? save[auxAddress] : 0;
+                            auxAddress++;
+                        }
+                        break;
+                    }
+
+                    case 0x02: // Write to lower memory
+                    {
+                        if (auxWriteCount < 2)
+                        {
+                            // On the second write, set the 1 byte address to write to
+                            auxAddress = value;
+                            auxSpiData = 0;
+                        }
+                        else
+                        {
+                            // On writes 3+, write data to the save
+                            if (auxAddress < 0x100) save[auxAddress] = value;
+                            auxAddress++;
+                            auxSpiData = 0;
+                        }
+                        break;
+                    }
+
+                    case 0x0A: // Write to upper memory
+                    {
+                        if (auxWriteCount < 2)
+                        {
+                            // On the second write, set the 1 byte address to write to
+                            auxAddress = 0x100 + value;
+                            auxSpiData = 0;
+                        }
+                        else
+                        {
+                            // On writes 3+, write data to the save
+                            if (auxAddress < 0x200) save[auxAddress] = value;
+                            auxAddress++;
+                            auxSpiData = 0;
+                        }
+                        break;
+                    }
+
+                    default:
+                    {
+                        printf("Write to AUX SPI with unknown EEPROM 0.5KB command: 0x%X\n", auxCommand);
+                        auxSpiData = 0;
+                        break;
+                    }
+                }
+                break;
+            }
+
+            case 0x2000: case 0x8000: case 0x10000: // EEPROM/FRAM 8KB, 32KB, 64KB
             {
                 switch (auxCommand)
                 {
@@ -205,7 +289,7 @@ void Cartridge::writeAuxSpiData(uint8_t value)
 
                     default:
                     {
-                        printf("Write to AUX SPI with unknown EEPROM command: 0x%X\n", auxCommand);
+                        printf("Write to AUX SPI with unknown EEPROM/FRAM command: 0x%X\n", auxCommand);
                         auxSpiData = 0;
                         break;
                     }
@@ -213,7 +297,7 @@ void Cartridge::writeAuxSpiData(uint8_t value)
                 break;
             }
 
-            case 0x40000: case 0x80000: // FLASH 256KB, 512KB
+            case 0x40000: case 0x80000: case 0x100000: case 0x800000: // FLASH 256KB, 512KB, 1024KB, 8192KB
             {
                 switch (auxCommand)
                 {
