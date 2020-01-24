@@ -1,5 +1,5 @@
 /*
-    Copyright 2019 Hydr8gon
+    Copyright 2020 Hydr8gon
 
     This file is part of NooDS.
 
@@ -42,11 +42,10 @@ void Settings::loadSettings()
     FILE *settingsFile = fopen("noods.ini", "r");
     if (!settingsFile) return;
 
-    char *data = NULL;
-    size_t size = 0;
+    char data[1024];
 
     // Read each line of the settings file and load the values from them
-    while (getline(&data, &size, settingsFile) != -1)
+    while (fgets(data, 1024, settingsFile) != NULL)
     {
         std::string line = data;
         int split = line.find("=");
