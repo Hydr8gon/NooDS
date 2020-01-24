@@ -23,6 +23,7 @@
 #include <wx/rawbmp.h>
 
 #include "../core.h"
+#include "../settings.h"
 
 const char keyMap[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
 
@@ -50,14 +51,37 @@ int audioCallback(const void *in, void *out, unsigned long frames,
     return 0;
 }
 
+class PathDialog: public wxDialog
+{
+    public:
+        PathDialog();
+
+    private:
+        wxTextCtrl *bios9Path;
+        wxTextCtrl *bios7Path;
+        wxTextCtrl *firmwarePath;
+
+        void bios9Browse(wxCommandEvent &event);
+        void bios7Browse(wxCommandEvent &event);
+        void firmwareBrowse(wxCommandEvent &event);
+        void confirm(wxCommandEvent &event);
+
+        wxDECLARE_EVENT_TABLE();
+};
+
 class NooFrame: public wxFrame
 {
     public:
         NooFrame();
 
     private:
+        PathDialog pathDialog;
+
         void loadRom(wxCommandEvent &event);
         void bootFirmware(wxCommandEvent &event);
+        void pathSettings(wxCommandEvent &event);
+        void directBootToggle(wxCommandEvent &event);
+        void limitFpsToggle(wxCommandEvent &event);
         void exit(wxCommandEvent &event);
         void stop(wxCloseEvent &event);
 
@@ -88,8 +112,8 @@ class NooPanel: public wxPanel
 class NooApp: public wxApp
 {
     private:
-        NooFrame *frame = nullptr;
-        NooPanel *panel = nullptr;
+        NooFrame *frame;
+        NooPanel *panel;
 
         bool OnInit();
         void requestDraw(wxIdleEvent &event);
@@ -100,6 +124,9 @@ wxIMPLEMENT_APP(NooApp);
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
 EVT_MENU(1, NooFrame::loadRom)
 EVT_MENU(2, NooFrame::bootFirmware)
+EVT_MENU(3, NooFrame::pathSettings)
+EVT_MENU(4, NooFrame::directBootToggle)
+EVT_MENU(5, NooFrame::limitFpsToggle)
 EVT_MENU(wxID_EXIT, NooFrame::exit)
 EVT_CLOSE(NooFrame::stop)
 wxEND_EVENT_TABLE()
@@ -115,8 +142,18 @@ EVT_MOTION(NooPanel::pressScreen)
 EVT_LEFT_UP(NooPanel::releaseScreen)
 wxEND_EVENT_TABLE()
 
+wxBEGIN_EVENT_TABLE(PathDialog, wxDialog)
+EVT_BUTTON(1, PathDialog::bios9Browse)
+EVT_BUTTON(2, PathDialog::bios7Browse)
+EVT_BUTTON(3, PathDialog::firmwareBrowse)
+EVT_BUTTON(wxID_OK, PathDialog::confirm)
+wxEND_EVENT_TABLE()
+
 bool NooApp::OnInit()
 {
+    // Load the settings
+    Settings::load();
+
     // Set up the window
     frame = new NooFrame();
     panel = new NooPanel(frame);
@@ -141,116 +178,6 @@ void NooApp::requestDraw(wxIdleEvent &event)
 
     // Update the FPS in the window title if the core is running
     frame->SetLabel(running ? wxString::Format(wxT("NooDS - %d FPS"), core->getFps()) : wxT("NooDS"));
-}
-
-NooFrame::NooFrame(): wxFrame(NULL, wxID_ANY, "", wxPoint(50, 50), wxSize(256, 192 * 2), wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS)
-{
-    // Set up the File menu
-    wxMenu *fileMenu = new wxMenu();
-    fileMenu->Append(1, "&Load ROM");
-    fileMenu->Append(2, "&Boot Firmware");
-    fileMenu->AppendSeparator();
-    fileMenu->Append(wxID_EXIT);
-
-    // Set up the menu bar
-    wxMenuBar *menuBar = new wxMenuBar();
-    menuBar->Append(fileMenu, "&File");
-    SetMenuBar(menuBar);
-
-    // Prevent resizing smaller than the DS resolution
-    SetClientSize(wxSize(256, 192 * 2));
-    SetMinSize(GetSize());
-
-    Centre();
-    Show(true);
-}
-
-void NooFrame::loadRom(wxCommandEvent &event)
-{
-    // Show the file browser
-    wxFileDialog romSelect(this, "Select ROM File", "", "", "NDS ROM files (*.nds)|*.nds", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
-    if (romSelect.ShowModal() == wxID_CANCEL)
-        return;
-
-    // Ensure the core thread is stopped
-    if (coreThread)
-    {
-        running = false;
-        coreThread->join();
-        delete coreThread;
-    }
-
-    // Get the ROM path
-    char path[1024];
-    strncpy(path, (const char*)romSelect.GetPath().mb_str(wxConvUTF8), 1023);
-
-    // Attempt to boot the ROM
-    try
-    {
-        if (core) delete core;
-        core = new Core(path);
-    }
-    catch (std::exception *e)
-    {
-        wxMessageBox("Initialization failed. Make sure you have BIOS files named 'bios9.bin' and 'bios7.bin' "
-                     "and a firmware file named 'firmware.bin' placed in the same directory as the emulator.");
-        return;
-    }
-
-    // Start the core thread
-    running = true;
-    coreThread = new std::thread(runCore);
-}
-
-void NooFrame::bootFirmware(wxCommandEvent &event)
-{
-    // Ensure the core thread is stopped
-    if (coreThread)
-    {
-        running = false;
-        coreThread->join();
-        delete coreThread;
-    }
-
-    // Attempt to boot the firmware
-    try
-    {
-        if (core) delete core;
-        core = new Core();
-    }
-    catch (std::exception *e)
-    {
-        wxMessageBox("Initialization failed. Make sure you have BIOS files named 'bios9.bin' and 'bios7.bin' "
-                     "and a firmware file named 'firmware.bin' placed in the same directory as the emulator.");
-        return;
-    }
-
-    // Start the core thread
-    running = true;
-    coreThread = new std::thread(runCore);
-}
-
-void NooFrame::exit(wxCommandEvent &event)
-{
-    // Close the program
-    Close(true);
-}
-
-void NooFrame::stop(wxCloseEvent &event)
-{
-    // Ensure the core thread is stopped
-    if (coreThread)
-    {
-        running = false;
-        coreThread->join();
-        delete coreThread;
-    }
-
-    // Close the core to ensure the save gets written
-    if (core) delete core;
-    core = nullptr;
-
-    event.Skip(true);
 }
 
 NooPanel::NooPanel(wxFrame *parent): wxPanel(parent)
@@ -355,4 +282,251 @@ void NooPanel::releaseScreen(wxMouseEvent &event)
 {
     // Send a touch release to the core
     if (core) core->releaseScreen();
+}
+
+NooFrame::NooFrame(): wxFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxSize(256, 192 * 2), wxDEFAULT_FRAME_STYLE | wxWANTS_CHARS)
+{
+    // Set up the File menu
+    wxMenu *fileMenu = new wxMenu();
+    fileMenu->Append(1, "&Load ROM");
+    fileMenu->Append(2, "&Boot Firmware");
+    fileMenu->AppendSeparator();
+    fileMenu->Append(wxID_EXIT);
+
+    // Set up the Settings menu
+    wxMenu *settingsMenu = new wxMenu();
+    settingsMenu->Append(3, "&Path Settings");
+    settingsMenu->AppendSeparator();
+    settingsMenu->AppendCheckItem(4, "&Direct Boot");
+    settingsMenu->Check(4, Settings::getDirectBoot());
+    settingsMenu->AppendCheckItem(5, "&Limit FPS");
+    settingsMenu->Check(5, Settings::getLimitFps());
+
+    // Set up the menu bar
+    wxMenuBar *menuBar = new wxMenuBar();
+    menuBar->Append(fileMenu, "&File");
+    menuBar->Append(settingsMenu, "&Settings");
+    SetMenuBar(menuBar);
+
+    // Prevent resizing smaller than the DS resolution
+    SetClientSize(wxSize(256, 192 * 2));
+    SetMinSize(GetSize());
+
+    Centre();
+    Show(true);
+}
+
+void NooFrame::loadRom(wxCommandEvent &event)
+{
+    // Show the file browser
+    wxFileDialog romSelect(this, "Select ROM File", "", "", "NDS ROM files (*.nds)|*.nds", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (romSelect.ShowModal() == wxID_CANCEL)
+        return;
+
+    // Ensure the core thread is stopped
+    if (coreThread)
+    {
+        running = false;
+        coreThread->join();
+        delete coreThread;
+    }
+
+    // Get the ROM path
+    char path[1024];
+    strncpy(path, (const char*)romSelect.GetPath().mb_str(wxConvUTF8), 1023);
+
+    // Attempt to boot the ROM
+    try
+    {
+        if (core) delete core;
+        core = new Core(path);
+    }
+    catch (std::exception *e)
+    {
+        wxMessageBox("Initialization failed. Make sure you have BIOS files named 'bios9.bin' and 'bios7.bin' "
+                     "and a firmware file named 'firmware.bin' placed in the same directory as the emulator.");
+        return;
+    }
+
+    // Start the core thread
+    running = true;
+    coreThread = new std::thread(runCore);
+}
+
+void NooFrame::bootFirmware(wxCommandEvent &event)
+{
+    // Ensure the core thread is stopped
+    if (coreThread)
+    {
+        running = false;
+        coreThread->join();
+        delete coreThread;
+    }
+
+    // Attempt to boot the firmware
+    try
+    {
+        if (core) delete core;
+        core = new Core();
+    }
+    catch (std::exception *e)
+    {
+        wxMessageBox("Initialization failed. Make sure you have BIOS files named 'bios9.bin' and 'bios7.bin' "
+                     "and a firmware file named 'firmware.bin' placed in the same directory as the emulator.");
+        return;
+    }
+
+    // Start the core thread
+    running = true;
+    coreThread = new std::thread(runCore);
+}
+
+void NooFrame::pathSettings(wxCommandEvent &event)
+{
+    // Show the path settings dialog
+    pathDialog.Centre();
+    pathDialog.Show(true);
+}
+
+void NooFrame::directBootToggle(wxCommandEvent &event)
+{
+    // Toggle the "Direct Boot" option
+    Settings::setDirectBoot(!Settings::getDirectBoot());
+}
+
+void NooFrame::limitFpsToggle(wxCommandEvent &event)
+{
+    // Toggle the "Limit FPS" option
+    Settings::setLimitFps(!Settings::getLimitFps());
+}
+
+void NooFrame::exit(wxCommandEvent &event)
+{
+    // Close the program
+    Close(true);
+}
+
+void NooFrame::stop(wxCloseEvent &event)
+{
+    // Ensure the core thread is stopped
+    if (coreThread)
+    {
+        running = false;
+        coreThread->join();
+        delete coreThread;
+    }
+
+    // Close the core to ensure the save gets written
+    if (core) delete core;
+    core = nullptr;
+
+    // Save the settings
+    Settings::save();
+
+    event.Skip(true);
+}
+
+PathDialog::PathDialog(): wxDialog(NULL, wxID_ANY, "Path Settings", wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE)
+{
+    // Determine the height of a text box
+    // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
+    wxTextCtrl *dummy = new wxTextCtrl(this, wxID_ANY, "");
+    int size = dummy->GetSize().y;
+    delete dummy;
+
+    // Set up the ARM9 BIOS path setting
+    wxBoxSizer *arm9Sizer = new wxBoxSizer(wxHORIZONTAL);
+    arm9Sizer->Add(new wxStaticText(this, wxID_ANY, "ARM9 BIOS:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
+    arm9Sizer->Add(bios9Path = new wxTextCtrl(this, wxID_ANY, Settings::getBios9Path(), wxDefaultPosition, wxSize(size * 5, size)), 0);
+    arm9Sizer->Add(new wxButton(this, 1, "Browse"), 0, wxLEFT, size / 8);
+
+    // Set up the ARM7 BIOS path setting
+    wxBoxSizer *arm7Sizer = new wxBoxSizer(wxHORIZONTAL);
+    arm7Sizer->Add(new wxStaticText(this, wxID_ANY, "ARM7 BIOS:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
+    arm7Sizer->Add(bios7Path = new wxTextCtrl(this, wxID_ANY, Settings::getBios7Path(), wxDefaultPosition, wxSize(size * 5, size)), 0);
+    arm7Sizer->Add(new wxButton(this, 2, "Browse"), 0, wxLEFT, size / 8);
+
+    // Set up the firmware path setting
+    wxBoxSizer *firmSizer = new wxBoxSizer(wxHORIZONTAL);
+    firmSizer->Add(new wxStaticText(this, wxID_ANY, "Firmware:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
+    firmSizer->Add(firmwarePath = new wxTextCtrl(this, wxID_ANY, Settings::getFirmwarePath(), wxDefaultPosition, wxSize(size * 5, size)), 0);
+    firmSizer->Add(new wxButton(this, 3, "Browse"), 0, wxLEFT, size / 8);
+
+    // Set up the cancel and confirm buttons
+    wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
+    buttonSizer->Add(new wxStaticText(this, wxID_ANY, ""), 1);
+    buttonSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"), 0, wxRIGHT, size / 16);
+    buttonSizer->Add(new wxButton(this, wxID_OK, "Confirm"), 0, wxLEFT, size / 16);
+
+    // Combine all of the contents
+    wxBoxSizer *contents = new wxBoxSizer(wxVERTICAL);
+    contents->Add(arm9Sizer, 1, wxEXPAND | wxALL, size / 8);
+    contents->Add(arm7Sizer, 1, wxEXPAND | wxALL, size / 8);
+    contents->Add(firmSizer, 1, wxEXPAND | wxALL, size / 8);
+    contents->Add(buttonSizer, 1, wxEXPAND | wxALL, size / 8);
+
+    // Add a final border around everything
+    wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
+    sizer->Add(contents, 1, wxEXPAND | wxALL, size / 8);
+    SetSizer(sizer);
+
+    // Size the window to fit the contents and prevent resizing
+    sizer->Fit(this);
+    SetMinSize(GetSize());
+    SetMaxSize(GetSize());
+}
+
+void PathDialog::bios9Browse(wxCommandEvent &event)
+{
+    // Show the file browser
+    wxFileDialog bios9Select(this, "Select ARM9 BIOS File", "", "", "Binary files (*.bin)|*.bin", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (bios9Select.ShowModal() == wxID_CANCEL)
+        return;
+
+    // Update the path
+    bios9Path->Clear();
+    *bios9Path << bios9Select.GetPath();
+}
+
+void PathDialog::bios7Browse(wxCommandEvent &event)
+{
+    // Show the file browser
+    wxFileDialog bios7Select(this, "Select ARM7 BIOS File", "", "", "Binary files (*.bin)|*.bin", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (bios7Select.ShowModal() == wxID_CANCEL)
+        return;
+
+    // Update the path
+    bios7Path->Clear();
+    *bios7Path << bios7Select.GetPath();
+}
+
+void PathDialog::firmwareBrowse(wxCommandEvent &event)
+{
+    // Show the file browser
+    wxFileDialog firmwareSelect(this, "Select Firmware File", "", "", "Binary files (*.bin)|*.bin", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (firmwareSelect.ShowModal() == wxID_CANCEL)
+        return;
+
+    // Update the path
+    firmwarePath->Clear();
+    *firmwarePath << firmwareSelect.GetPath();
+}
+
+void PathDialog::confirm(wxCommandEvent &event)
+{
+    char path[1024];
+
+    // Save the ARM9 BIOS path
+    strncpy(path, (const char*)bios9Path->GetValue().mb_str(wxConvUTF8), 1023);
+    Settings::setBios9Path(path);
+
+    // Save the ARM7 BIOS path
+    strncpy(path, (const char*)bios7Path->GetValue().mb_str(wxConvUTF8), 1023);
+    Settings::setBios7Path(path);
+
+    // Save the firmware path
+    strncpy(path, (const char*)firmwarePath->GetValue().mb_str(wxConvUTF8), 1023);
+    Settings::setFirmwarePath(path);
+
+    Show(false);
 }

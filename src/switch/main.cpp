@@ -22,6 +22,7 @@
 #include <malloc.h>
 
 #include "../core.h"
+#include "../settings.h"
 
 const uint32_t keyMap[] = { KEY_A, KEY_B, KEY_MINUS, KEY_PLUS, KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN, KEY_ZR, KEY_ZL, KEY_X, KEY_Y };
 
@@ -78,6 +79,9 @@ uint32_t rgb6ToRgba8(uint32_t color)
 
 int main()
 {
+    // Load the settings
+    Settings::load();
+
     // Prepare the core
     try
     {
@@ -186,12 +190,13 @@ int main()
 
     // Clean up
     running = false;
-    threadWaitForExit(&coreThread);
-    threadClose(&coreThread);
-    delete core;
     audoutStopAudioOut();
     audoutExit();
     framebufferClose(&fb);
+    threadWaitForExit(&coreThread);
+    threadClose(&coreThread);
+    delete core;
+    Settings::save();
     clkrstSetClockRate(&cpuSession, 1020000000);
     clkrstExit();
     appletUnlockExit();

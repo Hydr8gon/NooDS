@@ -67,8 +67,9 @@ Core::Core(std::string filename): Core()
     cart9.setRom(rom, romSize, save, saveSize);
     cart7.setRom(rom, romSize, save, saveSize);
 
-    // Don't run the direct boot setup if booting from the firmware is enabled
-    if (Settings::getBootFirmware()) return;
+    // Don't run the direct boot setup if it's disabled
+    // Games will boot from the firmware in this case
+    if (!Settings::getDirectBoot()) return;
 
     // Set some registers as the BIOS/firmware would
     memory.write<uint8_t>(true,   0x4000247,   0x03); // WRAMCNT
@@ -142,9 +143,6 @@ Core::~Core()
             fclose(saveFile);
         }
     }
-
-    // Save the settings
-    Settings::saveSettings();
 
     if (rom)  delete[] rom;
     if (save) delete[] save;

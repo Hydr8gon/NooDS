@@ -46,10 +46,6 @@ Memory::Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *d
                engineB(engineB), gpu3D(gpu3D), gpu3DRenderer(gpu3DRenderer), input(input), arm9(arm9),
                arm7(arm7), ipc(ipc), math(math), rtc(rtc), spi(spi), spu(spu), timers9(timers9), timers7(timers7)
 {
-    // Load the settings
-    // It would make more sense to do this in the core class, but memory gets initialized first
-    Settings::loadSettings();
-
     // Attempt to load the ARM9 BIOS
     FILE *bios9File = fopen(Settings::getBios9Path().c_str(), "rb");
     if (!bios9File) throw new std::exception;

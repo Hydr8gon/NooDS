@@ -35,14 +35,20 @@ struct Setting
 class Settings
 {
     public:
-        static void loadSettings();
-        static void saveSettings();
+        static void load();
+        static void save();
 
         static std::string getBios9Path()    { return bios9Path;    }
         static std::string getBios7Path()    { return bios7Path;    }
         static std::string getFirmwarePath() { return firmwarePath; }
-        static int         getBootFirmware() { return bootFirmware; }
+        static int         getDirectBoot()   { return directBoot;   }
         static int         getLimitFps()     { return limitFps;     }
+
+        static void setBios9Path(std::string value)    { bios9Path    = value; }
+        static void setBios7Path(std::string value)    { bios7Path    = value; }
+        static void setFirmwarePath(std::string value) { firmwarePath = value; }
+        static void setDirectBoot(int value)           { directBoot   = value; }
+        static void setLimitFps(int value)             { limitFps     = value; }
 
     private:
         Settings() {} // Private to prevent instantiation
@@ -50,7 +56,7 @@ class Settings
         static std::string bios9Path;
         static std::string bios7Path;
         static std::string firmwarePath;
-        static int bootFirmware;
+        static int directBoot;
         static int limitFps;
 
         static std::vector<Setting> settings;

@@ -23,7 +23,7 @@
 std::string Settings::bios9Path = "bios9.bin";
 std::string Settings::bios7Path = "bios7.bin";
 std::string Settings::firmwarePath = "firmware.bin";
-int Settings::bootFirmware = 0;
+int Settings::directBoot = 1;
 int Settings::limitFps = 1;
 
 std::vector<Setting> Settings::settings =
@@ -31,11 +31,11 @@ std::vector<Setting> Settings::settings =
     Setting("bios9Path",    &bios9Path,    true),
     Setting("bios7Path",    &bios7Path,    true),
     Setting("firmwarePath", &firmwarePath, true),
-    Setting("bootFirmware", &bootFirmware, false),
+    Setting("directBoot",   &directBoot,   false),
     Setting("limitFps",     &limitFps,     false)
 };
 
-void Settings::loadSettings()
+void Settings::load()
 {
     // Attempt to open the settings file
     // If the file can't be opened, the default values will be used
@@ -60,6 +60,7 @@ void Settings::loadSettings()
                     *(std::string*)settings[i].value = value;
                 else if (value[0] >= 0x30 && value[0] <= 0x39)
                     *(int*)settings[i].value = stoi(value);
+                break;
             }
         }
     }
@@ -67,7 +68,7 @@ void Settings::loadSettings()
     fclose(settingsFile);
 }
 
-void Settings::saveSettings()
+void Settings::save()
 {
     // Attempt to open the settings file
     FILE *settingsFile = fopen("noods.ini", "w");
