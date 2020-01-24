@@ -102,6 +102,7 @@
     <ClCompile Include="src\math.cpp" />
     <ClCompile Include="src\memory.cpp" />
     <ClCompile Include="src\rtc.cpp" />
+    <ClCompile Include="src\settings.cpp" />
     <ClCompile Include="src\spi.cpp" />
     <ClCompile Include="src\spu.cpp" />
     <ClCompile Include="src\timers.cpp" />
@@ -125,6 +126,7 @@
     <ClInclude Include="src\math.h" />
     <ClInclude Include="src\memory.h" />
     <ClInclude Include="src\rtc.h" />
+    <ClInclude Include="src\settings.h" />
     <ClInclude Include="src\spi.h" />
     <ClInclude Include="src\spu.h" />
     <ClInclude Include="src\timers.h" />

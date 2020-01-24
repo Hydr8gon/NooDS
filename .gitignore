@@ -5,6 +5,7 @@ bios9.bin
 firmware.bin
 noods
 noods.elf
+noods.ini
 noods.nacp
 noods.nro
 noods.vcxproj.user

@@ -34,6 +34,7 @@
 #include "ipc.h"
 #include "math.h"
 #include "rtc.h"
+#include "settings.h"
 #include "spi.h"
 #include "spu.h"
 #include "timers.h"
@@ -45,14 +46,18 @@ Memory::Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *d
                engineB(engineB), gpu3D(gpu3D), gpu3DRenderer(gpu3DRenderer), input(input), arm9(arm9),
                arm7(arm7), ipc(ipc), math(math), rtc(rtc), spi(spi), spu(spu), timers9(timers9), timers7(timers7)
 {
+    // Load the settings
+    // It would make more sense to do this in the core class, but memory gets initialized first
+    Settings::loadSettings();
+
     // Attempt to load the ARM9 BIOS
-    FILE *bios9File = fopen("bios9.bin", "rb");
+    FILE *bios9File = fopen(Settings::getBios9Path().c_str(), "rb");
     if (!bios9File) throw new std::exception;
     fread(bios9, sizeof(uint8_t), 0x1000, bios9File);
     fclose(bios9File);
 
     // Attempt to load the ARM7 BIOS
-    FILE *bios7File = fopen("bios7.bin", "rb");
+    FILE *bios7File = fopen(Settings::getBios7Path().c_str(), "rb");
     if (!bios7File) throw new std::exception;
     fread(bios7, sizeof(uint8_t), 0x4000, bios7File);
     fclose(bios7File);

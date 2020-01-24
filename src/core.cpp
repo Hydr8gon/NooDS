@@ -22,6 +22,7 @@
 
 #include "core.h"
 #include "defines.h"
+#include "settings.h"
 
 Core::Core(): cart9(&arm9, &memory), cart7(&arm7, &memory), cp15(&arm9), dma9(&cart9, &gpu3D, &arm9, &memory),
               dma7(&cart7, nullptr, &arm7, &memory), gpu(&engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9,
@@ -31,7 +32,7 @@ Core::Core(): cart9(&arm9, &memory), cart7(&arm7, &memory), cp15(&arm9), dma9(&c
               &spi, &spu, &timers9, &timers7), spi(&arm7, firmware), spu(&memory), timers9(&arm9), timers7(&arm7)
 {
     // Attempt to load the firmware
-    FILE *firmwareFile = fopen("firmware.bin", "rb");
+    FILE *firmwareFile = fopen(Settings::getFirmwarePath().c_str(), "rb");
     if (!firmwareFile) throw new std::exception;
     fread(firmware, sizeof(uint8_t), 0x40000, firmwareFile);
     fclose(firmwareFile);
@@ -62,8 +63,12 @@ Core::Core(std::string filename): Core()
         fclose(saveFile);
     }
 
+    // "Insert" the cartridge
     cart9.setRom(rom, romSize, save, saveSize);
     cart7.setRom(rom, romSize, save, saveSize);
+
+    // Don't run the direct boot setup if booting from the firmware is enabled
+    if (Settings::getBootFirmware()) return;
 
     // Set some registers as the BIOS/firmware would
     memory.write<uint8_t>(true,   0x4000247,   0x03); // WRAMCNT
@@ -138,6 +143,9 @@ Core::~Core()
         }
     }
 
+    // Save the settings
+    Settings::saveSettings();
+
     if (rom)  delete[] rom;
     if (save) delete[] save;
 }
@@ -180,10 +188,10 @@ void Core::runFrame()
     std::chrono::duration<double> frameTime = std::chrono::steady_clock::now() - lastFrameTime;
 #ifdef _WIN32
     // Sleeping on Windows is unreliable; a while loop is wasteful and not entirely accurate either, but it works
-    while (frameTime.count() < 1.0f / 60)
+    while (Settings::getLimitFps() && frameTime.count() < 1.0f / 60)
         frameTime = std::chrono::steady_clock::now() - lastFrameTime;
 #else
-    if (frameTime.count() < 1.0f / 60)
+    if (Settings::getLimitFps() && frameTime.count() < 1.0f / 60)
         std::this_thread::sleep_for(std::chrono::microseconds((int)((1.0f / 60 - frameTime.count()) * 1000000)));
 #endif
     lastFrameTime = std::chrono::steady_clock::now();
