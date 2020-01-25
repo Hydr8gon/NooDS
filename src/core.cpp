@@ -155,23 +155,23 @@ void Core::runFrame()
     {
         for (int j = 0; j < 355 * 3; j++) // 355 dots per scanline, 3 ARM7 cycles each
         {
+            // Run the ARM9 at twice the speed of the ARM7
             for (int k = 0; k < 2; k++)
             {
-                // Run the ARM9 at twice the speed of the ARM7
                 if (arm9.shouldInterrupt()) arm9.interrupt();
                 if (arm9.shouldRun())       arm9.runCycle();
                 if (dma9.shouldTransfer())  dma9.transfer();
-                if (gpu3D.shouldRun())      gpu3D.runCycle();
-
-                // Run both the ARM9 and ARM7 timers at ARM9 speed
-                if (timers9.shouldTick())   timers9.tick();
-                if (timers7.shouldTick())   timers7.tick();
+                if (timers9.shouldTick())   timers9.tick(false);
             }
 
             // Run the ARM7
             if (arm7.shouldInterrupt()) arm7.interrupt();
             if (arm7.shouldRun())       arm7.runCycle();
             if (dma7.shouldTransfer())  dma7.transfer();
+            if (timers7.shouldTick())   timers7.tick(true);
+
+            // Run the 3D engine
+            if (gpu3D.shouldRun()) gpu3D.runCycle();
 
             // The end of the visible scanline
             if (j == 256 * 3)

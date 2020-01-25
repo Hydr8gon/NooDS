@@ -21,7 +21,7 @@
 #include "defines.h"
 #include "interpreter.h"
 
-void Timers::tick()
+void Timers::tick(bool twice)
 {
     for (int i = 0; i < 4; i++)
     {
@@ -33,19 +33,28 @@ void Timers::tick()
         // For slower frequencies, increment the scaler value until it reaches the desired amount, and only then tick
         if ((tmCntH[i] & 0x0003) > 0)
         {
-            scalers[i]++;
-            if (scalers[i] >= 0x10 << ((tmCntH[i] & 0x0003) * 2))
+            scalers[i] += 1 + twice;
+
+            if (scalers[i] == 0x10 << ((tmCntH[i] & 0x0003) * 2))
+            {
+                tmCntL[i]++;
                 scalers[i] = 0;
+            }
             else
+            {
                 continue;
+            }
+        }
+        else
+        {
+            tmCntL[i] += 1 + twice;
         }
 
-        // Increment once and handle overflows
-        tmCntL[i]++;
-        if (tmCntL[i] == 0) // Overflow
+        // Handle overflow
+        if (tmCntL[i] < 1 + twice)
         {
             // Reload the timer
-            tmCntL[i] = reloads[i];
+            tmCntL[i] += reloads[i];
 
             // Trigger a timer overflow IRQ if enabled
             if (tmCntH[i] & BIT(6))
@@ -56,10 +65,12 @@ void Timers::tick()
             if (i < 3 && (tmCntH[i + 1] & BIT(2)))
             {
                 tmCntL[i + 1]++;
-                if (tmCntL[i + 1] == 0) // Overflow
+    
+                // Handle overflow
+                if (tmCntL[i + 1] == 0)
                 {
                     // Reload the timer
-                    tmCntL[i + 1] = reloads[i + 1];
+                    tmCntL[i + 1] += reloads[i + 1];
 
                     // Trigger a timer overflow IRQ if enabled
                     if (tmCntH[i + 1] & BIT(6))

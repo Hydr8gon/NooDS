@@ -87,81 +87,80 @@ uint32_t Spu::getSample()
             }
         }
 
-        // Increment the timers for the length of a sample
+        // Increment the timer for the length of a sample
         // The SPU runs at 16756991Hz with a sample rate of 32768Hz
         // 16756991 / 32768 = ~512 cycles per sample
-        for (int j = 0; j < 512; j++)
+        soundTimers[i] += 512;
+        bool overflow = (soundTimers[i] < 512);
+
+        // Handle timer overflow
+        while (overflow)
         {
-            soundTimers[i]++;
+            // Increment the data pointer and reload the timer
+            soundCurrent[i] += size;
+            soundTimers[i] += soundTmr[i];
+            overflow = (soundTimers[i] < soundTmr[i]);
 
-            // Handle timer overflow
-            if (soundTimers[i] == 0)
+            // Decode the next ADPCM audio sample
+            if (((soundCnt[i] & 0x60000000) >> 29) == 2)
             {
-                // Increment the data pointer and reload the timer
-                soundCurrent[i] += size;
-                soundTimers[i] = soundTmr[i];
+                // Get the 4-bit ADPCM data
+                uint8_t adpcmData = memory->read<uint8_t>(false, soundCurrent[i]);
+                adpcmData = adpcmToggle[i] ? ((adpcmData & 0xF0) >> 4) : (adpcmData & 0x0F);
 
-                // Decode ADPCM audio
-                if (((soundCnt[i] & 0x60000000) >> 29) == 2)
+                // Calculate the sample difference
+                int32_t diff = adpcmTable[adpcmIndex[i]] / 8;
+                if (adpcmData & BIT(0)) diff += adpcmTable[adpcmIndex[i]] / 4;
+                if (adpcmData & BIT(1)) diff += adpcmTable[adpcmIndex[i]] / 2;
+                if (adpcmData & BIT(2)) diff += adpcmTable[adpcmIndex[i]] / 1;
+
+                // Apply the sample difference to the sample
+                if (adpcmData & BIT(3))
                 {
-                    // Get the 4-bit ADPCM data
-                    uint8_t adpcmData = memory->read<uint8_t>(false, soundCurrent[i]);
-                    adpcmData = adpcmToggle[i] ? ((adpcmData & 0xF0) >> 4) : (adpcmData & 0x0F);
-
-                    // Calculate the sample difference
-                    int32_t diff = adpcmTable[adpcmIndex[i]] / 8;
-                    if (adpcmData & BIT(0)) diff += adpcmTable[adpcmIndex[i]] / 4;
-                    if (adpcmData & BIT(1)) diff += adpcmTable[adpcmIndex[i]] / 2;
-                    if (adpcmData & BIT(2)) diff += adpcmTable[adpcmIndex[i]] / 1;
-
-                    // Apply the sample difference to the sample
-                    if (adpcmData & BIT(3))
-                    {
-                        adpcmValue[i] += diff;
-                        if (adpcmValue[i] > 0x7FFF) adpcmValue[i] = 0x7FFF;
-                    }
-                    else
-                    {
-                        adpcmValue[i] -= diff;
-                        if (adpcmValue[i] < -0x7FFF) adpcmValue[i] = -0x7FFF;
-                    }
-
-                    // Calculate the next index
-                    adpcmIndex[i] += indexTable[adpcmData & 0x7];
-                    if (adpcmIndex[i] <  0) adpcmIndex[i] =  0;
-                    if (adpcmIndex[i] > 88) adpcmIndex[i] = 88;
-
-                    // Move to the next 4-bit ADPCM data
-                    adpcmToggle[i] = !adpcmToggle[i];
-                    if (!adpcmToggle[i]) soundCurrent[i]++;
-
-                    // Save the ADPCM values from the loop position
-                    if (soundCurrent[i] == soundSad[i] + soundPnt[i] * 4 && !adpcmToggle[i])
-                    {
-                        adpcmLoopValue[i] = adpcmValue[i];
-                        adpcmLoopIndex[i] = adpcmIndex[i];
-                    }
+                    adpcmValue[i] += diff;
+                    if (adpcmValue[i] > 0x7FFF) adpcmValue[i] = 0x7FFF;
+                }
+                else
+                {
+                    adpcmValue[i] -= diff;
+                    if (adpcmValue[i] < -0x7FFF) adpcmValue[i] = -0x7FFF;
                 }
 
-                // Repeat or end the sound if the end of the data is reached
-                if (soundCurrent[i] == soundSad[i] + (soundPnt[i] + soundLen[i]) * 4)
-                {
-                    if ((soundCnt[i] & 0x18000000) >> 27 == 1) // Loop infinite
-                    {
-                        soundCurrent[i] = soundSad[i] + soundPnt[i] * 4;
+                // Calculate the next index
+                adpcmIndex[i] += indexTable[adpcmData & 0x7];
+                if (adpcmIndex[i] <  0) adpcmIndex[i] =  0;
+                if (adpcmIndex[i] > 88) adpcmIndex[i] = 88;
 
-                        // Restore the ADPCM values from the loop position
-                        if (((soundCnt[i] & 0x60000000) >> 29) == 2)
-                        {
-                            adpcmValue[i] = adpcmLoopValue[i];
-                            adpcmIndex[i] = adpcmLoopIndex[i];
-                            adpcmToggle[i] = false;
-                        }
-                    }
-                    else // One-shot
+                // Move to the next 4-bit ADPCM data
+                adpcmToggle[i] = !adpcmToggle[i];
+                if (!adpcmToggle[i]) soundCurrent[i]++;
+
+                // Save the ADPCM values from the loop position
+                if (soundCurrent[i] == soundSad[i] + soundPnt[i] * 4 && !adpcmToggle[i])
+                {
+                    adpcmLoopValue[i] = adpcmValue[i];
+                    adpcmLoopIndex[i] = adpcmIndex[i];
+                }
+            }
+
+            // Repeat or end the sound if the end of the data is reached
+            if (soundCurrent[i] == soundSad[i] + (soundPnt[i] + soundLen[i]) * 4)
+            {
+                if ((soundCnt[i] & 0x18000000) >> 27 == 1) // Loop infinite
+                {
+                    soundCurrent[i] = soundSad[i] + soundPnt[i] * 4;
+
+                    // Restore the ADPCM values from the loop position
+                    if (((soundCnt[i] & 0x60000000) >> 29) == 2)
                     {
-                        soundCnt[i] &= ~BIT(31);
+                        adpcmValue[i] = adpcmLoopValue[i];
+                        adpcmIndex[i] = adpcmLoopIndex[i];
+                        adpcmToggle[i] = false;
                     }
+                }
+                else // One-shot
+                {
+                    soundCnt[i] &= ~BIT(31);
                 }
             }
         }

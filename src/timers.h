@@ -29,7 +29,7 @@ class Timers
     public:
         Timers(Interpreter *cpu): cpu(cpu) {}
 
-        void tick();
+        void tick(bool twice);
 
         bool shouldTick() { return enabled; }
 
