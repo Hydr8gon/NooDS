@@ -34,7 +34,7 @@ wxEND_EVENT_TABLE()
 
 const char NooPanel::keyMap[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
 
-NooPanel::NooPanel(wxFrame *frame, Emulator *emulator): wxPanel(frame), emulator(emulator)
+NooPanel::NooPanel(wxFrame *frame, Emulator *emulator): wxPanel(frame, wxID_ANY, wxDefaultPosition, wxSize(256, 192 * 2)), emulator(emulator)
 {
     // Set focus so that key presses will be registered
     SetFocus();

@@ -24,6 +24,7 @@ wxBEGIN_EVENT_TABLE(PathDialog, wxDialog)
 EVT_BUTTON(1, PathDialog::bios9Browse)
 EVT_BUTTON(2, PathDialog::bios7Browse)
 EVT_BUTTON(3, PathDialog::firmwareBrowse)
+EVT_BUTTON(wxID_CANCEL, PathDialog::cancel)
 EVT_BUTTON(wxID_OK, PathDialog::confirm)
 wxEND_EVENT_TABLE()
 
@@ -111,6 +112,23 @@ void PathDialog::firmwareBrowse(wxCommandEvent &event)
     // Update the path
     firmwarePath->Clear();
     *firmwarePath << firmwareSelect.GetPath();
+}
+
+void PathDialog::cancel(wxCommandEvent &event)
+{
+    // Discard changes to the ARM9 BIOS path
+    bios9Path->Clear();
+    *bios9Path << Settings::getBios9Path();
+
+    // Discard changes to the ARM7 BIOS path
+    bios7Path->Clear();
+    *bios7Path << Settings::getBios7Path();
+
+    // Discard changes to the firmware path
+    firmwarePath->Clear();
+    *firmwarePath << Settings::getFirmwarePath();
+
+    Show(false);
 }
 
 void PathDialog::confirm(wxCommandEvent &event)
