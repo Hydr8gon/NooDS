@@ -91,6 +91,10 @@
     <ClCompile Include="src\core.cpp" />
     <ClCompile Include="src\cp15.cpp" />
     <ClCompile Include="src\desktop\main.cpp" />
+    <ClCompile Include="src\desktop\noo_app.cpp" />
+    <ClCompile Include="src\desktop\noo_frame.cpp" />
+    <ClCompile Include="src\desktop\noo_panel.cpp" />
+    <ClCompile Include="src\desktop\path_dialog.cpp" />
     <ClCompile Include="src\dma.cpp" />
     <ClCompile Include="src\gpu.cpp" />
     <ClCompile Include="src\gpu_2d.cpp" />
@@ -112,6 +116,10 @@
     <ClInclude Include="src\core.h" />
     <ClInclude Include="src\cp15.h" />
     <ClInclude Include="src\defines.h" />
+    <ClInclude Include="src\desktop\noo_app.h" />
+    <ClInclude Include="src\desktop\noo_frame.h" />
+    <ClInclude Include="src\desktop\noo_panel.h" />
+    <ClInclude Include="src\desktop\path_dialog.h" />
     <ClInclude Include="src\dma.h" />
     <ClInclude Include="src\gpu.h" />
     <ClInclude Include="src\gpu_2d.h" />

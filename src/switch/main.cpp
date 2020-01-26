@@ -27,28 +27,28 @@
 const uint32_t keyMap[] = { KEY_A, KEY_B, KEY_MINUS, KEY_PLUS, KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN, KEY_ZR, KEY_ZL, KEY_X, KEY_Y };
 
 Core *core;
-Thread coreThread, audioThread;
 bool running = true;
+Thread coreThread, audioThread;
 
 AudioOutBuffer audioBuffers[2];
 AudioOutBuffer *audioReleasedBuffer;
-s16 *audioData[2];
-u32 count;
+int16_t *audioData[2];
+uint32_t count;
 
 void runCore(void *args)
 {
+    // Run the emulator
     while (running)
         core->runFrame();
 }
 
 void outputAudio(void *args)
 {
+    // The NDS sample rate is 32768Hz, but audout uses 48000Hz
+    // 1024 samples at 48000Hz is equal to ~700 samples at 32768Hz
     while (running)
     {
         audoutWaitPlayFinish(&audioReleasedBuffer, &count, U64_MAX);
-
-        // The NDS sample rate is 32768Hz, but audout uses 48000Hz
-        // 1024 samples at 48000Hz is equal to ~700 samples at 32768Hz
 
         // Get 700 samples at the original rate
         uint32_t original[700];
@@ -120,9 +120,9 @@ int main()
     // Setup the audio buffer
     for (int i = 0; i < 2; i++)
     {
-        int size = 1024 * 2 * sizeof(s16);
+        int size = 1024 * 2 * sizeof(int16_t);
         int alignedSize = (size + 0xFFF) & ~0xFFF;
-        audioData[i] = (s16*)memalign(0x1000, size);
+        audioData[i] = (int16_t*)memalign(0x1000, size);
         memset(audioData[i], 0, alignedSize);
         audioBuffers[i].next = NULL;
         audioBuffers[i].buffer = audioData[i];
@@ -139,6 +139,7 @@ int main()
     // Start the emulator thread
     threadCreate(&coreThread, runCore, NULL, NULL, 0x8000, 0x30, 1);
     threadStart(&coreThread);
+
     appletLockExit();
 
     while (appletMainLoop())
@@ -173,10 +174,11 @@ int main()
             core->releaseScreen();
         }
 
-        // Draw the display
         uint32_t stride;
         uint32_t *switchBuf = (uint32_t*)framebufferBegin(&fb, &stride);
         uint32_t *coreBuf = core->getFramebuffer();
+
+        // Draw the display
         for (int y = 0; y < 192 * 2; y++)
         {
             for (int x = 0; x < 256 * 2; x++)
@@ -185,6 +187,7 @@ int main()
                 switchBuf[(y + 168) * stride / sizeof(uint32_t) + (x + 640)] = rgb6ToRgba8(coreBuf[((y / 2) + 192) * 256 + (x / 2)]);
             }
         }
+
         framebufferEnd(&fb);
     }
 

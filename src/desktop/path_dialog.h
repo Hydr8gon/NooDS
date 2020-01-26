@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2020 Hydr8gon
+    Copyright 2020 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,7 +17,27 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "noo_app.h"
+#ifndef PATH_DIALOG_H
+#define PATH_DIALOG_H
 
-// Let wxWidgets handle the main function
-wxIMPLEMENT_APP(NooApp);
+#include <wx/wx.h>
+
+class PathDialog: public wxDialog
+{
+    public:
+        PathDialog();
+
+    private:
+        wxTextCtrl *bios9Path;
+        wxTextCtrl *bios7Path;
+        wxTextCtrl *firmwarePath;
+
+        void bios9Browse(wxCommandEvent &event);
+        void bios7Browse(wxCommandEvent &event);
+        void firmwareBrowse(wxCommandEvent &event);
+        void confirm(wxCommandEvent &event);
+
+        wxDECLARE_EVENT_TABLE();
+};
+
+#endif // PATH_DIALOG_H

@@ -17,7 +17,26 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "noo_app.h"
+#ifndef NOO_APP_H
+#define NOO_APP_H
 
-// Let wxWidgets handle the main function
-wxIMPLEMENT_APP(NooApp);
+#include "portaudio.h"
+#include <wx/wx.h>
+
+#include "noo_panel.h"
+
+class NooApp: public wxApp
+{
+    private:
+        NooFrame *frame;
+        NooPanel *panel;
+        Emulator emulator;
+
+        bool OnInit();
+        void requestDraw(wxIdleEvent &event);
+
+        static int audioCallback(const void *in, void *out, unsigned long frames,
+                                 const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
+};
+
+#endif // NOO_APP_H
