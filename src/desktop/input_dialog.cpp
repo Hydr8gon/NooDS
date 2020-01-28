@@ -157,9 +157,9 @@ InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Settings")
     for (int i = 0; i < 12; i++)
         keyMap[i] = NooApp::getKeyMap(i);
 
-    // Determine the height of a text box
+    // Determine the height of a button
     // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
-    wxTextCtrl *dummy = new wxTextCtrl(this, wxID_ANY, "");
+    wxButton *dummy = new wxButton(this, wxID_ANY, "");
     int size = dummy->GetSize().y;
     delete dummy;
 

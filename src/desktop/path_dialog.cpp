@@ -30,28 +30,28 @@ wxEND_EVENT_TABLE()
 
 PathDialog::PathDialog(): wxDialog(nullptr, wxID_ANY, "Path Settings")
 {
-    // Determine the height of a text box
+    // Determine the height of a button
     // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
-    wxTextCtrl *dummy = new wxTextCtrl(this, wxID_ANY, "");
+    wxButton *dummy = new wxButton(this, wxID_ANY, "");
     int size = dummy->GetSize().y;
     delete dummy;
 
     // Set up the ARM9 BIOS path setting
     wxBoxSizer *arm9Sizer = new wxBoxSizer(wxHORIZONTAL);
     arm9Sizer->Add(new wxStaticText(this, wxID_ANY, "ARM9 BIOS:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
-    arm9Sizer->Add(bios9Path = new wxTextCtrl(this, wxID_ANY, Settings::getBios9Path(), wxDefaultPosition, wxSize(size * 6, size)), 0);
+    arm9Sizer->Add(bios9Path = new wxTextCtrl(this, wxID_ANY, Settings::getBios9Path(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
     arm9Sizer->Add(new wxButton(this, 1, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the ARM7 BIOS path setting
     wxBoxSizer *arm7Sizer = new wxBoxSizer(wxHORIZONTAL);
     arm7Sizer->Add(new wxStaticText(this, wxID_ANY, "ARM7 BIOS:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
-    arm7Sizer->Add(bios7Path = new wxTextCtrl(this, wxID_ANY, Settings::getBios7Path(), wxDefaultPosition, wxSize(size * 6, size)), 0);
+    arm7Sizer->Add(bios7Path = new wxTextCtrl(this, wxID_ANY, Settings::getBios7Path(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
     arm7Sizer->Add(new wxButton(this, 2, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the firmware path setting
     wxBoxSizer *firmSizer = new wxBoxSizer(wxHORIZONTAL);
     firmSizer->Add(new wxStaticText(this, wxID_ANY, "Firmware:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
-    firmSizer->Add(firmwarePath = new wxTextCtrl(this, wxID_ANY, Settings::getFirmwarePath(), wxDefaultPosition, wxSize(size * 6, size)), 0);
+    firmSizer->Add(firmwarePath = new wxTextCtrl(this, wxID_ANY, Settings::getFirmwarePath(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
     firmSizer->Add(new wxButton(this, 3, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the cancel and confirm buttons
