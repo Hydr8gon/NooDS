@@ -90,6 +90,7 @@
     <ClCompile Include="src\cartridge.cpp" />
     <ClCompile Include="src\core.cpp" />
     <ClCompile Include="src\cp15.cpp" />
+    <ClCompile Include="src\desktop\input_dialog.cpp" />
     <ClCompile Include="src\desktop\main.cpp" />
     <ClCompile Include="src\desktop\noo_app.cpp" />
     <ClCompile Include="src\desktop\noo_frame.cpp" />
@@ -116,6 +117,7 @@
     <ClInclude Include="src\core.h" />
     <ClInclude Include="src\cp15.h" />
     <ClInclude Include="src\defines.h" />
+    <ClInclude Include="src\desktop\input_dialog.h" />
     <ClInclude Include="src\desktop\noo_app.h" />
     <ClInclude Include="src\desktop\noo_frame.h" />
     <ClInclude Include="src\desktop\noo_panel.h" />

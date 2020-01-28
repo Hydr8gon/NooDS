@@ -20,6 +20,8 @@
 #include "settings.h"
 #include "defines.h"
 
+bool Settings::loaded = false;
+
 std::string Settings::bios9Path = "bios9.bin";
 std::string Settings::bios7Path = "bios7.bin";
 std::string Settings::firmwarePath = "firmware.bin";
@@ -35,8 +37,13 @@ std::vector<Setting> Settings::settings =
     Setting("limitFps",     &limitFps,     false)
 };
 
-void Settings::load()
+void Settings::load(std::vector<Setting> platformSettings)
 {
+    if (loaded) return;
+
+    // Add the platform settings
+    settings.insert(settings.end(), platformSettings.begin(), platformSettings.end());
+
     // Attempt to open the settings file
     // If the file can't be opened, the default values will be used
     FILE *settingsFile = fopen("noods.ini", "r");
@@ -66,6 +73,7 @@ void Settings::load()
     }
 
     fclose(settingsFile);
+    loaded = true;
 }
 
 void Settings::save()

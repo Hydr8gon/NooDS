@@ -27,10 +27,17 @@
 
 class NooApp: public wxApp
 {
+    public:
+        static int getKeyMap(int index) { return keyMap[index]; }
+
+        static void setKeyMap(int index, int value) { keyMap[index] = value; }
+
     private:
         NooFrame *frame;
         NooPanel *panel;
         Emulator emulator;
+
+        static int keyMap[12];
 
         bool OnInit();
         void requestDraw(wxIdleEvent &event);

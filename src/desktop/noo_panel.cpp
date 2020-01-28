@@ -20,6 +20,7 @@
 #include <wx/rawbmp.h>
 
 #include "noo_panel.h"
+#include "noo_app.h"
 
 wxBEGIN_EVENT_TABLE(NooPanel, wxPanel)
 EVT_ERASE_BACKGROUND(NooPanel::clear)
@@ -31,8 +32,6 @@ EVT_LEFT_DOWN(NooPanel::pressScreen)
 EVT_MOTION(NooPanel::pressScreen)
 EVT_LEFT_UP(NooPanel::releaseScreen)
 wxEND_EVENT_TABLE()
-
-const char NooPanel::keyMap[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
 
 NooPanel::NooPanel(wxFrame *frame, Emulator *emulator): wxPanel(frame, wxID_ANY, wxDefaultPosition, wxSize(256, 192 * 2)), emulator(emulator)
 {
@@ -103,7 +102,7 @@ void NooPanel::pressKey(wxKeyEvent &event)
     // Send a key press to the core
     for (int i = 0; i < 12; i++)
     {
-        if (event.GetKeyCode() == keyMap[i])
+        if (event.GetKeyCode() == NooApp::getKeyMap(i))
             emulator->core->pressKey(i);
     }
 }
@@ -115,7 +114,7 @@ void NooPanel::releaseKey(wxKeyEvent &event)
     // Send a key release to the core
     for (int i = 0; i < 12; i++)
     {
-        if (event.GetKeyCode() == keyMap[i])
+        if (event.GetKeyCode() == NooApp::getKeyMap(i))
             emulator->core->releaseKey(i);
     }
 }

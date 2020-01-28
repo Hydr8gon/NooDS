@@ -23,6 +23,7 @@
 #include <thread>
 #include <wx/wx.h>
 
+#include "input_dialog.h"
 #include "path_dialog.h"
 #include "../core.h"
 
@@ -39,6 +40,7 @@ class NooFrame: public wxFrame
 
     private:
         PathDialog pathDialog;
+        InputDialog inputDialog;
         Emulator *emulator;
         std::thread *coreThread;
 
@@ -48,6 +50,7 @@ class NooFrame: public wxFrame
         void loadRom(wxCommandEvent &event);
         void bootFirmware(wxCommandEvent &event);
         void pathSettings(wxCommandEvent &event);
+        void inputSettings(wxCommandEvent &event);
         void directBootToggle(wxCommandEvent &event);
         void limitFpsToggle(wxCommandEvent &event);
         void exit(wxCommandEvent &event);

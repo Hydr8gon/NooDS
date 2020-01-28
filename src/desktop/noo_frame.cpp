@@ -24,13 +24,14 @@ wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
 EVT_MENU(1, NooFrame::loadRom)
 EVT_MENU(2, NooFrame::bootFirmware)
 EVT_MENU(3, NooFrame::pathSettings)
-EVT_MENU(4, NooFrame::directBootToggle)
-EVT_MENU(5, NooFrame::limitFpsToggle)
+EVT_MENU(4, NooFrame::inputSettings)
+EVT_MENU(5, NooFrame::directBootToggle)
+EVT_MENU(6, NooFrame::limitFpsToggle)
 EVT_MENU(wxID_EXIT, NooFrame::exit)
 EVT_CLOSE(NooFrame::stop)
 wxEND_EVENT_TABLE()
 
-NooFrame::NooFrame(Emulator *emulator): wxFrame(NULL, wxID_ANY, "NooDS"), emulator(emulator)
+NooFrame::NooFrame(Emulator *emulator): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator)
 {
     // Set up the File menu
     wxMenu *fileMenu = new wxMenu();
@@ -42,11 +43,12 @@ NooFrame::NooFrame(Emulator *emulator): wxFrame(NULL, wxID_ANY, "NooDS"), emulat
     // Set up the Settings menu
     wxMenu *settingsMenu = new wxMenu();
     settingsMenu->Append(3, "&Path Settings");
+    settingsMenu->Append(4, "&Input Settings");
     settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(4, "&Direct Boot");
-    settingsMenu->Check(4, Settings::getDirectBoot());
-    settingsMenu->AppendCheckItem(5, "&Limit FPS");
-    settingsMenu->Check(5, Settings::getLimitFps());
+    settingsMenu->AppendCheckItem(5, "&Direct Boot");
+    settingsMenu->Check(5, Settings::getDirectBoot());
+    settingsMenu->AppendCheckItem(6, "&Limit FPS");
+    settingsMenu->Check(6, Settings::getLimitFps());
 
     // Set up the menu bar
     wxMenuBar *menuBar = new wxMenuBar();
@@ -137,6 +139,13 @@ void NooFrame::pathSettings(wxCommandEvent &event)
     // Show the path settings dialog
     pathDialog.Centre();
     pathDialog.Show(true);
+}
+
+void NooFrame::inputSettings(wxCommandEvent &event)
+{
+    // Show the input settings dialog
+    inputDialog.Centre();
+    inputDialog.Show(true);
 }
 
 void NooFrame::directBootToggle(wxCommandEvent &event)

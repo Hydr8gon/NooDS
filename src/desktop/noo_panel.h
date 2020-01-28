@@ -36,8 +36,6 @@ class NooPanel: public wxPanel
         float scale = 1.0f;
         bool needsClear = false;
 
-        static const char keyMap[12];
-
         void clear(wxEraseEvent &event);
         void draw(wxPaintEvent &event);
         void resize(wxSizeEvent &event);

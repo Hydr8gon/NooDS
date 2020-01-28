@@ -20,10 +20,29 @@
 #include "noo_app.h"
 #include "../settings.h"
 
+int NooApp::keyMap[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
+
 bool NooApp::OnInit()
 {
+    // Define the platform settings
+    std::vector<Setting> platformSettings =
+    {
+        Setting("keyA",      &keyMap[0],  false),
+        Setting("keyB",      &keyMap[1],  false),
+        Setting("keySelect", &keyMap[2],  false),
+        Setting("keyStart",  &keyMap[3],  false),
+        Setting("keyRight",  &keyMap[4],  false),
+        Setting("keyLeft",   &keyMap[5],  false),
+        Setting("keyUp",     &keyMap[6],  false),
+        Setting("keyDown",   &keyMap[7],  false),
+        Setting("keyR",      &keyMap[8],  false),
+        Setting("keyL",      &keyMap[9],  false),
+        Setting("keyX",      &keyMap[10], false),
+        Setting("keyY",      &keyMap[11], false)
+    };
+
     // Load the settings
-    Settings::load();
+    Settings::load(platformSettings);
 
     // Set up the window
     frame = new NooFrame(&emulator);

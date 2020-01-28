@@ -80,7 +80,7 @@ uint32_t rgb6ToRgba8(uint32_t color)
 int main()
 {
     // Load the settings
-    Settings::load();
+    Settings::load(std::vector<Setting>());
 
     // Prepare the core
     try
