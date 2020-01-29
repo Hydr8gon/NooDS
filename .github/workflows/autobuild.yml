@@ -8,10 +8,8 @@ jobs:
     steps:
     - name: Update package lists
       run: sudo apt update
-    - name: Install wxWidgets
-      run: sudo apt install libwxgtk3.0-dev -y
-    - name: Install PortAudio
-      run: sudo apt install portaudio19-dev -y
+    - name: Install wxWidgets and PortAudio
+      run: sudo apt install libwxgtk3.0-dev portaudio19-dev -y
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
@@ -26,10 +24,8 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - name: Install wxWidgets
-      run: brew install wxmac
-    - name: Install PortAudio
-      run: brew install portaudio
+    - name: Install wxWidgets and PortAudio
+      run: brew install wxmac portaudio
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
@@ -44,35 +40,25 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Download wxWidgets
-      run: choco install wxwidgets
+    - name: Install MSYS2
+      run: choco install msys2
       shell: cmd
-    - name: Compile wxWidgets
-      run: call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" & nmake.exe -f makefile.vc BUILD=release TARGET_CPU=x64
-      working-directory: C:\wxWidgets-3.1.2\build\msw
+    - name: Update package lists
+      run: C:\tools\msys64\usr\bin\bash -lc "pacman -Syu --noconfirm"
       shell: cmd
-    - name: Download PortAudio
-      run: git clone https://git.assembla.com/portaudio.git -b pa_stable_v190600_20161030
-      working-directory: C:\
-      shell: cmd
-    - name: Configure PortAudio
-      run: call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" & cmake .. -G "Visual Studio 16 2019"
-      working-directory: C:\portaudio\build
-      shell: cmd
-    - name: Compile PortAudio
-      run: call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" & msbuild.exe portaudio.sln /property:Configuration=Release
-      working-directory: C:\portaudio\build
+    - name: Install MinGW, wxWidgets, and PortAudio
+      run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-wxWidgets mingw-w64-x86_64-portaudio make --noconfirm"
       shell: cmd
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" & msbuild.exe noods.sln
+      run: C:\tools\msys64\usr\bin\bash -lc "cd /d/a/NooDS/NooDS && export PATH=$PATH:/mingw64/bin && make"
       shell: cmd
     - name: Upload
       uses: actions/upload-artifact@master
       with:
         name: noods-windows
-        path: x64/Release/noods.exe
+        path: noods.exe
 
   build-switch:
     runs-on: ubuntu-latest
@@ -91,3 +77,4 @@ jobs:
       with:
         name: noods-switch
         path: noods.nro
+

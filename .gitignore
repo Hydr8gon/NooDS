@@ -1,5 +1,4 @@
 build/
-x64/
 bios7.bin
 bios9.bin
 firmware.bin
@@ -8,4 +7,3 @@ noods.elf
 noods.ini
 noods.nacp
 noods.nro
-noods.vcxproj.user
