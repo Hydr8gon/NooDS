@@ -213,31 +213,12 @@ void Gpu::scanline355()
 
     if (vCount == 262) // End of frame
     {
-        // Copy the sub-framebuffers to the main framebuffer on frame completion
-        if (powCnt1 & BIT(0)) // LCDs enabled
-        {
-            if (powCnt1 & BIT(15)) // Display swap
-            {
-                memcpy(&framebuffer[0],         engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-                memcpy(&framebuffer[256 * 192], engineB->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-            }
-            else
-            {
-                memcpy(&framebuffer[0],         engineB->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-                memcpy(&framebuffer[256 * 192], engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-            }
-        }
-        else
-        {
-            memset(framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
-        }
-
-        // Start the next frame
-        vCount = 0;
-
         // Clear the V-blank flag
         dispStat9 &= ~BIT(0);
         dispStat7 &= ~BIT(0);
+
+        // Start the next frame
+        vCount = 0;
     }
     else
     {
@@ -256,8 +237,28 @@ void Gpu::scanline355()
             if (dispStat7 & BIT(3))
                 arm7->sendInterrupt(0);
 
+            // Swap the buffers of the 3D engine if needed
             if (gpu3D->shouldSwap())
                 gpu3D->swapBuffers();
+
+            // Copy the completed sub-framebuffers to the main framebuffer
+            if (powCnt1 & BIT(0)) // LCDs enabled
+            {
+                if (powCnt1 & BIT(15)) // Display swap
+                {
+                    memcpy(&framebuffer[0],         engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    memcpy(&framebuffer[256 * 192], engineB->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                }
+                else
+                {
+                    memcpy(&framebuffer[0],         engineB->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    memcpy(&framebuffer[256 * 192], engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                }
+            }
+            else
+            {
+                memset(framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
+            }
         }
     }
 
