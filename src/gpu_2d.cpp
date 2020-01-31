@@ -673,12 +673,6 @@ void Gpu2D::drawObjects(int line)
         if (spriteY < 0 || spriteY >= height2)
             continue;
 
-        // Get the current tile
-        // For 1D tile mapping, the boundary between tiles can be 32, 64, 128, or 256 bytes
-        uint16_t bound = (dispCnt & BIT(4)) ? (32 << ((dispCnt & 0x00300000) >> 20)) : 32;
-        uint8_t *tile = memory->getMappedVram(objVramAddr + (object[2] & 0x03FF) * bound);
-        if (!tile) continue;
-
         // Get the X coordinate and wrap it around if it exceeds the screen bounds
         int x = (object[1] & 0x01FF);
         if (x >= 256) x -= 512;
@@ -686,7 +680,71 @@ void Gpu2D::drawObjects(int line)
         // Determine the layer to draw to based on the priority of the object
         uint32_t *layer = layers[4 + ((object[2] & 0x0C00) >> 10)];
 
-        // Draw the object
+        // Draw the object if it's a bitmap
+        if (((object[0] & 0x0C00) >> 10) == 3)
+        {
+            uint32_t address;
+            int bitmapWidth;
+
+            // Determine the address and width of the bitmap
+            if (dispCnt & BIT(6)) // 1D mapping
+            {
+                address = objVramAddr + (object[2] & 0x03FF) * ((dispCnt & BIT(22)) ? 256 : 128);
+                bitmapWidth = width;
+            }
+            else // 2D mapping
+            {
+                uint8_t xMask = (dispCnt & BIT(5)) ? 0x1F : 0x0F;
+                address = objVramAddr + (object[2] & 0x03FF & xMask) * 0x10 + (object[2] & 0x03FF & ~xMask) * 0x80;
+                bitmapWidth = (dispCnt & BIT(5)) ? 256 : 128;
+            }
+
+            // Get the bitmap data
+            uint8_t *data = memory->getMappedVram(address);
+            if (!data) continue;
+
+            if (object[0] & BIT(8)) // Rotscale
+            {
+                // Get the rotscale parameters
+                int params[4];
+                for (int j = 0; j < 4; j++)
+                    params[j] = (int16_t)U8TO16(oam, ((object[1] & 0x3E00) >> 9) * 0x20 + j * 8 + 6);
+
+                for (int j = 0; j < width2; j++)
+                {
+                    // Calculate the rotscaled X coordinate relative to the sprite
+                    int rotscaleX = ((params[0] * (j - width2 / 2) + params[1] * (spriteY - height2 / 2)) >> 8) + width / 2;
+                    if (rotscaleX < 0 || rotscaleX >= width) continue;
+
+                    // Calculate the rotscaled Y coordinate relative to the sprite
+                    int rotscaleY = ((params[2] * (j - width2 / 2) + params[3] * (spriteY - height2 / 2)) >> 8) + height / 2;
+                    if (rotscaleY < 0 || rotscaleY >= height) continue;
+
+                    // Draw a pixel of the bitmap object
+                    if (x + j >= 0 && x + j < 256)
+                        layer[line * 256 + x + j] = rgb5ToRgba6(U8TO16(data, (rotscaleY * bitmapWidth + rotscaleX) * 2));
+                }
+            }
+            else
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    // Draw a pixel of the bitmap object
+                    if (x + j >= 0 && x + j < 256)
+                        layer[line * 256 + x + j] = rgb5ToRgba6(U8TO16(data, (spriteY * bitmapWidth + j) * 2));
+                }
+            }
+
+            continue;
+        }
+
+        // Get the current tile
+        // For 1D tile mapping, the boundary between tiles can be 32, 64, 128, or 256 bytes
+        uint16_t bound = (dispCnt & BIT(4)) ? (32 << ((dispCnt & 0x00300000) >> 20)) : 32;
+        uint8_t *tile = memory->getMappedVram(objVramAddr + (object[2] & 0x03FF) * bound);
+        if (!tile) continue;
+
+        // Draw the object if it's tile-based
         if (object[0] & BIT(8)) // Rotscale
         {
             // Get the rotscale parameters

@@ -73,9 +73,9 @@ void Gpu::scanline256()
                     // Choose from 2D engine A or the 3D engine
                     uint32_t *source;
                     if (dispCapCnt & BIT(24))
-                        source = &engineA->getFramebuffer()[vCount * 256];
-                    else
                         source = &gpu3DRenderer->getLineCache()[(vCount % 48) * 256];
+                    else
+                        source = &engineA->getFramebuffer()[vCount * 256];
 
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
