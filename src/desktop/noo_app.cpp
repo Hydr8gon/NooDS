@@ -55,7 +55,7 @@ bool NooApp::OnInit()
     // Start the audio service
     PaStream *stream;
     Pa_Initialize();
-    Pa_OpenDefaultStream(&stream, 0, 2, paInt16, 32768, 1024, audioCallback, &emulator);
+    Pa_OpenDefaultStream(&stream, 0, 2, paInt16, 48000, 1024, audioCallback, &emulator);
     Pa_StartStream(stream);
 
     return true;
@@ -78,10 +78,17 @@ int NooApp::audioCallback(const void *in, void *out, unsigned long frames,
     int16_t *buffer = (int16_t*)out;
     Emulator *emulator = (Emulator*)data;
 
-    // Fill the buffer with samples from the core
+    // The NDS sample rate is 32768Hz, and PortAudio supports this frequency directly
+    // It causes issues on some systems though, so a more standard frequency of 48000Hz is used instead
+    // Get 700 samples at 32768Hz, which is equal to about 1024 samples at 48000Hz
+    uint32_t original[700];
+    for (int i = 0; i < 700; i++)
+        original[i] = emulator->running ? emulator->core->getSample() : 0;
+
+    // Stretch the 700 samples out to 1024 samples in the audio buffer
     for (int i = 0; i < frames; i++)
     {
-        uint32_t sample = emulator->running ? emulator->core->getSample() : 0;
+        uint32_t sample = original[i * 700 / 1024];
         buffer[i * 2 + 0] = sample >>  0;
         buffer[i * 2 + 1] = sample >> 16;
     }
