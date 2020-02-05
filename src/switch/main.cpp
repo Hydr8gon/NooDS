@@ -87,17 +87,31 @@ int main()
         // Attempt to boot a ROM
         core = new Core("rom.nds");
     }
-    catch (std::exception *e)
+    catch (int e)
     {
-        try
+        // Handle errors during ROM boot
+        switch (e)
         {
-            // Attempt to boot the firmware if ROM loading failed
-            core = new Core();
-        }
-        catch (std::exception *e)
-        {
-            // Exit if the BIOS or firmware files are missing
-            return 1;
+            case 1: // Missing BIOS and/or firmware files
+            {
+                // Nothing can be done, so quit
+                return 1;
+            }
+
+            case 2: // Unreadable ROM file
+            {
+                // Boot the firmware instead
+                core = new Core();
+                break;
+            }
+
+            case 3: // Missing save file
+            {
+                // Assume a save type of FLASH 512KB and boot the ROM again
+                Core::createSave("rom.nds", 5);
+                core = new Core("rom.nds");
+                break;
+            }
         }
     }
 

@@ -17,27 +17,32 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef PATH_DIALOG_H
-#define PATH_DIALOG_H
+#ifndef SAVE_DIALOG_H
+#define SAVE_DIALOG_H
 
+#include <string>
 #include <wx/wx.h>
 
-class PathDialog: public wxDialog
+class SaveDialog: public wxDialog
 {
     public:
-        PathDialog();
+        SaveDialog(std::string path);
 
     private:
-        wxTextCtrl *bios9Path;
-        wxTextCtrl *bios7Path;
-        wxTextCtrl *firmwarePath;
+        std::string path;
+        int selection = 0;
 
-        void bios9Browse(wxCommandEvent &event);
-        void bios7Browse(wxCommandEvent &event);
-        void firmwareBrowse(wxCommandEvent &event);
+        void eeprom05(wxCommandEvent &event);
+        void eeprom8(wxCommandEvent &event);
+        void eeprom64(wxCommandEvent &event);
+        void fram32(wxCommandEvent &event);
+        void flash256(wxCommandEvent &event);
+        void flash512(wxCommandEvent &event);
+        void flash1024(wxCommandEvent &event);
+        void flash8192(wxCommandEvent &event);
         void confirm(wxCommandEvent &event);
 
         wxDECLARE_EVENT_TABLE();
 };
 
-#endif // PATH_DIALOG_H
+#endif // SAVE_DIALOG_H

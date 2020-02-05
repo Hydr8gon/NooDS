@@ -18,6 +18,9 @@
 */
 
 #include "noo_frame.h"
+#include "input_dialog.h"
+#include "path_dialog.h"
+#include "save_dialog.h"
 #include "../settings.h"
 
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
@@ -98,15 +101,42 @@ void NooFrame::loadRom(wxCommandEvent &event)
     char path[1024];
     strncpy(path, (const char*)romSelect.GetPath().mb_str(wxConvUTF8), 1023);
 
-    // Attempt to boot the ROM
     try
     {
+        // Attempt to boot the ROM
         emulator->core = new Core(path);
     }
-    catch (std::exception *e)
+    catch (int e)
     {
-        wxMessageBox("Initialization failed. Make sure the path settings point to valid BIOS and firmware files and try again.");
-        return;
+        // Handle errors during ROM boot
+        switch (e)
+        {
+            case 1: // Missing BIOS and/or firmware files
+            {
+                // Inform the user of the error
+                wxMessageBox("Initialization failed. Make sure the path settings point to valid BIOS and firmware files and try again.");
+                return;
+            }
+
+            case 2: // Unreadable ROM file
+            {
+                // Inform the user of the error
+                wxMessageBox("Initialization failed. Make sure the ROM file is accessible and try again.");
+                return;
+            }
+
+            case 3: // Missing save file
+            {
+                // Show the save dialog and boot the ROM again if a save was created
+                SaveDialog saveDialog(path);
+                if (saveDialog.ShowModal() == wxID_OK)
+                {
+                    emulator->core = new Core(path);
+                    break;
+                }
+                return;
+            }
+        }
     }
 
     // Start the core thread
@@ -118,13 +148,14 @@ void NooFrame::bootFirmware(wxCommandEvent &event)
 {
     stopCore();
 
-    // Attempt to boot the firmware
     try
     {
+        // Attempt to boot the firmware
         emulator->core = new Core();
     }
-    catch (std::exception *e)
+    catch (int e)
     {
+        // The only error that can happen during firmware boot is missing BIOS and/or firmware files, so inform the user
         wxMessageBox("Initialization failed. Make sure the path settings point to valid BIOS and firmware files and try again.");
         return;
     }
@@ -137,15 +168,15 @@ void NooFrame::bootFirmware(wxCommandEvent &event)
 void NooFrame::pathSettings(wxCommandEvent &event)
 {
     // Show the path settings dialog
-    pathDialog.Centre();
-    pathDialog.Show(true);
+    PathDialog pathDialog;
+    pathDialog.ShowModal();
 }
 
 void NooFrame::inputSettings(wxCommandEvent &event)
 {
     // Show the input settings dialog
-    inputDialog.Centre();
-    inputDialog.Show(true);
+    InputDialog inputDialog;
+    inputDialog.ShowModal();
 }
 
 void NooFrame::directBootToggle(wxCommandEvent &event)

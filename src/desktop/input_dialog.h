@@ -62,7 +62,6 @@ class InputDialog: public wxDialog
         void remapRight(wxCommandEvent &event);
         void remapL(wxCommandEvent &event);
         void remapR(wxCommandEvent &event);
-        void cancel(wxCommandEvent &event);
         void confirm(wxCommandEvent &event);
         void pressKey(wxKeyEvent &event);
 

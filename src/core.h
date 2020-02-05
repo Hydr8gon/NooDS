@@ -48,6 +48,8 @@ class Core
         Core(std::string filename);
         ~Core();
 
+        static void createSave(std::string filename, int type);
+
         void runFrame();
 
         void pressKey(int key)         { input.pressKey(key);                       }

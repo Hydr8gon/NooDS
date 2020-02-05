@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <exception>
 #include <thread>
 
 #include "core.h"
@@ -33,7 +32,7 @@ Core::Core(): cart9(&arm9, &memory), cart7(&arm7, &memory), cp15(&arm9), dma9(&c
 {
     // Attempt to load the firmware
     FILE *firmwareFile = fopen(Settings::getFirmwarePath().c_str(), "rb");
-    if (!firmwareFile) throw new std::exception;
+    if (!firmwareFile) throw 1;
     fread(firmware, sizeof(uint8_t), 0x40000, firmwareFile);
     fclose(firmwareFile);
 }
@@ -42,7 +41,7 @@ Core::Core(std::string filename): Core()
 {
     // Attempt to load a ROM
     FILE *romFile = fopen(filename.c_str(), "rb");
-    if (!romFile) throw new std::exception;
+    if (!romFile) throw 2;
     fseek(romFile, 0, SEEK_END);
     uint32_t romSize = ftell(romFile);
     fseek(romFile, 0, SEEK_SET);
@@ -53,15 +52,13 @@ Core::Core(std::string filename): Core()
     // Attempt to load a save file
     saveName = filename.substr(0, filename.rfind(".")) + ".sav";
     FILE *saveFile = fopen(saveName.c_str(), "rb");
-    if (saveFile)
-    {
-        fseek(saveFile, 0, SEEK_END);
-        saveSize = ftell(saveFile);
-        fseek(saveFile, 0, SEEK_SET);
-        save = new uint8_t[saveSize];
-        fread(save, sizeof(uint8_t), saveSize, saveFile);
-        fclose(saveFile);
-    }
+    if (!saveFile) throw 3;
+    fseek(saveFile, 0, SEEK_END);
+    saveSize = ftell(saveFile);
+    fseek(saveFile, 0, SEEK_SET);
+    save = new uint8_t[saveSize];
+    fread(save, sizeof(uint8_t), saveSize, saveFile);
+    fclose(saveFile);
 
     // "Insert" the cartridge
     cart9.setRom(rom, romSize, save, saveSize);
@@ -146,6 +143,39 @@ Core::~Core()
 
     if (rom)  delete[] rom;
     if (save) delete[] save;
+}
+
+void Core::createSave(std::string filename, int type)
+{
+    // Determine the save size
+    int saveSize;
+    switch (type)
+    {
+        case 0:  saveSize =    0x200; break; // EEPROM 0.5KB
+        case 1:  saveSize =   0x2000; break; // EEPROM   8KB
+        case 2:  saveSize =   0x8000; break; // FRAM    32KB
+        case 3:  saveSize =  0x10000; break; // EEPROM  64KB
+        case 4:  saveSize =  0x40000; break; // FLASH  256KB
+        case 5:  saveSize =  0x80000; break; // FLASH  512KB
+        case 6:  saveSize = 0x100000; break; // FLASH 1024KB
+        default: saveSize = 0x800000; break; // FLASH 8192KB
+    }
+
+    // Create an empty save
+    uint8_t *save = new uint8_t[saveSize];
+    for (int i = 0; i < saveSize; i++)
+        save[i] = 0;
+
+    // Write the save to a file
+    std::string saveName = filename.substr(0, filename.rfind(".")) + ".sav";
+    FILE *saveFile = fopen(saveName.c_str(), "wb");
+    if (saveFile)
+    {
+        fwrite(save, sizeof(uint8_t), saveSize, saveFile);
+        fclose(saveFile);
+    }
+
+    delete[] save;
 }
 
 void Core::runFrame()

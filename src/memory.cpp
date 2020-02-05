@@ -18,7 +18,6 @@
 */
 
 #include <cstdio>
-#include <exception>
 
 #include "memory.h"
 #include "defines.h"
@@ -48,13 +47,13 @@ Memory::Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *d
 {
     // Attempt to load the ARM9 BIOS
     FILE *bios9File = fopen(Settings::getBios9Path().c_str(), "rb");
-    if (!bios9File) throw new std::exception;
+    if (!bios9File) throw 1;
     fread(bios9, sizeof(uint8_t), 0x1000, bios9File);
     fclose(bios9File);
 
     // Attempt to load the ARM7 BIOS
     FILE *bios7File = fopen(Settings::getBios7Path().c_str(), "rb");
-    if (!bios7File) throw new std::exception;
+    if (!bios7File) throw 1;
     fread(bios7, sizeof(uint8_t), 0x4000, bios7File);
     fclose(bios7File);
 }

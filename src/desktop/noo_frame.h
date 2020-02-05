@@ -23,8 +23,6 @@
 #include <thread>
 #include <wx/wx.h>
 
-#include "input_dialog.h"
-#include "path_dialog.h"
 #include "../core.h"
 
 struct Emulator
@@ -39,8 +37,6 @@ class NooFrame: public wxFrame
         NooFrame(Emulator *emulator);
 
     private:
-        PathDialog pathDialog;
-        InputDialog inputDialog;
         Emulator *emulator;
         std::thread *coreThread;
 

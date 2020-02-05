@@ -34,7 +34,6 @@ EVT_BUTTON(9,  InputDialog::remapLeft)
 EVT_BUTTON(10, InputDialog::remapRight)
 EVT_BUTTON(11, InputDialog::remapL)
 EVT_BUTTON(12, InputDialog::remapR)
-EVT_BUTTON(wxID_CANCEL, InputDialog::cancel)
 EVT_BUTTON(wxID_OK, InputDialog::confirm)
 EVT_CHAR_HOOK(InputDialog::pressKey)
 wxEND_EVENT_TABLE()
@@ -237,7 +236,7 @@ InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Settings")
     leftContents->Add(ySizer, 1, wxEXPAND | wxALL, size / 8);
     leftContents->Add(startSizer, 1, wxEXPAND | wxALL, size / 8);
     leftContents->Add(selectSizer, 1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(new wxStaticText(this, wxID_ANY, ""), 1);
+    leftContents->Add(new wxStaticText(this, wxID_ANY, ""), 1, wxEXPAND | wxALL, size / 8);
 
     // Combine all of the right contents
     wxBoxSizer *rightContents = new wxBoxSizer(wxVERTICAL);
@@ -387,24 +386,13 @@ void InputDialog::remapR(wxCommandEvent &event)
     keyIndex = 8;
 }
 
-void InputDialog::cancel(wxCommandEvent &event)
-{
-    // Discard changes to the key mappings
-    for (int i = 0; i < 12; i++)
-        keyMap[i] = NooApp::getKeyMap(i);
-
-    resetLabels();
-    Show(false);
-}
-
 void InputDialog::confirm(wxCommandEvent &event)
 {
     // Save the key mappings
     for (int i = 0; i < 12; i++)
         NooApp::setKeyMap(i, keyMap[i]);
 
-    resetLabels();
-    Show(false);
+    event.Skip(true);
 }
 
 void InputDialog::pressKey(wxKeyEvent &event)

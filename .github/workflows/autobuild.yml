@@ -77,4 +77,3 @@ jobs:
       with:
         name: noods-switch
         path: noods.nro
-
