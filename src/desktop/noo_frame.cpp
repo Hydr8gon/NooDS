@@ -82,6 +82,7 @@ void NooFrame::stopCore()
         emulator->running = false;
         coreThread->join();
         delete coreThread;
+        coreThread = nullptr;
     }
 
     // Close the core to ensure the save gets written
