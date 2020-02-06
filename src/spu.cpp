@@ -202,9 +202,9 @@ uint32_t Spu::getSample()
     if (sampleRight < 0x000) sampleRight = 0x000;
     if (sampleRight > 0x3FF) sampleRight = 0x3FF;
 
-    // Expanded the samples to signed 16-bit values and return them
-    sampleLeft  = (sampleLeft  - 0x200) << 6;
-    sampleRight = (sampleRight - 0x200) << 6;
+    // Expand the samples to signed 16-bit values and return them
+    sampleLeft  = (sampleLeft  - 0x200) << 5;
+    sampleRight = (sampleRight - 0x200) << 5;
     return (sampleRight << 16) | (sampleLeft & 0xFFFF);
 }
 
