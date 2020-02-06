@@ -38,7 +38,7 @@ class NooFrame: public wxFrame
 
     private:
         Emulator *emulator;
-        std::thread *coreThread;
+        std::thread *coreThread = nullptr;
 
         void runCore();
         void stopCore();
