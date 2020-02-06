@@ -34,7 +34,7 @@ EVT_MENU(wxID_EXIT, NooFrame::exit)
 EVT_CLOSE(NooFrame::stop)
 wxEND_EVENT_TABLE()
 
-NooFrame::NooFrame(Emulator *emulator): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator)
+NooFrame::NooFrame(Emulator *emulator): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator), coreThread(NULL)
 {
     // Set up the File menu
     wxMenu *fileMenu = new wxMenu();
@@ -82,6 +82,7 @@ void NooFrame::stopCore()
         emulator->running = false;
         coreThread->join();
         delete coreThread;
+        coreThread = NULL;
     }
 
     // Close the core to ensure the save gets written
