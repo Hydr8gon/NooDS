@@ -396,6 +396,10 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x400000D: base -= 0x400000C; size = 2; data = engineA->readBgCnt(2);        break; // BG2CNT (engine A)
             case 0x400000E:
             case 0x400000F: base -= 0x400000E; size = 2; data = engineA->readBgCnt(3);        break; // BG3CNT (engine A)
+            case 0x4000048:
+            case 0x4000049: base -= 0x4000048; size = 2; data = engineA->readWinIn();         break; // WININ (engine A)
+            case 0x400004A:
+            case 0x400004B: base -= 0x400004A; size = 2; data = engineA->readWinOut();        break; // WINOUT (engine A)
             case 0x4000050:
             case 0x4000051: base -= 0x4000050; size = 2; data = engineA->readBldCnt();        break; // BLDCNT (engine A)
             case 0x4000052:
@@ -689,6 +693,10 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x400100D: base -= 0x400100C; size = 2; data = engineB->readBgCnt(2);        break; // BG2CNT (engine B)
             case 0x400100E:
             case 0x400100F: base -= 0x400100E; size = 2; data = engineB->readBgCnt(3);        break; // BG3CNT (engine B)
+            case 0x4001048:
+            case 0x4001049: base -= 0x4001048; size = 2; data = engineB->readWinIn();         break; // WININ (engine B)
+            case 0x400104A:
+            case 0x400104B: base -= 0x400104A; size = 2; data = engineB->readWinOut();        break; // WINOUT (engine B)
             case 0x4001050:
             case 0x4001051: base -= 0x4001050; size = 2; data = engineB->readBldCnt();        break; // BLDCNT (engine B)
             case 0x4001052:
@@ -1024,6 +1032,18 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x400003D:
             case 0x400003E:
             case 0x400003F: base -= 0x400003C; size = 4; engineA->writeBgY(3, mask << (base * 8), data << (base * 8));              break; // BG3Y (engine A)
+            case 0x4000040:
+            case 0x4000041: base -= 0x4000040; size = 2; engineA->writeWinH(0, mask << (base * 8), data << (base * 8));             break; // WIN0H (engine A)
+            case 0x4000042:
+            case 0x4000043: base -= 0x4000042; size = 2; engineA->writeWinH(1, mask << (base * 8), data << (base * 8));             break; // WIN1H (engine A)
+            case 0x4000044:
+            case 0x4000045: base -= 0x4000044; size = 2; engineA->writeWinV(0, mask << (base * 8), data << (base * 8));             break; // WIN0V (engine A)
+            case 0x4000046:
+            case 0x4000047: base -= 0x4000046; size = 2; engineA->writeWinV(1, mask << (base * 8), data << (base * 8));             break; // WIN1V (engine A)
+            case 0x4000048:
+            case 0x4000049: base -= 0x4000048; size = 2; engineA->writeWinIn(mask << (base * 8), data << (base * 8));               break; // WININ (engine A)
+            case 0x400004A:
+            case 0x400004B: base -= 0x400004A; size = 2; engineA->writeWinOut(mask << (base * 8), data << (base * 8));              break; // WINOUT (engine A)
             case 0x4000050:
             case 0x4000051: base -= 0x4000050; size = 2; engineA->writeBldCnt(mask << (base * 8), data << (base * 8));              break; // BLDCNT (engine A)
             case 0x4000052:
@@ -1536,6 +1556,18 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x400103D:
             case 0x400103E:
             case 0x400103F: base -= 0x400103C; size = 4; engineB->writeBgY(3, mask << (base * 8), data << (base * 8));              break; // BG3Y (engine B)
+            case 0x4001040:
+            case 0x4001041: base -= 0x4001040; size = 2; engineB->writeWinH(0, mask << (base * 8), data << (base * 8));             break; // WIN0H (engine B)
+            case 0x4001042:
+            case 0x4001043: base -= 0x4001042; size = 2; engineB->writeWinH(1, mask << (base * 8), data << (base * 8));             break; // WIN1H (engine B)
+            case 0x4001044:
+            case 0x4001045: base -= 0x4001044; size = 2; engineB->writeWinV(0, mask << (base * 8), data << (base * 8));             break; // WIN0V (engine B)
+            case 0x4001046:
+            case 0x4001047: base -= 0x4001046; size = 2; engineB->writeWinV(1, mask << (base * 8), data << (base * 8));             break; // WIN1V (engine B)
+            case 0x4001048:
+            case 0x4001049: base -= 0x4001048; size = 2; engineB->writeWinIn(mask << (base * 8), data << (base * 8));               break; // WININ (engine B)
+            case 0x400104A:
+            case 0x400104B: base -= 0x400104A; size = 2; engineB->writeWinOut(mask << (base * 8), data << (base * 8));              break; // WINOUT (engine B)
             case 0x4001050:
             case 0x4001051: base -= 0x4001050; size = 2; engineB->writeBldCnt(mask << (base * 8), data << (base * 8));              break; // BLDCNT (engine B)
             case 0x4001052:

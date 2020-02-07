@@ -43,6 +43,8 @@ class Gpu2D
 
         uint32_t readDispCnt()      { return dispCnt;      }
         uint16_t readBgCnt(int bg)  { return bgCnt[bg];    }
+        uint16_t readWinIn()        { return winIn;        }
+        uint16_t readWinOut()       { return winOut;       }
         uint16_t readBldCnt()       { return bldCnt;       }
         uint16_t readBldAlpha()     { return bldAlpha;     }
         uint16_t readMasterBright() { return masterBright; }
@@ -57,6 +59,10 @@ class Gpu2D
         void writeBgPD(int bg, uint16_t mask, uint16_t value);
         void writeBgX(int bg, uint32_t mask, uint32_t value);
         void writeBgY(int bg, uint32_t mask, uint32_t value);
+        void writeWinH(int win, uint16_t mask, uint16_t value);
+        void writeWinV(int win, uint16_t mask, uint16_t value);
+        void writeWinIn(uint16_t mask, uint16_t value);
+        void writeWinOut(uint16_t mask, uint16_t value);
         void writeBldCnt(uint16_t mask, uint16_t value);
         void writeBldAlpha(uint16_t mask, uint16_t value);
         void writeBldY(uint8_t value);
@@ -76,6 +82,12 @@ class Gpu2D
         int16_t bgPD[2] = {};
         int32_t bgX[2] = {};
         int32_t bgY[2] = {};
+        uint16_t winX1[2] = {};
+        uint16_t winX2[2] = {};
+        uint16_t winY1[2] = {};
+        uint16_t winY2[2] = {};
+        uint16_t winIn = 0;
+        uint16_t winOut = 0;
         uint16_t bldCnt = 0;
         uint16_t bldAlpha = 0;
         uint8_t bldY = 0;

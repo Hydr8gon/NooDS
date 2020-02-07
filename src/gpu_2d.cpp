@@ -131,23 +131,35 @@ void Gpu2D::drawScanline(int line)
             // Copy the pixels from the highest priority layer to the framebuffer
             for (int i = 0; i < 256; i++)
             {
+                uint8_t enabled = BIT(5) | (dispCnt >> 8);
                 uint32_t *pixel = &framebuffer[line * 256 + i];
                 uint32_t bldPixel1 = 0, bldPixel2 = 0;
                 int bldLayer = 0, bldLayer1 = 0, bldLayer2 = 0;
+
+                // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
+                if (dispCnt & 0xE000) // Windows enabled
+                {
+                    if ((dispCnt & BIT(13)) && i >= winX1[0] && i < winX2[0] && line >= winY1[0] && line < winY2[0])
+                        enabled &= winIn >> 0; // Window 0
+                    else if ((dispCnt & BIT(14)) && i >= winX1[1] && i < winX2[1] && line >= winY1[1] && line < winY2[1])
+                        enabled &= winIn >> 8; // Window 1
+                    else if ((dispCnt & BIT(15)) && (*pixel & BIT(24)))
+                        enabled &= winOut >> 8; // Object window
+                    else
+                        enabled &= winOut >> 0; // Outside of windows
+                }
 
                 // Clear the screen using the first palette entry
                 *pixel = rgb5ToRgba6(U8TO16(palette, 0) & ~BIT(15));
                 bldLayer++;
 
-                // Use the backdrop as blending pixel 1 if enabled
+                // Use the backdrop as a blending pixel if enabled
                 if (bldCnt & BIT(5))
                 {
                     bldPixel1 = *pixel;
                     bldLayer1 = bldLayer;
                 }
-
-                // Use the backdrop as blending pixel 2 if enabled
-                if (bldCnt & BIT(13))
+                else if (bldCnt & BIT(13))
                 {
                     bldPixel2 = *pixel;
                     bldLayer2 = bldLayer;
@@ -159,7 +171,7 @@ void Gpu2D::drawScanline(int line)
                     // The BG layers can be rearranged, so they need to be checked in the correct order
                     for (int k = 3; k >= 0; k--)
                     {
-                        if ((bgCnt[k] & 0x0003) == j && (dispCnt & BIT(8 + k)) && (layers[k][line * 256 + i] & 0xFC0000))
+                        if ((bgCnt[k] & 0x0003) == j && (enabled & BIT(k)) && (layers[k][line * 256 + i] & 0xFC0000))
                         {
                             // Draw a pixel from a background layer
                             *pixel = layers[k][line * 256 + i];
@@ -168,7 +180,7 @@ void Gpu2D::drawScanline(int line)
                             // Blend the 3D layer
                             // This is similar to 2D alpha blending, except it uses the 3D alpha value
                             int eva = ((*pixel >> 18) & 0x3F) + 1;
-                            if ((*pixel & BIT(24)) && (eva > 1) && (eva <= 0x3F) && bldLayer2 == bldLayer - 1)
+                            if ((enabled & BIT(5)) && (*pixel & BIT(24)) && (eva > 1) && (eva <= 0x3F) && bldLayer2 == bldLayer - 1)
                             {
                                 int evb = 64 - eva;
                                 int r = ((*pixel >>  0) & 0x3F) * eva / 64 + ((bldPixel2 >>  0) & 0x3F) * evb / 64; if (r > 63) r = 63;
@@ -193,14 +205,14 @@ void Gpu2D::drawScanline(int line)
                     }
 
                     // Check for visible pixels in the object layers
-                    if ((dispCnt & BIT(12)) && (layers[4 + j][line * 256 + i] & 0xFC0000))
+                    if ((enabled & BIT(4)) && (layers[4 + j][line * 256 + i] & 0xFC0000))
                     {
                         // Draw a pixel from an object layer
                         *pixel = layers[4 + j][line * 256 + i];
                         bldLayer++;
 
                         // Blend semi-transparent objects
-                        if ((*pixel & BIT(24)) && bldLayer2 == bldLayer - 1)
+                        if ((enabled & BIT(5)) && (*pixel & BIT(24)) && bldLayer2 == bldLayer - 1)
                         {
                             int eva = (bldAlpha & 0x001F) >> 0; if (eva > 16) eva = 16;
                             int evb = (bldAlpha & 0x1F00) >> 8; if (evb > 16) evb = 16;
@@ -226,7 +238,7 @@ void Gpu2D::drawScanline(int line)
                 }
 
                 // Apply 2D blending effects
-                if (bldLayer1 == bldLayer)
+                if ((enabled & BIT(5)) && bldLayer1 == bldLayer)
                 {
                     switch ((bldCnt & 0x00C0) >> 6)
                     {
@@ -677,11 +689,11 @@ void Gpu2D::drawObjects(int line)
         int x = (object[1] & 0x01FF);
         if (x >= 256) x -= 512;
 
-        // Determine the layer to draw to based on the priority of the object
         uint32_t *layer = layers[4 + ((object[2] & 0x0C00) >> 10)];
+        int type = (object[0] & 0x0C00) >> 10;
 
         // Draw the object if it's a bitmap
-        if (((object[0] & 0x0C00) >> 10) == 3)
+        if (type == 3)
         {
             uint32_t address;
             int bitmapWidth;
@@ -785,11 +797,19 @@ void Gpu2D::drawObjects(int line)
                     // Draw a pixel if one exists at the current position
                     if (x + j >= 0 && x + j < 256 && index)
                     {
-                        layer[line * 256 + x + j] = rgb5ToRgba6(U8TO16(pal, index * 2) | BIT(15));
+                        if (type == 2) // Object window
+                        {
+                            // Mark object window pixels with an extra bit, and don't actually draw anything
+                            framebuffer[line * 256 + x + j] |= BIT(24);
+                        }
+                        else
+                        {
+                            // Draw a pixel
+                            layer[line * 256 + x + j] = rgb5ToRgba6(U8TO16(pal, index * 2) | BIT(15));
 
-                        // Mark semi-transparent pixels with an extra bit
-                        if (((object[0] & 0x0C00) >> 10) == 1)
-                            layer[line * 256 + x + j] |= BIT(24);
+                            // Mark semi-transparent pixels with an extra bit
+                            if (type == 1) layer[line * 256 + x + j] |= BIT(24);
+                        }
                     }
                 }
             }
@@ -818,11 +838,19 @@ void Gpu2D::drawObjects(int line)
                     // Draw a pixel if one exists at the current position
                     if (x + j >= 0 && x + j < 256 && index)
                     {
-                        layer[line * 256 + x + j] = rgb5ToRgba6(U8TO16(pal, index * 2) | BIT(15));
+                        if (type == 2) // Object window
+                        {
+                            // Mark object window pixels with an extra bit, and don't actually draw anything
+                            framebuffer[line * 256 + x + j] |= BIT(24);
+                        }
+                        else
+                        {
+                            // Draw a pixel
+                            layer[line * 256 + x + j] = rgb5ToRgba6(U8TO16(pal, index * 2) | BIT(15));
 
-                        // Mark semi-transparent pixels with an extra bit
-                        if (((object[0] & 0x0C00) >> 10) == 1)
-                            layer[line * 256 + x + j] |= BIT(24);
+                            // Mark semi-transparent pixels with an extra bit
+                            if (type == 1) layer[line * 256 + x + j] |= BIT(24);
+                        }
                     }
                 }
             }
@@ -860,11 +888,19 @@ void Gpu2D::drawObjects(int line)
                 // Draw a pixel if one exists at the current position
                 if (offset >= 0 && offset < 256 && index)
                 {
-                    layer[line * 256 + offset] = rgb5ToRgba6(U8TO16(pal, index * 2) | BIT(15));
+                    if (type == 2) // Object window
+                    {
+                        // Mark object window pixels with an extra bit, and don't actually draw anything
+                        framebuffer[line * 256 + offset] |= BIT(24);
+                    }
+                    else
+                    {
+                        // Draw a pixel
+                        layer[line * 256 + offset] = rgb5ToRgba6(U8TO16(pal, index * 2) | BIT(15));
 
-                    // Mark semi-transparent pixels with an extra bit
-                    if (((object[0] & 0x0C00) >> 10) == 1)
-                        layer[line * 256 + offset] |= BIT(24);
+                        // Mark semi-transparent pixels with an extra bit
+                        if (type == 1) layer[line * 256 + offset] |= BIT(24);
+                    }
                 }
             }
         }
@@ -893,11 +929,19 @@ void Gpu2D::drawObjects(int line)
                 // Draw a pixel if one exists at the current position
                 if (offset >= 0 && offset < 256 && index)
                 {
-                    layer[line * 256 + offset] = rgb5ToRgba6(U8TO16(pal, index * 2) | BIT(15));
+                    if (type == 2) // Object window
+                    {
+                        // Mark object window pixels with an extra bit, and don't actually draw anything
+                        framebuffer[line * 256 + offset] |= BIT(24);
+                    }
+                    else
+                    {
+                        // Draw a pixel
+                        layer[line * 256 + offset] = rgb5ToRgba6(U8TO16(pal, index * 2) | BIT(15));
 
-                    // Mark semi-transparent pixels with an extra bit
-                    if (((object[0] & 0x0C00) >> 10) == 1)
-                        layer[line * 256 + offset] |= BIT(24);
+                        // Mark semi-transparent pixels with an extra bit
+                        if (type == 1) layer[line * 256 + offset] |= BIT(24);
+                    }
                 }
             }
         }
@@ -973,6 +1017,43 @@ void Gpu2D::writeBgY(int bg, uint32_t mask, uint32_t value)
 
     // Extend the sign to 32 bits
     if (bgY[bg - 2] & BIT(27)) bgY[bg - 2] |= 0xF0000000; else bgY[bg - 2] &= ~0xF0000000;
+}
+
+
+void Gpu2D::writeWinH(int win, uint16_t mask, uint16_t value)
+{
+    // Write to one of the WINH registers
+    if (mask & 0x00FF) winX2[win] = (value & 0x00FF) >> 0;
+    if (mask & 0xFF00) winX1[win] = (value & 0xFF00) >> 8;
+
+    // Handle invalid values
+    if (winX1[win] > winX2[win])
+        winX2[win] = 256;
+}
+
+void Gpu2D::writeWinV(int win, uint16_t mask, uint16_t value)
+{
+    // Write to one of the WINV registers
+    if (mask & 0x00FF) winY2[win] = (value & 0x00FF) >> 0;
+    if (mask & 0xFF00) winY1[win] = (value & 0xFF00) >> 8;
+
+    // Handle invalid values
+    if (winY1[win] > winY2[win])
+        winY2[win] = 192;
+}
+
+void Gpu2D::writeWinIn(uint16_t mask, uint16_t value)
+{
+    // Write to the WININ register
+    mask &= 0x3F3F;
+    winIn = (winIn & ~mask) | (value & mask);
+}
+
+void Gpu2D::writeWinOut(uint16_t mask, uint16_t value)
+{
+    // Write to the WINOUT register
+    mask &= 0x3F3F;
+    winOut = (winOut & ~mask) | (value & mask);
 }
 
 void Gpu2D::writeBldCnt(uint16_t mask, uint16_t value)
