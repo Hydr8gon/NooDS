@@ -68,8 +68,7 @@ void NooApp::requestDraw(wxIdleEvent &event)
     event.RequestMore();
 
     // Update the FPS in the window title if the core is running
-    if (emulator.running)
-        frame->SetLabel(wxString::Format(wxT("NooDS - %d FPS"), emulator.core->getFps()));
+    frame->SetLabel(emulator.running ? wxString::Format("NooDS - %d FPS", emulator.core->getFps()) : "NooDS");
 }
 
 int NooApp::audioCallback(const void *in, void *out, unsigned long frames,

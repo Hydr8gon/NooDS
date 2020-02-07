@@ -87,6 +87,7 @@ void NooFrame::stopCore()
 
     // Close the core to ensure the save gets written
     if (emulator->core) delete emulator->core;
+    emulator->core = nullptr;
 }
 
 void NooFrame::loadRom(wxCommandEvent &event)
