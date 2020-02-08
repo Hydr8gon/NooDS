@@ -452,6 +452,9 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
     int w1 = interpolateW(vw[0], vw[1], v1->y, line, v2->y);
     int w2 = interpolateW(vw[2], vw[3], v3->y, line, v4->y);
 
+    int c1, c2, s1, s2, t1, t2;
+    bool colorDone = false, texDone = false;
+
     // Draw a line segment
     for (int x = x1; x < x2; x++)
     {
@@ -465,23 +468,33 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
             // Calculate the W value of the current pixel
             int w = polygon->wBuffer ? (depth >> wShift) : interpolateW(w1, w2, x1, x, x2);
 
-            // Interpolate the vertex color
-            uint32_t c1 = interpolateColor(v1->color, v2->color, v1->y, line, v2->y, vw[0], w1, vw[1]);
-            uint32_t c2 = interpolateColor(v3->color, v4->color, v3->y, line, v4->y, vw[2], w2, vw[3]);
+            // Interpolate the vertex color at the polygon edges
+            if (!colorDone)
+            {
+                c1 = interpolateColor(v1->color, v2->color, v1->y, line, v2->y, vw[0], w1, vw[1]);
+                c2 = interpolateColor(v3->color, v4->color, v3->y, line, v4->y, vw[2], w2, vw[3]);
+                colorDone = true;
+            }
+
+            // Interpolate the vertex color at the current pixel
             uint32_t color = interpolateColor(c1, c2, x1, x, x2, w1, w, w2);
 
             // Blend the texture with the vertex color
             if (polygon->textureFmt != 0)
             {
-                // Interpolate the texture S coordinate
-                int s1 = interpolate(v1->s, v2->s, v1->y, line, v2->y, vw[0], w1, vw[1]);
-                int s2 = interpolate(v3->s, v4->s, v3->y, line, v4->y, vw[2], w2, vw[3]);
-                int s  = interpolate(s1, s2, x1, x, x2, w1, w, w2);
+                // Interpolate the texture coordinates at the polygon edges
+                if (!texDone)
+                {
+                    s1 = interpolate(v1->s, v2->s, v1->y, line, v2->y, vw[0], w1, vw[1]);
+                    s2 = interpolate(v3->s, v4->s, v3->y, line, v4->y, vw[2], w2, vw[3]);
+                    t1 = interpolate(v1->t, v2->t, v1->y, line, v2->y, vw[0], w1, vw[1]);
+                    t2 = interpolate(v3->t, v4->t, v3->y, line, v4->y, vw[2], w2, vw[3]);
+                    texDone = true;
+                }
 
-                // Interpolate the texture T coordinate
-                int t1 = interpolate(v1->t, v2->t, v1->y, line, v2->y, vw[0], w1, vw[1]);
-                int t2 = interpolate(v3->t, v4->t, v3->y, line, v4->y, vw[2], w2, vw[3]);
-                int t  = interpolate(t1, t2, x1, x, x2, w1, w, w2);
+                // Interpolate the texture coordinates at the current pixel
+                int s = interpolate(s1, s2, x1, x, x2, w1, w, w2);
+                int t = interpolate(t1, t2, x1, x, x2, w1, w, w2);
 
                 // Read a texel from the texture
                 uint32_t texel = readTexture(polygon, s >> 4, t >> 4);
