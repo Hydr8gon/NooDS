@@ -291,13 +291,13 @@ void Gpu3D::addPolygon()
     clip |= clipPolygon(temp, clipped, 5);
 
     // Calculate the cross product of the normalized polygon vertices to determine orientation
-    int cross = 0;
+    int64_t cross = 0;
     if (savedPolygon.size >= 3)
     {
-        cross = (clipped[1].x * 128 / clipped[1].w - clipped[0].x * 128 / clipped[0].w) *
-                (clipped[2].y * -96 / clipped[2].w - clipped[0].y * -96 / clipped[0].w) -
-                (clipped[1].y * -96 / clipped[1].w - clipped[0].y * -96 / clipped[0].w) *
-                (clipped[2].x * 128 / clipped[2].w - clipped[0].x * 128 / clipped[0].w);
+        cross = ((clipped[1].x << 12) / clipped[1].w - (clipped[0].x << 12) / clipped[0].w) *
+                ((clipped[2].y << 12) / clipped[2].w - (clipped[0].y << 12) / clipped[0].w) -
+                ((clipped[1].y << 12) / clipped[1].w - (clipped[0].y << 12) / clipped[0].w) *
+                ((clipped[2].x << 12) / clipped[2].w - (clipped[0].x << 12) / clipped[0].w);
     }
 
     // Every other polygon strip is stored clockwise instead of counter-clockwise
@@ -309,7 +309,7 @@ void Gpu3D::addPolygon()
     }
 
     // Discard polygons that are outside of the view area or should be culled
-    if (savedPolygon.size == 0 || (!renderFront && cross < 0) || (!renderBack && cross > 0))
+    if (savedPolygon.size == 0 || (!renderFront && cross > 0) || (!renderBack && cross < 0))
     {
         switch (polygonType)
         {

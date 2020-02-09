@@ -78,9 +78,9 @@ uint8_t *Gpu3DRenderer::getPalette(uint32_t address)
 
 int Gpu3DRenderer::interpolateW(int w1, int w2, int x1, int x, int x2)
 {
-    // Interpolate a new value between the min and max values
+    // Interpolate a new W value between the min and max values
     int result = w2 + (w1 - w2) * (x - x1) / (x2 - x1);
-    return result ? (w1 * w2 / result) : 0;
+    return w1 * w2 / result;
 }
 
 int Gpu3DRenderer::interpolate(int v1, int v2, int x1, int x, int x2)
@@ -91,9 +91,9 @@ int Gpu3DRenderer::interpolate(int v1, int v2, int x1, int x, int x2)
 
 int Gpu3DRenderer::interpolate(int v1, int v2, int x1, int x, int x2, int w1, int w, int w2)
 {
-    // Get the parameters
-    int min = w1 ? (v1 * w / w1) : 0;
-    int max = w2 ? (v2 * w / w2) : 0;
+    // Normalize the parameters
+    int min = v1 * w / w1;
+    int max = v2 * w / w2;
 
     // Interpolate a new value between the min and max values
     return min + (max - min) * (x - x1) / (x2 - x1);
@@ -367,11 +367,12 @@ void Gpu3DRenderer::drawPolygon(int line, _Polygon *polygon)
         vertices[j] = &polygon->vertices[j];
 
     // Sort the vertices in order of increasing Y values
+    // If the Y values are equal, sort in order of increasing X values
     for (int j = 0; j < polygon->size - 1; j++)
     {
         for (int k = j + 1; k < polygon->size; k++)
         {
-            if (vertices[k]->y < vertices[j]->y)
+            if (vertices[k]->y < vertices[j]->y || (vertices[k]->y == vertices[j]->y) && vertices[k]->x < vertices[j]->x)
             {
                 Vertex *vertex = vertices[j];
                 vertices[j] = vertices[k];
@@ -396,28 +397,40 @@ void Gpu3DRenderer::drawPolygon(int line, _Polygon *polygon)
     // Rasterize the polygon
     for (int j = 1; j < polygon->size; j++)
     {
-        if (line < vertices[j]->y)
+        if (line < vertices[j]->y) // The highest vertex below the current line
         {
             int v1, v2, v3, v4;
-            // Find the bottom vertex of the left side of the polygon on the current line
-            // This is equal to the highest point equal or below j on the left
+
+            // Find the bottom-left vertex of the polygon on the current line
+            // This is the highest vertex equal to or below j on the left
             for (v2 = j; v2 < polygon->size; v2++)
+            {
                 if (v2 == polygon->size - 1 || crosses[v2 - 1] <= 0) break;
+            }
 
-            // Find the top vertex of the left side of the polygon on the current line
-            // This is equal to the lowest point above v2 on the left
+            // Find the top-left vertex of the polygon on the current line
+            // This is the lowest vertex above v2 on the left
             for (v1 = v2 - 1; v1 >= 0; v1--)
+            {
+                while (v1 > 0 && (vertices[v1]->y == vertices[v1 - 1]->y)) v1--;
                 if (v1 == 0 || crosses[v1 - 1] <= 0) break;
+            }
 
-            // Find the bottom vertex of the right side of the polygon on the current line
-            // This is equal to the highest point equal or below j on the right
+            // Find the bottom-right vertex of the polygon on the current line
+            // This is the highest vertex equal to or below j on the right
             for (v4 = j; v4 < polygon->size; v4++)
+            {
+                while (v4 < polygon->size - 1 && vertices[v4]->y == vertices[v4 + 1]->y) v4++;
                 if (v4 == polygon->size - 1 || crosses[v4 - 1] > 0) break;
+            }
 
-            // Find the top vertex of the right side of the polygon on the current line
-            // This is equal to the lowest point above v4 on the right
+            // Find the top-right vertex of the polygon on the current line
+            // This is the lowest vertex above v4 on the right
             for (v3 = v4 - 1; v3 >= 0; v3--)
+            {
+                while (v3 > 0 && vertices[v3]->y == vertices[v4]->y) v3--;
                 if (v3 == 0 || crosses[v3 - 1] > 0) break;
+            }
 
             rasterize(line, polygon, vertices[v1], vertices[v2], vertices[v3], vertices[v4]);
             break;
