@@ -22,20 +22,18 @@
 
 #include <cstdint>
 
-class Cartridge;
-class Gpu3D;
 class Interpreter;
 class Memory;
 
 class Dma
 {
     public:
-        Dma(Cartridge *cart, Gpu3D *gpu3D, Interpreter *cpu, Memory *memory):
-            cart(cart), gpu3D(gpu3D), cpu(cpu), memory(memory) {}
+        Dma(bool dma9, Interpreter *cpu, Memory *memory): dma9(dma9), cpu(cpu), memory(memory) {}
 
         void transfer();
+        void setMode(int mode, bool active);
 
-        bool shouldTransfer() { return enabled; }
+        bool shouldTransfer() { return active; }
 
         uint32_t readDmaSad(int channel) { return dmaSad[channel]; }
         uint32_t readDmaDad(int channel) { return dmaDad[channel]; }
@@ -53,14 +51,17 @@ class Dma
         uint32_t srcAddrs[4] = {};
         uint32_t dstAddrs[4] = {};
         uint32_t wordCounts[4] = {};
-        uint8_t enabled = 0;
 
-        int gxFifoCount = 0;
+        int gxFifoCount[4] = {};
 
-        Cartridge *cart;
-        Gpu3D *gpu3D;
+        uint8_t active = 0;
+        bool modes[8] = { true };
+
+        bool dma9;
         Interpreter *cpu;
         Memory *memory;
+
+        void update();
 };
 
 #endif // DMA_H

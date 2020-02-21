@@ -22,6 +22,7 @@
 
 #include <cstdint>
 
+class Dma;
 class Gpu2D;
 class Gpu3D;
 class Gpu3DRenderer;
@@ -31,10 +32,10 @@ class Memory;
 class Gpu
 {
     public:
-        Gpu(Gpu2D *engineA, Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer,
-            Interpreter *arm9, Interpreter *arm7, Memory *memory):
-            engineA(engineA), engineB(engineB), gpu3D(gpu3D), gpu3DRenderer(gpu3DRenderer),
-            arm9(arm9), arm7(arm7), memory(memory) {}
+        Gpu(Dma *dma9, Dma *dma7, Gpu2D *engineA, Gpu2D *engineB, Gpu3D *gpu3D,
+            Gpu3DRenderer *gpu3DRenderer, Interpreter *arm9, Interpreter *arm7, Memory *memory):
+            dma9(dma9), dma7(dma7), engineA(engineA), engineB(engineB), gpu3D(gpu3D),
+            gpu3DRenderer(gpu3DRenderer), arm9(arm9), arm7(arm7), memory(memory) {}
 
         void scanline256();
         void scanline355();
@@ -62,6 +63,7 @@ class Gpu
         uint32_t dispCapCnt = 0;
         uint16_t powCnt1 = 0;
 
+        Dma *dma9, *dma7;
         Gpu2D *engineA, *engineB;
         Gpu3D *gpu3D;
         Gpu3DRenderer *gpu3DRenderer;

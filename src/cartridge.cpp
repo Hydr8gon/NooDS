@@ -21,6 +21,7 @@
 
 #include "cartridge.h"
 #include "defines.h"
+#include "dma.h"
 #include "interpreter.h"
 #include "memory.h"
 
@@ -422,6 +423,9 @@ void Cartridge::writeRomCtrl(uint32_t mask, uint32_t value)
         romCtrl &= ~BIT(23); // Word not ready
         romCtrl &= ~BIT(31); // Block ready
 
+        // Disable DS cartridge DMA transfers
+        dma->setMode(5, false);
+
         // Trigger a block ready IRQ if enabled
         if (auxSpiCnt & BIT(14))
             cpu->sendInterrupt(19);
@@ -430,6 +434,10 @@ void Cartridge::writeRomCtrl(uint32_t mask, uint32_t value)
     {
         // Indicate that a word is ready
         romCtrl |= BIT(23);
+
+        // Enable DS cartridge DMA transfers
+        dma->setMode(5, true);
+
         readCount = 0;
     }
 }
@@ -516,6 +524,9 @@ uint32_t Cartridge::readRomDataIn()
         // End the transfer when the block size has been reached
         romCtrl &= ~BIT(23); // Word not ready
         romCtrl &= ~BIT(31); // Block ready
+
+        // Disable DS cartridge DMA transfers
+        dma->setMode(5, false);
 
         // Trigger a block ready IRQ if enabled
         if (auxSpiCnt & BIT(14))

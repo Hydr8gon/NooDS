@@ -22,6 +22,7 @@
 
 #include "gpu.h"
 #include "defines.h"
+#include "dma.h"
 #include "gpu_2d.h"
 #include "gpu_3d.h"
 #include "gpu_3d_renderer.h"
@@ -170,6 +171,10 @@ void Gpu::scanline256()
     dispStat9 |= BIT(1);
     dispStat7 |= BIT(1);
 
+    // Enable H-blank DMA transfers when not in V-blank
+    if (!(dispStat9 & BIT(0)))
+        dma9->setMode(2, true);
+
     // Trigger an H-blank IRQ if enabled
     if (dispStat9 & BIT(4))
         arm9->sendInterrupt(1);
@@ -216,6 +221,10 @@ void Gpu::scanline355()
         // Clear the V-blank flag
         dispStat9 &= ~BIT(0);
         dispStat7 &= ~BIT(0);
+
+        // Enable V-blank DMA transfers
+        dma9->setMode(1, true);
+        dma7->setMode(1, true);
 
         // Start the next frame
         vCount = 0;

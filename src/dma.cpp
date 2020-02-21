@@ -21,8 +21,6 @@
 
 #include "dma.h"
 #include "defines.h"
-#include "cartridge.h"
-#include "gpu_3d.h"
 #include "interpreter.h"
 #include "memory.h"
 
@@ -30,64 +28,9 @@ void Dma::transfer()
 {
     for (int i = 0; i < 4; i++)
     {
-        // Only transfer on enabled channels
-        if (!(enabled & BIT(i))) continue;
-
-        // Determine the transfer mode
-        int mode;
-        if (gpu3D) // ARM9
-        {
-            mode = (dmaCnt[i] & 0x38000000) >> 27;
-        }
-        else
-        {
-            // Redirect ARM7 mode values to the ARM9 equivalents
-            switch ((dmaCnt[i] & 0x30000000) >> 28)
-            {
-                case 0: mode = 0; break;
-                case 1: mode = 1; break;
-                case 2: mode = 5; break;
-                case 3: mode = 8; break;
-            }
-        }
-
-        // Check if the transfer should be performed now
-        switch (mode)
-        {
-            case 0: // Start immediately
-            {
-                // Transfer now
-                break;
-            }
-
-            case 5: // DS cartridge slot
-            {
-                // Only transfer when a word from the cart is ready
-                if (!(cart->readRomCtrl() & BIT(23)))
-                    continue;
-                break;
-            }
-
-            case 7: // Geometry command FIFO
-            {
-                // Only transfer when the FIFO is less than half full
-                if (!(gpu3D->readGxStat() & BIT(25)))
-                    continue;
-                break;
-            }
-
-            default:
-            {
-                printf("Unknown ARM%d DMA transfer timing: %d\n", (gpu3D ? 9 : 7), mode);
-
-                // Pretend that the transfer completed
-                dmaCnt[i] &= ~BIT(31);
-                enabled &= ~BIT(i);
-                if (dmaCnt[i] & BIT(30))
-                    cpu->sendInterrupt(8 + i);
-                continue;
-            }
-        }
+        // Only transfer on active channels
+        if (!(active & BIT(i)))
+            continue;
 
         int dstAddrCnt = (dmaCnt[i] & 0x00600000) >> 21;
         int srcAddrCnt = (dmaCnt[i] & 0x01800000) >> 23;
@@ -98,7 +41,7 @@ void Dma::transfer()
             for (unsigned int j = 0; j < wordCounts[i]; j++)
             {
                 // Transfer a word
-                memory->write<uint32_t>(gpu3D, dstAddrs[i], memory->read<uint32_t>(gpu3D, srcAddrs[i]));
+                memory->write<uint32_t>(dma9, dstAddrs[i], memory->read<uint32_t>(dma9, srcAddrs[i]));
 
                 // Adjust the source address
                 if (srcAddrCnt == 0) // Increment
@@ -112,16 +55,12 @@ void Dma::transfer()
                 else if (dstAddrCnt == 1) // Decrement
                     dstAddrs[i] -= 4;
 
-                // In gometry command FIFO mode, only 112 words are sent at a time
-                if (mode == 7)
+                // In GXFIFO mode, only 112 words are sent at a time
+                if (((dmaCnt[i] & 0x38000000) >> 27) == 7)
                 {
-                    gxFifoCount++;
-                    if (gxFifoCount == 112)
-                    {
-                        wordCounts[i] -= 112;
-                        gxFifoCount = 0;
-                        return;
-                    }
+                    gxFifoCount[i]++;
+                    if (gxFifoCount[i] == 112)
+                        break;
                 }
             }
         }
@@ -130,7 +69,7 @@ void Dma::transfer()
             for (unsigned int j = 0; j < wordCounts[i]; j++)
             {
                 // Transfer a half-word
-                memory->write<uint16_t>(gpu3D, dstAddrs[i], memory->read<uint16_t>(gpu3D, srcAddrs[i]));
+                memory->write<uint16_t>(dma9, dstAddrs[i], memory->read<uint16_t>(dma9, srcAddrs[i]));
 
                 // Adjust the source address
                 if (srcAddrCnt == 0) // Increment
@@ -144,18 +83,23 @@ void Dma::transfer()
                 else if (dstAddrCnt == 1) // Decrement
                     dstAddrs[i] -= 2;
 
-                // In gometry command FIFO mode, only 112 words are sent at a time
-                if (mode == 7)
+                // In GXFIFO mode, only 112 words are sent at a time
+                if (((dmaCnt[i] & 0x38000000) >> 27) == 7)
                 {
-                    gxFifoCount++;
-                    if (gxFifoCount == 112)
-                    {
-                        wordCounts[i] -= 112;
-                        gxFifoCount = 0;
-                        return;
-                    }
+                    gxFifoCount[i]++;
+                    if (gxFifoCount[i] == 112)
+                        break;
                 }
             }
+        }
+
+        // Don't end the GXFIFO transfer if there are still words left
+        if (gxFifoCount[i] == 112)
+        {
+            wordCounts[i] -= 112;
+            gxFifoCount[i] = 0;
+            if (wordCounts[i] > 0)
+                continue;
         }
 
         if (dmaCnt[i] & BIT(25)) // Repeat
@@ -169,27 +113,66 @@ void Dma::transfer()
         {
             // End the transfer
             dmaCnt[i] &= ~BIT(31);
-            enabled &= ~BIT(i);
-            gxFifoCount = 0;
+            gxFifoCount[i] = 0;
         }
 
         // Trigger an end of transfer IRQ if enabled
         if (dmaCnt[i] & BIT(30))
             cpu->sendInterrupt(8 + i);
     }
+
+    // GPU-timed transfers are only triggered once at a time, so disable them after one transfer
+    modes[1] = false;
+    modes[2] = false;
+
+    update();
+}
+
+void Dma::setMode(int mode, bool active)
+{
+    // Redirect ARM9 DMA modes on the ARM7 DMA
+    if (!dma9)
+    {
+        switch (mode)
+        {
+            case 0:  mode = 0; break;
+            case 1:  mode = 2; break;
+            case 5:  mode = 4; break;
+            default: mode = 6; break;
+        }
+    }
+
+    // Change the state of a DMA mode
+    if (modes[mode] != active)
+    {
+        modes[mode] = active;
+        update();
+    }
+}
+
+void Dma::update()
+{
+    active = 0;
+
+    // If a channel is enabled and its mode is active, set the channel as active
+    for (int i = 0; i < 4; i++)
+    {
+        if ((dmaCnt[i] & BIT(31)) && modes[(dmaCnt[i] & 0x38000000) >> 27])
+            active |= BIT(i);
+    }
 }
 
 void Dma::writeDmaSad(int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMASAD registers
-    mask &= (gpu3D ? 0x0FFFFFFF : 0x07FFFFFF);
+    mask &= (dma9 ? 0x0FFFFFFF : 0x07FFFFFF);
     dmaSad[channel] = (dmaSad[channel] & ~mask) | (value & mask);
 }
 
 void Dma::writeDmaDad(int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMADAD registers
-    mask &= (gpu3D ? 0x0FFFFFFF : 0x07FFFFFF);
+    mask &= (dma9 ? 0x0FFFFFFF : 0x07FFFFFF);
     dmaDad[channel] = (dmaDad[channel] & ~mask) | (value & mask);
 }
 
@@ -197,21 +180,21 @@ void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value)
 {
     bool reload = false;
 
-    // Enable or disable the channel
-    if (value & BIT(31)) enabled |= BIT(channel); else enabled &= ~BIT(channel);
-
     // Reload the internal registers if the enable bit changes from 0 to 1
     if (!(dmaCnt[channel] & BIT(31)) && (value & BIT(31)))
         reload = true;
 
     // Write to one of the DMACNT registers
-    mask &= (gpu3D ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF));
+    mask &= (dma9 ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF));
     dmaCnt[channel] = (dmaCnt[channel] & ~mask) | (value & mask);
 
-    if (!reload) return;
-
     // Reload the internal registers
-    dstAddrs[channel] = dmaDad[channel];
-    srcAddrs[channel] = dmaSad[channel];
-    wordCounts[channel] = dmaCnt[channel] & 0x001FFFFF;
+    if (reload)
+    {
+        dstAddrs[channel] = dmaDad[channel];
+        srcAddrs[channel] = dmaSad[channel];
+        wordCounts[channel] = dmaCnt[channel] & 0x001FFFFF;
+    }
+
+    update();
 }

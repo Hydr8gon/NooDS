@@ -22,9 +22,10 @@
 
 #include "gpu_3d.h"
 #include "defines.h"
+#include "dma.h"
 #include "interpreter.h"
 
-Gpu3D::Gpu3D(Interpreter *arm9): arm9(arm9)
+Gpu3D::Gpu3D(Dma *dma9, Interpreter *arm9): dma9(dma9), arm9(arm9)
 {
     // Set the parameter counts
     paramCounts[0x10] = 1;
@@ -140,15 +141,19 @@ void Gpu3D::runCycle()
         }
     }
 
-    // Update the counters
+    // Update the FIFO status
     gxStat = (gxStat & ~0x00001F00) | (coordinatePtr <<  8); // Coordinate stack pointer
     gxStat = (gxStat & ~0x00002000) | (projectionPtr << 13); // Projection stack pointer
     gxStat = (gxStat & ~0x01FF0000) | (fifo.size()   << 16); // FIFO entries
+    if (fifo.size() == 0) gxStat |=  BIT(26); // Empty
+    if (pipe.size() == 0) gxStat &= ~BIT(27); // Commands not executing
 
-    // Update the FIFO status
-    if (fifo.size() < 128) gxStat |=  BIT(25); // Less than half full
-    if (fifo.size() == 0)  gxStat |=  BIT(26); // Empty
-    if (pipe.size() == 0)  gxStat &= ~BIT(27); // Commands not executing
+    // If the FIFO is less than half full, enable GXFIFO DMA transfers
+    if (fifo.size() < 128 && !(gxStat & BIT(25)))
+    {
+        gxStat |= BIT(25);
+        dma9->setMode(7, true);
+    }
 
     // Send a GXFIFO interrupt if enabled
     switch ((gxStat & 0xC0000000) >> 30)
@@ -1294,8 +1299,14 @@ void Gpu3D::addEntry(Entry entry)
 
         // Update the FIFO status
         gxStat = (gxStat & ~0x01FF0000) | (fifo.size() << 16); // Count
-        if (fifo.size() >= 128) gxStat &= ~BIT(25); // Half or more full
         gxStat &= ~BIT(26); // Not empty
+
+        // If the FIFO is more than half full, disable GXFIFO DMA transfers
+        if (fifo.size() >= 128 && (gxStat & BIT(25)))
+        {
+            gxStat &= ~BIT(25);
+            dma9->setMode(7, false);
+        }
     }
 }
 

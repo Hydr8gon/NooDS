@@ -23,9 +23,9 @@
 #include "defines.h"
 #include "settings.h"
 
-Core::Core(): cart9(&arm9, &memory), cart7(&arm7, &memory), cp15(&arm9), dma9(&cart9, &gpu3D, &arm9, &memory),
-              dma7(&cart7, nullptr, &arm7, &memory), gpu(&engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9,
-              &arm7, &memory), engineA(&gpu3DRenderer, &memory), engineB(&memory), gpu3D(&arm9), gpu3DRenderer(&gpu3D),
+Core::Core(): cart9(&dma9, &arm9, &memory), cart7(&dma7, &arm7, &memory), cp15(&arm9), dma9(true, &arm9, &memory),
+              dma7(false, &arm7, &memory), gpu(&dma9, &dma7, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9, &arm7,
+              &memory), engineA(&gpu3DRenderer, &memory), engineB(&memory), gpu3D(&dma9, &arm9), gpu3DRenderer(&gpu3D),
               arm9(&cp15, &memory), arm7(&memory), ipc(&arm9, &arm7), memory(&cart9, &cart7, &cp15, &dma9,
               &dma7, &gpu, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &input, &arm9, &arm7, &ipc, &math, &rtc,
               &spi, &spu, &timers9, &timers7), spi(&arm7, firmware), spu(&memory), timers9(&arm9), timers7(&arm7)
@@ -204,8 +204,7 @@ void Core::runFrame()
             if (gpu3D.shouldRun()) gpu3D.runCycle();
 
             // The end of the visible scanline
-            if (j == 256 * 3)
-                gpu.scanline256();
+            if (j == 256 * 3) gpu.scanline256();
         }
 
         // The end of the scanline

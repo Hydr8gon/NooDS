@@ -24,13 +24,14 @@
 
 #include "defines.h"
 
+class Dma;
 class Interpreter;
 class Memory;
 
 class Cartridge
 {
     public:
-        Cartridge(Interpreter *cpu, Memory *memory): cpu(cpu), memory(memory) {}
+        Cartridge(Dma *dma, Interpreter *cpu, Memory *memory): dma(dma), cpu(cpu), memory(memory) {}
 
         void setRom(uint8_t *rom, uint32_t romSize, uint8_t *save, uint32_t saveSize);
 
@@ -67,6 +68,7 @@ class Cartridge
         uint8_t *rom = nullptr, *save = nullptr;
         int romSize = 0, saveSize = 0;
 
+        Dma *dma;
         Interpreter *cpu;
         Memory *memory;
 

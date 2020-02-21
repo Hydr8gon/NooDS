@@ -25,6 +25,7 @@
 
 #include "defines.h"
 
+class Dma;
 class Interpreter;
 
 struct Entry
@@ -76,7 +77,7 @@ struct _Polygon
 class Gpu3D
 {
     public:
-        Gpu3D(Interpreter *arm9);
+        Gpu3D(Dma *dma9, Interpreter *arm9);
 
         void runCycle();
         void swapBuffers();
@@ -183,6 +184,7 @@ class Gpu3D
 
         int gxFifoCount = 0;
 
+        Dma *dma9;
         Interpreter *arm9;
 
         Matrix multiply(Matrix *mtx1, Matrix *mtx2);
