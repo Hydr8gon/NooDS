@@ -219,9 +219,9 @@ void Spu::writeSoundCnt(int channel, uint32_t mask, uint32_t value)
         // Read the ADPCM header
         if (((soundCnt[channel] & 0x60000000) >> 29) == 2)
         {
-            adpcmValue[channel] = (int16_t)soundSad[channel];
-            adpcmIndex[channel] = soundSad[channel] >> 16;
-            if (adpcmIndex[channel] <  0) adpcmIndex[channel] =  0;
+            uint32_t header = memory->read<uint32_t>(false, soundSad[channel]);
+            adpcmValue[channel] = (int16_t)header;
+            adpcmIndex[channel] = (header & 0x007F0000) >> 16;
             if (adpcmIndex[channel] > 88) adpcmIndex[channel] = 88;
             adpcmToggle[channel] = false;
             soundCurrent[channel] += 4;
