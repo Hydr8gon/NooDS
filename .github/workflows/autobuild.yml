@@ -43,16 +43,13 @@ jobs:
     - name: Install MSYS2
       run: choco install msys2
       shell: cmd
-    - name: Update package lists
-      run: C:\tools\msys64\usr\bin\bash -lc "pacman -Syu --noconfirm"
-      shell: cmd
     - name: Install MinGW, wxWidgets, and PortAudio
       run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-wxWidgets mingw-w64-x86_64-portaudio make --noconfirm"
       shell: cmd
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: C:\tools\msys64\usr\bin\bash -lc "cd /d/a/NooDS/NooDS && export PATH=$PATH:/mingw64/bin && make"
+      run: C:\tools\msys64\usr\bin\bash -lc "cd /d/a/NooDS/NooDS && export PATH=$PATH:/mingw64/bin && make && strip noods.exe"
       shell: cmd
     - name: Upload
       uses: actions/upload-artifact@master
