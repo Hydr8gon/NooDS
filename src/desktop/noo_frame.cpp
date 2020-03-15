@@ -26,12 +26,15 @@
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
 EVT_MENU(1, NooFrame::loadRom)
 EVT_MENU(2, NooFrame::bootFirmware)
-EVT_MENU(3, NooFrame::pathSettings)
-EVT_MENU(4, NooFrame::inputSettings)
-EVT_MENU(5, NooFrame::directBootToggle)
-EVT_MENU(6, NooFrame::limitFpsToggle)
+EVT_MENU(3, NooFrame::pause)
+EVT_MENU(4, NooFrame::restart)
+EVT_MENU(5, NooFrame::stop)
+EVT_MENU(6, NooFrame::pathSettings)
+EVT_MENU(7, NooFrame::inputSettings)
+EVT_MENU(8, NooFrame::directBootToggle)
+EVT_MENU(9, NooFrame::limitFpsToggle)
 EVT_MENU(wxID_EXIT, NooFrame::exit)
-EVT_CLOSE(NooFrame::stop)
+EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
 NooFrame::NooFrame(Emulator *emulator): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator)
@@ -43,19 +46,33 @@ NooFrame::NooFrame(Emulator *emulator): wxFrame(nullptr, wxID_ANY, "NooDS"), emu
     fileMenu->AppendSeparator();
     fileMenu->Append(wxID_EXIT);
 
+    // Set up the System menu
+    systemMenu = new wxMenu();
+    systemMenu->Append(3, "&Resume");
+    systemMenu->Append(4, "&Restart");
+    systemMenu->Append(5, "&Stop");
+
+    // Disable the System menu items until the core is running
+    systemMenu->Enable(3, false);
+    systemMenu->Enable(4, false);
+    systemMenu->Enable(5, false);
+
     // Set up the Settings menu
     wxMenu *settingsMenu = new wxMenu();
-    settingsMenu->Append(3, "&Path Settings");
-    settingsMenu->Append(4, "&Input Settings");
+    settingsMenu->Append(6, "&Path Settings");
+    settingsMenu->Append(7, "&Input Settings");
     settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(5, "&Direct Boot");
-    settingsMenu->Check(5, Settings::getDirectBoot());
-    settingsMenu->AppendCheckItem(6, "&Limit FPS");
-    settingsMenu->Check(6, Settings::getLimitFps());
+    settingsMenu->AppendCheckItem(8, "&Direct Boot");
+    settingsMenu->AppendCheckItem(9, "&Limit FPS");
+
+    // Set the current values of the checkboxes
+    settingsMenu->Check(8, Settings::getDirectBoot());
+    settingsMenu->Check(9, Settings::getLimitFps());
 
     // Set up the menu bar
     wxMenuBar *menuBar = new wxMenuBar();
     menuBar->Append(fileMenu, "&File");
+    menuBar->Append(systemMenu, "&System");
     menuBar->Append(settingsMenu, "&Settings");
     SetMenuBar(menuBar);
 
@@ -74,39 +91,18 @@ void NooFrame::runCore()
         emulator->core->runFrame();
 }
 
-void NooFrame::stopCore()
+void NooFrame::startCore()
 {
-    // Ensure the core thread is stopped
-    if (coreThread)
-    {
-        emulator->running = false;
-        coreThread->join();
-        delete coreThread;
-        coreThread = nullptr;
-    }
-
-    // Close the core to ensure the save gets written
-    if (emulator->core) delete emulator->core;
-    emulator->core = nullptr;
-}
-
-void NooFrame::loadRom(wxCommandEvent &event)
-{
-    // Show the file browser
-    wxFileDialog romSelect(this, "Select ROM File", "", "", "NDS ROM files (*.nds)|*.nds", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
-    if (romSelect.ShowModal() == wxID_CANCEL)
-        return;
-
+    // Ensure the core is stopped
     stopCore();
-
-    // Get the ROM path
-    char path[1024];
-    strncpy(path, (const char*)romSelect.GetPath().mb_str(wxConvUTF8), 1023);
 
     try
     {
         // Attempt to boot the ROM
-        emulator->core = new Core(path);
+        if (path == "")
+            emulator->core = new Core();
+        else
+            emulator->core = new Core(path);
     }
     catch (int e)
     {
@@ -141,30 +137,92 @@ void NooFrame::loadRom(wxCommandEvent &event)
         }
     }
 
-    // Start the core thread
+    // Start the core and enable the System menu items
     emulator->running = true;
+    systemMenu->Enable(3, true);
+    systemMenu->Enable(4, true);
+    systemMenu->Enable(5, true);
+    systemMenu->SetLabel(3, "&Pause");
+
+    // Start the core thread
     coreThread = new std::thread(&NooFrame::runCore, this);
+}
+
+void NooFrame::stopCore()
+{
+    // Stop the core and disable the System menu items
+    emulator->running = false;
+    systemMenu->Enable(3, false);
+    systemMenu->Enable(4, false);
+    systemMenu->Enable(5, false);
+    systemMenu->SetLabel(3, "&Resume");
+
+    // Ensure the core thread is stopped
+    if (coreThread)
+    {
+        coreThread->join();
+        delete coreThread;
+        coreThread = nullptr;
+    }
+
+    // Close the core to ensure the save gets written
+    if (emulator->core) delete emulator->core;
+    emulator->core = nullptr;
+}
+
+void NooFrame::loadRom(wxCommandEvent &event)
+{
+    // Show the file browser
+    wxFileDialog romSelect(this, "Select ROM File", "", "", "NDS ROM files (*.nds)|*.nds", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (romSelect.ShowModal() == wxID_CANCEL)
+        return;
+
+    // Set the ROM path and start the core
+    path = (const char*)romSelect.GetPath().mb_str(wxConvUTF8);
+    startCore();
 }
 
 void NooFrame::bootFirmware(wxCommandEvent &event)
 {
+    // Start the core with no ROM
+    path = "";
+    startCore();
+}
+
+void NooFrame::pause(wxCommandEvent &event)
+{
+    if (emulator->running) // Pause
+    {
+        // Stop the core thread without closing the core
+        emulator->running = false;
+        coreThread->join();
+        delete coreThread;
+        coreThread = nullptr;
+
+        // Update the menu item
+        systemMenu->SetLabel(3, "&Resume");
+    }
+    else if (emulator->core) // Resume
+    {
+        // Start the core thread
+        emulator->running = true;
+        coreThread = new std::thread(&NooFrame::runCore, this);
+
+        // Update the menu item
+        systemMenu->SetLabel(3, "&Pause");
+    }
+}
+
+void NooFrame::restart(wxCommandEvent &event)
+{
+    // Restart the core
+    startCore();
+}
+
+void NooFrame::stop(wxCommandEvent &event)
+{
+    // Stop the core
     stopCore();
-
-    try
-    {
-        // Attempt to boot the firmware
-        emulator->core = new Core();
-    }
-    catch (int e)
-    {
-        // The only error that can happen during firmware boot is missing BIOS and/or firmware files, so inform the user
-        wxMessageBox("Initialization failed. Make sure the path settings point to valid BIOS and firmware files and try again.");
-        return;
-    }
-
-    // Start the core thread
-    emulator->running = true;
-    coreThread = new std::thread(&NooFrame::runCore, this);
 }
 
 void NooFrame::pathSettings(wxCommandEvent &event)
@@ -199,7 +257,7 @@ void NooFrame::exit(wxCommandEvent &event)
     Close(true);
 }
 
-void NooFrame::stop(wxCloseEvent &event)
+void NooFrame::close(wxCloseEvent &event)
 {
     // Properly shut down the emulator
     stopCore();

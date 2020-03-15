@@ -39,18 +39,25 @@ class NooFrame: public wxFrame
     private:
         Emulator *emulator;
         std::thread *coreThread = nullptr;
+        std::string path = "";
+
+        wxMenu *systemMenu;
 
         void runCore();
+        void startCore();
         void stopCore();
 
         void loadRom(wxCommandEvent &event);
         void bootFirmware(wxCommandEvent &event);
+        void pause(wxCommandEvent &event);
+        void restart(wxCommandEvent &event);
+        void stop(wxCommandEvent &event);
         void pathSettings(wxCommandEvent &event);
         void inputSettings(wxCommandEvent &event);
         void directBootToggle(wxCommandEvent &event);
         void limitFpsToggle(wxCommandEvent &event);
         void exit(wxCommandEvent &event);
-        void stop(wxCloseEvent &event);
+        void close(wxCloseEvent &event);
 
         wxDECLARE_EVENT_TABLE();
 };

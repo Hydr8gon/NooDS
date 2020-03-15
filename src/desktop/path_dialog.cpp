@@ -115,18 +115,18 @@ void PathDialog::firmwareBrowse(wxCommandEvent &event)
 
 void PathDialog::confirm(wxCommandEvent &event)
 {
-    char path[1024];
+    std::string path;
 
     // Save the ARM9 BIOS path
-    strncpy(path, (const char*)bios9Path->GetValue().mb_str(wxConvUTF8), 1023);
+    path = (const char*)bios9Path->GetValue().mb_str(wxConvUTF8);
     Settings::setBios9Path(path);
 
     // Save the ARM7 BIOS path
-    strncpy(path, (const char*)bios7Path->GetValue().mb_str(wxConvUTF8), 1023);
+    path = (const char*)bios7Path->GetValue().mb_str(wxConvUTF8);
     Settings::setBios7Path(path);
 
     // Save the firmware path
-    strncpy(path, (const char*)firmwarePath->GetValue().mb_str(wxConvUTF8), 1023);
+    path = (const char*)firmwarePath->GetValue().mb_str(wxConvUTF8);
     Settings::setFirmwarePath(path);
 
     event.Skip(true);

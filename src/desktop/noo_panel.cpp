@@ -63,7 +63,7 @@ void NooPanel::draw(wxPaintEvent &event)
         // Convert the color values from 6-bit to 8-bit
         for (int x = 0; x < 256; x++, pixel++)
         {
-            uint32_t color = emulator->running ? emulator->core->getFramebuffer()[y * 256 + x] : 0;
+            uint32_t color = emulator->core ? emulator->core->getFramebuffer()[y * 256 + x] : 0;
             pixel.Red()   = ((color >>  0) & 0x3F) * 255 / 63;
             pixel.Green() = ((color >>  6) & 0x3F) * 255 / 63;
             pixel.Blue()  = ((color >> 12) & 0x3F) * 255 / 63;
