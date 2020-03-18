@@ -203,6 +203,13 @@ void Core::runFrame()
             // Run the 3D engine
             if (gpu3D.shouldRun()) gpu3D.runCycle();
 
+            // Run the SPU every 512 cycles
+            if (++spuTimer == 512)
+            {
+                spu.runSample();
+                spuTimer = 0;
+            }
+
             // The end of the visible scanline
             if (j == 256 * 3) gpu.scanline256();
         }
@@ -210,18 +217,6 @@ void Core::runFrame()
         // The end of the scanline
         gpu.scanline355();
     }
-
-    // Limit the FPS to 60
-    std::chrono::duration<double> frameTime = std::chrono::steady_clock::now() - lastFrameTime;
-#ifdef _WIN32
-    // Sleeping on Windows is unreliable; a while loop is wasteful and not entirely accurate either, but it works
-    while (Settings::getLimitFps() && frameTime.count() < 1.0f / 60)
-        frameTime = std::chrono::steady_clock::now() - lastFrameTime;
-#else
-    if (Settings::getLimitFps() && frameTime.count() < 1.0f / 60)
-        std::this_thread::sleep_for(std::chrono::microseconds((int)((1.0f / 60 - frameTime.count()) * 1000000)));
-#endif
-    lastFrameTime = std::chrono::steady_clock::now();
 
     // Count the FPS
     fpsCount++;

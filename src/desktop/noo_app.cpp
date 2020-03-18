@@ -77,19 +77,27 @@ int NooApp::audioCallback(const void *in, void *out, unsigned long frames,
     int16_t *buffer = (int16_t*)out;
     Emulator *emulator = (Emulator*)data;
 
-    // The NDS sample rate is 32768Hz, and PortAudio supports this frequency directly
-    // It causes issues on some systems though, so a more standard frequency of 48000Hz is used instead
-    // Get 700 samples at 32768Hz, which is equal to about 1024 samples at 48000Hz
-    uint32_t original[700];
-    for (int i = 0; i < 700; i++)
-        original[i] = emulator->running ? emulator->core->getSample() : 0;
-
-    // Stretch the 700 samples out to 1024 samples in the audio buffer
-    for (int i = 0; i < frames; i++)
+    if (emulator->core)
     {
-        uint32_t sample = original[i * 700 / 1024];
-        buffer[i * 2 + 0] = sample >>  0;
-        buffer[i * 2 + 1] = sample >> 16;
+        // The NDS sample rate is 32768Hz, and PortAudio supports this frequency directly
+        // It causes issues on some systems though, so a more standard frequency of 48000Hz is used instead
+        // Get 699 samples at 32768Hz, which is equal to approximately 1024 samples at 48000Hz
+        uint32_t *original = emulator->core->getSamples(699);
+
+        // Stretch the 699 samples out to 1024 samples in the audio buffer
+        for (int i = 0; i < frames; i++)
+        {
+            uint32_t sample = original[i * 699 / 1024];
+            buffer[i * 2 + 0] = sample >>  0;
+            buffer[i * 2 + 1] = sample >> 16;
+        }
+
+        delete[] original;
+    }
+    else
+    {
+        // Play silence if the emulator isn't running
+        memset(buffer, 0, frames * sizeof(uint32_t));
     }
 
     return 0;

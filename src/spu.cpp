@@ -17,11 +17,15 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <chrono>
 #include <cstdio>
+#include <cstring>
+#include <functional>
 
 #include "spu.h"
 #include "defines.h"
 #include "memory.h"
+#include "settings.h"
 
 const int Spu::indexTable[] =
 {
@@ -40,7 +44,49 @@ const int16_t Spu::adpcmTable[] =
     0x5771, 0x602F, 0x69CE, 0x7462, 0x7FFF
 };
 
-uint32_t Spu::getSample()
+Spu::~Spu()
+{
+    // Free the buffers
+    delete[] bufferIn;
+    delete[] bufferOut;
+}
+
+uint32_t *Spu::getSamples(int count)
+{
+    // Initialize the buffers
+    if (bufferSize != count)
+    {
+        delete[] bufferIn;
+        delete[] bufferOut;
+        bufferIn  = new uint32_t[count];
+        bufferOut = new uint32_t[count];
+        bufferSize = count;
+        bufferPointer = 0;
+    }
+
+    uint32_t *out = new uint32_t[count];
+
+    // Try to wait until the buffer is filled
+    // If the emulation isn't full speed, waiting would starve the audio buffer
+    // So if it's taking too long, just let it play an empty buffer
+    std::unique_lock<std::mutex> lock(mutex2);
+    bool full = cond2.wait_for(lock, std::chrono::microseconds(500000 / 60), std::bind(&Spu::shouldPlay, this));
+
+    // Fill the output buffer
+    if (full)
+        memcpy(out, bufferOut, count * sizeof(uint32_t));
+    else
+        memset(out, 0, count * sizeof(uint32_t));
+
+    // Signal that the buffer was played
+    std::lock_guard<std::mutex> guard(mutex1);
+    ready = false;
+    cond1.notify_one();
+
+    return out;
+}
+
+void Spu::runSample()
 {
     int64_t sampleLeft = 0;
     int64_t sampleRight = 0;
@@ -205,7 +251,36 @@ uint32_t Spu::getSample()
     // Expand the samples to signed 16-bit values and return them
     sampleLeft  = (sampleLeft  - 0x200) << 5;
     sampleRight = (sampleRight - 0x200) << 5;
-    return (sampleRight << 16) | (sampleLeft & 0xFFFF);
+
+    if (bufferSize == 0) return;
+
+    // Write the samples to the buffer
+    bufferIn[bufferPointer++] = (sampleRight << 16) | (sampleLeft & 0xFFFF);
+
+    // Handle a full buffer
+    if (bufferPointer == bufferSize)
+    {
+        // Wait until the buffer has been played, keeping the emulator throttled to 60FPS
+        // Synchronizing to the audio eliminites the potential for nasty audio crackles
+        if (Settings::getLimitFps())
+        {
+            std::unique_lock<std::mutex> lock(mutex1);
+            cond1.wait(lock, std::bind(&Spu::shouldFill, this));
+        }
+
+        // Swap the buffers
+        uint32_t *buffer = bufferOut;
+        bufferOut = bufferIn;
+        bufferIn = buffer;
+
+        // Signal that the buffer is ready to play
+        std::lock_guard<std::mutex> guard(mutex2);
+        ready = true;
+        cond2.notify_one();
+
+        // Reset the buffer pointer
+        bufferPointer = 0;
+    }
 }
 
 void Spu::writeSoundCnt(int channel, uint32_t mask, uint32_t value)

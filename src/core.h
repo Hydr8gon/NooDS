@@ -57,18 +57,20 @@ class Core
         void pressScreen(int x, int y) { input.pressScreen();   spi.setTouch(x, y); }
         void releaseScreen()           { input.releaseScreen(); spi.clearTouch();   }
 
-        uint32_t *getFramebuffer() { return gpu.getFramebuffer(); }
-        uint32_t  getSample()      { return spu.getSample();      }
-        int       getFps()         { return fps;                  }
+        uint32_t *getFramebuffer()      { return gpu.getFramebuffer();  }
+        uint32_t *getSamples(int count) { return spu.getSamples(count); }
+        int       getFps()              { return fps;                   }
 
     private:
         int fps = 0, fpsCount = 0;
-        std::chrono::steady_clock::time_point lastFrameTime, lastFpsTime;
+        std::chrono::steady_clock::time_point lastFpsTime;
 
         uint8_t firmware[0x40000] = {};
         uint8_t *rom = nullptr, *save = nullptr;
         uint32_t saveSize = 0;
         std::string saveName;
+
+        int spuTimer = 0;
 
         Cartridge cart9, cart7;
         Cp15 cp15;

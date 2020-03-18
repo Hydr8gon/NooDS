@@ -50,15 +50,13 @@ void outputAudio(void *args)
         int16_t *buffer = (int16_t*)audioReleasedBuffer->buffer;
 
         // The NDS sample rate is 32768Hz, but audout uses 48000Hz
-        // Get 700 samples at 32768Hz, which is equal to about 1024 samples at 48000Hz
-        uint32_t original[700];
-        for (int i = 0; i < 700; i++)
-            original[i] = core->getSample();
+        // Get 699 samples at 32768Hz, which is equal to approximately 1024 samples at 48000Hz
+        uint32_t *original = core->getSamples(699);
 
-        // Stretch the 700 samples out to 1024 samples in the audio buffer
+        // Stretch the 699 samples out to 1024 samples in the audio buffer
         for (int i = 0; i < 1024; i++)
         {
-            uint32_t sample = original[i * 700 / 1024];
+            uint32_t sample = original[i * 699 / 1024];
             buffer[i * 2 + 0] = sample >>  0;
             buffer[i * 2 + 1] = sample >> 16;
         }
