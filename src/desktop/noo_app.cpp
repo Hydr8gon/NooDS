@@ -20,6 +20,10 @@
 #include "noo_app.h"
 #include "../settings.h"
 
+wxBEGIN_EVENT_TABLE(NooApp, wxApp)
+EVT_TIMER(1, NooApp::update)
+wxEND_EVENT_TABLE()
+
 int NooApp::keyMap[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
 
 bool NooApp::OnInit()
@@ -50,7 +54,11 @@ bool NooApp::OnInit()
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
     sizer->Add(panel, 1, wxEXPAND);
     frame->SetSizer(sizer);
-    Connect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(NooApp::requestDraw));
+
+    // Set up the update timer
+    // Timers aren't entirely accurate (especially on Windows!), so just run as fast as possible to avoid frame drops
+    wxTimer *timer = new wxTimer(this, 1);
+    timer->Start(1);
 
     // Start the audio service
     PaStream *stream;
@@ -61,13 +69,10 @@ bool NooApp::OnInit()
     return true;
 }
 
-void NooApp::requestDraw(wxIdleEvent &event)
+void NooApp::update(wxTimerEvent &event)
 {
-    // Refresh the display
+    // Refresh the display and update the FPS counter
     panel->Refresh();
-    event.RequestMore();
-
-    // Update the FPS in the window title if the core is running
     frame->SetLabel(emulator.running ? wxString::Format("NooDS - %d FPS", emulator.core->getFps()) : "NooDS");
 }
 

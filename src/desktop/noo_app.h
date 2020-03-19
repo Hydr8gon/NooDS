@@ -40,10 +40,13 @@ class NooApp: public wxApp
         static int keyMap[12];
 
         bool OnInit();
-        void requestDraw(wxIdleEvent &event);
+
+        void update(wxTimerEvent &event);
 
         static int audioCallback(const void *in, void *out, unsigned long frames,
                                  const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
+
+        wxDECLARE_EVENT_TABLE();
 };
 
 #endif // NOO_APP_H
