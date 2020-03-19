@@ -72,11 +72,17 @@ uint32_t *Spu::getSamples(int count)
     std::unique_lock<std::mutex> lock(mutex2);
     bool full = cond2.wait_for(lock, std::chrono::microseconds(1000000 / 60), std::bind(&Spu::shouldPlay, this));
 
-    // Fill the output buffer
     if (full)
+    {
+        // Fill the output buffer with new data
         memcpy(out, bufferOut, count * sizeof(uint32_t));
+    }
     else
-        memset(out, 0, count * sizeof(uint32_t));
+    {
+        // Fill the output buffer with the last played sample to prevent crackles when running slow
+        for (int i = 0; i < count; i++)
+            out[i] = bufferOut[count - 1];
+    }
 
     // Signal that the buffer was played
     std::lock_guard<std::mutex> guard(mutex1);
