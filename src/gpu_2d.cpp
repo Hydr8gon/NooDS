@@ -143,7 +143,7 @@ void Gpu2D::drawScanline(int line)
                         enabled &= winIn >> 0; // Window 0
                     else if ((dispCnt & BIT(14)) && i >= winX1[1] && i < winX2[1] && line >= winY1[1] && line < winY2[1])
                         enabled &= winIn >> 8; // Window 1
-                    else if ((dispCnt & BIT(15)) && (*pixel & BIT(24)))
+                    else if ((dispCnt & BIT(15)) && (*pixel & BIT(25)))
                         enabled &= winOut >> 8; // Object window
                     else
                         enabled &= winOut >> 0; // Outside of windows
@@ -800,7 +800,7 @@ void Gpu2D::drawObjects(int line)
                         if (type == 2) // Object window
                         {
                             // Mark object window pixels with an extra bit, and don't actually draw anything
-                            framebuffer[line * 256 + x + j] |= BIT(24);
+                            framebuffer[line * 256 + x + j] |= BIT(25);
                         }
                         else
                         {
@@ -841,7 +841,7 @@ void Gpu2D::drawObjects(int line)
                         if (type == 2) // Object window
                         {
                             // Mark object window pixels with an extra bit, and don't actually draw anything
-                            framebuffer[line * 256 + x + j] |= BIT(24);
+                            framebuffer[line * 256 + x + j] |= BIT(25);
                         }
                         else
                         {
@@ -891,7 +891,7 @@ void Gpu2D::drawObjects(int line)
                     if (type == 2) // Object window
                     {
                         // Mark object window pixels with an extra bit, and don't actually draw anything
-                        framebuffer[line * 256 + offset] |= BIT(24);
+                        framebuffer[line * 256 + offset] |= BIT(25);
                     }
                     else
                     {
@@ -932,7 +932,7 @@ void Gpu2D::drawObjects(int line)
                     if (type == 2) // Object window
                     {
                         // Mark object window pixels with an extra bit, and don't actually draw anything
-                        framebuffer[line * 256 + offset] |= BIT(24);
+                        framebuffer[line * 256 + offset] |= BIT(25);
                     }
                     else
                     {
