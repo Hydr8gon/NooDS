@@ -507,7 +507,10 @@ uint32_t Cartridge::readRomDataIn()
         else if ((command & 0xFF00000000FFFFFF) == 0xB700000000000000) // Get data
         {
             // Return ROM data from the given address
+            // This command can't read the first 32KB of a ROM, so it redirects the address
+            // Some games verify that the first 32KB are unreadable as an anti-piracy measure
             uint32_t address = (command & 0x00FFFFFFFF000000) >> 24;
+            if (address < 0x8000) address = 0x8000 + (address & 0x1FF);
             value = (address + readCount < romSize) ? U8TO32(rom, address + readCount) : 0;
         }
         else if (command != 0x9F00000000000000) // Unknown (not dummy)
