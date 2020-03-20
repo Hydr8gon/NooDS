@@ -74,7 +74,7 @@ void Gpu::scanline256()
                     // Choose from 2D engine A or the 3D engine
                     uint32_t *source;
                     if (dispCapCnt & BIT(24))
-                        source = &gpu3DRenderer->getLineCache()[(vCount % 48) * 256];
+                        source = &gpu3DRenderer->getFramebuffer()[vCount * 256];
                     else
                         source = &engineA->getFramebuffer()[vCount * 256];
 
@@ -124,7 +124,7 @@ void Gpu::scanline256()
                     if (dispCapCnt & BIT(24))
                         source = &engineA->getFramebuffer()[vCount * 256];
                     else
-                        source = &gpu3DRenderer->getLineCache()[(vCount % 48) * 256];
+                        source = &gpu3DRenderer->getFramebuffer()[vCount * 256];
 
                     // Get the VRAM source address
                     uint32_t readOffset = (dispCapCnt & 0x0C000000) >> 11;

@@ -18,11 +18,13 @@
 */
 
 #include <cstdio>
+#include <thread>
 #include <vector>
 
 #include "gpu_3d_renderer.h"
 #include "defines.h"
 #include "gpu_3d.h"
+#include "settings.h"
 
 uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 {
@@ -36,11 +38,45 @@ uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 
 void Gpu3DRenderer::drawScanline(int line)
 {
+    if (Settings::getThreaded3D())
+    {
+        // Draw the entire 3D scene in advance, across 4 threads
+        // An actual DS only has a 48-scanline cache instead of a full framebuffer for 3D
+        // It makes no difference to the output though, so a full framebuffer is used
+        // Even timing won't affect the output, since the geometry buffers can only be swapped at V-blank!
+        if (line == 0)
+        {
+            std::thread one(&Gpu3DRenderer::drawScanline48, this, 0);
+            std::thread two(&Gpu3DRenderer::drawScanline48, this, 1);
+            std::thread three(&Gpu3DRenderer::drawScanline48, this, 2);
+            std::thread four(&Gpu3DRenderer::drawScanline48, this, 3);
+            one.join();
+            two.join();
+            three.join();
+            four.join();
+        }
+    }
+    else
+    {
+        // Draw one scanline at a time
+        drawScanline1(line);
+    }
+}
+
+void Gpu3DRenderer::drawScanline48(int block)
+{
+    // Draw a block of 48 scanlines, or 1/4 of the screen
+    for (int i = block * 48; i < (block + 1) * 48; i++)
+        drawScanline1(i);
+}
+
+void Gpu3DRenderer::drawScanline1(int line)
+{
     // Clear the scanline and depth buffer with the clear values
     for (int i = 0; i < 256; i++)
     {
-        lineCache[(line % 48) * 256 + i] = clearColor;
-        depthBuffer[i] = clearDepth;
+        framebuffer[line * 256 + i] = clearColor;
+        depthBuffer[line * 256 + i] = clearDepth;
     }
 
     std::vector<_Polygon*> translucent;
@@ -476,7 +512,7 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
 
         // Draw a new pixel if the old one is behind the new one
         // The polygon can optionally use an "equal" depth test, which has a margin of 0x200
-        if ((polygon->depthTestEqual && depthBuffer[x] - 0x200 >= depth) || depthBuffer[x] > depth)
+        if ((polygon->depthTestEqual && depthBuffer[line * 256 + x] - 0x200 >= depth) || depthBuffer[line * 256 + x] > depth)
         {
             // Calculate the W value of the current pixel
             int w = polygon->wBuffer ? (depth >> wShift) : interpolateW(w1, w2, x1, x, x2);
@@ -563,17 +599,17 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
             // 3D pixels are marked with an extra bit as an indicator for 2D blending
             if (color & 0xFC0000)
             {
-                uint32_t *pixel = &lineCache[(line % 48) * 256 + x];
+                uint32_t *pixel = &framebuffer[line * 256 + x];
 
                 if ((color >> 18) < 0x3F && (*pixel & 0xFC0000)) // Alpha blending
                 {
                     *pixel = BIT(24) | interpolateColor(*pixel, color, 0, color >> 18, 63);
-                    if (polygon->transNewDepth) depthBuffer[x] = depth;
+                    if (polygon->transNewDepth) depthBuffer[line * 256 + x] = depth;
                 }
                 else
                 {
                     *pixel = BIT(24) | color;
-                    depthBuffer[x] = depth;
+                    depthBuffer[line * 256 + x] = depth;
                 }
             }
         }

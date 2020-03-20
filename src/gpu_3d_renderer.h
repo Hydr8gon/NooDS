@@ -33,7 +33,7 @@ class Gpu3DRenderer
 
         void drawScanline(int line);
 
-        uint32_t *getLineCache() { return lineCache; }
+        uint32_t *getFramebuffer() { return framebuffer; }
 
         void setTexture(int slot, uint8_t *data) { textures[slot] = data; }
         void setPalette(int slot, uint8_t *data) { palettes[slot] = data; }
@@ -46,8 +46,8 @@ class Gpu3DRenderer
         void writeToonTable(int index, uint16_t mask, uint16_t value);
 
     private:
-        uint32_t lineCache[48 * 256] = {};
-        int depthBuffer[256] = {};
+        uint32_t framebuffer[256 * 192] = {};
+        int depthBuffer[256 * 192] = {};
 
         uint8_t *textures[4] = {};
         uint8_t *palettes[6] = {};
@@ -60,6 +60,9 @@ class Gpu3DRenderer
         Gpu3D *gpu3D;
 
         uint32_t rgba5ToRgba6(uint32_t color);
+
+        void drawScanline48(int block);
+        void drawScanline1(int line);
 
         uint8_t *getTexture(uint32_t address);
         uint8_t *getPalette(uint32_t address);

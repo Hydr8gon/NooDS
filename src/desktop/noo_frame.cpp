@@ -24,15 +24,16 @@
 #include "../settings.h"
 
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
-EVT_MENU(1, NooFrame::loadRom)
-EVT_MENU(2, NooFrame::bootFirmware)
-EVT_MENU(3, NooFrame::pause)
-EVT_MENU(4, NooFrame::restart)
-EVT_MENU(5, NooFrame::stop)
-EVT_MENU(6, NooFrame::pathSettings)
-EVT_MENU(7, NooFrame::inputSettings)
-EVT_MENU(8, NooFrame::directBootToggle)
-EVT_MENU(9, NooFrame::limitFpsToggle)
+EVT_MENU(1,  NooFrame::loadRom)
+EVT_MENU(2,  NooFrame::bootFirmware)
+EVT_MENU(3,  NooFrame::pause)
+EVT_MENU(4,  NooFrame::restart)
+EVT_MENU(5,  NooFrame::stop)
+EVT_MENU(6,  NooFrame::pathSettings)
+EVT_MENU(7,  NooFrame::inputSettings)
+EVT_MENU(8,  NooFrame::directBootToggle)
+EVT_MENU(9,  NooFrame::threaded3DToggle)
+EVT_MENU(10, NooFrame::limitFpsToggle)
 EVT_MENU(wxID_EXIT, NooFrame::exit)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
@@ -62,12 +63,14 @@ NooFrame::NooFrame(Emulator *emulator): wxFrame(nullptr, wxID_ANY, "NooDS"), emu
     settingsMenu->Append(6, "&Path Settings");
     settingsMenu->Append(7, "&Input Settings");
     settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(8, "&Direct Boot");
-    settingsMenu->AppendCheckItem(9, "&Limit FPS");
+    settingsMenu->AppendCheckItem(8,  "&Direct Boot");
+    settingsMenu->AppendCheckItem(9,  "&Threaded 3D");
+    settingsMenu->AppendCheckItem(10, "&Limit FPS");
 
     // Set the current values of the checkboxes
-    settingsMenu->Check(8, Settings::getDirectBoot());
-    settingsMenu->Check(9, Settings::getLimitFps());
+    settingsMenu->Check(8,  Settings::getDirectBoot());
+    settingsMenu->Check(9,  Settings::getThreaded3D());
+    settingsMenu->Check(10, Settings::getLimitFps());
 
     // Set up the menu bar
     wxMenuBar *menuBar = new wxMenuBar();
@@ -243,6 +246,12 @@ void NooFrame::directBootToggle(wxCommandEvent &event)
 {
     // Toggle the "Direct Boot" option
     Settings::setDirectBoot(!Settings::getDirectBoot());
+}
+
+void NooFrame::threaded3DToggle(wxCommandEvent &event)
+{
+    // Toggle the "Threaded 3D" option
+    Settings::setThreaded3D(!Settings::getThreaded3D());
 }
 
 void NooFrame::limitFpsToggle(wxCommandEvent &event)
