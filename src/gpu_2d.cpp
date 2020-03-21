@@ -457,7 +457,65 @@ void Gpu2D::drawText(int bg, int line)
 
 void Gpu2D::drawAffine(int bg, int line)
 {
-    // Affine backgrounds aren't implemented yet
+    // Get information about the tile data
+    uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
+    uint32_t charBase   = ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
+    int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
+
+    // Get the tile data
+    uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase);
+    if (!data) return;
+
+    // Calculate the scroll values
+    int scrollX = bgX[bg - 2] + (bgPA[bg - 2] * (size / 2) + bgPB[bg - 2] * (size / 2));
+    int scrollY = bgY[bg - 2] + (bgPC[bg - 2] * (size / 2) + bgPD[bg - 2] * (size / 2));
+
+    // Draw a line
+    for (int i = 0; i < 256; i++)
+    {
+        // Calculate the rotscaled coordinates relative to the background
+        int rotscaleX = (bgPA[bg - 2] * (i - size / 2) + bgPB[bg - 2] * (line - size / 2) + scrollX) >> 8;
+        int rotscaleY = (bgPC[bg - 2] * (i - size / 2) + bgPD[bg - 2] * (line - size / 2) + scrollY) >> 8;
+
+        // Handle display area overflow
+        if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
+        {
+            rotscaleX %= size;
+            rotscaleY %= size;
+
+            if (rotscaleX < 0) rotscaleX += size;
+            if (rotscaleY < 0) rotscaleY += size;
+        }
+        else if (rotscaleX < 0 || rotscaleX >= size || rotscaleY < 0 || rotscaleY >= size) // Transparent
+        {
+            continue;
+        }
+
+        // Get the data for the current tile
+        uint8_t tile = data[(rotscaleY / 8) * (size / 8) + (rotscaleX / 8)];
+
+        // Get the palette of the tile
+        uint8_t *pal;
+        if (dispCnt & BIT(30)) // Extended palette
+        {
+            if (!extPalettes[bg]) continue;
+            pal = extPalettes[bg];
+        }
+        else // Standard palette
+        {
+            pal = palette;
+        }
+
+        // Find the palette index for the right pixel of the tile
+        uint8_t *index = memory->getMappedVram(bgVramAddr + charBase + tile * 64);
+        if (!index) continue;
+        index += (rotscaleY % 8) * 8;
+        index += (rotscaleX % 8);
+
+        // Draw a pixel
+        if (*index)
+            layers[bg][line * 256 + i] = rgb5ToRgba6(U8TO16(pal, *index * 2) | BIT(15));
+    }
 }
 
 void Gpu2D::drawExtended(int bg, int line)
