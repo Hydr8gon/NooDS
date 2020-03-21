@@ -34,6 +34,7 @@ class Gpu2D
         Gpu2D(Gpu3DRenderer *gpu3DRenderer, Memory *memory);
 
         void drawScanline(int line);
+        void applyMasterBright(int line);
 
         bool is3DEnabled() { return dispCnt & BIT(3); }
 

@@ -161,6 +161,10 @@ void Gpu::scanline256()
                 dispCapCnt &= ~BIT(31);
             }
         }
+
+        // Apply master brightness after display capture so the captured data isn't affected
+        engineA->applyMasterBright(vCount);
+        engineB->applyMasterBright(vCount);
     }
 
     // Draw 3D scanlines 48 lines in advance

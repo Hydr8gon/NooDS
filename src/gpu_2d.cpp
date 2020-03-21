@@ -296,8 +296,11 @@ void Gpu2D::drawScanline(int line)
             break;
         }
     }
+}
 
-    // Adjust the master brightness
+void Gpu2D::applyMasterBright(int line)
+{
+    // Apply the master brightness
     switch ((masterBright & 0xC000) >> 14) // Mode
     {
         case 1: // Up
