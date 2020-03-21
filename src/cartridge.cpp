@@ -338,6 +338,15 @@ void Cartridge::writeAuxSpiData(uint8_t value)
                         break;
                     }
 
+                    case 0x08: // IR-related
+                    {
+                        // If a gamecode starts with 'I', the game has an infrared port in its cartridge
+                        // This shares the same SPI as FLASH memory
+                        // Some games check this command as an anti-piracy measure
+                        auxSpiData = (rom[0xC] == 'I') ? 0xAA : 0;
+                        break;
+                    }
+
                     default:
                     {
                         printf("Write to AUX SPI with unknown FLASH command: 0x%X\n", auxCommand);
