@@ -17,14 +17,24 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cstring>
+#include <dirent.h>
 #include <switch.h>
 #include <malloc.h>
 
+#include "switch_ui.h"
 #include "../core.h"
 #include "../settings.h"
 
-const uint32_t keyMap[] = { KEY_A, KEY_B, KEY_MINUS, KEY_PLUS, KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN, KEY_ZR, KEY_ZL, KEY_X, KEY_Y };
+const uint32_t keyMap[] =
+{
+    KEY_A,     KEY_B,    KEY_MINUS, KEY_PLUS,
+    KEY_RIGHT, KEY_LEFT, KEY_UP,    KEY_DOWN,
+    KEY_ZR,    KEY_ZL,   KEY_X,     KEY_Y
+};
+
+std::string path;
 
 Core *core;
 bool running = true;
@@ -65,53 +75,256 @@ void outputAudio(void *args)
     }
 }
 
-uint32_t rgb6ToRgba8(uint32_t color)
+uint32_t *getRomIcon(std::string filename)
 {
-    // Convert an RGB6 value to an RGBA8 value
-    uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
-    uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
-    uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
-    return (0xFF << 24) | (b << 16) | (g << 8) | r;
+    // Attempt to open the ROM
+    FILE *rom = fopen(filename.c_str(), "rb");
+    if (!rom) return nullptr;
+
+    // Get the icon offset
+    uint32_t offset;
+    fseek(rom, 0x68, SEEK_SET);
+    fread(&offset, sizeof(uint32_t), 1, rom);
+
+    // Get the icon data
+    uint8_t data[512];
+    fseek(rom, 0x20 + offset, SEEK_SET);
+    fread(data, sizeof(uint8_t), 512, rom);
+
+    // Get the icon palette
+    uint16_t palette[16];
+    fseek(rom, 0x220 + offset, SEEK_SET);
+    fread(palette, sizeof(uint16_t), 16, rom);
+
+    fclose(rom);
+
+    // Get each pixel's 5-bit palette color and convert it to 8-bit
+    uint32_t tiles[32 * 32];
+    for (int i = 0; i < 32 * 32; i++)
+    {
+        uint8_t index = (i & 1) ? ((data[i / 2] & 0xF0) >> 4) : (data[i / 2] & 0x0F);
+        uint8_t r = index ? (((palette[index] >>  0) & 0x1F) * 255 / 31) : 0xFFFFFFFF;
+        uint8_t g = index ? (((palette[index] >>  5) & 0x1F) * 255 / 31) : 0xFFFFFFFF;
+        uint8_t b = index ? (((palette[index] >> 10) & 0x1F) * 255 / 31) : 0xFFFFFFFF;
+        tiles[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
+    }
+
+    uint32_t *texture = new uint32_t[32 * 32];
+
+    // Rearrange the pixels from 8x8 tiles to a 32x32 texture
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            for (int k = 0; k < 4; k++)
+                memcpy(&texture[256 * i + 32 * j + 8 * k], &tiles[256 * i + 8 * j + 64 * k], 8 * sizeof(uint32_t));
+        }
+    }
+
+    return texture;
+}
+
+void settingsMenu()
+{
+    unsigned int index = 0;
+
+    while (true)
+    {
+        // Get the list of settings and current values
+        std::vector<ListItem> settings =
+        {
+            ListItem("Direct Boot", Settings::getDirectBoot() ? "On" : "Off"),
+            ListItem("Threaded 3D", Settings::getThreaded3D() ? "On" : "Off"),
+            ListItem("Limit FPS",   Settings::getLimitFps()   ? "On" : "Off")
+        };
+
+        // Create the settings menu
+        Selection menu = SwitchUI::menu("Settings", &settings, index);
+        index = menu.index;
+
+        // Handle menu input
+        if (menu.pressed & KEY_A)
+        {
+            // Toggle the chosen setting
+            switch (index)
+            {
+                case 0: Settings::setDirectBoot(!Settings::getDirectBoot()); break;
+                case 1: Settings::setThreaded3D(!Settings::getThreaded3D()); break;
+                case 2: Settings::setLimitFps(!Settings::getLimitFps());     break;
+            }
+        }
+        else if (menu.pressed & KEY_B)
+        {
+            // Close the settings menu
+            Settings::save();
+            return;
+        }
+    }
+}
+
+bool fileBrowser()
+{
+    path = "sdmc:/";
+    unsigned int index = 0;
+    bool exit = false;
+
+    // Load the appropriate folder icon for the current theme
+    romfsInit();
+    std::string folderName = SwitchUI::isDarkTheme() ? "romfs:/folder-dark.bmp" : "romfs:/folder-light.bmp";
+    Icon folder(SwitchUI::bmpToTexture(folderName), 64);
+    romfsExit();
+
+    while (true)
+    {
+        std::vector<ListItem> files;
+        std::vector<Icon*> icons;
+        DIR *dir = opendir(path.c_str());
+        dirent *entry;
+
+        // Get all the folders and ROMs at the current path
+        while ((entry = readdir(dir)))
+        {
+            std::string name = entry->d_name;
+
+            if (entry->d_type == DT_DIR)
+            {
+                // Add a directory with a generic icon to the list
+                files.push_back(ListItem(name, "", &folder));
+            }
+            else if (name.find(".nds", name.length() - 4) != std::string::npos)
+            {
+                // Add a ROM with its decoded icon to the list
+                icons.push_back(new Icon(getRomIcon(path + "/" + name), 32));
+                files.push_back(ListItem(name, "", icons[icons.size() - 1]));
+            }
+        }
+
+        closedir(dir);
+        sort(files.begin(), files.end());
+
+        // Create the file browser menu
+        Selection menu = SwitchUI::menu("NooDS", &files, index, "Settings", "Exit");
+        index = menu.index;
+
+        // Free the ROM icon memory
+        for (unsigned int i = 0; i < icons.size(); i++)
+        {
+            delete[] icons[i]->texture;
+            delete[] icons[i];
+        }
+
+        // Handle menu input
+        if ((menu.pressed & KEY_A) && files.size() > 0)
+        {
+            // Navigate to the selected directory
+            path += "/" + files[menu.index].name;
+            index = 0;
+
+            // If a ROM was selected, attempt to boot it
+            if (path.find(".nds", path.length() - 4) != std::string::npos)
+            {
+                try
+                {
+                    core = new Core(path);
+                }
+                catch (int e)
+                {
+                    // Handle errors during ROM boot
+                    switch (e)
+                    {
+                        case 1: // Missing BIOS and/or firmware files
+                        {
+                            // Inform the user of the error
+                            std::vector<std::string> message =
+                            {
+                                "Initialization failed.",
+                                "Make sure the path settings point to valid BIOS and firmware files and try again.",
+                                "You can modify the path settings in the noods.ini file."
+                            };
+                            SwitchUI::message("Missing BIOS/Firmware", message);
+
+                            // Remove the ROM from the path and return to the file browser
+                            path = path.substr(0, path.rfind("/"));
+                            index = 0;
+                            continue;
+                        }
+
+                        case 2: // Unreadable ROM file
+                        {
+                            // Inform the user of the error
+                            std::vector<std::string> message =
+                            {
+                                "Initialization failed.",
+                                "Make sure the ROM file is accessible and try again."
+                            };
+                            SwitchUI::message("Unreadable ROM", message);
+
+                            // Remove the ROM from the path and return to the file browser
+                            path = path.substr(0, path.rfind("/"));
+                            index = 0;
+                            continue;
+                        }
+
+                        case 3: // Missing save file
+                        {
+                            // Inform the user of the error
+                            std::vector<std::string> message =
+                            {
+                                "This ROM does not have a save file.",
+                                "NooDS cannot automatically detect save type, so FLASH 512KB will be assumed.",
+                                "If the game fails to save, provide a save with the correct file size."
+                            };
+                            SwitchUI::message("Missing Save", message);
+
+                            // Assume a save type of FLASH 512KB and boot the ROM again
+                            Core::createSave(path, 5);
+                            core = new Core(path);
+                            break;
+                        }
+                    }
+                }
+
+                break;
+            }
+        }
+        else if ((menu.pressed & KEY_B) && path != "sdmc:/")
+        {
+            // Navigate to the previous directory
+            path = path.substr(0, path.rfind("/"));
+            index = 0;
+        }
+        else if (menu.pressed & KEY_X)
+        {
+            // Open the settings menu   
+            settingsMenu();
+        }
+        else if (menu.pressed & KEY_PLUS)
+        {
+            // Request to exit the program
+            exit = true;
+            break;
+        }
+    }
+
+    delete[] folder.texture;
+    return !exit;
 }
 
 int main()
 {
-    // Load the settings
-    Settings::load(std::vector<Setting>());
+    SwitchUI::initialize();
+    Settings::load();
 
-    // Prepare the core
-    try
+    // Open the file browser
+    if (!fileBrowser())
     {
-        // Attempt to boot a ROM
-        core = new Core("rom.nds");
+        // Exit the program if the file browser requested it
+        Settings::save();
+        SwitchUI::deinitialize();
+        return 0;
     }
-    catch (int e)
-    {
-        // Handle errors during ROM boot
-        switch (e)
-        {
-            case 1: // Missing BIOS and/or firmware files
-            {
-                // Nothing can be done, so quit
-                return 1;
-            }
 
-            case 2: // Unreadable ROM file
-            {
-                // Boot the firmware instead
-                core = new Core();
-                break;
-            }
-
-            case 3: // Missing save file
-            {
-                // Assume a save type of FLASH 512KB and boot the ROM again
-                Core::createSave("rom.nds", 5);
-                core = new Core("rom.nds");
-                break;
-            }
-        }
-    }
+    appletLockExit();
 
     // Overclock the Switch CPU
     ClkrstSession cpuSession;
@@ -119,16 +332,10 @@ int main()
     clkrstOpenSession(&cpuSession, PcvModuleId_CpuBus, 0);
     clkrstSetClockRate(&cpuSession, 1785000000);
 
-    // Create a framebuffer
-    NWindow* win = nwindowGetDefault();
-    Framebuffer fb;
-    framebufferCreate(&fb, win, 1280, 720, PIXEL_FORMAT_RGBA_8888, 2);
-    framebufferMakeLinear(&fb);
-
     audoutInitialize();
     audoutStartAudioOut();
 
-    // Setup the audio buffer
+    // Set up the audio buffer
     for (int i = 0; i < 2; i++)
     {
         int size = 1024 * 2 * sizeof(int16_t);
@@ -151,14 +358,14 @@ int main()
     threadCreate(&coreThread, runCore, NULL, NULL, 0x8000, 0x30, 1);
     threadStart(&coreThread);
 
-    appletLockExit();
-
     while (appletMainLoop())
     {
-        // Scan for key input and pass it to the emulator
+        // Scan for key input
         hidScanInput();
         uint32_t pressed = hidKeysDown(CONTROLLER_P1_AUTO);
         uint32_t released = hidKeysUp(CONTROLLER_P1_AUTO);
+
+        // Send input to the core
         for (int i = 0; i < 12; i++)
         {
             if (pressed & keyMap[i])
@@ -185,34 +392,39 @@ int main()
             core->releaseScreen();
         }
 
-        uint32_t stride;
-        uint32_t *switchBuf = (uint32_t*)framebufferBegin(&fb, &stride);
-        uint32_t *coreBuf = core->getFramebuffer();
+        uint32_t framebuffer[256 * 192 * 2];
 
-        // Draw the display
-        for (int y = 0; y < 192 * 2; y++)
+        // Convert the framebuffer to RGBA8 format
+        for (int i = 0; i < 256 * 192 * 2; i++)
         {
-            for (int x = 0; x < 256 * 2; x++)
-            {
-                switchBuf[(y + 168) * stride / sizeof(uint32_t) + (x + 128)] = rgb6ToRgba8(coreBuf[(y / 2) * 256 + (x / 2)]);
-                switchBuf[(y + 168) * stride / sizeof(uint32_t) + (x + 640)] = rgb6ToRgba8(coreBuf[((y / 2) + 192) * 256 + (x / 2)]);
-            }
+            uint32_t color = core->getFramebuffer()[i];
+            uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
+            uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
+            uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
+            framebuffer[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
         }
 
-        framebufferEnd(&fb);
+        // Draw the screens
+        SwitchUI::clear(Color(0, 0, 0));
+        SwitchUI::drawImage(&framebuffer[0],         256, 192, 128, 168, 256 * 2, 192 * 2, false);
+        SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, 640, 168, 256 * 2, 192 * 2, false);
+        SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
+        SwitchUI::update();
     }
 
     // Clean up
     running = false;
-    audoutStopAudioOut();
-    audoutExit();
-    framebufferClose(&fb);
     threadWaitForExit(&coreThread);
     threadClose(&coreThread);
-    delete core;
-    Settings::save();
+    threadWaitForExit(&audioThread);
+    threadClose(&audioThread);
+    audoutStopAudioOut();
+    audoutExit();
     clkrstSetClockRate(&cpuSession, 1020000000);
     clkrstExit();
+    delete core;
+    Settings::save();
+    SwitchUI::deinitialize();
     appletUnlockExit();
     return 0;
 }

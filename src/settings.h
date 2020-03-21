@@ -35,7 +35,7 @@ struct Setting
 class Settings
 {
     public:
-        static void load(std::vector<Setting> platformSettings);
+        static void load(std::vector<Setting> platformSettings = std::vector<Setting>());
         static void save();
 
         static std::string getBios9Path()    { return bios9Path;    }

@@ -64,7 +64,7 @@ jobs:
     - name: Install devkitPro pacman
       run: wget https://github.com/devkitPro/pacman/releases/download/devkitpro-pacman-1.0.1/devkitpro-pacman.deb && sudo dpkg -i devkitpro-pacman.deb
     - name: Install Switch dev tools
-      run: sudo dkp-pacman -S switch-dev --noconfirm
+      run: sudo dkp-pacman -S switch-dev switch-mesa switch-glad --noconfirm
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile

@@ -17,7 +17,7 @@ To compile on Windows, you'll need to install [MSYS2](https://www.msys2.org). On
 To compile for the Switch, you'll need to install [devkitPro](https://devkitpro.org/wiki/Getting_Started) and the `switch-dev` package. You can then run `make -f Makefile.switch` in the project root directory to compile.
 
 ### Usage
-NooDS doesn't provide high-level emulation of the BIOS yet. To actually run games, you'll need to provide BIOS and firmware files, dumped from your physical DS. On the Switch, you'll also need a ROM file named "rom.nds" in the same directory as the executable, because there's no file browser yet.
+NooDS doesn't provide high-level emulation of the BIOS yet. To actually run games, you'll need to provide BIOS and firmware files, dumped from your physical DS. Another thing NooDS is currently lacking is save type detection. If you try to run a game that doesn't have a save, you'll have to manually specify the save type. This information can be difficult to find, so it's easier if you have working save files aready present.
 
 ### Other Links
 [The NooDS Discord server](https://discord.gg/JbNz7y4), where we can chat and do other fun stuff! \

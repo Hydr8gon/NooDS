@@ -41,7 +41,8 @@ TARGET		:=	noods
 BUILD		:=	build
 SOURCES		:=	src src/switch
 DATA		:=	data
-INCLUDES	:=	src
+INCLUDES	:=	src src/switch
+ROMFS		:=	romfs
 
 APP_TITLE   := NooDS
 APP_AUTHOR  := Hydr8gon
@@ -62,7 +63,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=c++11
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lnx
+LIBS	:= -lglad -lEGL -lglapi -ldrm_nouveau -lnx
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
