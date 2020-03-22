@@ -179,6 +179,8 @@ class Gpu3D
         uint32_t lightColor[4] = {};
         uint8_t shininess[128] = {};
 
+        int16_t boxTestCoords[6] = {};
+
         uint32_t gxFifo = 0x00000000;
         uint32_t gxStat = 0x04000000;
 
@@ -197,7 +199,7 @@ class Gpu3D
         void addPolygon();
 
         Vertex intersection(Vertex *vtx1, Vertex *vtx2, int64_t val1, int64_t val2);
-        bool clipPolygon(Vertex *unclipped, Vertex *clipped, int side);
+        bool clipPolygon(Vertex *unclipped, Vertex *clipped, int *size);
 
         void mtxModeCmd(uint32_t param);
         void mtxPushCmd();
@@ -231,6 +233,7 @@ class Gpu3D
         void shininessCmd(uint32_t param);
         void beginVtxsCmd(uint32_t param);
         void swapBuffersCmd(uint32_t param);
+        void boxTestCmd(uint32_t param);
 
         void addEntry(Entry entry);
 };

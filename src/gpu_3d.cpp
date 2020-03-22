@@ -118,6 +118,7 @@ void Gpu3D::runCycle()
         case 0x40: beginVtxsCmd(entry.param);     break; // BEGIN_VTXS
         case 0x41:                                break; // END_VTXS
         case 0x50: swapBuffersCmd(entry.param);   break; // SWAP_BUFFERS
+        case 0x70: boxTestCmd(entry.param);       break; // BOX_TEST
 
         default:
         {
@@ -271,13 +272,9 @@ void Gpu3D::addPolygon()
     savedPolygon.size = size;
     savedPolygon.vertices = &verticesIn[vertexCountIn - size];
 
-    Vertex unclipped[8];
-    Vertex clipped[8];
-    Vertex temp[8];
-
     // Save a copy of the unclipped vertices
-    for (int i = 0; i < size; i++)
-        unclipped[i] = savedPolygon.vertices[i];
+    Vertex unclipped[8];
+    memcpy(unclipped, savedPolygon.vertices, size * sizeof(Vertex));
 
     // Rearrange quad strip vertices to be counter-clockwise
     if (polygonType == 3)
@@ -287,13 +284,9 @@ void Gpu3D::addPolygon()
         unclipped[3] = vertex;
     }
 
-    // Clip the polygon on all 6 sides of the view area
-    bool clip = clipPolygon(unclipped, temp, 0);
-    clip |= clipPolygon(temp, clipped, 1);
-    clip |= clipPolygon(clipped, temp, 2);
-    clip |= clipPolygon(temp, clipped, 3);
-    clip |= clipPolygon(clipped, temp, 4);
-    clip |= clipPolygon(temp, clipped, 5);
+    // Clip the polygon
+    Vertex clipped[8];
+    bool clip = clipPolygon(unclipped, clipped, &savedPolygon.size);
 
     // Calculate the cross product of the normalized polygon vertices to determine orientation
     int64_t cross = 0;
@@ -472,52 +465,62 @@ Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int64_t val1, int64_t val
     return vertex;
 }
 
-bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int side)
+bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int *size)
 {
     bool clip = false;
 
-    int size = savedPolygon.size;
-    savedPolygon.size = 0;
+    // Save a copy of the original unclipped vertices
+    Vertex original[4];
+    memcpy(original, unclipped, 4 * sizeof(Vertex));
 
     // Clip a polygon using the Sutherland-Hodgman algorithm
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i < 6; i++)
     {
-        // Get the unclipped vertices 
-        Vertex *current = &unclipped[i];
-        Vertex *previous = &unclipped[(i - 1 + size) % size];
+        int oldSize = *size;
+        *size = 0;
 
-        // Choose which coordinates to check based on the current side being clipped against
-        int64_t currentVal, previousVal;
-        switch (side)
+        for (int j = 0; j < oldSize; j++)
         {
-            case 0:  currentVal =  current->x; previousVal =  previous->x; break;
-            case 1:  currentVal = -current->x; previousVal = -previous->x; break;
-            case 2:  currentVal =  current->y; previousVal =  previous->y; break;
-            case 3:  currentVal = -current->y; previousVal = -previous->y; break;
-            case 4:  currentVal =  current->z; previousVal =  previous->z; break;
-            default: currentVal = -current->z; previousVal = -previous->z; break;
-        }
+            // Get the unclipped vertices 
+            Vertex *current = &unclipped[j];
+            Vertex *previous = &unclipped[(j - 1 + oldSize) % oldSize];
 
-        // Add the clipped vertices
-        if (currentVal >= -current->w) // Current vertex in bounds
-        {
-            if (previousVal < -previous->w) // Previous vertex not in bounds
+            // Choose which coordinates to check based on the current side being clipped against
+            int64_t currentVal, previousVal;
+            switch (i)
             {
-                clipped[savedPolygon.size] = intersection(current, previous, currentVal, previousVal);
-                savedPolygon.size++;
-                clip = true;
+                case 0: currentVal =  current->x; previousVal =  previous->x; break;
+                case 1: currentVal = -current->x; previousVal = -previous->x; break;
+                case 2: currentVal =  current->y; previousVal =  previous->y; break;
+                case 3: currentVal = -current->y; previousVal = -previous->y; break;
+                case 4: currentVal =  current->z; previousVal =  previous->z; break;
+                case 5: currentVal = -current->z; previousVal = -previous->z; break;
             }
 
-            clipped[savedPolygon.size] = *current;
-            savedPolygon.size++;
+            // Add the clipped vertices
+            if (currentVal >= -current->w) // Current vertex in bounds
+            {
+                if (previousVal < -previous->w) // Previous vertex not in bounds
+                {
+                    clipped[(*size)++] = intersection(current, previous, currentVal, previousVal);
+                    clip = true;
+                }
+
+                clipped[(*size)++] = *current;
+            }
+            else if (previousVal >= -previous->w) // Previous vertex in bounds
+            {
+                clipped[(*size)++] = intersection(current, previous, currentVal, previousVal);
+                clip = true;
+            }
         }
-        else if (previousVal >= -previous->w) // Previous vertex in bounds
-        {
-            clipped[savedPolygon.size] = intersection(current, previous, currentVal, previousVal);
-            savedPolygon.size++;
-            clip = true;
-        }
+
+        // Copy the new vertices to unclipped so they'll be used in the next iteration
+        if (i < 5) memcpy(unclipped, clipped, *size * sizeof(Vertex));
     }
+
+    // Restore the original unclipped vertices
+    memcpy(unclipped, original, 4 * sizeof(Vertex));
 
     return clip;
 }
@@ -1275,6 +1278,85 @@ void Gpu3D::swapBuffersCmd(uint32_t param)
     // Halt the geometry engine
     // The buffers will be swapped and the engine unhalted on next V-blank
     halted = true;
+}
+
+void Gpu3D::boxTestCmd(uint32_t param)
+{
+    // Store the parameters (X-pos, Y-pos, Z-pos, width, height, depth)
+    boxTestCoords[paramCount * 2 + 0] = param >>  0;
+    boxTestCoords[paramCount * 2 + 1] = param >> 16;
+
+    if (paramCount < 2) return;
+
+    // Get the vertices of the box
+    Vertex vertices[8];
+    vertices[0].x = boxTestCoords[0];
+    vertices[0].y = boxTestCoords[1];
+    vertices[0].z = boxTestCoords[2];
+    vertices[1].x = boxTestCoords[0] + boxTestCoords[3];
+    vertices[1].y = boxTestCoords[1];
+    vertices[1].z = boxTestCoords[2];
+    vertices[2].x = boxTestCoords[0];
+    vertices[2].y = boxTestCoords[1] + boxTestCoords[4];
+    vertices[2].z = boxTestCoords[2];
+    vertices[3].x = boxTestCoords[0];
+    vertices[3].y = boxTestCoords[1];
+    vertices[3].z = boxTestCoords[2] + boxTestCoords[5];
+    vertices[4].x = boxTestCoords[0] + boxTestCoords[3];
+    vertices[4].y = boxTestCoords[1] + boxTestCoords[4];
+    vertices[4].z = boxTestCoords[2];
+    vertices[5].x = boxTestCoords[0] + boxTestCoords[3];
+    vertices[5].y = boxTestCoords[1];
+    vertices[5].z = boxTestCoords[2] + boxTestCoords[5];
+    vertices[6].x = boxTestCoords[0];
+    vertices[6].y = boxTestCoords[1] + boxTestCoords[4];
+    vertices[6].z = boxTestCoords[2] + boxTestCoords[5];
+    vertices[7].x = boxTestCoords[0] + boxTestCoords[3];
+    vertices[7].y = boxTestCoords[1] + boxTestCoords[4];
+    vertices[7].z = boxTestCoords[2] + boxTestCoords[5];
+
+    // Update the clip matrix if necessary
+    if (clipDirty)
+    {
+        clip = multiply(&coordinate, &projection);
+        clipDirty = false;
+    }
+
+    // Transform the vertices
+    for (int i = 0; i < 8; i++)
+    {
+        vertices[i].w = 1 << 12;
+        vertices[i] = multiply(&vertices[i], &clip);
+    }
+
+    // Arrange the vertices to represent the faces of the box
+    Vertex faces[6][8] =
+    {
+        { vertices[0], vertices[1], vertices[4], vertices[2] },
+        { vertices[3], vertices[5], vertices[7], vertices[6] },
+        { vertices[3], vertices[5], vertices[1], vertices[0] },
+        { vertices[6], vertices[7], vertices[4], vertices[2] },
+        { vertices[0], vertices[3], vertices[6], vertices[2] },
+        { vertices[1], vertices[5], vertices[7], vertices[4] }
+    };
+
+    // Clip the faces of the box
+    // If any of the faces are in view, set the result bit
+    for (int i = 0; i < 6; i++)
+    {
+        int size = 4;
+        Vertex clipped[8];
+        clipPolygon(faces[i], clipped, &size);
+
+        if (size > 0)
+        {
+            gxStat |= BIT(1);
+            return;
+        }
+    }
+
+    // Clear the result bit if none of the faces were in view
+    gxStat &= ~BIT(1);
 }
 
 void Gpu3D::addEntry(Entry entry)
