@@ -603,12 +603,12 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
 
                 if ((color >> 18) < 0x3F && (*pixel & 0xFC0000)) // Alpha blending
                 {
-                    *pixel = BIT(24) | interpolateColor(*pixel, color, 0, color >> 18, 63);
+                    *pixel = BIT(26) | interpolateColor(*pixel, color, 0, color >> 18, 63);
                     if (polygon->transNewDepth) depthBuffer[line * 256 + x] = depth;
                 }
                 else
                 {
-                    *pixel = BIT(24) | color;
+                    *pixel = BIT(26) | color;
                     depthBuffer[line * 256 + x] = depth;
                 }
             }
