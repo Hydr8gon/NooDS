@@ -29,6 +29,8 @@ struct VertexData
     float x, y, s, t;
 };
 
+bool SwitchUI::shouldExit = false;
+
 EGLDisplay SwitchUI::display;
 EGLContext SwitchUI::context;
 EGLSurface SwitchUI::surface;
@@ -341,7 +343,7 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
     bool touchScroll = false;
     touchPosition touch, touchMove;
 
-    while (true)
+    while (appletMainLoop() && !shouldExit)
     {
         clear(palette[0]);
 
@@ -387,8 +389,16 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
         }
 
         // Return button presses so they can be handled externally
-        if ((pressed & (KEY_A | KEY_B)) || (actionX != "" && (pressed & KEY_X)) || (actionPlus != "" && (pressed & KEY_PLUS)))
+        if (((pressed & KEY_A) && !touchMode) || (pressed & KEY_B) ||
+            (actionX != "" && (pressed & KEY_X)) || (actionPlus != "" && (pressed & KEY_PLUS)))
+        {
+            touchMode = false;
             return Selection(pressed, index);
+        }
+
+        // Disable touch mode before allowing A presses so that the selector can be seen
+        if ((pressed & KEY_A) && touchMode)
+            touchMode = false;
 
         // Cancel up input if it was released
         if (released & KEY_UP)
@@ -543,6 +553,10 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
 
         update();
     }
+
+    // appletMainLoop only seems to return false once, so remember when it does
+    shouldExit = true;
+    return Selection(0, 0);
 }
 
 void SwitchUI::message(std::string title, std::vector<std::string> text)
@@ -571,7 +585,7 @@ void SwitchUI::message(std::string title, std::vector<std::string> text)
     bool touchScroll = false;
     touchPosition touch, touchMove;
 
-    while (true)
+    while (appletMainLoop() && !shouldExit)
     {
         // Scan for key input
         hidScanInput();
@@ -611,4 +625,7 @@ void SwitchUI::message(std::string title, std::vector<std::string> text)
             touchStarted = false;
         }
     }
+
+    // appletMainLoop only seems to return false once, so remember when it does
+    shouldExit = true;
 }

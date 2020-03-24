@@ -31,19 +31,23 @@ const uint32_t keyMap[] =
 {
     KEY_A,     KEY_B,    KEY_MINUS, KEY_PLUS,
     KEY_RIGHT, KEY_LEFT, KEY_UP,    KEY_DOWN,
-    KEY_ZR,    KEY_ZL,   KEY_X,     KEY_Y
+    KEY_ZR,    KEY_ZL,   KEY_X,     KEY_Y,
+    (KEY_L | KEY_R)
 };
 
 std::string path;
 
-Core *core;
-bool running = true;
-Thread coreThread, audioThread;
+bool running = false;
+
+ClkrstSession cpuSession;
 
 AudioOutBuffer audioBuffers[2];
 AudioOutBuffer *audioReleasedBuffer;
 int16_t *audioData[2];
 uint32_t count;
+
+Core *core;
+Thread coreThread, audioThread;
 
 void runCore(void *args)
 {
@@ -73,6 +77,70 @@ void outputAudio(void *args)
 
         audoutAppendAudioOutBuffer(audioReleasedBuffer);
     }
+}
+
+void startCore()
+{
+    if (running) return;
+    running = true;
+
+    // Overclock the Switch CPU
+    clkrstInitialize();
+    clkrstOpenSession(&cpuSession, PcvModuleId_CpuBus, 0);
+    clkrstSetClockRate(&cpuSession, 1785000000);
+
+    // Start audio output
+    audoutInitialize();
+    audoutStartAudioOut();
+
+    // Set up the audio buffers
+    for (int i = 0; i < 2; i++)
+    {
+        int size = 1024 * 2 * sizeof(int16_t);
+        int alignedSize = (size + 0xFFF) & ~0xFFF;
+        audioData[i] = (int16_t*)memalign(0x1000, size);
+        memset(audioData[i], 0, alignedSize);
+        audioBuffers[i].next = NULL;
+        audioBuffers[i].buffer = audioData[i];
+        audioBuffers[i].buffer_size = alignedSize;
+        audioBuffers[i].data_size = size;
+        audioBuffers[i].data_offset = 0;
+        audoutAppendAudioOutBuffer(&audioBuffers[i]);
+    }
+
+    // Start the audio thread
+    threadCreate(&audioThread, outputAudio, NULL, NULL, 0x8000, 0x30, 2);
+    threadStart(&audioThread);
+
+    // Start the emulator thread
+    threadCreate(&coreThread, runCore, NULL, NULL, 0x8000, 0x30, 1);
+    threadStart(&coreThread);
+}
+
+void stopCore()
+{
+    if (!running) return;
+    running = false;
+
+    // Wait for the emulator thread to stop
+    threadWaitForExit(&coreThread);
+    threadClose(&coreThread);
+
+    // Wait for the audio thread to stop
+    threadWaitForExit(&audioThread);
+    threadClose(&audioThread);
+
+    // Free the audio buffers
+    delete[] audioData[0];
+    delete[] audioData[1];
+
+    // Stop audio output
+    audoutStopAudioOut();
+    audoutExit();
+
+    // Disable the overclock
+    clkrstSetClockRate(&cpuSession, 1020000000);
+    clkrstExit();
 }
 
 uint32_t *getRomIcon(std::string filename)
@@ -153,20 +221,18 @@ void settingsMenu()
                 case 2: Settings::setLimitFps(!Settings::getLimitFps());     break;
             }
         }
-        else if (menu.pressed & KEY_B)
+        else
         {
             // Close the settings menu
-            Settings::save();
             return;
         }
     }
 }
 
-bool fileBrowser()
+void fileBrowser()
 {
     path = "sdmc:/";
     unsigned int index = 0;
-    bool exit = false;
 
     // Load the appropriate folder icon for the current theme
     romfsInit();
@@ -214,8 +280,11 @@ bool fileBrowser()
         }
 
         // Handle menu input
-        if ((menu.pressed & KEY_A) && files.size() > 0)
+        if (menu.pressed & KEY_A)
         {
+            // Do nothing if there are no files to select
+            if (files.empty()) continue;
+
             // Navigate to the selected directory
             path += "/" + files[menu.index].name;
             index = 0;
@@ -276,89 +345,126 @@ bool fileBrowser()
                             };
                             SwitchUI::message("Missing Save", message);
 
-                            // Assume a save type of FLASH 512KB and boot the ROM again
+                            // Assume a save type of FLASH 512KB
                             Core::createSave(path, 5);
-                            core = new Core(path);
-                            break;
+
+                            // Remove the ROM from the path and return to the file browser
+                            path = path.substr(0, path.rfind("/"));
+                            index = 0;
+                            continue;
                         }
                     }
                 }
 
-                break;
+                delete[] folder.texture;
+                startCore();
+                return;
             }
         }
-        else if ((menu.pressed & KEY_B) && path != "sdmc:/")
+        else if (menu.pressed & KEY_B)
         {
             // Navigate to the previous directory
-            path = path.substr(0, path.rfind("/"));
-            index = 0;
+            if (path != "sdmc:/")
+            {
+                path = path.substr(0, path.rfind("/"));
+                index = 0;
+            }
         }
         else if (menu.pressed & KEY_X)
         {
             // Open the settings menu   
             settingsMenu();
         }
-        else if (menu.pressed & KEY_PLUS)
+        else
         {
-            // Request to exit the program
-            exit = true;
-            break;
+            // Close the file browser
+            return;
         }
     }
+}
 
-    delete[] folder.texture;
-    return !exit;
+void pauseMenu()
+{
+    stopCore();
+
+    unsigned int index = 0;
+
+    std::vector<ListItem> items =
+    {
+        ListItem("Resume"),
+        ListItem("Restart"),
+        ListItem("Settings"),
+        ListItem("File Browser")
+    };
+
+    while (true)
+    {
+        // Create the pause menu
+        Selection menu = SwitchUI::menu("NooDS", &items, index);
+        index = menu.index;
+
+        // Handle menu input
+        if (menu.pressed & KEY_A)
+        {
+            // Handle the selected item
+            switch (index)
+            {
+                case 0: // Resume
+                {
+                    // Return to the emulator
+                    startCore();
+                    return;
+                }
+
+                case 1: // Restart
+                {
+                    // Restart and return to the emulator
+                    delete core;
+                    core = new Core(path);
+                    startCore();
+                    return;
+                }
+
+                case 2: // Settings
+                {
+                    // Open the settings menu
+                    settingsMenu();
+                    break;
+                }
+
+                case 3: // File Browser
+                {
+                    // Open the file browser and close the pause menu
+                    fileBrowser();
+                    return;
+                }
+            }
+        }
+        else if (menu.pressed & KEY_B)
+        {
+            // Return to the emulator
+            startCore();
+            return;
+        }
+        else
+        {
+            // Close the pause menu
+            return;
+        }
+    }
 }
 
 int main()
 {
+    appletLockExit();
+
     SwitchUI::initialize();
     Settings::load();
 
     // Open the file browser
-    if (!fileBrowser())
-    {
-        // Exit the program if the file browser requested it
-        Settings::save();
-        SwitchUI::deinitialize();
-        return 0;
-    }
+    fileBrowser();
 
-    appletLockExit();
-
-    // Overclock the Switch CPU
-    ClkrstSession cpuSession;
-    clkrstInitialize();
-    clkrstOpenSession(&cpuSession, PcvModuleId_CpuBus, 0);
-    clkrstSetClockRate(&cpuSession, 1785000000);
-
-    audoutInitialize();
-    audoutStartAudioOut();
-
-    // Set up the audio buffer
-    for (int i = 0; i < 2; i++)
-    {
-        int size = 1024 * 2 * sizeof(int16_t);
-        int alignedSize = (size + 0xFFF) & ~0xFFF;
-        audioData[i] = (int16_t*)memalign(0x1000, size);
-        memset(audioData[i], 0, alignedSize);
-        audioBuffers[i].next = NULL;
-        audioBuffers[i].buffer = audioData[i];
-        audioBuffers[i].buffer_size = alignedSize;
-        audioBuffers[i].data_size = size;
-        audioBuffers[i].data_offset = 0;
-        audoutAppendAudioOutBuffer(&audioBuffers[i]);
-    }
-
-    // Start the audio thread
-    threadCreate(&audioThread, outputAudio, NULL, NULL, 0x8000, 0x30, 2);
-    threadStart(&audioThread);
-
-    // Start the emulator thread
-    threadCreate(&coreThread, runCore, NULL, NULL, 0x8000, 0x30, 1);
-    threadStart(&coreThread);
-
-    while (appletMainLoop())
+    while (appletMainLoop() && running)
     {
         // Scan for key input
         hidScanInput();
@@ -410,18 +516,14 @@ int main()
         SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, 640, 168, 256 * 2, 192 * 2, false);
         SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
         SwitchUI::update();
+
+        // Open the pause menu if requested
+        if (pressed & keyMap[12])
+            pauseMenu();
     }
 
     // Clean up
-    running = false;
-    threadWaitForExit(&coreThread);
-    threadClose(&coreThread);
-    threadWaitForExit(&audioThread);
-    threadClose(&audioThread);
-    audoutStopAudioOut();
-    audoutExit();
-    clkrstSetClockRate(&cpuSession, 1020000000);
-    clkrstExit();
+    stopCore();
     delete core;
     Settings::save();
     SwitchUI::deinitialize();

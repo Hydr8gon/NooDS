@@ -83,6 +83,8 @@ class SwitchUI
     private:
         SwitchUI() {} // Private to prevent instantiation
 
+        static bool shouldExit;
+
         static EGLDisplay display;
         static EGLContext context;
         static EGLSurface surface;
