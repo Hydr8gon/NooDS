@@ -57,7 +57,10 @@ class NooFrame: public wxFrame
         void directBootToggle(wxCommandEvent &event);
         void threaded3DToggle(wxCommandEvent &event);
         void limitFpsToggle(wxCommandEvent &event);
+        void screenFilterToggle(wxCommandEvent &event);
+        void integerScaleToggle(wxCommandEvent &event);
         void exit(wxCommandEvent &event);
+
         void close(wxCloseEvent &event);
 
         wxDECLARE_EVENT_TABLE();

@@ -17,28 +17,27 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef NOO_PANEL_H
-#define NOO_PANEL_H
+#ifndef NOO_CANVAS_H
+#define NOO_CANVAS_H
 
 #include <wx/wx.h>
+#include <wx/glcanvas.h>
 
 #include "noo_frame.h"
 
-class NooPanel: public wxPanel
+class NooCanvas: public wxGLCanvas
 {
     public:
-        NooPanel(wxFrame *frame, Emulator *emulator);
+        NooCanvas(wxFrame *frame, Emulator *emulator);
 
     private:
         Emulator *emulator;
+        wxGLContext *context;
 
         int x = 0, y = 0;
         float scale = 1.0f;
-        bool needsClear = false;
 
-        void clear(wxEraseEvent &event);
         void draw(wxPaintEvent &event);
-        void resize(wxSizeEvent &event);
         void pressKey(wxKeyEvent &event);
         void releaseKey(wxKeyEvent &event);
         void pressScreen(wxMouseEvent &event);
@@ -47,4 +46,4 @@ class NooPanel: public wxPanel
         wxDECLARE_EVENT_TABLE();
 };
 
-#endif // NOO_PANEL_H
+#endif // NOO_CANVAS_H

@@ -29,6 +29,8 @@ wxBEGIN_EVENT_TABLE(NooApp, wxApp)
 EVT_TIMER(UPDATE, NooApp::update)
 wxEND_EVENT_TABLE()
 
+int NooApp::screenFilter = 1;
+int NooApp::integerScale = 0;
 int NooApp::keyMap[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
 
 bool NooApp::OnInit()
@@ -36,18 +38,20 @@ bool NooApp::OnInit()
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
-        Setting("keyA",      &keyMap[0],  false),
-        Setting("keyB",      &keyMap[1],  false),
-        Setting("keySelect", &keyMap[2],  false),
-        Setting("keyStart",  &keyMap[3],  false),
-        Setting("keyRight",  &keyMap[4],  false),
-        Setting("keyLeft",   &keyMap[5],  false),
-        Setting("keyUp",     &keyMap[6],  false),
-        Setting("keyDown",   &keyMap[7],  false),
-        Setting("keyR",      &keyMap[8],  false),
-        Setting("keyL",      &keyMap[9],  false),
-        Setting("keyX",      &keyMap[10], false),
-        Setting("keyY",      &keyMap[11], false)
+        Setting("screenFilter", &screenFilter, false),
+        Setting("integerScale", &integerScale, false),
+        Setting("keyA",         &keyMap[0],    false),
+        Setting("keyB",         &keyMap[1],    false),
+        Setting("keySelect",    &keyMap[2],    false),
+        Setting("keyStart",     &keyMap[3],    false),
+        Setting("keyRight",     &keyMap[4],    false),
+        Setting("keyLeft",      &keyMap[5],    false),
+        Setting("keyUp",        &keyMap[6],    false),
+        Setting("keyDown",      &keyMap[7],    false),
+        Setting("keyR",         &keyMap[8],    false),
+        Setting("keyL",         &keyMap[9],    false),
+        Setting("keyX",         &keyMap[10],   false),
+        Setting("keyY",         &keyMap[11],   false)
     };
 
     // Load the settings
@@ -55,9 +59,9 @@ bool NooApp::OnInit()
 
     // Set up the window
     frame = new NooFrame(&emulator);
-    panel = new NooPanel(frame, &emulator);
+    canvas = new NooCanvas(frame, &emulator);
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
-    sizer->Add(panel, 1, wxEXPAND);
+    sizer->Add(canvas, 1, wxEXPAND);
     frame->SetSizer(sizer);
 
     // Set up the update timer
@@ -77,7 +81,7 @@ bool NooApp::OnInit()
 void NooApp::update(wxTimerEvent &event)
 {
     // Refresh the display and update the FPS counter
-    panel->Refresh();
+    canvas->Refresh();
     frame->SetLabel(emulator.running ? wxString::Format("NooDS - %d FPS", emulator.core->getFps()) : "NooDS");
 }
 

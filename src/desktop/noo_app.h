@@ -23,28 +23,34 @@
 #include "portaudio.h"
 #include <wx/wx.h>
 
-#include "noo_panel.h"
+#include "noo_canvas.h"
 
 class NooApp: public wxApp
 {
     public:
+        static int getScreenFilter()    { return screenFilter;  }
+        static int getIntegerScale()    { return integerScale;  }
         static int getKeyMap(int index) { return keyMap[index]; }
 
+        static void setScreenFilter(int value)      { screenFilter  = value; }
+        static void setIntegerScale(int value)      { integerScale  = value; }
         static void setKeyMap(int index, int value) { keyMap[index] = value; }
 
     private:
         NooFrame *frame;
-        NooPanel *panel;
+        NooCanvas *canvas;
         Emulator emulator;
 
+        static int screenFilter;
+        static int integerScale;
         static int keyMap[12];
 
         bool OnInit();
 
-        void update(wxTimerEvent &event);
-
         static int audioCallback(const void *in, void *out, unsigned long frames,
                                  const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
+
+        void update(wxTimerEvent &event);
 
         wxDECLARE_EVENT_TABLE();
 };

@@ -19,6 +19,7 @@
 
 #include "noo_frame.h"
 #include "input_dialog.h"
+#include "noo_app.h"
 #include "path_dialog.h"
 #include "save_dialog.h"
 #include "../settings.h"
@@ -34,7 +35,10 @@ enum Event
     INPUT_SETTINGS,
     DIRECT_BOOT,
     THREADED_3D,
-    LIMIT_FPS
+    LIMIT_FPS,
+    SCREEN_FILTER,
+    INTEGER_SCALE,
+    UPDATE_FPS
 };
 
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
@@ -48,6 +52,8 @@ EVT_MENU(INPUT_SETTINGS, NooFrame::inputSettings)
 EVT_MENU(DIRECT_BOOT,    NooFrame::directBootToggle)
 EVT_MENU(THREADED_3D,    NooFrame::threaded3DToggle)
 EVT_MENU(LIMIT_FPS,      NooFrame::limitFpsToggle)
+EVT_MENU(SCREEN_FILTER,  NooFrame::screenFilterToggle)
+EVT_MENU(INTEGER_SCALE,  NooFrame::integerScaleToggle)
 EVT_MENU(wxID_EXIT,      NooFrame::exit)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
@@ -77,14 +83,19 @@ NooFrame::NooFrame(Emulator *emulator): wxFrame(nullptr, wxID_ANY, "NooDS"), emu
     settingsMenu->Append(PATH_SETTINGS,  "&Path Settings");
     settingsMenu->Append(INPUT_SETTINGS, "&Input Settings");
     settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
-    settingsMenu->AppendCheckItem(THREADED_3D, "&Threaded 3D");
-    settingsMenu->AppendCheckItem(LIMIT_FPS,   "&Limit FPS");
+    settingsMenu->AppendCheckItem(DIRECT_BOOT,   "&Direct Boot");
+    settingsMenu->AppendCheckItem(THREADED_3D,   "&Threaded 3D");
+    settingsMenu->AppendCheckItem(LIMIT_FPS,     "&Limit FPS");
+    settingsMenu->AppendSeparator();
+    settingsMenu->AppendCheckItem(SCREEN_FILTER, "&Screen Filter");
+    settingsMenu->AppendCheckItem(INTEGER_SCALE, "&Integer Scale");
 
     // Set the current values of the checkboxes
-    settingsMenu->Check(DIRECT_BOOT, Settings::getDirectBoot());
-    settingsMenu->Check(THREADED_3D, Settings::getThreaded3D());
-    settingsMenu->Check(LIMIT_FPS,   Settings::getLimitFps());
+    settingsMenu->Check(DIRECT_BOOT,   Settings::getDirectBoot());
+    settingsMenu->Check(THREADED_3D,   Settings::getThreaded3D());
+    settingsMenu->Check(LIMIT_FPS,     Settings::getLimitFps());
+    settingsMenu->Check(SCREEN_FILTER, NooApp::getScreenFilter());
+    settingsMenu->Check(INTEGER_SCALE, NooApp::getIntegerScale());
 
     // Set up the menu bar
     wxMenuBar *menuBar = new wxMenuBar();
@@ -272,6 +283,18 @@ void NooFrame::limitFpsToggle(wxCommandEvent &event)
 {
     // Toggle the "Limit FPS" option
     Settings::setLimitFps(!Settings::getLimitFps());
+}
+
+void NooFrame::screenFilterToggle(wxCommandEvent &event)
+{
+    // Toggle the "Screen Filter" option
+    NooApp::setScreenFilter(!NooApp::getScreenFilter());
+}
+
+void NooFrame::integerScaleToggle(wxCommandEvent &event)
+{
+    // Toggle the "Integer Scale" option
+    NooApp::setIntegerScale(!NooApp::getIntegerScale());
 }
 
 void NooFrame::exit(wxCommandEvent &event)

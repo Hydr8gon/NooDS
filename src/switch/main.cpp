@@ -27,6 +27,9 @@
 #include "../core.h"
 #include "../settings.h"
 
+int screenFilter = 1;
+int integerScale = 0;
+
 const uint32_t keyMap[] =
 {
     KEY_A,     KEY_B,    KEY_MINUS, KEY_PLUS,
@@ -201,9 +204,11 @@ void settingsMenu()
         // Get the list of settings and current values
         std::vector<ListItem> settings =
         {
-            ListItem("Direct Boot", Settings::getDirectBoot() ? "On" : "Off"),
-            ListItem("Threaded 3D", Settings::getThreaded3D() ? "On" : "Off"),
-            ListItem("Limit FPS",   Settings::getLimitFps()   ? "On" : "Off")
+            ListItem("Direct Boot",   Settings::getDirectBoot() ? "On" : "Off"),
+            ListItem("Threaded 3D",   Settings::getThreaded3D() ? "On" : "Off"),
+            ListItem("Limit FPS",     Settings::getLimitFps()   ? "On" : "Off"),
+            ListItem("Screen Filter", screenFilter              ? "On" : "Off"),
+            ListItem("Integer Scale", integerScale              ? "On" : "Off")
         };
 
         // Create the settings menu
@@ -219,6 +224,8 @@ void settingsMenu()
                 case 0: Settings::setDirectBoot(!Settings::getDirectBoot()); break;
                 case 1: Settings::setThreaded3D(!Settings::getThreaded3D()); break;
                 case 2: Settings::setLimitFps(!Settings::getLimitFps());     break;
+                case 3: screenFilter = !screenFilter;                        break;
+                case 4: integerScale = !integerScale;                        break;
             }
         }
         else
@@ -457,9 +464,17 @@ void pauseMenu()
 int main()
 {
     appletLockExit();
-
     SwitchUI::initialize();
-    Settings::load();
+
+    // Define the platform settings
+    std::vector<Setting> platformSettings =
+    {
+        Setting("screenFilter", &screenFilter, false),
+        Setting("integerScale", &integerScale, false)
+    };
+
+    // Load the settings
+    Settings::load(platformSettings);
 
     // Open the file browser
     fileBrowser();
@@ -510,11 +525,23 @@ int main()
             framebuffer[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
         }
 
-        // Draw the screens
         SwitchUI::clear(Color(0, 0, 0));
-        SwitchUI::drawImage(&framebuffer[0],         256, 192, 128, 168, 256 * 2, 192 * 2, false);
-        SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, 640, 168, 256 * 2, 192 * 2, false);
+
+        // Draw the screens
+        if (integerScale)
+        {
+            SwitchUI::drawImage(&framebuffer[0],         256, 192, 128, 168, 512, 384, screenFilter);
+            SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, 640, 168, 512, 384, screenFilter);
+        }
+        else
+        {
+            SwitchUI::drawImage(&framebuffer[0],         256, 192,   0, 120, 640, 480, screenFilter);
+            SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, 640, 120, 640, 480, screenFilter);
+        }
+
+        // Draw the FPS counter
         SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
+
         SwitchUI::update();
 
         // Open the pause menu if requested

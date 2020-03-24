@@ -1,12 +1,17 @@
-NAME	:= noods
+NAME    := noods
 SOURCES := src src/desktop
+ARGS    := -Ofast -flto -std=c++11 #-DDEBUG
+LIBS    := -lportaudio
 
 ifeq ($(OS),Windows_NT)
-ARGS    := -Ofast -flto -std=c++11 -static #-DDEBUG
-LIBS    := `wx-config-static --cxxflags --libs` -lportaudio -lole32 -lsetupapi -lwinmm
+ARGS += -static
+LIBS += `wx-config-static --cxxflags --libs --gl-libs` -lole32 -lsetupapi -lwinmm
 else
-ARGS    := -Ofast -flto -std=c++11 -no-pie #-DDEBUG
-LIBS    := `wx-config --cxxflags --libs` -lportaudio
+ARGS += -no-pie
+LIBS += `wx-config --cxxflags --libs --gl-libs`
+ifneq ($(shell uname -s),Darwin)
+LIBS += -lGL
+endif
 endif
 
 CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
