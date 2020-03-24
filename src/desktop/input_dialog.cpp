@@ -21,20 +21,36 @@
 #include "noo_app.h"
 #include "../settings.h"
 
+enum Event
+{
+    REMAP_A = 1,
+    REMAP_B,
+    REMAP_X,
+    REMAP_Y,
+    REMAP_START,
+    REMAP_SELECT,
+    REMAP_UP,
+    REMAP_DOWN,
+    REMAP_LEFT,
+    REMAP_RIGHT,
+    REMAP_L,
+    REMAP_R
+};
+
 wxBEGIN_EVENT_TABLE(InputDialog, wxDialog)
-EVT_BUTTON(1,  InputDialog::remapA)
-EVT_BUTTON(2,  InputDialog::remapB)
-EVT_BUTTON(3,  InputDialog::remapX)
-EVT_BUTTON(4,  InputDialog::remapY)
-EVT_BUTTON(5,  InputDialog::remapStart)
-EVT_BUTTON(6,  InputDialog::remapSelect)
-EVT_BUTTON(7,  InputDialog::remapUp)
-EVT_BUTTON(8,  InputDialog::remapDown)
-EVT_BUTTON(9,  InputDialog::remapLeft)
-EVT_BUTTON(10, InputDialog::remapRight)
-EVT_BUTTON(11, InputDialog::remapL)
-EVT_BUTTON(12, InputDialog::remapR)
-EVT_BUTTON(wxID_OK, InputDialog::confirm)
+EVT_BUTTON(REMAP_A,      InputDialog::remapA)
+EVT_BUTTON(REMAP_B,      InputDialog::remapB)
+EVT_BUTTON(REMAP_X,      InputDialog::remapX)
+EVT_BUTTON(REMAP_Y,      InputDialog::remapY)
+EVT_BUTTON(REMAP_START,  InputDialog::remapStart)
+EVT_BUTTON(REMAP_SELECT, InputDialog::remapSelect)
+EVT_BUTTON(REMAP_UP,     InputDialog::remapUp)
+EVT_BUTTON(REMAP_DOWN,   InputDialog::remapDown)
+EVT_BUTTON(REMAP_LEFT,   InputDialog::remapLeft)
+EVT_BUTTON(REMAP_RIGHT,  InputDialog::remapRight)
+EVT_BUTTON(REMAP_L,      InputDialog::remapL)
+EVT_BUTTON(REMAP_R,      InputDialog::remapR)
+EVT_BUTTON(wxID_OK,      InputDialog::confirm)
 EVT_CHAR_HOOK(InputDialog::pressKey)
 wxEND_EVENT_TABLE()
 
@@ -165,92 +181,92 @@ InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Settings")
     // Set up the A button setting
     wxBoxSizer *aSizer = new wxBoxSizer(wxHORIZONTAL);
     aSizer->Add(new wxStaticText(this, wxID_ANY, "A:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    aSizer->Add(keyA = new wxButton(this, 1, keyToString(keyMap[0]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    aSizer->Add(keyA = new wxButton(this, REMAP_A, keyToString(keyMap[0]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the B button setting
     wxBoxSizer *bSizer = new wxBoxSizer(wxHORIZONTAL);
     bSizer->Add(new wxStaticText(this, wxID_ANY, "B:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    bSizer->Add(keyB = new wxButton(this, 2, keyToString(keyMap[1]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    bSizer->Add(keyB = new wxButton(this, REMAP_B, keyToString(keyMap[1]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the X button setting
     wxBoxSizer *xSizer = new wxBoxSizer(wxHORIZONTAL);
     xSizer->Add(new wxStaticText(this, wxID_ANY, "X:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    xSizer->Add(keyX = new wxButton(this, 3, keyToString(keyMap[10]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    xSizer->Add(keyX = new wxButton(this, REMAP_X, keyToString(keyMap[10]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Y button setting
     wxBoxSizer *ySizer = new wxBoxSizer(wxHORIZONTAL);
     ySizer->Add(new wxStaticText(this, wxID_ANY, "Y:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    ySizer->Add(keyY = new wxButton(this, 4, keyToString(keyMap[11]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    ySizer->Add(keyY = new wxButton(this, REMAP_Y, keyToString(keyMap[11]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Start button setting
     wxBoxSizer *startSizer = new wxBoxSizer(wxHORIZONTAL);
     startSizer->Add(new wxStaticText(this, wxID_ANY, "Start:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    startSizer->Add(keyStart = new wxButton(this, 5, keyToString(keyMap[3]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    startSizer->Add(keyStart = new wxButton(this, REMAP_START, keyToString(keyMap[3]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Select button setting
     wxBoxSizer *selectSizer = new wxBoxSizer(wxHORIZONTAL);
     selectSizer->Add(new wxStaticText(this, wxID_ANY, "Select:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    selectSizer->Add(keySelect = new wxButton(this, 6, keyToString(keyMap[2]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    selectSizer->Add(keySelect = new wxButton(this, REMAP_SELECT, keyToString(keyMap[2]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Up button setting
     wxBoxSizer *upSizer = new wxBoxSizer(wxHORIZONTAL);
     upSizer->Add(new wxStaticText(this, wxID_ANY, "Up:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    upSizer->Add(keyUp = new wxButton(this, 7, keyToString(keyMap[6]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    upSizer->Add(keyUp = new wxButton(this, REMAP_UP, keyToString(keyMap[6]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Down button setting
     wxBoxSizer *downSizer = new wxBoxSizer(wxHORIZONTAL);
     downSizer->Add(new wxStaticText(this, wxID_ANY, "Down:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    downSizer->Add(keyDown = new wxButton(this, 8, keyToString(keyMap[7]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    downSizer->Add(keyDown = new wxButton(this, REMAP_DOWN, keyToString(keyMap[7]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Left button setting
     wxBoxSizer *leftSizer = new wxBoxSizer(wxHORIZONTAL);
     leftSizer->Add(new wxStaticText(this, wxID_ANY, "Left:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    leftSizer->Add(keyLeft = new wxButton(this, 9, keyToString(keyMap[5]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    leftSizer->Add(keyLeft = new wxButton(this, REMAP_LEFT, keyToString(keyMap[5]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Right button setting
     wxBoxSizer *rightSizer = new wxBoxSizer(wxHORIZONTAL);
     rightSizer->Add(new wxStaticText(this, wxID_ANY, "Right:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    rightSizer->Add(keyRight = new wxButton(this, 10, keyToString(keyMap[4]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    rightSizer->Add(keyRight = new wxButton(this, REMAP_RIGHT, keyToString(keyMap[4]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the L button setting
     wxBoxSizer *lSizer = new wxBoxSizer(wxHORIZONTAL);
     lSizer->Add(new wxStaticText(this, wxID_ANY, "L:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    lSizer->Add(keyL = new wxButton(this, 11, keyToString(keyMap[9]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    lSizer->Add(keyL = new wxButton(this, REMAP_L, keyToString(keyMap[9]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the R button setting
     wxBoxSizer *rSizer = new wxBoxSizer(wxHORIZONTAL);
     rSizer->Add(new wxStaticText(this, wxID_ANY, "R:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    rSizer->Add(keyR = new wxButton(this, 12, keyToString(keyMap[8]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    rSizer->Add(keyR = new wxButton(this, REMAP_R, keyToString(keyMap[8]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the cancel and confirm buttons
     wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
     buttonSizer->Add(new wxStaticText(this, wxID_ANY, ""), 1);
-    buttonSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"), 0, wxRIGHT, size / 16);
-    buttonSizer->Add(new wxButton(this, wxID_OK, "Confirm"), 0, wxLEFT, size / 16);
+    buttonSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"),  0, wxRIGHT, size / 16);
+    buttonSizer->Add(new wxButton(this, wxID_OK,     "Confirm"), 0, wxLEFT,  size / 16);
 
     // Combine all of the left contents
     wxBoxSizer *leftContents = new wxBoxSizer(wxVERTICAL);
-    leftContents->Add(aSizer, 1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(bSizer, 1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(xSizer, 1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(ySizer, 1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(startSizer, 1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(aSizer,      1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(bSizer,      1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(xSizer,      1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(ySizer,      1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(startSizer,  1, wxEXPAND | wxALL, size / 8);
     leftContents->Add(selectSizer, 1, wxEXPAND | wxALL, size / 8);
     leftContents->Add(new wxStaticText(this, wxID_ANY, ""), 1, wxEXPAND | wxALL, size / 8);
 
     // Combine all of the right contents
     wxBoxSizer *rightContents = new wxBoxSizer(wxVERTICAL);
-    rightContents->Add(upSizer, 1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(downSizer, 1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(leftSizer, 1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(rightSizer, 1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(lSizer, 1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(rSizer, 1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(upSizer,     1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(downSizer,   1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(leftSizer,   1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(rightSizer,  1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(lSizer,      1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(rSizer,      1, wxEXPAND | wxALL, size / 8);
     rightContents->Add(buttonSizer, 1, wxEXPAND | wxALL, size / 8);
 
     // Add a final border around everything
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
-    sizer->Add(leftContents, 1, wxEXPAND | wxALL, size / 8);
+    sizer->Add(leftContents,  1, wxEXPAND | wxALL, size / 8);
     sizer->Add(rightContents, 1, wxEXPAND | wxALL, size / 8);
     SetSizer(sizer);
 

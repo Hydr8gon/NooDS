@@ -20,8 +20,13 @@
 #include "noo_app.h"
 #include "../settings.h"
 
+enum Event
+{
+    UPDATE = 1
+};
+
 wxBEGIN_EVENT_TABLE(NooApp, wxApp)
-EVT_TIMER(1, NooApp::update)
+EVT_TIMER(UPDATE, NooApp::update)
 wxEND_EVENT_TABLE()
 
 int NooApp::keyMap[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
@@ -57,7 +62,7 @@ bool NooApp::OnInit()
 
     // Set up the update timer
     // Timers aren't entirely accurate (especially on Windows!), so just run as fast as possible to avoid frame drops
-    wxTimer *timer = new wxTimer(this, 1);
+    wxTimer *timer = new wxTimer(this, UPDATE);
     timer->Start(1);
 
     // Start the audio service

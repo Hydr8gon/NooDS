@@ -23,18 +23,32 @@
 #include "save_dialog.h"
 #include "../settings.h"
 
+enum Event
+{
+    LOAD_ROM = 1,
+    BOOT_FIRMWARE,
+    PAUSE,
+    RESTART,
+    STOP,
+    PATH_SETTINGS,
+    INPUT_SETTINGS,
+    DIRECT_BOOT,
+    THREADED_3D,
+    LIMIT_FPS
+};
+
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
-EVT_MENU(1,  NooFrame::loadRom)
-EVT_MENU(2,  NooFrame::bootFirmware)
-EVT_MENU(3,  NooFrame::pause)
-EVT_MENU(4,  NooFrame::restart)
-EVT_MENU(5,  NooFrame::stop)
-EVT_MENU(6,  NooFrame::pathSettings)
-EVT_MENU(7,  NooFrame::inputSettings)
-EVT_MENU(8,  NooFrame::directBootToggle)
-EVT_MENU(9,  NooFrame::threaded3DToggle)
-EVT_MENU(10, NooFrame::limitFpsToggle)
-EVT_MENU(wxID_EXIT, NooFrame::exit)
+EVT_MENU(LOAD_ROM,       NooFrame::loadRom)
+EVT_MENU(BOOT_FIRMWARE,  NooFrame::bootFirmware)
+EVT_MENU(PAUSE,          NooFrame::pause)
+EVT_MENU(RESTART,        NooFrame::restart)
+EVT_MENU(STOP,           NooFrame::stop)
+EVT_MENU(PATH_SETTINGS,  NooFrame::pathSettings)
+EVT_MENU(INPUT_SETTINGS, NooFrame::inputSettings)
+EVT_MENU(DIRECT_BOOT,    NooFrame::directBootToggle)
+EVT_MENU(THREADED_3D,    NooFrame::threaded3DToggle)
+EVT_MENU(LIMIT_FPS,      NooFrame::limitFpsToggle)
+EVT_MENU(wxID_EXIT,      NooFrame::exit)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
@@ -42,40 +56,40 @@ NooFrame::NooFrame(Emulator *emulator): wxFrame(nullptr, wxID_ANY, "NooDS"), emu
 {
     // Set up the File menu
     wxMenu *fileMenu = new wxMenu();
-    fileMenu->Append(1, "&Load ROM");
-    fileMenu->Append(2, "&Boot Firmware");
+    fileMenu->Append(LOAD_ROM,      "&Load ROM");
+    fileMenu->Append(BOOT_FIRMWARE, "&Boot Firmware");
     fileMenu->AppendSeparator();
     fileMenu->Append(wxID_EXIT);
 
     // Set up the System menu
     systemMenu = new wxMenu();
-    systemMenu->Append(3, "&Resume");
-    systemMenu->Append(4, "&Restart");
-    systemMenu->Append(5, "&Stop");
+    systemMenu->Append(PAUSE,   "&Resume");
+    systemMenu->Append(RESTART, "&Restart");
+    systemMenu->Append(STOP,    "&Stop");
 
     // Disable the System menu items until the core is running
-    systemMenu->Enable(3, false);
-    systemMenu->Enable(4, false);
-    systemMenu->Enable(5, false);
+    systemMenu->Enable(PAUSE,   false);
+    systemMenu->Enable(RESTART, false);
+    systemMenu->Enable(STOP,    false);
 
     // Set up the Settings menu
     wxMenu *settingsMenu = new wxMenu();
-    settingsMenu->Append(6, "&Path Settings");
-    settingsMenu->Append(7, "&Input Settings");
+    settingsMenu->Append(PATH_SETTINGS,  "&Path Settings");
+    settingsMenu->Append(INPUT_SETTINGS, "&Input Settings");
     settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(8,  "&Direct Boot");
-    settingsMenu->AppendCheckItem(9,  "&Threaded 3D");
-    settingsMenu->AppendCheckItem(10, "&Limit FPS");
+    settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
+    settingsMenu->AppendCheckItem(THREADED_3D, "&Threaded 3D");
+    settingsMenu->AppendCheckItem(LIMIT_FPS,   "&Limit FPS");
 
     // Set the current values of the checkboxes
-    settingsMenu->Check(8,  Settings::getDirectBoot());
-    settingsMenu->Check(9,  Settings::getThreaded3D());
-    settingsMenu->Check(10, Settings::getLimitFps());
+    settingsMenu->Check(DIRECT_BOOT, Settings::getDirectBoot());
+    settingsMenu->Check(THREADED_3D, Settings::getThreaded3D());
+    settingsMenu->Check(LIMIT_FPS,   Settings::getLimitFps());
 
     // Set up the menu bar
     wxMenuBar *menuBar = new wxMenuBar();
-    menuBar->Append(fileMenu, "&File");
-    menuBar->Append(systemMenu, "&System");
+    menuBar->Append(fileMenu,     "&File");
+    menuBar->Append(systemMenu,   "&System");
     menuBar->Append(settingsMenu, "&Settings");
     SetMenuBar(menuBar);
 
@@ -142,10 +156,10 @@ void NooFrame::startCore()
 
     // Start the core and enable the System menu items
     emulator->running = true;
-    systemMenu->Enable(3, true);
-    systemMenu->Enable(4, true);
-    systemMenu->Enable(5, true);
-    systemMenu->SetLabel(3, "&Pause");
+    systemMenu->Enable(PAUSE,   true);
+    systemMenu->Enable(RESTART, true);
+    systemMenu->Enable(STOP,    true);
+    systemMenu->SetLabel(PAUSE, "&Pause");
 
     // Start the core thread
     coreThread = new std::thread(&NooFrame::runCore, this);
@@ -155,10 +169,10 @@ void NooFrame::stopCore()
 {
     // Stop the core and disable the System menu items
     emulator->running = false;
-    systemMenu->Enable(3, false);
-    systemMenu->Enable(4, false);
-    systemMenu->Enable(5, false);
-    systemMenu->SetLabel(3, "&Resume");
+    systemMenu->Enable(PAUSE,   false);
+    systemMenu->Enable(RESTART, false);
+    systemMenu->Enable(STOP,    false);
+    systemMenu->SetLabel(PAUSE, "&Resume");
 
     // Ensure the core thread is stopped
     if (coreThread)
@@ -203,7 +217,7 @@ void NooFrame::pause(wxCommandEvent &event)
         coreThread = nullptr;
 
         // Update the menu item
-        systemMenu->SetLabel(3, "&Resume");
+        systemMenu->SetLabel(PAUSE, "&Resume");
     }
     else if (emulator->core) // Resume
     {
@@ -212,7 +226,7 @@ void NooFrame::pause(wxCommandEvent &event)
         coreThread = new std::thread(&NooFrame::runCore, this);
 
         // Update the menu item
-        systemMenu->SetLabel(3, "&Pause");
+        systemMenu->SetLabel(PAUSE, "&Pause");
     }
 }
 

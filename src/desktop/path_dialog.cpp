@@ -20,11 +20,18 @@
 #include "path_dialog.h"
 #include "../settings.h"
 
+enum Event
+{
+    BIOS9_BROWSE = 1,
+    BIOS7_BROWSE,
+    FIRMWARE_BROWSE
+};
+
 wxBEGIN_EVENT_TABLE(PathDialog, wxDialog)
-EVT_BUTTON(1, PathDialog::bios9Browse)
-EVT_BUTTON(2, PathDialog::bios7Browse)
-EVT_BUTTON(3, PathDialog::firmwareBrowse)
-EVT_BUTTON(wxID_OK, PathDialog::confirm)
+EVT_BUTTON(BIOS9_BROWSE,    PathDialog::bios9Browse)
+EVT_BUTTON(BIOS7_BROWSE,    PathDialog::bios7Browse)
+EVT_BUTTON(FIRMWARE_BROWSE, PathDialog::firmwareBrowse)
+EVT_BUTTON(wxID_OK,         PathDialog::confirm)
 wxEND_EVENT_TABLE()
 
 PathDialog::PathDialog(): wxDialog(nullptr, wxID_ANY, "Path Settings")
@@ -39,31 +46,31 @@ PathDialog::PathDialog(): wxDialog(nullptr, wxID_ANY, "Path Settings")
     wxBoxSizer *arm9Sizer = new wxBoxSizer(wxHORIZONTAL);
     arm9Sizer->Add(new wxStaticText(this, wxID_ANY, "ARM9 BIOS:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
     arm9Sizer->Add(bios9Path = new wxTextCtrl(this, wxID_ANY, Settings::getBios9Path(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
-    arm9Sizer->Add(new wxButton(this, 1, "Browse"), 0, wxLEFT, size / 8);
+    arm9Sizer->Add(new wxButton(this, BIOS9_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the ARM7 BIOS path setting
     wxBoxSizer *arm7Sizer = new wxBoxSizer(wxHORIZONTAL);
     arm7Sizer->Add(new wxStaticText(this, wxID_ANY, "ARM7 BIOS:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
     arm7Sizer->Add(bios7Path = new wxTextCtrl(this, wxID_ANY, Settings::getBios7Path(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
-    arm7Sizer->Add(new wxButton(this, 2, "Browse"), 0, wxLEFT, size / 8);
+    arm7Sizer->Add(new wxButton(this, BIOS7_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the firmware path setting
     wxBoxSizer *firmSizer = new wxBoxSizer(wxHORIZONTAL);
     firmSizer->Add(new wxStaticText(this, wxID_ANY, "Firmware:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
     firmSizer->Add(firmwarePath = new wxTextCtrl(this, wxID_ANY, Settings::getFirmwarePath(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
-    firmSizer->Add(new wxButton(this, 3, "Browse"), 0, wxLEFT, size / 8);
+    firmSizer->Add(new wxButton(this, FIRMWARE_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the cancel and confirm buttons
     wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
     buttonSizer->Add(new wxStaticText(this, wxID_ANY, ""), 1);
-    buttonSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"), 0, wxRIGHT, size / 16);
-    buttonSizer->Add(new wxButton(this, wxID_OK, "Confirm"), 0, wxLEFT, size / 16);
+    buttonSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"),  0, wxRIGHT, size / 16);
+    buttonSizer->Add(new wxButton(this, wxID_OK,     "Confirm"), 0, wxLEFT,  size / 16);
 
     // Combine all of the contents
     wxBoxSizer *contents = new wxBoxSizer(wxVERTICAL);
-    contents->Add(arm9Sizer, 1, wxEXPAND | wxALL, size / 8);
-    contents->Add(arm7Sizer, 1, wxEXPAND | wxALL, size / 8);
-    contents->Add(firmSizer, 1, wxEXPAND | wxALL, size / 8);
+    contents->Add(arm9Sizer,   1, wxEXPAND | wxALL, size / 8);
+    contents->Add(arm7Sizer,   1, wxEXPAND | wxALL, size / 8);
+    contents->Add(firmSizer,   1, wxEXPAND | wxALL, size / 8);
     contents->Add(buttonSizer, 1, wxEXPAND | wxALL, size / 8);
 
     // Add a final border around everything
