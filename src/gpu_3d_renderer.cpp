@@ -18,7 +18,6 @@
 */
 
 #include <cstdio>
-#include <thread>
 #include <vector>
 
 #include "gpu_3d_renderer.h"
@@ -40,20 +39,25 @@ void Gpu3DRenderer::drawScanline(int line)
 {
     if (Settings::getThreaded3D())
     {
-        // Draw the entire 3D scene in advance, across 4 threads
-        // An actual DS only has a 48-scanline cache instead of a full framebuffer for 3D
-        // It makes no difference to the output though, so a full framebuffer is used
-        // Even timing won't affect the output, since the geometry buffers can only be swapped at V-blank!
         if (line == 0)
         {
-            std::thread one(&Gpu3DRenderer::drawScanline48, this, 0);
-            std::thread two(&Gpu3DRenderer::drawScanline48, this, 1);
-            std::thread three(&Gpu3DRenderer::drawScanline48, this, 2);
-            std::thread four(&Gpu3DRenderer::drawScanline48, this, 3);
-            one.join();
-            two.join();
-            three.join();
-            four.join();
+            // Draw the entire 3D scene in advance, across 4 threads, split into 48-scanline blocks
+            // An actual DS only has a 48-scanline cache instead of a full framebuffer for 3D
+            // It makes no difference to the output though, so a full framebuffer is used to make this possible
+            // Even timing shouldn't affect the output, since the geometry buffers can only be swapped at V-blank!
+            for (int i = 0; i < 4; i++)
+                threads[i] = new std::thread(&Gpu3DRenderer::drawScanline48, this, i * 48);
+        }
+        else if (line % 48 == 47)
+        {
+            // The 3D scene is drawn 48 scanlines in advance
+            // Ensure the thread responsible for the block about to be displayed is finished
+            std::thread *thread = threads[line / 48];
+            if (thread) 
+            {
+                thread->join();
+                delete thread;
+            }
         }
     }
     else
@@ -63,10 +67,10 @@ void Gpu3DRenderer::drawScanline(int line)
     }
 }
 
-void Gpu3DRenderer::drawScanline48(int block)
+void Gpu3DRenderer::drawScanline48(int line)
 {
     // Draw a block of 48 scanlines, or 1/4 of the screen
-    for (int i = block * 48; i < (block + 1) * 48; i++)
+    for (int i = line; i < line + 48; i++)
         drawScanline1(i);
 }
 

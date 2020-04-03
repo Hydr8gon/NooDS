@@ -21,6 +21,7 @@
 #define GPU_3D_RENDERER_H
 
 #include <cstdint>
+#include <thread>
 
 class Gpu3D;
 struct Vertex;
@@ -49,6 +50,8 @@ class Gpu3DRenderer
         uint32_t framebuffer[256 * 192] = {};
         int depthBuffer[256 * 192] = {};
 
+        std::thread *threads[4] = {};
+
         uint8_t *textures[4] = {};
         uint8_t *palettes[6] = {};
 
@@ -61,7 +64,7 @@ class Gpu3DRenderer
 
         uint32_t rgba5ToRgba6(uint32_t color);
 
-        void drawScanline48(int block);
+        void drawScanline48(int line);
         void drawScanline1(int line);
 
         uint8_t *getTexture(uint32_t address);
