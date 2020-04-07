@@ -63,7 +63,7 @@ void outputAudio(void *args)
 {
     while (running)
     {
-        audoutWaitPlayFinish(&audioReleasedBuffer, &count, U64_MAX);
+        audoutWaitPlayFinish(&audioReleasedBuffer, &count, UINT64_MAX);
         int16_t *buffer = (int16_t*)audioReleasedBuffer->buffer;
 
         // The NDS sample rate is 32768Hz, but audout uses 48000Hz
