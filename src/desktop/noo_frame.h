@@ -34,12 +34,12 @@ struct Emulator
 class NooFrame: public wxFrame
 {
     public:
-        NooFrame(Emulator *emulator);
+        NooFrame(Emulator *emulator, std::string path);
 
     private:
-        Emulator *emulator;
         std::thread *coreThread = nullptr;
-        std::string path = "";
+        Emulator *emulator;
+        std::string path;
 
         wxMenu *systemMenu;
 

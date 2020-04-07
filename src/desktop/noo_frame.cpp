@@ -58,7 +58,7 @@ EVT_MENU(wxID_EXIT,      NooFrame::exit)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
-NooFrame::NooFrame(Emulator *emulator): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator)
+NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator), path(path)
 {
     // Set up the File menu
     wxMenu *fileMenu = new wxMenu();
@@ -110,6 +110,9 @@ NooFrame::NooFrame(Emulator *emulator): wxFrame(nullptr, wxID_ANY, "NooDS"), emu
 
     Centre();
     Show(true);
+
+    // Start the core right away if a filename was passed through the command line
+    if (path != "") startCore();
 }
 
 void NooFrame::runCore()
