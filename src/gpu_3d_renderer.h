@@ -31,6 +31,7 @@ class Gpu3DRenderer
 {
     public:
         Gpu3DRenderer(Gpu3D *gpu3D): gpu3D(gpu3D) {};
+        ~Gpu3DRenderer();
 
         void drawScanline(int line);
 

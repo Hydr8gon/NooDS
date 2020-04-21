@@ -179,6 +179,9 @@ class Gpu3D
         uint32_t lightColor[4] = {};
         uint8_t shininess[128] = {};
 
+        int viewportX = 0, viewportY = 0;
+        int viewportWidth = 256, viewportHeight = 192;
+
         int16_t boxTestCoords[6] = {};
 
         uint32_t gxFifo = 0x00000000;
@@ -233,6 +236,7 @@ class Gpu3D
         void shininessCmd(uint32_t param);
         void beginVtxsCmd(uint32_t param);
         void swapBuffersCmd(uint32_t param);
+        void viewportCmd(uint32_t param);
         void boxTestCmd(uint32_t param);
 
         void addEntry(Entry entry);

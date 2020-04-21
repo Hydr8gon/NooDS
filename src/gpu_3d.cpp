@@ -118,6 +118,7 @@ void Gpu3D::runCycle()
         case 0x40: beginVtxsCmd(entry.param);     break; // BEGIN_VTXS
         case 0x41:                                break; // END_VTXS
         case 0x50: swapBuffersCmd(entry.param);   break; // SWAP_BUFFERS
+        case 0x60: viewportCmd(entry.param);      break; // VIEWPORT
         case 0x70: boxTestCmd(entry.param);       break; // BOX_TEST
 
         default:
@@ -166,11 +167,11 @@ void Gpu3D::runCycle()
 
 void Gpu3D::swapBuffers()
 {
-    // Normalize the vertices and convert the X and Y coordinates to DS screen coordinates
+    // Normalize the vertices and scale the X and Y coordinates to the viewport
     for (int i = 0; i < vertexCountIn; i++)
     {
-        verticesIn[i].x = (((verticesIn[i].x *    128) / verticesIn[i].w) +    128);
-        verticesIn[i].y = (((verticesIn[i].y *    -96) / verticesIn[i].w) +     96);
+        verticesIn[i].x =       ((verticesIn[i].x + verticesIn[i].w) * viewportWidth  / (verticesIn[i].w * 2) + viewportX);
+        verticesIn[i].y = 192 - ((verticesIn[i].y + verticesIn[i].w) * viewportHeight / (verticesIn[i].w * 2) + viewportY);
         verticesIn[i].z = (((verticesIn[i].z * 0x4000) / verticesIn[i].w) + 0x3FFF) * 0x200;
     }
 
@@ -1278,6 +1279,15 @@ void Gpu3D::swapBuffersCmd(uint32_t param)
     // Halt the geometry engine
     // The buffers will be swapped and the engine unhalted on next V-blank
     halted = true;
+}
+
+void Gpu3D::viewportCmd(uint32_t param)
+{
+    // Set the viewport dimensions
+    viewportX = (param & 0x000000FF) >> 0;
+    viewportY = (param & 0x0000FF00) >> 8;
+    viewportWidth  = ((param & 0x00FF0000) >> 16) - viewportX + 1;
+    viewportHeight = ((param & 0xFF000000) >> 24) - viewportY + 1;
 }
 
 void Gpu3D::boxTestCmd(uint32_t param)

@@ -25,6 +25,19 @@
 #include "gpu_3d.h"
 #include "settings.h"
 
+Gpu3DRenderer::~Gpu3DRenderer()
+{
+    // Free the threads
+    for (int i = 0; i < 4; i++)
+    {
+        if (threads[i]) 
+        {
+            threads[i]->join();
+            delete threads[i];
+        }
+    }
+}
+
 uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 {
     // Convert an RGBA5 value to an RGBA6 value (the way the 3D engine does it)
@@ -46,17 +59,28 @@ void Gpu3DRenderer::drawScanline(int line)
             // It makes no difference to the output though, so a full framebuffer is used to make this possible
             // Even timing shouldn't affect the output, since the geometry buffers can only be swapped at V-blank!
             for (int i = 0; i < 4; i++)
+            {
+                // Ensure the thread is free
+                if (threads[i]) 
+                {
+                    threads[i]->join();
+                    delete threads[i];
+                }
+
+                // Create a new thread
                 threads[i] = new std::thread(&Gpu3DRenderer::drawScanline48, this, i * 48);
+            }
         }
         else if (line % 48 == 47)
         {
             // The 3D scene is drawn 48 scanlines in advance
-            // Ensure the thread responsible for the block about to be displayed is finished
-            std::thread *thread = threads[line / 48];
-            if (thread) 
+            // Ensure the thread responsible for the next block is finished, and free it
+            int i = line / 48;
+            if (threads[i]) 
             {
-                thread->join();
-                delete thread;
+                threads[i]->join();
+                delete threads[i];
+                threads[i] = nullptr;
             }
         }
     }
