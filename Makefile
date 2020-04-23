@@ -1,4 +1,5 @@
 NAME    := noods
+BUILD   := build
 SOURCES := src src/desktop
 ARGS    := -Ofast -flto -std=c++11 #-DDEBUG
 LIBS    := -lportaudio
@@ -16,9 +17,20 @@ endif
 
 CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
 HFILES   := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.h))
+OFILES   := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
 
-$(NAME): $(CPPFILES) $(HFILES)
-	g++ -o $@ $(ARGS) $(CPPFILES) $(LIBS)
+$(NAME): $(OFILES)
+	g++ -o $@ $(ARGS) $^ $(LIBS)
+
+$(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
+	g++ -c -o $@ $(ARGS) $< $(LIBS)
+
+$(BUILD):
+	for dir in $(SOURCES); \
+	do \
+	mkdir -p $(BUILD)/$$dir; \
+	done
 
 clean:
+	rm -rf $(BUILD)
 	rm -f $(NAME)

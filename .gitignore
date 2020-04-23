@@ -1,4 +1,5 @@
 build/
+build-switch/
 bios7.bin
 bios9.bin
 firmware.bin

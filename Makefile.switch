@@ -38,7 +38,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #   NACP building is skipped as well.
 #---------------------------------------------------------------------------------
 TARGET		:=	noods
-BUILD		:=	build
+BUILD		:=	build-switch
 SOURCES		:=	src src/switch
 DATA		:=	data
 INCLUDES	:=	src src/switch
