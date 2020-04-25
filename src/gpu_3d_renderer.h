@@ -71,11 +71,11 @@ class Gpu3DRenderer
         uint8_t *getTexture(uint32_t address);
         uint8_t *getPalette(uint32_t address);
 
-        int interpolateW(int w1, int w2, int x1, int x, int x2);
-        int interpolate(int v1, int v2, int x1, int x, int x2);
-        int interpolate(int v1, int v2, int x1, int x, int x2, int w1, int w, int w2);
+        int interpolate(int64_t v1, int64_t v2, int x1, int x, int x2);
+        int interpolateW(int64_t w1, int64_t w2, int x1, int x, int x2);
+        int interpolate(int64_t v1, int64_t v2, int x1, int x, int x2, int w1, int w2);
         uint32_t interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2);
-        uint32_t interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2, int w1, int w, int w2);
+        uint32_t interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2, int w1, int w2);
 
         uint32_t readTexture(_Polygon *polygon, int s, int t);
 
