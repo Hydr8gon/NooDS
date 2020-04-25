@@ -92,9 +92,9 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
                 {
                     switch (wramStat)
                     {
-                        case 0: data = &wram[address % 0x8000];
-                        case 1: data = &wram[address % 0x4000 + 0x4000];
-                        case 2: data = &wram[address % 0x4000];
+                        case 0: data = &wram[address % 0x8000];          break;
+                        case 1: data = &wram[address % 0x4000 + 0x4000]; break;
+                        case 2: data = &wram[address % 0x4000];          break;
                     }
                     break;
                 }
@@ -161,9 +161,9 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
                 {
                     switch (wramStat)
                     {
-                        case 1: data = &wram[address % 0x4000];
-                        case 2: data = &wram[address % 0x4000 + 0x4000];
-                        case 3: data = &wram[address % 0x8000];
+                        case 1: data = &wram[address % 0x4000];          break;
+                        case 2: data = &wram[address % 0x4000 + 0x4000]; break;
+                        case 3: data = &wram[address % 0x8000];          break;
                     }
                 }
                 if (!data) data = &wram7[address % 0x10000]; // ARM7 WRAM
@@ -240,9 +240,9 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
                 {
                     switch (wramStat)
                     {
-                        case 0: data = &wram[address % 0x8000];
-                        case 1: data = &wram[address % 0x4000 + 0x4000];
-                        case 2: data = &wram[address % 0x4000];
+                        case 0: data = &wram[address % 0x8000];          break;
+                        case 1: data = &wram[address % 0x4000 + 0x4000]; break;
+                        case 2: data = &wram[address % 0x4000];          break;
                     }
                     break;
                 }
@@ -290,9 +290,9 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
                 {
                     switch (wramStat)
                     {
-                        case 1: data = &wram[address % 0x4000];
-                        case 2: data = &wram[address % 0x4000 + 0x4000];
-                        case 3: data = &wram[address % 0x8000];
+                        case 1: data = &wram[address % 0x4000];          break;
+                        case 2: data = &wram[address % 0x4000 + 0x4000]; break;
+                        case 3: data = &wram[address % 0x8000];          break;
                     }
                 }
                 if (!data) data = &wram7[address % 0x10000]; // ARM7 WRAM
