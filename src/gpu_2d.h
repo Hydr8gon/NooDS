@@ -71,7 +71,7 @@ class Gpu2D
 
     private:
         uint32_t framebuffer[256 * 192] = {};
-        uint32_t layers[8][256 * 192] = {};
+        uint32_t layers[8][256] = {};
 
         uint32_t dispCnt = 0;
         uint16_t bgCnt[4] = {};
