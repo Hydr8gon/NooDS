@@ -37,13 +37,14 @@ class Rtc;
 class Spi;
 class Spu;
 class Timers;
+class Wifi;
 
 class Memory
 {
     public:
         Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA,
-               Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9,
-               Interpreter *arm7, Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Spu *spu, Timers *timers9, Timers *timers7);
+               Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9, Interpreter *arm7,
+               Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Spu *spu, Timers *timers9, Timers *timers7, Wifi *wifi);
 
         template <typename T> T read(bool arm9, uint32_t address);
         template <typename T> void write(bool arm9, uint32_t address, T value);
@@ -61,6 +62,7 @@ class Memory
         uint8_t bios9[0x8000]    = {}; // 32KB ARM9 BIOS
         uint8_t bios7[0x4000]    = {}; // 16KB ARM7 BIOS
         uint8_t wram7[0x10000]   = {}; // 64KB ARM7 WRAM
+        uint8_t wifiRam[0x2000]  = {}; //  8KB WiFi RAM
 
         uint8_t palette[0x800] = {}; //   2KB palette
         uint8_t vramA[0x20000] = {}; // 128KB VRAM block A
@@ -95,6 +97,7 @@ class Memory
         Spi *spi;
         Spu *spu;
         Timers *timers9, *timers7;
+        Wifi *wifi;
 
         template <typename T> T ioRead9(uint32_t address);
         template <typename T> T ioRead7(uint32_t address);

@@ -40,6 +40,7 @@
 #include "spi.h"
 #include "spu.h"
 #include "timers.h"
+#include "wifi.h"
 
 class Core
 {
@@ -88,6 +89,7 @@ class Core
         Spi spi;
         Spu spu;
         Timers timers9, timers7;
+        Wifi wifi;
 };
 
 #endif // CORE_H

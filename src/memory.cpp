@@ -37,13 +37,14 @@
 #include "spi.h"
 #include "spu.h"
 #include "timers.h"
+#include "wifi.h"
 
 Memory::Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA,
-               Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9,
-               Interpreter *arm7, Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Spu *spu, Timers *timers9, Timers *timers7):
+               Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9, Interpreter *arm7,
+               Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Spu *spu, Timers *timers9, Timers *timers7, Wifi *wifi):
                cart9(cart9), cart7(cart7), cp15(cp15), dma9(dma9), dma7(dma7), gpu(gpu), engineA(engineA),
-               engineB(engineB), gpu3D(gpu3D), gpu3DRenderer(gpu3DRenderer), input(input), arm9(arm9),
-               arm7(arm7), ipc(ipc), math(math), rtc(rtc), spi(spi), spu(spu), timers9(timers9), timers7(timers7)
+               engineB(engineB), gpu3D(gpu3D), gpu3DRenderer(gpu3DRenderer), input(input), arm9(arm9), arm7(arm7),
+               ipc(ipc), math(math), rtc(rtc), spi(spi), spu(spu), timers9(timers9), timers7(timers7), wifi(wifi)
 {
     // Attempt to load the ARM9 BIOS
     FILE *bios9File = fopen(Settings::getBios9Path().c_str(), "rb");
@@ -172,7 +173,19 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
 
             case 0x04000000: // I/O registers
             {
-                return ioRead7<T>(address);
+                if (address & 0x00800000) // WiFi regions
+                {
+                    address &= ~0x00008000; // Mirror the regions
+                    if (address >= 0x04804000 && address < 0x04806000) // WiFi RAM
+                        data = &wifiRam[address % 0x2000];
+                    else if (address < 0x04808000) // WiFi I/O registers
+                        return ioRead7<T>(address);
+                    break;
+                }
+                else
+                {
+                    return ioRead7<T>(address);
+                }
             }
 
             case 0x06000000: // VRAMs
@@ -301,8 +314,25 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
 
             case 0x04000000: // I/O registers
             {
-                ioWrite7<T>(address, value);
-                return;
+                if (address & 0x00800000) // WiFi regions
+                {
+                    address &= ~0x00008000; // Mirror the regions
+                    if (address >= 0x04804000 && address < 0x04806000) // WiFi RAM
+                    {
+                        data = &wifiRam[address % 0x2000];
+                    }
+                    else if (address < 0x04808000) // WiFi I/O registers
+                    {
+                        ioWrite7<T>(address, value);
+                        return;
+                    }
+                    break;
+                }
+                else
+                {
+                    ioWrite7<T>(address, value);
+                    return;
+                }
             }
 
             case 0x06000000: // VRAM
@@ -932,6 +962,8 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4100011:
             case 0x4100012:
             case 0x4100013: base -= 0x4100010; size = 4; data = cart7->readRomDataIn();  break; // ROMDATAIN (ARM7)
+            case 0x480015E:
+            case 0x480015F: base -= 0x480015E; size = 2; data = wifi->readWBbBusy();     break; // W_BB_BUSY
 
             default:
             {
@@ -1974,6 +2006,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4000501: base -= 0x4000500; size = 2; spu->writeMainSoundCnt(mask << (base * 8), data << (base * 8));  break; // SOUNDCNT
             case 0x4000504:
             case 0x4000505: base -= 0x4000504; size = 2; spu->writeSoundBias(mask << (base * 8), data << (base * 8));     break; // SOUNDBIAS
+            case 0x4800158:
+            case 0x4800159: base -= 0x4800158; size = 2; wifi->writeWBbCnt(mask << (base * 8), data << (base * 8));       break; // W_BB_CNT
 
             default:
             {
