@@ -76,50 +76,64 @@ void Gpu2D::drawScanline(int line)
             switch (dispCnt & 0x00000007)
             {
                 case 0:
+                {
                     if (dispCnt & BIT(8))  drawText(0, line);
                     if (dispCnt & BIT(9))  drawText(1, line);
                     if (dispCnt & BIT(10)) drawText(2, line);
                     if (dispCnt & BIT(11)) drawText(3, line);
                     break;
+                }
 
                 case 1:
+                {
                     if (dispCnt & BIT(8))    drawText(0, line);
                     if (dispCnt & BIT(9))    drawText(1, line);
                     if (dispCnt & BIT(10))   drawText(2, line);
                     if (dispCnt & BIT(11)) drawAffine(3, line);
                     break;
+                }
 
                 case 2:
+                {
                     if (dispCnt & BIT(8))    drawText(0, line);
                     if (dispCnt & BIT(9))    drawText(1, line);
                     if (dispCnt & BIT(10)) drawAffine(2, line);
                     if (dispCnt & BIT(11)) drawAffine(3, line);
                     break;
+                }
 
                 case 3:
+                {
                     if (dispCnt & BIT(8))      drawText(0, line);
                     if (dispCnt & BIT(9))      drawText(1, line);
                     if (dispCnt & BIT(10))     drawText(2, line);
                     if (dispCnt & BIT(11)) drawExtended(3, line);
                     break;
+                }
 
                 case 4:
+                {
                     if (dispCnt & BIT(8))      drawText(0, line);
                     if (dispCnt & BIT(9))      drawText(1, line);
                     if (dispCnt & BIT(10))   drawAffine(2, line);
                     if (dispCnt & BIT(11)) drawExtended(3, line);
                     break;
+                }
 
                 case 5:
+                {
                     if (dispCnt & BIT(8))      drawText(0, line);
                     if (dispCnt & BIT(9))      drawText(1, line);
                     if (dispCnt & BIT(10)) drawExtended(2, line);
                     if (dispCnt & BIT(11)) drawExtended(3, line);
                     break;
+                }
 
                 default:
+                {
                     printf("Unknown engine %c BG mode: %d\n", (gpu3DRenderer ? 'A' : 'B'), dispCnt & 0x00000007);
                     break;
+                }
             }
 
             // Draw the objects
@@ -130,10 +144,10 @@ void Gpu2D::drawScanline(int line)
             {
                 uint8_t enabled = BIT(5) | (dispCnt >> 8);
                 uint32_t *pixel = &framebuffer[line * 256 + i];
-                int layer, blendBit = -1;
+                int priority, layer, blendBit = -1;
 
                 // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
-                if (dispCnt & 0xE000) // Windows enabled
+                if (dispCnt & 0x0000E000) // Windows enabled
                 {
                     if ((dispCnt & BIT(13)) && i >= winX1[0] && i < winX2[0] && line >= winY1[0] && line < winY2[0])
                         enabled &= winIn >> 0; // Window 0
@@ -146,25 +160,24 @@ void Gpu2D::drawScanline(int line)
                 }
 
                 // Find the topmost pixel from the layers
-                for (layer = 0; layer < 4; layer++)
+                for (priority = 0; priority < 4; priority++)
                 {
                     // Check for visible pixels in the object layers
-                    if ((enabled & BIT(4)) && (layers[4 + layer][i] & 0xFC0000))
+                    if ((enabled & BIT(4)) && (layers[4 + priority][i] & 0xFC0000))
                     {
-                        *pixel = layers[4 + layer][i];
+                        *pixel = layers[4 + priority][i];
                         blendBit = 4;
                         break;
                     }
 
                     // Check for visible pixels in the background layers
                     // The BG layers can be rearranged, so they need to be checked in the correct order
-                    for (int j = 0; j < 4; j++)
+                    for (layer = 0; layer < 4; layer++)
                     {
-                        if ((bgCnt[j] & 0x0003) == layer && (enabled & BIT(j)) && (layers[j][i] & 0xFC0000))
+                        if ((bgCnt[layer] & 0x0003) == priority && (enabled & BIT(layer)) && (layers[layer][i] & 0xFC0000))
                         {
-                            *pixel = layers[j][i];
-                            blendBit = j;
-                            layer++;
+                            *pixel = layers[layer][i];
+                            blendBit = layer;
                             break;
                         }
                     }
@@ -192,31 +205,39 @@ void Gpu2D::drawScanline(int line)
                     int blendBit2 = -1;
                     uint32_t blend;
 
-                    // Find the second topmost pixel from the layers, continuing from the first search
-                    for (layer; layer < 4; layer++)
+                    // Move to the next layer below the topmost pixel (the starting point for the next search)
+                    if (++layer == 4)
+                    {
+                        priority++;
+                        layer = 0;
+                    }
+
+                    // Find the second-topmost pixel from the layers
+                    for (priority; priority < 4; priority++)
                     {
                         // Check for visible pixels in the object layers
                         // Blending only counts the topmost object pixel, so skip this if the first pixel was from an object
-                        if (blendBit != 4 && (enabled & BIT(4)) && (layers[4 + layer][i] & 0xFC0000))
+                        if (layer == 0 && blendBit != 4 && (enabled & BIT(4)) && (layers[4 + priority][i] & 0xFC0000))
                         {
-                            blend = layers[4 + layer][i];
+                            blend = layers[4 + priority][i];
                             blendBit2 = 4;
                             break;
                         }
 
                         // Check for visible pixels in the background layers
                         // The BG layers can be rearranged, so they need to be checked in the correct order
-                        for (int j = 0; j < 4; j++)
+                        for (layer; layer < 4; layer++)
                         {
-                            if ((bgCnt[j] & 0x0003) == layer && (enabled & BIT(j)) && (layers[j][i] & 0xFC0000))
+                            if ((bgCnt[layer] & 0x0003) == priority && (enabled & BIT(layer)) && (layers[layer][i] & 0xFC0000))
                             {
-                                blend = layers[j][i];
-                                blendBit2 = j;
+                                blend = layers[layer][i];
+                                blendBit2 = layer;
                                 break;
                             }
                         }
 
                         if (blendBit2 != -1) break;
+                        layer = 0;
                     }
 
                     // Use the backdrop color if no visible layer pixels were found
