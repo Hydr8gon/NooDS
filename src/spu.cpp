@@ -128,13 +128,18 @@ void Spu::runSample()
                 break;
             }
 
-            case 3: // Pulse waves
+            case 3: // Pulse/Noise
             {
-                if (i >= 8 && i <= 13) // Channels that support pulse waves
+                if (i >= 8 && i <= 13) // Pulse waves
                 {
                     // Set the sample to low or high depending on the position in the duty cycle
                     int duty = 7 - ((soundCnt[i] & 0x07000000) >> 24);
-                    data = (dutyCycles[i - 8] < duty) ? 0x7FFF : -0x7FFF;
+                    data = (dutyCycles[i - 8] < duty) ? -0x7FFF : 0x7FFF;
+                }
+                else if (i >= 14) // Noise
+                {
+                    // Set the sample to low or high depending on the carry bit (saved as bit 15)
+                    data = (noiseValues[i - 14] & BIT(15)) ? -0x7FFF : 0x7FFF;
                 }
                 break;
             }
@@ -204,11 +209,24 @@ void Spu::runSample()
                     break;
                 }
 
-                case 3: // Pulse waves
+                case 3: // Pulse/Noise
                 {
-                    // Increment the duty cycle counter
-                    if (i >= 8 && i <= 13)
+                    if (i >= 8 && i <= 13) // Pulse waves
+                    {
+                        // Increment the duty cycle counter
                         dutyCycles[i - 8] = (dutyCycles[i - 8] + 1) % 8;
+                    }
+                    else if (i >= 14) // Noise
+                    {
+                        // Clear the previous saved carry bit
+                        noiseValues[i - 14] &= ~BIT(15);
+ 
+                        // Advance the random generator and save the carry bit to bit 15
+                        if (noiseValues[i - 14] & BIT(0))
+                            noiseValues[i - 14] = BIT(15) | ((noiseValues[i - 14] >> 1) ^ 0x6000);
+                        else
+                            noiseValues[i - 14] >>= 1;
+                    }
                     break;
                 }
             }
@@ -329,11 +347,13 @@ void Spu::writeSoundCnt(int channel, uint32_t mask, uint32_t value)
                 break;
             }
 
-            case 3: // Pulse waves
+            case 3: // Pulse/Noise
             {
-                // Reset the duty cycle counter
-                if (channel >= 8 && channel <= 13)
+                // Reset the pulse or noise values
+                if (channel >= 8 && channel <= 13) // Pulse waves
                     dutyCycles[channel - 8] = 0;
+                else if (channel >= 14) // Noise
+                    noiseValues[channel - 14] = 0x7FFF;
                 break;
             }
         }

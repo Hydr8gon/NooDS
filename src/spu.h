@@ -66,6 +66,7 @@ class Spu
         bool adpcmToggle[16] = {};
 
         int dutyCycles[6] = {};
+        uint16_t noiseValues[2] = {};
 
         uint32_t soundCurrent[16] = {};
         uint16_t soundTimers[16] = {};
