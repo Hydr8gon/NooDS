@@ -144,7 +144,7 @@ void Gpu2D::drawScanline(int line)
             {
                 uint8_t enabled = BIT(5) | (dispCnt >> 8);
                 uint32_t *pixel = &framebuffer[line * 256 + i];
-                int priority, layer, blendBit = -1;
+                int priority = 0, layer = 0, blendBit = -1;
 
                 // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
                 if (dispCnt & 0x0000E000) // Windows enabled
@@ -160,7 +160,7 @@ void Gpu2D::drawScanline(int line)
                 }
 
                 // Find the topmost pixel from the layers
-                for (priority = 0; priority < 4; priority++)
+                for (priority; priority < 4; priority++)
                 {
                     // Check for visible pixels in the object layers
                     if ((enabled & BIT(4)) && (layers[4 + priority][i] & 0xFC0000))
@@ -172,7 +172,7 @@ void Gpu2D::drawScanline(int line)
 
                     // Check for visible pixels in the background layers
                     // The BG layers can be rearranged, so they need to be checked in the correct order
-                    for (layer = 0; layer < 4; layer++)
+                    for (layer; layer < 4; layer++)
                     {
                         if ((bgCnt[layer] & 0x0003) == priority && (enabled & BIT(layer)) && (layers[layer][i] & 0xFC0000))
                         {
@@ -183,6 +183,7 @@ void Gpu2D::drawScanline(int line)
                     }
 
                     if (blendBit != -1) break;
+                    layer = 0;
                 }
 
                 // Use the backdrop color if no visible layer pixels were found
@@ -206,7 +207,7 @@ void Gpu2D::drawScanline(int line)
                     uint32_t blend;
 
                     // Move to the next layer below the topmost pixel (the starting point for the next search)
-                    if (++layer == 4)
+                    if (blendBit != 4 && ++layer == 4)
                     {
                         priority++;
                         layer = 0;
