@@ -166,11 +166,11 @@ std::string InputDialog::keyToString(int key)
     return regular;
 }
 
-InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Settings")
+InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Bindings")
 {
     // Load the key bindings
     for (int i = 0; i < 12; i++)
-        keyMap[i] = NooApp::getKeyMap(i);
+        keyBinds[i] = NooApp::getKeyBind(i);
 
     // Determine the height of a button
     // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
@@ -181,62 +181,62 @@ InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Settings")
     // Set up the A button setting
     wxBoxSizer *aSizer = new wxBoxSizer(wxHORIZONTAL);
     aSizer->Add(new wxStaticText(this, wxID_ANY, "A:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    aSizer->Add(keyA = new wxButton(this, REMAP_A, keyToString(keyMap[0]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    aSizer->Add(keyA = new wxButton(this, REMAP_A, keyToString(keyBinds[0]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the B button setting
     wxBoxSizer *bSizer = new wxBoxSizer(wxHORIZONTAL);
     bSizer->Add(new wxStaticText(this, wxID_ANY, "B:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    bSizer->Add(keyB = new wxButton(this, REMAP_B, keyToString(keyMap[1]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    bSizer->Add(keyB = new wxButton(this, REMAP_B, keyToString(keyBinds[1]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the X button setting
     wxBoxSizer *xSizer = new wxBoxSizer(wxHORIZONTAL);
     xSizer->Add(new wxStaticText(this, wxID_ANY, "X:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    xSizer->Add(keyX = new wxButton(this, REMAP_X, keyToString(keyMap[10]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    xSizer->Add(keyX = new wxButton(this, REMAP_X, keyToString(keyBinds[10]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Y button setting
     wxBoxSizer *ySizer = new wxBoxSizer(wxHORIZONTAL);
     ySizer->Add(new wxStaticText(this, wxID_ANY, "Y:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    ySizer->Add(keyY = new wxButton(this, REMAP_Y, keyToString(keyMap[11]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    ySizer->Add(keyY = new wxButton(this, REMAP_Y, keyToString(keyBinds[11]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Start button setting
     wxBoxSizer *startSizer = new wxBoxSizer(wxHORIZONTAL);
     startSizer->Add(new wxStaticText(this, wxID_ANY, "Start:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    startSizer->Add(keyStart = new wxButton(this, REMAP_START, keyToString(keyMap[3]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    startSizer->Add(keyStart = new wxButton(this, REMAP_START, keyToString(keyBinds[3]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Select button setting
     wxBoxSizer *selectSizer = new wxBoxSizer(wxHORIZONTAL);
     selectSizer->Add(new wxStaticText(this, wxID_ANY, "Select:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    selectSizer->Add(keySelect = new wxButton(this, REMAP_SELECT, keyToString(keyMap[2]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    selectSizer->Add(keySelect = new wxButton(this, REMAP_SELECT, keyToString(keyBinds[2]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Up button setting
     wxBoxSizer *upSizer = new wxBoxSizer(wxHORIZONTAL);
     upSizer->Add(new wxStaticText(this, wxID_ANY, "Up:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    upSizer->Add(keyUp = new wxButton(this, REMAP_UP, keyToString(keyMap[6]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    upSizer->Add(keyUp = new wxButton(this, REMAP_UP, keyToString(keyBinds[6]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Down button setting
     wxBoxSizer *downSizer = new wxBoxSizer(wxHORIZONTAL);
     downSizer->Add(new wxStaticText(this, wxID_ANY, "Down:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    downSizer->Add(keyDown = new wxButton(this, REMAP_DOWN, keyToString(keyMap[7]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    downSizer->Add(keyDown = new wxButton(this, REMAP_DOWN, keyToString(keyBinds[7]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Left button setting
     wxBoxSizer *leftSizer = new wxBoxSizer(wxHORIZONTAL);
     leftSizer->Add(new wxStaticText(this, wxID_ANY, "Left:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    leftSizer->Add(keyLeft = new wxButton(this, REMAP_LEFT, keyToString(keyMap[5]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    leftSizer->Add(keyLeft = new wxButton(this, REMAP_LEFT, keyToString(keyBinds[5]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Right button setting
     wxBoxSizer *rightSizer = new wxBoxSizer(wxHORIZONTAL);
     rightSizer->Add(new wxStaticText(this, wxID_ANY, "Right:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    rightSizer->Add(keyRight = new wxButton(this, REMAP_RIGHT, keyToString(keyMap[4]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    rightSizer->Add(keyRight = new wxButton(this, REMAP_RIGHT, keyToString(keyBinds[4]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the L button setting
     wxBoxSizer *lSizer = new wxBoxSizer(wxHORIZONTAL);
     lSizer->Add(new wxStaticText(this, wxID_ANY, "L:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    lSizer->Add(keyL = new wxButton(this, REMAP_L, keyToString(keyMap[9]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    lSizer->Add(keyL = new wxButton(this, REMAP_L, keyToString(keyBinds[9]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the R button setting
     wxBoxSizer *rSizer = new wxBoxSizer(wxHORIZONTAL);
     rSizer->Add(new wxStaticText(this, wxID_ANY, "R:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    rSizer->Add(keyR = new wxButton(this, REMAP_R, keyToString(keyMap[8]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    rSizer->Add(keyR = new wxButton(this, REMAP_R, keyToString(keyBinds[8]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the cancel and confirm buttons
     wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -279,18 +279,18 @@ InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Settings")
 void InputDialog::resetLabels()
 {
     // Reset the button labels
-    keyA->SetLabel(keyToString(keyMap[0]));
-    keyB->SetLabel(keyToString(keyMap[1]));
-    keyX->SetLabel(keyToString(keyMap[10]));
-    keyY->SetLabel(keyToString(keyMap[11]));
-    keyStart->SetLabel(keyToString(keyMap[3]));
-    keySelect->SetLabel(keyToString(keyMap[2]));
-    keyUp->SetLabel(keyToString(keyMap[6]));
-    keyDown->SetLabel(keyToString(keyMap[7]));
-    keyLeft->SetLabel(keyToString(keyMap[5]));
-    keyRight->SetLabel(keyToString(keyMap[4]));
-    keyL->SetLabel(keyToString(keyMap[9]));
-    keyR->SetLabel(keyToString(keyMap[8]));
+    keyA->SetLabel(keyToString(keyBinds[0]));
+    keyB->SetLabel(keyToString(keyBinds[1]));
+    keyX->SetLabel(keyToString(keyBinds[10]));
+    keyY->SetLabel(keyToString(keyBinds[11]));
+    keyStart->SetLabel(keyToString(keyBinds[3]));
+    keySelect->SetLabel(keyToString(keyBinds[2]));
+    keyUp->SetLabel(keyToString(keyBinds[6]));
+    keyDown->SetLabel(keyToString(keyBinds[7]));
+    keyLeft->SetLabel(keyToString(keyBinds[5]));
+    keyRight->SetLabel(keyToString(keyBinds[4]));
+    keyL->SetLabel(keyToString(keyBinds[9]));
+    keyR->SetLabel(keyToString(keyBinds[8]));
     current = nullptr;
 }
 
@@ -406,7 +406,7 @@ void InputDialog::confirm(wxCommandEvent &event)
 {
     // Save the key mappings
     for (int i = 0; i < 12; i++)
-        NooApp::setKeyMap(i, keyMap[i]);
+        NooApp::setKeyBind(i, keyBinds[i]);
 
     event.Skip(true);
 }
@@ -416,7 +416,7 @@ void InputDialog::pressKey(wxKeyEvent &event)
     if (!current) return;
 
     // Update the key mapping of the current button
-    keyMap[keyIndex] = event.GetKeyCode();
-    current->SetLabel(keyToString(keyMap[keyIndex]));
+    keyBinds[keyIndex] = event.GetKeyCode();
+    current->SetLabel(keyToString(keyBinds[keyIndex]));
     current = nullptr;
 }

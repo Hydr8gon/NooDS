@@ -28,7 +28,7 @@ class InputDialog: public wxDialog
         InputDialog();
 
     private:
-        int keyMap[12];
+        int keyBinds[12];
 
         wxButton *keyA;
         wxButton *keyB;

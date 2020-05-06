@@ -19,6 +19,7 @@
 
 #include "noo_frame.h"
 #include "input_dialog.h"
+#include "layout_dialog.h"
 #include "noo_app.h"
 #include "path_dialog.h"
 #include "save_dialog.h"
@@ -32,12 +33,11 @@ enum Event
     RESTART,
     STOP,
     PATH_SETTINGS,
-    INPUT_SETTINGS,
+    INPUT_BINDINGS,
+    SCREEN_LAYOUT,
     DIRECT_BOOT,
     THREADED_3D,
     LIMIT_FPS,
-    SCREEN_FILTER,
-    INTEGER_SCALE,
     UPDATE_FPS
 };
 
@@ -48,12 +48,11 @@ EVT_MENU(PAUSE,          NooFrame::pause)
 EVT_MENU(RESTART,        NooFrame::restart)
 EVT_MENU(STOP,           NooFrame::stop)
 EVT_MENU(PATH_SETTINGS,  NooFrame::pathSettings)
-EVT_MENU(INPUT_SETTINGS, NooFrame::inputSettings)
+EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
+EVT_MENU(SCREEN_LAYOUT,  NooFrame::layoutSettings)
 EVT_MENU(DIRECT_BOOT,    NooFrame::directBootToggle)
 EVT_MENU(THREADED_3D,    NooFrame::threaded3DToggle)
 EVT_MENU(LIMIT_FPS,      NooFrame::limitFpsToggle)
-EVT_MENU(SCREEN_FILTER,  NooFrame::screenFilterToggle)
-EVT_MENU(INTEGER_SCALE,  NooFrame::integerScaleToggle)
 EVT_MENU(wxID_EXIT,      NooFrame::exit)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
@@ -81,21 +80,17 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     // Set up the Settings menu
     wxMenu *settingsMenu = new wxMenu();
     settingsMenu->Append(PATH_SETTINGS,  "&Path Settings");
-    settingsMenu->Append(INPUT_SETTINGS, "&Input Settings");
+    settingsMenu->Append(INPUT_BINDINGS, "&Input Bindings");
+    settingsMenu->Append(SCREEN_LAYOUT,  "&Screen Layout");
     settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(DIRECT_BOOT,   "&Direct Boot");
-    settingsMenu->AppendCheckItem(THREADED_3D,   "&Threaded 3D");
-    settingsMenu->AppendCheckItem(LIMIT_FPS,     "&Limit FPS");
-    settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(SCREEN_FILTER, "&Screen Filter");
-    settingsMenu->AppendCheckItem(INTEGER_SCALE, "&Integer Scale");
+    settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
+    settingsMenu->AppendCheckItem(THREADED_3D, "&Threaded 3D");
+    settingsMenu->AppendCheckItem(LIMIT_FPS,   "&Limit FPS");
 
     // Set the current values of the checkboxes
-    settingsMenu->Check(DIRECT_BOOT,   Settings::getDirectBoot());
-    settingsMenu->Check(THREADED_3D,   Settings::getThreaded3D());
-    settingsMenu->Check(LIMIT_FPS,     Settings::getLimitFps());
-    settingsMenu->Check(SCREEN_FILTER, NooApp::getScreenFilter());
-    settingsMenu->Check(INTEGER_SCALE, NooApp::getIntegerScale());
+    settingsMenu->Check(DIRECT_BOOT, Settings::getDirectBoot());
+    settingsMenu->Check(THREADED_3D, Settings::getThreaded3D());
+    settingsMenu->Check(LIMIT_FPS,   Settings::getLimitFps());
 
     // Set up the menu bar
     wxMenuBar *menuBar = new wxMenuBar();
@@ -104,9 +99,13 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     menuBar->Append(settingsMenu, "&Settings");
     SetMenuBar(menuBar);
 
-    // Prevent resizing smaller than the DS resolution
-    SetClientSize(wxSize(256, 192 * 2));
-    SetMinSize(GetSize());
+    // Set the initial window size based on the current screen layout
+    int width  = (NooApp::getScreenRotation() ? 192 : 256);
+    int height = (NooApp::getScreenRotation() ? 256 : 192);
+    if (NooApp::getScreenArrangement() == 1 || (NooApp::getScreenArrangement() == 0 && NooApp::getScreenRotation() == 0))
+        SetClientSize(wxSize(width, height * 2));
+    else
+        SetClientSize(wxSize(width * 2, height));
 
     Centre();
     Show(true);
@@ -270,34 +269,29 @@ void NooFrame::inputSettings(wxCommandEvent &event)
     inputDialog.ShowModal();
 }
 
+void NooFrame::layoutSettings(wxCommandEvent &event)
+{
+    // Show the layout settings dialog
+    LayoutDialog layoutDialog(this);
+    layoutDialog.ShowModal();
+}
+
 void NooFrame::directBootToggle(wxCommandEvent &event)
 {
-    // Toggle the "Direct Boot" option
+    // Toggle the direct boot setting
     Settings::setDirectBoot(!Settings::getDirectBoot());
 }
 
 void NooFrame::threaded3DToggle(wxCommandEvent &event)
 {
-    // Toggle the "Threaded 3D" option
+    // Toggle the threaded 3D setting
     Settings::setThreaded3D(!Settings::getThreaded3D());
 }
 
 void NooFrame::limitFpsToggle(wxCommandEvent &event)
 {
-    // Toggle the "Limit FPS" option
+    // Toggle the limit FPS setting
     Settings::setLimitFps(!Settings::getLimitFps());
-}
-
-void NooFrame::screenFilterToggle(wxCommandEvent &event)
-{
-    // Toggle the "Screen Filter" option
-    NooApp::setScreenFilter(!NooApp::getScreenFilter());
-}
-
-void NooFrame::integerScaleToggle(wxCommandEvent &event)
-{
-    // Toggle the "Integer Scale" option
-    NooApp::setIntegerScale(!NooApp::getIntegerScale());
 }
 
 void NooFrame::exit(wxCommandEvent &event)

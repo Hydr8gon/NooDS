@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2020 Hydr8gon
+    Copyright 2020 Hydr8gon
 
     This file is part of NooDS.
 
@@ -17,39 +17,38 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef NOO_CANVAS_H
-#define NOO_CANVAS_H
+#ifndef LAYOUT_DIALOG_H
+#define LAYOUT_DIALOG_H
 
 #include <wx/wx.h>
-#include <wx/glcanvas.h>
 
 #include "noo_frame.h"
 
-class NooCanvas: public wxGLCanvas
+class LayoutDialog: public wxDialog
 {
     public:
-        NooCanvas(NooFrame *frame, Emulator *emulator);
+        LayoutDialog(NooFrame *frame);
 
     private:
         NooFrame *frame;
-        Emulator *emulator;
-        wxGLContext *context;
 
-        int topX, botX;
-        int topY, botY;
-        int topWidth, botWidth;
-        int topHeight, botHeight;
+        int prevSettings[6];
 
-        void resize();
-
-        void draw(wxPaintEvent &event);
-        void resize(wxSizeEvent &event);
-        void pressKey(wxKeyEvent &event);
-        void releaseKey(wxKeyEvent &event);
-        void pressScreen(wxMouseEvent &event);
-        void releaseScreen(wxMouseEvent &event);
+        void rotateNone(wxCommandEvent &event);
+        void rotateCw(wxCommandEvent &event);
+        void rotateCcw(wxCommandEvent &event);
+        void arrangeAuto(wxCommandEvent &event);
+        void arrangeVert(wxCommandEvent &event);
+        void arrangeHori(wxCommandEvent &event);
+        void sizeEven(wxCommandEvent &event);
+        void sizeTop(wxCommandEvent &event);
+        void sizeBot(wxCommandEvent &event);
+        void gap(wxCommandEvent &event);
+        void filter(wxCommandEvent &event);
+        void intScale(wxCommandEvent &event);
+        void cancel(wxCommandEvent &event);
 
         wxDECLARE_EVENT_TABLE();
 };
 
-#endif // NOO_CANVAS_H
+#endif // LAYOUT_DIALOG_H

@@ -41,7 +41,7 @@ EVT_RADIOBUTTON(FLASH_256,  SaveDialog::flash256)
 EVT_RADIOBUTTON(FLASH_512,  SaveDialog::flash512)
 EVT_RADIOBUTTON(FLASH_1024, SaveDialog::flash1024)
 EVT_RADIOBUTTON(FLASH_8192, SaveDialog::flash8192)
-EVT_BUTTON(wxID_OK, SaveDialog::confirm)
+EVT_BUTTON(wxID_OK,         SaveDialog::confirm)
 wxEND_EVENT_TABLE()
 
 SaveDialog::SaveDialog(std::string path): wxDialog(nullptr, wxID_ANY, "Select Save Type"), path(path)

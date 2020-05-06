@@ -231,14 +231,25 @@ uint32_t *SwitchUI::bmpToTexture(std::string filename)
     return texture;
 }
 
-void SwitchUI::drawImage(uint32_t *image, int width, int height, int x, int y, int scaleWidth, int scaleHeight, bool filter)
+void SwitchUI::drawImage(uint32_t *image, int width, int height, int x, int y, int scaleWidth, int scaleHeight, bool filter, int rotation)
 {
+    uint8_t texCoords;
+
+    // Rotate the texture coordinates
+    switch (rotation)
+    {
+        case 0:  texCoords = 0x4B; break; // None
+        case 1:  texCoords = 0x2D; break; // Clockwise
+        case 2:  texCoords = 0xD2; break; // Counter-clockwise
+        default: texCoords = 0xB4; break; // Flipped
+    }
+
     VertexData vertices[] =
     {
-        VertexData(x + scaleWidth, y + scaleHeight, 1.0f, 1.0f),
-        VertexData(x,              y + scaleHeight, 0.0f, 1.0f),
-        VertexData(x,              y,               0.0f, 0.0f),
-        VertexData(x + scaleWidth, y,               1.0f, 0.0f)
+        VertexData(x + scaleWidth, y + scaleHeight, (texCoords >> 0) & 1, (texCoords >> 1) & 1),
+        VertexData(x,              y + scaleHeight, (texCoords >> 2) & 1, (texCoords >> 3) & 1),
+        VertexData(x,              y,               (texCoords >> 4) & 1, (texCoords >> 5) & 1),
+        VertexData(x + scaleWidth, y,               (texCoords >> 6) & 1, (texCoords >> 7) & 1)
     };
 
     // Set texture filtering

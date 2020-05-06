@@ -68,7 +68,7 @@ class SwitchUI
 
         static uint32_t *bmpToTexture(std::string filename);
 
-        static void drawImage(uint32_t *image, int width, int height, int x, int y, int scaleWidth, int scaleHeight, bool filter = true);
+        static void drawImage(uint32_t *image, int width, int height, int x, int y, int scaleWidth, int scaleHeight, bool filter = true, int rotation = 0);
         static void drawString(std::string string, int x, int y, int size, Color color, bool alignRight = false);
         static void drawRectangle(int x, int y, int width, int height, Color color);
         static void clear(Color color);

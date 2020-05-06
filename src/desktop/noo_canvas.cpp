@@ -22,6 +22,7 @@
 
 wxBEGIN_EVENT_TABLE(NooCanvas, wxGLCanvas)
 EVT_PAINT(NooCanvas::draw)
+EVT_SIZE(NooCanvas::resize)
 EVT_KEY_DOWN(NooCanvas::pressKey)
 EVT_KEY_UP(NooCanvas::releaseKey)
 EVT_LEFT_DOWN(NooCanvas::pressScreen)
@@ -29,8 +30,8 @@ EVT_MOTION(NooCanvas::pressScreen)
 EVT_LEFT_UP(NooCanvas::releaseScreen)
 wxEND_EVENT_TABLE()
 
-NooCanvas::NooCanvas(wxFrame *frame, Emulator *emulator):
-    wxGLCanvas(frame, wxID_ANY, nullptr, wxDefaultPosition, wxSize(256, 192 * 2)), emulator(emulator)
+NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator):
+    wxGLCanvas(frame, wxID_ANY, nullptr, wxDefaultPosition, wxSize(256, 192 * 2)), frame(frame), emulator(emulator)
 {
     // Prepare the OpenGL context
     context = new wxGLContext(this);
@@ -48,15 +49,8 @@ NooCanvas::NooCanvas(wxFrame *frame, Emulator *emulator):
 
 void NooCanvas::draw(wxPaintEvent &event)
 {
-    // Clear the screen
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    // Set filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, NooApp::getScreenFilter() ? GL_LINEAR : GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, NooApp::getScreenFilter() ? GL_LINEAR : GL_NEAREST);
-
     uint32_t framebuffer[256 * 192 * 2];
+    uint8_t texCoords;
 
     // Convert the framebuffer to RGBA8 format
     for (int i = 0; i < 256 * 192 * 2; i++)
@@ -68,36 +62,222 @@ void NooCanvas::draw(wxPaintEvent &event)
         framebuffer[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
     }
 
-    // Scale the display based on the aspect ratio of the window
-    // If the window is wider than the DS ratio, scale to the height of the window
-    // If the window is taller than the DS ratio, scale to the width of the window
-    wxSize size = GetSize();
-    float ratio = 256.0f / (192 * 2);
-    float window = (float)size.x / size.y;
-    scale = ((ratio >= window) ? (float)size.x / 256 : (float)size.y / (192 * 2));
-
-    // Limit the scale to integer values if enabled
-    if (NooApp::getIntegerScale())
-        scale = (int)scale;
-
-    // Center the display
-    x = (size.x - scale * 256)     / 2;
-    y = (size.y - scale * 192 * 2) / 2;
+    // Rotate the texture coordinates
+    switch (NooApp::getScreenRotation())
+    {
+        case 0: texCoords = 0x4B; break; // None
+        case 1: texCoords = 0x2D; break; // Clockwise
+        case 2: texCoords = 0xD2; break; // Counter-clockwise
+    }
 
     // Update the display dimensions
-    glViewport(x, y, scale * 256, scale * 192 * 2);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, GetSize().x, GetSize().y, 0, -1, 1);
+    glViewport(0, 0, GetSize().x, GetSize().y);
 
-    // Draw the framebuffer
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192 * 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, framebuffer);
+    // Set filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, NooApp::getScreenFilter() ? GL_LINEAR : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, NooApp::getScreenFilter() ? GL_LINEAR : GL_NEAREST);
+
+    // Clear the window
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw the top screen
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
     glBegin(GL_QUADS);
-    glTexCoord2i(1, 1); glVertex2f( 1, -1);
-    glTexCoord2i(0, 1); glVertex2f(-1, -1);
-    glTexCoord2i(0, 0); glVertex2f(-1,  1);
-    glTexCoord2i(1, 0); glVertex2f( 1,  1);
+    glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1); glVertex2i(topX + topWidth, topY + topHeight);
+    glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1); glVertex2i(topX,            topY + topHeight);
+    glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1); glVertex2i(topX,            topY);
+    glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1); glVertex2i(topX + topWidth, topY);
+    glEnd();
+
+    // Draw the bottom screen
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[256 * 192]);
+    glBegin(GL_QUADS);
+    glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1); glVertex2i(botX + botWidth, botY + botHeight);
+    glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1); glVertex2i(botX,            botY + botHeight);
+    glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1); glVertex2i(botX,            botY);
+    glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1); glVertex2i(botX + botWidth, botY);
     glEnd();
 
     glFlush();
     SwapBuffers();
+}
+
+void NooCanvas::resize(wxSizeEvent &event)
+{
+    // Determine the screen arrangement based on the current settings
+    // In automatic mode, the arrangement is horizontal if rotated and vertical otherwise
+    bool vertical = (NooApp::getScreenArrangement() == 1 ||
+        (NooApp::getScreenArrangement() == 0 && NooApp::getScreenRotation() == 0));
+
+    // Determine the screen dimensions based on the current rotation
+    int width  = (NooApp::getScreenRotation() ? 192 : 256);
+    int height = (NooApp::getScreenRotation() ? 256 : 192);
+
+    float largeScale, smallScale;
+    wxSize size = GetSize();
+
+    // Calculate the scale of each screen
+    // When calculating scale, if the window is wider than the screen, the screen is scaled to the height of the window
+    // If the window is taller than the screen, the screen is scaled to the width of the window
+    // If gap is enabled, each screen is given half of the gap as extra weight for scaling
+    // This results in a gap that is scaled with the screens, and averages if the screens are different scales
+    if (vertical)
+    {
+        // Add the extra gap weight if enabled
+        if (NooApp::getScreenGap())
+            height += 48;
+
+        frame->SetMinClientSize(wxSize(width, height * 2));
+
+        if (NooApp::getScreenSizing() == 0) // Even
+        {
+            // Scale both screens to the size of the window
+            float baseRatio = (float)width / (height * 2);
+            float screenRatio = (float)size.x / size.y;
+            largeScale = ((baseRatio > screenRatio) ? ((float)size.x / width) : ((float)size.y / (height * 2)));
+            if (NooApp::getIntegerScale()) largeScale = (int)largeScale;
+            smallScale = largeScale;
+        }
+        else // Enlarge Top/Bottom
+        {
+            float baseRatio = (float)width / height;
+
+            // Scale the large screen to the size of the window minus room for the smaller screen
+            float largeRatio = (float)size.x / (size.y - height);
+            largeScale = ((baseRatio > largeRatio) ? ((float)size.x / width) : ((float)(size.y - height) / height));
+            if (NooApp::getIntegerScale()) largeScale = (int)largeScale;
+
+            // Scale the small screen to the remaining window space
+            float smallRatio = (float)size.x / (size.y - largeScale * height);
+            smallScale = ((baseRatio > smallRatio) ? ((float)size.x / width) : ((float)(size.y - largeScale * height) / height));
+            if (NooApp::getIntegerScale()) smallScale = (int)smallScale;
+        }
+
+        // Remove the extra gap weight for the next calculations
+        if (NooApp::getScreenGap())
+            height -= 48;
+    }
+    else // Horizontal
+    {
+        // Add the extra gap weight if enabled
+        if (NooApp::getScreenGap())
+            width += 48;
+
+        frame->SetMinClientSize(wxSize(width * 2, height));
+
+        if (NooApp::getScreenSizing() == 0) // Even
+        {
+            // Scale both screens to the size of the window
+            float baseRatio = (float)(width * 2) / height;
+            float screenRatio = (float)size.x / size.y;
+            largeScale = ((baseRatio > screenRatio) ? ((float)size.x / (width * 2)) : ((float)size.y / height));
+            if (NooApp::getIntegerScale()) largeScale = (int)largeScale;
+            smallScale = largeScale;
+        }
+        else // Enlarge Top/Enlarge Bottom
+        {
+            float baseRatio = (float)width / height;
+
+            // Scale the large screen to the size of the window minus room for the smaller screen
+            float largeRatio = (float)(size.x - width) / size.y;
+            largeScale = ((baseRatio > largeRatio) ? ((float)(size.x - width) / width) : ((float)size.y / height));
+            if (NooApp::getIntegerScale()) largeScale = (int)largeScale;
+
+            // Scale the small screen to the remaining window space
+            float smallRatio = (float)(size.x - largeScale * width) / size.y;
+            smallScale = ((baseRatio > smallRatio) ? ((float)(size.x - largeScale * width) / width) : ((float)size.y / height));
+            if (NooApp::getIntegerScale()) smallScale = (int)smallScale;
+        }
+
+        // Remove the extra gap weight for the next calculations
+        if (NooApp::getScreenGap())
+            width -= 48;
+    }
+
+    // Calculate the dimensions of each screen
+    if (NooApp::getScreenSizing() == 1) // Enlarge Top
+    {
+        topWidth  = largeScale * width;
+        botWidth  = smallScale * width;
+        topHeight = largeScale * height;
+        botHeight = smallScale * height;
+    }
+    else // Even/Enlarge Bottom
+    {
+        topWidth  = smallScale * width;
+        botWidth  = largeScale * width;
+        topHeight = smallScale * height;
+        botHeight = largeScale * height;
+    }
+
+    // Calculate the positions of each screen
+    // The screens are centered and placed next to each other either vertically or horizontally
+    if (vertical)
+    {
+        topX = (size.x - topWidth) / 2;
+        botX = (size.x - botWidth) / 2;
+
+        // Swap the screens if rotated clockwise to keep the top above the bottom
+        if (NooApp::getScreenRotation() == 1) // Clockwise
+        {
+            botY = (size.y - botHeight - topHeight) / 2;
+            topY = botY + botHeight;
+
+            // Add the gap between the screens if enabled
+            if (NooApp::getScreenGap())
+            {
+                botY -= (largeScale * 48 + smallScale * 48) / 2;
+                topY += (largeScale * 48 + smallScale * 48) / 2;
+            }
+        }
+        else // None/Counter-Clockwise
+        {
+            topY = (size.y - topHeight - botHeight) / 2;
+            botY = topY + topHeight;
+
+            // Add the gap between the screens if enabled
+            if (NooApp::getScreenGap())
+            {
+                topY -= (largeScale * 48 + smallScale * 48) / 2;
+                botY += (largeScale * 48 + smallScale * 48) / 2;
+            }
+        }
+    }
+    else // Horizontal
+    {
+        topY = (size.y - topHeight) / 2;
+        botY = (size.y - botHeight) / 2;
+
+        // Swap the screens if rotated clockwise to keep the top above the bottom
+        if (NooApp::getScreenRotation() == 1) // Clockwise
+        {
+            botX = (size.x - botWidth - topWidth) / 2;
+            topX = botX + botWidth;
+
+            // Add the gap between the screens if enabled
+            if (NooApp::getScreenGap())
+            {
+                botX -= (largeScale * 48 + smallScale * 48) / 2;
+                topX += (largeScale * 48 + smallScale * 48) / 2;
+            }
+        }
+        else // None/Counter-Clockwise
+        {
+            topX = (size.x - topWidth - botWidth) / 2;
+            botX = topX + topWidth;
+
+            // Add the gap between the screens if enabled
+            if (NooApp::getScreenGap())
+            {
+                topX -= (largeScale * 48 + smallScale * 48) / 2;
+                botX += (largeScale * 48 + smallScale * 48) / 2;
+            }
+        }
+    }
 }
 
 void NooCanvas::pressKey(wxKeyEvent &event)
@@ -107,7 +287,7 @@ void NooCanvas::pressKey(wxKeyEvent &event)
     // Send a key press to the core
     for (int i = 0; i < 12; i++)
     {
-        if (event.GetKeyCode() == NooApp::getKeyMap(i))
+        if (event.GetKeyCode() == NooApp::getKeyBind(i))
             emulator->core->pressKey(i);
     }
 }
@@ -119,7 +299,7 @@ void NooCanvas::releaseKey(wxKeyEvent &event)
     // Send a key release to the core
     for (int i = 0; i < 12; i++)
     {
-        if (event.GetKeyCode() == NooApp::getKeyMap(i))
+        if (event.GetKeyCode() == NooApp::getKeyBind(i))
             emulator->core->releaseKey(i);
     }
 }
@@ -129,9 +309,32 @@ void NooCanvas::pressScreen(wxMouseEvent &event)
     // Ensure the left mouse button is clicked
     if (!emulator->running || !event.LeftIsDown()) return;
 
+    int touchX, touchY;
+
     // Determine the touch position relative to the emulated touch screen
-    int touchX = (float)(event.GetX() - x) / scale;
-    int touchY = (float)(event.GetY() - y) / scale - 192;
+    switch (NooApp::getScreenRotation())
+    {
+        case 0: // None
+        {
+            touchX = (event.GetX() - botX) * 256 / botWidth;
+            touchY = (event.GetY() - botY) * 192 / botHeight;
+            break;
+        }
+
+        case 1: // Clockwise
+        {
+            touchX =       (event.GetY() - botY) * 256 / botHeight;
+            touchY = 191 - (event.GetX() - botX) * 192 / botWidth;
+            break;
+        }
+
+        case 2: // Counter-clockwise
+        {
+            touchX = 255 - (event.GetY() - botY) * 256 / botHeight;
+            touchY =       (event.GetX() - botX) * 192 / botWidth;
+            break;
+        }
+    }
 
     // Send the touch coordinates to the core
     emulator->core->pressScreen(touchX, touchY);
