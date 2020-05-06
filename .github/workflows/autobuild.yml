@@ -43,8 +43,11 @@ jobs:
     - name: Install MSYS2
       run: choco install msys2
       shell: cmd
-    - name: Install MinGW, wxWidgets, and PortAudio
-      run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-wxWidgets mingw-w64-x86_64-portaudio make --noconfirm"
+    - name: Install MinGW and PortAudio
+      run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-portaudio make --noconfirm"
+      shell: cmd
+    - name: Install wxWidgets 3.0.4
+      run: C:\tools\msys64\usr\bin\bash -lc "wget http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-wxWidgets-3.0.4-3-any.pkg.tar.xz && pacman -U mingw-w64-x86_64-wxWidgets-3.0.4-3-any.pkg.tar.xz --noconfirm"
       shell: cmd
     - name: Checkout
       uses: actions/checkout@v1
