@@ -107,6 +107,8 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     else
         SetClientSize(wxSize(width * 2, height));
 
+    SetBackgroundColour(*wxBLACK);
+
     Centre();
     Show(true);
 

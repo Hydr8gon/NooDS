@@ -40,6 +40,8 @@ class NooCanvas: public wxGLCanvas
         int topWidth, botWidth;
         int topHeight, botHeight;
 
+        bool display = true;
+
         void resize();
 
         void draw(wxPaintEvent &event);

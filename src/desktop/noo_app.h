@@ -20,7 +20,7 @@
 #ifndef NOO_APP_H
 #define NOO_APP_H
 
-#include "portaudio.h"
+#include <portaudio.h>
 #include <wx/wx.h>
 
 #include "noo_canvas.h"

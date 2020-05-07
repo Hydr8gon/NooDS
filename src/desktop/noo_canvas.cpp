@@ -20,6 +20,11 @@
 #include "noo_canvas.h"
 #include "noo_app.h"
 
+#ifdef _WIN32
+#include <GL/gl.h>
+#include <GL/glext.h>
+#endif
+
 wxBEGIN_EVENT_TABLE(NooCanvas, wxGLCanvas)
 EVT_PAINT(NooCanvas::draw)
 EVT_SIZE(NooCanvas::resize)
@@ -30,8 +35,7 @@ EVT_MOTION(NooCanvas::pressScreen)
 EVT_LEFT_UP(NooCanvas::releaseScreen)
 wxEND_EVENT_TABLE()
 
-NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator):
-    wxGLCanvas(frame, wxID_ANY, nullptr, wxDefaultPosition, wxSize(256, 192 * 2)), frame(frame), emulator(emulator)
+NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator): wxGLCanvas(frame, wxID_ANY, nullptr), frame(frame), emulator(emulator)
 {
     // Prepare the OpenGL context
     context = new wxGLContext(this);
@@ -42,6 +46,8 @@ NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator):
     glEnable(GL_TEXTURE_2D);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     // Set focus so that key presses will be registered
     SetFocus();
@@ -49,58 +55,62 @@ NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator):
 
 void NooCanvas::draw(wxPaintEvent &event)
 {
-    uint32_t framebuffer[256 * 192 * 2];
-    uint8_t texCoords;
-
-    // Convert the framebuffer to RGBA8 format
-    for (int i = 0; i < 256 * 192 * 2; i++)
-    {
-        uint32_t color = emulator->core ? emulator->core->getFramebuffer()[i] : 0;
-        uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
-        uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
-        uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
-        framebuffer[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
-    }
-
-    // Rotate the texture coordinates
-    switch (NooApp::getScreenRotation())
-    {
-        case 0: texCoords = 0x4B; break; // None
-        case 1: texCoords = 0x2D; break; // Clockwise
-        case 2: texCoords = 0xD2; break; // Counter-clockwise
-    }
-
-    // Update the display dimensions
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, GetSize().x, GetSize().y, 0, -1, 1);
-    glViewport(0, 0, GetSize().x, GetSize().y);
-
-    // Set filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, NooApp::getScreenFilter() ? GL_LINEAR : GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, NooApp::getScreenFilter() ? GL_LINEAR : GL_NEAREST);
+    // Continuous rendering can prevent the canvas from closing, so only render when needed
+    if (!emulator->core && !display) return;
 
     // Clear the window
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // Draw the top screen
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
-    glBegin(GL_QUADS);
-    glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1); glVertex2i(topX + topWidth, topY + topHeight);
-    glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1); glVertex2i(topX,            topY + topHeight);
-    glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1); glVertex2i(topX,            topY);
-    glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1); glVertex2i(topX + topWidth, topY);
-    glEnd();
+    if (emulator->core)
+    {
+        uint32_t framebuffer[256 * 192 * 2];
+        uint8_t texCoords;
 
-    // Draw the bottom screen
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[256 * 192]);
-    glBegin(GL_QUADS);
-    glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1); glVertex2i(botX + botWidth, botY + botHeight);
-    glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1); glVertex2i(botX,            botY + botHeight);
-    glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1); glVertex2i(botX,            botY);
-    glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1); glVertex2i(botX + botWidth, botY);
-    glEnd();
+        // Convert the framebuffer to RGBA8 format
+        for (int i = 0; i < 256 * 192 * 2; i++)
+        {
+            uint32_t color = emulator->core->getFramebuffer()[i];
+            uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
+            uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
+            uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
+            framebuffer[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
+        }
+
+        // Rotate the texture coordinates
+        switch (NooApp::getScreenRotation())
+        {
+            case 0: texCoords = 0x4B; break; // None
+            case 1: texCoords = 0x2D; break; // Clockwise
+            case 2: texCoords = 0xD2; break; // Counter-clockwise
+        }
+
+        // Draw the top screen
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
+        glBegin(GL_QUADS);
+        glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1); glVertex2i(topX + topWidth, topY + topHeight);
+        glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1); glVertex2i(topX,            topY + topHeight);
+        glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1); glVertex2i(topX,            topY);
+        glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1); glVertex2i(topX + topWidth, topY);
+        glEnd();
+
+        // Draw the bottom screen
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[256 * 192]);
+        glBegin(GL_QUADS);
+        glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1); glVertex2i(botX + botWidth, botY + botHeight);
+        glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1); glVertex2i(botX,            botY + botHeight);
+        glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1); glVertex2i(botX,            botY);
+        glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1); glVertex2i(botX + botWidth, botY);
+        glEnd();
+
+        display = true;
+    }
+    else
+    {
+        // Stop rendering until the core is running again
+        // The current frame will clear the window
+        display = false;
+    }
 
     glFlush();
     SwapBuffers();
@@ -108,6 +118,18 @@ void NooCanvas::draw(wxPaintEvent &event)
 
 void NooCanvas::resize(wxSizeEvent &event)
 {
+    wxSize size = GetSize();
+
+    // Update the display dimensions
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, size.x, size.y, 0, -1, 1);
+    glViewport(0, 0, size.x, size.y);
+
+    // Set filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, NooApp::getScreenFilter() ? GL_LINEAR : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, NooApp::getScreenFilter() ? GL_LINEAR : GL_NEAREST);
+
     // Determine the screen arrangement based on the current settings
     // In automatic mode, the arrangement is horizontal if rotated and vertical otherwise
     bool vertical = (NooApp::getScreenArrangement() == 1 ||
@@ -118,7 +140,6 @@ void NooCanvas::resize(wxSizeEvent &event)
     int height = (NooApp::getScreenRotation() ? 256 : 192);
 
     float largeScale, smallScale;
-    wxSize size = GetSize();
 
     // Calculate the scale of each screen
     // When calculating scale, if the window is wider than the screen, the screen is scaled to the height of the window
