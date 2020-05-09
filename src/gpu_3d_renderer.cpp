@@ -551,6 +551,7 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
                 else if (stencilBuffer[line / 48][x] || attribBuffer[line / 48][x] == polygon->id)
                 {
                     // Shadow polygons with ID not 0 only render if the stencil bit is clear and the pixel ID differs
+                    stencilBuffer[line / 48][x] = 0;
                     continue;
                 }
             }
