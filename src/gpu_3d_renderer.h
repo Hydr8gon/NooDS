@@ -49,7 +49,9 @@ class Gpu3DRenderer
 
     private:
         uint32_t framebuffer[256 * 192] = {};
-        int depthBuffer[256 * 192] = {};
+        uint32_t depthBuffer[4][256] = {};
+        uint8_t attribBuffer[4][256] = {};
+        uint8_t stencilBuffer[4][256] = {};
 
         std::thread *threads[4] = {};
 

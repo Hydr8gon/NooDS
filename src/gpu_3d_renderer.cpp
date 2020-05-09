@@ -100,11 +100,13 @@ void Gpu3DRenderer::drawScanline48(int line)
 
 void Gpu3DRenderer::drawScanline1(int line)
 {
-    // Clear the scanline and depth buffer with the clear values
+    // Clear the scanline buffers with the clear values
     for (int i = 0; i < 256; i++)
     {
         framebuffer[line * 256 + i] = clearColor;
-        depthBuffer[line * 256 + i] = clearDepth;
+        depthBuffer[line / 48][i] = clearDepth;
+        attribBuffer[line / 48][i] = 0;
+        stencilBuffer[line / 48][i] = 0;
     }
 
     std::vector<_Polygon*> translucent;
@@ -535,8 +537,24 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
 
         // Draw a new pixel if the old one is behind the new one
         // The polygon can optionally use an "equal" depth test, which has a margin of 0x200
-        if ((polygon->depthTestEqual && depthBuffer[line * 256 + x] - 0x200 >= depth) || depthBuffer[line * 256 + x] > depth)
+        if ((polygon->depthTestEqual && depthBuffer[line / 48][x] - 0x200 >= depth) || depthBuffer[line / 48][x] > depth)
         {
+            // Handle shadow polygons
+            if (polygon->mode == 3)
+            {
+                if (polygon->id == 0)
+                {
+                    // Shadow polygons with ID 0 set a stencil buffer bit instead of rendering
+                    stencilBuffer[line / 48][x] = 1;
+                    continue;
+                }
+                else if (stencilBuffer[line / 48][x] || attribBuffer[line / 48][x] == polygon->id)
+                {
+                    // Shadow polygons with ID not 0 only render if the stencil bit is clear and the pixel ID differs
+                    continue;
+                }
+            }
+
             // Interpolate the vertex color at the polygon edges
             if (!colorDone)
             {
@@ -624,13 +642,15 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
                 if ((color >> 18) < 0x3F && (*pixel & 0xFC0000)) // Alpha blending
                 {
                     *pixel = BIT(26) | interpolateColor(*pixel, color, 0, color >> 18, 63);
-                    if (polygon->transNewDepth) depthBuffer[line * 256 + x] = depth;
+                    if (polygon->transNewDepth) depthBuffer[line / 48][x] = depth;
                 }
                 else
                 {
                     *pixel = BIT(26) | color;
-                    depthBuffer[line * 256 + x] = depth;
+                    depthBuffer[line / 48][x] = depth;
                 }
+
+                attribBuffer[line / 48][x] = polygon->id;
             }
         }
     }

@@ -1269,6 +1269,7 @@ void Gpu3D::beginVtxsCmd(uint32_t param)
     savedPolygon.depthTestEqual = polygonAttr & BIT(14);
     int a = (polygonAttr & 0x001F0000) >> 16; a = a * 2 + (a + 31) / 32;
     savedVertex.color = (a << 18) | (savedVertex.color & 0x03FFFF);
+    savedPolygon.id = (polygonAttr & 0x3F000000) >> 24;
 }
 
 void Gpu3D::swapBuffersCmd(uint32_t param)
