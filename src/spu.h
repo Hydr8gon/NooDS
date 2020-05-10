@@ -23,6 +23,10 @@
 #include <cstdint>
 #include <mutex>
 
+#ifdef __SWITCH__
+#include <condition_variable>
+#endif
+
 class Memory;
 
 class Spu
@@ -50,8 +54,17 @@ class Spu
         uint32_t *bufferIn = nullptr, *bufferOut = nullptr;
         int bufferSize = 0, bufferPointer = 0;
 
+#ifdef __SWITCH__
+        std::condition_variable cond1, cond2;
+        std::mutex mutex1, mutex2;
+        bool ready = false;
+
+        bool shouldPlay() { return  ready; }
+        bool shouldFill() { return !ready; }
+#else
         std::mutex mutex;
         bool ready = false;
+#endif
 
         static const int indexTable[8];
         static const int16_t adpcmTable[89];
