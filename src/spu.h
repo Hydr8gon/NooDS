@@ -21,7 +21,6 @@
 #define SPU_H
 
 #include <cstdint>
-#include <condition_variable>
 #include <mutex>
 
 class Memory;
@@ -51,12 +50,8 @@ class Spu
         uint32_t *bufferIn = nullptr, *bufferOut = nullptr;
         int bufferSize = 0, bufferPointer = 0;
 
-        std::condition_variable cond1, cond2;
-        std::mutex mutex1, mutex2;
-
+        std::mutex mutex;
         bool ready = false;
-        bool shouldPlay() { return  ready; }
-        bool shouldFill() { return !ready; }
 
         static const int indexTable[8];
         static const int16_t adpcmTable[89];

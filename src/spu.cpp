@@ -64,30 +64,44 @@ uint32_t *Spu::getSamples(int count)
         bufferPointer = 0;
     }
 
-    uint32_t *out = new uint32_t[count];
+    bool wait = true;
+    std::chrono::steady_clock::time_point waitTime = std::chrono::steady_clock::now();
 
     // Try to wait until the buffer is filled
-    // If the emulation isn't full speed, waiting would starve the audio buffer
-    // So if it's taking too long, just let it play an empty buffer
-    std::unique_lock<std::mutex> lock(mutex2);
-    bool full = cond2.wait_for(lock, std::chrono::microseconds(1000000 / 60), std::bind(&Spu::shouldPlay, this));
-
-    if (full)
+    // Using a while loop for this isn't ideal; a condition variable would be preferable
+    // The problem is that timing would be at the mercy of the OS scheduler
+    // A while loop, while wasteful, ensures a swift break from the wait state
+    while (wait)
     {
-        // Fill the output buffer with new data
-        memcpy(out, bufferOut, count * sizeof(uint32_t));
+        // Check if the buffer is filled
+        mutex.lock();
+        if (ready) wait = false;
+        mutex.unlock();
+
+        // If the emulation isn't full speed, waiting would starve the audio buffer
+        // So if it's taking too long, just let it play an empty buffer
+        if (!wait || std::chrono::steady_clock::now() - waitTime > std::chrono::microseconds(500000 / 60))
+            break;
     }
-    else
+
+    uint32_t *out = new uint32_t[count];
+    
+    if (wait)
     {
         // Fill the output buffer with the last played sample to prevent crackles when running slow
         for (int i = 0; i < count; i++)
             out[i] = bufferOut[count - 1];
     }
+    else
+    {
+        // Fill the output buffer with new data
+        memcpy(out, bufferOut, count * sizeof(uint32_t));
+    }
 
     // Signal that the buffer was played
-    std::lock_guard<std::mutex> guard(mutex1);
+    mutex.lock();
     ready = false;
-    cond1.notify_one();
+    mutex.unlock();
 
     return out;
 }
@@ -302,12 +316,17 @@ void Spu::runSample()
     // Handle a full buffer
     if (bufferPointer == bufferSize)
     {
-        // Wait until the buffer has been played, keeping the emulator throttled to 60FPS
+        // Wait until the buffer has been played, keeping the emulator throttled to 60 FPS
         // Synchronizing to the audio eliminites the potential for nasty audio crackles
         if (Settings::getLimitFps())
         {
-            std::unique_lock<std::mutex> lock(mutex1);
-            cond1.wait(lock, std::bind(&Spu::shouldFill, this));
+            bool wait = true;
+            while (wait)
+            {
+                mutex.lock();
+                if (!ready) wait = false;
+                mutex.unlock();
+            }
         }
 
         // Swap the buffers
@@ -316,9 +335,9 @@ void Spu::runSample()
         bufferIn = buffer;
 
         // Signal that the buffer is ready to play
-        std::lock_guard<std::mutex> guard(mutex2);
+        mutex.lock();
         ready = true;
-        cond2.notify_one();
+        mutex.unlock();
 
         // Reset the buffer pointer
         bufferPointer = 0;
