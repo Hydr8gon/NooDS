@@ -54,6 +54,7 @@ class Gpu3DRenderer
         uint8_t stencilBuffer[4][256] = {};
 
         std::thread *threads[4] = {};
+        int activeThreads = 0;
 
         uint8_t *textures[4] = {};
         uint8_t *palettes[6] = {};
@@ -67,7 +68,7 @@ class Gpu3DRenderer
 
         uint32_t rgba5ToRgba6(uint32_t color);
 
-        void drawScanline48(int line);
+        void drawScanline48(int block);
         void drawScanline1(int line);
 
         uint8_t *getTexture(uint32_t address);

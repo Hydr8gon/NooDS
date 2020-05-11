@@ -56,7 +56,11 @@ class NooFrame: public wxFrame
         void inputSettings(wxCommandEvent &event);
         void layoutSettings(wxCommandEvent &event);
         void directBootToggle(wxCommandEvent &event);
-        void threaded3DToggle(wxCommandEvent &event);
+        void threaded3D0(wxCommandEvent &event);
+        void threaded3D1(wxCommandEvent &event);
+        void threaded3D2(wxCommandEvent &event);
+        void threaded3D3(wxCommandEvent &event);
+        void threaded3D4(wxCommandEvent &event);
         void limitFpsToggle(wxCommandEvent &event);
         void exit(wxCommandEvent &event);
 

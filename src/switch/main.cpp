@@ -391,8 +391,8 @@ void settingsMenu()
         std::vector<ListItem> settings =
         {
             ListItem("Direct Boot",        toggle[Settings::getDirectBoot()]),
-            ListItem("Threaded 3D",        toggle[Settings::getThreaded3D()]),
             ListItem("Limit FPS",          toggle[Settings::getLimitFps()]),
+            ListItem("Threaded 3D",        toggle[(bool)Settings::getThreaded3D()]),
             ListItem("Screen Rotation",    rotation[screenRotation]),
             ListItem("Screen Arrangement", arrangement[screenArrangement]),
             ListItem("Screen Sizing",      sizing[screenSizing]),
@@ -409,17 +409,18 @@ void settingsMenu()
         if (menu.pressed & KEY_A)
         {
             // Change the chosen setting to its next value
+            // 2 threads is always the best option for threaded 3D, so there's no need for selection
             switch (index)
             {
-                case 0: Settings::setDirectBoot(!Settings::getDirectBoot()); break;
-                case 1: Settings::setThreaded3D(!Settings::getThreaded3D()); break;
-                case 2: Settings::setLimitFps(!Settings::getLimitFps());     break;
-                case 3: screenRotation    = (screenRotation    + 1) % 3;     break;
-                case 4: screenArrangement = (screenArrangement + 1) % 3;     break;
-                case 5: screenSizing      = (screenSizing      + 1) % 3;     break;
-                case 6: screenGap         = !screenGap;                      break;
-                case 7: screenFilter      = !screenFilter;                   break;
-                case 8: integerScale      = !integerScale;                   break;
+                case 0: Settings::setDirectBoot(!Settings::getDirectBoot());        break;
+                case 1: Settings::setLimitFps(!Settings::getLimitFps());            break;
+                case 2: Settings::setThreaded3D(Settings::getThreaded3D() ? 0 : 2); break;
+                case 3: screenRotation    = (screenRotation    + 1) % 3;            break;
+                case 4: screenArrangement = (screenArrangement + 1) % 3;            break;
+                case 5: screenSizing      = (screenSizing      + 1) % 3;            break;
+                case 6: screenGap         = !screenGap;                             break;
+                case 7: screenFilter      = !screenFilter;                          break;
+                case 8: integerScale      = !integerScale;                          break;
             }
         }
         else

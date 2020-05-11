@@ -38,31 +38,31 @@ class Settings
         static void load(std::vector<Setting> platformSettings = std::vector<Setting>());
         static void save();
 
+        static int         getDirectBoot()   { return directBoot;   }
+        static int         getLimitFps()     { return limitFps;     }
+        static int         getThreaded3D()   { return threaded3D;   }
         static std::string getBios9Path()    { return bios9Path;    }
         static std::string getBios7Path()    { return bios7Path;    }
         static std::string getFirmwarePath() { return firmwarePath; }
-        static int         getDirectBoot()   { return directBoot;   }
-        static int         getThreaded3D()   { return threaded3D;   }
-        static int         getLimitFps()     { return limitFps;     }
 
+        static void setDirectBoot(int value)           { directBoot   = value; }
+        static void setLimitFps(int value)             { limitFps     = value; }
+        static void setThreaded3D(int value)           { threaded3D   = value; }
         static void setBios9Path(std::string value)    { bios9Path    = value; }
         static void setBios7Path(std::string value)    { bios7Path    = value; }
         static void setFirmwarePath(std::string value) { firmwarePath = value; }
-        static void setDirectBoot(int value)           { directBoot   = value; }
-        static void setThreaded3D(int value)           { threaded3D   = value; }
-        static void setLimitFps(int value)             { limitFps     = value; }
 
     private:
         Settings() {} // Private to prevent instantiation
 
         static bool loaded;
 
+        static int directBoot;
+        static int limitFps;
+        static int threaded3D;
         static std::string bios9Path;
         static std::string bios7Path;
         static std::string firmwarePath;
-        static int directBoot;
-        static int threaded3D;
-        static int limitFps;
 
         static std::vector<Setting> settings;
 };

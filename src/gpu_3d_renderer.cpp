@@ -28,7 +28,7 @@
 Gpu3DRenderer::~Gpu3DRenderer()
 {
     // Free the threads
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < activeThreads; i++)
     {
         if (threads[i]) 
         {
@@ -50,38 +50,47 @@ uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 
 void Gpu3DRenderer::drawScanline(int line)
 {
-    if (Settings::getThreaded3D())
+    if (line == 0)
     {
-        if (line == 0)
+        // Ensure the threads are free
+        for (int i = 0; i < activeThreads; i++)
         {
-            // Draw the entire 3D scene in advance, across 4 threads, split into 48-scanline blocks
-            // An actual DS only has a 48-scanline cache instead of a full framebuffer for 3D
-            // It makes no difference to the output though, so a full framebuffer is used to make this possible
-            // Even timing shouldn't affect the output, since the geometry buffers can only be swapped at V-blank!
-            for (int i = 0; i < 4; i++)
-            {
-                // Ensure the thread is free
-                if (threads[i]) 
-                {
-                    threads[i]->join();
-                    delete threads[i];
-                }
-
-                // Create a new thread
-                threads[i] = new std::thread(&Gpu3DRenderer::drawScanline48, this, i * 48);
-            }
-        }
-        else if (line % 48 == 47)
-        {
-            // The 3D scene is drawn 48 scanlines in advance
-            // Ensure the thread responsible for the next block is finished, and free it
-            int i = line / 48;
             if (threads[i]) 
             {
                 threads[i]->join();
                 delete threads[i];
-                threads[i] = nullptr;
             }
+        }
+
+        // Update the thread count
+        activeThreads = Settings::getThreaded3D();
+        if (activeThreads > 4) activeThreads = 4;
+
+        // If threading is enabled, draw the 3D scene in 48-scanline blocks across up to 4 separate threads
+        // An actual DS only has a 48-scanline cache instead of a full framebuffer for 3D
+        // It makes no difference to the output though, so a full framebuffer is used to make this possible
+        // Even timing shouldn't affect the output, since the geometry buffers can only be swapped at V-blank!
+        for (int i = 0; i < activeThreads; i++)
+            threads[i] = new std::thread(&Gpu3DRenderer::drawScanline48, this, i);
+    }
+
+    if (activeThreads > 0) // Threaded
+    {
+        if (line % 48 == 47)
+        {
+            int i = line / 48;
+            int j = i % activeThreads;
+
+            // The 3D scene is drawn 48 scanlines in advance
+            // Ensure the thread responsible for the next block is finished, and free it
+            threads[j]->join();
+            delete threads[j];
+
+            // If there are still blocks to render, start the next one
+            if (i + activeThreads < 4)
+                threads[j] = new std::thread(&Gpu3DRenderer::drawScanline48, this, i + activeThreads);
+            else
+                threads[j] = nullptr;
         }
     }
     else
@@ -91,10 +100,10 @@ void Gpu3DRenderer::drawScanline(int line)
     }
 }
 
-void Gpu3DRenderer::drawScanline48(int line)
+void Gpu3DRenderer::drawScanline48(int block)
 {
     // Draw a block of 48 scanlines, or 1/4 of the screen
-    for (int i = line; i < line + 48; i++)
+    for (int i = block * 48; i < (block + 1) * 48; i++)
         drawScanline1(i);
 }
 

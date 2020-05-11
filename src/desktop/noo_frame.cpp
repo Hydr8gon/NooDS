@@ -35,8 +35,12 @@ enum Event
     PATH_SETTINGS,
     INPUT_BINDINGS,
     SCREEN_LAYOUT,
+    THREADED_3D_0,
+    THREADED_3D_1,
+    THREADED_3D_2,
+    THREADED_3D_3,
+    THREADED_3D_4,
     DIRECT_BOOT,
-    THREADED_3D,
     LIMIT_FPS,
     UPDATE_FPS
 };
@@ -50,8 +54,12 @@ EVT_MENU(STOP,           NooFrame::stop)
 EVT_MENU(PATH_SETTINGS,  NooFrame::pathSettings)
 EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
 EVT_MENU(SCREEN_LAYOUT,  NooFrame::layoutSettings)
+EVT_MENU(THREADED_3D_0,  NooFrame::threaded3D0)
+EVT_MENU(THREADED_3D_1,  NooFrame::threaded3D1)
+EVT_MENU(THREADED_3D_2,  NooFrame::threaded3D2)
+EVT_MENU(THREADED_3D_3,  NooFrame::threaded3D3)
+EVT_MENU(THREADED_3D_4,  NooFrame::threaded3D4)
 EVT_MENU(DIRECT_BOOT,    NooFrame::directBootToggle)
-EVT_MENU(THREADED_3D,    NooFrame::threaded3DToggle)
 EVT_MENU(LIMIT_FPS,      NooFrame::limitFpsToggle)
 EVT_MENU(wxID_EXIT,      NooFrame::exit)
 EVT_CLOSE(NooFrame::close)
@@ -77,19 +85,37 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     systemMenu->Enable(RESTART, false);
     systemMenu->Enable(STOP,    false);
 
+    // Set up the Threaded 3D submenu
+    wxMenu *subMenu = new wxMenu();
+    subMenu->AppendRadioItem(THREADED_3D_0, "&Disabled");
+    subMenu->AppendRadioItem(THREADED_3D_1, "&1 Thread");
+    subMenu->AppendRadioItem(THREADED_3D_2, "&2 Threads");
+    subMenu->AppendRadioItem(THREADED_3D_3, "&3 Threads");
+    subMenu->AppendRadioItem(THREADED_3D_4, "&4 Threads");
+
+    // Set the current value of the threaded 3D setting
+    switch (Settings::getThreaded3D())
+    {
+        case 0:  subMenu->Check(THREADED_3D_0, true); break;
+        case 1:  subMenu->Check(THREADED_3D_1, true); break;
+        case 2:  subMenu->Check(THREADED_3D_2, true); break;
+        case 3:  subMenu->Check(THREADED_3D_3, true); break;
+        default: subMenu->Check(THREADED_3D_4, true); break;
+    }
+
     // Set up the Settings menu
     wxMenu *settingsMenu = new wxMenu();
     settingsMenu->Append(PATH_SETTINGS,  "&Path Settings");
     settingsMenu->Append(INPUT_BINDINGS, "&Input Bindings");
     settingsMenu->Append(SCREEN_LAYOUT,  "&Screen Layout");
     settingsMenu->AppendSeparator();
+    settingsMenu->AppendSubMenu(subMenu, "&Threaded 3D");
+    settingsMenu->AppendSeparator();
     settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
-    settingsMenu->AppendCheckItem(THREADED_3D, "&Threaded 3D");
     settingsMenu->AppendCheckItem(LIMIT_FPS,   "&Limit FPS");
 
     // Set the current values of the checkboxes
     settingsMenu->Check(DIRECT_BOOT, Settings::getDirectBoot());
-    settingsMenu->Check(THREADED_3D, Settings::getThreaded3D());
     settingsMenu->Check(LIMIT_FPS,   Settings::getLimitFps());
 
     // Set up the menu bar
@@ -284,10 +310,34 @@ void NooFrame::directBootToggle(wxCommandEvent &event)
     Settings::setDirectBoot(!Settings::getDirectBoot());
 }
 
-void NooFrame::threaded3DToggle(wxCommandEvent &event)
+void NooFrame::threaded3D0(wxCommandEvent &event)
 {
-    // Toggle the threaded 3D setting
-    Settings::setThreaded3D(!Settings::getThreaded3D());
+    // Set the threaded 3D setting to off
+    Settings::setThreaded3D(0);
+}
+
+void NooFrame::threaded3D1(wxCommandEvent &event)
+{
+    // Set the threaded 3D setting to 1 thread
+    Settings::setThreaded3D(1);
+}
+
+void NooFrame::threaded3D2(wxCommandEvent &event)
+{
+    // Set the threaded 3D setting to 2 threads
+    Settings::setThreaded3D(2);
+}
+
+void NooFrame::threaded3D3(wxCommandEvent &event)
+{
+    // Set the threaded 3D setting to 3 threads
+    Settings::setThreaded3D(3);
+}
+
+void NooFrame::threaded3D4(wxCommandEvent &event)
+{
+    // Set the threaded 3D setting to 4 threads
+    Settings::setThreaded3D(4);
 }
 
 void NooFrame::limitFpsToggle(wxCommandEvent &event)
