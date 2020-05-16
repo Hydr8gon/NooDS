@@ -51,6 +51,8 @@ NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator): wxGLCanvas(frame, wxI
 
     // Set focus so that key presses will be registered
     SetFocus();
+
+    frame->SendSizeEvent();
 }
 
 void NooCanvas::draw(wxPaintEvent &event)

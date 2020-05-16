@@ -146,9 +146,15 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     int width  = (NooApp::getScreenRotation() ? 192 : 256);
     int height = (NooApp::getScreenRotation() ? 256 : 192);
     if (NooApp::getScreenArrangement() == 1 || (NooApp::getScreenArrangement() == 0 && NooApp::getScreenRotation() == 0))
+    {
+        if (NooApp::getScreenGap()) height += 48;
         SetClientSize(wxSize(width, height * 2));
+    }
     else
+    {
+        if (NooApp::getScreenGap()) width += 48;
         SetClientSize(wxSize(width * 2, height));
+    }
 
     SetBackgroundColour(*wxBLACK);
 
