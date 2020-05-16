@@ -39,14 +39,14 @@ class Settings
         static void save();
 
         static int         getDirectBoot()   { return directBoot;   }
-        static int         getLimitFps()     { return limitFps;     }
+        static int         getFpsLimiter()   { return fpsLimiter;   }
         static int         getThreaded3D()   { return threaded3D;   }
         static std::string getBios9Path()    { return bios9Path;    }
         static std::string getBios7Path()    { return bios7Path;    }
         static std::string getFirmwarePath() { return firmwarePath; }
 
         static void setDirectBoot(int value)           { directBoot   = value; }
-        static void setLimitFps(int value)             { limitFps     = value; }
+        static void setFpsLimiter(int value)           { fpsLimiter   = value; }
         static void setThreaded3D(int value)           { threaded3D   = value; }
         static void setBios9Path(std::string value)    { bios9Path    = value; }
         static void setBios7Path(std::string value)    { bios7Path    = value; }
@@ -58,7 +58,7 @@ class Settings
         static bool loaded;
 
         static int directBoot;
-        static int limitFps;
+        static int fpsLimiter;
         static int threaded3D;
         static std::string bios9Path;
         static std::string bios7Path;

@@ -391,7 +391,7 @@ void settingsMenu()
         std::vector<ListItem> settings =
         {
             ListItem("Direct Boot",        toggle[Settings::getDirectBoot()]),
-            ListItem("Limit FPS",          toggle[Settings::getLimitFps()]),
+            ListItem("FPS Limiter",        toggle[Settings::getFpsLimiter()]),
             ListItem("Threaded 3D",        toggle[(bool)Settings::getThreaded3D()]),
             ListItem("Screen Rotation",    rotation[screenRotation]),
             ListItem("Screen Arrangement", arrangement[screenArrangement]),
@@ -409,11 +409,12 @@ void settingsMenu()
         if (menu.pressed & KEY_A)
         {
             // Change the chosen setting to its next value
+            // Light is always the best option for FPS limiter, so there's no need for selection
             // 2 threads is always the best option for threaded 3D, so there's no need for selection
             switch (index)
             {
                 case 0: Settings::setDirectBoot(!Settings::getDirectBoot());        break;
-                case 1: Settings::setLimitFps(!Settings::getLimitFps());            break;
+                case 1: Settings::setFpsLimiter(!Settings::getFpsLimiter());        break;
                 case 2: Settings::setThreaded3D(Settings::getThreaded3D() ? 0 : 2); break;
                 case 3: screenRotation    = (screenRotation    + 1) % 3;            break;
                 case 4: screenArrangement = (screenArrangement + 1) % 3;            break;
