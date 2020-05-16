@@ -66,6 +66,9 @@ template uint16_t Memory::read(bool arm9, uint32_t address);
 template uint32_t Memory::read(bool arm9, uint32_t address);
 template <typename T> T Memory::read(bool arm9, uint32_t address)
 {
+    // Align the address
+    address &= ~(sizeof(T) - 1);
+
     uint8_t *data = nullptr;
 
     if (arm9)
@@ -226,6 +229,9 @@ template void Memory::write(bool arm9, uint32_t address, uint16_t value);
 template void Memory::write(bool arm9, uint32_t address, uint32_t value);
 template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
 {
+    // Align the address
+    address &= ~(sizeof(T) - 1);
+
     uint8_t *data = nullptr;
 
     if (arm9)

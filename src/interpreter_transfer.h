@@ -178,7 +178,14 @@ FORCE_INLINE void Interpreter::ldrOf(uint32_t opcode, uint32_t op2) // LDR Rd,[R
     uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
 
     // Word load, pre-adjust without writeback
-    *op0 = memory->read<uint32_t>(cp15, op1 + op2);
+    *op0 = memory->read<uint32_t>(cp15, op1 += op2);
+
+    // Rotate misaligned reads
+    if (op1 & 3)
+    {
+        int shift = (op1 & 3) * 8;
+        *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
+    }
 
     // Handle pipelining and THUMB switching
     if (op0 == registers[15])
@@ -333,10 +340,18 @@ FORCE_INLINE void Interpreter::ldrPr(uint32_t opcode, uint32_t op2) // LDR Rd,[R
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+    uint32_t address;
 
     // Word load, pre-adjust with writeback
     *op1 += op2;
-    *op0 = memory->read<uint32_t>(cp15, *op1);
+    *op0 = memory->read<uint32_t>(cp15, address = *op1);
+
+    // Rotate misaligned reads
+    if (address & 3)
+    {
+        int shift = (address & 3) * 8;
+        *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
+    }
 
     // Handle pipelining and THUMB switching
     if (op0 == registers[15])
@@ -403,7 +418,7 @@ FORCE_INLINE void Interpreter::ldrsbPt(uint32_t opcode, uint32_t op2) // LDRSB R
 
     // Signed byte load, post-adjust
     *op0 = memory->read<int8_t>(cp15, *op1);
-    *op1 += op2;
+    if (op0 != op1) *op1 += op2;
 
     // Handle pipelining
     if (op0 == registers[15])
@@ -418,7 +433,7 @@ FORCE_INLINE void Interpreter::ldrshPt(uint32_t opcode, uint32_t op2) // LDRSH R
 
     // Signed half-word load, post-adjust
     *op0 = memory->read<int16_t>(cp15, *op1);
-    *op1 += op2;
+    if (op0 != op1) *op1 += op2;
 
     // Handle pipelining
     if (op0 == registers[15])
@@ -433,7 +448,7 @@ FORCE_INLINE void Interpreter::ldrbPt(uint32_t opcode, uint32_t op2) // LDRB Rd,
 
     // Byte load, post-adjust
     *op0 = memory->read<uint8_t>(cp15, *op1);
-    *op1 += op2;
+    if (op0 != op1) *op1 += op2;
 
     // Handle pipelining and THUMB switching
     if (op0 == registers[15])
@@ -494,10 +509,20 @@ FORCE_INLINE void Interpreter::ldrPt(uint32_t opcode, uint32_t op2) // LDR Rd,[R
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+    uint32_t address;
 
-    // Word load, post-adjust
-    *op0 = memory->read<uint32_t>(cp15, *op1);
-    *op1 += op2;
+    // Word load
+    *op0 = memory->read<uint32_t>(cp15, address = *op1);
+
+    // Rotate misaligned reads
+    if (address & 3)
+    {
+        int shift = (address & 3) * 8;
+        *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
+    }
+
+    // Post-adjust
+    if (op0 != op1) *op1 += op2;
 
     // Handle pipelining and THUMB switching
     if (op0 == registers[15])
@@ -1636,7 +1661,14 @@ FORCE_INLINE void Interpreter::ldrRegT(uint16_t opcode) // LDR Rd,[Rb,Ro]
     uint32_t op2 = *registers[(opcode & 0x01C0) >> 6];
 
     // Word load, pre-adjust without writeback
-    *op0 = memory->read<uint32_t>(cp15, op1 + op2);
+    *op0 = memory->read<uint32_t>(cp15, op1 += op2);
+
+    // Rotate misaligned reads
+    if (op1 & 3)
+    {
+        int shift = (op1 & 3) * 8;
+        *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
+    }
 }
 
 FORCE_INLINE void Interpreter::strRegT(uint16_t opcode) // STR Rd,[Rb,Ro]
@@ -1702,7 +1734,14 @@ FORCE_INLINE void Interpreter::ldrImm5T(uint16_t opcode) // LDR Rd,[Rb,#i]
     uint32_t op2 = (opcode & 0x07C0) >> 4;
 
     // Word load, pre-adjust without writeback
-    *op0 = memory->read<uint32_t>(cp15, op1 + op2);
+    *op0 = memory->read<uint32_t>(cp15, op1 += op2);
+
+    // Rotate misaligned reads
+    if (op1 & 3)
+    {
+        int shift = (op1 & 3) * 8;
+        *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
+    }
 }
 
 FORCE_INLINE void Interpreter::strImm5T(uint16_t opcode) // STR Rd,[Rb,#i]
@@ -1724,7 +1763,14 @@ FORCE_INLINE void Interpreter::ldrPcT(uint16_t opcode) // LDR Rd,[PC,#i]
     uint32_t op2 = (opcode & 0x00FF) << 2;
 
     // Word load, pre-adjust without writeback
-    *op0 = memory->read<uint32_t>(cp15, op1 + op2);
+    *op0 = memory->read<uint32_t>(cp15, op1 += op2);
+
+    // Rotate misaligned reads
+    if (op1 & 3)
+    {
+        int shift = (op1 & 3) * 8;
+        *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
+    }
 }
 
 FORCE_INLINE void Interpreter::ldrSpT(uint16_t opcode) // LDR Rd,[SP,#i]
@@ -1735,7 +1781,14 @@ FORCE_INLINE void Interpreter::ldrSpT(uint16_t opcode) // LDR Rd,[SP,#i]
     uint32_t op2 = (opcode & 0x00FF) << 2;
 
     // Word load, pre-adjust without writeback
-    *op0 = memory->read<uint32_t>(cp15, op1 + op2);
+    *op0 = memory->read<uint32_t>(cp15, op1 += op2);
+
+    // Rotate misaligned reads
+    if (op1 & 3)
+    {
+        int shift = (op1 & 3) * 8;
+        *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
+    }
 }
 
 FORCE_INLINE void Interpreter::strSpT(uint16_t opcode) // STR Rd,[SP,#i]
