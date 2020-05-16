@@ -43,11 +43,8 @@ jobs:
     - name: Install MSYS2
       run: choco install msys2
       shell: cmd
-    - name: Install MinGW and PortAudio
-      run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-portaudio make --noconfirm"
-      shell: cmd
-    - name: Install wxWidgets 3.0.4
-      run: C:\tools\msys64\usr\bin\bash -lc "wget http://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-wxWidgets-3.0.4-3-any.pkg.tar.xz && pacman -U mingw-w64-x86_64-wxWidgets-3.0.4-3-any.pkg.tar.xz --noconfirm"
+    - name: Install MinGW, wxWidgets, and PortAudio
+      run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-wxWidgets mingw-w64-x86_64-portaudio mingw-w64-x86_64-jbigkit make --noconfirm"
       shell: cmd
     - name: Checkout
       uses: actions/checkout@v1
@@ -68,6 +65,8 @@ jobs:
       run: wget https://github.com/devkitPro/pacman/releases/download/devkitpro-pacman-1.0.1/devkitpro-pacman.deb && sudo dpkg -i devkitpro-pacman.deb
     - name: Install Switch dev tools
       run: sudo dkp-pacman -S switch-dev switch-mesa switch-glad --noconfirm
+    - name: Downgrade devkitA64 to r14
+      run: wget "https://wii.leseratte10.de/devkitPro/devkitA64/r14 (2019-12)/devkitA64-r14-3-linux.pkg.tar.xz" && sudo dkp-pacman -U devkitA64-r14-3-linux.pkg.tar.xz --noconfirm
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
