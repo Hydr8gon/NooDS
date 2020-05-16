@@ -83,8 +83,11 @@ void Gpu3DRenderer::drawScanline(int line)
 
             // The 3D scene is drawn 48 scanlines in advance
             // Ensure the thread responsible for the next block is finished, and free it
-            threads[j]->join();
-            delete threads[j];
+            if (threads[j])
+            {
+                threads[j]->join();
+                delete threads[j];
+            }
 
             // If there are still blocks to render, start the next one
             if (i + activeThreads < 4)
