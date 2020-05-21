@@ -23,21 +23,24 @@
 
 void Timers::tick(bool twice)
 {
+    bool countUp = false;
+
     for (int i = 0; i < 4; i++)
     {
         // Only tick enabled timers
         if (!(enabled & BIT(i)))
             continue;
 
-        // Timers can tick at frequencies of f/1, f/64, f/256, or f/1024
-        // For slower frequencies, increment the scaler value until it reaches the desired amount, and only then tick
+        int amount;
+
         if ((tmCntH[i] & 0x0003) > 0)
         {
+            // Timers can tick at frequencies of f/1, f/64, f/256, or f/1024
+            // For slower frequencies, increment the scaler value until it reaches the desired amount, and only then tick
             scalers[i] += 1 + twice;
-
-            if (scalers[i] == 0x10 << ((tmCntH[i] & 0x0003) * 2))
+            if (scalers[i] == (0x10 << ((tmCntH[i] & 0x0003) * 2)))
             {
-                tmCntL[i]++;
+                amount = 1;
                 scalers[i] = 0;
             }
             else
@@ -45,13 +48,24 @@ void Timers::tick(bool twice)
                 continue;
             }
         }
+        else if (countUp)
+        {
+            // Always tick once in count-up mode
+            amount = 1;
+            enabled &= ~BIT(i);
+            countUp = false;
+        }
         else
         {
-            tmCntL[i] += 1 + twice;
+            // Tick normally
+            amount = 1 + twice;
         }
 
+        // Tick the timer
+        tmCntL[i] += amount;
+
         // Handle overflow
-        if (tmCntL[i] < 1 + twice)
+        if (tmCntL[i] < amount)
         {
             // Reload the timer
             tmCntL[i] += reloads[i];
@@ -61,21 +75,11 @@ void Timers::tick(bool twice)
                 cpu->sendInterrupt(3 + i);
 
             // In count-up timing mode, the timer only ticks when the previous timer overflows
-            // If the next timer has count-up timing enabled, tick it now
+            // If the next timer has count-up timing enabled, let it tick now
             if (i < 3 && (tmCntH[i + 1] & BIT(2)))
             {
-                tmCntL[i + 1]++;
-    
-                // Handle overflow
-                if (tmCntL[i + 1] == 0)
-                {
-                    // Reload the timer
-                    tmCntL[i + 1] += reloads[i + 1];
-
-                    // Trigger a timer overflow IRQ if enabled
-                    if (tmCntH[i + 1] & BIT(6))
-                        cpu->sendInterrupt(4 + i);
-                }
+                enabled |= BIT(i + 1);
+                countUp = true;
             }
         }
     }
@@ -90,17 +94,21 @@ void Timers::writeTmCntL(int timer, uint16_t mask, uint16_t value)
 
 void Timers::writeTmCntH(int timer, uint16_t mask, uint16_t value)
 {
+    // Reload the counter if the enable bit changes from 0 to 1
+    if (!(tmCntH[timer] & BIT(7)) && (value & BIT(7)))
+    {
+        tmCntL[timer] = reloads[timer];
+        scalers[timer] = 0;
+    }
+
+    // Write to one of the TMCNT_H registers
+    mask &= 0x00C7;
+    tmCntH[timer] = (tmCntH[timer] & ~mask) | (value & mask);
+
     // Set the timer enabled bit
     // A timer in count-up mode is disabled because its ticking is handled by the previous timer
-    if ((value & BIT(7)) && (timer == 0 || !(value & BIT(2))))
+    if ((tmCntH[timer] & BIT(7)) && (timer == 0 || !(tmCntH[timer] & BIT(2))))
         enabled |= BIT(timer);
     else
         enabled &= ~BIT(timer);
-
-    // Reload the counter if the enable bit changes from 0 to 1
-    if (!(tmCntH[timer] & BIT(7)) && (value & BIT(7)))
-        tmCntL[timer] = reloads[timer];
-
-    // Write to one of the TMCNT_H registers
-    tmCntH[timer] = value & 0x00C7;
 }
