@@ -1905,7 +1905,7 @@ FORCE_INLINE void Interpreter::popPcT(uint16_t opcode) // POP <Rlist>,PC
     *op0 = address;
 
     // Handle pipelining
-    if (cp15 && (*registers[15] & BIT(0)))
+    if (!cp15 || (*registers[15] & BIT(0)))
     {
         *registers[15] = (*registers[15] & ~1) + 2;
     }
