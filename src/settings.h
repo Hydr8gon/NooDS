@@ -44,6 +44,7 @@ class Settings
         static std::string getBios9Path()    { return bios9Path;    }
         static std::string getBios7Path()    { return bios7Path;    }
         static std::string getFirmwarePath() { return firmwarePath; }
+        static std::string getGbaBiosPath()  { return gbaBiosPath;  }
 
         static void setDirectBoot(int value)           { directBoot   = value; }
         static void setFpsLimiter(int value)           { fpsLimiter   = value; }
@@ -51,6 +52,7 @@ class Settings
         static void setBios9Path(std::string value)    { bios9Path    = value; }
         static void setBios7Path(std::string value)    { bios7Path    = value; }
         static void setFirmwarePath(std::string value) { firmwarePath = value; }
+        static void setGbaBiosPath(std::string value)  { gbaBiosPath  = value; }
 
     private:
         Settings() {} // Private to prevent instantiation
@@ -63,6 +65,7 @@ class Settings
         static std::string bios9Path;
         static std::string bios7Path;
         static std::string firmwarePath;
+        static std::string gbaBiosPath;
 
         static std::vector<Setting> settings;
 };

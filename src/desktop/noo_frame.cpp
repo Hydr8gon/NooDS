@@ -180,10 +180,7 @@ void NooFrame::startCore()
     try
     {
         // Attempt to boot the ROM
-        if (path == "")
-            emulator->core = new Core();
-        else
-            emulator->core = new Core(path);
+        emulator->core = new Core(path);
     }
     catch (int e)
     {
@@ -254,7 +251,7 @@ void NooFrame::stopCore()
 void NooFrame::loadRom(wxCommandEvent &event)
 {
     // Show the file browser
-    wxFileDialog romSelect(this, "Select ROM File", "", "", "NDS ROM files (*.nds)|*.nds", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    wxFileDialog romSelect(this, "Select ROM File", "", "", "NDS/GBA ROM files (*.nds, *.gba)|*.nds;*.gba", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (romSelect.ShowModal() == wxID_CANCEL)
         return;
 

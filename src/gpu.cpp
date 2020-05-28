@@ -37,6 +37,77 @@ uint16_t Gpu::rgb6ToRgb5(uint32_t color)
     return BIT(15) | (b << 10) | (g << 5) | r;
 }
 
+void Gpu::gbaScanline240()
+{
+    // Draw visible scanlines
+    if (vCount < 160)
+        engineA->drawGbaScanline(vCount);
+
+    // Set the H-blank flag
+    dispStat7 |= BIT(1);
+
+    // Enable H-blank DMA transfers when not in V-blank
+    if (!(dispStat7 & BIT(0)))
+        dma9->setMode(2, true);
+
+    // Trigger an H-blank IRQ if enabled
+    if (dispStat7 & BIT(4))
+        arm7->sendInterrupt(1);
+}
+
+void Gpu::gbaScanline308()
+{
+    // Check if the current scanline matches the V-counter
+    if (vCount == (dispStat7 >> 8))
+    {
+        // Set the V-counter flag
+        dispStat7 |= BIT(2);
+
+        // Trigger a V-counter IRQ if enabled
+        if (dispStat7 & BIT(5))
+            arm7->sendInterrupt(2);
+    }
+    else if (dispStat7 & BIT(2))
+    {
+        // Clear the V-counter flag
+        dispStat7 &= ~BIT(2);
+    }
+
+    if (vCount == 227) // End of frame
+    {
+        // Clear the V-blank flag
+        dispStat7 &= ~BIT(0);
+
+        // Enable V-blank DMA transfers
+        dma7->setMode(1, true);
+
+        // Start the next frame
+        vCount = 0;
+    }
+    else
+    {
+        // Move to the next scanline
+        vCount++;
+
+        if (vCount == 160) // End of visible scanlines
+        {
+            // Set the V-blank flag
+            dispStat7 |= BIT(0);
+
+            // Trigger a V-blank IRQ if enabled
+            if (dispStat7 & BIT(3))
+                arm7->sendInterrupt(0);
+
+            // Copy the completed sub-framebuffers to the main framebuffer
+            memcpy(&framebuffer[0],         engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+            memset(&framebuffer[256 * 192], 0,                         256 * 192 * sizeof(uint32_t));
+        }
+    }
+
+    // Clear the H-blank flag
+    dispStat7 &= ~BIT(1);
+}
+
 void Gpu::scanline256()
 {
     // Draw visible scanlines

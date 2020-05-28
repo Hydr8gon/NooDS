@@ -45,8 +45,7 @@
 class Core
 {
     public:
-        Core();
-        Core(std::string filename);
+        Core(std::string filename = "");
         ~Core();
 
         static void createSave(std::string filename, int type);
@@ -63,14 +62,19 @@ class Core
         int       getFps()              { return fps;                   }
 
     private:
-        int fps = 0, fpsCount = 0;
-        std::chrono::steady_clock::time_point lastFpsTime;
+        uint8_t bios9[0x8000];
+        uint8_t bios7[0x4000];
+        uint8_t firmware[0x40000];
+        uint8_t gbaBios[0x4000];
 
-        uint8_t firmware[0x40000] = {};
-        uint8_t *rom = nullptr, *save = nullptr;
+        uint8_t *rom, *save;
+        uint8_t *gbaRom;
+
         uint32_t saveSize = 0;
         std::string saveName;
 
+        int fps = 0, fpsCount = 0;
+        std::chrono::steady_clock::time_point lastFpsTime;
         int spuTimer = 0;
 
         Cartridge cart9, cart7;

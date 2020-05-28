@@ -33,6 +33,7 @@ class Gpu2D
         Gpu2D(Memory *memory);
         Gpu2D(Gpu3DRenderer *gpu3DRenderer, Memory *memory);
 
+        void drawGbaScanline(int line);
         void drawScanline(int line);
         void applyMasterBright(int line);
 
@@ -107,6 +108,7 @@ class Gpu2D
         void drawAffine(int bg, int line);
         void drawExtended(int bg, int line);
         void drawObjects(int line);
+        void drawGbaObjects(int line);
 };
 
 #endif // GPU_2D_H

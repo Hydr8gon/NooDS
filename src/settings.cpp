@@ -28,6 +28,7 @@ int Settings::threaded3D = 2;
 std::string Settings::bios9Path = "bios9.bin";
 std::string Settings::bios7Path = "bios7.bin";
 std::string Settings::firmwarePath = "firmware.bin";
+std::string Settings::gbaBiosPath = "gba_bios.bin";
 
 std::vector<Setting> Settings::settings =
 {
@@ -36,7 +37,8 @@ std::vector<Setting> Settings::settings =
     Setting("threaded3D",   &threaded3D,   false),
     Setting("bios9Path",    &bios9Path,    true),
     Setting("bios7Path",    &bios7Path,    true),
-    Setting("firmwarePath", &firmwarePath, true)
+    Setting("firmwarePath", &firmwarePath, true),
+    Setting("gbaBiosPath",  &gbaBiosPath,  true)
 };
 
 void Settings::load(std::vector<Setting> platformSettings)

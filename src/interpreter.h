@@ -43,6 +43,8 @@ class Interpreter
         bool shouldRun()       { return !halted;  }
         bool shouldInterrupt() { return ie & irf; }
 
+        void setPc(uint32_t value) { *registers[15] = value; }
+
         uint8_t  readIme()     { return ime;     }
         uint32_t readIe()      { return ie;      }
         uint32_t readIrf()     { return irf;     }

@@ -31,10 +31,12 @@ class PathDialog: public wxDialog
         wxTextCtrl *bios9Path;
         wxTextCtrl *bios7Path;
         wxTextCtrl *firmwarePath;
+        wxTextCtrl *gbaBiosPath;
 
         void bios9Browse(wxCommandEvent &event);
         void bios7Browse(wxCommandEvent &event);
         void firmwareBrowse(wxCommandEvent &event);
+        void gbaBiosBrowse(wxCommandEvent &event);
         void confirm(wxCommandEvent &event);
 
         wxDECLARE_EVENT_TABLE();

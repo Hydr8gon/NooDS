@@ -37,6 +37,8 @@ class Gpu
             dma9(dma9), dma7(dma7), engineA(engineA), engineB(engineB), gpu3D(gpu3D),
             gpu3DRenderer(gpu3DRenderer), arm9(arm9), arm7(arm7), memory(memory) {}
 
+        void gbaScanline240();
+        void gbaScanline308();
         void scanline256();
         void scanline355();
 

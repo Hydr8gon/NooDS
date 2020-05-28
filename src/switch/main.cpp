@@ -438,10 +438,10 @@ void fileBrowser()
     path = "sdmc:/";
     unsigned int index = 0;
 
-    // Load the appropriate folder icon for the current theme
+    // Load the appropriate icons for the current theme
     romfsInit();
-    std::string folderName = SwitchUI::isDarkTheme() ? "romfs:/folder-dark.bmp" : "romfs:/folder-light.bmp";
-    Icon folder(SwitchUI::bmpToTexture(folderName), 64);
+    Icon folder(SwitchUI::bmpToTexture(SwitchUI::isDarkTheme() ? "romfs:/folder-dark.bmp" : "romfs:/folder-light.bmp"), 64);
+    Icon file(SwitchUI::bmpToTexture(SwitchUI::isDarkTheme() ? "romfs:/file-dark.bmp" : "romfs:/file-light.bmp"), 64);
     romfsExit();
 
     while (true)
@@ -463,9 +463,14 @@ void fileBrowser()
             }
             else if (name.find(".nds", name.length() - 4) != std::string::npos)
             {
-                // Add a ROM with its decoded icon to the list
+                // Add an NDS ROM with its decoded icon to the list
                 icons.push_back(new Icon(getRomIcon(path + "/" + name), 32));
                 files.push_back(ListItem(name, "", icons[icons.size() - 1]));
+            }
+            else if (name.find(".gba", name.length() - 4) != std::string::npos)
+            {
+                // Add a GBA ROM with a generic icon to the list
+                files.push_back(ListItem(name, "", &file));
             }
         }
 
@@ -561,6 +566,7 @@ void fileBrowser()
                 }
 
                 delete[] folder.texture;
+                delete[] file.texture;
                 startCore();
                 return;
             }

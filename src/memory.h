@@ -42,9 +42,16 @@ class Wifi;
 class Memory
 {
     public:
-        Memory(Cartridge *cart9, Cartridge *cart7, Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA,
-               Gpu2D *engineB, Gpu3D *gpu3D, Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9, Interpreter *arm7,
-               Ipc *ipc, Math *math, Rtc *rtc, Spi *spi, Spu *spu, Timers *timers9, Timers *timers7, Wifi *wifi);
+        Memory(uint8_t *bios9, uint8_t *bios7, uint8_t *gbaBios, Cartridge *cart9, Cartridge *cart7,
+               Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA, Gpu2D *engineB, Gpu3D *gpu3D,
+               Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9, Interpreter *arm7, Ipc *ipc,
+               Math *math, Rtc *rtc, Spi *spi, Spu *spu, Timers *timers9, Timers *timers7, Wifi *wifi):
+               bios9(bios9), bios7(bios7), gbaBios(gbaBios), cart9(cart9), cart7(cart7),
+               cp15(cp15), dma9(dma9), dma7(dma7), gpu(gpu), engineA(engineA), engineB(engineB), gpu3D(gpu3D),
+               gpu3DRenderer(gpu3DRenderer), input(input), arm9(arm9), arm7(arm7), ipc(ipc),
+               math(math), rtc(rtc), spi(spi), spu(spu), timers9(timers9), timers7(timers7), wifi(wifi) {}
+
+        void setGbaRom(uint8_t *gbaRom, uint32_t gbaRomSize);
 
         template <typename T> T read(bool arm9, uint32_t address);
         template <typename T> void write(bool arm9, uint32_t address, T value);
@@ -54,13 +61,13 @@ class Memory
         uint8_t *getPalette() { return palette; }
         uint8_t *getOam() { return oam; }
 
+        bool isGbaMode() { return gbaMode; }
+
     private:
         uint8_t ram[0x400000]    = {}; //  4MB main RAM
         uint8_t wram[0x8000]     = {}; // 32KB shared WRAM
         uint8_t instrTcm[0x8000] = {}; // 32KB instruction TCM
         uint8_t dataTcm[0x4000]  = {}; // 16KB data TCM
-        uint8_t bios9[0x8000]    = {}; // 32KB ARM9 BIOS
-        uint8_t bios7[0x4000]    = {}; // 16KB ARM7 BIOS
         uint8_t wram7[0x10000]   = {}; // 64KB ARM7 WRAM
         uint8_t wifiRam[0x2000]  = {}; //  8KB WiFi RAM
 
@@ -82,6 +89,12 @@ class Memory
         uint32_t dmaFill[4] = {};
         uint8_t haltCnt = 0;
 
+        uint8_t *gbaRom = nullptr;
+        uint32_t gbaRomSize = 0;
+        bool gbaMode = false;
+
+        uint8_t *bios9, *bios7;
+        uint8_t *gbaBios;
         Cartridge *cart9, *cart7;
         Cp15 *cp15;
         Dma *dma9, *dma7;
@@ -101,8 +114,10 @@ class Memory
 
         template <typename T> T ioRead9(uint32_t address);
         template <typename T> T ioRead7(uint32_t address);
+        template <typename T> T ioReadGba(uint32_t address);
         template <typename T> void ioWrite9(uint32_t address, T value);
         template <typename T> void ioWrite7(uint32_t address, T value);
+        template <typename T> void ioWriteGba(uint32_t address, T value);
 
         uint8_t  readWramStat()           { return wramStat;         }
         uint32_t readDmaFill(int channel) { return dmaFill[channel]; }
