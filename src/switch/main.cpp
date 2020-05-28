@@ -499,7 +499,8 @@ void fileBrowser()
             index = 0;
 
             // If a ROM was selected, attempt to boot it
-            if (path.find(".nds", path.length() - 4) != std::string::npos)
+            if (path.find(".nds", path.length() - 4) != std::string::npos ||
+                path.find(".gba", path.length() - 4) != std::string::npos)
             {
                 try
                 {

@@ -1,5 +1,9 @@
 name: Automatic Builds
-on: [push]
+
+on:
+  push:
+    branches:
+    - master
 
 jobs:
   build-linux:
