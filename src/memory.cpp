@@ -112,11 +112,12 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
                     break;
                 }
 
-                case 0x08000000: // GBA slot
+                case 0x08000000: case 0x09000000: // GBA slot
                 {
-                    if (address - 0x8000000 < gbaRomSize)
+                    if (gbaRomSize > 0)
                     {
-                        data = &gbaRom[address - 0x8000000];
+                        if (address - 0x8000000 < gbaRomSize)
+                            data = &gbaRom[address - 0x8000000];
                         break;
                     }
                     else
@@ -182,32 +183,25 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
                 break;
             }
 
-            case 0x08000000: // GBA slot
+            case 0x08000000: case 0x09000000: // GBA slot
             {
                 if (address - 0x8000000 < gbaRomSize)
-                {
                     data = &gbaRom[address - 0x8000000];
-                    break;
-                }
-                else
-                {
-                    // Return endless 0xFFs as if nothing is inserted in the GBA slot
-                    return (T)0xFFFFFFFF;
-                }
+                break;
             }
 
-            case 0x0D000000: // GBA slot
+            case 0x0A000000: case 0x0B000000: // GBA slot
             {
-                if (address - 0xD000000 < gbaRomSize)
-                {
-                    data = &gbaRom[address - 0x8000000];
-                    break;
-                }
-                else
-                {
-                    // Return endless 0xFFs as if nothing is inserted in the GBA slot
-                    return (T)0xFFFFFFFF;
-                }
+                if (address - 0xA000000 < gbaRomSize)
+                    data = &gbaRom[address - 0xA000000];
+                break;
+            }
+
+            case 0x0C000000: case 0x0D000000: // GBA slot
+            {
+                if (address - 0xC000000 < gbaRomSize)
+                    data = &gbaRom[address - 0xC000000];
+                break;
             }
         }
     }
@@ -270,11 +264,12 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
                 break;
             }
 
-            case 0x08000000: // GBA slot
+            case 0x08000000: case 0x09000000:  // GBA slot
             {
-                if (address - 0x8000000 < gbaRomSize)
+                if (gbaRomSize > 0)
                 {
-                    data = &gbaRom[address - 0x8000000];
+                    if (address - 0x8000000 < gbaRomSize)
+                        data = &gbaRom[address - 0x8000000];
                     break;
                 }
                 else
