@@ -48,7 +48,7 @@ void Gpu::gbaScanline240()
 
     // Enable H-blank DMA transfers when not in V-blank
     if (!(dispStat7 & BIT(0)))
-        dma9->setMode(2, true);
+        dma7->setMode(2, true);
 
     // Trigger an H-blank IRQ if enabled
     if (dispStat7 & BIT(4))

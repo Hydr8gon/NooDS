@@ -123,7 +123,7 @@ void Dma::transfer()
 
     // GPU-timed transfers are only triggered once at a time, so disable them after one transfer
     modes[1] = false;
-    modes[2] = false;
+    modes[memory->isGbaMode() ? 4 : 2] = false;
 
     update();
 }
@@ -135,10 +135,11 @@ void Dma::setMode(int mode, bool active)
     {
         switch (mode)
         {
-            case 0:  mode = 0; break;
-            case 1:  mode = 2; break;
-            case 5:  mode = 4; break;
-            default: mode = 6; break;
+            case 0: mode = 0; break; // Immediate
+            case 1: mode = 2; break; // V-blank
+            case 2: mode = 4; break; // H-blank (GBA)
+            case 5: mode = 4; break; // DS cart (NDS)
+            default: return;
         }
     }
 
