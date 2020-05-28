@@ -82,7 +82,10 @@ Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &ar
 
         // Enable GBA mode right away if direct boot is enabled
         if (Settings::getDirectBoot())
-            memory.write<uint8_t>(false, 0x4000301, 0x40);
+        {
+            memory.write<uint8_t>(false, 0x4000301,   0x40); // HALTCNT
+            memory.write<uint16_t>(true, 0x4000304, 0x8003); // POWCNT1
+        }
     }
     else // NDS ROM
     {
@@ -241,6 +244,13 @@ void Core::runFrame()
                 if (dma7.shouldTransfer())  dma7.transfer();
                 if (timers7.shouldTick())   timers7.tick(false);
 
+                // Run the SPU every 256 cycles
+                if (++spuTimer >= 256)
+                {
+                    spu.runGbaSample();
+                    spuTimer = 0;
+                }
+
                 // The end of the visible scanline
                 if (j == 240 * 2) gpu.gbaScanline240();
             }
@@ -275,7 +285,7 @@ void Core::runFrame()
                 if (gpu3D.shouldRun()) gpu3D.runCycle();
 
                 // Run the SPU every 512 cycles
-                if (++spuTimer == 512)
+                if (++spuTimer >= 512)
                 {
                     spu.runSample();
                     spuTimer = 0;

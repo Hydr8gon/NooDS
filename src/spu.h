@@ -33,6 +33,8 @@ class Spu
         ~Spu();
 
         uint32_t *getSamples(int count);
+
+        void runGbaSample();
         void runSample();
 
         uint32_t readSoundCnt(int channel) { return soundCnt[channel]; }

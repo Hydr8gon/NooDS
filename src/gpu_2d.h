@@ -74,6 +74,8 @@ class Gpu2D
         uint32_t framebuffer[256 * 192] = {};
         uint32_t layers[8][256] = {};
 
+        int gbaBlock = 0;
+
         uint32_t dispCnt = 0;
         uint16_t bgCnt[4] = {};
         uint16_t bgHOfs[4] = {};

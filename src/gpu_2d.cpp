@@ -101,7 +101,7 @@ void Gpu2D::drawGbaScanline(int line)
     for (int i = 0; i < 240; i++)
     {
         uint8_t enabled = BIT(5) | (dispCnt >> 8);
-        uint32_t *pixel = &framebuffer[line * 256 + i];
+        uint32_t *pixel = &framebuffer[(line + 16) * 256 + (i + 8)];
         int priority = 0, layer = 0, blendBit = -1;
 
         // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
@@ -111,7 +111,7 @@ void Gpu2D::drawGbaScanline(int line)
                 enabled &= winIn >> 0; // Window 0
             else if ((dispCnt & BIT(14)) && i >= winX1[1] && i < winX2[1] && line >= winY1[1] && line < winY2[1])
                 enabled &= winIn >> 8; // Window 1
-            else if ((dispCnt & BIT(15)) && (*pixel & BIT(24)))
+            else if ((dispCnt & BIT(15)) && (*(pixel - (16 * 256 + 8)) & BIT(24)))
                 enabled &= winOut >> 8; // Object window
             else
                 enabled &= winOut >> 0; // Outside of windows
@@ -234,6 +234,36 @@ void Gpu2D::drawGbaScanline(int line)
             int b = (*pixel >> 12) & 0x3F; b -= b * bldY / 16;
             *pixel = (b << 12) | (g << 6) | r;
         }
+    }
+
+    // Copy the VRAM screen border to the framebuffer
+    // The DS draws the GBA screen by capturing it to VRAM and then displaying that
+    // This allows a screen border to be set by copying it into VRAM before entering GBA mode
+    // On hardware, the current frame is captured to one VRAM block and the previous is displayed from another
+    // This would add a frame of latency, so the GBA screen is rendered directly and the border is applied after
+    // It's not entirely accurate to hardware, but visually there should be no difference
+    if (line == 159)
+    {
+        uint8_t *data = memory->getVramBlock(gbaBlock);
+
+        for (int y = 0; y < 192; y++)
+        {
+            if (y < 16 || y >= 176)
+            {
+                for (int x = 0; x < 256; x++)
+                    framebuffer[y * 256 + x] = rgb5ToRgba6(U8TO16(data, (y * 256 + x) * 2));
+            }
+            else
+            {
+                for (int x = 0; x < 8; x++)
+                {
+                    framebuffer[y * 256 + x]       = rgb5ToRgba6(U8TO16(data, (y * 256 + x)       * 2));
+                    framebuffer[y * 256 + x + 248] = rgb5ToRgba6(U8TO16(data, (y * 256 + x + 248) * 2));
+                }
+            }
+        }
+
+        gbaBlock = !gbaBlock;
     }
 }
 

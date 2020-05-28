@@ -125,6 +125,58 @@ uint32_t *Spu::getSamples(int count)
     return out;
 }
 
+void Spu::runGbaSample()
+{
+    if (bufferSize == 0) return;
+
+    // Write the samples to the buffer
+    bufferIn[bufferPointer++] = 0;
+
+    // Handle a full buffer
+    if (bufferPointer == bufferSize)
+    {
+        // Wait until the buffer has been played, keeping the emulator throttled to 60 FPS
+        // Synchronizing to the audio eliminites the potential for nasty audio crackles
+        if (Settings::getFpsLimiter() == 2) // Accurate
+        {
+            bool wait = true;
+            while (wait)
+            {
+                mutex1.lock();
+                if (!ready) wait = false;
+                mutex1.unlock();
+            }
+        }
+        else if (Settings::getFpsLimiter() == 1) // Light
+        {
+            std::unique_lock<std::mutex> lock(mutex1);
+            cond1.wait(lock, std::bind(&Spu::shouldFill, this));
+        }
+
+        // Swap the buffers
+        uint32_t *buffer = bufferOut;
+        bufferOut = bufferIn;
+        bufferIn = buffer;
+
+        // Signal that the buffer is ready to play
+        if (Settings::getFpsLimiter() == 2) // Accurate
+        {
+            mutex1.lock();
+            ready = true;
+            mutex1.unlock();
+        }
+        else // Disabled/Light
+        {
+            std::lock_guard<std::mutex> guard(mutex2);
+            ready = true;
+            cond2.notify_one();
+        }
+
+        // Reset the buffer pointer
+        bufferPointer = 0;
+    }
+}
+
 void Spu::runSample()
 {
     int64_t sampleLeft = 0;

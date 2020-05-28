@@ -99,8 +99,16 @@ void Gpu::gbaScanline308()
                 arm7->sendInterrupt(0);
 
             // Copy the completed sub-framebuffers to the main framebuffer
-            memcpy(&framebuffer[0],         engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-            memset(&framebuffer[256 * 192], 0,                         256 * 192 * sizeof(uint32_t));
+            if (powCnt1 & BIT(15)) // Display swap
+            {
+                memcpy(&framebuffer[0],         engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                memset(&framebuffer[256 * 192], 0,                         256 * 192 * sizeof(uint32_t));
+            }
+            else
+            {
+                memset(&framebuffer[0],         0,                         256 * 192 * sizeof(uint32_t));
+                memcpy(&framebuffer[256 * 192], engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+            }
         }
     }
 
