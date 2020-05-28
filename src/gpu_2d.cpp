@@ -74,8 +74,16 @@ void Gpu2D::drawGbaScanline(int line)
 
         case 1:
         {
-            if (dispCnt & BIT(8)) drawText(0, line, true);
-            if (dispCnt & BIT(9)) drawText(1, line, true);
+            if (dispCnt & BIT(8))    drawText(0, line, true);
+            if (dispCnt & BIT(9))    drawText(1, line, true);
+            if (dispCnt & BIT(10)) drawAffine(2, line, true);
+            break;
+        }
+
+        case 2:
+        {
+            if (dispCnt & BIT(10)) drawAffine(2, line, true);
+            if (dispCnt & BIT(11)) drawAffine(3, line, true);
             break;
         }
 
@@ -97,7 +105,7 @@ void Gpu2D::drawGbaScanline(int line)
         int priority = 0, layer = 0, blendBit = -1;
 
         // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
-        if (dispCnt & 0x0000E000) // Windows enabled
+        if (dispCnt & 0xE000) // Windows enabled
         {
             if ((dispCnt & BIT(13)) && i >= winX1[0] && i < winX2[0] && line >= winY1[0] && line < winY2[0])
                 enabled &= winIn >> 0; // Window 0
@@ -675,7 +683,7 @@ void Gpu2D::drawText(int bg, int line, bool gba)
     }
 }
 
-void Gpu2D::drawAffine(int bg, int line)
+void Gpu2D::drawAffine(int bg, int line, bool gba)
 {
     // Get information about the tile data
     uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
@@ -683,8 +691,16 @@ void Gpu2D::drawAffine(int bg, int line)
     int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
 
     // Get the tile data
-    uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase);
-    if (!data) return;
+    uint8_t *data;
+    if (gba)
+    {
+        data = &memory->getVramBlock(2)[screenBase];
+    }
+    else
+    {
+        data = memory->getMappedVram(bgVramAddr + screenBase);
+        if (!data) return;
+    }
 
     // Calculate the scroll values
     int scrollX = bgX[bg - 2] + (bgPA[bg - 2] * (size / 2) + bgPB[bg - 2] * (size / 2));
@@ -716,7 +732,7 @@ void Gpu2D::drawAffine(int bg, int line)
 
         // Get the palette of the tile
         uint8_t *pal;
-        if (dispCnt & BIT(30)) // Extended palette
+        if (!gba && (dispCnt & BIT(30))) // Extended palette
         {
             if (!extPalettes[bg]) continue;
             pal = extPalettes[bg];
@@ -727,8 +743,16 @@ void Gpu2D::drawAffine(int bg, int line)
         }
 
         // Find the palette index for the right pixel of the tile
-        uint8_t *index = memory->getMappedVram(bgVramAddr + charBase + tile * 64);
-        if (!index) continue;
+        uint8_t *index;
+        if (gba)
+        {
+            index = &memory->getVramBlock(2)[charBase + tile * 64];
+        }
+        else
+        {
+            index = memory->getMappedVram(bgVramAddr + charBase + tile * 64);
+            if (!index) continue;
+        }
         index += (rotscaleY % 8) * 8;
         index += (rotscaleX % 8);
 

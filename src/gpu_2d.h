@@ -105,7 +105,7 @@ class Gpu2D
         uint32_t rgb5ToRgba6(uint16_t color);
 
         void drawText(int bg, int line, bool gba = false);
-        void drawAffine(int bg, int line);
+        void drawAffine(int bg, int line, bool gba = false);
         void drawExtended(int bg, int line);
         void drawObjects(int line, bool gba = false);
 };
