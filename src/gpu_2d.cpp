@@ -1055,7 +1055,7 @@ void Gpu2D::drawObjects(int line, bool gba)
 
             if (object[0] & BIT(13)) // 8-bit
             {
-                int mapWidth = (dispCnt & BIT(4)) ? width : 128;
+                int mapWidth = ((gba && (dispCnt & BIT(6))) || (!gba && (dispCnt & BIT(4)))) ? width : 128;
 
                 // Get the palette of the object
                 uint8_t *pal;
@@ -1104,7 +1104,7 @@ void Gpu2D::drawObjects(int line, bool gba)
             }
             else // 4-bit
             {
-                int mapWidth = (dispCnt & BIT(4)) ? width : 256;
+                int mapWidth = ((gba && (dispCnt & BIT(6))) || (!gba && (dispCnt & BIT(4)))) ? width : 256;
 
                 // Get the palette of the object
                 // In 4-bit mode, the object can select from multiple 16-color palettes
@@ -1147,7 +1147,7 @@ void Gpu2D::drawObjects(int line, bool gba)
         else if (object[0] & BIT(13)) // 8-bit
         {
             // Adjust the current tile to align with the current Y coordinate relative to the object
-            int mapWidth = (dispCnt & BIT(4)) ? width : 128;
+            int mapWidth = ((gba && (dispCnt & BIT(6))) || (!gba && (dispCnt & BIT(4)))) ? width : 128;
             if (object[1] & BIT(13)) // Vertical flip
                 tile += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 8;
             else
@@ -1196,7 +1196,7 @@ void Gpu2D::drawObjects(int line, bool gba)
         else // 4-bit
         {
             // Adjust the current tile to align with the current Y coordinate relative to the object
-            int mapWidth = (dispCnt & BIT(4)) ? width : 256;
+            int mapWidth = ((gba && (dispCnt & BIT(6))) || (!gba && (dispCnt & BIT(4)))) ? width : 256;
             if (object[1] & BIT(13)) // Vertical flip
                 tile += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 4;
             else
