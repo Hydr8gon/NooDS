@@ -165,14 +165,14 @@ void Dma::update()
 void Dma::writeDmaSad(int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMASAD registers
-    mask &= (dma9 ? 0x0FFFFFFF : 0x07FFFFFF);
+    mask &= ((dma9 || channel != 0) ? 0x0FFFFFFF : 0x07FFFFFF);
     dmaSad[channel] = (dmaSad[channel] & ~mask) | (value & mask);
 }
 
 void Dma::writeDmaDad(int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMADAD registers
-    mask &= (dma9 ? 0x0FFFFFFF : 0x07FFFFFF);
+    mask &= ((dma9 || channel == 3) ? 0x0FFFFFFF : 0x07FFFFFF);
     dmaDad[channel] = (dmaDad[channel] & ~mask) | (value & mask);
 }
 
