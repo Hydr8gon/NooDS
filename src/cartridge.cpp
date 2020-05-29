@@ -18,6 +18,7 @@
 */
 
 #include <cstdio>
+#include <cstring>
 
 #include "cartridge.h"
 #include "defines.h"
@@ -31,6 +32,192 @@ void Cartridge::setRom(uint8_t *rom, uint32_t romSize, uint8_t *save, uint32_t s
     this->romSize = romSize;
     this->save = save;
     this->saveSize = saveSize;
+}
+
+void Cartridge::setGbaRom(uint8_t *gbaRom, uint32_t gbaRomSize, uint8_t *gbaSave, uint32_t gbaSaveSize)
+{
+    this->gbaRom = gbaRom;
+    this->gbaRomSize = gbaRomSize;
+    this->gbaSave = gbaSave;
+    this->gbaSaveSize = gbaSaveSize;
+}
+
+template int8_t   Cartridge::gbaRomRead(uint32_t address);
+template int16_t  Cartridge::gbaRomRead(uint32_t address);
+template uint8_t  Cartridge::gbaRomRead(uint32_t address);
+template uint16_t Cartridge::gbaRomRead(uint32_t address);
+template uint32_t Cartridge::gbaRomRead(uint32_t address);
+template <typename T> T Cartridge::gbaRomRead(uint32_t address)
+{
+    // If nothing is inserted in the GBA slot, return endless 0xFFs
+    if (gbaRomSize == 0)
+        return (T)0xFFFFFFFF;
+
+    // Read a value from the GBA cartridge
+    if ((address & 0xFF000000) == 0x0E000000)
+    {
+        if (gbaSaveSize == 0x8000 && address < 0xE008000) // SRAM
+        {
+            // Read a single byte because the data bus is only 8 bits
+            return gbaSave[address - 0xE000000];
+        }
+        else if ((gbaSaveSize == 0x10000 || gbaSaveSize == 0x20000) && address < 0xE010000) // FLASH
+        {
+            // Run a FLASH command
+            if (gbaFlashCmd == 0x90 && address == 0xE000000)
+            {
+                // Read the chip manufacturer ID
+                return 0xC2;
+            }
+            else if (gbaFlashCmd == 0x90 && address == 0xE000001)
+            {
+                // Read the chip device ID
+                return (gbaSaveSize == 0x10000) ? 0x1C : 0x09;
+            }
+            else
+            {
+                // Read a single byte
+                if (gbaBankSwap) address += 0x10000;
+                return gbaSave[address - 0xE000000];
+            }
+        }
+    }
+    else
+    {
+        // EEPROM can be accesssed at the top 256 bytes of the 32MB ROM address block
+        // If the ROM is 16MB or smaller, it can be accessed in the full upper 16MB
+        if (gbaSaveSize == 0x2000 && ((gbaRomSize <= 0x1000000 && (address & 0xFF000000) == 0x0D000000) ||
+            (gbaRomSize > 0x1000000 && address >= 0x0DFFFF00 && address < 0x0E000000))) // EEPROM
+        {
+            if (((gbaEepromCmd & 0xC000) >> 14) == 0x3 && gbaEepromCount >= 17) // Read
+            {
+                if (++gbaEepromCount >= 22)
+                {
+                    // Read the data bits, MSB first
+                    int bit = 63 - (gbaEepromCount - 22);
+                    T value = (gbaSave[(gbaEepromCmd & 0x03FF) * 8 + bit / 8] & BIT(bit % 8)) >> (bit % 8);
+
+                    // Reset the transfer at the end
+                    if (gbaEepromCount >= 85)
+                    {
+                        gbaEepromCount = 0;
+                        gbaEepromCmd = 0;
+                        gbaEepromData = 0;
+                    }
+
+                    return value;
+                }
+            }
+            else if (gbaEepromDone)
+            {
+                // Signal that a write has finished
+                return 1;
+            }
+
+            return 0;
+        }
+        else if ((address & 0x01FFFFFF) < gbaRomSize) // ROM
+        {
+            // Form an LSB-first value from the data at the ROM address
+            T value = 0;
+            for (unsigned int i = 0; i < sizeof(T); i++)
+                value |= gbaRom[(address & 0x01FFFFFF) + i] << (i * 8);
+            return value;
+        }
+    }
+
+    return 0;
+}
+
+template void Cartridge::gbaRomWrite(uint32_t address, uint8_t value);
+template void Cartridge::gbaRomWrite(uint32_t address, uint16_t value);
+template void Cartridge::gbaRomWrite(uint32_t address, uint32_t value);
+template <typename T> void Cartridge::gbaRomWrite(uint32_t address, T value)
+{
+    // Write a value to the GBA cartridge
+    if ((address & 0xFF000000) == 0x0E000000)
+    {
+        if (gbaSaveSize == 0x8000 && address < 0xE008000) // SRAM
+        {
+            // Write a single byte because the data bus is only 8 bits
+            gbaSave[address - 0xE000000] = value;
+        }
+        else if ((gbaSaveSize == 0x10000 || gbaSaveSize == 0x20000) && address < 0xE010000) // FLASH
+        {
+            // Run a FLASH command
+            if (gbaFlashCmd == 0xA0)
+            {
+                // Write a single byte
+                if (gbaBankSwap) address += 0x10000;
+                gbaSave[address - 0xE000000] = value;
+                gbaFlashCmd = 0xF0;
+            }
+            else if (gbaFlashErase && (address & ~0x000F000) == 0xE000000 && (value & 0xFF) == 0x30)
+            {
+                // Erase a sector
+                if (gbaBankSwap) address += 0x10000;
+                memset(&gbaSave[address - 0xE000000], 0xFF, 0x1000 * sizeof(uint8_t));
+                gbaFlashErase = false;
+            }
+            else if (gbaSaveSize == 0x20000 && gbaFlashCmd == 0xB0 && address == 0xE000000)
+            {
+                // Swap the ROM banks on 128KB carts
+                gbaBankSwap = value;
+                gbaFlashCmd = 0xF0;
+            }
+            else if (address == 0xE005555)
+            {
+                // Write the FLASH command byte
+                gbaFlashCmd = value;
+
+                // Handle erase commands
+                if (gbaFlashCmd == 0x80)
+                    gbaFlashErase = true;
+                else if (gbaFlashCmd != 0xAA)
+                    gbaFlashErase = false;
+                else if (gbaFlashErase && gbaFlashCmd == 0x10)
+                    memset(gbaSave, 0xFF, gbaSaveSize * sizeof(uint8_t));
+            }
+        }
+    }
+    else if (gbaSaveSize == 0x2000 && ((gbaRomSize <= 0x1000000 && (address & 0xFF000000) == 0x0D000000) ||
+            (gbaRomSize > 0x1000000 && address >= 0x0DFFFF00 && address < 0x0E000000))) // EEPROM
+    {
+        gbaEepromDone = false;
+
+        if (gbaEepromCount < 16)
+        {
+            // Get the command bits
+            gbaEepromCmd |= (value & BIT(0)) << (16 - ++gbaEepromCount);
+        }
+        else if (((gbaEepromCmd & 0xC000) >> 14) == 0x3) // Read
+        {
+            // Accept the last bit to finish the read command
+            if (gbaEepromCount < 17)
+                gbaEepromCount++;
+        }
+        else if (((gbaEepromCmd & 0xC000) >> 14) == 0x2) // Write
+        {
+            // Get the data bits, MSB first
+            if (++gbaEepromCount <= 80)
+                gbaEepromData |= (uint64_t)(value & BIT(0)) << (80 - gbaEepromCount);
+
+            if (gbaEepromCount >= 81)
+            {
+                // Write the data after all the bits have been received
+                for (unsigned int i = 0; i < 8; i++)
+                    gbaSave[(gbaEepromCmd & 0x03FF) * 8 + i] = gbaEepromData >> (i * 8);
+
+                // Reset the transfer
+                gbaEepromCount = 0;
+                gbaEepromCmd = 0;
+                gbaEepromData = 0;
+                gbaEepromDone = true;
+            }
+        }
+
+        return;
+    }
 }
 
 uint64_t Cartridge::encrypt64(uint64_t value)

@@ -17,6 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <cstring>
 #include <thread>
 
 #include "core.h"
@@ -77,8 +78,62 @@ Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &ar
         fread(gbaRom, sizeof(uint8_t), gbaRomSize, gbaRomFile);
         fclose(gbaRomFile);
 
+        // Attempt to load the ROM's save file
+        gbaSaveName = filename.substr(0, filename.rfind(".")) + ".sav";
+        FILE *gbaSaveFile = fopen(gbaSaveName.c_str(), "rb");
+        if (gbaSaveFile)
+        {
+            fseek(gbaSaveFile, 0, SEEK_END);
+            gbaSaveSize = ftell(gbaSaveFile);
+            fseek(gbaSaveFile, 0, SEEK_SET);
+            gbaSave = new uint8_t[gbaSaveSize];
+            fread(gbaSave, sizeof(uint8_t), gbaSaveSize, gbaSaveFile);
+            fclose(gbaSaveFile);
+        }
+        else
+        {
+            const std::string saveStrs[] = { "EEPROM_V", "SRAM_V", "FLASH_V", "FLASH512_V", "FLASH1M_V" };
+            int match = -1;
+
+            // Unlike the DS, a GBA cart's save type can be reliably detected by searching for strings in the ROM
+            // Search the ROM for a save string so a new save of that type can be created
+            for (unsigned int i = 0; i < gbaRomSize; i += 4)
+            {
+                for (unsigned int j = 0; j < 5; j++)
+                {
+                    match = j;
+                    for (unsigned int k = 0; k < saveStrs[j].length(); k++)
+                    {
+                        if (i + k >= gbaRomSize || gbaRom[i + k] != saveStrs[j][k])
+                        {
+                            match = -1;
+                            break;
+                        }
+                    }
+                    if (match != -1) break;
+                }
+                if (match != -1) break;
+            }
+
+            // Create a new GBA save of the detected type
+            if (match != -1)
+            {
+                switch (match)
+                {
+                    case 0: gbaSaveSize =  0x2000; break; // EEPROM  8KB
+                    case 1: gbaSaveSize =  0x8000; break; // SRAM   32KB
+                    case 2: gbaSaveSize = 0x10000; break; // FLASH  64KB
+                    case 3: gbaSaveSize = 0x10000; break; // FLASH  64KB
+                    case 4: gbaSaveSize = 0x20000; break; // FLASH 128KB
+                }
+
+                gbaSave = new uint8_t[gbaSaveSize];
+                memset(gbaSave, 0, gbaSaveSize * sizeof(uint8_t));
+            }
+        }
+
         // "Insert" the cartridge
-        memory.setGbaRom(gbaRom, gbaRomSize);
+        cart7.setGbaRom(gbaRom, gbaRomSize, gbaSave, gbaSaveSize);
 
         // Enable GBA mode right away if direct boot is enabled
         if (Settings::getDirectBoot())
@@ -181,8 +236,8 @@ Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &ar
 
 Core::~Core()
 {
-    // Update the save file
-    if (saveSize != 0)
+    // Write the NDS save file before exiting
+    if (saveSize > 0)
     {
         FILE *saveFile = fopen(saveName.c_str(), "wb");
         if (saveFile)
@@ -192,8 +247,22 @@ Core::~Core()
         }
     }
 
-    if (rom)  delete[] rom;
-    if (save) delete[] save;
+    // Write the GBA save file before exiting
+    if (gbaSaveSize > 0)
+    {
+        FILE *gbaSaveFile = fopen(gbaSaveName.c_str(), "wb");
+        if (gbaSaveFile)
+        {
+            fwrite(gbaSave, sizeof(uint8_t), gbaSaveSize, gbaSaveFile);
+            fclose(gbaSaveFile);
+        }
+    }
+
+    // Free the ROM and save memory
+    if (rom)     delete[] rom;
+    if (save)    delete[] save;
+    if (gbaRom)  delete[] gbaRom;
+    if (gbaSave) delete[] gbaSave;
 }
 
 void Core::createSave(std::string filename, int type)
@@ -214,8 +283,7 @@ void Core::createSave(std::string filename, int type)
 
     // Create an empty save
     uint8_t *save = new uint8_t[saveSize];
-    for (int i = 0; i < saveSize; i++)
-        save[i] = 0;
+    memset(save, 0, saveSize * sizeof(uint8_t));
 
     // Write the save to a file
     std::string saveName = filename.substr(0, filename.rfind(".")) + ".sav";

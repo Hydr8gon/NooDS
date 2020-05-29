@@ -34,6 +34,10 @@ class Cartridge
         Cartridge(Dma *dma, Interpreter *cpu, Memory *memory): dma(dma), cpu(cpu), memory(memory) {}
 
         void setRom(uint8_t *rom, uint32_t romSize, uint8_t *save, uint32_t saveSize);
+        void setGbaRom(uint8_t *gbaRom, uint32_t gbaRomSize, uint8_t *gbaSave, uint32_t gbaSaveSize);
+
+        template <typename T> T gbaRomRead(uint32_t address);
+        template <typename T> void gbaRomWrite(uint32_t address, T value);
 
         uint16_t readAuxSpiCnt()  { return auxSpiCnt;       }
         uint8_t  readAuxSpiData() { return auxSpiData;      }
@@ -65,8 +69,20 @@ class Cartridge
         uint32_t romCtrl = 0;
         uint64_t romCmdOut = 0;
 
+        int gbaEepromCount = 0;
+        uint16_t gbaEepromCmd = 0;
+        uint64_t gbaEepromData = 0;
+        bool gbaEepromDone = false;
+
+        uint8_t gbaFlashCmd = 0;
+        bool gbaBankSwap = false;
+        bool gbaFlashErase = false;
+
         uint8_t *rom = nullptr, *save = nullptr;
         int romSize = 0, saveSize = 0;
+
+        uint8_t *gbaRom = nullptr, *gbaSave = nullptr;
+        int gbaRomSize = 0, gbaSaveSize = 0;
 
         Dma *dma;
         Interpreter *cpu;

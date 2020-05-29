@@ -51,8 +51,6 @@ class Memory
                gpu3DRenderer(gpu3DRenderer), input(input), arm9(arm9), arm7(arm7), ipc(ipc),
                math(math), rtc(rtc), spi(spi), spu(spu), timers9(timers9), timers7(timers7), wifi(wifi) {}
 
-        void setGbaRom(uint8_t *gbaRom, uint32_t gbaRomSize);
-
         template <typename T> T read(bool arm9, uint32_t address);
         template <typename T> void write(bool arm9, uint32_t address, T value);
 
@@ -89,8 +87,6 @@ class Memory
         uint32_t dmaFill[4] = {};
         uint8_t haltCnt = 0;
 
-        uint8_t *gbaRom = nullptr;
-        uint32_t gbaRomSize = 0;
         bool gbaMode = false;
 
         uint8_t *bios9, *bios7;

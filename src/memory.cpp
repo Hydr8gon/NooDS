@@ -39,12 +39,6 @@
 #include "timers.h"
 #include "wifi.h"
 
-void Memory::setGbaRom(uint8_t *gbaRom, uint32_t gbaRomSize)
-{
-    this->gbaRom = gbaRom;
-    this->gbaRomSize = gbaRomSize;
-}
-
 template int8_t   Memory::read(bool arm9, uint32_t address);
 template int16_t  Memory::read(bool arm9, uint32_t address);
 template uint8_t  Memory::read(bool arm9, uint32_t address);
@@ -72,7 +66,7 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
         {
             switch (address & 0xFF000000)
             {
-                case 0x02000000: // Main RAMread
+                case 0x02000000: // Main RAM
                 {
                     data = &ram[address % 0x400000];
                     break;
@@ -114,17 +108,7 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
 
                 case 0x08000000: case 0x09000000: // GBA slot
                 {
-                    if (gbaRomSize > 0)
-                    {
-                        if (address - 0x8000000 < gbaRomSize)
-                            data = &gbaRom[address - 0x8000000];
-                        break;
-                    }
-                    else
-                    {
-                        // Return endless 0xFFs as if nothing is inserted in the GBA slot
-                        return (T)0xFFFFFFFF;
-                    }
+                    return cart7->gbaRomRead<T>(address);
                 }
 
                 case 0xFF000000: // ARM9 BIOS
@@ -183,25 +167,12 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
                 break;
             }
 
-            case 0x08000000: case 0x09000000: // GBA slot
+            case 0x08000000: case 0x09000000:
+            case 0x0A000000: case 0x0B000000:
+            case 0x0C000000: case 0x0D000000:
+            case 0x0E000000: // GBA slot
             {
-                if (address - 0x8000000 < gbaRomSize)
-                    data = &gbaRom[address - 0x8000000];
-                break;
-            }
-
-            case 0x0A000000: case 0x0B000000: // GBA slot
-            {
-                if (address - 0xA000000 < gbaRomSize)
-                    data = &gbaRom[address - 0xA000000];
-                break;
-            }
-
-            case 0x0C000000: case 0x0D000000: // GBA slot
-            {
-                if (address - 0xC000000 < gbaRomSize)
-                    data = &gbaRom[address - 0xC000000];
-                break;
+                return cart7->gbaRomRead<T>(address);
             }
         }
     }
@@ -266,17 +237,7 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
 
             case 0x08000000: case 0x09000000:  // GBA slot
             {
-                if (gbaRomSize > 0)
-                {
-                    if (address - 0x8000000 < gbaRomSize)
-                        data = &gbaRom[address - 0x8000000];
-                    break;
-                }
-                else
-                {
-                    // Return endless 0xFFs as if nothing is inserted in the GBA slot
-                    return (T)0xFFFFFFFF;
-                }
+                return cart7->gbaRomRead<T>(address);
             }
         }
     }
@@ -409,6 +370,12 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
             {
                 data = &oam[address % 0x400];
                 break;
+            }
+
+            case 0x0D000000: case 0x0E000000: // GBA slot
+            {
+                cart7->gbaRomWrite<T>(address, value);
+                return;
             }
         }
     }

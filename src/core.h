@@ -68,10 +68,12 @@ class Core
         uint8_t gbaBios[0x4000];
 
         uint8_t *rom, *save;
-        uint8_t *gbaRom;
-
         uint32_t saveSize = 0;
         std::string saveName;
+
+        uint8_t *gbaRom, *gbaSave;
+        uint32_t gbaSaveSize = 0;
+        std::string gbaSaveName;
 
         int fps = 0, fpsCount = 0;
         std::chrono::steady_clock::time_point lastFpsTime;
