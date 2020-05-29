@@ -55,7 +55,7 @@ class Dma
         int gxFifoCount[4] = {};
 
         uint8_t active = 0;
-        bool modes[8] = { true };
+        bool modes[10] = { true };
 
         bool dma9;
         Interpreter *cpu;

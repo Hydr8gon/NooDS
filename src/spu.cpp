@@ -24,6 +24,7 @@
 
 #include "spu.h"
 #include "defines.h"
+#include "dma.h"
 #include "memory.h"
 #include "settings.h"
 
@@ -127,10 +128,39 @@ uint32_t *Spu::getSamples(int count)
 
 void Spu::runGbaSample()
 {
+    int64_t sampleLeft = 0;
+    int64_t sampleRight = 0;
+
+    // Mix the current FIFO A sample
+    if (gbaMainSoundCntH & BIT(9))
+        sampleLeft += gbaSampleA << ((gbaMainSoundCntH & BIT(2)) ? 2 : 1);
+    if (gbaMainSoundCntH & BIT(8))
+        sampleRight += gbaSampleA << ((gbaMainSoundCntH & BIT(2)) ? 2 : 1);
+
+    // Mix the current FIFO B sample
+    if (gbaMainSoundCntH & BIT(13))
+        sampleLeft += gbaSampleB << ((gbaMainSoundCntH & BIT(3)) ? 2 : 1);
+    if (gbaMainSoundCntH & BIT(12))
+        sampleRight += gbaSampleB << ((gbaMainSoundCntH & BIT(3)) ? 2 : 1);
+
+    // Apply the sound bias
+    sampleLeft  += (gbaSoundBias & 0x03FF);
+    sampleRight += (gbaSoundBias & 0x03FF);
+
+    // Apply clipping
+    if (sampleLeft  < 0x000) sampleLeft  = 0x000;
+    if (sampleLeft  > 0x3FF) sampleLeft  = 0x3FF;
+    if (sampleRight < 0x000) sampleRight = 0x000;
+    if (sampleRight > 0x3FF) sampleRight = 0x3FF;
+
+    // Expand the samples to signed 16-bit values and return them
+    sampleLeft  = (sampleLeft  - 0x200) << 5;
+    sampleRight = (sampleRight - 0x200) << 5;
+
     if (bufferSize == 0) return;
 
     // Write the samples to the buffer
-    bufferIn[bufferPointer++] = 0;
+    bufferIn[bufferPointer++] = (sampleRight << 16) | (sampleLeft & 0xFFFF);
 
     // Handle a full buffer
     if (bufferPointer == bufferSize)
@@ -426,6 +456,86 @@ void Spu::runSample()
 
         // Reset the buffer pointer
         bufferPointer = 0;
+    }
+}
+
+void Spu::gbaFifoTimer(int timer)
+{
+    if (!memory->isGbaMode()) return;
+
+    if (((gbaMainSoundCntH & BIT(10)) >> 10) == timer) // FIFO A
+    {
+        // Get a new sample
+        if (!gbaFifoA.empty())
+        {
+            gbaSampleA = gbaFifoA.front();
+            gbaFifoA.pop();
+        }
+
+        // Request more data from the DMA if half empty
+        if (gbaFifoA.size() <= 16)
+            dma7->setMode(8, true);
+    }
+    else if (((gbaMainSoundCntH & BIT(14)) >> 14) == timer) // FIFO B
+    {
+        // Get a new sample
+        if (!gbaFifoB.empty())
+        {
+            gbaSampleB = gbaFifoB.front();
+            gbaFifoB.pop();
+        }
+
+        // Request more data from the DMA if half empty
+        if (gbaFifoB.size() <= 16)
+            dma7->setMode(9, true);
+    }
+}
+
+void Spu::writeGbaMainSoundCntH(uint16_t mask, uint16_t value)
+{
+    // Write to the main GBA SOUNDCNT register
+    mask &= 0x770F;
+    gbaMainSoundCntH = (gbaMainSoundCntH & ~mask) | (value & mask);
+
+    // Empty FIFO A if requested
+    if (value & BIT(11))
+    {
+        while (!gbaFifoA.empty())
+            gbaFifoA.pop();
+    }
+
+    // Empty FIFO B if requested
+    if (value & BIT(15))
+    {
+        while (!gbaFifoB.empty())
+            gbaFifoB.pop();
+    }
+}
+
+void Spu::writeGbaSoundBias(uint16_t mask, uint16_t value)
+{
+    // Write to the GBA SOUNDBIAS register
+    mask &= 0xC3FE;
+    gbaSoundBias = (gbaSoundBias & ~mask) | (value & mask);
+}
+
+void Spu::writeGbaFifoA(uint32_t mask, uint32_t value)
+{
+    // Push 4 bytes of PCM8 data to the GBA sound FIFO A
+    for (int i = 0; i < 32; i += 8)
+    {
+        if (gbaFifoA.size() < 32)
+            gbaFifoA.push((value & mask) >> i);
+    }
+}
+
+void Spu::writeGbaFifoB(uint32_t mask, uint32_t value)
+{
+    // Push 4 bytes of PCM8 data to the GBA sound FIFO B
+    for (int i = 0; i < 32; i += 8)
+    {
+        if (gbaFifoB.size() < 32)
+            gbaFifoB.push((value & mask) >> i);
     }
 }
 

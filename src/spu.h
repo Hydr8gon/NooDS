@@ -22,14 +22,16 @@
 
 #include <condition_variable>
 #include <cstdint>
+#include <queue>
 #include <mutex>
 
+class Dma;
 class Memory;
 
 class Spu
 {
     public:
-        Spu(Memory *memory): memory(memory) {}
+        Spu(Dma *dma7, Memory *memory): dma7(dma7), memory(memory) {}
         ~Spu();
 
         uint32_t *getSamples(int count);
@@ -37,9 +39,19 @@ class Spu
         void runGbaSample();
         void runSample();
 
+        void gbaFifoTimer(int timer);
+
+        uint16_t readGbaMainSoundCntH() { return gbaMainSoundCntH; }
+        uint16_t readGbaSoundBias()     { return gbaSoundBias;     }
+
         uint32_t readSoundCnt(int channel) { return soundCnt[channel]; }
         uint16_t readMainSoundCnt()        { return mainSoundCnt;      }
         uint16_t readSoundBias()           { return soundBias;         }
+
+        void writeGbaMainSoundCntH(uint16_t mask, uint16_t value);
+        void writeGbaSoundBias(uint16_t mask, uint16_t value);
+        void writeGbaFifoA(uint32_t mask, uint32_t value);
+        void writeGbaFifoB(uint32_t mask, uint32_t value);
 
         void writeSoundCnt(int channel, uint32_t mask, uint32_t value);
         void writeSoundSad(int channel, uint32_t mask, uint32_t value);
@@ -56,6 +68,11 @@ class Spu
         std::condition_variable cond1, cond2;
         std::mutex mutex1, mutex2;
         bool ready = false;
+
+        uint16_t gbaMainSoundCntH = 0;
+        uint16_t gbaSoundBias = 0;
+        std::queue<int8_t> gbaFifoA, gbaFifoB;
+        int8_t gbaSampleA = 0, gbaSampleB = 0;
 
         static const int indexTable[8];
         static const int16_t adpcmTable[89];
@@ -78,6 +95,7 @@ class Spu
         uint16_t mainSoundCnt = 0;
         uint16_t soundBias = 0;
 
+        Dma *dma7;
         Memory *memory;
 
         bool shouldPlay() { return  ready; }

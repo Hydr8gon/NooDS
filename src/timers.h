@@ -23,11 +23,12 @@
 #include <cstdint>
 
 class Interpreter;
+class Spu;
 
 class Timers
 {
     public:
-        Timers(Interpreter *cpu): cpu(cpu) {}
+        Timers(Interpreter *cpu, Spu *spu = nullptr): cpu(cpu), spu(spu) {}
 
         void tick(bool twice);
 
@@ -48,6 +49,7 @@ class Timers
         uint8_t enabled = 0;
 
         Interpreter *cpu;
+        Spu *spu;
 };
 
 #endif // TIMERS_H

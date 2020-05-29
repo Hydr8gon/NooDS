@@ -36,7 +36,21 @@ void Dma::transfer()
         int srcAddrCnt = (dmaCnt[i] & 0x01800000) >> 23;
 
         // Perform the transfer
-        if (dmaCnt[i] & BIT(26)) // Whole word transfer
+        if (active & BIT(i + 4)) // Sound DMA
+        {
+            for (unsigned int j = 0; j < 4; j++)
+            {
+                // Transfer a word
+                memory->write<uint32_t>(dma9, dstAddrs[i], memory->read<uint32_t>(dma9, srcAddrs[i]));
+
+                // Adjust the source address
+                if (srcAddrCnt == 0) // Increment
+                    srcAddrs[i] += 4;
+                else if (srcAddrCnt == 1) // Decrement
+                    srcAddrs[i] -= 4;
+            }
+        }
+        else if (dmaCnt[i] & BIT(26)) // Whole word transfer
         {
             for (unsigned int j = 0; j < wordCounts[i]; j++)
             {
@@ -121,9 +135,18 @@ void Dma::transfer()
             cpu->sendInterrupt(8 + i);
     }
 
-    // GPU-timed transfers are only triggered once at a time, so disable them after one transfer
+    // Some transfers are only triggered once at a time, so disable them after one transfer
     modes[1] = false;
-    modes[memory->isGbaMode() ? 4 : 2] = false;
+    if (memory->isGbaMode())
+    {
+        modes[4] = false;
+        modes[8] = false;
+        modes[9] = false;
+    }
+    else
+    {
+        modes[2] = false;
+    }
 
     update();
 }
@@ -139,7 +162,6 @@ void Dma::setMode(int mode, bool active)
             case 1: mode = 2; break; // V-blank
             case 2: mode = 4; break; // H-blank (GBA)
             case 5: mode = 4; break; // DS cart (NDS)
-            default: return;
         }
     }
 
@@ -160,6 +182,17 @@ void Dma::update()
     {
         if ((dmaCnt[i] & BIT(31)) && modes[(dmaCnt[i] & 0x38000000) >> 27])
             active |= BIT(i);
+    }
+
+    // Handle special GBA modes
+    if (memory->isGbaMode())
+    {
+        for (int i = 1; i < 3; i++)
+        {
+            if ((dmaCnt[i] & BIT(31)) && ((dmaCnt[i] & 0x38000000) >> 27) == 6 &&
+               ((dmaDad[i] == 0x40000A0 && modes[8]) || (dmaDad[i] == 0x40000A4 && modes[9])))
+                active |= BIT(i) | BIT(i + 4);
+        }
     }
 }
 

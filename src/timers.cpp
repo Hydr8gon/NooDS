@@ -17,9 +17,12 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <cstdio>
+
 #include "timers.h"
 #include "defines.h"
 #include "interpreter.h"
+#include "spu.h"
 
 void Timers::tick(bool twice)
 {
@@ -73,6 +76,10 @@ void Timers::tick(bool twice)
             // Trigger a timer overflow IRQ if enabled
             if (tmCntH[i] & BIT(6))
                 cpu->sendInterrupt(3 + i);
+
+            // Trigger a GBA sound FIFO event
+            if (spu && i < 2)
+                spu->gbaFifoTimer(i);
 
             // In count-up timing mode, the timer only ticks when the previous timer overflows
             // If the next timer has count-up timing enabled, let it tick now
