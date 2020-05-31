@@ -1121,10 +1121,50 @@ template <typename T> T Memory::ioReadGba(uint32_t address)
             case 0x4000051: base -= 0x4000050; size = 2; data = engineA->readBldCnt();       break; // BLDCNT
             case 0x4000052:
             case 0x4000053: base -= 0x4000052; size = 2; data = engineA->readBldAlpha();     break; // BLDALPHA
+            case 0x4000060:
+            case 0x4000061: base -= 0x4000060; size = 2; data = spu->readGbaSoundCntL(0);    break; // SOUND0CNT_L
+            case 0x4000062:
+            case 0x4000063: base -= 0x4000062; size = 2; data = spu->readGbaSoundCntH(0);    break; // SOUND0CNT_H
+            case 0x4000064:
+            case 0x4000065: base -= 0x4000064; size = 2; data = spu->readGbaSoundCntX(0);    break; // SOUND0CNT_X
+            case 0x4000068:
+            case 0x4000069: base -= 0x4000068; size = 2; data = spu->readGbaSoundCntL(1);    break; // SOUND1CNT_L
+            case 0x400006C:
+            case 0x400006D: base -= 0x400006C; size = 2; data = spu->readGbaSoundCntX(1);    break; // SOUND1CNT_X
+            case 0x4000070:
+            case 0x4000071: base -= 0x4000070; size = 2; data = spu->readGbaSoundCntL(2);    break; // SOUND2CNT_L
+            case 0x4000072:
+            case 0x4000073: base -= 0x4000072; size = 2; data = spu->readGbaSoundCntH(2);    break; // SOUND2CNT_H
+            case 0x4000074:
+            case 0x4000075: base -= 0x4000074; size = 2; data = spu->readGbaSoundCntX(2);    break; // SOUND2CNT_X
+            case 0x4000078:
+            case 0x4000079: base -= 0x4000078; size = 2; data = spu->readGbaSoundCntL(3);    break; // SOUND3CNT_L
+            case 0x400007C:
+            case 0x400007D: base -= 0x400007C; size = 2; data = spu->readGbaSoundCntX(3);    break; // SOUND3CNT_X
+            case 0x4000080:
+            case 0x4000081: base -= 0x4000080; size = 2; data = spu->readGbaMainSoundCntL(); break; // SOUNDCNT_L
             case 0x4000082:
             case 0x4000083: base -= 0x4000082; size = 2; data = spu->readGbaMainSoundCntH(); break; // SOUNDCNT_H
+            case 0x4000084:
+            case 0x4000085: base -= 0x4000084; size = 2; data = spu->readGbaMainSoundCntX(); break; // SOUNDCNT_X
             case 0x4000088:
             case 0x4000089: base -= 0x4000088; size = 2; data = spu->readGbaSoundBias();     break; // SOUNDBIAS
+            case 0x4000090: base -= 0x4000090; size = 1; data = spu->readGbaWaveRam(0);      break; // WAVE_RAM
+            case 0x4000091: base -= 0x4000091; size = 1; data = spu->readGbaWaveRam(1);      break; // WAVE_RAM
+            case 0x4000092: base -= 0x4000092; size = 1; data = spu->readGbaWaveRam(2);      break; // WAVE_RAM
+            case 0x4000093: base -= 0x4000093; size = 1; data = spu->readGbaWaveRam(3);      break; // WAVE_RAM
+            case 0x4000094: base -= 0x4000094; size = 1; data = spu->readGbaWaveRam(4);      break; // WAVE_RAM
+            case 0x4000095: base -= 0x4000095; size = 1; data = spu->readGbaWaveRam(5);      break; // WAVE_RAM
+            case 0x4000096: base -= 0x4000096; size = 1; data = spu->readGbaWaveRam(6);      break; // WAVE_RAM
+            case 0x4000097: base -= 0x4000097; size = 1; data = spu->readGbaWaveRam(7);      break; // WAVE_RAM
+            case 0x4000098: base -= 0x4000098; size = 1; data = spu->readGbaWaveRam(8);      break; // WAVE_RAM
+            case 0x4000099: base -= 0x4000099; size = 1; data = spu->readGbaWaveRam(9);      break; // WAVE_RAM
+            case 0x400009A: base -= 0x400009A; size = 1; data = spu->readGbaWaveRam(10);     break; // WAVE_RAM
+            case 0x400009B: base -= 0x400009B; size = 1; data = spu->readGbaWaveRam(11);     break; // WAVE_RAM
+            case 0x400009C: base -= 0x400009C; size = 1; data = spu->readGbaWaveRam(12);     break; // WAVE_RAM
+            case 0x400009D: base -= 0x400009D; size = 1; data = spu->readGbaWaveRam(13);     break; // WAVE_RAM
+            case 0x400009E: base -= 0x400009E; size = 1; data = spu->readGbaWaveRam(14);     break; // WAVE_RAM
+            case 0x400009F: base -= 0x400009F; size = 1; data = spu->readGbaWaveRam(15);     break; // WAVE_RAM
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
@@ -2354,10 +2394,50 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value)
             case 0x4000052:
             case 0x4000053: base -= 0x4000052; size = 2; engineA->writeBldAlpha(mask << (base * 8), data << (base * 8));     break; // BLDALPHA
             case 0x4000054: base -= 0x4000054; size = 1; engineA->writeBldY(data << (base * 8));                             break; // BLDY
+            case 0x4000060:
+            case 0x4000061: base -= 0x4000060; size = 2; spu->writeGbaSoundCntL(0, data << (base * 8));                      break; // SOUND0CNT_L
+            case 0x4000062:
+            case 0x4000063: base -= 0x4000062; size = 2; spu->writeGbaSoundCntH(0, mask << (base * 8), data << (base * 8));  break; // SOUND0CNT_H
+            case 0x4000064:
+            case 0x4000065: base -= 0x4000064; size = 2; spu->writeGbaSoundCntX(0, mask << (base * 8), data << (base * 8));  break; // SOUND0CNT_X
+            case 0x4000068:
+            case 0x4000069: base -= 0x4000068; size = 2; spu->writeGbaSoundCntH(1, mask << (base * 8), data << (base * 8));  break; // SOUND1CNT_H
+            case 0x400006C:
+            case 0x400006D: base -= 0x400006C; size = 2; spu->writeGbaSoundCntX(1, mask << (base * 8), data << (base * 8));  break; // SOUND1CNT_X
+            case 0x4000070:
+            case 0x4000071: base -= 0x4000070; size = 2; spu->writeGbaSoundCntL(2, data << (base * 8));                      break; // SOUND2CNT_L
+            case 0x4000072:
+            case 0x4000073: base -= 0x4000072; size = 2; spu->writeGbaSoundCntH(2, mask << (base * 8), data << (base * 8));  break; // SOUND2CNT_H
+            case 0x4000074:
+            case 0x4000075: base -= 0x4000074; size = 2; spu->writeGbaSoundCntX(2, mask << (base * 8), data << (base * 8));  break; // SOUND2CNT_X
+            case 0x4000078:
+            case 0x4000079: base -= 0x4000078; size = 2; spu->writeGbaSoundCntH(3, mask << (base * 8), data << (base * 8));  break; // SOUND3CNT_H
+            case 0x400007C:
+            case 0x400007D: base -= 0x400007C; size = 2; spu->writeGbaSoundCntX(3, mask << (base * 8), data << (base * 8));  break; // SOUND3CNT_X
+            case 0x4000080:
+            case 0x4000081: base -= 0x4000080; size = 2; spu->writeGbaMainSoundCntL(mask << (base * 8), data << (base * 8)); break; // SOUNDCNT_L
             case 0x4000082:
             case 0x4000083: base -= 0x4000082; size = 2; spu->writeGbaMainSoundCntH(mask << (base * 8), data << (base * 8)); break; // SOUNDCNT_H
+            case 0x4000084:
+            case 0x4000085: base -= 0x4000084; size = 2; spu->writeGbaMainSoundCntX(data << (base * 8));                     break; // SOUNDCNT_X
             case 0x4000088:
             case 0x4000089: base -= 0x4000088; size = 2; spu->writeGbaSoundBias(mask << (base * 8), data << (base * 8));     break; // SOUNDBIAS
+            case 0x4000090: base -= 0x4000090; size = 1; spu->writeGbaWaveRam(0,  data << (base * 8));                       break; // WAVE_RAM
+            case 0x4000091: base -= 0x4000091; size = 1; spu->writeGbaWaveRam(1,  data << (base * 8));                       break; // WAVE_RAM
+            case 0x4000092: base -= 0x4000092; size = 1; spu->writeGbaWaveRam(2,  data << (base * 8));                       break; // WAVE_RAM
+            case 0x4000093: base -= 0x4000093; size = 1; spu->writeGbaWaveRam(3,  data << (base * 8));                       break; // WAVE_RAM
+            case 0x4000094: base -= 0x4000094; size = 1; spu->writeGbaWaveRam(4,  data << (base * 8));                       break; // WAVE_RAM
+            case 0x4000095: base -= 0x4000095; size = 1; spu->writeGbaWaveRam(5,  data << (base * 8));                       break; // WAVE_RAM
+            case 0x4000096: base -= 0x4000096; size = 1; spu->writeGbaWaveRam(6,  data << (base * 8));                       break; // WAVE_RAM
+            case 0x4000097: base -= 0x4000097; size = 1; spu->writeGbaWaveRam(7,  data << (base * 8));                       break; // WAVE_RAM
+            case 0x4000098: base -= 0x4000098; size = 1; spu->writeGbaWaveRam(8,  data << (base * 8));                       break; // WAVE_RAM
+            case 0x4000099: base -= 0x4000099; size = 1; spu->writeGbaWaveRam(9,  data << (base * 8));                       break; // WAVE_RAM
+            case 0x400009A: base -= 0x400009A; size = 1; spu->writeGbaWaveRam(10, data << (base * 8));                       break; // WAVE_RAM
+            case 0x400009B: base -= 0x400009B; size = 1; spu->writeGbaWaveRam(11, data << (base * 8));                       break; // WAVE_RAM
+            case 0x400009C: base -= 0x400009C; size = 1; spu->writeGbaWaveRam(12, data << (base * 8));                       break; // WAVE_RAM
+            case 0x400009D: base -= 0x400009D; size = 1; spu->writeGbaWaveRam(13, data << (base * 8));                       break; // WAVE_RAM
+            case 0x400009E: base -= 0x400009E; size = 1; spu->writeGbaWaveRam(14, data << (base * 8));                       break; // WAVE_RAM
+            case 0x400009F: base -= 0x400009F; size = 1; spu->writeGbaWaveRam(15, data << (base * 8));                       break; // WAVE_RAM
             case 0x40000A0:
             case 0x40000A1:
             case 0x40000A2:

@@ -302,7 +302,7 @@ void Core::runFrame()
     if (memory.isGbaMode())
     {
         // Run a frame in GBA mode
-        for (int i = 0; i < 228; i++) // 263 scanlines
+        for (int i = 0; i < 228; i++) // 228 scanlines
         {
             for (int j = 0; j < 308 * 2; j++) // 308 dots per scanline
             {

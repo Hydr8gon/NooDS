@@ -131,17 +131,244 @@ void Spu::runGbaSample()
     int64_t sampleLeft = 0;
     int64_t sampleRight = 0;
 
-    // Mix the current FIFO A sample
-    if (gbaMainSoundCntH & BIT(9))
-        sampleLeft += gbaSampleA << ((gbaMainSoundCntH & BIT(2)) ? 2 : 1);
-    if (gbaMainSoundCntH & BIT(8))
-        sampleRight += gbaSampleA << ((gbaMainSoundCntH & BIT(2)) ? 2 : 1);
+    // Generate an audio sample
+    if (gbaMainSoundCntX & BIT(7))
+    {
+        int32_t data[4] = {};
 
-    // Mix the current FIFO B sample
-    if (gbaMainSoundCntH & BIT(13))
-        sampleLeft += gbaSampleB << ((gbaMainSoundCntH & BIT(3)) ? 2 : 1);
-    if (gbaMainSoundCntH & BIT(12))
-        sampleRight += gbaSampleB << ((gbaMainSoundCntH & BIT(3)) ? 2 : 1);
+        // Run the tone channels
+        for (int i = 0; i < 2; i++)
+        {
+            if (!(gbaMainSoundCntX & BIT(i)))
+                continue;
+
+            // Run the frequency sweeper at 128Hz when enabled (first channel only)
+            if (i == 0 && gbaFrameSequencer % 256 == 128 && (gbaSoundCntL[i] & 0x70) && --gbaSweepTimer <= 0)
+            {
+                // Calculate the frequency change
+                uint16_t frequency = (gbaSoundCntX[i] & 0x07FF);
+                int sweep = frequency >> (gbaSoundCntL[i] & 0x07);
+                if (gbaSoundCntL[i] & BIT(3)) sweep = -sweep;
+
+                // Sweep the frequency
+                frequency += sweep;
+
+                if (frequency < 0x800)
+                {
+                    // Set the new frequency and reload the sweep timer
+                    gbaSoundCntX[i] = (gbaSoundCntX[i] & ~0x07FF) | frequency;
+                    gbaSweepTimer = (gbaSoundCntL[i] & 0x70) >> 4;
+                }
+                else
+                {
+                    // Disable the channel if the frequency is too high
+                    gbaMainSoundCntX &= ~BIT(i);
+                    continue;
+                }
+            }
+
+            // Decrement and reload the sound timer
+            gbaSoundTimers[i] -= 4;
+            while ((gbaSoundTimers[i]) <= 0)
+                gbaSoundTimers[i] += 2048 - (gbaSoundCntX[i] & 0x07FF);
+
+            // Determine the point in the duty cycle where the sample switches from low to high
+            int duty;
+            switch ((gbaSoundCntH[i] & 0x00C0) >> 6)
+            {
+                case 0: duty = (2048 - (gbaSoundCntX[i] & 0x07FF)) * 7 / 8; break;
+                case 1: duty = (2048 - (gbaSoundCntX[i] & 0x07FF)) * 6 / 8; break;
+                case 2: duty = (2048 - (gbaSoundCntX[i] & 0x07FF)) * 4 / 8; break;
+                case 3: duty = (2048 - (gbaSoundCntX[i] & 0x07FF)) * 2 / 8; break;
+            }
+
+            // Set the sample to low or high based on the position in the duty cycle
+            data[i] = (gbaSoundTimers[i] < duty) ? -0x80 : 0x80;
+
+            // Run the length counter at 256Hz when enabled
+            if (gbaFrameSequencer % 128 == 0 && (gbaSoundCntX[i] & BIT(14)) && (gbaSoundCntH[i] & 0x003F))
+            {
+                // Decrement the length counter
+                gbaSoundCntH[i] = (gbaSoundCntH[i] & ~0x003F) | ((gbaSoundCntH[i] & 0x003F) - 1);
+
+                // Disable the channel when the counter hits zero
+                if ((gbaSoundCntH[i] & 0x003F) == 0)
+                    gbaMainSoundCntX &= ~BIT(i);
+            }
+
+            // Run the envelope timer at 64Hz
+            if (gbaFrameSequencer == 448 && --gbaEnvTimers[i] <= 0)
+            {
+                if (gbaEnvTimers[i] == 0)
+                {
+                    // Adjust the envelope volume if the timer period was non-zero
+                    if ((gbaSoundCntH[i] & BIT(11)) && gbaEnvelopes[i] < 15)
+                        gbaEnvelopes[i]++;
+                    else if (!(gbaSoundCntH[i] & BIT(11)) && gbaEnvelopes[i] > 0)
+                        gbaEnvelopes[i]--;
+                }
+                else
+                {
+                    // The envelope seems to reset with a period of zero?
+                    gbaEnvelopes[i] = (gbaSoundCntH[i] & 0xF000) >> 12;
+                }
+
+                // Reload the envelope timer
+                gbaEnvTimers[i] = (gbaSoundCntH[i] & 0x0700) >> 8;
+            }
+
+            // Apply the envelope volume
+            data[i] = data[i] * gbaEnvelopes[i] / 15;
+        }
+
+        // Run the wave channel
+        if ((gbaMainSoundCntX & BIT(2)) && (gbaSoundCntL[1] & BIT(7)))
+        {
+            // Decrement and reload the sound timer
+            // Each reload increases the current wave digit
+            gbaSoundTimers[2] -= 64;
+            while ((gbaSoundTimers[2]) <= 0)
+            {
+                gbaSoundTimers[2] += (2048 - (gbaSoundCntX[2] & 0x07FF));
+                gbaWaveDigit = (gbaWaveDigit + 1) % 64;
+            }
+
+            // Determine which wave RAM bank to read from
+            // If the dimension is set to 2, samples from the other bank will play after the first 32 samples
+            int bank = (gbaSoundCntL[1] & BIT(6)) >> 6;
+            if ((gbaSoundCntL[1] & BIT(5)) && gbaWaveDigit >= 32)
+                bank = !bank;
+
+            // Read the current 4-bit sample from the wave RAM
+            data[2] = gbaWaveRam[bank][(gbaWaveDigit % 32) / 2];
+            if (gbaWaveDigit & 1)
+                data[2] &= 0x0F;
+            else
+                data[2] >>= 4;
+
+            // Run the length counter at 256Hz when enabled
+            if (gbaFrameSequencer % 128 == 0 && (gbaSoundCntX[2] & BIT(14)) && (gbaSoundCntH[2] & 0x00FF))
+            {
+                // Decrement the length counter
+                gbaSoundCntH[2] = (gbaSoundCntH[2] & ~0x00FF) | ((gbaSoundCntH[2] & 0x00FF) - 1);
+
+                // Disable the channel when the counter hits zero
+                if ((gbaSoundCntH[2] & 0x00FF) == 0)
+                    gbaMainSoundCntX &= ~BIT(2);
+            }
+
+            // Apply volume
+            // If bit 15 is set, the volume shift is overridden and 75% is forced
+            switch ((gbaSoundCntH[2] & 0xE000) >> 13)
+            {
+                case 0:  data[2] >>= 4; break;
+                case 1:  data[2] >>= 0; break;
+                case 2:  data[2] >>= 1; break;
+                case 3:  data[2] >>= 2; break;
+                default: data[2] = data[2] * 3 / 4; break;
+            }
+
+            // Convert the sample to an 8-bit value
+            data[2] = (data[2] * 0x100 / 0xF);
+        }
+
+        // Run the noise channel
+        if (gbaMainSoundCntX & BIT(3))
+        {
+            // Decrement and reload the sound timer
+            // Each reload advances the random generator
+            gbaSoundTimers[3] -= 16;
+            while ((gbaSoundTimers[3]) <= 0)
+            {
+                int divisor = (gbaSoundCntX[3] & 0x0007) * 16;
+                if (divisor == 0) divisor = 8;
+                gbaSoundTimers[3] += (divisor << ((gbaSoundCntX[3] & 0x00F0) >> 4));
+
+                // Advance the random generator and save the carry bit to bit 15
+                gbaNoiseValue &= ~BIT(15);
+                if (gbaNoiseValue & BIT(0))
+                    gbaNoiseValue = BIT(15) | ((gbaNoiseValue >> 1) ^ ((gbaSoundCntH[3] & BIT(3)) ? 0x60 : 0x6000));
+                else
+                    gbaNoiseValue >>= 1;
+            }
+
+            // Set the sample to low or high based on the last carry bits
+            data[3] = (gbaNoiseValue & BIT(15)) ? 0x80 : -0x80;
+
+            // Run the length counter at 256Hz when enabled
+            if (gbaFrameSequencer % 128 == 0 && (gbaSoundCntX[3] & BIT(14)) && (gbaSoundCntH[3] & 0x003F))
+            {
+                // Decrement the length counter
+                gbaSoundCntH[3] = (gbaSoundCntH[3] & ~0x003F) | ((gbaSoundCntH[3] & 0x003F) - 1);
+
+                // Disable the channel when the counter hits zero
+                if ((gbaSoundCntH[3] & 0x003F) == 0)
+                    gbaMainSoundCntX &= ~BIT(3);
+            }
+
+            // Run the envelope timer at 64Hz
+            if (gbaFrameSequencer == 448 && --gbaEnvTimers[2] <= 0)
+            {
+                if (gbaEnvTimers[2] == 0)
+                {
+                    // Adjust the envelope volume if the timer period was non-zero
+                    if ((gbaSoundCntH[3] & BIT(11)) && gbaEnvelopes[2] < 15)
+                        gbaEnvelopes[2]++;
+                    else if (!(gbaSoundCntH[3] & BIT(11)) && gbaEnvelopes[2] > 0)
+                        gbaEnvelopes[2]--;
+                }
+                else
+                {
+                    // The envelope seems to reset with a period of zero?
+                    gbaEnvelopes[2] = (gbaSoundCntH[3] & 0xF000) >> 12;
+                }
+
+                // Reload the envelope timer
+                gbaEnvTimers[2] = (gbaSoundCntH[3] & 0x0700) >> 8;
+            }
+
+            // Apply the envelope volume
+            data[3] = data[3] * gbaEnvelopes[2] / 15;
+        }
+
+        // Mix the PSG channels
+        // The maximum volume is +/-0x80 per channel
+        for (int i = 0; i < 4; i++)
+        {
+            // Apply the DMA mixing volume
+            switch (gbaMainSoundCntH & 0x0003)
+            {
+                case 0: data[i] >>= 2; break;
+                case 1: data[i] >>= 1; break;
+                case 2: data[i] >>= 0; break;
+            }
+
+            // Add the data to the samples
+            if (gbaMainSoundCntL & BIT(12 + i))
+                sampleLeft += data[i] * ((gbaMainSoundCntL & 0x0070) >> 4) / 7;
+            if (gbaMainSoundCntL & BIT(8 + i))
+                sampleRight += data[i] * (gbaMainSoundCntL & 0x0007) / 7;
+        }
+
+        // Mix FIFO channel A
+        // The maximum volume is +/-0x200, achieved by shifting the data left by 2
+        if (gbaMainSoundCntH & BIT(9))
+            sampleLeft += gbaSampleA << ((gbaMainSoundCntH & BIT(2)) ? 2 : 1);
+        if (gbaMainSoundCntH & BIT(8))
+            sampleRight += gbaSampleA << ((gbaMainSoundCntH & BIT(2)) ? 2 : 1);
+
+        // Mix FIFO channel B
+        // The maximum volume is +/-0x200, achieved by shifting the data left by 2
+        if (gbaMainSoundCntH & BIT(13))
+            sampleLeft += gbaSampleB << ((gbaMainSoundCntH & BIT(3)) ? 2 : 1);
+        if (gbaMainSoundCntH & BIT(12))
+            sampleRight += gbaSampleB << ((gbaMainSoundCntH & BIT(3)) ? 2 : 1);
+
+        // Increment the frame sequencer
+        // The frame sequencer runs at 512Hz, and has 8 steps before repeating
+        // Audio is generated at 32768Hz, so every multiple of 64 is a new step
+        gbaFrameSequencer = (gbaFrameSequencer + 1) % 512;
+    }
 
     // Apply the sound bias
     sampleLeft  += (gbaSoundBias & 0x03FF);
@@ -476,7 +703,8 @@ void Spu::gbaFifoTimer(int timer)
         if (gbaFifoA.size() <= 16)
             dma7->setMode(8, true);
     }
-    else if (((gbaMainSoundCntH & BIT(14)) >> 14) == timer) // FIFO B
+
+    if (((gbaMainSoundCntH & BIT(14)) >> 14) == timer) // FIFO B
     {
         // Get a new sample
         if (!gbaFifoB.empty())
@@ -491,9 +719,78 @@ void Spu::gbaFifoTimer(int timer)
     }
 }
 
+void Spu::writeGbaSoundCntL(int channel, uint8_t value)
+{
+    if (!(gbaMainSoundCntX & BIT(7))) return;
+
+    // Write to one of the GBA SOUNDCNT_L registers
+    uint8_t mask = (channel == 0) ? 0x7F : 0xE0;
+    gbaSoundCntL[channel / 2] = (gbaSoundCntL[channel / 2] & ~mask) | (value & mask);
+}
+
+void Spu::writeGbaSoundCntH(int channel, uint16_t mask, uint16_t value)
+{
+    if (!(gbaMainSoundCntX & BIT(7))) return;
+
+    // Write to one of the GBA SOUNDCNT_H registers
+    switch (channel)
+    {
+        case 2: mask &= 0xE0FF; break;
+        case 3: mask &= 0xFF3F; break;
+    }
+    gbaSoundCntH[channel] = (gbaSoundCntH[channel] & ~mask) | (value & mask);
+}
+
+void Spu::writeGbaSoundCntX(int channel, uint16_t mask, uint16_t value)
+{
+    if (!(gbaMainSoundCntX & BIT(7))) return;
+
+    // Write to one of the GBA SOUNDCNT_X registers
+    mask &= (channel == 3) ? 0x40FF : 0x47FF;
+    gbaSoundCntX[channel] = (gbaSoundCntX[channel] & ~mask) | (value & mask);
+
+    // Restart the channel
+    if ((value & BIT(15)))
+    {
+        if (channel < 2) // Tone
+        {
+            if (channel == 0) gbaSweepTimer = (gbaSoundCntL[0] & 0x70) >> 4;
+            gbaEnvelopes[channel] = (gbaSoundCntH[channel] & 0xF000) >> 12;
+            gbaEnvTimers[channel] = (gbaSoundCntH[channel] & 0x0700) >> 8;
+            gbaSoundTimers[channel] = 2048 - (gbaSoundCntX[channel] & 0x07FF);
+        }
+        else if (channel == 2) // Wave
+        {
+            gbaWaveDigit = 0;
+            gbaSoundTimers[2] = 2048 - (gbaSoundCntX[2] & 0x07FF);
+        }
+        else // Noise
+        {
+            gbaNoiseValue = (gbaSoundCntH[3] & BIT(3)) ? 0x40 : 0x4000;
+            gbaEnvelopes[2] = (gbaSoundCntH[3] & 0xF000) >> 12;
+            gbaEnvTimers[2] = (gbaSoundCntH[3] & 0x0700) >> 8;
+
+            int divisor = (gbaSoundCntX[3] & 0x0007) * 16;
+            if (divisor == 0) divisor = 8;
+            gbaSoundTimers[3] = (divisor << ((gbaSoundCntX[3] & 0x00F0) >> 4));
+        }
+
+        gbaMainSoundCntX |= BIT(channel);
+    }
+}
+
+void Spu::writeGbaMainSoundCntL(uint16_t mask, uint16_t value)
+{
+    if (!(gbaMainSoundCntX & BIT(7))) return;
+
+    // Write to the main GBA SOUNDCNT_L register
+    mask &= 0xFF77;
+    gbaMainSoundCntL = (gbaMainSoundCntL & ~mask) | (value & mask);
+}
+
 void Spu::writeGbaMainSoundCntH(uint16_t mask, uint16_t value)
 {
-    // Write to the main GBA SOUNDCNT register
+    // Write to the main GBA SOUNDCNT_H register
     mask &= 0x770F;
     gbaMainSoundCntH = (gbaMainSoundCntH & ~mask) | (value & mask);
 
@@ -512,11 +809,37 @@ void Spu::writeGbaMainSoundCntH(uint16_t mask, uint16_t value)
     }
 }
 
+void Spu::writeGbaMainSoundCntX(uint8_t value)
+{
+    // Write to the main GBA SOUNDCNT_X register
+    gbaMainSoundCntX = (gbaMainSoundCntX & ~0x80) | (value & 0x80);
+
+    // Reset the PSG channels when disabled
+    if (!(gbaMainSoundCntX & BIT(7)))   
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (i < 2) gbaSoundCntL[i] = 0;
+            gbaSoundCntH[i] = 0;
+            gbaSoundCntX[i] = 0;
+        }
+        gbaMainSoundCntL = 0;
+        gbaMainSoundCntX &= ~0x0F;
+        gbaFrameSequencer = 0;
+    }
+}
+
 void Spu::writeGbaSoundBias(uint16_t mask, uint16_t value)
 {
     // Write to the GBA SOUNDBIAS register
     mask &= 0xC3FE;
     gbaSoundBias = (gbaSoundBias & ~mask) | (value & mask);
+}
+
+void Spu::writeGbaWaveRam(int index, uint8_t value)
+{
+    // Write to the currently inactive GBA wave RAM bank
+    gbaWaveRam[!(gbaSoundCntL[1] & BIT(6))][index] = value;
 }
 
 void Spu::writeGbaFifoA(uint32_t mask, uint32_t value)
@@ -616,4 +939,31 @@ void Spu::writeSoundBias(uint16_t mask, uint16_t value)
     // Write to the SOUNDBIAS register
     mask &= 0x03FF;
     soundBias = (soundBias & ~mask) | (value & mask);
+}
+
+uint8_t Spu::readGbaSoundCntL(int channel)
+{
+    // Read from one of the GBA SOUNDCNT_L registers
+    // There are only two of these, on channels 0 and 2
+    return gbaSoundCntL[channel / 2];
+}
+
+uint16_t Spu::readGbaSoundCntH(int channel)
+{
+    // Read from one of the GBA SOUNDCNT_H registers
+    // The sound length is write-only, so mask it out
+    return gbaSoundCntH[channel] & ~((channel == 2) ? 0x00FF : 0x003F);
+
+}
+uint16_t Spu::readGbaSoundCntX(int channel)
+{
+    // Read from one of the GBA SOUNDCNT_X registers
+    // The frequency is write-only, so mask it out
+    return gbaSoundCntX[channel] & ~((channel == 3) ? 0x0000 : 0x07FF);
+}
+
+uint8_t Spu::readGbaWaveRam(int index)
+{
+    // Read from the currently inactive GBA wave RAM bank
+    return gbaWaveRam[!(gbaSoundCntL[1] & BIT(6))][index];
 }
