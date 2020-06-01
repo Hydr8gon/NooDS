@@ -24,10 +24,10 @@
 #include "defines.h"
 #include "settings.h"
 
-Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &arm7, &memory), cp15(&arm9), dma9(true, &arm9, &memory),
-                                  dma7(false, &arm7, &memory), gpu(&dma9, &dma7, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9, &arm7,
-                                  &memory), engineA(&gpu3DRenderer, &memory), engineB(&memory), gpu3D(&dma9, &arm9), gpu3DRenderer(&gpu3D),
-                                  arm9(&cp15, &memory), arm7(&memory), ipc(&arm9, &arm7), memory(bios9, bios7, gbaBios, &cart9, &cart7, &cp15,
+Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &arm7, &memory), cp15(&arm9), dma9(true, &arm9, &memory), dma7(false,
+                                  &arm7, &memory), gpu(&dma9, &dma7, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9, &arm7, &memory),
+                                  engineA(&gpu3DRenderer, &memory), engineB(&memory), gpu3D(&dma9, &arm9), gpu3DRenderer(&gpu3D), arm9(&cp15,
+                                  &dma9, &memory), arm7(&dma7, &memory), ipc(&arm9, &arm7), memory(bios9, bios7, gbaBios, &cart9, &cart7, &cp15,
                                   &dma9, &dma7, &gpu, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &input, &arm9, &arm7, &ipc, &math, &rtc, &spi,
                                   &spu, &timers9, &timers7, &wifi), spi(&arm7, firmware), spu(&dma7, &memory), timers9(&arm9), timers7(&arm7, &spu)
 {
@@ -55,6 +55,14 @@ Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &ar
         if (!firmwareFile) throw 1;
         fread(firmware, sizeof(uint8_t), 0x40000, firmwareFile);
         fclose(firmwareFile);
+
+        // Start in NDS mode
+        runFunc = &Core::runNdsFrame;
+    }
+    else
+    {
+        // Start in GBA mode
+        runFunc = &Core::runGbaFrame;
     }
 
     // Skip ROM loading if one wasn't specified
@@ -297,75 +305,31 @@ void Core::createSave(std::string filename, int type)
     delete[] save;
 }
 
-void Core::runFrame()
+void Core::runGbaFrame()
 {
-    if (memory.isGbaMode())
+    // Run a frame in GBA mode
+    for (int i = 0; i < 228; i++) // 228 scanlines
     {
-        // Run a frame in GBA mode
-        for (int i = 0; i < 228; i++) // 228 scanlines
+        for (int j = 0; j < 308 * 2; j++) // 308 dots per scanline
         {
-            for (int j = 0; j < 308 * 2; j++) // 308 dots per scanline
+            // Run the ARM7
+            if (arm7.shouldInterrupt()) arm7.interrupt();
+            if (arm7.shouldRun())       arm7.runCycle();
+            if (timers7.shouldTick())   timers7.tick(true);
+
+            // Run the SPU every 256 cycles
+            if (++spuTimer >= 256)
             {
-                // Run the ARM7
-                if (arm7.shouldInterrupt()) arm7.interrupt();
-                if (arm7.shouldRun())       arm7.runCycle();
-                if (dma7.shouldTransfer())  dma7.transfer();
-                if (timers7.shouldTick())   timers7.tick(true);
-
-                // Run the SPU every 256 cycles
-                if (++spuTimer >= 256)
-                {
-                    spu.runGbaSample();
-                    spuTimer = 0;
-                }
-
-                // The end of the visible scanline
-                if (j == 240 * 2) gpu.gbaScanline240();
+                spu.runGbaSample();
+                spuTimer = 0;
             }
 
-            // The end of the scanline
-            gpu.gbaScanline308();
+            // The end of the visible scanline
+            if (j == 240 * 2) gpu.gbaScanline240();
         }
-    }
-    else
-    {
-        // Run a frame in NDS mode
-        for (int i = 0; i < 263; i++) // 263 scanlines
-        {
-            for (int j = 0; j < 355 * 3; j++) // 355 dots per scanline
-            {
-                // Run the ARM9 at twice the speed of the ARM7
-                for (int k = 0; k < 2; k++)
-                {
-                    if (arm9.shouldInterrupt()) arm9.interrupt();
-                    if (arm9.shouldRun())       arm9.runCycle();
-                    if (dma9.shouldTransfer())  dma9.transfer();
-                    if (timers9.shouldTick())   timers9.tick(false);
-                }
 
-                // Run the ARM7
-                if (arm7.shouldInterrupt()) arm7.interrupt();
-                if (arm7.shouldRun())       arm7.runCycle();
-                if (dma7.shouldTransfer())  dma7.transfer();
-                if (timers7.shouldTick())   timers7.tick(true);
-
-                // Run the 3D engine
-                if (gpu3D.shouldRun()) gpu3D.runCycle();
-
-                // Run the SPU every 512 cycles
-                if (++spuTimer >= 512)
-                {
-                    spu.runSample();
-                    spuTimer = 0;
-                }
-
-                // The end of the visible scanline
-                if (j == 256 * 3) gpu.scanline256();
-            }
-
-            // The end of the scanline
-            gpu.scanline355();
-        }
+        // The end of the scanline
+        gpu.gbaScanline308();
     }
 
     // Count the FPS
@@ -379,4 +343,59 @@ void Core::runFrame()
         fpsCount = 0;
         lastFpsTime = std::chrono::steady_clock::now();
     }
+}
+
+void Core::runNdsFrame()
+{
+    // Run a frame in NDS mode
+    for (int i = 0; i < 263; i++) // 263 scanlines
+    {
+        for (int j = 0; j < 355 * 3; j++) // 355 dots per scanline
+        {
+            // Run the ARM9 at twice the speed of the ARM7
+            for (int k = 0; k < 2; k++)
+            {
+                if (arm9.shouldInterrupt()) arm9.interrupt();
+                if (arm9.shouldRun())       arm9.runCycle();
+                if (timers9.shouldTick())   timers9.tick(false);
+            }
+
+            // Run the ARM7
+            if (arm7.shouldInterrupt()) arm7.interrupt();
+            if (arm7.shouldRun())       arm7.runCycle();
+            if (timers7.shouldTick())   timers7.tick(true);
+    
+            // Run the 3D engine
+            if (gpu3D.shouldRun()) gpu3D.runCycle();
+
+            // Run the SPU every 512 cycles
+            if (++spuTimer >= 512)
+            {
+                spu.runSample();
+                spuTimer = 0;
+            }
+
+            // The end of the visible scanline
+            if (j == 256 * 3) gpu.scanline256();
+        }
+
+        // The end of the scanline
+        gpu.scanline355();
+    }
+
+    // Count the FPS
+    fpsCount++;
+
+    // Update the FPS and reset the counter every second
+    std::chrono::duration<double> fpsTime = std::chrono::steady_clock::now() - lastFpsTime;
+    if (fpsTime.count() >= 1.0f)
+    {
+        fps = fpsCount;
+        fpsCount = 0;
+        lastFpsTime = std::chrono::steady_clock::now();
+    }
+
+    // Switch to GBA mode if enabled
+    if (memory.isGbaMode())
+        runFunc = &Core::runGbaFrame;
 }

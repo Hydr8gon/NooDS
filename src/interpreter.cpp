@@ -24,7 +24,9 @@
 #include "interpreter_branch.h"
 #include "interpreter_transfer.h"
 
-Interpreter::Interpreter(Memory *memory): cp15(nullptr), memory(memory)
+#include "dma.h"
+
+Interpreter::Interpreter(Dma *dma, Memory *memory): cp15(nullptr), dma(dma), memory(memory)
 {
     for (int i = 0; i < 16; i++)
         registers[i] = &registersUsr[i];
@@ -35,7 +37,7 @@ Interpreter::Interpreter(Memory *memory): cp15(nullptr), memory(memory)
     setMode(0x13); // Supervisor
 }
 
-Interpreter::Interpreter(Cp15 *cp15, Memory *memory): cp15(cp15), memory(memory)
+Interpreter::Interpreter(Cp15 *cp15, Dma *dma, Memory *memory): cp15(cp15), dma(dma), memory(memory)
 {
     for (int i = 0; i < 16; i++)
         registers[i] = &registersUsr[i];
@@ -2948,6 +2950,11 @@ void Interpreter::runCycle()
         // Increment the program counter
         *registers[15] += 4;
     }
+
+    // Perform a DMA transfer if needed
+    // This is done here instead of core because cache shenanigans make this faster
+    if (dma->shouldTransfer())
+        dma->transfer();
 }
 
 void Interpreter::interrupt()

@@ -26,12 +26,15 @@
 #include "memory.h"
 #include "defines.h"
 
+class Dma;
+
 class Interpreter
 {
     public:
-        Interpreter(Memory *memory);
-        Interpreter(Cp15 *cp15, Memory *memory);
+        Interpreter(Dma *dma, Memory *memory);
+        Interpreter(Cp15 *cp15, Dma *dma, Memory *memory);
 
+        void gbaBoot();
         void directBoot(uint32_t entryAddr);
 
         void runCycle();
@@ -43,7 +46,7 @@ class Interpreter
         bool shouldRun()       { return !halted;  }
         bool shouldInterrupt() { return ie & irf; }
 
-        void setPc(uint32_t value) { *registers[15] = value; }
+        void setPc(uint32_t value) { registersUsr[15] = value; }
 
         uint8_t  readIme()     { return ime;     }
         uint32_t readIe()      { return ie;      }
@@ -74,6 +77,7 @@ class Interpreter
         uint8_t postFlg = 0;
 
         Cp15 *cp15;
+        Dma *dma;
         Memory *memory;
 
         bool condition(uint32_t opcode);

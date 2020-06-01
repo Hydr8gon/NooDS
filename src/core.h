@@ -50,7 +50,7 @@ class Core
 
         static void createSave(std::string filename, int type);
 
-        void runFrame();
+        void runFrame() { (this->*runFunc)(); }
 
         void pressKey(int key)         { input.pressKey(key);                       }
         void releaseKey(int key)       { input.releaseKey(key);                     }
@@ -74,6 +74,10 @@ class Core
         uint8_t *gbaRom, *gbaSave;
         uint32_t gbaSaveSize = 0;
         std::string gbaSaveName;
+
+        void runNdsFrame();
+        void runGbaFrame();
+        void (Core::*runFunc)();
 
         int fps = 0, fpsCount = 0;
         std::chrono::steady_clock::time_point lastFpsTime;

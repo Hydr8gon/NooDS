@@ -2818,7 +2818,7 @@ void Memory::writeHaltCnt(uint8_t value)
         case 1: // GBA
         {
             gbaMode = true;
-            arm7->setPc(-4);
+            arm7->setPc(4);
             break;
         }
 
