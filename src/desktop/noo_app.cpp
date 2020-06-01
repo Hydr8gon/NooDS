@@ -18,6 +18,7 @@
 */
 
 #include "noo_app.h"
+#include "../common/screen_layout.h"
 #include "../settings.h"
 
 enum Event
@@ -29,41 +30,33 @@ wxBEGIN_EVENT_TABLE(NooApp, wxApp)
 EVT_TIMER(UPDATE, NooApp::update)
 wxEND_EVENT_TABLE()
 
+int NooApp::screenFilter = 1;
 int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
-int NooApp::screenRotation    = 0;
-int NooApp::screenArrangement = 0;
-int NooApp::screenSizing      = 0;
-int NooApp::screenGap         = 0;
-int NooApp::screenFilter      = 1;
-int NooApp::integerScale      = 0;
 
 bool NooApp::OnInit()
 {
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
-        Setting("keyA",              &keyBinds[0],       false),
-        Setting("keyB",              &keyBinds[1],       false),
-        Setting("keySelect",         &keyBinds[2],       false),
-        Setting("keyStart",          &keyBinds[3],       false),
-        Setting("keyRight",          &keyBinds[4],       false),
-        Setting("keyLeft",           &keyBinds[5],       false),
-        Setting("keyUp",             &keyBinds[6],       false),
-        Setting("keyDown",           &keyBinds[7],       false),
-        Setting("keyR",              &keyBinds[8],       false),
-        Setting("keyL",              &keyBinds[9],       false),
-        Setting("keyX",              &keyBinds[10],      false),
-        Setting("keyY",              &keyBinds[11],      false),
-        Setting("screenRotation",    &screenRotation,    false),
-        Setting("screenArrangement", &screenArrangement, false),
-        Setting("screenSizing",      &screenSizing,      false),
-        Setting("screenGap",         &screenGap,         false),
-        Setting("screenFilter",      &screenFilter,      false),
-        Setting("integerScale",      &integerScale,      false)
+        Setting("screenFilter", &screenFilter, false),
+        Setting("keyA",         &keyBinds[0],  false),
+        Setting("keyB",         &keyBinds[1],  false),
+        Setting("keySelect",    &keyBinds[2],  false),
+        Setting("keyStart",     &keyBinds[3],  false),
+        Setting("keyRight",     &keyBinds[4],  false),
+        Setting("keyLeft",      &keyBinds[5],  false),
+        Setting("keyUp",        &keyBinds[6],  false),
+        Setting("keyDown",      &keyBinds[7],  false),
+        Setting("keyR",         &keyBinds[8],  false),
+        Setting("keyL",         &keyBinds[9],  false),
+        Setting("keyX",         &keyBinds[10], false),
+        Setting("keyY",         &keyBinds[11], false)
     };
 
     // Load the settings
-    Settings::load(platformSettings);
+    ScreenLayout::addSettings();
+    Settings::add(platformSettings);
+    Settings::load();
 
     // Set up the window
     // If a filename is passed through the command line, pass it along

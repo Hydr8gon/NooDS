@@ -20,9 +20,9 @@
 #include "noo_frame.h"
 #include "input_dialog.h"
 #include "layout_dialog.h"
-#include "noo_app.h"
 #include "path_dialog.h"
 #include "save_dialog.h"
+#include "../common/screen_layout.h"
 #include "../settings.h"
 
 enum Event
@@ -143,18 +143,9 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     SetMenuBar(menuBar);
 
     // Set the initial window size based on the current screen layout
-    int width  = (NooApp::getScreenRotation() ? 192 : 256);
-    int height = (NooApp::getScreenRotation() ? 256 : 192);
-    if (NooApp::getScreenArrangement() == 1 || (NooApp::getScreenArrangement() == 0 && NooApp::getScreenRotation() == 0))
-    {
-        if (NooApp::getScreenGap()) height += 48;
-        SetClientSize(wxSize(width, height * 2));
-    }
-    else
-    {
-        if (NooApp::getScreenGap()) width += 48;
-        SetClientSize(wxSize(width * 2, height));
-    }
+    ScreenLayout layout;
+    layout.update(0, 0, false);
+    SetClientSize(wxSize(layout.getMinWidth(), layout.getMinHeight()));
 
     SetBackgroundColour(*wxBLACK);
 

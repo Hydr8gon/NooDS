@@ -1,6 +1,6 @@
 NAME    := noods
 BUILD   := build
-SOURCES := src src/desktop
+SOURCES := src src/common src/desktop
 ARGS    := -Ofast -flto -std=c++11 #-DDEBUG
 LIBS    := -lportaudio
 

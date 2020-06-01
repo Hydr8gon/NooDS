@@ -24,6 +24,7 @@
 #include <wx/glcanvas.h>
 
 #include "noo_frame.h"
+#include "../common/screen_layout.h"
 
 class NooCanvas: public wxGLCanvas
 {
@@ -35,11 +36,8 @@ class NooCanvas: public wxGLCanvas
         Emulator *emulator;
         wxGLContext *context;
 
-        int topX, botX;
-        int topY, botY;
-        int topWidth, botWidth;
-        int topHeight, botHeight;
-
+        ScreenLayout layout;
+        bool gbaMode = false;
         bool display = true;
 
         void resize();

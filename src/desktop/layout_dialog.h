@@ -32,7 +32,7 @@ class LayoutDialog: public wxDialog
     private:
         NooFrame *frame;
 
-        int prevSettings[6];
+        int prevSettings[7];
 
         void rotateNone(wxCommandEvent &event);
         void rotateCw(wxCommandEvent &event);
@@ -44,8 +44,9 @@ class LayoutDialog: public wxDialog
         void sizeTop(wxCommandEvent &event);
         void sizeBot(wxCommandEvent &event);
         void gap(wxCommandEvent &event);
-        void filter(wxCommandEvent &event);
         void intScale(wxCommandEvent &event);
+        void gbaCrop(wxCommandEvent &event);
+        void filter(wxCommandEvent &event);
         void cancel(wxCommandEvent &event);
 
         wxDECLARE_EVENT_TABLE();

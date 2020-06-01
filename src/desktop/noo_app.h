@@ -28,34 +28,19 @@
 class NooApp: public wxApp
 {
     public:
-        static int getKeyBind(int index)  { return keyBinds[index];   }
-        static int getScreenRotation()    { return screenRotation;    }
-        static int getScreenArrangement() { return screenArrangement; }
-        static int getScreenSizing()      { return screenSizing;      }
-        static int getScreenGap()         { return screenGap;         }
-        static int getScreenFilter()      { return screenFilter;      }
-        static int getIntegerScale()      { return integerScale;      }
+        static int getScreenFilter()     { return screenFilter;    }
+        static int getKeyBind(int index) { return keyBinds[index]; }
 
-        static void setKeyBind(int index, int value) { keyBinds[index]   = value; }
-        static void setScreenRotation(int value)     { screenRotation    = value; }
-        static void setScreenArrangement(int value)  { screenArrangement = value; }
-        static void setScreenSizing(int value)       { screenSizing      = value; }
-        static void setScreenGap(int value)          { screenGap         = value; }
-        static void setScreenFilter(int value)       { screenFilter      = value; }
-        static void setIntegerScale(int value)       { integerScale      = value; }
+        static void setScreenFilter(int value)       { screenFilter    = value; }
+        static void setKeyBind(int index, int value) { keyBinds[index] = value; }
 
     private:
         NooFrame *frame;
         NooCanvas *canvas;
         Emulator emulator;
 
-        static int keyBinds[12];
-        static int screenRotation;
-        static int screenArrangement;
-        static int screenSizing;
-        static int screenGap;
         static int screenFilter;
-        static int integerScale;
+        static int keyBinds[12];
 
         bool OnInit();
 

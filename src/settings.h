@@ -35,7 +35,8 @@ struct Setting
 class Settings
 {
     public:
-        static void load(std::vector<Setting> platformSettings = std::vector<Setting>());
+        static void add(std::vector<Setting> platformSettings);
+        static void load();
         static void save();
 
         static int         getDirectBoot()   { return directBoot;   }

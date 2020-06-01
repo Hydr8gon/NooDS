@@ -39,9 +39,9 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	noods
 BUILD		:=	build-switch
-SOURCES		:=	src src/switch
+SOURCES		:=	src src/common src/switch
 DATA		:=	data
-INCLUDES	:=	src src/switch
+INCLUDES	:=	src src/common src/switch
 ROMFS		:=	romfs
 
 APP_TITLE   := NooDS

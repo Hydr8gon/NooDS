@@ -57,6 +57,7 @@ class Core
         void pressScreen(int x, int y) { input.pressScreen();   spi.setTouch(x, y); }
         void releaseScreen()           { input.releaseScreen(); spi.clearTouch();   }
 
+        bool      isGbaMode()           { return memory.isGbaMode();    }
         uint32_t *getFramebuffer()      { return gpu.getFramebuffer();  }
         uint32_t *getSamples(int count) { return spu.getSamples(count); }
         int       getFps()              { return fps;                   }
@@ -67,11 +68,11 @@ class Core
         uint8_t firmware[0x40000];
         uint8_t gbaBios[0x4000];
 
-        uint8_t *rom, *save;
+        uint8_t *rom = nullptr, *save = nullptr;
         uint32_t saveSize = 0;
         std::string saveName;
 
-        uint8_t *gbaRom, *gbaSave;
+        uint8_t *gbaRom = nullptr, *gbaSave = nullptr;
         uint32_t gbaSaveSize = 0;
         std::string gbaSaveName;
 

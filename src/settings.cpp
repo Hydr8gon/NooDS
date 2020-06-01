@@ -41,12 +41,16 @@ std::vector<Setting> Settings::settings =
     Setting("gbaBiosPath",  &gbaBiosPath,  true)
 };
 
-void Settings::load(std::vector<Setting> platformSettings)
+void Settings::add(std::vector<Setting> platformSettings)
+{
+    // Add the platform settings
+    if (!loaded)
+        settings.insert(settings.end(), platformSettings.begin(), platformSettings.end());
+}
+
+void Settings::load()
 {
     if (loaded) return;
-
-    // Add the platform settings
-    settings.insert(settings.end(), platformSettings.begin(), platformSettings.end());
 
     // Attempt to open the settings file
     // If the file can't be opened, the default values will be used
