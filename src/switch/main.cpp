@@ -37,6 +37,7 @@ const uint32_t keyMap[] =
 };
 
 int screenFilter = 1;
+int showFpsCounter = 0;
 
 std::string path;
 
@@ -221,7 +222,8 @@ void settingsMenu()
             ListItem("Screen Gap",         toggle[ScreenLayout::getScreenGap()]),
             ListItem("Integer Scale",      toggle[ScreenLayout::getIntegerScale()]),
             ListItem("GBA Crop",           toggle[ScreenLayout::getGbaCrop()]),
-            ListItem("Screen Filter",      toggle[screenFilter])
+            ListItem("Screen Filter",      toggle[screenFilter]),
+            ListItem("Show FPS Counter",   toggle[showFpsCounter])
         };
 
         // Create the settings menu
@@ -236,16 +238,17 @@ void settingsMenu()
             // 2 threads is always the best option for threaded 3D, so there's no need for selection
             switch (index)
             {
-                case 0: Settings::setDirectBoot(!Settings::getDirectBoot());                                break;
-                case 1: Settings::setFpsLimiter(!Settings::getFpsLimiter());                                break;
-                case 2: Settings::setThreaded3D(Settings::getThreaded3D() ? 0 : 2);                         break;
-                case 3: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
-                case 4: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
-                case 5: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
-                case 6: ScreenLayout::setScreenGap(!ScreenLayout::getScreenGap());                          break;
-                case 7: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
-                case 8: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
-                case 9: screenFilter = !screenFilter;                                                       break;
+                case  0: Settings::setDirectBoot(!Settings::getDirectBoot());                                break;
+                case  1: Settings::setFpsLimiter(!Settings::getFpsLimiter());                                break;
+                case  2: Settings::setThreaded3D(Settings::getThreaded3D() ? 0 : 2);                         break;
+                case  3: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
+                case  4: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
+                case  5: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
+                case  6: ScreenLayout::setScreenGap(!ScreenLayout::getScreenGap());                          break;
+                case  7: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
+                case  8: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
+                case  9: screenFilter   = !screenFilter;                                                     break;
+                case 10: showFpsCounter = !showFpsCounter;                                                   break;
             }
         }
         else
@@ -497,7 +500,8 @@ int main()
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
-        Setting("screenFilter", &screenFilter, false)
+        Setting("screenFilter",   &screenFilter,   false),
+        Setting("showFpsCounter", &showFpsCounter, false)
     };
 
     // Load the settings
@@ -577,8 +581,9 @@ int main()
                     layout.getBotWidth(), layout.getBotHeight(), screenFilter, ScreenLayout::getScreenRotation());
             }
 
-            // Draw the FPS counter
-            SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
+            // Draw the FPS counter if enabled
+            if (showFpsCounter)
+                SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
 
             SwitchUI::update();
             delete[] framebuffer;
