@@ -24,12 +24,12 @@
 #include "defines.h"
 #include "settings.h"
 
-Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &arm7, &memory), cp15(&arm9), dma9(true, &arm9, &memory), dma7(false,
-                                  &arm7, &memory), gpu(&dma9, &dma7, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9, &arm7, &memory),
-                                  engineA(&gpu3DRenderer, &memory), engineB(&memory), gpu3D(&dma9, &arm9), gpu3DRenderer(&gpu3D), arm9(&cp15,
-                                  &dma9, &memory), arm7(&dma7, &memory), ipc(&arm9, &arm7), memory(bios9, bios7, gbaBios, &cart9, &cart7, &cp15,
-                                  &dma9, &dma7, &gpu, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &input, &arm9, &arm7, &ipc, &math, &rtc, &spi,
-                                  &spu, &timers9, &timers7, &wifi), spi(&arm7, firmware), spu(&dma7, &memory), timers9(&arm9), timers7(&arm7, &spu)
+Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &arm7, &memory), cp15(&arm9), dma9(&arm9, &memory, true),
+                                  dma7(&arm7, &memory), gpu(&dma9, &dma7, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9, &arm7, &memory),
+                                  engineA(&memory, &gpu3DRenderer), engineB(&memory), gpu3D(&dma9, &arm9), gpu3DRenderer(&gpu3D),arm9(&memory,
+                                  &cp15), arm7(&memory), ipc(&arm9, &arm7), memory(bios9, bios7, gbaBios, &cart9, &cart7, &cp15,&dma9, &dma7,
+                                  &gpu, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &input, &arm9, &arm7, &ipc, &math, &rtc, &spi, &spu,
+                                  &timers9, &timers7, &wifi), spi(&arm7, firmware), spu(&dma7, &memory), timers9(&arm9), timers7(&arm7, &spu)
 {
     // Check the ROM type
     bool gba = (filename.length() > 0 && filename.substr(filename.rfind(".")) == ".gba");
@@ -315,6 +315,7 @@ void Core::runGbaFrame()
             // Run the ARM7
             if (arm7.shouldInterrupt()) arm7.interrupt();
             if (arm7.shouldRun())       arm7.runCycle();
+            if (dma7.shouldTransfer())  dma7.transfer();
             if (timers7.shouldTick())   timers7.tick(true);
 
             // Run the SPU every 256 cycles
@@ -357,12 +358,14 @@ void Core::runNdsFrame()
             {
                 if (arm9.shouldInterrupt()) arm9.interrupt();
                 if (arm9.shouldRun())       arm9.runCycle();
+                if (dma9.shouldTransfer())  dma9.transfer();
                 if (timers9.shouldTick())   timers9.tick(false);
             }
 
             // Run the ARM7
             if (arm7.shouldInterrupt()) arm7.interrupt();
             if (arm7.shouldRun())       arm7.runCycle();
+            if (dma7.shouldTransfer())  dma7.transfer();
             if (timers7.shouldTick())   timers7.tick(true);
     
             // Run the 3D engine

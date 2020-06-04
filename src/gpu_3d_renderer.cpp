@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <cstdio>
 #include <vector>
 
 #include "gpu_3d_renderer.h"

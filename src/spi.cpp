@@ -17,9 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <cstdio>
-#include <exception>
-
 #include "spi.h"
 #include "defines.h"
 #include "interpreter.h"

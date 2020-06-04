@@ -20,6 +20,8 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
+#include <cstdio>
+
 // Disable print statements for non-debug builds
 #ifndef DEBUG
 #define printf(fmt, ...) (0)
@@ -32,12 +34,8 @@
 #define FORCE_INLINE inline __attribute__((always_inline))
 #endif
 
-// Simple bit macro (included in libnx)
-#ifdef __SWITCH__
-#include <switch.h>
-#else
+// Simple bit macro
 #define BIT(i) (1 << (i))
-#endif
 
 // Macros that read a value larger than 8 bits from an 8-bit array
 #define U8TO16(data, index) ((data[(index) + 1] << 8) | data[index])

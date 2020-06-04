@@ -17,8 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <cstdio>
-
 #include "memory.h"
 #include "defines.h"
 #include "cartridge.h"

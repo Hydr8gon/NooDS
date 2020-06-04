@@ -17,8 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <cstdio>
-
 #include "cp15.h"
 #include "defines.h"
 #include "interpreter.h"

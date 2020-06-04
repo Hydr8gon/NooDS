@@ -26,15 +26,11 @@
 #include "memory.h"
 #include "defines.h"
 
-class Dma;
-
 class Interpreter
 {
     public:
-        Interpreter(Dma *dma, Memory *memory);
-        Interpreter(Cp15 *cp15, Dma *dma, Memory *memory);
+        Interpreter(Memory *memory, Cp15 *cp15 = nullptr);
 
-        void gbaBoot();
         void directBoot(uint32_t entryAddr);
 
         void runCycle();
@@ -77,7 +73,6 @@ class Interpreter
         uint8_t postFlg = 0;
 
         Cp15 *cp15;
-        Dma *dma;
         Memory *memory;
 
         bool condition(uint32_t opcode);

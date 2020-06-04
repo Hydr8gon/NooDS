@@ -30,8 +30,7 @@ class Gpu3DRenderer;
 class Gpu2D
 {
     public:
-        Gpu2D(Memory *memory);
-        Gpu2D(Gpu3DRenderer *gpu3DRenderer, Memory *memory);
+        Gpu2D(Memory *memory, Gpu3DRenderer *gpu3DRenderer = nullptr);
 
         void drawGbaScanline(int line);
         void drawScanline(int line);
@@ -104,12 +103,12 @@ class Gpu2D
         Gpu3DRenderer *gpu3DRenderer;
         Memory *memory;
 
-        uint32_t rgb5ToRgba6(uint16_t color);
+        uint32_t rgb5ToRgb6(uint32_t color);
 
-        void drawText(int bg, int line, bool gba = false);
-        void drawAffine(int bg, int line, bool gba = false);
+        void drawText(int bg, int line);
+        void drawAffine(int bg, int line);
         void drawExtended(int bg, int line);
-        void drawObjects(int line, bool gba = false);
+        void drawObjects(int line);
 };
 
 #endif // GPU_2D_H

@@ -28,7 +28,7 @@ class Memory;
 class Dma
 {
     public:
-        Dma(bool dma9, Interpreter *cpu, Memory *memory): dma9(dma9), cpu(cpu), memory(memory) {}
+        Dma(Interpreter *cpu, Memory *memory, bool dma9 = false): cpu(cpu), memory(memory), dma9(dma9) {}
 
         void transfer();
         void setMode(int mode, bool active);

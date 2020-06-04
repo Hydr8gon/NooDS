@@ -17,52 +17,37 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <cstdio>
-
 #include "interpreter.h"
 #include "interpreter_alu.h"
 #include "interpreter_branch.h"
 #include "interpreter_transfer.h"
 
-#include "dma.h"
-
-Interpreter::Interpreter(Dma *dma, Memory *memory): cp15(nullptr), dma(dma), memory(memory)
+Interpreter::Interpreter(Memory *memory, Cp15 *cp15): memory(memory), cp15(cp15)
 {
     for (int i = 0; i < 16; i++)
         registers[i] = &registersUsr[i];
 
-    // Prepare an ARM7 interpreter to boot the BIOS
-    registersUsr[15] = 0x00000000 + 8;
-    cpsr = 0x000000C0;
-    setMode(0x13); // Supervisor
-}
-
-Interpreter::Interpreter(Cp15 *cp15, Dma *dma, Memory *memory): cp15(cp15), dma(dma), memory(memory)
-{
-    for (int i = 0; i < 16; i++)
-        registers[i] = &registersUsr[i];
-
-    // Prepare an ARM9 interpreter to boot the BIOS
-    registersUsr[15] = 0xFFFF0000 + 8;
+    // Prepare to boot the BIOS
+    registersUsr[15] = (cp15 ? 0xFFFF0000 : 0x00000000) + 8;
     cpsr = 0x000000C0;
     setMode(0x13); // Supervisor
 }
 
 void Interpreter::directBoot(uint32_t entryAddr)
 {
-    // Prepare an interpreter to directly boot a game
+    // Prepare to directly boot a DS game
     registersUsr[12] = entryAddr;
     registersUsr[14] = entryAddr;
     registersUsr[15] = entryAddr + 8;
     setMode(0x1F); // System
 
-    if (cp15)
+    if (cp15) // ARM9
     {
         registersUsr[13] = 0x03002F7C;
         registersIrq[0]  = 0x03003F80;
         registersSvc[0]  = 0x03003FC0;
     }
-    else
+    else // ARM7
     {
         registersUsr[13] = 0x0380FD80;
         registersIrq[0]  = 0x0380FF80;
@@ -2950,11 +2935,6 @@ void Interpreter::runCycle()
         // Increment the program counter
         *registers[15] += 4;
     }
-
-    // Perform a DMA transfer if needed
-    // This is done here instead of core because cache shenanigans make this faster
-    if (dma->shouldTransfer())
-        dma->transfer();
 }
 
 void Interpreter::interrupt()

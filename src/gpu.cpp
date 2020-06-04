@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <cstdio>
 #include <cstring>
 
 #include "gpu.h"
@@ -57,42 +56,16 @@ void Gpu::gbaScanline240()
 
 void Gpu::gbaScanline308()
 {
-    // Check if the current scanline matches the V-counter
-    if (vCount == (dispStat7 >> 8))
+    // Move to the next scanline
+    switch (++vCount)
     {
-        // Set the V-counter flag
-        dispStat7 |= BIT(2);
-
-        // Trigger a V-counter IRQ if enabled
-        if (dispStat7 & BIT(5))
-            arm7->sendInterrupt(2);
-    }
-    else if (dispStat7 & BIT(2))
-    {
-        // Clear the V-counter flag
-        dispStat7 &= ~BIT(2);
-    }
-
-    if (vCount == 227) // End of frame
-    {
-        // Clear the V-blank flag
-        dispStat7 &= ~BIT(0);
-
-        // Enable V-blank DMA transfers
-        dma7->setMode(1, true);
-
-        // Start the next frame
-        vCount = 0;
-    }
-    else
-    {
-        // Move to the next scanline
-        vCount++;
-
-        if (vCount == 160) // End of visible scanlines
+        case 160: // End of visible scanlines
         {
             // Set the V-blank flag
             dispStat7 |= BIT(0);
+
+            // Enable V-blank DMA transfers
+            dma7->setMode(1, true);
 
             // Trigger a V-blank IRQ if enabled
             if (dispStat7 & BIT(3))
@@ -109,7 +82,39 @@ void Gpu::gbaScanline308()
                 memset(&framebuffer[0],         0,                         256 * 192 * sizeof(uint32_t));
                 memcpy(&framebuffer[256 * 192], engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
             }
+
+            break;
         }
+
+        case 227: // Last scanline
+        {
+            // Clear the V-blank flag
+            dispStat7 &= ~BIT(0);
+            break;
+        }
+
+        case 228: // End of frame
+        {
+            // Start the next frame
+            vCount = 0;
+            break;
+        }
+    }
+
+    // Check if the current scanline matches the V-counter
+    if (vCount == (dispStat7 >> 8))
+    {
+        // Set the V-counter flag
+        dispStat7 |= BIT(2);
+
+        // Trigger a V-counter IRQ if enabled
+        if (dispStat7 & BIT(5))
+            arm7->sendInterrupt(2);
+    }
+    else if (dispStat7 & BIT(2))
+    {
+        // Clear the V-counter flag on the next line
+        dispStat7 &= ~BIT(2);
     }
 
     // Clear the H-blank flag
@@ -267,61 +272,18 @@ void Gpu::scanline256()
 
 void Gpu::scanline355()
 {
-    // Check if the current scanline matches the ARM9 V-counter
-    if (vCount == ((dispStat9 >> 8) | ((dispStat9 & BIT(7)) << 1)))
+    // Move to the next scanline
+    switch (++vCount)
     {
-        // Set the V-counter flag
-        dispStat9 |= BIT(2);
-
-        // Trigger a V-counter IRQ if enabled
-        if (dispStat9 & BIT(5))
-            arm9->sendInterrupt(2);
-    }
-    else if (dispStat9 & BIT(2))
-    {
-        // Clear the V-counter flag
-        dispStat9 &= ~BIT(2);
-    }
-
-    // Check if the current scanline matches the ARM7 V-counter
-    if (vCount == ((dispStat7 >> 8) | ((dispStat7 & BIT(7)) << 1)))
-    {
-        // Set the V-counter flag
-        dispStat7 |= BIT(2);
-
-        // Trigger a V-counter IRQ if enabled
-        if (dispStat7 & BIT(5))
-            arm7->sendInterrupt(2);
-    }
-    else if (dispStat7 & BIT(2))
-    {
-        // Clear the V-counter flag
-        dispStat7 &= ~BIT(2);
-    }
-
-    if (vCount == 262) // End of frame
-    {
-        // Clear the V-blank flag
-        dispStat9 &= ~BIT(0);
-        dispStat7 &= ~BIT(0);
-
-        // Enable V-blank DMA transfers
-        dma9->setMode(1, true);
-        dma7->setMode(1, true);
-
-        // Start the next frame
-        vCount = 0;
-    }
-    else
-    {
-        // Move to the next scanline
-        vCount++;
-
-        if (vCount == 192) // End of visible scanlines
+        case 192: // End of visible scanlines
         {
             // Set the V-blank flag
             dispStat9 |= BIT(0);
             dispStat7 |= BIT(0);
+
+            // Enable V-blank DMA transfers
+            dma9->setMode(1, true);
+            dma7->setMode(1, true);
 
             // Trigger a V-blank IRQ if enabled
             if (dispStat9 & BIT(3))
@@ -351,7 +313,56 @@ void Gpu::scanline355()
             {
                 memset(framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
             }
+
+            break;
         }
+
+        case 262: // Last scanline
+        {
+            // Clear the V-blank flag
+            dispStat9 &= ~BIT(0);
+            dispStat7 &= ~BIT(0);
+            break;
+        }
+
+        case 263: // End of frame
+        {
+            // Start the next frame
+            vCount = 0;
+            break;
+        }
+    }
+
+    // Check if the current scanline matches the ARM9 V-counter
+    if (vCount == ((dispStat9 >> 8) | ((dispStat9 & BIT(7)) << 1)))
+    {
+        // Set the V-counter flag
+        dispStat9 |= BIT(2);
+
+        // Trigger a V-counter IRQ if enabled
+        if (dispStat9 & BIT(5))
+            arm9->sendInterrupt(2);
+    }
+    else if (dispStat9 & BIT(2))
+    {
+        // Clear the V-counter flag on the next line
+        dispStat9 &= ~BIT(2);
+    }
+
+    // Check if the current scanline matches the ARM7 V-counter
+    if (vCount == ((dispStat7 >> 8) | ((dispStat7 & BIT(7)) << 1)))
+    {
+        // Set the V-counter flag
+        dispStat7 |= BIT(2);
+
+        // Trigger a V-counter IRQ if enabled
+        if (dispStat7 & BIT(5))
+            arm7->sendInterrupt(2);
+    }
+    else if (dispStat7 & BIT(2))
+    {
+        // Clear the V-counter flag on the next line
+        dispStat7 &= ~BIT(2);
     }
 
     // Clear the H-blank flag
