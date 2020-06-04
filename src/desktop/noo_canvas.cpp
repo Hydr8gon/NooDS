@@ -55,6 +55,12 @@ NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator): wxGLCanvas(frame, wxI
     frame->SendSizeEvent();
 }
 
+NooCanvas::~NooCanvas()
+{
+    // Free the framebuffer
+    if (framebuffer) delete[] framebuffer;
+}
+
 void NooCanvas::draw(wxPaintEvent &event)
 {
     // Continuous rendering can prevent the canvas from closing, so only render when needed
@@ -73,6 +79,15 @@ void NooCanvas::draw(wxPaintEvent &event)
             frame->SendSizeEvent();
         }
 
+        // Request a new frame and update the saved one if it's ready
+        // If it's not ready, the old frame will be drawn so the screen layout can still update
+        uint32_t *frame = emulator->core->getFrame(gbaMode && ScreenLayout::getGbaCrop());
+        if (frame)
+        {
+            if (framebuffer) delete[] framebuffer;
+            framebuffer = frame;
+        }
+
         // Rotate the texture coordinates
         uint8_t texCoords;
         switch (ScreenLayout::getScreenRotation())
@@ -84,22 +99,7 @@ void NooCanvas::draw(wxPaintEvent &event)
 
         if (gbaMode && ScreenLayout::getGbaCrop())
         {
-            uint32_t framebuffer[240 * 160];
-
-            // Convert the framebuffer to RGBA8 format (GBA window only)
-            for (int y = 0; y < 160; y++)
-            {
-                for (int x = 0; x < 240; x++)
-                {
-                    uint32_t color = emulator->core->getFramebuffer()[(y + 16) * 256 + (x + 8)];
-                    uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
-                    uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
-                    uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
-                    framebuffer[y * 240 + x] = (0xFF << 24) | (b << 16) | (g << 8) | r;
-                }
-            }
-
-            // Draw the screen
+            // Draw the GBA screen
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 240, 160, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
             glBegin(GL_QUADS);
             glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
@@ -114,19 +114,7 @@ void NooCanvas::draw(wxPaintEvent &event)
         }
         else // NDS mode
         {
-            uint32_t framebuffer[256 * 192 * 2];
-
-            // Convert the framebuffer to RGBA8 format
-            for (int i = 0; i < 256 * 192 * 2; i++)
-            {
-                uint32_t color = emulator->core->getFramebuffer()[i];
-                uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
-                uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
-                uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
-                framebuffer[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
-            }
-
-            // Draw the top screen
+            // Draw the DS top screen
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
             glBegin(GL_QUADS);
             glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
@@ -139,7 +127,7 @@ void NooCanvas::draw(wxPaintEvent &event)
             glVertex2i(layout.getTopX() + layout.getTopWidth(), layout.getTopY());
             glEnd();
 
-            // Draw the bottom screen
+            // Draw the DS bottom screen
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[256 * 192]);
             glBegin(GL_QUADS);
             glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);

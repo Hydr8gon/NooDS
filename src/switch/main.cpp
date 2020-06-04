@@ -512,13 +512,6 @@ int main()
 
     while (appletMainLoop() && running)
     {
-        // Update the screen layout if entering or exiting GBA mode
-        if (gbaMode != core->isGbaMode())
-        {
-            gbaMode = core->isGbaMode();
-            layout.update(1280, 720, gbaMode);
-        }
-
         // Scan for key input
         hidScanInput();
         uint32_t pressed = hidKeysDown(CONTROLLER_P1_AUTO);
@@ -552,54 +545,44 @@ int main()
             core->releaseScreen();
         }
 
-        SwitchUI::clear(Color(0, 0, 0));
-
-        if (gbaMode && ScreenLayout::getGbaCrop())
+        // Update the screen layout if entering or exiting GBA mode
+        if (gbaMode != core->isGbaMode())
         {
-            uint32_t framebuffer[240 * 160];
-
-            // Convert the framebuffer to RGBA8 format (GBA window only)
-            for (int y = 0; y < 160; y++)
-            {
-                for (int x = 0; x < 240; x++)
-                {
-                    uint32_t color = core->getFramebuffer()[(y + 16) * 256 + (x + 8)];
-                    uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
-                    uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
-                    uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
-                    framebuffer[y * 240 + x] = (0xFF << 24) | (b << 16) | (g << 8) | r;
-                }
-            }
-
-            // Draw the screen
-            SwitchUI::drawImage(&framebuffer[0], 240, 160, layout.getTopX(), layout.getTopY(),
-                layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
-        }
-        else // NDS mode
-        {
-            uint32_t framebuffer[256 * 192 * 2];
-
-            // Convert the framebuffer to RGBA8 format
-            for (int i = 0; i < 256 * 192 * 2; i++)
-            {
-                uint32_t color = core->getFramebuffer()[i];
-                uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
-                uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
-                uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
-                framebuffer[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
-            }
-
-            // Draw the screens
-            SwitchUI::drawImage(&framebuffer[0], 256, 192, layout.getTopX(), layout.getTopY(),
-                layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
-            SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, layout.getBotX(), layout.getBotY(),
-                layout.getBotWidth(), layout.getBotHeight(), screenFilter, ScreenLayout::getScreenRotation());
+            gbaMode = core->isGbaMode();
+            layout.update(1280, 720, gbaMode);
         }
 
-        // Draw the FPS counter
-        SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
+        // Request a new frame
+        uint32_t *framebuffer = core->getFrame(gbaMode && ScreenLayout::getGbaCrop());
 
-        SwitchUI::update();
+        // Draw the frame if it's ready
+        if (framebuffer)
+        {
+            SwitchUI::clear(Color(0, 0, 0));
+
+            if (gbaMode && ScreenLayout::getGbaCrop())
+            {
+                // Draw the GBA screen
+                SwitchUI::drawImage(&framebuffer[0], 240, 160, layout.getTopX(), layout.getTopY(),
+                    layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
+            }
+            else // NDS mode
+            {
+                // Draw the DS top screen
+                SwitchUI::drawImage(&framebuffer[0], 256, 192, layout.getTopX(), layout.getTopY(),
+                    layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
+
+                // Draw the DS bottom screen
+                SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, layout.getBotX(), layout.getBotY(),
+                    layout.getBotWidth(), layout.getBotHeight(), screenFilter, ScreenLayout::getScreenRotation());
+            }
+
+            // Draw the FPS counter
+            SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
+
+            SwitchUI::update();
+            delete[] framebuffer;
+        }
 
         // Open the pause menu if requested
         if (pressed & keyMap[12])

@@ -57,10 +57,10 @@ class Core
         void pressScreen(int x, int y) { input.pressScreen();   spi.setTouch(x, y); }
         void releaseScreen()           { input.releaseScreen(); spi.clearTouch();   }
 
-        bool      isGbaMode()           { return memory.isGbaMode();    }
-        uint32_t *getFramebuffer()      { return gpu.getFramebuffer();  }
-        uint32_t *getSamples(int count) { return spu.getSamples(count); }
-        int       getFps()              { return fps;                   }
+        bool      isGbaMode()            { return memory.isGbaMode();    }
+        uint32_t *getFrame(bool gbaCrop) { return gpu.getFrame(gbaCrop); }
+        uint32_t *getSamples(int count)  { return spu.getSamples(count); }
+        int       getFps()               { return fps;                   }
 
     private:
         uint8_t bios9[0x8000];

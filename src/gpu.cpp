@@ -27,6 +27,61 @@
 #include "gpu_3d_renderer.h"
 #include "interpreter.h"
 
+uint32_t *Gpu::getFrame(bool gbaCrop)
+{
+    mutex.lock();
+
+    // Return the current frame in RGBA8 format if it's ready
+    // If it's not ready (the current frame has already been requested), return nothing
+    // Frontends should only draw each frame once to avoid stutter, or at least reuse the old frame to avoid repeated conversion
+    if (ready)
+    {
+        uint32_t *out;
+
+        if (gbaCrop)
+        {
+            out = new uint32_t[240 * 160];
+
+            // Convert the framebuffer to RGBA8 format (GBA window only)
+            int offset = (powCnt1 & BIT(15)) ? 0 : (256 * 192); // Display swap
+            for (int y = 0; y < 160; y++)
+            {
+                for (int x = 0; x < 240; x++)
+                {
+                    uint32_t color = framebuffer[offset + (y + 16) * 256 + (x + 8)];
+                    uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
+                    uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
+                    uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
+                    out[y * 240 + x] = (0xFF << 24) | (b << 16) | (g << 8) | r;
+                }
+            }
+        }
+        else
+        {
+            out = new uint32_t[256 * 192 * 2];
+
+            // Convert the framebuffer to RGBA8 format
+            for (int i = 0; i < 256 * 192 * 2; i++)
+            {
+                uint32_t color = framebuffer[i];
+                uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
+                uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
+                uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
+                out[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
+            }
+        }
+
+        ready = false;
+        mutex.unlock();
+        return out;
+    }
+    else
+    {
+        mutex.unlock();
+        return nullptr;
+    }
+}
+
 uint16_t Gpu::rgb6ToRgb5(uint32_t color)
 {
     // Convert an RGB6 value to an RGB5 value
@@ -71,6 +126,8 @@ void Gpu::gbaScanline308()
             if (dispStat7 & BIT(3))
                 arm7->sendInterrupt(0);
 
+            mutex.lock();
+
             // Copy the completed sub-framebuffers to the main framebuffer
             if (powCnt1 & BIT(15)) // Display swap
             {
@@ -83,6 +140,8 @@ void Gpu::gbaScanline308()
                 memcpy(&framebuffer[256 * 192], engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
             }
 
+            ready = true;
+            mutex.unlock();
             break;
         }
 
@@ -295,6 +354,8 @@ void Gpu::scanline355()
             if (gpu3D->shouldSwap())
                 gpu3D->swapBuffers();
 
+            mutex.lock();
+
             // Copy the completed sub-framebuffers to the main framebuffer
             if (powCnt1 & BIT(0)) // LCDs enabled
             {
@@ -314,6 +375,8 @@ void Gpu::scanline355()
                 memset(framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
             }
 
+            ready = true;
+            mutex.unlock();
             break;
         }
 

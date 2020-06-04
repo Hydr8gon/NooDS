@@ -21,6 +21,7 @@
 #define GPU_H
 
 #include <cstdint>
+#include <mutex>
 
 class Dma;
 class Gpu2D;
@@ -37,12 +38,12 @@ class Gpu
             dma9(dma9), dma7(dma7), engineA(engineA), engineB(engineB), gpu3D(gpu3D),
             gpu3DRenderer(gpu3DRenderer), arm9(arm9), arm7(arm7), memory(memory) {}
 
+        uint32_t *getFrame(bool gbaCrop);
+
         void gbaScanline240();
         void gbaScanline308();
         void scanline256();
         void scanline355();
-
-        uint32_t *getFramebuffer() { return framebuffer; }
 
         uint16_t readDispStat9()  { return dispStat9;  }
         uint16_t readDispStat7()  { return dispStat7;  }
@@ -57,6 +58,8 @@ class Gpu
 
     private:
         uint32_t framebuffer[256 * 192 * 2] = {};
+        bool ready = true;
+        std::mutex mutex;
 
         bool displayCapture = false;
 
