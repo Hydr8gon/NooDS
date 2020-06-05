@@ -158,7 +158,7 @@ void Gpu2D::drawGbaScanline(int line)
         }
 
         // Blend the pixel if enabled
-        if (enabled & BIT(5))
+        if ((enabled & BIT(5)) || (pixel & BIT(25)))
         {
             int mode = (bldCnt & 0x00C0) >> 6;
             int blendBit2 = -1;
@@ -223,14 +223,14 @@ void Gpu2D::drawGbaScanline(int line)
                 int b = ((pixel >> 10) & 0x1F) * eva / 16 + ((blend >> 10) & 0x1F) * evb / 16; if (b > 31) b = 31;
                 pixel = (b << 10) | (g << 5) | r;
             }
-            else if (mode == 2 && (bldCnt & BIT(blendBit))) // Brightness increase
+            else if ((enabled & BIT(5)) && mode == 2 && (bldCnt & BIT(blendBit))) // Brightness increase
             {
                 int r = (pixel >>  0) & 0x1F; r += (31 - r) * bldY / 16;
                 int g = (pixel >>  5) & 0x1F; g += (31 - g) * bldY / 16;
                 int b = (pixel >> 10) & 0x1F; b += (31 - b) * bldY / 16;
                 pixel = (b << 10) | (g << 5) | r;
             }
-            else if (mode == 3 && (bldCnt & BIT(blendBit))) // Brightness decrease
+            else if ((enabled & BIT(5)) && mode == 3 && (bldCnt & BIT(blendBit))) // Brightness decrease
             {
                 int r = (pixel >>  0) & 0x1F; r -= r * bldY / 16;
                 int g = (pixel >>  5) & 0x1F; g -= g * bldY / 16;
@@ -408,7 +408,7 @@ void Gpu2D::drawScanline(int line)
                 }
 
                 // Blend the pixel if enabled
-                if (enabled & BIT(5))
+                if ((enabled & BIT(5)) || (*pixel & (BIT(25) | BIT(26))))
                 {
                     int mode = (bldCnt & 0x00C0) >> 6;
                     int blendBit2 = -1;
@@ -416,8 +416,7 @@ void Gpu2D::drawScanline(int line)
 
                     // Find a pixel to alpha blend with if enabled
                     // Semi-transparent objects and 3D are special cases that force alpha blending
-                    if ((mode == 1 && blendBit != 5 && (bldCnt & BIT(blendBit))) ||
-                        (*pixel & BIT(25)) || ((*pixel & BIT(26)) && (*pixel & 0xFC0000) < 0xFC0000))
+                    if ((mode == 1 && blendBit != 5 && (bldCnt & BIT(blendBit))) || (*pixel & (BIT(25) | BIT(26))))
                     {
                         // Move to the next layer below the topmost pixel (the starting point for the next search)
                         if (blendBit != 4 && ++layer == 4)
@@ -498,14 +497,14 @@ void Gpu2D::drawScanline(int line)
                             *pixel = (b << 12) | (g << 6) | r;
                         }
                     }
-                    else if (mode == 2 && (bldCnt & BIT(blendBit))) // Brightness increase
+                    else if ((enabled & BIT(5)) && mode == 2 && (bldCnt & BIT(blendBit))) // Brightness increase
                     {
                         int r = (*pixel >>  0) & 0x3F; r += (63 - r) * bldY / 16;
                         int g = (*pixel >>  6) & 0x3F; g += (63 - g) * bldY / 16;
                         int b = (*pixel >> 12) & 0x3F; b += (63 - b) * bldY / 16;
                         *pixel = (b << 12) | (g << 6) | r;
                     }
-                    else if (mode == 3 && (bldCnt & BIT(blendBit))) // Brightness decrease
+                    else if ((enabled & BIT(5)) && mode == 3 && (bldCnt & BIT(blendBit))) // Brightness decrease
                     {
                         int r = (*pixel >>  0) & 0x3F; r -= r * bldY / 16;
                         int g = (*pixel >>  6) & 0x3F; g -= g * bldY / 16;
