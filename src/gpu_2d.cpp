@@ -103,11 +103,34 @@ void Gpu2D::drawGbaScanline(int line)
     // Draw the objects
     if (dispCnt & BIT(12)) drawObjects(line);
 
+
+    int priority[8];
+    int bits[8];
+    int count = 0;
+
+    // Determine the priority of the layers
+    for (int i = 0; i < 4; i++)
+    {
+        // Object layers
+        priority[count] = 4 + i;
+        bits[count++] = 4;
+
+        // The BG layers can be rearranged, so add them in the correct order
+        for (int j = 0; j < 4; j++)
+        {
+            if ((bgCnt[j] & 0x0003) == i)
+            {
+                priority[count] = j;
+                bits[count++] = j;
+            }
+        }
+    }
+
     // Blend the layers to form the final image
     for (int i = 0; i < 240; i++)
     {
         uint8_t enabled = BIT(5) | (dispCnt >> 8);
-        int priority = 0, layer = 0, blendBit = -1;
+        int layer = 0, blendBit = -1;
         uint32_t pixel;
 
         // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
@@ -123,31 +146,15 @@ void Gpu2D::drawGbaScanline(int line)
                 enabled &= winOut >> 0; // Outside of windows
         }
 
-        // Find the topmost pixel from the layers
-        for (priority; priority < 4; priority++)
+        // Find the topmost visible pixel from the layers
+        for (layer; layer < 8; layer++)
         {
-            // Check for visible pixels in the object layers
-            if ((enabled & BIT(4)) && (layers[4 + priority][i] & BIT(15)))
+            if ((enabled & BIT(bits[layer])) && (layers[priority[layer]][i] & BIT(15)))
             {
-                pixel = layers[4 + priority][i];
-                blendBit = 4;
+                pixel = layers[priority[layer]][i];
+                blendBit = bits[layer];
                 break;
             }
-
-            // Check for visible pixels in the background layers
-            // The BG layers can be rearranged, so they need to be checked in the correct order
-            for (layer; layer < 4; layer++)
-            {
-                if ((bgCnt[layer] & 0x0003) == priority && (enabled & BIT(layer)) && (layers[layer][i] & BIT(15)))
-                {
-                    pixel = layers[layer][i];
-                    blendBit = layer;
-                    break;
-                }
-            }
-
-            if (blendBit != -1) break;
-            layer = 0;
         }
 
         // Use the backdrop color if no visible layer pixels were found
@@ -168,39 +175,15 @@ void Gpu2D::drawGbaScanline(int line)
             // Semi-transparent objects are special cases that force alpha blending
             if ((mode == 1 && blendBit != 5 && (bldCnt & BIT(blendBit))) || (pixel & BIT(25)))
             {
-                // Move to the next layer below the topmost pixel (the starting point for the next search)
-                if (blendBit != 4 && ++layer == 4)
+                // Find the second-topmost visible pixel from the layers
+                for (layer++; layer < 8; layer++)
                 {
-                    priority++;
-                    layer = 0;
-                }
-
-                // Find the second-topmost pixel from the layers
-                for (priority; priority < 4; priority++)
-                {
-                    // Check for visible pixels in the object layers
-                    // Blending only counts the topmost object pixel, so skip this if the first pixel was from an object
-                    if (layer == 0 && blendBit != 4 && (enabled & BIT(4)) && (layers[4 + priority][i] & BIT(15)))
+                    if ((enabled & BIT(bits[layer])) && (layers[priority[layer]][i] & BIT(15)))
                     {
-                        blend = layers[4 + priority][i];
-                        blendBit2 = 4;
+                        blend = layers[priority[layer]][i];
+                        blendBit2 = bits[layer];
                         break;
                     }
-
-                    // Check for visible pixels in the background layers
-                    // The BG layers can be rearranged, so they need to be checked in the correct order
-                    for (layer; layer < 4; layer++)
-                    {
-                        if ((bgCnt[layer] & 0x0003) == priority && (enabled & BIT(layer)) && (layers[layer][i] & BIT(15)))
-                        {
-                            blend = layers[layer][i];
-                            blendBit2 = layer;
-                            break;
-                        }
-                    }
-
-                    if (blendBit2 != -1) break;
-                    layer = 0;
                 }
 
                 // Use the backdrop color if no visible layer pixels were found
@@ -341,11 +324,33 @@ void Gpu2D::drawScanline(int line)
             // Draw the objects
             if (dispCnt & BIT(12)) drawObjects(line);
 
+            int priority[8];
+            int bits[8];
+            int count = 0;
+
+            // Determine the priority of the layers
+            for (int i = 0; i < 4; i++)
+            {
+                // Object layers
+                priority[count] = 4 + i;
+                bits[count++] = 4;
+
+                // The BG layers can be rearranged, so add them in the correct order
+                for (int j = 0; j < 4; j++)
+                {
+                    if ((bgCnt[j] & 0x0003) == i)
+                    {
+                        priority[count] = j;
+                        bits[count++] = j;
+                    }
+                }
+            }
+
             // Blend the layers to form the final image
             for (int i = 0; i < 256; i++)
             {
                 uint8_t enabled = BIT(5) | (dispCnt >> 8);
-                int priority = 0, layer = 0, blendBit = -1;
+                int layer = 0, blendBit = -1;
                 uint32_t *pixel = &framebuffer[line * 256 + i];
 
                 // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
@@ -361,43 +366,27 @@ void Gpu2D::drawScanline(int line)
                         enabled &= winOut >> 0; // Outside of windows
                 }
 
-                // Find the topmost pixel from the layers
-                for (priority; priority < 4; priority++)
+                // Find the topmost visible pixel from the layers
+                for (layer; layer < 8; layer++)
                 {
-                    // Check for visible pixels in the object layers
-                    if ((enabled & BIT(4)) && (layers[4 + priority][i] & BIT(15)))
+                    if (enabled & BIT(bits[layer]))
                     {
-                        *pixel = rgb5ToRgb6(layers[4 + priority][i]);
-                        blendBit = 4;
-                        break;
-                    }
-
-                    // Check for visible pixels in the background layers
-                    // The BG layers can be rearranged, so they need to be checked in the correct order
-                    for (layer; layer < 4; layer++)
-                    {
-                        if ((bgCnt[layer] & 0x0003) == priority && (enabled & BIT(layer)))
+                        if (layers[priority[layer]][i] & BIT(26)) // 3D (already 18-bit)
                         {
-                            if (layers[layer][i] & BIT(26)) // 3D (already 18-bit)
+                            if (layers[priority[layer]][i] & 0xFC0000)
                             {
-                                if (layers[layer][i] & 0xFC0000)
-                                {
-                                    *pixel = layers[layer][i];
-                                    blendBit = layer;
-                                    break;
-                                }
-                            }
-                            else if (layers[layer][i] & BIT(15))
-                            {
-                                *pixel = rgb5ToRgb6(layers[layer][i]);
-                                blendBit = layer;
+                                *pixel = layers[priority[layer]][i];
+                                blendBit = bits[layer];
                                 break;
                             }
                         }
+                        else if (layers[priority[layer]][i] & BIT(15))
+                        {
+                            *pixel = rgb5ToRgb6(layers[priority[layer]][i]);
+                            blendBit = bits[layer];
+                            break;
+                        }
                     }
-
-                    if (blendBit != -1) break;
-                    layer = 0;
                 }
 
                 // Use the backdrop color if no visible layer pixels were found
@@ -418,51 +407,27 @@ void Gpu2D::drawScanline(int line)
                     // Semi-transparent objects and 3D are special cases that force alpha blending
                     if ((mode == 1 && blendBit != 5 && (bldCnt & BIT(blendBit))) || (*pixel & (BIT(25) | BIT(26))))
                     {
-                        // Move to the next layer below the topmost pixel (the starting point for the next search)
-                        if (blendBit != 4 && ++layer == 4)
+                        // Find the second-topmost visible pixel from the layers
+                        for (layer++; layer < 8; layer++)
                         {
-                            priority++;
-                            layer = 0;
-                        }
-
-                        // Find the second-topmost pixel from the layers
-                        for (priority; priority < 4; priority++)
-                        {
-                            // Check for visible pixels in the object layers
-                            // Blending only counts the topmost object pixel, so skip this if the first pixel was from an object
-                            if (layer == 0 && blendBit != 4 && (enabled & BIT(4)) && (layers[4 + priority][i] & BIT(15)))
+                            if (enabled & BIT(bits[layer]))
                             {
-                                blend = rgb5ToRgb6(layers[4 + priority][i]);
-                                blendBit2 = 4;
-                                break;
-                            }
-
-                            // Check for visible pixels in the background layers
-                            // The BG layers can be rearranged, so they need to be checked in the correct order
-                            for (layer; layer < 4; layer++)
-                            {
-                                if ((bgCnt[layer] & 0x0003) == priority && (enabled & BIT(layer)))
+                                if (layers[priority[layer]][i] & BIT(26)) // 3D (already 18-bit)
                                 {
-                                    if (layers[layer][i] & BIT(26)) // 3D (already 18-bit)
+                                    if (layers[priority[layer]][i] & 0xFC0000)
                                     {
-                                        if (layers[layer][i] & 0xFC0000)
-                                        {
-                                            blend = layers[layer][i];
-                                            blendBit2 = layer;
-                                            break;
-                                        }
-                                    }
-                                    else if (layers[layer][i] & BIT(15))
-                                    {
-                                        blend = rgb5ToRgb6(layers[layer][i]);
-                                        blendBit2 = layer;
+                                        blend = layers[priority[layer]][i];
+                                        blendBit2 = bits[layer];
                                         break;
                                     }
                                 }
+                                else if (layers[priority[layer]][i] & BIT(15))
+                                {
+                                    blend = rgb5ToRgb6(layers[priority[layer]][i]);
+                                    blendBit2 = bits[layer];
+                                    break;
+                                }
                             }
-
-                            if (blendBit2 != -1) break;
-                            layer = 0;
                         }
 
                         // Use the backdrop color if no visible layer pixels were found
