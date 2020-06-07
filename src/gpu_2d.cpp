@@ -61,6 +61,15 @@ void Gpu2D::drawGbaScanline(int line)
     // Get the VRAM block that the current frame is being captured to
     uint8_t *block = memory->getVramBlock(gbaBlock);
 
+    // Reload the internal registers at the start of the frame
+    if (line == 0)
+    {
+        internalX[0] = bgX[0];
+        internalX[1] = bgX[1];
+        internalY[0] = bgY[0];
+        internalY[1] = bgY[1];
+    }
+
     // Clear the layers
     for (int i = 0; i < 8; i++)
         memset(layers[i], 0, 240 * sizeof(uint32_t));
@@ -237,10 +246,27 @@ void Gpu2D::drawGbaScanline(int line)
         // Switch VRAM blocks
         gbaBlock = !gbaBlock;
     }
+    else
+    {
+        // Increment the internal registers at the end of each scanline
+        internalX[0] += bgPB[0];
+        internalX[1] += bgPB[1];
+        internalY[0] += bgPD[0];
+        internalY[1] += bgPD[1];
+    }
 }
 
 void Gpu2D::drawScanline(int line)
 {
+    // Reload the internal registers at the start of the frame
+    if (line == 0)
+    {
+        internalX[0] = bgX[0];
+        internalX[1] = bgX[1];
+        internalY[0] = bgY[0];
+        internalY[1] = bgY[1];
+    }
+
     switch ((dispCnt & 0x00030000) >> 16) // Display mode
     {
         case 0: // Display off
@@ -498,6 +524,15 @@ void Gpu2D::drawScanline(int line)
             break;
         }
     }
+
+    // Increment the internal registers at the end of each scanline
+    if (line != 191)
+    {
+        internalX[0] += bgPB[0];
+        internalX[1] += bgPB[1];
+        internalY[0] += bgPD[0];
+        internalY[1] += bgPD[1];
+    }
 }
 
 void Gpu2D::applyMasterBright(int line)
@@ -703,16 +738,12 @@ void Gpu2D::drawAffine(int bg, int line)
         if (!data) return;
     }
 
-    // Calculate the scroll values
-    int scrollX = bgX[bg - 2] + (bgPA[bg - 2] * (size / 2) + bgPB[bg - 2] * (size / 2));
-    int scrollY = bgY[bg - 2] + (bgPC[bg - 2] * (size / 2) + bgPD[bg - 2] * (size / 2));
-
     // Draw a line
     for (int i = 0; i < 256; i++)
     {
         // Calculate the rotscaled coordinates relative to the background
-        int rotscaleX = (bgPA[bg - 2] * (i - size / 2) + bgPB[bg - 2] * (line - size / 2) + scrollX) >> 8;
-        int rotscaleY = (bgPC[bg - 2] * (i - size / 2) + bgPD[bg - 2] * (line - size / 2) + scrollY) >> 8;
+        int rotscaleX = (internalX[bg - 2] + bgPA[bg - 2] * i) >> 8;
+        int rotscaleY = (internalY[bg - 2] + bgPC[bg - 2] * i) >> 8;
 
         // Handle display area overflow
         if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
@@ -782,18 +813,14 @@ void Gpu2D::drawExtended(int bg, int line)
         uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase);
         if (!data) return;
 
-        // Calculate the scroll values
-        int scrollX = bgX[bg - 2] + (bgPA[bg - 2] * (sizeX / 2) + bgPB[bg - 2] * (sizeY / 2));
-        int scrollY = bgY[bg - 2] + (bgPC[bg - 2] * (sizeX / 2) + bgPD[bg - 2] * (sizeY / 2));
-
         if (bgCnt[bg] & BIT(2)) // Direct color bitmap
         {
             // Draw a line
             for (int i = 0; i < 256; i++)
             {
                 // Calculate the rotscaled coordinates relative to the background
-                int rotscaleX = (bgPA[bg - 2] * (i - sizeX / 2) + bgPB[bg - 2] * (line - sizeX / 2) + scrollX) >> 8;
-                int rotscaleY = (bgPC[bg - 2] * (i - sizeY / 2) + bgPD[bg - 2] * (line - sizeY / 2) + scrollY) >> 8;
+                int rotscaleX = (internalX[bg - 2] + bgPA[bg - 2] * i) >> 8;
+                int rotscaleY = (internalY[bg - 2] + bgPC[bg - 2] * i) >> 8;
 
                 // Handle display area overflow
                 if (bgCnt[bg] & BIT(13)) // Wraparound
@@ -819,8 +846,8 @@ void Gpu2D::drawExtended(int bg, int line)
             for (int i = 0; i < 256; i++)
             {
                 // Calculate the rotscaled coordinates relative to the background
-                int rotscaleX = (bgPA[bg - 2] * (i - sizeX / 2) + bgPB[bg - 2] * (line - sizeX / 2) + scrollX) >> 8;
-                int rotscaleY = (bgPC[bg - 2] * (i - sizeY / 2) + bgPD[bg - 2] * (line - sizeY / 2) + scrollY) >> 8;
+                int rotscaleX = (internalX[bg - 2] + bgPA[bg - 2] * i) >> 8;
+                int rotscaleY = (internalY[bg - 2] + bgPC[bg - 2] * i) >> 8;
 
                 // Handle display area overflow
                 if (bgCnt[bg] & BIT(13)) // Wraparound
@@ -853,16 +880,12 @@ void Gpu2D::drawExtended(int bg, int line)
         uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase);
         if (!data) return;
 
-        // Calculate the scroll values
-        int scrollX = bgX[bg - 2] + (bgPA[bg - 2] * (size / 2) + bgPB[bg - 2] * (size / 2));
-        int scrollY = bgY[bg - 2] + (bgPC[bg - 2] * (size / 2) + bgPD[bg - 2] * (size / 2));
-
         // Draw a line
         for (int i = 0; i < 256; i++)
         {
             // Calculate the rotscaled coordinates relative to the background
-            int rotscaleX = (bgPA[bg - 2] * (i - size / 2) + bgPB[bg - 2] * (line - size / 2) + scrollX) >> 8;
-            int rotscaleY = (bgPC[bg - 2] * (i - size / 2) + bgPD[bg - 2] * (line - size / 2) + scrollY) >> 8;
+            int rotscaleX = (internalX[bg - 2] + bgPA[bg - 2] * i) >> 8;
+            int rotscaleY = (internalY[bg - 2] + bgPC[bg - 2] * i) >> 8;
 
             // Handle display area overflow
             if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
@@ -1321,6 +1344,9 @@ void Gpu2D::writeBgX(int bg, uint32_t mask, uint32_t value)
 
     // Extend the sign to 32 bits
     if (bgX[bg - 2] & BIT(27)) bgX[bg - 2] |= 0xF0000000; else bgX[bg - 2] &= ~0xF0000000;
+
+    // Reload the internal register
+    internalX[bg - 2] = bgX[bg - 2];
 }
 
 void Gpu2D::writeBgY(int bg, uint32_t mask, uint32_t value)
@@ -1331,6 +1357,9 @@ void Gpu2D::writeBgY(int bg, uint32_t mask, uint32_t value)
 
     // Extend the sign to 32 bits
     if (bgY[bg - 2] & BIT(27)) bgY[bg - 2] |= 0xF0000000; else bgY[bg - 2] &= ~0xF0000000;
+
+    // Reload the internal register
+    internalY[bg - 2] = bgY[bg - 2];
 }
 
 

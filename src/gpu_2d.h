@@ -75,6 +75,9 @@ class Gpu2D
 
         int gbaBlock = 0;
 
+        int internalX[2] = {};
+        int internalY[2] = {};
+
         uint32_t dispCnt = 0;
         uint16_t bgCnt[4] = {};
         uint16_t bgHOfs[4] = {};

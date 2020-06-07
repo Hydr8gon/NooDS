@@ -395,7 +395,6 @@ void Gpu::scanline355()
         }
     }
 
-
     for (int i = 0; i < 2; i++)
     {
         // Check if the current scanline matches the V-counter
