@@ -549,22 +549,23 @@ int main()
             core->releaseScreen();
         }
 
-        // Update the screen layout if entering or exiting GBA mode
-        if (gbaMode != core->isGbaMode())
+        // Request a new frame
+        bool gba = (core->isGbaMode() && ScreenLayout::getGbaCrop());
+        uint32_t *framebuffer = core->getFrame(gba);
+
+        // Update GBA mode status to match the new frame
+        if (gbaMode != gba)
         {
-            gbaMode = core->isGbaMode();
+            gbaMode = gba;
             layout.update(1280, 720, gbaMode);
         }
-
-        // Request a new frame
-        uint32_t *framebuffer = core->getFrame(gbaMode && ScreenLayout::getGbaCrop());
 
         // Draw the frame if it's ready
         if (framebuffer)
         {
             SwitchUI::clear(Color(0, 0, 0));
 
-            if (gbaMode && ScreenLayout::getGbaCrop())
+            if (gbaMode)
             {
                 // Draw the GBA screen
                 SwitchUI::drawImage(&framebuffer[0], 240, 160, layout.getTopX(), layout.getTopY(),

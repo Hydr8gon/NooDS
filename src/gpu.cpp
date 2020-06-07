@@ -93,9 +93,14 @@ uint16_t Gpu::rgb6ToRgb5(uint32_t color)
 
 void Gpu::gbaScanline240()
 {
-    // Draw visible scanlines
     if (vCount < 160)
+    {
+        // Draw visible scanlines
         engineA->drawGbaScanline(vCount);
+
+        // Enable H-blank DMA transfers for visible scanlines
+        dmas[1]->setMode(2, true);
+    }
 
     // Set the H-blank flag
     dispStat[1] |= BIT(1);
@@ -103,10 +108,6 @@ void Gpu::gbaScanline240()
     // Trigger an H-blank IRQ if enabled
     if (dispStat[1] & BIT(4))
         cpus[1]->sendInterrupt(1);
-
-    // Enable H-blank DMA transfers when not in V-blank
-    if (!(dispStat[1] & BIT(0)))
-        dmas[1]->setMode(2, true);
 }
 
 void Gpu::gbaScanline308()
@@ -182,11 +183,14 @@ void Gpu::gbaScanline308()
 
 void Gpu::scanline256()
 {
-    // Draw visible scanlines
     if (vCount < 192)
     {
+        // Draw visible scanlines
         engineA->drawScanline(vCount);
         engineB->drawScanline(vCount);
+
+        // Enable H-blank DMA transfers for visible scanlines (ARM9 only)
+        dmas[0]->setMode(2, true);
 
         // Start a display capture at the beginning of the frame if one was requested
         if (vCount == 0 && (dispCapCnt & BIT(31)))
@@ -323,10 +327,6 @@ void Gpu::scanline256()
         if (dispStat[i] & BIT(4))
             cpus[i]->sendInterrupt(1);
     }
-
-    // Enable H-blank DMA transfers when not in V-blank (ARM9 only)
-    if (!(dispStat[0] & BIT(0)))
-        dmas[0]->setMode(2, true);
 }
 
 void Gpu::scanline355()

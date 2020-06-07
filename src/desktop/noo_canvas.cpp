@@ -72,20 +72,23 @@ void NooCanvas::draw(wxPaintEvent &event)
 
     if (emulator->core)
     {
-        // Update the screen layout if entering or exiting GBA mode
-        if (gbaMode != emulator->core->isGbaMode())
-        {
-            gbaMode = emulator->core->isGbaMode();
-            frame->SendSizeEvent();
-        }
+        // Request a new frame
+        bool gba = (emulator->core->isGbaMode() && ScreenLayout::getGbaCrop());
+        uint32_t *fb = emulator->core->getFrame(gba);
 
-        // Request a new frame and update the saved one if it's ready
-        // If it's not ready, the old frame will be drawn so the screen layout can still update
-        uint32_t *frame = emulator->core->getFrame(gbaMode && ScreenLayout::getGbaCrop());
-        if (frame)
+        if (fb)
         {
+            // Update the frame if a new one was ready
+            // If not, the old frame will be drawn so the screen layout can still update
             if (framebuffer) delete[] framebuffer;
-            framebuffer = frame;
+            framebuffer = fb;
+
+            // Update GBA mode status to match the new frame
+            if (gbaMode != gba)
+            {
+                gbaMode = gba;
+                frame->SendSizeEvent();
+            }
         }
 
         // Rotate the texture coordinates
@@ -97,7 +100,7 @@ void NooCanvas::draw(wxPaintEvent &event)
             case 2: texCoords = 0xD2; break; // Counter-clockwise
         }
 
-        if (gbaMode && ScreenLayout::getGbaCrop())
+        if (gbaMode)
         {
             // Draw the GBA screen
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 240, 160, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
