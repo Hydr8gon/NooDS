@@ -31,7 +31,8 @@ class Memory;
 class Cartridge
 {
     public:
-        Cartridge(Dma *dma, Interpreter *cpu, Memory *memory): dma(dma), cpu(cpu), memory(memory) {}
+        Cartridge(Dma *dma9, Dma *dma7, Interpreter *arm9, Interpreter *arm7, Memory *memory):
+            dmas { dma9, dma7 }, cpus { arm9, arm7 }, memory(memory) {}
 
         void setRom(uint8_t *rom, uint32_t romSize, uint8_t *save, uint32_t saveSize);
         void setGbaRom(uint8_t *gbaRom, uint32_t gbaRomSize, uint8_t *gbaSave, uint32_t gbaSaveSize);
@@ -39,36 +40,18 @@ class Cartridge
         template <typename T> T gbaRomRead(uint32_t address);
         template <typename T> void gbaRomWrite(uint32_t address, T value);
 
-        uint16_t readAuxSpiCnt()  { return auxSpiCnt;       }
-        uint8_t  readAuxSpiData() { return auxSpiData;      }
-        uint32_t readRomCtrl()    { return romCtrl;         }
-        uint32_t readRomCmdOutL() { return romCmdOut;       }
-        uint32_t readRomCmdOutH() { return romCmdOut >> 32; }
-        uint32_t readRomDataIn();
+        uint16_t readAuxSpiCnt(bool cpu)  { return auxSpiCnt[cpu];  }
+        uint8_t  readAuxSpiData(bool cpu) { return auxSpiData[cpu]; }
+        uint32_t readRomCtrl(bool cpu)    { return romCtrl[cpu];    }
+        uint32_t readRomDataIn(bool cpu);
 
-        void writeAuxSpiCnt(uint16_t mask, uint16_t value);
-        void writeAuxSpiData(uint8_t value);
-        void writeRomCtrl(uint32_t mask, uint32_t value);
-        void writeRomCmdOutL(uint32_t mask, uint32_t value);
-        void writeRomCmdOutH(uint32_t mask, uint32_t value);
+        void writeAuxSpiCnt(bool cpu, uint16_t mask, uint16_t value);
+        void writeAuxSpiData(bool cpu, uint8_t value);
+        void writeRomCtrl(bool cpu, uint32_t mask, uint32_t value);
+        void writeRomCmdOutL(bool cpu, uint32_t mask, uint32_t value);
+        void writeRomCmdOutH(bool cpu, uint32_t mask, uint32_t value);
 
     private:
-        uint64_t command = 0;
-        int blockSize = 0, readCount = 0;
-        bool encrypted = false;
-
-        uint32_t encTable[0x412] = {};
-        uint32_t encCode[3] = {};
-
-        uint8_t auxCommand = 0;
-        uint32_t auxAddress = 0;
-        int auxWriteCount = 0;
-
-        uint16_t auxSpiCnt = 0;
-        uint8_t auxSpiData = 0;
-        uint32_t romCtrl = 0;
-        uint64_t romCmdOut = 0;
-
         int gbaEepromCount = 0;
         uint16_t gbaEepromCmd = 0;
         uint64_t gbaEepromData = 0;
@@ -78,14 +61,30 @@ class Cartridge
         bool gbaBankSwap = false;
         bool gbaFlashErase = false;
 
+        uint32_t encTable[0x412] = {};
+        uint32_t encCode[3] = {};
+
+        uint64_t command[2] = {};
+        int blockSize[2] = {}, readCount[2] = {};
+        bool encrypted[2] = {};
+
+        uint8_t auxCommand[2] = {};
+        uint32_t auxAddress[2] = {};
+        int auxWriteCount[2] = {};
+
+        uint16_t auxSpiCnt[2] = {};
+        uint8_t auxSpiData[2] = {};
+        uint32_t romCtrl[2] = {};
+        uint64_t romCmdOut[2] = {};
+
         uint8_t *rom = nullptr, *save = nullptr;
         int romSize = 0, saveSize = 0;
 
         uint8_t *gbaRom = nullptr, *gbaSave = nullptr;
         int gbaRomSize = 0, gbaSaveSize = 0;
 
-        Dma *dma;
-        Interpreter *cpu;
+        Dma *dmas[2];
+        Interpreter *cpus[2];
         Memory *memory;
 
         uint64_t encrypt64(uint64_t value);

@@ -24,10 +24,10 @@
 #include "defines.h"
 #include "settings.h"
 
-Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &arm7, &memory), cp15(&arm9), dma9(&arm9, &memory, true),
-                                  dma7(&arm7, &memory), gpu(&dma9, &dma7, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9, &arm7, &memory),
-                                  engineA(&memory, &gpu3DRenderer), engineB(&memory), gpu3D(&dma9, &arm9), gpu3DRenderer(&gpu3D),arm9(&memory,
-                                  &cp15), arm7(&memory), ipc(&arm9, &arm7), memory(bios9, bios7, gbaBios, &cart9, &cart7, &cp15,&dma9, &dma7,
+Core::Core(std::string filename): cartridge(&dma9, &dma7, &arm9, &arm7, &memory), cp15(&arm9), dma9(&arm9, &memory, true), dma7(&arm7,
+                                  &memory), gpu(&dma9, &dma7, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9, &arm7, &memory),
+                                  engineA(&memory, &gpu3DRenderer), engineB(&memory), gpu3D(&dma9, &arm9), gpu3DRenderer(&gpu3D), arm9(&memory,
+                                  &cp15), arm7(&memory), ipc(&arm9, &arm7), memory(bios9, bios7, gbaBios, &cartridge, &cp15, &dma9, &dma7,
                                   &gpu, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &input, &arm9, &arm7, &ipc, &math, &rtc, &spi, &spu,
                                   &timers9, &timers7, &wifi), spi(&arm7, firmware), spu(&dma7, &memory), timers9(&arm9), timers7(&arm7, &spu)
 {
@@ -141,7 +141,7 @@ Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &ar
         }
 
         // "Insert" the cartridge
-        cart7.setGbaRom(gbaRom, gbaRomSize, gbaSave, gbaSaveSize);
+        cartridge.setGbaRom(gbaRom, gbaRomSize, gbaSave, gbaSaveSize);
 
         // Enable GBA mode right away if direct boot is enabled
         if (Settings::getDirectBoot())
@@ -174,8 +174,7 @@ Core::Core(std::string filename): cart9(&dma9, &arm9, &memory), cart7(&dma7, &ar
         fclose(saveFile);
 
         // "Insert" the cartridge
-        cart9.setRom(rom, romSize, save, saveSize);
-        cart7.setRom(rom, romSize, save, saveSize);
+        cartridge.setRom(rom, romSize, save, saveSize);
 
         // Skip the direct boot setup if it's disabled
         // Games will boot from the firmware in this case

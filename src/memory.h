@@ -42,12 +42,12 @@ class Wifi;
 class Memory
 {
     public:
-        Memory(uint8_t *bios9, uint8_t *bios7, uint8_t *gbaBios, Cartridge *cart9, Cartridge *cart7,
-               Cp15 *cp15, Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA, Gpu2D *engineB, Gpu3D *gpu3D,
+        Memory(uint8_t *bios9, uint8_t *bios7, uint8_t *gbaBios, Cartridge *cartridge, Cp15 *cp15,
+               Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA, Gpu2D *engineB, Gpu3D *gpu3D,
                Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9, Interpreter *arm7, Ipc *ipc,
                Math *math, Rtc *rtc, Spi *spi, Spu *spu, Timers *timers9, Timers *timers7, Wifi *wifi):
-               bios9(bios9), bios7(bios7), gbaBios(gbaBios), cart9(cart9), cart7(cart7),
-               cp15(cp15), dma9(dma9), dma7(dma7), gpu(gpu), engineA(engineA), engineB(engineB), gpu3D(gpu3D),
+               bios9(bios9), bios7(bios7), gbaBios(gbaBios), cartridge(cartridge), cp15(cp15),
+               dma9(dma9), dma7(dma7), gpu(gpu), engineA(engineA), engineB(engineB), gpu3D(gpu3D),
                gpu3DRenderer(gpu3DRenderer), input(input), arm9(arm9), arm7(arm7), ipc(ipc),
                math(math), rtc(rtc), spi(spi), spu(spu), timers9(timers9), timers7(timers7), wifi(wifi) {}
 
@@ -91,7 +91,7 @@ class Memory
 
         uint8_t *bios9, *bios7;
         uint8_t *gbaBios;
-        Cartridge *cart9, *cart7;
+        Cartridge *cartridge;
         Cp15 *cp15;
         Dma *dma9, *dma7;
         Gpu *gpu;

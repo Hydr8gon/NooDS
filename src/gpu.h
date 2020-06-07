@@ -35,8 +35,8 @@ class Gpu
     public:
         Gpu(Dma *dma9, Dma *dma7, Gpu2D *engineA, Gpu2D *engineB, Gpu3D *gpu3D,
             Gpu3DRenderer *gpu3DRenderer, Interpreter *arm9, Interpreter *arm7, Memory *memory):
-            dma9(dma9), dma7(dma7), engineA(engineA), engineB(engineB), gpu3D(gpu3D),
-            gpu3DRenderer(gpu3DRenderer), arm9(arm9), arm7(arm7), memory(memory) {}
+            dmas { dma9, dma7 }, engineA(engineA), engineB(engineB), gpu3D(gpu3D),
+            gpu3DRenderer(gpu3DRenderer), cpus { arm9, arm7 }, memory(memory) {}
 
         uint32_t *getFrame(bool gbaCrop);
 
@@ -45,14 +45,12 @@ class Gpu
         void scanline256();
         void scanline355();
 
-        uint16_t readDispStat9()  { return dispStat9;  }
-        uint16_t readDispStat7()  { return dispStat7;  }
-        uint16_t readVCount()     { return vCount;     }
-        uint32_t readDispCapCnt() { return dispCapCnt; }
-        uint16_t readPowCnt1()    { return powCnt1;    }
+        uint16_t readDispStat(bool cpu) { return dispStat[cpu]; }
+        uint16_t readVCount()           { return vCount;        }
+        uint32_t readDispCapCnt()       { return dispCapCnt;    }
+        uint16_t readPowCnt1()          { return powCnt1;       }
 
-        void writeDispStat9(uint16_t mask, uint16_t value);
-        void writeDispStat7(uint16_t mask, uint16_t value);
+        void writeDispStat(bool cpu, uint16_t mask, uint16_t value);
         void writeDispCapCnt(uint32_t mask, uint32_t value);
         void writePowCnt1(uint16_t mask, uint16_t value);
 
@@ -63,16 +61,16 @@ class Gpu
 
         bool displayCapture = false;
 
-        uint16_t dispStat9 = 0, dispStat7 = 0;
+        uint16_t dispStat[2] = {};
         uint16_t vCount = 0;
         uint32_t dispCapCnt = 0;
         uint16_t powCnt1 = 0;
 
-        Dma *dma9, *dma7;
+        Dma *dmas[2];
         Gpu2D *engineA, *engineB;
         Gpu3D *gpu3D;
         Gpu3DRenderer *gpu3DRenderer;
-        Interpreter *arm9, *arm7;
+        Interpreter *cpus[2];
         Memory *memory;
 
         uint16_t rgb6ToRgb5(uint32_t color);

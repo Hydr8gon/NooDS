@@ -84,7 +84,7 @@ class Core
         std::chrono::steady_clock::time_point lastFpsTime;
         int spuTimer = 0;
 
-        Cartridge cart9, cart7;
+        Cartridge cartridge;
         Cp15 cp15;
         Dma dma9, dma7;
         Gpu gpu;

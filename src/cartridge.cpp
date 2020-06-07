@@ -318,34 +318,34 @@ void Cartridge::applyKeycode()
     }
 }
 
-void Cartridge::writeAuxSpiCnt(uint16_t mask, uint16_t value)
+void Cartridge::writeAuxSpiCnt(bool cpu, uint16_t mask, uint16_t value)
 {
-    // Write to the AUXSPICNT register
+    // Write to one of the AUXSPICNT registers
     mask &= 0xE043;
-    auxSpiCnt = (auxSpiCnt & ~mask) | (value & mask);
+    auxSpiCnt[cpu] = (auxSpiCnt[cpu] & ~mask) | (value & mask);
 }
 
-void Cartridge::writeRomCmdOutL(uint32_t mask, uint32_t value)
+void Cartridge::writeRomCmdOutL(bool cpu, uint32_t mask, uint32_t value)
 {
-    // Write to the ROMCMDOUT register
-    romCmdOut = (romCmdOut & ~((uint64_t)mask)) | (value & mask);
+    // Write to one of the ROMCMDOUT registers (low)
+    romCmdOut[cpu] = (romCmdOut[cpu] & ~((uint64_t)mask)) | (value & mask);
 }
 
-void Cartridge::writeRomCmdOutH(uint32_t mask, uint32_t value)
+void Cartridge::writeRomCmdOutH(bool cpu, uint32_t mask, uint32_t value)
 {
-    // Write to the ROMCMDOUT register
-    romCmdOut = (romCmdOut & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
+    // Write to one of the ROMCMDOUT registers (high)
+    romCmdOut[cpu] = (romCmdOut[cpu] & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
 }
 
-void Cartridge::writeAuxSpiData(uint8_t value)
+void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
 {
-    if (auxWriteCount == 0)
+    if (auxWriteCount[cpu] == 0)
     {
         // On the first write, set the command byte
         if (value == 0) return;
-        auxCommand = value;
-        auxAddress = 0;
-        auxSpiData = 0;
+        auxCommand[cpu] = value;
+        auxAddress[cpu] = 0;
+        auxSpiData[cpu] = 0;
     }
     else
     {
@@ -353,82 +353,82 @@ void Cartridge::writeAuxSpiData(uint8_t value)
         {
             case 0x200: // EEPROM 0.5KB
             {
-                switch (auxCommand)
+                switch (auxCommand[cpu])
                 {
                     case 0x03: // Read from lower memory
                     {
-                        if (auxWriteCount < 2)
+                        if (auxWriteCount[cpu] < 2)
                         {
                             // On the second write, set the 1 byte address to read from
-                            auxAddress = value;
-                            auxSpiData = 0;
+                            auxAddress[cpu] = value;
+                            auxSpiData[cpu] = 0;
                         }
                         else
                         {
                             // On writes 3+, read data from the save and send it back
-                            auxSpiData = (auxAddress < 0x100) ? save[auxAddress] : 0;
-                            auxAddress++;
+                            auxSpiData[cpu] = (auxAddress[cpu] < 0x100) ? save[auxAddress[cpu]] : 0;
+                            auxAddress[cpu]++;
                         }
                         break;
                     }
 
                     case 0x0B: // Read from upper memory
                     {
-                        if (auxWriteCount < 2)
+                        if (auxWriteCount[cpu] < 2)
                         {
                             // On the second write, set the 1 byte address to read from
-                            auxAddress = 0x100 + value;
-                            auxSpiData = 0;
+                            auxAddress[cpu] = 0x100 + value;
+                            auxSpiData[cpu] = 0;
                         }
                         else
                         {
                             // On writes 3+, read data from the save and send it back
-                            auxSpiData = (auxAddress < 0x200) ? save[auxAddress] : 0;
-                            auxAddress++;
+                            auxSpiData[cpu] = (auxAddress[cpu] < 0x200) ? save[auxAddress[cpu]] : 0;
+                            auxAddress[cpu]++;
                         }
                         break;
                     }
 
                     case 0x02: // Write to lower memory
                     {
-                        if (auxWriteCount < 2)
+                        if (auxWriteCount[cpu] < 2)
                         {
                             // On the second write, set the 1 byte address to write to
-                            auxAddress = value;
-                            auxSpiData = 0;
+                            auxAddress[cpu] = value;
+                            auxSpiData[cpu] = 0;
                         }
                         else
                         {
                             // On writes 3+, write data to the save
-                            if (auxAddress < 0x100) save[auxAddress] = value;
-                            auxAddress++;
-                            auxSpiData = 0;
+                            if (auxAddress[cpu] < 0x100) save[auxAddress[cpu]] = value;
+                            auxAddress[cpu]++;
+                            auxSpiData[cpu] = 0;
                         }
                         break;
                     }
 
                     case 0x0A: // Write to upper memory
                     {
-                        if (auxWriteCount < 2)
+                        if (auxWriteCount[cpu] < 2)
                         {
                             // On the second write, set the 1 byte address to write to
-                            auxAddress = 0x100 + value;
-                            auxSpiData = 0;
+                            auxAddress[cpu] = 0x100 + value;
+                            auxSpiData[cpu] = 0;
                         }
                         else
                         {
                             // On writes 3+, write data to the save
-                            if (auxAddress < 0x200) save[auxAddress] = value;
-                            auxAddress++;
-                            auxSpiData = 0;
+                            if (auxAddress[cpu] < 0x200) save[auxAddress[cpu]] = value;
+                            auxAddress[cpu]++;
+                            auxSpiData[cpu] = 0;
                         }
                         break;
                     }
 
                     default:
                     {
-                        printf("Write to AUX SPI with unknown EEPROM 0.5KB command: 0x%X\n", auxCommand);
-                        auxSpiData = 0;
+                        printf("Write to AUX SPI with unknown EEPROM 0.5KB command: 0x%X\n", auxCommand[cpu]);
+                        auxSpiData[cpu] = 0;
                         break;
                     }
                 }
@@ -437,47 +437,47 @@ void Cartridge::writeAuxSpiData(uint8_t value)
 
             case 0x2000: case 0x8000: case 0x10000: // EEPROM/FRAM 8KB, 32KB, 64KB
             {
-                switch (auxCommand)
+                switch (auxCommand[cpu])
                 {
                     case 0x03: // Read from memory
                     {
-                        if (auxWriteCount < 3)
+                        if (auxWriteCount[cpu] < 3)
                         {
                             // On writes 2-3, set the 2 byte address to read from
-                            auxAddress |= value << ((2 - auxWriteCount) * 8);
-                            auxSpiData = 0;
+                            auxAddress[cpu] |= value << ((2 - auxWriteCount[cpu]) * 8);
+                            auxSpiData[cpu] = 0;
                         }
                         else
                         {
                             // On writes 4+, read data from the save and send it back
-                            auxSpiData = (auxAddress < saveSize) ? save[auxAddress] : 0;
-                            auxAddress++;
+                            auxSpiData[cpu] = (auxAddress[cpu] < saveSize) ? save[auxAddress[cpu]] : 0;
+                            auxAddress[cpu]++;
                         }
                         break;
                     }
 
                     case 0x02: // Write to memory
                     {
-                        if (auxWriteCount < 3)
+                        if (auxWriteCount[cpu] < 3)
                         {
                             // On writes 2-3, set the 2 byte address to write to
-                            auxAddress |= value << ((2 - auxWriteCount) * 8);
-                            auxSpiData = 0;
+                            auxAddress[cpu] |= value << ((2 - auxWriteCount[cpu]) * 8);
+                            auxSpiData[cpu] = 0;
                         }
                         else
                         {
                             // On writes 4+, write data to the save
-                            if (auxAddress < saveSize) save[auxAddress] = value;
-                            auxAddress++;
-                            auxSpiData = 0;
+                            if (auxAddress[cpu] < saveSize) save[auxAddress[cpu]] = value;
+                            auxAddress[cpu]++;
+                            auxSpiData[cpu] = 0;
                         }
                         break;
                     }
 
                     default:
                     {
-                        printf("Write to AUX SPI with unknown EEPROM/FRAM command: 0x%X\n", auxCommand);
-                        auxSpiData = 0;
+                        printf("Write to AUX SPI with unknown EEPROM/FRAM command: 0x%X\n", auxCommand[cpu]);
+                        auxSpiData[cpu] = 0;
                         break;
                     }
                 }
@@ -486,21 +486,21 @@ void Cartridge::writeAuxSpiData(uint8_t value)
 
             case 0x40000: case 0x80000: case 0x100000: case 0x800000: // FLASH 256KB, 512KB, 1024KB, 8192KB
             {
-                switch (auxCommand)
+                switch (auxCommand[cpu])
                 {
                     case 0x03: // Read data bytes
                     {
-                        if (auxWriteCount < 4)
+                        if (auxWriteCount[cpu] < 4)
                         {
                             // On writes 2-4, set the 3 byte address to read from
-                            auxAddress |= value << ((3 - auxWriteCount) * 8);
-                            auxSpiData = 0;
+                            auxAddress[cpu] |= value << ((3 - auxWriteCount[cpu]) * 8);
+                            auxSpiData[cpu] = 0;
                         }
                         else
                         {
                             // On writes 5+, read data from the save and send it back
-                            auxSpiData = (auxAddress < saveSize) ? save[auxAddress] : 0;
-                            auxAddress++;
+                            auxSpiData[cpu] = (auxAddress[cpu] < saveSize) ? save[auxAddress[cpu]] : 0;
+                            auxAddress[cpu]++;
                         }
                         break;
                     }
@@ -508,18 +508,18 @@ void Cartridge::writeAuxSpiData(uint8_t value)
                     case 0x0A: // Page write
                     case 0x02: // Page program
                     {
-                        if (auxWriteCount < 4)
+                        if (auxWriteCount[cpu] < 4)
                         {
                             // On writes 2-4, set the 3 byte address to write to
-                            auxAddress |= value << ((3 - auxWriteCount) * 8);
-                            auxSpiData = 0;
+                            auxAddress[cpu] |= value << ((3 - auxWriteCount[cpu]) * 8);
+                            auxSpiData[cpu] = 0;
                         }
                         else
                         {
                             // On writes 5+, write data to the save
-                            if (auxAddress < saveSize) save[auxAddress] = value;
-                            auxAddress++;
-                            auxSpiData = 0;
+                            if (auxAddress[cpu] < saveSize) save[auxAddress[cpu]] = value;
+                            auxAddress[cpu]++;
+                            auxSpiData[cpu] = 0;
                         }
                         break;
                     }
@@ -529,14 +529,14 @@ void Cartridge::writeAuxSpiData(uint8_t value)
                         // If a gamecode starts with 'I', the game has an infrared port in its cartridge
                         // This shares the same SPI as FLASH memory
                         // Some games check this command as an anti-piracy measure
-                        auxSpiData = (rom[0xC] == 'I') ? 0xAA : 0;
+                        auxSpiData[cpu] = (rom[0xC] == 'I') ? 0xAA : 0;
                         break;
                     }
 
                     default:
                     {
-                        printf("Write to AUX SPI with unknown FLASH command: 0x%X\n", auxCommand);
-                        auxSpiData = 0;
+                        printf("Write to AUX SPI with unknown FLASH command: 0x%X\n", auxCommand[cpu]);
+                        auxSpiData[cpu] = 0;
                         break;
                     }
                 }
@@ -552,95 +552,95 @@ void Cartridge::writeAuxSpiData(uint8_t value)
     }
 
     // Keep track of the write count
-    if (auxSpiCnt & BIT(6)) // Keep chip selected
-        auxWriteCount++;
+    if (auxSpiCnt[cpu] & BIT(6)) // Keep chip selected
+        auxWriteCount[cpu]++;
     else // Deselect chip
-        auxWriteCount = 0;
+        auxWriteCount[cpu] = 0;
 }
 
-void Cartridge::writeRomCtrl(uint32_t mask, uint32_t value)
+void Cartridge::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
 {
     bool transfer = false;
 
     // Set the release reset bit, but never clear it
-    romCtrl |= (value & BIT(29));
+    romCtrl[cpu] |= (value & BIT(29));
 
     // Start a transfer if the start bit changes from 0 to 1
-    if (!(romCtrl & BIT(31)) && (value & BIT(31)))
+    if (!(romCtrl[cpu] & BIT(31)) && (value & BIT(31)))
         transfer = true;
 
-    // Write to the ROMCTRL register
+    // Write to one of the ROMCTRL registers
     mask &= 0xDF7F7FFF;
-    romCtrl = (romCtrl & ~mask) | (value & mask);
+    romCtrl[cpu] = (romCtrl[cpu] & ~mask) | (value & mask);
 
     if (!transfer) return;
 
     // Determine the size of the block to transfer
-    uint8_t size = (romCtrl & 0x07000000) >> 24;
+    uint8_t size = (romCtrl[cpu] & 0x07000000) >> 24;
     switch (size)
     {
-        case 0:  blockSize = 0;             break;
-        case 7:  blockSize = 4;             break;
-        default: blockSize = 0x100 << size; break;
+        case 0:  blockSize[cpu] = 0;             break;
+        case 7:  blockSize[cpu] = 4;             break;
+        default: blockSize[cpu] = 0x100 << size; break;
     }
 
-    // Reverse the byte order of the ROM command to make it easier to work with
-    command = 0;
+    // Reverse the byte order of the ROM command
+    command[cpu] = 0;
     for (int i = 0; i < 8; i++)
-        command |= ((romCmdOut >> (i * 8)) & 0xFF) << ((7 - i) * 8);
+        command[cpu] |= ((romCmdOut[cpu] >> (i * 8)) & 0xFF) << ((7 - i) * 8);
 
     // Decrypt the ROM command if encryption is enabled
-    if (encrypted)
+    if (encrypted[cpu])
     {
         initKeycode(2);
-        command = decrypt64(command);
+        command[cpu] = decrypt64(command[cpu]);
     }
 
     // Handle encryption commands
     if (rom)
     {
-        if ((command >> 56) == 0x3C) // Activate KEY1 encryption mode
+        if ((command[cpu] >> 56) == 0x3C) // Activate KEY1 encryption mode
         {
             // Initialize KEY1 encryption
-            encrypted = true;
+            encrypted[cpu] = true;
         }
-        else if (((command >> 56) & 0xF0) == 0xA0) // Enter main data mode
+        else if (((command[cpu] >> 56) & 0xF0) == 0xA0) // Enter main data mode
         {
             // Disable KEY1 encryption
             // On hardware, this is where KEY2 encryption would start
-            encrypted = false;
+            encrypted[cpu] = false;
         }
     }
 
-    if (blockSize == 0)
+    if (blockSize[cpu] == 0)
     {
         // End the transfer right away if the block size is 0
-        romCtrl &= ~BIT(23); // Word not ready
-        romCtrl &= ~BIT(31); // Block ready
+        romCtrl[cpu] &= ~BIT(23); // Word not ready
+        romCtrl[cpu] &= ~BIT(31); // Block ready
 
         // Disable DS cartridge DMA transfers
-        dma->setMode(5, false);
+        dmas[cpu]->setMode(5, false);
 
         // Trigger a block ready IRQ if enabled
-        if (auxSpiCnt & BIT(14))
-            cpu->sendInterrupt(19);
+        if (auxSpiCnt[cpu] & BIT(14))
+            cpus[cpu]->sendInterrupt(19);
     }
     else
     {
         // Indicate that a word is ready
-        romCtrl |= BIT(23);
+        romCtrl[cpu] |= BIT(23);
 
         // Enable DS cartridge DMA transfers
-        dma->setMode(5, true);
+        dmas[cpu]->setMode(5, true);
 
-        readCount = 0;
+        readCount[cpu] = 0;
     }
 }
 
-uint32_t Cartridge::readRomDataIn()
+uint32_t Cartridge::readRomDataIn(bool cpu)
 {
     // Don't transfer if the word ready bit isn't set
-    if (!(romCtrl & BIT(23)))
+    if (!(romCtrl[cpu] & BIT(23)))
         return 0;
 
     // Endless 0xFFs are returned on a dummy command or when no cart is inserted
@@ -649,36 +649,37 @@ uint32_t Cartridge::readRomDataIn()
     if (rom)
     {
         // Interpret the current ROM command
-        if (command == 0x0000000000000000) // Get header
+        if (command[cpu] == 0x0000000000000000) // Get header
         {
             // Return the ROM header, repeated every 0x1000 bytes
-            value = U8TO32(rom, readCount % 0x1000);
+            value = U8TO32(rom, readCount[cpu] % 0x1000);
         }
-        else if (command == 0x9000000000000000 || ((command >> 56) & 0xF0) == 0x10 || command == 0xB800000000000000) // Get chip ID
+        else if (command[cpu] == 0x9000000000000000 || ((command[cpu] >> 56) & 0xF0) == 0x10 ||
+                 command[cpu] == 0xB800000000000000) // Get chip ID
         {
             // Return the chip ID, repeated every 4 bytes
             // ROM dumps don't provide a chip ID, so use a fake one
             value = 0x00001FC2;
         }
-        else if (((command >> 56) & 0xF0) == 0x20) // Get secure area
+        else if (((command[cpu] >> 56) & 0xF0) == 0x20) // Get secure area
         {
-            uint32_t address = ((command & 0x0FFFF00000000000) >> 44) * 0x1000;
+            uint32_t address = ((command[cpu] & 0x0FFFF00000000000) >> 44) * 0x1000;
 
             // Return data from the selected secure area block
-            if (address == 0x4000 && readCount < 0x800)
+            if (address == 0x4000 && readCount[cpu] < 0x800)
             {
                 // Encrypt the first 2KB of the first block
                 // The first 8 bytes of this block should contain the double-encrypted string 'encryObj'
                 // This string isn't included in ROM dumps, so manually supply it
                 uint64_t data;
-                if (readCount < 8)
+                if (readCount[cpu] < 8)
                 {
                     data = 0x6A624F7972636E65; // encryObj
                 }
                 else
                 {
-                    data = (uint64_t)U8TO32(rom, ((address + readCount) & ~7) + 4) << 32;
-                    data |= (uint32_t)U8TO32(rom, (address + readCount) & ~7);
+                    data = (uint64_t)U8TO32(rom, ((address + readCount[cpu]) & ~7) + 4) << 32;
+                    data |= (uint32_t)U8TO32(rom, (address + readCount[cpu]) & ~7);
                 }
 
                 // Encrypt the data
@@ -686,49 +687,49 @@ uint32_t Cartridge::readRomDataIn()
                 data = encrypt64(data);
 
                 // Double-encrypt the 'encryObj' string
-                if (readCount < 8)
+                if (readCount[cpu] < 8)
                 {
                     initKeycode(2);
                     data = encrypt64(data);
                 }
 
-                value = data >> (((address + readCount) & 4) ? 32 : 0);
+                value = data >> (((address + readCount[cpu]) & 4) ? 32 : 0);
             }
             else
             {
-                value = U8TO32(rom, address + readCount);
+                value = U8TO32(rom, address + readCount[cpu]);
             }
         }
-        else if ((command & 0xFF00000000FFFFFF) == 0xB700000000000000) // Get data
+        else if ((command[cpu] & 0xFF00000000FFFFFF) == 0xB700000000000000) // Get data
         {
             // Return ROM data from the given address
             // This command can't read the first 32KB of a ROM, so it redirects the address
             // Some games verify that the first 32KB are unreadable as an anti-piracy measure
-            uint32_t address = (command & 0x00FFFFFFFF000000) >> 24;
+            uint32_t address = (command[cpu] & 0x00FFFFFFFF000000) >> 24;
             if (address < 0x8000) address = 0x8000 + (address & 0x1FF);
-            value = (address + readCount < romSize) ? U8TO32(rom, address + readCount) : 0;
+            if (address + readCount[cpu] < romSize) value = U8TO32(rom, address + readCount[cpu]);
         }
-        else if (command != 0x9F00000000000000) // Unknown (not dummy)
+        else if (command[cpu] != 0x9F00000000000000) // Unknown (not dummy)
         {
-            printf("ROM transfer with unknown command: 0x%.8X%.8X\n", (uint32_t)(command >> 32), (uint32_t)command);
+            printf("ROM transfer with unknown command: 0x%.8X%.8X\n", (uint32_t)(command[cpu] >> 32), (uint32_t)command[cpu]);
             value = 0;
         }
     }
 
-    readCount += 4;
+    readCount[cpu] += 4;
 
-    if (readCount == blockSize)
+    if (readCount[cpu] == blockSize[cpu])
     {
         // End the transfer when the block size has been reached
-        romCtrl &= ~BIT(23); // Word not ready
-        romCtrl &= ~BIT(31); // Block ready
+        romCtrl[cpu] &= ~BIT(23); // Word not ready
+        romCtrl[cpu] &= ~BIT(31); // Block ready
 
         // Disable DS cartridge DMA transfers
-        dma->setMode(5, false);
+        dmas[cpu]->setMode(5, false);
 
         // Trigger a block ready IRQ if enabled
-        if (auxSpiCnt & BIT(14))
-            cpu->sendInterrupt(19);
+        if (auxSpiCnt[cpu] & BIT(14))
+            cpus[cpu]->sendInterrupt(19);
     }
 
     return value;
