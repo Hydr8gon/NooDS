@@ -111,11 +111,15 @@ void Gpu3DRenderer::drawScanline48(int block)
 
 void Gpu3DRenderer::drawScanline1(int line)
 {
+    // Convert the clear values
+    uint32_t color = BIT(26) | rgba5ToRgba6(((clearColor & 0x001F0000) >> 1) | (clearColor & 0x00007FFF));
+    uint32_t depth = (clearDepth * 0x200) + ((clearDepth + 1) / 0x8000) * 0x1FF;
+
     // Clear the scanline buffers with the clear values
     for (int i = 0; i < 256; i++)
     {
-        framebuffer[line * 256 + i] = clearColor;
-        depthBuffer[line / 48][i] = clearDepth;
+        framebuffer[line * 256 + i] = color;
+        depthBuffer[line / 48][i] = depth;
         attribBuffer[line / 48][i] = 0;
         stencilBuffer[line / 48][i] = 0;
     }
@@ -444,7 +448,7 @@ void Gpu3DRenderer::drawPolygon(int line, _Polygon *polygon)
     {
         for (int k = j + 1; k < polygon->size; k++)
         {
-            if (vertices[k]->y < vertices[j]->y || (vertices[k]->y == vertices[j]->y) && vertices[k]->x < vertices[j]->x)
+            if (vertices[k]->y < vertices[j]->y || (vertices[k]->y == vertices[j]->y && vertices[k]->x < vertices[j]->x))
             {
                 Vertex *vertex = vertices[j];
                 vertices[j] = vertices[k];
@@ -626,17 +630,17 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
 
                     case 2: // Toon/Highlight
                     {
-                        uint8_t rv = (((color >>  0) & 0x3F) / 2);
-                        uint8_t r = ((((texel >>  0) & 0x3F) + 1) * (((toonTable[rv] >>  0) & 0x3F) + 1) - 1) / 64;
-                        uint8_t g = ((((texel >>  6) & 0x3F) + 1) * (((toonTable[rv] >>  6) & 0x3F) + 1) - 1) / 64;
-                        uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((toonTable[rv] >> 12) & 0x3F) + 1) - 1) / 64;
-                        uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color         >> 18) & 0x3F) + 1) - 1) / 64;
+                        uint32_t toon = rgba5ToRgba6(toonTable[((color >>  0) & 0x3F) / 2]);
+                        uint8_t r = ((((texel >>  0) & 0x3F) + 1) * (((toon  >>  0) & 0x3F) + 1) - 1) / 64;
+                        uint8_t g = ((((texel >>  6) & 0x3F) + 1) * (((toon  >>  6) & 0x3F) + 1) - 1) / 64;
+                        uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((toon  >> 12) & 0x3F) + 1) - 1) / 64;
+                        uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
 
                         if (disp3DCnt & BIT(1))
                         {
-                            r += ((toonTable[rv] >>  0) & 0x3F); if (r > 63) r = 63;
-                            g += ((toonTable[rv] >>  6) & 0x3F); if (g > 63) g = 63;
-                            b += ((toonTable[rv] >> 12) & 0x3F); if (b > 63) b = 63;
+                            r += ((toon >>  0) & 0x3F); if (r > 63) r = 63;
+                            g += ((toon >>  6) & 0x3F); if (g > 63) g = 63;
+                            b += ((toon >> 12) & 0x3F); if (b > 63) b = 63;
                         }
 
                         color = (a << 18) | (b << 12) | (g << 6) | r;
@@ -682,18 +686,20 @@ void Gpu3DRenderer::writeDisp3DCnt(uint16_t mask, uint16_t value)
 void Gpu3DRenderer::writeClearColor(uint32_t mask, uint32_t value)
 {
     // Write to the CLEAR_COLOR register
-    clearColor = rgba5ToRgba6((((value & mask) & 0x001F0000) >> 1) | ((value & mask) & 0x00007FFF));
+    mask &= 0x3F1FFFFF;
+    clearColor = (clearColor & ~mask) | (value & mask);
 }
 
 void Gpu3DRenderer::writeClearDepth(uint16_t mask, uint16_t value)
 {
     // Write to the CLEAR_DEPTH register
-    clearDepth = ((value & mask) * 0x200) + (((value & mask) + 1) / 0x8000) * 0x1FF;
+    mask &= 0x7FFF;
+    clearDepth = (clearDepth & ~mask) | (value & mask);
 }
 
 void Gpu3DRenderer::writeToonTable(int index, uint16_t mask, uint16_t value)
 {
     // Write to one of the TOON_TABLE registers
     mask &= 0x7FFF;
-    toonTable[index] = rgba5ToRgba6(value & mask);
+    toonTable[index] = (toonTable[index] & ~mask) | (value & mask);
 }
