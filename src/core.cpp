@@ -136,7 +136,7 @@ Core::Core(std::string filename): cartridge(&dma9, &dma7, &arm9, &arm7, &memory)
                 }
 
                 gbaSave = new uint8_t[gbaSaveSize];
-                memset(gbaSave, 0, gbaSaveSize * sizeof(uint8_t));
+                memset(gbaSave, 0xFF, gbaSaveSize * sizeof(uint8_t));
             }
         }
 
@@ -290,7 +290,7 @@ void Core::createSave(std::string filename, int type)
 
     // Create an empty save
     uint8_t *save = new uint8_t[saveSize];
-    memset(save, 0, saveSize * sizeof(uint8_t));
+    memset(save, 0xFF, saveSize * sizeof(uint8_t));
 
     // Write the save to a file
     std::string saveName = filename.substr(0, filename.rfind(".")) + ".sav";
