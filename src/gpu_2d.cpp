@@ -104,7 +104,7 @@ void Gpu2D::drawGbaScanline(int line)
 
         default:
         {
-            printf("Unknown GBA BG mode: %d\n", dispCnt & 0x0007);
+            if (dispCnt & BIT(10)) drawExtended(2, line);
             break;
         }
     }
@@ -796,24 +796,50 @@ void Gpu2D::drawAffine(int bg, int line)
 
 void Gpu2D::drawExtended(int bg, int line)
 {
-    if (bgCnt[bg] & BIT(7)) // Bitmap
+    if (memory->isGbaMode() || (bgCnt[bg] & BIT(7))) // Bitmap
     {
-        // Get information about the bitmap data
-        uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x4000;
+        uint8_t *data;
         int sizeX, sizeY;
-        switch ((bgCnt[bg] & 0xC000) >> 14)
+
+        // Get information about the bitmap data
+        if (memory->isGbaMode())
         {
-            case 0: sizeX = 128; sizeY = 128; break;
-            case 1: sizeX = 256; sizeY = 256; break;
-            case 2: sizeX = 512; sizeY = 256; break;
-            case 3: sizeX = 512; sizeY = 512; break;
+            uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800;
+
+            // Modes 4 and 5 have two bitmaps; one can be drawn while the other is displayed
+            // Draw the second bitmap if enabled
+            if ((dispCnt & BIT(4)) && (dispCnt & 0x0007) > 3)
+                screenBase += 0xA000;
+
+            // Get the bitmap data
+            data = &memory->getVramBlock(2)[screenBase];
+
+            // Get the bitmap size
+            switch (dispCnt & 0x0007)
+            {
+                case 5:  sizeX = 160; sizeY = 128; break;
+                default: sizeX = 240; sizeY = 160; break;
+            }
+        }
+        else
+        {
+            uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x4000;
+
+            // Get the bitmap data
+            data = memory->getMappedVram(bgVramAddr + screenBase);
+            if (!data) return;
+
+            // Get the bitmap size
+            switch ((bgCnt[bg] & 0xC000) >> 14)
+            {
+                case 0: sizeX = 128; sizeY = 128; break;
+                case 1: sizeX = 256; sizeY = 256; break;
+                case 2: sizeX = 512; sizeY = 256; break;
+                case 3: sizeX = 512; sizeY = 512; break;
+            }
         }
 
-        // Get the bitmap data
-        uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase);
-        if (!data) return;
-
-        if (bgCnt[bg] & BIT(2)) // Direct color bitmap
+        if ((memory->isGbaMode() && (dispCnt & 0x0007) != 4) || (!memory->isGbaMode() && (bgCnt[bg] & BIT(2)))) // Direct color bitmap
         {
             // Draw a line
             for (int i = 0; i < 256; i++)
