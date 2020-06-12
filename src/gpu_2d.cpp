@@ -246,14 +246,6 @@ void Gpu2D::drawGbaScanline(int line)
         // Switch VRAM blocks
         gbaBlock = !gbaBlock;
     }
-    else
-    {
-        // Increment the internal registers at the end of each scanline
-        internalX[0] += bgPB[0];
-        internalX[1] += bgPB[1];
-        internalY[0] += bgPD[0];
-        internalY[1] += bgPD[1];
-    }
 }
 
 void Gpu2D::drawScanline(int line)
@@ -524,15 +516,6 @@ void Gpu2D::drawScanline(int line)
             break;
         }
     }
-
-    // Increment the internal registers at the end of each scanline
-    if (line != 191)
-    {
-        internalX[0] += bgPB[0];
-        internalX[1] += bgPB[1];
-        internalY[0] += bgPD[0];
-        internalY[1] += bgPD[1];
-    }
 }
 
 void Gpu2D::applyMasterBright(int line)
@@ -792,6 +775,10 @@ void Gpu2D::drawAffine(int bg, int line)
         if (*index)
             layers[bg][i] = U8TO16(pal, *index * 2) | BIT(15);
     }
+
+    // Increment the internal registers at the end of the scanline
+    internalX[bg - 2] += bgPB[bg - 2];
+    internalY[bg - 2] += bgPD[bg - 2];
 }
 
 void Gpu2D::drawExtended(int bg, int line)
@@ -955,6 +942,10 @@ void Gpu2D::drawExtended(int bg, int line)
                 layers[bg][i] = U8TO16(pal, *index * 2) | BIT(15);
         }
     }
+
+    // Increment the internal registers at the end of the scanline
+    internalX[bg - 2] += bgPB[bg - 2];
+    internalY[bg - 2] += bgPD[bg - 2];
 }
 
 void Gpu2D::drawObjects(int line)
