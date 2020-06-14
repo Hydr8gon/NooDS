@@ -813,6 +813,10 @@ void Gpu2D::drawExtended(int bg, int line)
 
                 // Draw a pixel
                 layers[bg][i] = memory->read<uint16_t>(!memory->isGbaMode(), dataBase + (rotscaleY * sizeX + rotscaleX) * 2);
+
+                // Ignore transparency in GBA mode
+                if (memory->isGbaMode())
+                    layers[bg][i] |= BIT(15);
             }
         }
         else // 256 color bitmap
