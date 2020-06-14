@@ -34,9 +34,7 @@ class Gpu2D
 
         void drawGbaScanline(int line);
         void drawScanline(int line);
-        void applyMasterBright(int line);
-
-        bool is3DEnabled() { return dispCnt & BIT(3); }
+        void finishScanline(int line);
 
         uint32_t *getFramebuffer() { return framebuffer; }
 

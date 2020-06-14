@@ -169,9 +169,18 @@ void Gpu3D::swapBuffers()
     // Normalize the vertices and scale the X and Y coordinates to the viewport
     for (int i = 0; i < vertexCountIn; i++)
     {
-        verticesIn[i].x =       ((verticesIn[i].x + verticesIn[i].w) * viewportWidth  / (verticesIn[i].w * 2) + viewportX);
-        verticesIn[i].y = 192 - ((verticesIn[i].y + verticesIn[i].w) * viewportHeight / (verticesIn[i].w * 2) + viewportY);
-        verticesIn[i].z = (((verticesIn[i].z * 0x4000) / verticesIn[i].w) + 0x3FFF) * 0x200;
+        if (verticesIn[i].w != 0)
+        {
+            verticesIn[i].x =       ((verticesIn[i].x + verticesIn[i].w) * viewportWidth  / (verticesIn[i].w * 2) + viewportX);
+            verticesIn[i].y = 192 - ((verticesIn[i].y + verticesIn[i].w) * viewportHeight / (verticesIn[i].w * 2) + viewportY);
+            verticesIn[i].z = (((verticesIn[i].z * 0x4000) / verticesIn[i].w) + 0x3FFF) * 0x200;
+        }
+        else
+        {
+            verticesIn[i].x = 0;
+            verticesIn[i].y = 0;
+            verticesIn[i].z = 0;
+        }
     }
 
     // Swap the vertex buffers

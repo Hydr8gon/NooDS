@@ -265,139 +265,169 @@ void Gpu2D::drawScanline(int line)
         internalY[1] = bgY[1];
     }
 
-    switch ((dispCnt & 0x00030000) >> 16) // Display mode
+    // Clear the layers
+    for (int i = 0; i < 8; i++)
+        memset(layers[i], 0, 256 * sizeof(uint32_t));
+
+    // Draw the background layers
+    // The type of each layer depends on the BG mode
+    switch (dispCnt & 0x00000007)
     {
-        case 0: // Display off
+        case 0:
         {
-            // Fill the display with white
-            memset(&framebuffer[line * 256], 0xFF, 256 * sizeof(uint32_t));
+            if (dispCnt & BIT(8))  drawText(0, line);
+            if (dispCnt & BIT(9))  drawText(1, line);
+            if (dispCnt & BIT(10)) drawText(2, line);
+            if (dispCnt & BIT(11)) drawText(3, line);
             break;
         }
 
-        case 1: // Graphics display
+        case 1:
         {
-            // Clear the layers
-            for (int i = 0; i < 8; i++)
-                memset(layers[i], 0, 256 * sizeof(uint32_t));
+            if (dispCnt & BIT(8))    drawText(0, line);
+            if (dispCnt & BIT(9))    drawText(1, line);
+            if (dispCnt & BIT(10))   drawText(2, line);
+            if (dispCnt & BIT(11)) drawAffine(3, line);
+            break;
+        }
 
-            // Draw the background layers
-            // The type of each layer depends on the BG mode
-            switch (dispCnt & 0x00000007)
+        case 2:
+        {
+            if (dispCnt & BIT(8))    drawText(0, line);
+            if (dispCnt & BIT(9))    drawText(1, line);
+            if (dispCnt & BIT(10)) drawAffine(2, line);
+            if (dispCnt & BIT(11)) drawAffine(3, line);
+            break;
+        }
+
+        case 3:
+        {
+            if (dispCnt & BIT(8))      drawText(0, line);
+            if (dispCnt & BIT(9))      drawText(1, line);
+            if (dispCnt & BIT(10))     drawText(2, line);
+            if (dispCnt & BIT(11)) drawExtended(3, line);
+            break;
+        }
+
+        case 4:
+        {
+            if (dispCnt & BIT(8))      drawText(0, line);
+            if (dispCnt & BIT(9))      drawText(1, line);
+            if (dispCnt & BIT(10))   drawAffine(2, line);
+            if (dispCnt & BIT(11)) drawExtended(3, line);
+            break;
+        }
+
+        case 5:
+        {
+            if (dispCnt & BIT(8))      drawText(0, line);
+            if (dispCnt & BIT(9))      drawText(1, line);
+            if (dispCnt & BIT(10)) drawExtended(2, line);
+            if (dispCnt & BIT(11)) drawExtended(3, line);
+            break;
+        }
+
+        case 6:
+        {
+            if (dispCnt & BIT(10)) drawLarge(2, line);
+            break;
+        }
+
+        default:
+        {
+            printf("Unknown engine %c BG mode: %d\n", (gpu3DRenderer ? 'A' : 'B'), dispCnt & 0x00000007);
+            break;
+        }
+    }
+
+    // Draw the objects
+    if (dispCnt & BIT(12)) drawObjects(line);
+
+    int priority[8];
+    int bits[8];
+    int count = 0;
+
+    // Determine the priority of the layers
+    for (int i = 0; i < 4; i++)
+    {
+        // Object layers
+        priority[count] = 4 + i;
+        bits[count++] = 4;
+
+        // The BG layers can be rearranged, so add them in the correct order
+        for (int j = 0; j < 4; j++)
+        {
+            if ((bgCnt[j] & 0x0003) == i)
             {
-                case 0:
-                {
-                    if (dispCnt & BIT(8))  drawText(0, line);
-                    if (dispCnt & BIT(9))  drawText(1, line);
-                    if (dispCnt & BIT(10)) drawText(2, line);
-                    if (dispCnt & BIT(11)) drawText(3, line);
-                    break;
-                }
-
-                case 1:
-                {
-                    if (dispCnt & BIT(8))    drawText(0, line);
-                    if (dispCnt & BIT(9))    drawText(1, line);
-                    if (dispCnt & BIT(10))   drawText(2, line);
-                    if (dispCnt & BIT(11)) drawAffine(3, line);
-                    break;
-                }
-
-                case 2:
-                {
-                    if (dispCnt & BIT(8))    drawText(0, line);
-                    if (dispCnt & BIT(9))    drawText(1, line);
-                    if (dispCnt & BIT(10)) drawAffine(2, line);
-                    if (dispCnt & BIT(11)) drawAffine(3, line);
-                    break;
-                }
-
-                case 3:
-                {
-                    if (dispCnt & BIT(8))      drawText(0, line);
-                    if (dispCnt & BIT(9))      drawText(1, line);
-                    if (dispCnt & BIT(10))     drawText(2, line);
-                    if (dispCnt & BIT(11)) drawExtended(3, line);
-                    break;
-                }
-
-                case 4:
-                {
-                    if (dispCnt & BIT(8))      drawText(0, line);
-                    if (dispCnt & BIT(9))      drawText(1, line);
-                    if (dispCnt & BIT(10))   drawAffine(2, line);
-                    if (dispCnt & BIT(11)) drawExtended(3, line);
-                    break;
-                }
-
-                case 5:
-                {
-                    if (dispCnt & BIT(8))      drawText(0, line);
-                    if (dispCnt & BIT(9))      drawText(1, line);
-                    if (dispCnt & BIT(10)) drawExtended(2, line);
-                    if (dispCnt & BIT(11)) drawExtended(3, line);
-                    break;
-                }
-
-                case 6:
-                {
-                    if (dispCnt & BIT(10)) drawLarge(2, line);
-                    break;
-                }
-
-                default:
-                {
-                    printf("Unknown engine %c BG mode: %d\n", (gpu3DRenderer ? 'A' : 'B'), dispCnt & 0x00000007);
-                    break;
-                }
+                priority[count] = j;
+                bits[count++] = j;
             }
+        }
+    }
 
-            // Draw the objects
-            if (dispCnt & BIT(12)) drawObjects(line);
+    // Blend the layers to form the final image
+    for (int i = 0; i < 256; i++)
+    {
+        uint8_t enabled = BIT(5) | (dispCnt >> 8);
+        int layer = 0, blendBit = -1;
+        uint32_t *pixel = &framebuffer[line * 256 + i];
 
-            int priority[8];
-            int bits[8];
-            int count = 0;
+        // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
+        if (dispCnt & 0x0000E000) // Windows enabled
+        {
+            if ((dispCnt & BIT(13)) && i >= winX1[0] && i < winX2[0] && line >= winY1[0] && line < winY2[0])
+                enabled &= winIn >> 0; // Window 0
+            else if ((dispCnt & BIT(14)) && i >= winX1[1] && i < winX2[1] && line >= winY1[1] && line < winY2[1])
+                enabled &= winIn >> 8; // Window 1
+            else if ((dispCnt & BIT(15)) && (*pixel & BIT(24)))
+                enabled &= winOut >> 8; // Object window
+            else
+                enabled &= winOut >> 0; // Outside of windows
+        }
 
-            // Determine the priority of the layers
-            for (int i = 0; i < 4; i++)
+        // Find the topmost visible pixel from the layers
+        for (layer; layer < 8; layer++)
+        {
+            if (enabled & BIT(bits[layer]))
             {
-                // Object layers
-                priority[count] = 4 + i;
-                bits[count++] = 4;
-
-                // The BG layers can be rearranged, so add them in the correct order
-                for (int j = 0; j < 4; j++)
+                if (layers[priority[layer]][i] & BIT(26)) // 3D (already 18-bit)
                 {
-                    if ((bgCnt[j] & 0x0003) == i)
+                    if (layers[priority[layer]][i] & 0xFC0000)
                     {
-                        priority[count] = j;
-                        bits[count++] = j;
+                        *pixel = layers[priority[layer]][i];
+                        blendBit = bits[layer];
+                        break;
                     }
                 }
-            }
-
-            // Blend the layers to form the final image
-            for (int i = 0; i < 256; i++)
-            {
-                uint8_t enabled = BIT(5) | (dispCnt >> 8);
-                int layer = 0, blendBit = -1;
-                uint32_t *pixel = &framebuffer[line * 256 + i];
-
-                // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
-                if (dispCnt & 0x0000E000) // Windows enabled
+                else if (layers[priority[layer]][i] & BIT(15))
                 {
-                    if ((dispCnt & BIT(13)) && i >= winX1[0] && i < winX2[0] && line >= winY1[0] && line < winY2[0])
-                        enabled &= winIn >> 0; // Window 0
-                    else if ((dispCnt & BIT(14)) && i >= winX1[1] && i < winX2[1] && line >= winY1[1] && line < winY2[1])
-                        enabled &= winIn >> 8; // Window 1
-                    else if ((dispCnt & BIT(15)) && (*pixel & BIT(24)))
-                        enabled &= winOut >> 8; // Object window
-                    else
-                        enabled &= winOut >> 0; // Outside of windows
+                    *pixel = rgb5ToRgb6(layers[priority[layer]][i]);
+                    blendBit = bits[layer];
+                    break;
                 }
+            }
+        }
 
-                // Find the topmost visible pixel from the layers
-                for (layer; layer < 8; layer++)
+        // Use the backdrop color if no visible layer pixels were found
+        if (blendBit == -1)
+        {
+            *pixel = rgb5ToRgb6(U8TO16(palette, 0));
+            blendBit = 5;
+        }
+
+        // Blend the pixel if enabled
+        if ((enabled & BIT(5)) || (*pixel & (BIT(25) | BIT(26))))
+        {
+            int mode = (bldCnt & 0x00C0) >> 6;
+            int blendBit2 = -1;
+            uint32_t blend;
+
+            // Find a pixel to alpha blend with if enabled
+            // Semi-transparent objects and 3D are special cases that force alpha blending
+            if ((mode == 1 && blendBit != 5 && (bldCnt & BIT(blendBit))) || (*pixel & (BIT(25) | BIT(26))))
+            {
+                // Find the second-topmost visible pixel from the layers
+                for (layer++; layer < 8; layer++)
                 {
                     if (enabled & BIT(bits[layer]))
                     {
@@ -405,110 +435,79 @@ void Gpu2D::drawScanline(int line)
                         {
                             if (layers[priority[layer]][i] & 0xFC0000)
                             {
-                                *pixel = layers[priority[layer]][i];
-                                blendBit = bits[layer];
+                                blend = layers[priority[layer]][i];
+                                blendBit2 = bits[layer];
                                 break;
                             }
                         }
                         else if (layers[priority[layer]][i] & BIT(15))
                         {
-                            *pixel = rgb5ToRgb6(layers[priority[layer]][i]);
-                            blendBit = bits[layer];
+                            blend = rgb5ToRgb6(layers[priority[layer]][i]);
+                            blendBit2 = bits[layer];
                             break;
                         }
                     }
                 }
 
                 // Use the backdrop color if no visible layer pixels were found
-                if (blendBit == -1)
+                if (blendBit2 == -1)
                 {
-                    *pixel = rgb5ToRgb6(U8TO16(palette, 0));
-                    blendBit = 5;
-                }
-
-                // Blend the pixel if enabled
-                if ((enabled & BIT(5)) || (*pixel & (BIT(25) | BIT(26))))
-                {
-                    int mode = (bldCnt & 0x00C0) >> 6;
-                    int blendBit2 = -1;
-                    uint32_t blend;
-
-                    // Find a pixel to alpha blend with if enabled
-                    // Semi-transparent objects and 3D are special cases that force alpha blending
-                    if ((mode == 1 && blendBit != 5 && (bldCnt & BIT(blendBit))) || (*pixel & (BIT(25) | BIT(26))))
-                    {
-                        // Find the second-topmost visible pixel from the layers
-                        for (layer++; layer < 8; layer++)
-                        {
-                            if (enabled & BIT(bits[layer]))
-                            {
-                                if (layers[priority[layer]][i] & BIT(26)) // 3D (already 18-bit)
-                                {
-                                    if (layers[priority[layer]][i] & 0xFC0000)
-                                    {
-                                        blend = layers[priority[layer]][i];
-                                        blendBit2 = bits[layer];
-                                        break;
-                                    }
-                                }
-                                else if (layers[priority[layer]][i] & BIT(15))
-                                {
-                                    blend = rgb5ToRgb6(layers[priority[layer]][i]);
-                                    blendBit2 = bits[layer];
-                                    break;
-                                }
-                            }
-                        }
-
-                        // Use the backdrop color if no visible layer pixels were found
-                        if (blendBit2 == -1)
-                        {
-                            blend = rgb5ToRgb6(U8TO16(palette, 0));
-                            blendBit2 = 5;
-                        }
-                    }
-
-                    // Apply blending
-                    // If special cases don't have a second target to blend with, they can use brightness effects instead
-                    // Blending is done with 18-bit colors on the DS
-                    if (blendBit2 != -1 && (bldCnt & BIT(8 + blendBit2))) // Alpha blending
-                    {
-                        if (*pixel & BIT(26)) // 3D
-                        {
-                            int eva = ((*pixel >> 18) & 0x3F) + 1;
-                            int evb = 64 - eva;
-                            int r = ((*pixel >>  0) & 0x3F) * eva / 64 + ((blend >>  0) & 0x3F) * evb / 64; if (r > 63) r = 63;
-                            int g = ((*pixel >>  6) & 0x3F) * eva / 64 + ((blend >>  6) & 0x3F) * evb / 64; if (g > 63) g = 63;
-                            int b = ((*pixel >> 12) & 0x3F) * eva / 64 + ((blend >> 12) & 0x3F) * evb / 64; if (b > 63) b = 63;
-                            *pixel = (b << 12) | (g << 6) | r;
-                        }
-                        else
-                        {
-                            int eva = (bldAlpha & 0x001F) >> 0; if (eva > 16) eva = 16;
-                            int evb = (bldAlpha & 0x1F00) >> 8; if (evb > 16) evb = 16;
-                            int r = ((*pixel >>  0) & 0x3F) * eva / 16 + ((blend >>  0) & 0x3F) * evb / 16; if (r > 63) r = 63;
-                            int g = ((*pixel >>  6) & 0x3F) * eva / 16 + ((blend >>  6) & 0x3F) * evb / 16; if (g > 63) g = 63;
-                            int b = ((*pixel >> 12) & 0x3F) * eva / 16 + ((blend >> 12) & 0x3F) * evb / 16; if (b > 63) b = 63;
-                            *pixel = (b << 12) | (g << 6) | r;
-                        }
-                    }
-                    else if ((enabled & BIT(5)) && mode == 2 && (bldCnt & BIT(blendBit))) // Brightness increase
-                    {
-                        int r = (*pixel >>  0) & 0x3F; r += (63 - r) * bldY / 16;
-                        int g = (*pixel >>  6) & 0x3F; g += (63 - g) * bldY / 16;
-                        int b = (*pixel >> 12) & 0x3F; b += (63 - b) * bldY / 16;
-                        *pixel = (b << 12) | (g << 6) | r;
-                    }
-                    else if ((enabled & BIT(5)) && mode == 3 && (bldCnt & BIT(blendBit))) // Brightness decrease
-                    {
-                        int r = (*pixel >>  0) & 0x3F; r -= r * bldY / 16;
-                        int g = (*pixel >>  6) & 0x3F; g -= g * bldY / 16;
-                        int b = (*pixel >> 12) & 0x3F; b -= b * bldY / 16;
-                        *pixel = (b << 12) | (g << 6) | r;
-                    }
+                    blend = rgb5ToRgb6(U8TO16(palette, 0));
+                    blendBit2 = 5;
                 }
             }
 
+            // Apply blending
+            // If special cases don't have a second target to blend with, they can use brightness effects instead
+            // Blending is done with 18-bit colors on the DS
+            if (blendBit2 != -1 && (bldCnt & BIT(8 + blendBit2))) // Alpha blending
+            {
+                if (*pixel & BIT(26)) // 3D
+                {
+                    int eva = ((*pixel >> 18) & 0x3F) + 1;
+                    int evb = 64 - eva;
+                    int r = ((*pixel >>  0) & 0x3F) * eva / 64 + ((blend >>  0) & 0x3F) * evb / 64; if (r > 63) r = 63;
+                    int g = ((*pixel >>  6) & 0x3F) * eva / 64 + ((blend >>  6) & 0x3F) * evb / 64; if (g > 63) g = 63;
+                    int b = ((*pixel >> 12) & 0x3F) * eva / 64 + ((blend >> 12) & 0x3F) * evb / 64; if (b > 63) b = 63;
+                    *pixel = (b << 12) | (g << 6) | r;
+                }
+                else
+                {
+                    int eva = (bldAlpha & 0x001F) >> 0; if (eva > 16) eva = 16;
+                    int evb = (bldAlpha & 0x1F00) >> 8; if (evb > 16) evb = 16;
+                    int r = ((*pixel >>  0) & 0x3F) * eva / 16 + ((blend >>  0) & 0x3F) * evb / 16; if (r > 63) r = 63;
+                    int g = ((*pixel >>  6) & 0x3F) * eva / 16 + ((blend >>  6) & 0x3F) * evb / 16; if (g > 63) g = 63;
+                    int b = ((*pixel >> 12) & 0x3F) * eva / 16 + ((blend >> 12) & 0x3F) * evb / 16; if (b > 63) b = 63;
+                    *pixel = (b << 12) | (g << 6) | r;
+                }
+            }
+            else if ((enabled & BIT(5)) && mode == 2 && (bldCnt & BIT(blendBit))) // Brightness increase
+            {
+                int r = (*pixel >>  0) & 0x3F; r += (63 - r) * bldY / 16;
+                int g = (*pixel >>  6) & 0x3F; g += (63 - g) * bldY / 16;
+                int b = (*pixel >> 12) & 0x3F; b += (63 - b) * bldY / 16;
+                *pixel = (b << 12) | (g << 6) | r;
+            }
+            else if ((enabled & BIT(5)) && mode == 3 && (bldCnt & BIT(blendBit))) // Brightness decrease
+            {
+                int r = (*pixel >>  0) & 0x3F; r -= r * bldY / 16;
+                int g = (*pixel >>  6) & 0x3F; g -= g * bldY / 16;
+                int b = (*pixel >> 12) & 0x3F; b -= b * bldY / 16;
+                *pixel = (b << 12) | (g << 6) | r;
+            }
+        }
+    }
+}
+
+void Gpu2D::finishScanline(int line)
+{
+    // Redraw the scanline if the display isn't set to layer mode
+    switch ((dispCnt & 0x00030000) >> 16) // Display mode
+    {
+        case 0: // Display off
+        {
+            // Fill the display with white
+            memset(&framebuffer[line * 256], 0xFF, 256 * sizeof(uint32_t));
             break;
         }
 
@@ -524,14 +523,10 @@ void Gpu2D::drawScanline(int line)
         case 3: // Main memory display
         {
             printf("Unimplemented engine %c display mode: display FIFO\n", (gpu3DRenderer ? 'A' : 'B'));
-            dispCnt &= ~0x00030000;
             break;
         }
     }
-}
 
-void Gpu2D::applyMasterBright(int line)
-{
     // Apply the master brightness
     // This is only on the DS, and is done with 18-bit colors
     switch ((masterBright & 0xC000) >> 14) // Mode

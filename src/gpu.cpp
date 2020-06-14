@@ -309,13 +309,14 @@ void Gpu::scanline256()
             }
         }
 
-        // Apply master brightness after display capture so the captured data isn't affected
-        engineA->applyMasterBright(vCount);
-        engineB->applyMasterBright(vCount);
+        // Display captures are performed on the layers, even if the display is set to something else
+        // After the display capture, redraw the scanline or apply master brightness if needed
+        engineA->finishScanline(vCount);
+        engineB->finishScanline(vCount);
     }
 
     // Draw 3D scanlines 48 lines in advance
-    if (engineA->is3DEnabled() && ((vCount + 48) % 263) < 192)
+    if ((engineA->readDispCnt() & BIT(3)) && ((vCount + 48) % 263) < 192)
         gpu3DRenderer->drawScanline((vCount + 48) % 263);
 
     for (int i = 0; i < 2; i++)
