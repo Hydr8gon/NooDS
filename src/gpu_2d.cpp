@@ -29,18 +29,18 @@ Gpu2D::Gpu2D(Memory *memory, Gpu3DRenderer *gpu3DRenderer): memory(memory), gpu3
     if (gpu3DRenderer)
     {
         // Set up 2D GPU engine A
-        palette = memory->getPalette();
-        oam = memory->getOam();
         bgVramAddr = 0x6000000;
         objVramAddr = 0x6400000;
+        palette = memory->getPalette();
+        oam = memory->getOam();
     }
     else
     {
         // Set up 2D GPU engine B
-        palette = memory->getPalette() + 0x400;
-        oam = memory->getOam() + 0x400;
         bgVramAddr = 0x6200000;
         objVramAddr = 0x6600000;
+        palette = memory->getPalette() + 0x400;
+        oam = memory->getOam() + 0x400;
     }
 }
 
@@ -102,16 +102,22 @@ void Gpu2D::drawGbaScanline(int line)
             break;
         }
 
-        default:
+
+        case 3: case 4: case 5:
         {
             if (dispCnt & BIT(10)) drawExtended(2, line);
+            break;
+        }
+
+        default:
+        {
+            printf("Unknown GBA BG mode: %d\n", dispCnt & 0x0007);
             break;
         }
     }
 
     // Draw the objects
     if (dispCnt & BIT(12)) drawObjects(line);
-
 
     int priority[8];
     int bits[8];
@@ -583,48 +589,45 @@ void Gpu2D::drawText(int bg, int line)
         return;
     }
 
-    // Get information about the tile data
-    uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
-    uint32_t charBase   = ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
+    // Get the base data addresses
+    uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
+    uint32_t indexBase = bgVramAddr + ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
+
+    // Move the tile address to the current line
+    int yOffset = (line + bgVOfs[bg]) % 512;
+    tileBase += ((yOffset / 8) % 32) * 64;
 
     // If the Y-offset exceeds 256 and the background is 512 pixels tall, move to the next 256x256 section
     // If the background is 512 pixels wide, move 2 sections to skip the second X section
-    int yOffset = (line + bgVOfs[bg]) % 512;
     if (yOffset >= 256 && (bgCnt[bg] & BIT(15)))
-        screenBase += (bgCnt[bg] & BIT(14)) ? 0x1000 : 0x800;
-
-    // Get the tile data for the current line
-    uint8_t *data;
-    if (memory->isGbaMode())
-    {
-        data = &memory->getVramBlock(2)[screenBase + ((yOffset / 8) % 32) * 64];
-    }
-    else
-    {
-        data = memory->getMappedVram(bgVramAddr + screenBase + ((yOffset / 8) % 32) * 64);
-        if (!data) return;
-    }
+        tileBase += (bgCnt[bg] & BIT(14)) ? 0x1000 : 0x800;
 
     // Draw a line
     if (bgCnt[bg] & BIT(7)) // 8-bit
     {
         for (int i = 0; i <= 256; i += 8)
         {
-            // Get the data for the current tile
-            // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
+            // Move the tile address to the current tile
             int xOffset = (bgHOfs[bg] + i) % 512;
-            uint16_t tile = U8TO16(data, ((xOffset / 8) % 32) * 2 + ((xOffset >= 256 && (bgCnt[bg] & BIT(14))) ? 0x800 : 0));
+            uint32_t tileAddr = tileBase + ((xOffset / 8) % 32) * 2;
 
-            // Get the palette of the tile
+            // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
+            if (xOffset >= 256 && (bgCnt[bg] & BIT(14)))
+                tileAddr += 0x800;
+
+            // Get the current tile
+            uint16_t tile = memory->read<uint16_t>(!memory->isGbaMode(), tileAddr);
+
+            // Get the tile's palette
             uint8_t *pal;
-            if (!memory->isGbaMode() && (dispCnt & BIT(30))) // Extended palette
+            if (dispCnt & BIT(30)) // Extended palette
             {
                 // Determine the extended palette slot
                 // Backgrounds 0 and 1 can alternatively use slots 2 and 3
                 int slot = (bg < 2 && (bgCnt[bg] & BIT(13))) ? (bg + 2) : bg;
 
                 // In extended palette mode, the tile can select from multiple 256-color palettes
-                if (!extPalettes[slot]) continue;
+                if (!extPalettes[slot]) return;
                 pal = &extPalettes[slot][((tile & 0xF000) >> 12) * 512];
             }
             else // Standard palette
@@ -632,29 +635,23 @@ void Gpu2D::drawText(int bg, int line)
                 pal = palette;
             }
 
-            // Find the palette indeces for the right pixel row of the tile
-            uint8_t *indices;
-            if (memory->isGbaMode())
-            {
-                indices = &memory->getVramBlock(2)[charBase + (tile & 0x03FF) * 64];
-            }
-            else
-            {
-                indices = memory->getMappedVram(bgVramAddr + charBase + (tile & 0x03FF) * 64);
-                if (!indices) continue;
-            }
+            // Get the palette indices for the current line of the tile, flipped vertically if enabled
+            uint32_t indexAddr = indexBase + (tile & 0x03FF) * 64 + ((tile & BIT(11)) ? ((7 - yOffset % 8) * 8) : ((yOffset % 8) * 8));
+            uint64_t indices = memory->read<uint32_t>(!memory->isGbaMode(), indexAddr) |
+                ((uint64_t)memory->read<uint32_t>(!memory->isGbaMode(), indexAddr + 4) << 32);
 
-            // Flip the tile vertically if enabled
-            indices += (tile & BIT(11)) ? ((7 - yOffset % 8) * 8) : ((yOffset % 8) * 8);
-
+            // Draw the current line of the tile
             for (int j = 0; j < 8; j++)
             {
                 // Flip the tile horizontally if enabled
                 int offset = i - (xOffset % 8) + ((tile & BIT(10)) ? (7 - j) : j);
 
                 // Draw a pixel
-                if (offset >= 0 && offset < 256 && indices[j])
-                    layers[bg][offset] = U8TO16(pal, indices[j] * 2) | BIT(15);
+                if (offset >= 0 && offset < 256 && (indices & 0xFF))
+                    layers[bg][offset] = U8TO16(pal, (indices & 0xFF) * 2) | BIT(15);
+
+                // Move to the next palette index
+                indices >>= 8;
             }
         }
     }
@@ -662,41 +659,37 @@ void Gpu2D::drawText(int bg, int line)
     {
         for (int i = 0; i <= 256; i += 8)
         {
-            // Get the data for the current tile
-            // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
-            uint16_t xOffset = (bgHOfs[bg] + i) % 512;
-            uint16_t tile = U8TO16(data, ((xOffset / 8) % 32) * 2 + ((xOffset >= 256 && (bgCnt[bg] & BIT(14))) ? 0x800 : 0));
+            // Move the tile address to the current tile
+            int xOffset = (bgHOfs[bg] + i) % 512;
+            uint32_t tileAddr = tileBase + ((xOffset / 8) % 32) * 2;
 
-            // Get the palette of the tile
+            // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
+            if (xOffset >= 256 && (bgCnt[bg] & BIT(14)))
+                tileAddr += 0x800;
+
+            // Get the current tile
+            uint16_t tile = memory->read<uint16_t>(!memory->isGbaMode(), tileAddr);
+
+            // Get the tile's palette
             // In 4-bit mode, the tile can select from multiple 16-color palettes
             uint8_t *pal = &palette[((tile & 0xF000) >> 12) * 32];
 
-            // Find the palette indeces for the right pixel row of the tile
-            uint8_t *indices;
-            if (memory->isGbaMode())
-            {
-                indices = &memory->getVramBlock(2)[charBase + (tile & 0x03FF) * 32];
-            }
-            else
-            {
-                indices = memory->getMappedVram(bgVramAddr + charBase + (tile & 0x03FF) * 32);
-                if (!indices) continue;
-            }
+            // Get the palette indices for the current line of the tile, flipped vertically if enabled
+            uint32_t indexAddr = indexBase + (tile & 0x03FF) * 32 + ((tile & BIT(11)) ? ((7 - yOffset % 8) * 4) : ((yOffset % 8) * 4));
+            uint32_t indices = memory->read<uint32_t>(!memory->isGbaMode(), indexAddr);
 
-            // Flip the tile vertically if enabled
-            indices += (tile & BIT(11)) ? ((7 - yOffset % 8) * 4) : ((yOffset % 8) * 4);
-
+            // Draw the current line of the tile
             for (int j = 0; j < 8; j++)
             {
                 // Flip the tile horizontally if enabled
                 int offset = i - (xOffset % 8) + ((tile & BIT(10)) ? (7 - j) : j);
 
-                // Extract the 4-bit palette index from the 8-bit value
-                uint8_t index = (j & 1) ? ((indices[j / 2] & 0xF0) >> 4) : (indices[j / 2] & 0x0F);
-
                 // Draw a pixel
-                if (offset >= 0 && offset < 256 && index)
-                    layers[bg][offset] = U8TO16(pal, index * 2) | BIT(15);
+                if (offset >= 0 && offset < 256 && (indices & 0xF))
+                    layers[bg][offset] = U8TO16(pal, (indices & 0xF) * 2) | BIT(15);
+
+                // Move to the next palette index
+                indices >>= 4;
             }
         }
     }
@@ -704,21 +697,23 @@ void Gpu2D::drawText(int bg, int line)
 
 void Gpu2D::drawAffine(int bg, int line)
 {
-    // Get information about the tile data
-    uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
-    uint32_t charBase   = ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
+    // Get the base data addresses
+    uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
+    uint32_t indexBase = bgVramAddr + ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
+
+    // Get the background's size
     int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
 
-    // Get the tile data
-    uint8_t *data;
-    if (memory->isGbaMode())
+    // Get the background's palette
+    uint8_t *pal;
+    if (dispCnt & BIT(30)) // Extended palette
     {
-        data = &memory->getVramBlock(2)[screenBase];
+        if (!extPalettes[bg]) return;
+        pal = extPalettes[bg];
     }
-    else
+    else // Standard palette
     {
-        data = memory->getMappedVram(bgVramAddr + screenBase);
-        if (!data) return;
+        pal = palette;
     }
 
     // Draw a line
@@ -731,49 +726,24 @@ void Gpu2D::drawAffine(int bg, int line)
         // Handle display area overflow
         if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
         {
-            rotscaleX %= size;
-            rotscaleY %= size;
-
-            if (rotscaleX < 0) rotscaleX += size;
-            if (rotscaleY < 0) rotscaleY += size;
+            rotscaleX %= size; if (rotscaleX < 0) rotscaleX += size;
+            rotscaleY %= size; if (rotscaleY < 0) rotscaleY += size;
         }
         else if (rotscaleX < 0 || rotscaleX >= size || rotscaleY < 0 || rotscaleY >= size) // Transparent
         {
             continue;
         }
 
-        // Get the data for the current tile
-        uint8_t tile = data[(rotscaleY / 8) * (size / 8) + (rotscaleX / 8)];
+        // Get the current tile
+        uint8_t tile = memory->read<uint8_t>(!memory->isGbaMode(), tileBase + (rotscaleY / 8) * (size / 8) + (rotscaleX / 8));
 
-        // Get the palette of the tile
-        uint8_t *pal;
-        if (!memory->isGbaMode() && (dispCnt & BIT(30))) // Extended palette
-        {
-            if (!extPalettes[bg]) continue;
-            pal = extPalettes[bg];
-        }
-        else // Standard palette
-        {
-            pal = palette;
-        }
-
-        // Find the palette index for the right pixel of the tile
-        uint8_t *index;
-        if (memory->isGbaMode())
-        {
-            index = &memory->getVramBlock(2)[charBase + tile * 64];
-        }
-        else
-        {
-            index = memory->getMappedVram(bgVramAddr + charBase + tile * 64);
-            if (!index) continue;
-        }
-        index += (rotscaleY % 8) * 8;
-        index += (rotscaleX % 8);
+        // Get the palette index for the current pixel of the tile
+        uint32_t indexAddr = indexBase + tile * 64 + (rotscaleY % 8) * 8 + (rotscaleX % 8);
+        uint8_t index = memory->read<uint8_t>(!memory->isGbaMode(), indexAddr);
 
         // Draw a pixel
-        if (*index)
-            layers[bg][i] = U8TO16(pal, *index * 2) | BIT(15);
+        if (index)
+            layers[bg][i] = U8TO16(pal, index * 2) | BIT(15);
     }
 
     // Increment the internal registers at the end of the scanline
@@ -785,21 +755,19 @@ void Gpu2D::drawExtended(int bg, int line)
 {
     if (memory->isGbaMode() || (bgCnt[bg] & BIT(7))) // Bitmap
     {
-        uint8_t *data;
+        uint32_t dataBase = bgVramAddr;
         int sizeX, sizeY;
 
         // Get information about the bitmap data
         if (memory->isGbaMode())
         {
-            uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800;
+            // Get the base data address
+            dataBase += ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800;
 
             // Modes 4 and 5 have two bitmaps; one can be drawn while the other is displayed
             // Draw the second bitmap if enabled
             if ((dispCnt & BIT(4)) && (dispCnt & 0x0007) > 3)
-                screenBase += 0xA000;
-
-            // Get the bitmap data
-            data = &memory->getVramBlock(2)[screenBase];
+                dataBase += 0xA000;
 
             // Get the bitmap size
             switch (dispCnt & 0x0007)
@@ -810,11 +778,8 @@ void Gpu2D::drawExtended(int bg, int line)
         }
         else
         {
-            uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x4000;
-
-            // Get the bitmap data
-            data = memory->getMappedVram(bgVramAddr + screenBase);
-            if (!data) return;
+            // Get the base data address
+            dataBase += ((bgCnt[bg] & 0x1F00) >> 8) * 0x4000;
 
             // Get the bitmap size
             switch ((bgCnt[bg] & 0xC000) >> 14)
@@ -838,11 +803,8 @@ void Gpu2D::drawExtended(int bg, int line)
                 // Handle display area overflow
                 if (bgCnt[bg] & BIT(13)) // Wraparound
                 {
-                    rotscaleX %= sizeX;
-                    rotscaleY %= sizeY;
-
-                    if (rotscaleX < 0) rotscaleX += sizeX;
-                    if (rotscaleY < 0) rotscaleY += sizeY;
+                    rotscaleX %= sizeX; if (rotscaleX < 0) rotscaleX += sizeX;
+                    rotscaleY %= sizeY; if (rotscaleY < 0) rotscaleY += sizeY;
                 }
                 else if (rotscaleX < 0 || rotscaleX >= sizeX || rotscaleY < 0 || rotscaleY >= sizeY) // Transparent
                 {
@@ -850,7 +812,7 @@ void Gpu2D::drawExtended(int bg, int line)
                 }
 
                 // Draw a pixel
-                layers[bg][i] = U8TO16(data, (rotscaleY * sizeX + rotscaleX) * 2);
+                layers[bg][i] = memory->read<uint16_t>(!memory->isGbaMode(), dataBase + (rotscaleY * sizeX + rotscaleX) * 2);
             }
         }
         else // 256 color bitmap
@@ -865,33 +827,31 @@ void Gpu2D::drawExtended(int bg, int line)
                 // Handle display area overflow
                 if (bgCnt[bg] & BIT(13)) // Wraparound
                 {
-                    rotscaleX %= sizeX;
-                    rotscaleY %= sizeY;
-
-                    if (rotscaleX < 0) rotscaleX += sizeX;
-                    if (rotscaleY < 0) rotscaleY += sizeY;
+                    rotscaleX %= sizeX; if (rotscaleX < 0) rotscaleX += sizeX;
+                    rotscaleY %= sizeY; if (rotscaleY < 0) rotscaleY += sizeY;
                 }
                 else if (rotscaleX < 0 || rotscaleX >= sizeX || rotscaleY < 0 || rotscaleY >= sizeY) // Transparent
                 {
                     continue;
                 }
 
+                // Get the palette index for the current pixel
+                uint8_t index = memory->read<uint8_t>(!memory->isGbaMode(), dataBase + rotscaleY * sizeX + rotscaleX);
+
                 // Draw a pixel
-                if (data[rotscaleY * sizeX + rotscaleX])
-                    layers[bg][i] = U8TO16(palette, (data[rotscaleY * sizeX + rotscaleX]) * 2) | BIT(15);
+                if (index)
+                    layers[bg][i] = U8TO16(palette, index * 2) | BIT(15);
             }
         }
     }
     else // Extended affine
     {
-        // Get information about the tile data
-        uint32_t screenBase = ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
-        uint32_t charBase   = ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
-        int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
+        // Get the base data addresses
+        uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
+        uint32_t indexBase = bgVramAddr + ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
 
-        // Get the tile data
-        uint8_t *data = memory->getMappedVram(bgVramAddr + screenBase);
-        if (!data) return;
+        // Get the background's size
+        int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
 
         // Draw a line
         for (int i = 0; i < 256; i++)
@@ -903,21 +863,19 @@ void Gpu2D::drawExtended(int bg, int line)
             // Handle display area overflow
             if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
             {
-                rotscaleX %= size;
-                rotscaleY %= size;
-
-                if (rotscaleX < 0) rotscaleX += size;
-                if (rotscaleY < 0) rotscaleY += size;
+                rotscaleX %= size; if (rotscaleX < 0) rotscaleX += size;
+                rotscaleY %= size; if (rotscaleY < 0) rotscaleY += size;
             }
             else if (rotscaleX < 0 || rotscaleX >= size || rotscaleY < 0 || rotscaleY >= size) // Transparent
             {
                 continue;
             }
 
-            // Get the data for the current tile
-            uint16_t tile = U8TO16(data, ((rotscaleY / 8) * (size / 8) + (rotscaleX / 8)) * 2);
+            // Get the current tile
+            uint32_t tileAddr = tileBase + ((rotscaleY / 8) * (size / 8) + (rotscaleX / 8)) * 2;
+            uint16_t tile = memory->read<uint16_t>(!memory->isGbaMode(), tileAddr);
 
-            // Get the palette of the tile
+            // Get the tile's palette
             uint8_t *pal;
             if (dispCnt & BIT(30)) // Extended palette
             {
@@ -930,16 +888,15 @@ void Gpu2D::drawExtended(int bg, int line)
                 pal = palette;
             }
 
-            // Find the palette index for the right pixel of the tile
-            // The tile can be vertically or horizontally flipped
-            uint8_t *index = memory->getMappedVram(bgVramAddr + charBase + (tile & 0x03FF) * 64);
-            if (!index) continue;
-            index += ((tile & BIT(11)) ? (7 - rotscaleY % 8) : (rotscaleY % 8)) * 8;
-            index += ((tile & BIT(10)) ? (7 - rotscaleX % 8) : (rotscaleX % 8));
+            // Get the palette index for the current pixel of the tile, flipped vertically or horizontally if enabled
+            uint32_t indexAddr = indexBase + (tile & 0x03FF) * 64;
+            indexAddr += ((tile & BIT(11)) ? (7 - rotscaleY % 8) : (rotscaleY % 8)) * 8;
+            indexAddr += ((tile & BIT(10)) ? (7 - rotscaleX % 8) : (rotscaleX % 8));
+            uint8_t index = memory->read<uint8_t>(!memory->isGbaMode(), indexAddr);
 
             // Draw a pixel
-            if (*index)
-                layers[bg][i] = U8TO16(pal, *index * 2) | BIT(15);
+            if (index)
+                layers[bg][i] = U8TO16(pal, index * 2) | BIT(15);
         }
     }
 
@@ -1038,28 +995,24 @@ void Gpu2D::drawObjects(int line)
         uint32_t *layer = layers[4 + ((object[2] & 0x0C00) >> 10)];
         int type = (object[0] & 0x0C00) >> 10;
 
-        // Draw the object if it's a bitmap (DS only)
+        // Draw bitmap objects
         if (!memory->isGbaMode() && type == 3)
         {
-            uint32_t address;
+            uint32_t dataBase;
             int bitmapWidth;
 
             // Determine the address and width of the bitmap
             if (dispCnt & BIT(6)) // 1D mapping
             {
-                address = objVramAddr + (object[2] & 0x03FF) * ((dispCnt & BIT(22)) ? 256 : 128);
+                dataBase = objVramAddr + (object[2] & 0x03FF) * ((dispCnt & BIT(22)) ? 256 : 128);
                 bitmapWidth = width;
             }
             else // 2D mapping
             {
                 uint8_t xMask = (dispCnt & BIT(5)) ? 0x1F : 0x0F;
-                address = objVramAddr + (object[2] & 0x03FF & xMask) * 0x10 + (object[2] & 0x03FF & ~xMask) * 0x80;
+                dataBase = objVramAddr + (object[2] & 0x03FF & xMask) * 0x10 + (object[2] & 0x03FF & ~xMask) * 0x80;
                 bitmapWidth = (dispCnt & BIT(5)) ? 256 : 128;
             }
-
-            // Get the bitmap data
-            uint8_t *data = memory->getMappedVram(address);
-            if (!data) continue;
 
             if (object[0] & BIT(8)) // Rotscale
             {
@@ -1068,49 +1021,48 @@ void Gpu2D::drawObjects(int line)
                 for (int j = 0; j < 4; j++)
                     params[j] = (int16_t)U8TO16(oam, ((object[1] & 0x3E00) >> 9) * 0x20 + j * 8 + 6);
 
+                // Draw a line of the object
                 for (int j = 0; j < width2; j++)
                 {
-                    // Calculate the rotscaled X coordinate relative to the sprite
+                    // Calculate the rotscaled X coordinate relative to the object
                     int rotscaleX = ((params[0] * (j - width2 / 2) + params[1] * (spriteY - height2 / 2)) >> 8) + width / 2;
                     if (rotscaleX < 0 || rotscaleX >= width) continue;
 
-                    // Calculate the rotscaled Y coordinate relative to the sprite
+                    // Calculate the rotscaled Y coordinate relative to the object
                     int rotscaleY = ((params[2] * (j - width2 / 2) + params[3] * (spriteY - height2 / 2)) >> 8) + height / 2;
                     if (rotscaleY < 0 || rotscaleY >= height) continue;
 
-                    // Draw a pixel of the bitmap object
+                    // Draw a pixel
                     if (x + j >= 0 && x + j < 256)
-                        layer[x + j] = U8TO16(data, (rotscaleY * bitmapWidth + rotscaleX) * 2);
+                        layer[x + j] = memory->read<uint16_t>(true, dataBase + (rotscaleY * bitmapWidth + rotscaleX) * 2);
                 }
             }
             else
             {
+                // Draw a line of the object
                 for (int j = 0; j < width; j++)
                 {
-                    // Draw a pixel of the bitmap object
                     if (x + j >= 0 && x + j < 256)
-                        layer[x + j] = U8TO16(data, (spriteY * bitmapWidth + j) * 2);
+                        layer[x + j] = memory->read<uint16_t>(true, dataBase + (spriteY * bitmapWidth + j) * 2);
                 }
             }
 
             continue;
         }
 
-        // Get the current tile
-        uint8_t *tile;
+        // Get the base tile address
+        uint32_t tileBase;
         if (memory->isGbaMode())
         {
-            tile = &memory->getVramBlock(2)[0x10000 + (object[2] & 0x03FF) * 32];
+            tileBase = 0x6010000 + (object[2] & 0x03FF) * 32;
         }
         else
         {
             // On the DS, the boundary between tiles can be 32, 64, 128, or 256 bytes for 1D tile mapping
             uint16_t bound = (dispCnt & BIT(4)) ? (32 << ((dispCnt & 0x00300000) >> 20)) : 32;
-            tile = memory->getMappedVram(objVramAddr + (object[2] & 0x03FF) * bound);
+            tileBase = objVramAddr + (object[2] & 0x03FF) * bound;
         }
-        if (!tile) continue;
 
-        // Draw the object if it's tile-based
         if (object[0] & BIT(8)) // Rotscale
         {
             // Get the rotscale parameters
@@ -1122,9 +1074,9 @@ void Gpu2D::drawObjects(int line)
             {
                 int mapWidth = (dispCnt & BIT(memory->isGbaMode() ? 6 : 4)) ? width : 128;
 
-                // Get the palette of the object
+                // Get the object's palette
                 uint8_t *pal;
-                if (!memory->isGbaMode() && (dispCnt & BIT(31))) // Extended palette
+                if (dispCnt & BIT(31)) // Extended palette
                 {
                     // In extended palette mode, the object can select from multiple 256-color palettes
                     if (!extPalettes[4]) continue;
@@ -1135,25 +1087,26 @@ void Gpu2D::drawObjects(int line)
                     pal = &palette[0x200];
                 }
 
+                // Draw a line of the object
                 for (int j = 0; j < width2; j++)
                 {
-                    // Calculate the rotscaled X coordinate relative to the sprite
+                    // Calculate the rotscaled X coordinate relative to the object
                     int rotscaleX = ((params[0] * (j - width2 / 2) + params[1] * (spriteY - height2 / 2)) >> 8) + width / 2;
                     if (rotscaleX < 0 || rotscaleX >= width) continue;
 
-                    // Calculate the rotscaled Y coordinate relative to the sprite
+                    // Calculate the rotscaled Y coordinate relative to the object
                     int rotscaleY = ((params[2] * (j - width2 / 2) + params[3] * (spriteY - height2 / 2)) >> 8) + height / 2;
                     if (rotscaleY < 0 || rotscaleY >= height) continue;
 
-                    // Get the appropriate palette index from the tile for the current position
-                    uint8_t index = tile[((rotscaleY / 8) * mapWidth + rotscaleY % 8) * 8 + (rotscaleX / 8) * 64 + rotscaleX % 8];
+                    // Get the palette index for the current pixel
+                    uint8_t index = memory->read<uint8_t>(!memory->isGbaMode(), tileBase +
+                        ((rotscaleY / 8) * mapWidth + rotscaleY % 8) * 8 + (rotscaleX / 8) * 64 + rotscaleX % 8);
 
-                    // Draw a pixel if one exists at the current position
                     if (x + j >= 0 && x + j < 256 && index)
                     {
                         if (type == 2) // Object window
                         {
-                            // Mark object window pixels with an extra bit, and don't actually draw anything
+                            // Mark object window pixels with an extra bit, and don't draw anything
                             framebuffer[line * 256 + x + j] |= BIT(24);
                         }
                         else
@@ -1171,30 +1124,31 @@ void Gpu2D::drawObjects(int line)
             {
                 int mapWidth = (dispCnt & BIT(memory->isGbaMode() ? 6 : 4)) ? width : 256;
 
-                // Get the palette of the object
+                // Get the object's palette
                 // In 4-bit mode, the object can select from multiple 16-color palettes
                 uint8_t *pal = &palette[0x200 + ((object[2] & 0xF000) >> 12) * 32];
 
+                // Draw a line of the object
                 for (int j = 0; j < width2; j++)
                 {
-                    // Calculate the rotscaled X coordinate relative to the sprite
+                    // Calculate the rotscaled X coordinate relative to the object
                     int rotscaleX = ((params[0] * (j - width2 / 2) + params[1] * (spriteY - height2 / 2)) >> 8) + width / 2;
                     if (rotscaleX < 0 || rotscaleX >= width) continue;
 
-                    // Calculate the rotscaled Y coordinate relative to the sprite
+                    // Calculate the rotscaled Y coordinate relative to the object
                     int rotscaleY = ((params[2] * (j - width2 / 2) + params[3] * (spriteY - height2 / 2)) >> 8) + height / 2;
                     if (rotscaleY < 0 || rotscaleY >= height) continue;
 
-                    // Get the appropriate palette index from the tile for the current position
-                    uint8_t index = tile[((rotscaleY / 8) * mapWidth + rotscaleY % 8) * 4 + (rotscaleX / 8) * 32 + (rotscaleX / 2) % 4];
+                    // Get the palette index for the current pixel
+                    uint8_t index = memory->read<uint8_t>(!memory->isGbaMode(), tileBase +
+                        ((rotscaleY / 8) * mapWidth + rotscaleY % 8) * 4 + (rotscaleX / 8) * 32 + (rotscaleX % 8) / 2);
                     index = (rotscaleX % 2 == 1) ? ((index & 0xF0) >> 4) : (index & 0x0F);
 
-                    // Draw a pixel if one exists at the current position
                     if (x + j >= 0 && x + j < 256 && index)
                     {
                         if (type == 2) // Object window
                         {
-                            // Mark object window pixels with an extra bit, and don't actually draw anything
+                            // Mark object window pixels with an extra bit, and don't draw anything
                             framebuffer[line * 256 + x + j] |= BIT(24);
                         }
                         else
@@ -1214,13 +1168,13 @@ void Gpu2D::drawObjects(int line)
             // Adjust the current tile to align with the current Y coordinate relative to the object
             int mapWidth = (dispCnt & BIT(memory->isGbaMode() ? 6 : 4)) ? width : 128;
             if (object[1] & BIT(13)) // Vertical flip
-                tile += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 8;
+                tileBase += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 8;
             else
-                tile += ((spriteY % 8) + (spriteY / 8) * mapWidth) * 8;
+                tileBase += ((spriteY % 8) + (spriteY / 8) * mapWidth) * 8;
 
-            // Get the palette of the object
+            // Get the object's palette
             uint8_t *pal;
-            if (!memory->isGbaMode() && (dispCnt & BIT(31))) // Extended palette
+            if (dispCnt & BIT(31)) // Extended palette
             {
                 // In extended palette mode, the object can select from multiple 256-color palettes
                 if (!extPalettes[4]) continue;
@@ -1231,20 +1185,20 @@ void Gpu2D::drawObjects(int line)
                 pal = &palette[0x200];
             }
 
+            // Draw a line of the object
             for (int j = 0; j < width; j++)
             {
                 // Determine the horizontal pixel offset based on whether or not the sprite is horizontally flipped
                 int offset = (object[1] & BIT(12)) ? (x + width - j - 1) : (x + j);
 
-                // Get the appropriate palette index from the tile for the current position
-                uint8_t index = tile[(j / 8) * 64 + j % 8];
+                // Get the palette index for the current pixel
+                uint8_t index = memory->read<uint8_t>(!memory->isGbaMode(), tileBase + (j / 8) * 64 + j % 8);
 
-                // Draw a pixel if one exists at the current position
                 if (offset >= 0 && offset < 256 && index)
                 {
                     if (type == 2) // Object window
                     {
-                        // Mark object window pixels with an extra bit, and don't actually draw anything
+                        // Mark object window pixels with an extra bit, and don't draw anything
                         framebuffer[line * 256 + offset] |= BIT(24);
                     }
                     else
@@ -1263,29 +1217,29 @@ void Gpu2D::drawObjects(int line)
             // Adjust the current tile to align with the current Y coordinate relative to the object
             int mapWidth = (dispCnt & BIT(memory->isGbaMode() ? 6 : 4)) ? width : 256;
             if (object[1] & BIT(13)) // Vertical flip
-                tile += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 4;
+                tileBase += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 4;
             else
-                tile += ((spriteY % 8) + (spriteY / 8) * mapWidth) * 4;
+                tileBase += ((spriteY % 8) + (spriteY / 8) * mapWidth) * 4;
 
             // Get the palette of the object
             // In 4-bit mode, the object can select from multiple 16-color palettes
             uint8_t *pal = &palette[0x200 + ((object[2] & 0xF000) >> 12) * 32];
 
+            // Draw a line of the object
             for (int j = 0; j < width; j++)
             {
                 // Determine the horizontal pixel offset based on whether or not the sprite is horizontally flipped
                 int offset = (object[1] & BIT(12)) ? (x + width - j - 1) : (x + j);
 
-                // Get the appropriate palette index from the tile for the current position
-                uint8_t index = tile[(j / 8) * 32 + (j / 2) % 4];
+                // Get the palette index for the current pixel
+                uint8_t index = memory->read<uint8_t>(!memory->isGbaMode(), tileBase + (j / 8) * 32 + (j % 8) / 2);
                 index = (j & 1) ? ((index & 0xF0) >> 4) : (index & 0x0F);
 
-                // Draw a pixel if one exists at the current position
                 if (offset >= 0 && offset < 256 && index)
                 {
                     if (type == 2) // Object window
                     {
-                        // Mark object window pixels with an extra bit, and don't actually draw anything
+                        // Mark object window pixels with an extra bit, and don't draw anything
                         framebuffer[line * 256 + offset] |= BIT(24);
                     }
                     else
@@ -1305,8 +1259,9 @@ void Gpu2D::drawObjects(int line)
 void Gpu2D::writeDispCnt(uint32_t mask, uint32_t value)
 {
     // Write to the DISPCNT register
-    mask &= (memory->isGbaMode() ? 0xFFFF : (gpu3DRenderer ? 0xFFFFFFFF : 0xC0B1FFF7));
+    mask &= (gpu3DRenderer ? 0xFFFFFFFF : 0xC0B1FFF7);
     dispCnt = (dispCnt & ~mask) | (value & mask);
+    if (memory->isGbaMode()) dispCnt &= 0xFFFF;
 }
 
 void Gpu2D::writeBgCnt(int bg, uint16_t mask, uint16_t value)

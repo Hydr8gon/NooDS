@@ -99,8 +99,8 @@ class Gpu2D
         uint8_t bldY = 0;
         uint16_t masterBright = 0;
 
-        uint8_t *palette, *oam;
         uint32_t bgVramAddr, objVramAddr;
+        uint8_t *palette, *oam;
         uint8_t *extPalettes[5] = {};
 
         Gpu3DRenderer *gpu3DRenderer;

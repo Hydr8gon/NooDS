@@ -94,7 +94,24 @@ template <typename T> T Memory::read(bool arm9, uint32_t address)
 
                 case 0x06000000: // VRAM
                 {
-                    data = getMappedVram(address);
+                    if (address >= vramBases[0] && address < vramBases[0] + 0x20000) // Block A
+                        data = &vramA[address - vramBases[0]];
+                    else if (address >= vramBases[1] && address < vramBases[1] + 0x20000) // Block B
+                        data = &vramB[address - vramBases[1]];
+                    else if (address >= vramBases[2] && address < vramBases[2] + 0x20000 && !(vramStat & BIT(0))) // Block C
+                        data = &vramC[address - vramBases[2]];
+                    else if (address >= vramBases[3] && address < vramBases[3] + 0x20000 && !(vramStat & BIT(1))) // Block D
+                        data = &vramD[address - vramBases[3]];
+                    else if (address >= vramBases[4] && address < vramBases[4] + 0x10000) // Block E
+                        data = &vramE[address - vramBases[4]];
+                    else if (address >= vramBases[5] && address < vramBases[5] + 0x4000) // Block F
+                        data = &vramF[address - vramBases[5]];
+                    else if (address >= vramBases[6] && address < vramBases[6] + 0x4000) // Block G
+                        data = &vramG[address - vramBases[6]];
+                    else if (address >= vramBases[7] && address < vramBases[7] + 0x8000) // Block H
+                        data = &vramH[address - vramBases[7]];
+                    else if (address >= vramBases[8] && address < vramBases[8] + 0x4000) // Block I
+                        data = &vramI[address - vramBases[8]];
                     break;
                 }
 
@@ -316,7 +333,24 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
 
                 case 0x06000000: // VRAM
                 {
-                    data = getMappedVram(address);
+                    if (address >= vramBases[0] && address < vramBases[0] + 0x20000) // Block A
+                        data = &vramA[address - vramBases[0]];
+                    else if (address >= vramBases[1] && address < vramBases[1] + 0x20000) // Block B
+                        data = &vramB[address - vramBases[1]];
+                    else if (address >= vramBases[2] && address < vramBases[2] + 0x20000 && !(vramStat & BIT(0))) // Block C
+                        data = &vramC[address - vramBases[2]];
+                    else if (address >= vramBases[3] && address < vramBases[3] + 0x20000 && !(vramStat & BIT(1))) // Block D
+                        data = &vramD[address - vramBases[3]];
+                    else if (address >= vramBases[4] && address < vramBases[4] + 0x10000) // Block E
+                        data = &vramE[address - vramBases[4]];
+                    else if (address >= vramBases[5] && address < vramBases[5] + 0x4000) // Block F
+                        data = &vramF[address - vramBases[5]];
+                    else if (address >= vramBases[6] && address < vramBases[6] + 0x4000) // Block G
+                        data = &vramG[address - vramBases[6]];
+                    else if (address >= vramBases[7] && address < vramBases[7] + 0x8000) // Block H
+                        data = &vramH[address - vramBases[7]];
+                    else if (address >= vramBases[8] && address < vramBases[8] + 0x4000) // Block I
+                        data = &vramI[address - vramBases[8]];
                     break;
                 }
 
@@ -451,30 +485,6 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
     {
         printf("Unmapped ARM%d memory write: 0x%X\n", (arm9 ? 9 : 7), address);
     }
-}
-
-uint8_t *Memory::getMappedVram(uint32_t address)
-{
-    // Get a pointer to the VRAM mapped to the ARM9 at the given address
-    if (address >= vramBases[0] && address < vramBases[0] + 0x20000) // Block A
-        return &vramA[address - vramBases[0]];
-    if (address >= vramBases[1] && address < vramBases[1] + 0x20000) // Block B
-        return &vramB[address - vramBases[1]];
-    if (address >= vramBases[2] && address < vramBases[2] + 0x20000 && !(vramStat & BIT(0))) // Block C
-        return &vramC[address - vramBases[2]];
-    if (address >= vramBases[3] && address < vramBases[3] + 0x20000 && !(vramStat & BIT(1))) // Block D
-        return &vramD[address - vramBases[3]];
-    if (address >= vramBases[4] && address < vramBases[4] + 0x10000) // Block E
-        return &vramE[address - vramBases[4]];
-    if (address >= vramBases[5] && address < vramBases[5] + 0x4000) // Block F
-        return &vramF[address - vramBases[5]];
-    if (address >= vramBases[6] && address < vramBases[6] + 0x4000) // Block G
-        return &vramG[address - vramBases[6]];
-    if (address >= vramBases[7] && address < vramBases[7] + 0x8000) // Block H
-        return &vramH[address - vramBases[7]];
-    if (address >= vramBases[8] && address < vramBases[8] + 0x4000) // Block I
-        return &vramI[address - vramBases[8]];
-    return nullptr;
 }
 
 uint8_t *Memory::getVramBlock(int block)
