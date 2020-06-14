@@ -111,6 +111,7 @@ class Gpu2D
         void drawText(int bg, int line);
         void drawAffine(int bg, int line);
         void drawExtended(int bg, int line);
+        void drawLarge(int bg, int line);
         void drawObjects(int line);
 };
 

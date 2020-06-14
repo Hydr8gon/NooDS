@@ -338,6 +338,12 @@ void Gpu2D::drawScanline(int line)
                     break;
                 }
 
+                case 6:
+                {
+                    if (dispCnt & BIT(10)) drawLarge(2, line);
+                    break;
+                }
+
                 default:
                 {
                     printf("Unknown engine %c BG mode: %d\n", (gpu3DRenderer ? 'A' : 'B'), dispCnt & 0x00000007);
@@ -902,6 +908,57 @@ void Gpu2D::drawExtended(int bg, int line)
             if (index)
                 layers[bg][i] = U8TO16(pal, index * 2) | BIT(15);
         }
+    }
+
+    // Increment the internal registers at the end of the scanline
+    internalX[bg - 2] += bgPB[bg - 2];
+    internalY[bg - 2] += bgPD[bg - 2];
+}
+
+void Gpu2D::drawLarge(int bg, int line)
+{
+    // Get the bitmap size
+    int sizeX, sizeY;
+    if (((bgCnt[bg] & 0xC000) >> 14) == 0)
+    {
+        sizeX =  512;
+        sizeY = 1024;
+    }
+    else
+    {
+        sizeX = 1024;
+        sizeY =  512;
+    }
+
+    // Draw a line
+    for (int i = 0; i < 256; i++)
+    {
+        // Calculate the rotscaled coordinates relative to the background
+        int rotscaleX = (internalX[bg - 2] + bgPA[bg - 2] * i) >> 8;
+        int rotscaleY = (internalY[bg - 2] + bgPC[bg - 2] * i) >> 8;
+
+        // Handle display area overflow
+        if (bgCnt[bg] & BIT(13)) // Wraparound
+        {
+            rotscaleX %= sizeX; if (rotscaleX < 0) rotscaleX += sizeX;
+            rotscaleY %= sizeY; if (rotscaleY < 0) rotscaleY += sizeY;
+        }
+        else if (rotscaleX < 0 || rotscaleX >= sizeX || rotscaleY < 0 || rotscaleY >= sizeY) // Transparent
+        {
+            continue;
+        }
+
+        // A full large bitmap requires 512KB of VRAM, but engine B can only use 128KB
+        // For engine B, wrap the 128KB bitmap 4 times to cover the full area
+        if (!gpu3DRenderer)
+            rotscaleY %= sizeY / 4;
+
+        // Get the palette index for the current pixel
+        uint8_t index = memory->read<uint8_t>(true, bgVramAddr + rotscaleY * sizeX + rotscaleX);
+
+        // Draw a pixel
+        if (index)
+            layers[bg][i] = U8TO16(palette, index * 2) | BIT(15);
     }
 
     // Increment the internal registers at the end of the scanline
