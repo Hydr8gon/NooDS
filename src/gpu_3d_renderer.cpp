@@ -552,7 +552,7 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
 
         // Draw a new pixel if the old one is behind the new one
         // The polygon can optionally use an "equal" depth test, which has a margin of 0x200
-        if ((polygon->depthTestEqual && depthBuffer[line / 48][x] - 0x200 >= depth) || depthBuffer[line / 48][x] > depth)
+        if ((polygon->depthTestEqual && depthBuffer[line / 48][x] + 0x200 >= depth) || depthBuffer[line / 48][x] > depth)
         {
             // Handle shadow polygons
             if (polygon->mode == 3)
