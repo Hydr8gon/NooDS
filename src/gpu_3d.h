@@ -163,6 +163,7 @@ class Gpu3D
 
         Vertex savedVertex;
         _Polygon savedPolygon;
+        int64_t s, t;
 
         int vertexCount = 0;
         bool clockwise = false;

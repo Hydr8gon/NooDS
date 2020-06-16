@@ -248,6 +248,22 @@ void Gpu3D::addVertex()
     verticesIn[vertexCountIn] = savedVertex;
     verticesIn[vertexCountIn].w = 1 << 12;
 
+    // Transform the texture coordinates
+    if (textureCoordMode == 3)
+    {
+        // Get the texture matrix with the texture coordinates
+        Matrix matrix = texture;
+        matrix.data[12] = s << 12;
+        matrix.data[13] = t << 12;
+
+        // Multiply the vertex with the texture matrix
+        Vertex vertex = multiply(&verticesIn[vertexCountIn], &matrix);
+
+        // Save the transformed coordinates
+        verticesIn[vertexCountIn].s = vertex.x >> 12;
+        verticesIn[vertexCountIn].t = vertex.y >> 12;
+    }
+
     // Update the clip matrix if necessary
     if (clipDirty)
     {
@@ -1037,6 +1053,26 @@ void Gpu3D::normalCmd(uint32_t param)
     normalVector.y = ((int16_t)((param & 0x000FFC00) >>  4)) >> 3;
     normalVector.z = ((int16_t)((param & 0x3FF00000) >> 14)) >> 3;
 
+    // Transform the texture coordinates
+    if (textureCoordMode == 2)
+    {
+        // Get the normal vector as a vertex
+        Vertex vertex = normalVector;
+        vertex.w = 1 << 12;
+
+        // Get the texture matrix with the texture coordinates
+        Matrix matrix = texture;
+        matrix.data[12] = s << 12;
+        matrix.data[13] = t << 12;
+
+        // Multiply the vertex with the matrix
+        vertex = multiply(&vertex, &matrix);
+
+        // Save the transformed coordinates
+        savedVertex.s = vertex.x >> 12;
+        savedVertex.t = vertex.y >> 12;
+    }
+
     // Multiply the normal vector with the directional matrix
     normalVector = multiply(&normalVector, &direction);
 
@@ -1087,17 +1123,17 @@ void Gpu3D::normalCmd(uint32_t param)
 
 void Gpu3D::texCoordCmd(uint32_t param)
 {
-    // Set the vertex texture coordinates
-    savedVertex.s = (int16_t)(param >>  0);
-    savedVertex.t = (int16_t)(param >> 16);
+    // Set the untransformed texture coordinates
+    s = (int16_t)(param >>  0);
+    t = (int16_t)(param >> 16);
 
     // Transform the texture coordinates
     if (textureCoordMode == 1)
     {
         // Create a vertex with the texture coordinates
         Vertex vertex;
-        vertex.x = savedVertex.s << 8;
-        vertex.y = savedVertex.t << 8;
+        vertex.x = s << 8;
+        vertex.y = t << 8;
         vertex.z = 1 << 8;
         vertex.w = 1 << 8;
 
@@ -1107,6 +1143,11 @@ void Gpu3D::texCoordCmd(uint32_t param)
         // Save the transformed coordinates
         savedVertex.s = vertex.x >> 8;
         savedVertex.t = vertex.y >> 8;
+    }
+    else
+    {
+        savedVertex.s = s;
+        savedVertex.t = t;
     }
 }
 
