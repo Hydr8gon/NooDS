@@ -1052,6 +1052,10 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4100011:
             case 0x4100012:
             case 0x4100013: base -= 0x4100010; size = 4; data = cartridge->readRomDataIn(1);  break; // ROMDATAIN (ARM7)
+            case 0x4800010:
+            case 0x4800011: base -= 0x4800010; size = 2; data = wifi->readWIrf();             break; // W_IF
+            case 0x4800012:
+            case 0x4800013: base -= 0x4800012; size = 2; data = wifi->readWIe();              break; // W_IE
             case 0x4800018:
             case 0x4800019: base -= 0x4800018; size = 2; data = wifi->readWMacaddr(0);        break; // W_MACADDR_0
             case 0x480001A:
@@ -1064,6 +1068,10 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4800023: base -= 0x4800022; size = 2; data = wifi->readWBssid(1);          break; // W_BSSID_1
             case 0x4800024:
             case 0x4800025: base -= 0x4800024; size = 2; data = wifi->readWBssid(2);          break; // W_BSSID_2
+            case 0x480003C:
+            case 0x480003D: base -= 0x480003C; size = 2; data = wifi->readWPowerstate();      break; // W_POWERSTATE
+            case 0x4800040:
+            case 0x4800041: base -= 0x4800040; size = 2; data = wifi->readWPowerforce();      break; // W_POWERFORCE
             case 0x4800050:
             case 0x4800051: base -= 0x4800050; size = 2; data = wifi->readWRxbufBegin();      break; // W_RXBUF_BEGIN
             case 0x4800052:
@@ -1082,6 +1090,8 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4800065: base -= 0x4800064; size = 2; data = wifi->readWRxbufGapdisp();    break; // W_RXBUF_GAPDISP
             case 0x4800068:
             case 0x4800069: base -= 0x4800068; size = 2; data = wifi->readWTxbufWrAddr();     break; // W_TXBUF_WR_ADDR
+            case 0x480006C:
+            case 0x480006D: base -= 0x480006C; size = 2; data = wifi->readWTxbufCount();      break; // W_TXBUF_COUNT
             case 0x4800074:
             case 0x4800075: base -= 0x4800074; size = 2; data = wifi->readWTxbufGap();        break; // W_TXBUF_GAP
             case 0x4800076:
@@ -2339,6 +2349,10 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4000501: base -= 0x4000500; size = 2; spu->writeMainSoundCnt(mask << (base * 8), data << (base * 8));        break; // SOUNDCNT
             case 0x4000504:
             case 0x4000505: base -= 0x4000504; size = 2; spu->writeSoundBias(mask << (base * 8), data << (base * 8));           break; // SOUNDBIAS
+            case 0x4800010:
+            case 0x4800011: base -= 0x4800010; size = 2; wifi->writeWIrf(mask << (base * 8), data << (base * 8));               break; // W_IF
+            case 0x4800012:
+            case 0x4800013: base -= 0x4800012; size = 2; wifi->writeWIe(mask << (base * 8), data << (base * 8));                break; // W_IE
             case 0x4800018:
             case 0x4800019: base -= 0x4800018; size = 2; wifi->writeWMacaddr(0, mask << (base * 8), data << (base * 8));        break; // W_MACADDR_0
             case 0x480001A:
@@ -2351,6 +2365,10 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4800023: base -= 0x4800022; size = 2; wifi->writeWBssid(1, mask << (base * 8), data << (base * 8));          break; // W_BSSID_1
             case 0x4800024:
             case 0x4800025: base -= 0x4800024; size = 2; wifi->writeWBssid(2, mask << (base * 8), data << (base * 8));          break; // W_BSSID_2
+            case 0x480003C:
+            case 0x480003D: base -= 0x480003C; size = 2; wifi->writeWPowerstate(mask << (base * 8), data << (base * 8));        break; // W_POWERSTATE
+            case 0x4800040:
+            case 0x4800041: base -= 0x4800040; size = 2; wifi->writeWPowerforce(mask << (base * 8), data << (base * 8));        break; // W_POWERFORCE
             case 0x4800050:
             case 0x4800051: base -= 0x4800050; size = 2; wifi->writeWRxbufBegin(mask << (base * 8), data << (base * 8));        break; // W_RXBUF_BEGIN
             case 0x4800052:
@@ -2367,6 +2385,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4800065: base -= 0x4800064; size = 2; wifi->writeWRxbufGapdisp(mask << (base * 8), data << (base * 8));      break; // W_RXBUF_GAPDISP
             case 0x4800068:
             case 0x4800069: base -= 0x4800068; size = 2; wifi->writeWTxbufWrAddr(mask << (base * 8), data << (base * 8));       break; // W_TXBUF_WR_ADDR
+            case 0x480006C:
+            case 0x480006D: base -= 0x480006C; size = 2; wifi->writeWTxbufCount(mask << (base * 8), data << (base * 8));        break; // W_TXBUF_COUNT
             case 0x4800070:
             case 0x4800071: base -= 0x4800070; size = 2; wifi->writeWTxbufWrData(mask << (base * 8), data << (base * 8));       break; // W_TXBUF_WR_DATA
             case 0x4800074:
@@ -2407,6 +2427,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4800159: base -= 0x4800158; size = 2; wifi->writeWBbCnt(mask << (base * 8), data << (base * 8));             break; // W_BB_CNT
             case 0x480015A:
             case 0x480015B: base -= 0x480015A; size = 2; wifi->writeWBbWrite(mask << (base * 8), data << (base * 8));           break; // W_BB_WRITE
+            case 0x480021C:
+            case 0x480021D: base -= 0x480021C; size = 2; wifi->writeWIrfSet(mask << (base * 8), data << (base * 8));            break; // W_IF_SET
 
             default:
             {

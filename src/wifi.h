@@ -22,15 +22,20 @@
 
 #include <cstdint>
 
+class Interpreter;
 class Memory;
 
 class Wifi
 {
     public:
-        Wifi(Memory *memory);
+        Wifi(Interpreter *arm7, Memory *memory);
 
+        uint16_t readWIrf()              { return wIrf;            }
+        uint16_t readWIe()               { return wIe;             }
         uint16_t readWMacaddr(int index) { return wMacaddr[index]; }
         uint16_t readWBssid(int index)   { return wBssid[index];   }
+        uint16_t readWPowerstate()       { return wPowerstate;     }
+        uint16_t readWPowerforce()       { return wPowerforce;     }
         uint16_t readWRxbufBegin()       { return wRxbufBegin;     }
         uint16_t readWRxbufEnd()         { return wRxbufEnd;       }
         uint16_t readWRxbufRdAddr()      { return wRxbufRdAddr;    }
@@ -39,6 +44,7 @@ class Wifi
         uint16_t readWRxbufGapdisp()     { return wRxbufGapdisp;   }
         uint16_t readWRxbufCount()       { return wRxbufCount;     }
         uint16_t readWTxbufWrAddr()      { return wTxbufWrAddr;    }
+        uint16_t readWTxbufCount()       { return wTxbufCount;     }
         uint16_t readWTxbufGap()         { return wTxbufGap;       }
         uint16_t readWTxbufGapdisp()     { return wTxbufGapdisp;   }
         uint16_t readWConfig(int index)  { return wConfig[index];  }
@@ -46,8 +52,12 @@ class Wifi
         uint16_t readWRxbufRdData();
         uint16_t readWBbBusy();
 
+        void writeWIrf(uint16_t mask, uint16_t value);
+        void writeWIe(uint16_t mask, uint16_t value);
         void writeWMacaddr(int index, uint16_t mask, uint16_t value);
         void writeWBssid(int index, uint16_t mask, uint16_t value);
+        void writeWPowerstate(uint16_t mask, uint16_t value);
+        void writeWPowerforce(uint16_t mask, uint16_t value);
         void writeWRxbufBegin(uint16_t mask, uint16_t value);
         void writeWRxbufEnd(uint16_t mask, uint16_t value);
         void writeWRxbufRdAddr(uint16_t mask, uint16_t value);
@@ -56,19 +66,25 @@ class Wifi
         void writeWRxbufGapdisp(uint16_t mask, uint16_t value);
         void writeWRxbufCount(uint16_t mask, uint16_t value);
         void writeWTxbufWrAddr(uint16_t mask, uint16_t value);
+        void writeWTxbufCount(uint16_t mask, uint16_t value);
         void writeWTxbufWrData(uint16_t mask, uint16_t value);
         void writeWTxbufGap(uint16_t mask, uint16_t value);
         void writeWTxbufGapdisp(uint16_t mask, uint16_t value);
         void writeWConfig(int index, uint16_t mask, uint16_t value);
         void writeWBbCnt(uint16_t mask, uint16_t value);
         void writeWBbWrite(uint16_t mask, uint16_t value);
+        void writeWIrfSet(uint16_t mask, uint16_t value);
 
     private:
         uint8_t bbRegisters[0x100] = {};
         int bbCount = 0;
 
+        uint16_t wIrf = 0;
+        uint16_t wIe = 0;
         uint16_t wMacaddr[3] = {};
         uint16_t wBssid[3] = {};
+        uint16_t wPowerstate = 0x0200;
+        uint16_t wPowerforce = 0;
         uint16_t wRxbufBegin = 0;
         uint16_t wRxbufEnd = 0;
         uint16_t wRxbufRdAddr = 0;
@@ -77,6 +93,7 @@ class Wifi
         uint16_t wRxbufGapdisp = 0;
         uint16_t wRxbufCount = 0;
         uint16_t wTxbufWrAddr = 0;
+        uint16_t wTxbufCount = 0;
         uint16_t wTxbufGap = 0;
         uint16_t wTxbufGapdisp = 0;
         uint16_t wBbWrite = 0;
@@ -89,7 +106,10 @@ class Wifi
             0x0016, 0x0016, 0x162C, 0x0204, 0x0058
         };
 
+        Interpreter *arm7;
         Memory *memory;
+
+        void sendInterrupt(int bit);
 };
 
 #endif // WIFI_H

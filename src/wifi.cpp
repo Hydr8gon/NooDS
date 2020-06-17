@@ -19,14 +19,42 @@
 
 #include "wifi.h"
 #include "defines.h"
+#include "interpreter.h"
 #include "memory.h"
 
-Wifi::Wifi(Memory *memory): memory(memory)
+Wifi::Wifi(Interpreter *arm7, Memory *memory): arm7(arm7), memory(memory)
 {
     // Set some default BB register values
     bbRegisters[0x00] = 0x6D;
     bbRegisters[0x5D] = 0x01;
     bbRegisters[0x64] = 0xFF;
+}
+
+void Wifi::sendInterrupt(int bit)
+{
+    // Trigger a WiFi interrupt if W_IF & W_IE changes from zero
+    if (!(wIe & wIrf) && (wIe & BIT(bit)))
+        arm7->sendInterrupt(24);
+
+    wIrf |= BIT(bit);
+}
+
+void Wifi::writeWIrf(uint16_t mask, uint16_t value)
+{
+    // Write to the W_IF register
+    // Setting a bit actually clears it to acknowledge an interrupt
+    wIrf &= ~(value & mask);
+}
+
+void Wifi::writeWIe(uint16_t mask, uint16_t value)
+{
+    // Trigger a WiFi interrupt if W_IF & W_IE changes from zero
+    if (!(wIe & wIrf) && (value & mask & wIrf))
+        arm7->sendInterrupt(24);
+
+    // Write to the W_IE register
+    mask &= 0xFBFF;
+    wIe = (wIe & ~mask) | (value & mask);
 }
 
 void Wifi::writeWMacaddr(int index, uint16_t mask, uint16_t value)
@@ -39,6 +67,28 @@ void Wifi::writeWBssid(int index, uint16_t mask, uint16_t value)
 {
     // Write to one of the the W_BSSID registers
     wBssid[index] = (wBssid[index] & ~mask) | (value & mask);
+}
+
+void Wifi::writeWPowerstate(uint16_t mask, uint16_t value)
+{
+    // Write to the W_POWERSTATE register
+    mask &= 0x0003;
+    wPowerstate = (wPowerstate & ~mask) | (value & mask);
+
+    // Set the power state to enabled if requested
+    if (wPowerstate & BIT(1))
+        wPowerstate &= ~BIT(9);
+}
+
+void Wifi::writeWPowerforce(uint16_t mask, uint16_t value)
+{
+    // Write to the W_POWERFORCE register
+    mask &= 0x8001;
+    wPowerforce = (wPowerforce & ~mask) | (value & mask);
+
+    // Force set the power state if requested
+    if (wPowerforce & BIT(15))
+        wPowerstate = (wPowerstate & ~BIT(9)) | ((wPowerforce & BIT(0)) << 9);
 }
 
 void Wifi::writeWRxbufBegin(uint16_t mask, uint16_t value)
@@ -95,6 +145,14 @@ void Wifi::writeWTxbufWrAddr(uint16_t mask, uint16_t value)
     wTxbufWrAddr = (wTxbufWrAddr & ~mask) | (value & mask);
 }
 
+
+void Wifi::writeWTxbufCount(uint16_t mask, uint16_t value)
+{
+    // Write to the W_TXBUF_COUNT register
+    mask &= 0x0FFF;
+    wTxbufCount = (wTxbufCount & ~mask) | (value & mask);
+}
+
 void Wifi::writeWTxbufWrData(uint16_t mask, uint16_t value)
 {
     // Write a value to WiFi RAM
@@ -105,6 +163,10 @@ void Wifi::writeWTxbufWrData(uint16_t mask, uint16_t value)
     if (wTxbufWrAddr == wTxbufGap)
         wTxbufWrAddr += wTxbufGapdisp << 1;
     wTxbufWrAddr %= 0x2000;
+
+    // Decrement the write counter and trigger an interrupt at the end
+    if (wTxbufCount > 0 && --wTxbufCount == 0)
+        sendInterrupt(8);
 }
 
 void Wifi::writeWTxbufGap(uint16_t mask, uint16_t value)
@@ -169,6 +231,17 @@ void Wifi::writeWBbWrite(uint16_t mask, uint16_t value)
     wBbWrite = (wBbWrite & ~mask) | (value & mask);
 }
 
+void Wifi::writeWIrfSet(uint16_t mask, uint16_t value)
+{
+    // Trigger a WiFi interrupt if W_IF & W_IE changes from zero
+    if (!(wIe & wIrf) && (wIe & value & mask))
+        arm7->sendInterrupt(24);
+
+    // Set bits in the W_IF register
+    mask &= 0xFBFF;
+    wIrf |= (value & mask);
+}
+
 uint16_t Wifi::readWRxbufRdData()
 {
     // Read a value from WiFi RAM
@@ -182,9 +255,9 @@ uint16_t Wifi::readWRxbufRdData()
         wRxbufRdAddr = (wRxbufBegin & 0x1FFE) + (wRxbufRdAddr - (wRxbufBegin & 0x1FFE)) % ((wRxbufEnd & 0x1FFE) - (wRxbufBegin & 0x1FFE));
     wRxbufRdAddr %= 0x2000;
 
-    // Decrement the read counter
-    if (wRxbufCount > 0)
-        wRxbufCount--;
+    // Decrement the read counter and trigger an interrupt at the end
+    if (wRxbufCount > 0 && --wRxbufCount == 0)
+        sendInterrupt(9);
 
     return value;
 }
