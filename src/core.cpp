@@ -27,9 +27,9 @@
 Core::Core(std::string filename): cartridge(&dma9, &dma7, &arm9, &arm7, &memory), cp15(&arm9), dma9(&arm9, &memory, true), dma7(&arm7,
                                   &memory), gpu(&dma9, &dma7, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &arm9, &arm7, &memory),
                                   engineA(&memory, &gpu3DRenderer), engineB(&memory), gpu3D(&dma9, &arm9), gpu3DRenderer(&gpu3D), arm9(&memory,
-                                  &cp15), arm7(&memory), ipc(&arm9, &arm7), memory(bios9, bios7, gbaBios, &cartridge, &cp15, &dma9, &dma7,
-                                  &gpu, &engineA, &engineB, &gpu3D, &gpu3DRenderer, &input, &arm9, &arm7, &ipc, &math, &rtc, &spi, &spu,
-                                  &timers9, &timers7, &wifi), spi(&arm7, firmware), spu(&dma7, &memory), timers9(&arm9), timers7(&arm7, &spu)
+                                  &cp15), arm7(&memory), ipc(&arm9, &arm7), memory(bios9, bios7, gbaBios, &cartridge, &cp15, &dma9, &dma7, &gpu,
+                                  &engineA, &engineB, &gpu3D, &gpu3DRenderer, &input, &arm9, &arm7, &ipc, &math, &rtc, &spi, &spu, &timers9,
+                                  &timers7, &wifi), spi(&arm7, firmware), spu(&dma7, &memory), timers9(&arm9), timers7(&arm7, &spu), wifi(&memory)
 {
     // Check the ROM type
     bool gba = (filename.length() > 0 && filename.substr(filename.rfind(".")) == ".gba");

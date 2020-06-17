@@ -441,6 +441,7 @@ template <typename T> void Memory::write(bool arm9, uint32_t address, T value)
             {
                 if (address & 0x00800000) // WiFi regions
                 {
+                    if (sizeof(T) == 1) return; // Ignore single-byte writes
                     address &= ~0x00008000; // Mirror the regions
                     if (address >= 0x04804000 && address < 0x04806000) // WiFi RAM
                     {
@@ -1051,6 +1052,72 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4100011:
             case 0x4100012:
             case 0x4100013: base -= 0x4100010; size = 4; data = cartridge->readRomDataIn(1);  break; // ROMDATAIN (ARM7)
+            case 0x4800018:
+            case 0x4800019: base -= 0x4800018; size = 2; data = wifi->readWMacaddr(0);        break; // W_MACADDR_0
+            case 0x480001A:
+            case 0x480001B: base -= 0x480001A; size = 2; data = wifi->readWMacaddr(1);        break; // W_MACADDR_1
+            case 0x480001C:
+            case 0x480001D: base -= 0x480001C; size = 2; data = wifi->readWMacaddr(2);        break; // W_MACADDR_2
+            case 0x4800020:
+            case 0x4800021: base -= 0x4800020; size = 2; data = wifi->readWBssid(0);          break; // W_BSSID_0
+            case 0x4800022:
+            case 0x4800023: base -= 0x4800022; size = 2; data = wifi->readWBssid(1);          break; // W_BSSID_1
+            case 0x4800024:
+            case 0x4800025: base -= 0x4800024; size = 2; data = wifi->readWBssid(2);          break; // W_BSSID_2
+            case 0x4800050:
+            case 0x4800051: base -= 0x4800050; size = 2; data = wifi->readWRxbufBegin();      break; // W_RXBUF_BEGIN
+            case 0x4800052:
+            case 0x4800053: base -= 0x4800052; size = 2; data = wifi->readWRxbufEnd();        break; // W_RXBUF_END
+            case 0x4800058:
+            case 0x4800059: base -= 0x4800058; size = 2; data = wifi->readWRxbufRdAddr();     break; // W_RXBUF_RD_ADDR
+            case 0x480005A:
+            case 0x480005B: base -= 0x480005A; size = 2; data = wifi->readWRxbufReadcsr();    break; // W_RXBUF_READCSR
+            case 0x480005C:
+            case 0x480005D: base -= 0x480005C; size = 2; data = wifi->readWRxbufCount();      break; // W_RXBUF_COUNT
+            case 0x4800060:
+            case 0x4800061: base -= 0x4800060; size = 2; data = wifi->readWRxbufRdData();     break; // W_RXBUF_RD_DATA
+            case 0x4800062:
+            case 0x4800063: base -= 0x4800062; size = 2; data = wifi->readWRxbufGap();        break; // W_RXBUF_GAP
+            case 0x4800064:
+            case 0x4800065: base -= 0x4800064; size = 2; data = wifi->readWRxbufGapdisp();    break; // W_RXBUF_GAPDISP
+            case 0x4800068:
+            case 0x4800069: base -= 0x4800068; size = 2; data = wifi->readWTxbufWrAddr();     break; // W_TXBUF_WR_ADDR
+            case 0x4800074:
+            case 0x4800075: base -= 0x4800074; size = 2; data = wifi->readWTxbufGap();        break; // W_TXBUF_GAP
+            case 0x4800076:
+            case 0x4800077: base -= 0x4800076; size = 2; data = wifi->readWTxbufGapdisp();    break; // W_TXBUF_GAPDISP
+            case 0x4800120:
+            case 0x4800121: base -= 0x4800120; size = 2; data = wifi->readWConfig(0);         break; // W_CONFIG_120
+            case 0x4800122:
+            case 0x4800123: base -= 0x4800122; size = 2; data = wifi->readWConfig(1);         break; // W_CONFIG_122
+            case 0x4800124:
+            case 0x4800125: base -= 0x4800124; size = 2; data = wifi->readWConfig(2);         break; // W_CONFIG_124
+            case 0x4800128:
+            case 0x4800129: base -= 0x4800128; size = 2; data = wifi->readWConfig(3);         break; // W_CONFIG_128
+            case 0x4800130:
+            case 0x4800131: base -= 0x4800130; size = 2; data = wifi->readWConfig(4);         break; // W_CONFIG_130
+            case 0x4800132:
+            case 0x4800133: base -= 0x4800132; size = 2; data = wifi->readWConfig(5);         break; // W_CONFIG_132
+            case 0x4800140:
+            case 0x4800141: base -= 0x4800140; size = 2; data = wifi->readWConfig(6);         break; // W_CONFIG_140
+            case 0x4800142:
+            case 0x4800143: base -= 0x4800142; size = 2; data = wifi->readWConfig(7);         break; // W_CONFIG_142
+            case 0x4800144:
+            case 0x4800145: base -= 0x4800144; size = 2; data = wifi->readWConfig(8);         break; // W_CONFIG_144
+            case 0x4800146:
+            case 0x4800147: base -= 0x4800146; size = 2; data = wifi->readWConfig(9);         break; // W_CONFIG_146
+            case 0x4800148:
+            case 0x4800149: base -= 0x4800148; size = 2; data = wifi->readWConfig(10);        break; // W_CONFIG_148
+            case 0x480014A:
+            case 0x480014B: base -= 0x480014A; size = 2; data = wifi->readWConfig(11);        break; // W_CONFIG_14A
+            case 0x480014C:
+            case 0x480014D: base -= 0x480014C; size = 2; data = wifi->readWConfig(12);        break; // W_CONFIG_14C
+            case 0x4800150:
+            case 0x4800151: base -= 0x4800150; size = 2; data = wifi->readWConfig(13);        break; // W_CONFIG_150
+            case 0x4800154:
+            case 0x4800155: base -= 0x4800154; size = 2; data = wifi->readWConfig(14);        break; // W_CONFIG_154
+            case 0x480015C:
+            case 0x480015D: base -= 0x480015C; size = 2; data = wifi->readWBbRead();          break; // W_BB_READ
             case 0x480015E:
             case 0x480015F: base -= 0x480015E; size = 2; data = wifi->readWBbBusy();          break; // W_BB_BUSY
 
@@ -2272,8 +2339,74 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4000501: base -= 0x4000500; size = 2; spu->writeMainSoundCnt(mask << (base * 8), data << (base * 8));        break; // SOUNDCNT
             case 0x4000504:
             case 0x4000505: base -= 0x4000504; size = 2; spu->writeSoundBias(mask << (base * 8), data << (base * 8));           break; // SOUNDBIAS
+            case 0x4800018:
+            case 0x4800019: base -= 0x4800018; size = 2; wifi->writeWMacaddr(0, mask << (base * 8), data << (base * 8));        break; // W_MACADDR_0
+            case 0x480001A:
+            case 0x480001B: base -= 0x480001A; size = 2; wifi->writeWMacaddr(1, mask << (base * 8), data << (base * 8));        break; // W_MACADDR_1
+            case 0x480001C:
+            case 0x480001D: base -= 0x480001C; size = 2; wifi->writeWMacaddr(2, mask << (base * 8), data << (base * 8));        break; // W_MACADDR_2
+            case 0x4800020:
+            case 0x4800021: base -= 0x4800020; size = 2; wifi->writeWBssid(0, mask << (base * 8), data << (base * 8));          break; // W_BSSID_0
+            case 0x4800022:
+            case 0x4800023: base -= 0x4800022; size = 2; wifi->writeWBssid(1, mask << (base * 8), data << (base * 8));          break; // W_BSSID_1
+            case 0x4800024:
+            case 0x4800025: base -= 0x4800024; size = 2; wifi->writeWBssid(2, mask << (base * 8), data << (base * 8));          break; // W_BSSID_2
+            case 0x4800050:
+            case 0x4800051: base -= 0x4800050; size = 2; wifi->writeWRxbufBegin(mask << (base * 8), data << (base * 8));        break; // W_RXBUF_BEGIN
+            case 0x4800052:
+            case 0x4800053: base -= 0x4800052; size = 2; wifi->writeWRxbufEnd(mask << (base * 8), data << (base * 8));          break; // W_RXBUF_END
+            case 0x4800058:
+            case 0x4800059: base -= 0x4800058; size = 2; wifi->writeWRxbufRdAddr(mask << (base * 8), data << (base * 8));       break; // W_RXBUF_RD_ADDR
+            case 0x480005A:
+            case 0x480005B: base -= 0x480005A; size = 2; wifi->writeWRxbufReadcsr(mask << (base * 8), data << (base * 8));      break; // W_RXBUF_READCSR
+            case 0x480005C:
+            case 0x480005D: base -= 0x480005C; size = 2; wifi->writeWRxbufCount(mask << (base * 8), data << (base * 8));        break; // W_RXBUF_COUNT
+            case 0x4800062:
+            case 0x4800063: base -= 0x4800062; size = 2; wifi->writeWRxbufGap(mask << (base * 8), data << (base * 8));          break; // W_RXBUF_GAP
+            case 0x4800064:
+            case 0x4800065: base -= 0x4800064; size = 2; wifi->writeWRxbufGapdisp(mask << (base * 8), data << (base * 8));      break; // W_RXBUF_GAPDISP
+            case 0x4800068:
+            case 0x4800069: base -= 0x4800068; size = 2; wifi->writeWTxbufWrAddr(mask << (base * 8), data << (base * 8));       break; // W_TXBUF_WR_ADDR
+            case 0x4800070:
+            case 0x4800071: base -= 0x4800070; size = 2; wifi->writeWTxbufWrData(mask << (base * 8), data << (base * 8));       break; // W_TXBUF_WR_DATA
+            case 0x4800074:
+            case 0x4800075: base -= 0x4800074; size = 2; wifi->writeWTxbufGap(mask << (base * 8), data << (base * 8));          break; // W_TXBUF_GAP
+            case 0x4800076:
+            case 0x4800077: base -= 0x4800076; size = 2; wifi->writeWTxbufGapdisp(mask << (base * 8), data << (base * 8));      break; // W_TXBUF_GAPDISP
+            case 0x4800120:
+            case 0x4800121: base -= 0x4800120; size = 2; wifi->writeWConfig(0,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_120
+            case 0x4800122:
+            case 0x4800123: base -= 0x4800122; size = 2; wifi->writeWConfig(1,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_122
+            case 0x4800124:
+            case 0x4800125: base -= 0x4800124; size = 2; wifi->writeWConfig(2,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_124
+            case 0x4800128:
+            case 0x4800129: base -= 0x4800128; size = 2; wifi->writeWConfig(3,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_128
+            case 0x4800130:
+            case 0x4800131: base -= 0x4800130; size = 2; wifi->writeWConfig(4,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_130
+            case 0x4800132:
+            case 0x4800133: base -= 0x4800132; size = 2; wifi->writeWConfig(5,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_132
+            case 0x4800140:
+            case 0x4800141: base -= 0x4800140; size = 2; wifi->writeWConfig(6,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_140
+            case 0x4800142:
+            case 0x4800143: base -= 0x4800142; size = 2; wifi->writeWConfig(7,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_142
+            case 0x4800144:
+            case 0x4800145: base -= 0x4800144; size = 2; wifi->writeWConfig(8,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_144
+            case 0x4800146:
+            case 0x4800147: base -= 0x4800146; size = 2; wifi->writeWConfig(9,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_146
+            case 0x4800148:
+            case 0x4800149: base -= 0x4800148; size = 2; wifi->writeWConfig(10, mask << (base * 8), data << (base * 8));        break; // W_CONFIG_148
+            case 0x480014A:
+            case 0x480014B: base -= 0x480014A; size = 2; wifi->writeWConfig(11, mask << (base * 8), data << (base * 8));        break; // W_CONFIG_14A
+            case 0x480014C:
+            case 0x480014D: base -= 0x480014C; size = 2; wifi->writeWConfig(12, mask << (base * 8), data << (base * 8));        break; // W_CONFIG_14C
+            case 0x4800150:
+            case 0x4800151: base -= 0x4800150; size = 2; wifi->writeWConfig(13, mask << (base * 8), data << (base * 8));        break; // W_CONFIG_150
+            case 0x4800154:
+            case 0x4800155: base -= 0x4800154; size = 2; wifi->writeWConfig(14, mask << (base * 8), data << (base * 8));        break; // W_CONFIG_154
             case 0x4800158:
             case 0x4800159: base -= 0x4800158; size = 2; wifi->writeWBbCnt(mask << (base * 8), data << (base * 8));             break; // W_BB_CNT
+            case 0x480015A:
+            case 0x480015B: base -= 0x480015A; size = 2; wifi->writeWBbWrite(mask << (base * 8), data << (base * 8));           break; // W_BB_WRITE
 
             default:
             {
