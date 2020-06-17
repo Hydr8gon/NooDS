@@ -1055,6 +1055,10 @@ void Interpreter::runCycle()
                     mrsRc(opcode); // MRS Rd,CPSR
                     break;
 
+                case 0x105:
+                    qadd(opcode); // QADD Rd,Rm,Rn
+                    break;
+
                 case 0x108:
                     smlabb(opcode); // SMLABB Rd,Rm,Rs,Rn
                     break;
@@ -1143,12 +1147,32 @@ void Interpreter::runCycle()
                     blxReg(opcode); // BLX Rn
                     break;
 
+                case 0x125:
+                    qsub(opcode); // QSUB Rd,Rm,Rn
+                    break;
+
+                case 0x128:
+                    smlawb(opcode); // SMLAWB Rd,Rm,Rs,Rn
+                    break;
+
+                case 0x12A:
+                    smulwb(opcode); // SMULWB Rd,Rm,Rs
+                    break;
+
                 case 0x12B:
                     strhPr(opcode, -rp(opcode)); // STRH Rd,[Rn,-Rm]!
                     break;
 
+                case 0x12C:
+                    smlawt(opcode); // SMLAWT Rd,Rm,Rs,Rn
+                    break;
+
                 case 0x12D:
                     ldrdPr(opcode, -rp(opcode)); // LDRD Rd,[Rn,-Rm]!
+                    break;
+
+                case 0x12E:
+                    smulwt(opcode); // SMULWT Rd,Rm,Rs
                     break;
 
                 case 0x12F:
@@ -1203,16 +1227,36 @@ void Interpreter::runCycle()
                     mrsRs(opcode); // MRS Rd,SPSR
                     break;
 
+                case 0x145:
+                    qdadd(opcode); // QDADD Rd,Rm,Rn
+                    break;
+
+                case 0x148:
+                    smlalbb(opcode); // SMLALBB RdLo,RdHi,Rm,Rs
+                    break;
+
                 case 0x149:
                     swpb(opcode); // SWPB Rd,Rm,[Rn]
+                    break;
+
+                case 0x14A:
+                    smlaltb(opcode); // SMLALTB RdLo,RdHi,Rm,Rs
                     break;
 
                 case 0x14B:
                     strhOf(opcode, -ipH(opcode)); // STRH Rd,[Rn,-#i]
                     break;
 
+                case 0x14C:
+                    smlalbt(opcode); // SMLALBT RdLo,RdHi,Rm,Rs
+                    break;
+
                 case 0x14D:
                     ldrdOf(opcode, -ipH(opcode)); // LDRD Rd,[Rn,-#i]
+                    break;
+
+                case 0x14E:
+                    smlaltt(opcode); // SMLALTT RdLo,RdHi,Rm,Rs
                     break;
 
                 case 0x14F:
@@ -1269,6 +1313,10 @@ void Interpreter::runCycle()
 
                 case 0x161:
                     clz(opcode); // CLZ Rd,Rm
+                    break;
+
+                case 0x165:
+                    qdsub(opcode); // QDSUB Rd,Rm,Rn
                     break;
 
                 case 0x168:

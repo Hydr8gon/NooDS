@@ -1141,6 +1141,32 @@ FORCE_INLINE void Interpreter::smultt(uint32_t opcode) // SMULTT Rd,Rm,Rs
     *op0 = op1 * op2;
 }
 
+FORCE_INLINE void Interpreter::smulwb(uint32_t opcode) // SMULWB Rd,Rm,Rs
+{
+    if (!cp15) return; // ARM9 exclusive
+
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
+    int32_t op1 = *registers[opcode & 0x0000000F];
+    int16_t op2 = *registers[(opcode & 0x00000F00) >> 8];
+
+    // Signed word by half-word multiplication
+    *op0 = ((int64_t)op1 * op2) >> 16;
+}
+
+FORCE_INLINE void Interpreter::smulwt(uint32_t opcode) // SMULWT Rd,Rm,Rs
+{
+    if (!cp15) return; // ARM9 exclusive
+
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
+    int32_t op1 = *registers[opcode & 0x0000000F];
+    int16_t op2 = *registers[(opcode & 0x00000F00) >> 8] >> 16;
+
+    // Signed word by half-word multiplication
+    *op0 = ((int64_t)op1 * op2) >> 16;
+}
+
 FORCE_INLINE void Interpreter::smlabb(uint32_t opcode) // SMLABB Rd,Rm,Rs,Rn
 {
     if (!cp15) return; // ARM9 exclusive
@@ -1211,6 +1237,218 @@ FORCE_INLINE void Interpreter::smlatt(uint32_t opcode) // SMLATT Rd,Rm,Rs,Rn
 
     // Set the Q flag
     if ((*op0 & BIT(31)) != (res & BIT(31))) cpsr |= BIT(27);
+}
+
+FORCE_INLINE void Interpreter::smlawb(uint32_t opcode) // SMLAWB Rd,Rm,Rs,Rn
+{
+    if (!cp15) return; // ARM9 exclusive
+
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
+    int32_t op1 = *registers[opcode & 0x0000000F];
+    int16_t op2 = *registers[(opcode & 0x00000F00) >> 8];
+    uint32_t op3 = *registers[(opcode & 0x0000F000) >> 12];
+
+    // Signed word by half-word multiplication and accumulate
+    uint32_t res = ((int64_t)op1 * op2) >> 16;
+    *op0 = res + op3;
+
+    // Set the Q flag
+    if ((*op0 & BIT(31)) != (res & BIT(31))) cpsr |= BIT(27);
+}
+
+FORCE_INLINE void Interpreter::smlawt(uint32_t opcode) // SMLAWT Rd,Rm,Rs,Rn
+{
+    if (!cp15) return; // ARM9 exclusive
+
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
+    int32_t op1 = *registers[opcode & 0x0000000F];
+    int16_t op2 = *registers[(opcode & 0x00000F00) >> 8] >> 16;
+    uint32_t op3 = *registers[(opcode & 0x0000F000) >> 12];
+
+    // Signed word by half-word multiplication and accumulate
+    uint32_t res = ((int64_t)op1 * op2) >> 16;
+    *op0 = res + op3;
+
+    // Set the Q flag
+    if ((*op0 & BIT(31)) != (res & BIT(31))) cpsr |= BIT(27);
+}
+
+FORCE_INLINE void Interpreter::smlalbb(uint32_t opcode) // SMLALBB RdLo,RdHi,Rm,Rs
+{
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
+    uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+    int16_t op2 = *registers[opcode & 0x0000000F];
+    int16_t op3 = *registers[(opcode & 0x00000F00) >> 8];
+
+    // Signed long half-word multiplication and accumulate
+    int64_t res = ((int64_t)*op1 << 32) | *op0;
+    res += op2 * op3;
+    *op1 = res >> 32;
+    *op0 = res;
+}
+
+FORCE_INLINE void Interpreter::smlalbt(uint32_t opcode) // SMLALBT RdLo,RdHi,Rm,Rs
+{
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
+    uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+    int16_t op2 = *registers[opcode & 0x0000000F];
+    int16_t op3 = *registers[(opcode & 0x00000F00) >> 8] >> 16;
+
+    // Signed long half-word multiplication and accumulate
+    int64_t res = ((int64_t)*op1 << 32) | *op0;
+    res += op2 * op3;
+    *op1 = res >> 32;
+    *op0 = res;
+}
+
+FORCE_INLINE void Interpreter::smlaltb(uint32_t opcode) // SMLALTB RdLo,RdHi,Rm,Rs
+{
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
+    uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+    int16_t op2 = *registers[opcode & 0x0000000F] >> 16;
+    int16_t op3 = *registers[(opcode & 0x00000F00) >> 8];
+
+    // Signed long half-word multiplication and accumulate
+    int64_t res = ((int64_t)*op1 << 32) | *op0;
+    res += op2 * op3;
+    *op1 = res >> 32;
+    *op0 = res;
+}
+
+FORCE_INLINE void Interpreter::smlaltt(uint32_t opcode) // SMLALTT RdLo,RdHi,Rm,Rs
+{
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
+    uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+    int16_t op2 = *registers[opcode & 0x0000000F] >> 16;
+    int16_t op3 = *registers[(opcode & 0x00000F00) >> 8] >> 16;
+
+    // Signed long half-word multiplication and accumulate
+    int64_t res = ((int64_t)*op1 << 32) | *op0;
+    res += op2 * op3;
+    *op1 = res >> 32;
+    *op0 = res;
+}
+
+FORCE_INLINE void Interpreter::qadd(uint32_t opcode) // QADD Rd,Rm,Rn
+{
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
+    int32_t op1 = *registers[opcode & 0x0000000F];
+    int32_t op2 = *registers[(opcode & 0x000F0000) >> 16];
+
+    // Signed saturated addition
+    int64_t res = (int64_t)op1 + op2;
+    if (res > 0x7FFFFFFF)
+    {
+        res = 0x7FFFFFFF;
+        cpsr |= BIT(27); // Q
+    }
+    else if (res < -0x80000000)
+    {
+        res = -0x80000000;
+        cpsr |= BIT(27); // Q
+    }
+
+    *op0 = res;
+}
+
+FORCE_INLINE void Interpreter::qsub(uint32_t opcode) // QSUB Rd,Rm,Rn
+{
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
+    int32_t op1 = *registers[opcode & 0x0000000F];
+    int32_t op2 = *registers[(opcode & 0x000F0000) >> 16];
+
+    // Signed saturated subtraction
+    int64_t res = (int64_t)op1 - op2;
+    if (res > 0x7FFFFFFF)
+    {
+        res = 0x7FFFFFFF;
+        cpsr |= BIT(27); // Q
+    }
+    else if (res < -0x80000000)
+    {
+        res = -0x80000000;
+        cpsr |= BIT(27); // Q
+    }
+
+    *op0 = res;
+}
+
+FORCE_INLINE void Interpreter::qdadd(uint32_t opcode) // QDADD Rd,Rm,Rn
+{
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
+    int32_t op1 = *registers[opcode & 0x0000000F];
+    int32_t op2 = *registers[(opcode & 0x000F0000) >> 16];
+
+    // Signed saturated double and addition
+    int64_t res = (int64_t)op2 * 2;
+    if (res > 0x7FFFFFFF)
+    {
+        res = 0x7FFFFFFF;
+        cpsr |= BIT(27); // Q
+    }
+    else if (res < -0x80000000)
+    {
+        res = -0x80000000;
+        cpsr |= BIT(27); // Q
+    }
+
+    res += op1;
+    if (res > 0x7FFFFFFF)
+    {
+        res = 0x7FFFFFFF;
+        cpsr |= BIT(27); // Q
+    }
+    else if (res < -0x80000000)
+    {
+        res = -0x80000000;
+        cpsr |= BIT(27); // Q
+    }
+
+    *op0 = res;
+}
+
+FORCE_INLINE void Interpreter::qdsub(uint32_t opcode) // QDSUB Rd,Rm,Rn
+{
+    // Decode the operands
+    uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
+    int32_t op1 = *registers[opcode & 0x0000000F];
+    int32_t op2 = *registers[(opcode & 0x000F0000) >> 16];
+
+    // Signed saturated double and subtraction
+    int64_t res = (int64_t)op2 * 2;
+    if (res > 0x7FFFFFFF)
+    {
+        res = 0x7FFFFFFF;
+        cpsr |= BIT(27); // Q
+    }
+    else if (res < -0x80000000)
+    {
+        res = -0x80000000;
+        cpsr |= BIT(27); // Q
+    }
+
+    res -= op1;
+    if (res > 0x7FFFFFFF)
+    {
+        res = 0x7FFFFFFF;
+        cpsr |= BIT(27); // Q
+    }
+    else if (res < -0x80000000)
+    {
+        res = -0x80000000;
+        cpsr |= BIT(27); // Q
+    }
+
+    *op0 = res;
 }
 
 FORCE_INLINE void Interpreter::clz(uint32_t opcode) // CLZ Rd,Rm

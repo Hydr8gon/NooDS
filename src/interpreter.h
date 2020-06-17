@@ -141,10 +141,22 @@ class Interpreter
         void smulbt(uint32_t opcode);
         void smultb(uint32_t opcode);
         void smultt(uint32_t opcode);
+        void smulwb(uint32_t opcode);
+        void smulwt(uint32_t opcode);
         void smlabb(uint32_t opcode);
         void smlabt(uint32_t opcode);
         void smlatb(uint32_t opcode);
         void smlatt(uint32_t opcode);
+        void smlawb(uint32_t opcode);
+        void smlawt(uint32_t opcode);
+        void smlalbb(uint32_t opcode);
+        void smlalbt(uint32_t opcode);
+        void smlaltb(uint32_t opcode);
+        void smlaltt(uint32_t opcode);
+        void qadd(uint32_t opcode);
+        void qsub(uint32_t opcode);
+        void qdadd(uint32_t opcode);
+        void qdsub(uint32_t opcode);
         void clz(uint32_t opcode);
 
         void addRegT(uint16_t opcode);
