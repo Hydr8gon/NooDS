@@ -519,326 +519,326 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x4000000:
             case 0x4000001:
             case 0x4000002:
-            case 0x4000003: base -= 0x4000000; size = 4; data = engineA->readDispCnt();       break; // DISPCNT (engine A)
+            case 0x4000003: base -= 0x4000000; size = 4; data = engineA->readDispCnt();         break; // DISPCNT (engine A)
             case 0x4000004:
-            case 0x4000005: base -= 0x4000004; size = 2; data = gpu->readDispStat(0);         break; // DISPSTAT (ARM9)
+            case 0x4000005: base -= 0x4000004; size = 2; data = gpu->readDispStat(0);           break; // DISPSTAT (ARM9)
             case 0x4000006:
-            case 0x4000007: base -= 0x4000006; size = 2; data = gpu->readVCount();            break; // VCOUNT
+            case 0x4000007: base -= 0x4000006; size = 2; data = gpu->readVCount();              break; // VCOUNT
             case 0x4000008:
-            case 0x4000009: base -= 0x4000008; size = 2; data = engineA->readBgCnt(0);        break; // BG0CNT (engine A)
+            case 0x4000009: base -= 0x4000008; size = 2; data = engineA->readBgCnt(0);          break; // BG0CNT (engine A)
             case 0x400000A:
-            case 0x400000B: base -= 0x400000A; size = 2; data = engineA->readBgCnt(1);        break; // BG1CNT (engine A)
+            case 0x400000B: base -= 0x400000A; size = 2; data = engineA->readBgCnt(1);          break; // BG1CNT (engine A)
             case 0x400000C:
-            case 0x400000D: base -= 0x400000C; size = 2; data = engineA->readBgCnt(2);        break; // BG2CNT (engine A)
+            case 0x400000D: base -= 0x400000C; size = 2; data = engineA->readBgCnt(2);          break; // BG2CNT (engine A)
             case 0x400000E:
-            case 0x400000F: base -= 0x400000E; size = 2; data = engineA->readBgCnt(3);        break; // BG3CNT (engine A)
+            case 0x400000F: base -= 0x400000E; size = 2; data = engineA->readBgCnt(3);          break; // BG3CNT (engine A)
             case 0x4000048:
-            case 0x4000049: base -= 0x4000048; size = 2; data = engineA->readWinIn();         break; // WININ (engine A)
+            case 0x4000049: base -= 0x4000048; size = 2; data = engineA->readWinIn();           break; // WININ (engine A)
             case 0x400004A:
-            case 0x400004B: base -= 0x400004A; size = 2; data = engineA->readWinOut();        break; // WINOUT (engine A)
+            case 0x400004B: base -= 0x400004A; size = 2; data = engineA->readWinOut();          break; // WINOUT (engine A)
             case 0x4000050:
-            case 0x4000051: base -= 0x4000050; size = 2; data = engineA->readBldCnt();        break; // BLDCNT (engine A)
+            case 0x4000051: base -= 0x4000050; size = 2; data = engineA->readBldCnt();          break; // BLDCNT (engine A)
             case 0x4000052:
-            case 0x4000053: base -= 0x4000052; size = 2; data = engineA->readBldAlpha();      break; // BLDALPHA (engine A)
+            case 0x4000053: base -= 0x4000052; size = 2; data = engineA->readBldAlpha();        break; // BLDALPHA (engine A)
             case 0x4000060:
-            case 0x4000061: base -= 0x4000060; size = 2; gpu3DRenderer->readDisp3DCnt();      break; // DISP3DCNT
+            case 0x4000061: base -= 0x4000060; size = 2; data = gpu3DRenderer->readDisp3DCnt(); break; // DISP3DCNT
             case 0x4000064:
             case 0x4000065:
             case 0x4000066:
-            case 0x4000067: base -= 0x4000064; size = 4; gpu->readDispCapCnt();               break; // DISPCAPCNT
+            case 0x4000067: base -= 0x4000064; size = 4; data = gpu->readDispCapCnt();          break; // DISPCAPCNT
             case 0x400006C:
-            case 0x400006D: base -= 0x400006C; size = 2; data = engineA->readMasterBright();  break; // MASTER_BRIGHT (engine A)
+            case 0x400006D: base -= 0x400006C; size = 2; data = engineA->readMasterBright();    break; // MASTER_BRIGHT (engine A)
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
-            case 0x40000B3: base -= 0x40000B0; size = 4; data = dma9->readDmaSad(0);          break; // DMA0SAD (ARM9)
+            case 0x40000B3: base -= 0x40000B0; size = 4; data = dma9->readDmaSad(0);            break; // DMA0SAD (ARM9)
             case 0x40000B4:
             case 0x40000B5:
             case 0x40000B6:
-            case 0x40000B7: base -= 0x40000B4; size = 4; data = dma9->readDmaDad(0);          break; // DMA0DAD (ARM9)
+            case 0x40000B7: base -= 0x40000B4; size = 4; data = dma9->readDmaDad(0);            break; // DMA0DAD (ARM9)
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
-            case 0x40000BB: base -= 0x40000B8; size = 4; data = dma9->readDmaCnt(0);          break; // DMA0CNT (ARM9)
+            case 0x40000BB: base -= 0x40000B8; size = 4; data = dma9->readDmaCnt(0);            break; // DMA0CNT (ARM9)
             case 0x40000BC:
             case 0x40000BD:
             case 0x40000BE:
-            case 0x40000BF: base -= 0x40000BC; size = 4; data = dma9->readDmaSad(1);          break; // DMA1SAD (ARM9)
+            case 0x40000BF: base -= 0x40000BC; size = 4; data = dma9->readDmaSad(1);            break; // DMA1SAD (ARM9)
             case 0x40000C0:
             case 0x40000C1:
             case 0x40000C2:
-            case 0x40000C3: base -= 0x40000C0; size = 4; data = dma9->readDmaDad(1);          break; // DMA1DAD (ARM9)
+            case 0x40000C3: base -= 0x40000C0; size = 4; data = dma9->readDmaDad(1);            break; // DMA1DAD (ARM9)
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
-            case 0x40000C7: base -= 0x40000C4; size = 4; data = dma9->readDmaCnt(1);          break; // DMA1CNT (ARM9)
+            case 0x40000C7: base -= 0x40000C4; size = 4; data = dma9->readDmaCnt(1);            break; // DMA1CNT (ARM9)
             case 0x40000C8:
             case 0x40000C9:
             case 0x40000CA:
-            case 0x40000CB: base -= 0x40000C8; size = 4; data = dma9->readDmaSad(2);          break; // DMA2SAD (ARM9)
+            case 0x40000CB: base -= 0x40000C8; size = 4; data = dma9->readDmaSad(2);            break; // DMA2SAD (ARM9)
             case 0x40000CC:
             case 0x40000CD:
             case 0x40000CE:
-            case 0x40000CF: base -= 0x40000CC; size = 4; data = dma9->readDmaDad(2);          break; // DMA2DAD (ARM9)
+            case 0x40000CF: base -= 0x40000CC; size = 4; data = dma9->readDmaDad(2);            break; // DMA2DAD (ARM9)
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
-            case 0x40000D3: base -= 0x40000D0; size = 4; data = dma9->readDmaCnt(2);          break; // DMA2CNT (ARM9)
+            case 0x40000D3: base -= 0x40000D0; size = 4; data = dma9->readDmaCnt(2);            break; // DMA2CNT (ARM9)
             case 0x40000D4:
             case 0x40000D5:
             case 0x40000D6:
-            case 0x40000D7: base -= 0x40000D4; size = 4; data = dma9->readDmaSad(3);          break; // DMA3SAD (ARM9)
+            case 0x40000D7: base -= 0x40000D4; size = 4; data = dma9->readDmaSad(3);            break; // DMA3SAD (ARM9)
             case 0x40000D8:
             case 0x40000D9:
             case 0x40000DA:
-            case 0x40000DB: base -= 0x40000D8; size = 4; data = dma9->readDmaDad(3);          break; // DMA3DAD (ARM9)
+            case 0x40000DB: base -= 0x40000D8; size = 4; data = dma9->readDmaDad(3);            break; // DMA3DAD (ARM9)
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
-            case 0x40000DF: base -= 0x40000DC; size = 4; data = dma9->readDmaCnt(3);          break; // DMA3CNT (ARM9)
+            case 0x40000DF: base -= 0x40000DC; size = 4; data = dma9->readDmaCnt(3);            break; // DMA3CNT (ARM9)
             case 0x40000E0:
             case 0x40000E1:
             case 0x40000E2:
-            case 0x40000E3: base -= 0x40000E0; size = 4; data = readDmaFill(0);               break; // DMA0FILL
+            case 0x40000E3: base -= 0x40000E0; size = 4; data = readDmaFill(0);                 break; // DMA0FILL
             case 0x40000E4:
             case 0x40000E5:
             case 0x40000E6:
-            case 0x40000E7: base -= 0x40000E4; size = 4; data = readDmaFill(1);               break; // DMA1FILL
+            case 0x40000E7: base -= 0x40000E4; size = 4; data = readDmaFill(1);                 break; // DMA1FILL
             case 0x40000E8:
             case 0x40000E9:
             case 0x40000EA:
-            case 0x40000EB: base -= 0x40000E8; size = 4; data = readDmaFill(2);               break; // DMA2FILL
+            case 0x40000EB: base -= 0x40000E8; size = 4; data = readDmaFill(2);                 break; // DMA2FILL
             case 0x40000EC:
             case 0x40000ED:
             case 0x40000EE:
-            case 0x40000EF: base -= 0x40000EC; size = 4; data = readDmaFill(3);               break; // DMA3FILL
+            case 0x40000EF: base -= 0x40000EC; size = 4; data = readDmaFill(3);                 break; // DMA3FILL
             case 0x4000100:
-            case 0x4000101: base -= 0x4000100; size = 2; data = timers9->readTmCntL(0);       break; // TM0CNT_L (ARM9)
+            case 0x4000101: base -= 0x4000100; size = 2; data = timers9->readTmCntL(0);         break; // TM0CNT_L (ARM9)
             case 0x4000102:
-            case 0x4000103: base -= 0x4000102; size = 2; data = timers9->readTmCntH(0);       break; // TM0CNT_H (ARM9)
+            case 0x4000103: base -= 0x4000102; size = 2; data = timers9->readTmCntH(0);         break; // TM0CNT_H (ARM9)
             case 0x4000104:
-            case 0x4000105: base -= 0x4000104; size = 2; data = timers9->readTmCntL(1);       break; // TM1CNT_L (ARM9)
+            case 0x4000105: base -= 0x4000104; size = 2; data = timers9->readTmCntL(1);         break; // TM1CNT_L (ARM9)
             case 0x4000106:
-            case 0x4000107: base -= 0x4000106; size = 2; data = timers9->readTmCntH(1);       break; // TM1CNT_H (ARM9)
+            case 0x4000107: base -= 0x4000106; size = 2; data = timers9->readTmCntH(1);         break; // TM1CNT_H (ARM9)
             case 0x4000108:
-            case 0x4000109: base -= 0x4000108; size = 2; data = timers9->readTmCntL(2);       break; // TM2CNT_L (ARM9)
+            case 0x4000109: base -= 0x4000108; size = 2; data = timers9->readTmCntL(2);         break; // TM2CNT_L (ARM9)
             case 0x400010A:
-            case 0x400010B: base -= 0x400010A; size = 2; data = timers9->readTmCntH(2);       break; // TM2CNT_H (ARM9)
+            case 0x400010B: base -= 0x400010A; size = 2; data = timers9->readTmCntH(2);         break; // TM2CNT_H (ARM9)
             case 0x400010C:
-            case 0x400010D: base -= 0x400010C; size = 2; data = timers9->readTmCntL(3);       break; // TM3CNT_L (ARM9)
+            case 0x400010D: base -= 0x400010C; size = 2; data = timers9->readTmCntL(3);         break; // TM3CNT_L (ARM9)
             case 0x400010E:
-            case 0x400010F: base -= 0x400010E; size = 2; data = timers9->readTmCntH(3);       break; // TM3CNT_H (ARM9)
+            case 0x400010F: base -= 0x400010E; size = 2; data = timers9->readTmCntH(3);         break; // TM3CNT_H (ARM9)
             case 0x4000130:
-            case 0x4000131: base -= 0x4000130; size = 2; data = input->readKeyInput();        break; // KEYINPUT
+            case 0x4000131: base -= 0x4000130; size = 2; data = input->readKeyInput();          break; // KEYINPUT
             case 0x4000180:
-            case 0x4000181: base -= 0x4000180; size = 2; data = ipc->readIpcSync(0);          break; // IPCSYNC (ARM9)
+            case 0x4000181: base -= 0x4000180; size = 2; data = ipc->readIpcSync(0);            break; // IPCSYNC (ARM9)
             case 0x4000184:
-            case 0x4000185: base -= 0x4000184; size = 2; data = ipc->readIpcFifoCnt(0);       break; // IPCFIFOCNT (ARM9)
+            case 0x4000185: base -= 0x4000184; size = 2; data = ipc->readIpcFifoCnt(0);         break; // IPCFIFOCNT (ARM9)
             case 0x40001A0:
-            case 0x40001A1: base -= 0x40001A0; size = 2; data = cartridge->readAuxSpiCnt(0);  break; // AUXSPICNT (ARM9)
-            case 0x40001A2: base -= 0x40001A2; size = 1; data = cartridge->readAuxSpiData(0); break; // AUXSPIDATA (ARM9)
+            case 0x40001A1: base -= 0x40001A0; size = 2; data = cartridge->readAuxSpiCnt(0);    break; // AUXSPICNT (ARM9)
+            case 0x40001A2: base -= 0x40001A2; size = 1; data = cartridge->readAuxSpiData(0);   break; // AUXSPIDATA (ARM9)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: base -= 0x40001A4; size = 4; data = cartridge->readRomCtrl(0);    break; // ROMCTRL (ARM9)
-            case 0x4000208: base -= 0x4000208; size = 1; data = arm9->readIme();              break; // IME (ARM9)
+            case 0x40001A7: base -= 0x40001A4; size = 4; data = cartridge->readRomCtrl(0);      break; // ROMCTRL (ARM9)
+            case 0x4000208: base -= 0x4000208; size = 1; data = arm9->readIme();                break; // IME (ARM9)
             case 0x4000210:
             case 0x4000211:
             case 0x4000212:
-            case 0x4000213: base -= 0x4000210; size = 4; data = arm9->readIe();               break; // IE (ARM9)
+            case 0x4000213: base -= 0x4000210; size = 4; data = arm9->readIe();                 break; // IE (ARM9)
             case 0x4000214:
             case 0x4000215:
             case 0x4000216:
-            case 0x4000217: base -= 0x4000214; size = 4; data = arm9->readIrf();              break; // IF (ARM9)
+            case 0x4000217: base -= 0x4000214; size = 4; data = arm9->readIrf();                break; // IF (ARM9)
             case 0x4000280:
-            case 0x4000281: base -= 0x4000280; size = 2; data = math->readDivCnt();           break; // DIVCNT
+            case 0x4000281: base -= 0x4000280; size = 2; data = math->readDivCnt();             break; // DIVCNT
             case 0x4000290:
             case 0x4000291:
             case 0x4000292:
-            case 0x4000293: base -= 0x4000290; size = 4; data = math->readDivNumerL();        break; // DIVNUMER_L
+            case 0x4000293: base -= 0x4000290; size = 4; data = math->readDivNumerL();          break; // DIVNUMER_L
             case 0x4000294:
             case 0x4000295:
             case 0x4000296:
-            case 0x4000297: base -= 0x4000294; size = 4; data = math->readDivNumerH();        break; // DIVNUMER_H
+            case 0x4000297: base -= 0x4000294; size = 4; data = math->readDivNumerH();          break; // DIVNUMER_H
             case 0x4000298:
             case 0x4000299:
             case 0x400029A:
-            case 0x400029B: base -= 0x4000298; size = 4; data = math->readDivDenomL();        break; // DIVDENOM_L
+            case 0x400029B: base -= 0x4000298; size = 4; data = math->readDivDenomL();          break; // DIVDENOM_L
             case 0x400029C:
             case 0x400029D:
             case 0x400029E:
-            case 0x400029F: base -= 0x400029C; size = 4; data = math->readDivDenomH();        break; // DIVDENOM_H
+            case 0x400029F: base -= 0x400029C; size = 4; data = math->readDivDenomH();          break; // DIVDENOM_H
             case 0x40002A0:
             case 0x40002A1:
             case 0x40002A2:
-            case 0x40002A3: base -= 0x40002A0; size = 4; data = math->readDivResultL();       break; // DIVRESULT_L
+            case 0x40002A3: base -= 0x40002A0; size = 4; data = math->readDivResultL();         break; // DIVRESULT_L
             case 0x40002A4:
             case 0x40002A5:
             case 0x40002A6:
-            case 0x40002A7: base -= 0x40002A4; size = 4; data = math->readDivResultH();       break; // DIVRESULT_H
+            case 0x40002A7: base -= 0x40002A4; size = 4; data = math->readDivResultH();         break; // DIVRESULT_H
             case 0x40002A8:
             case 0x40002A9:
             case 0x40002AA:
-            case 0x40002AB: base -= 0x40002A8; size = 4; data = math->readDivRemResultL();    break; // DIVREMRESULT_L
+            case 0x40002AB: base -= 0x40002A8; size = 4; data = math->readDivRemResultL();      break; // DIVREMRESULT_L
             case 0x40002AC:
             case 0x40002AD:
             case 0x40002AE:
-            case 0x40002AF: base -= 0x40002AC; size = 4; data = math->readDivRemResultH();    break; // DIVREMRESULT_H
+            case 0x40002AF: base -= 0x40002AC; size = 4; data = math->readDivRemResultH();      break; // DIVREMRESULT_H
             case 0x40002B0:
-            case 0x40002B1: base -= 0x40002B0; size = 2; data = math->readSqrtCnt();          break; // SQRTCNT
+            case 0x40002B1: base -= 0x40002B0; size = 2; data = math->readSqrtCnt();            break; // SQRTCNT
             case 0x40002B4:
             case 0x40002B5:
             case 0x40002B6:
-            case 0x40002B7: base -= 0x40002B4; size = 4; data = math->readSqrtResult();       break; // SQRTRESULT
+            case 0x40002B7: base -= 0x40002B4; size = 4; data = math->readSqrtResult();         break; // SQRTRESULT
             case 0x40002B8:
             case 0x40002B9:
             case 0x40002BA:
-            case 0x40002BB: base -= 0x40002B8; size = 4; data = math->readSqrtParamL();       break; // SQRTPARAM_L
+            case 0x40002BB: base -= 0x40002B8; size = 4; data = math->readSqrtParamL();         break; // SQRTPARAM_L
             case 0x40002BC:
             case 0x40002BD:
             case 0x40002BE:
-            case 0x40002BF: base -= 0x40002BC; size = 4; data = math->readSqrtParamH();       break; // SQRTPARAM_H
-            case 0x4000300: base -= 0x4000300; size = 1; data = arm9->readPostFlg();          break; // POSTFLG (ARM9)
+            case 0x40002BF: base -= 0x40002BC; size = 4; data = math->readSqrtParamH();         break; // SQRTPARAM_H
+            case 0x4000300: base -= 0x4000300; size = 1; data = arm9->readPostFlg();            break; // POSTFLG (ARM9)
             case 0x4000304:
-            case 0x4000305: base -= 0x4000304; size = 2; data = gpu->readPowCnt1();           break; // POWCNT1
+            case 0x4000305: base -= 0x4000304; size = 2; data = gpu->readPowCnt1();             break; // POWCNT1
             case 0x4000600:
             case 0x4000601:
             case 0x4000602:
-            case 0x4000603: base -= 0x4000600; size = 4; data = gpu3D->readGxStat();          break; // GXSTAT
+            case 0x4000603: base -= 0x4000600; size = 4; data = gpu3D->readGxStat();            break; // GXSTAT
             case 0x4000604:
             case 0x4000605:
             case 0x4000606:
-            case 0x4000607: base -= 0x4000604; size = 4; data = gpu3D->readRamCount();        break; // RAM_COUNT
+            case 0x4000607: base -= 0x4000604; size = 4; data = gpu3D->readRamCount();          break; // RAM_COUNT
             case 0x4000640:
             case 0x4000641:
             case 0x4000642:
-            case 0x4000643: base -= 0x4000640; size = 4; data = gpu3D->readClipMtxResult(0);  break; // CLIPMTX_RESULT
+            case 0x4000643: base -= 0x4000640; size = 4; data = gpu3D->readClipMtxResult(0);    break; // CLIPMTX_RESULT
             case 0x4000644:
             case 0x4000645:
             case 0x4000646:
-            case 0x4000647: base -= 0x4000644; size = 4; data = gpu3D->readClipMtxResult(1);  break; // CLIPMTX_RESULT
+            case 0x4000647: base -= 0x4000644; size = 4; data = gpu3D->readClipMtxResult(1);    break; // CLIPMTX_RESULT
             case 0x4000648:
             case 0x4000649:
             case 0x400064A:
-            case 0x400064B: base -= 0x4000648; size = 4; data = gpu3D->readClipMtxResult(2);  break; // CLIPMTX_RESULT
+            case 0x400064B: base -= 0x4000648; size = 4; data = gpu3D->readClipMtxResult(2);    break; // CLIPMTX_RESULT
             case 0x400064C:
             case 0x400064D:
             case 0x400064E:
-            case 0x400064F: base -= 0x400064C; size = 4; data = gpu3D->readClipMtxResult(3);  break; // CLIPMTX_RESULT
+            case 0x400064F: base -= 0x400064C; size = 4; data = gpu3D->readClipMtxResult(3);    break; // CLIPMTX_RESULT
             case 0x4000650:
             case 0x4000651:
             case 0x4000652:
-            case 0x4000653: base -= 0x4000650; size = 4; data = gpu3D->readClipMtxResult(4);  break; // CLIPMTX_RESULT
+            case 0x4000653: base -= 0x4000650; size = 4; data = gpu3D->readClipMtxResult(4);    break; // CLIPMTX_RESULT
             case 0x4000654:
             case 0x4000655:
             case 0x4000656:
-            case 0x4000657: base -= 0x4000654; size = 4; data = gpu3D->readClipMtxResult(5);  break; // CLIPMTX_RESULT
+            case 0x4000657: base -= 0x4000654; size = 4; data = gpu3D->readClipMtxResult(5);    break; // CLIPMTX_RESULT
             case 0x4000658:
             case 0x4000659:
             case 0x400065A:
-            case 0x400065B: base -= 0x4000658; size = 4; data = gpu3D->readClipMtxResult(6);  break; // CLIPMTX_RESULT
+            case 0x400065B: base -= 0x4000658; size = 4; data = gpu3D->readClipMtxResult(6);    break; // CLIPMTX_RESULT
             case 0x400065C:
             case 0x400065D:
             case 0x400065E:
-            case 0x400065F: base -= 0x400065C; size = 4; data = gpu3D->readClipMtxResult(7);  break; // CLIPMTX_RESULT
+            case 0x400065F: base -= 0x400065C; size = 4; data = gpu3D->readClipMtxResult(7);    break; // CLIPMTX_RESULT
             case 0x4000660:
             case 0x4000661:
             case 0x4000662:
-            case 0x4000663: base -= 0x4000660; size = 4; data = gpu3D->readClipMtxResult(8);  break; // CLIPMTX_RESULT
+            case 0x4000663: base -= 0x4000660; size = 4; data = gpu3D->readClipMtxResult(8);    break; // CLIPMTX_RESULT
             case 0x4000664:
             case 0x4000665:
             case 0x4000666:
-            case 0x4000667: base -= 0x4000664; size = 4; data = gpu3D->readClipMtxResult(9);  break; // CLIPMTX_RESULT
+            case 0x4000667: base -= 0x4000664; size = 4; data = gpu3D->readClipMtxResult(9);    break; // CLIPMTX_RESULT
             case 0x4000668:
             case 0x4000669:
             case 0x400066A:
-            case 0x400066B: base -= 0x4000668; size = 4; data = gpu3D->readClipMtxResult(10); break; // CLIPMTX_RESULT
+            case 0x400066B: base -= 0x4000668; size = 4; data = gpu3D->readClipMtxResult(10);   break; // CLIPMTX_RESULT
             case 0x400066C:
             case 0x400066D:
             case 0x400066E:
-            case 0x400066F: base -= 0x400066C; size = 4; data = gpu3D->readClipMtxResult(11); break; // CLIPMTX_RESULT
+            case 0x400066F: base -= 0x400066C; size = 4; data = gpu3D->readClipMtxResult(11);   break; // CLIPMTX_RESULT
             case 0x4000670:
             case 0x4000671:
             case 0x4000672:
-            case 0x4000673: base -= 0x4000670; size = 4; data = gpu3D->readClipMtxResult(12); break; // CLIPMTX_RESULT
+            case 0x4000673: base -= 0x4000670; size = 4; data = gpu3D->readClipMtxResult(12);   break; // CLIPMTX_RESULT
             case 0x4000674:
             case 0x4000675:
             case 0x4000676:
-            case 0x4000677: base -= 0x4000674; size = 4; data = gpu3D->readClipMtxResult(13); break; // CLIPMTX_RESULT
+            case 0x4000677: base -= 0x4000674; size = 4; data = gpu3D->readClipMtxResult(13);   break; // CLIPMTX_RESULT
             case 0x4000678:
             case 0x4000679:
             case 0x400067A:
-            case 0x400067B: base -= 0x4000678; size = 4; data = gpu3D->readClipMtxResult(14); break; // CLIPMTX_RESULT
+            case 0x400067B: base -= 0x4000678; size = 4; data = gpu3D->readClipMtxResult(14);   break; // CLIPMTX_RESULT
             case 0x400067C:
             case 0x400067D:
             case 0x400067E:
-            case 0x400067F: base -= 0x400067C; size = 4; data = gpu3D->readClipMtxResult(15); break; // CLIPMTX_RESULT
+            case 0x400067F: base -= 0x400067C; size = 4; data = gpu3D->readClipMtxResult(15);   break; // CLIPMTX_RESULT
             case 0x4000680:
             case 0x4000681:
             case 0x4000682:
-            case 0x4000683: base -= 0x4000680; size = 4; data = gpu3D->readVecMtxResult(0);   break; // VECMTX_RESULT
+            case 0x4000683: base -= 0x4000680; size = 4; data = gpu3D->readVecMtxResult(0);     break; // VECMTX_RESULT
             case 0x4000684:
             case 0x4000685:
             case 0x4000686:
-            case 0x4000687: base -= 0x4000684; size = 4; data = gpu3D->readVecMtxResult(1);   break; // VECMTX_RESULT
+            case 0x4000687: base -= 0x4000684; size = 4; data = gpu3D->readVecMtxResult(1);     break; // VECMTX_RESULT
             case 0x4000688:
             case 0x4000689:
             case 0x400068A:
-            case 0x400068B: base -= 0x4000688; size = 4; data = gpu3D->readVecMtxResult(2);   break; // VECMTX_RESULT
+            case 0x400068B: base -= 0x4000688; size = 4; data = gpu3D->readVecMtxResult(2);     break; // VECMTX_RESULT
             case 0x400068C:
             case 0x400068D:
             case 0x400068E:
-            case 0x400068F: base -= 0x400068C; size = 4; data = gpu3D->readVecMtxResult(3);   break; // VECMTX_RESULT
+            case 0x400068F: base -= 0x400068C; size = 4; data = gpu3D->readVecMtxResult(3);     break; // VECMTX_RESULT
             case 0x4000690:
             case 0x4000691:
             case 0x4000692:
-            case 0x4000693: base -= 0x4000690; size = 4; data = gpu3D->readVecMtxResult(4);   break; // VECMTX_RESULT
+            case 0x4000693: base -= 0x4000690; size = 4; data = gpu3D->readVecMtxResult(4);     break; // VECMTX_RESULT
             case 0x4000694:
             case 0x4000695:
             case 0x4000696:
-            case 0x4000697: base -= 0x4000694; size = 4; data = gpu3D->readVecMtxResult(5);   break; // VECMTX_RESULT
+            case 0x4000697: base -= 0x4000694; size = 4; data = gpu3D->readVecMtxResult(5);     break; // VECMTX_RESULT
             case 0x4000698:
             case 0x4000699:
             case 0x400069A:
-            case 0x400069B: base -= 0x4000698; size = 4; data = gpu3D->readVecMtxResult(6);   break; // VECMTX_RESULT
+            case 0x400069B: base -= 0x4000698; size = 4; data = gpu3D->readVecMtxResult(6);     break; // VECMTX_RESULT
             case 0x400069C:
             case 0x400069D:
             case 0x400069E:
-            case 0x400069F: base -= 0x400069C; size = 4; data = gpu3D->readVecMtxResult(7);   break; // VECMTX_RESULT
+            case 0x400069F: base -= 0x400069C; size = 4; data = gpu3D->readVecMtxResult(7);     break; // VECMTX_RESULT
             case 0x40006A0:
             case 0x40006A1:
             case 0x40006A2:
-            case 0x40006A3: base -= 0x40006A0; size = 4; data = gpu3D->readVecMtxResult(8);   break; // VECMTX_RESULT
+            case 0x40006A3: base -= 0x40006A0; size = 4; data = gpu3D->readVecMtxResult(8);     break; // VECMTX_RESULT
             case 0x4001000:
             case 0x4001001:
             case 0x4001002:
-            case 0x4001003: base -= 0x4001000; size = 4; data = engineB->readDispCnt();       break; // DISPCNT (engine B)
+            case 0x4001003: base -= 0x4001000; size = 4; data = engineB->readDispCnt();         break; // DISPCNT (engine B)
             case 0x4001008:
-            case 0x4001009: base -= 0x4001008; size = 2; data = engineB->readBgCnt(0);        break; // BG0CNT (engine B)
+            case 0x4001009: base -= 0x4001008; size = 2; data = engineB->readBgCnt(0);          break; // BG0CNT (engine B)
             case 0x400100A:
-            case 0x400100B: base -= 0x400100A; size = 2; data = engineB->readBgCnt(1);        break; // BG1CNT (engine B)
+            case 0x400100B: base -= 0x400100A; size = 2; data = engineB->readBgCnt(1);          break; // BG1CNT (engine B)
             case 0x400100C:
-            case 0x400100D: base -= 0x400100C; size = 2; data = engineB->readBgCnt(2);        break; // BG2CNT (engine B)
+            case 0x400100D: base -= 0x400100C; size = 2; data = engineB->readBgCnt(2);          break; // BG2CNT (engine B)
             case 0x400100E:
-            case 0x400100F: base -= 0x400100E; size = 2; data = engineB->readBgCnt(3);        break; // BG3CNT (engine B)
+            case 0x400100F: base -= 0x400100E; size = 2; data = engineB->readBgCnt(3);          break; // BG3CNT (engine B)
             case 0x4001048:
-            case 0x4001049: base -= 0x4001048; size = 2; data = engineB->readWinIn();         break; // WININ (engine B)
+            case 0x4001049: base -= 0x4001048; size = 2; data = engineB->readWinIn();           break; // WININ (engine B)
             case 0x400104A:
-            case 0x400104B: base -= 0x400104A; size = 2; data = engineB->readWinOut();        break; // WINOUT (engine B)
+            case 0x400104B: base -= 0x400104A; size = 2; data = engineB->readWinOut();          break; // WINOUT (engine B)
             case 0x4001050:
-            case 0x4001051: base -= 0x4001050; size = 2; data = engineB->readBldCnt();        break; // BLDCNT (engine B)
+            case 0x4001051: base -= 0x4001050; size = 2; data = engineB->readBldCnt();          break; // BLDCNT (engine B)
             case 0x4001052:
-            case 0x4001053: base -= 0x4001052; size = 2; data = engineB->readBldAlpha();      break; // BLDALPHA (engine B)
+            case 0x4001053: base -= 0x4001052; size = 2; data = engineB->readBldAlpha();        break; // BLDALPHA (engine B)
             case 0x400106C:
-            case 0x400106D: base -= 0x400106C; size = 2; data = engineB->readMasterBright();  break; // MASTER_BRIGHT (engine B)
+            case 0x400106D: base -= 0x400106C; size = 2; data = engineB->readMasterBright();    break; // MASTER_BRIGHT (engine B)
             case 0x4100000:
             case 0x4100001:
             case 0x4100002:
-            case 0x4100003: base -= 0x4100000; size = 4; data = ipc->readIpcFifoRecv(0);      break; // IPCFIFORECV (ARM9)
+            case 0x4100003: base -= 0x4100000; size = 4; data = ipc->readIpcFifoRecv(0);        break; // IPCFIFORECV (ARM9)
             case 0x4100010:
             case 0x4100011:
             case 0x4100012:
-            case 0x4100013: base -= 0x4100010; size = 4; data = cartridge->readRomDataIn(0);  break; // ROMDATAIN (ARM9)
+            case 0x4100013: base -= 0x4100010; size = 4; data = cartridge->readRomDataIn(0);    break; // ROMDATAIN (ARM9)
 
             default:
             {
