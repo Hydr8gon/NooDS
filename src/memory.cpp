@@ -1591,6 +1591,44 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x4000353: base -= 0x4000350; size = 4; gpu3DRenderer->writeClearColor(mask << (base * 8), data << (base * 8));    break; // CLEAR_COLOR
             case 0x4000354:
             case 0x4000355: base -= 0x4000354; size = 2; gpu3DRenderer->writeClearDepth(mask << (base * 8), data << (base * 8));    break; // CLEAR_DEPTH
+            case 0x4000358:
+            case 0x4000359:
+            case 0x400035A:
+            case 0x400035B: base -= 0x4000358; size = 4; gpu3DRenderer->writeFogColor(mask << (base * 8), data << (base * 8));      break; // FOG_COLOR
+            case 0x400035C:
+            case 0x400035D: base -= 0x400035C; size = 2; gpu3DRenderer->writeFogOffset(mask << (base * 8), data << (base * 8));     break; // FOG_OFFSET
+            case 0x4000360: base -= 0x4000360; size = 1; gpu3DRenderer->writeFogTable(0,  data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000361: base -= 0x4000361; size = 1; gpu3DRenderer->writeFogTable(1,  data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000362: base -= 0x4000362; size = 1; gpu3DRenderer->writeFogTable(2,  data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000363: base -= 0x4000363; size = 1; gpu3DRenderer->writeFogTable(3,  data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000364: base -= 0x4000364; size = 1; gpu3DRenderer->writeFogTable(4,  data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000365: base -= 0x4000365; size = 1; gpu3DRenderer->writeFogTable(5,  data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000366: base -= 0x4000366; size = 1; gpu3DRenderer->writeFogTable(6,  data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000367: base -= 0x4000367; size = 1; gpu3DRenderer->writeFogTable(7,  data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000368: base -= 0x4000368; size = 1; gpu3DRenderer->writeFogTable(8,  data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000369: base -= 0x4000369; size = 1; gpu3DRenderer->writeFogTable(9,  data << (base * 8));                      break; // FOG_TABLE
+            case 0x400036A: base -= 0x400036A; size = 1; gpu3DRenderer->writeFogTable(10, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400036B: base -= 0x400036B; size = 1; gpu3DRenderer->writeFogTable(11, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400036C: base -= 0x400036C; size = 1; gpu3DRenderer->writeFogTable(12, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400036D: base -= 0x400036D; size = 1; gpu3DRenderer->writeFogTable(13, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400036E: base -= 0x400036E; size = 1; gpu3DRenderer->writeFogTable(14, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400036F: base -= 0x400036F; size = 1; gpu3DRenderer->writeFogTable(15, data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000370: base -= 0x4000370; size = 1; gpu3DRenderer->writeFogTable(16, data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000371: base -= 0x4000371; size = 1; gpu3DRenderer->writeFogTable(17, data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000372: base -= 0x4000372; size = 1; gpu3DRenderer->writeFogTable(18, data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000373: base -= 0x4000373; size = 1; gpu3DRenderer->writeFogTable(19, data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000374: base -= 0x4000374; size = 1; gpu3DRenderer->writeFogTable(20, data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000375: base -= 0x4000375; size = 1; gpu3DRenderer->writeFogTable(21, data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000376: base -= 0x4000376; size = 1; gpu3DRenderer->writeFogTable(22, data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000377: base -= 0x4000377; size = 1; gpu3DRenderer->writeFogTable(23, data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000378: base -= 0x4000378; size = 1; gpu3DRenderer->writeFogTable(24, data << (base * 8));                      break; // FOG_TABLE
+            case 0x4000379: base -= 0x4000379; size = 1; gpu3DRenderer->writeFogTable(25, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400037A: base -= 0x400037A; size = 1; gpu3DRenderer->writeFogTable(26, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400037B: base -= 0x400037B; size = 1; gpu3DRenderer->writeFogTable(27, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400037C: base -= 0x400037C; size = 1; gpu3DRenderer->writeFogTable(28, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400037D: base -= 0x400037D; size = 1; gpu3DRenderer->writeFogTable(29, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400037E: base -= 0x400037E; size = 1; gpu3DRenderer->writeFogTable(30, data << (base * 8));                      break; // FOG_TABLE
+            case 0x400037F: base -= 0x400037F; size = 1; gpu3DRenderer->writeFogTable(31, data << (base * 8));                      break; // FOG_TABLE
             case 0x4000380:
             case 0x4000381: base -= 0x4000380; size = 2; gpu3DRenderer->writeToonTable(0,  mask << (base * 8), data << (base * 8)); break; // TOON_TABLE
             case 0x4000382:

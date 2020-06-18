@@ -112,15 +112,17 @@ void Gpu3DRenderer::drawScanline48(int block)
 void Gpu3DRenderer::drawScanline1(int line)
 {
     // Convert the clear values
+    // The attribute buffer contains the polygon ID, and the fog bit in bit 7
     uint32_t color = BIT(26) | rgba5ToRgba6(((clearColor & 0x001F0000) >> 1) | (clearColor & 0x00007FFF));
-    uint32_t depth = (clearDepth * 0x200) + ((clearDepth + 1) / 0x8000) * 0x1FF;
+    int32_t depth = (clearDepth * 0x200) + ((clearDepth + 1) / 0x8000) * 0x1FF;
+    uint8_t attrib = ((clearColor & BIT(15)) >> 8) | ((clearColor & 0x3F000000) >> 24);
 
     // Clear the scanline buffers with the clear values
     for (int i = 0; i < 256; i++)
     {
         framebuffer[line * 256 + i] = color;
         depthBuffer[line / 48][i] = depth;
-        attribBuffer[line / 48][i] = 0;
+        attribBuffer[line / 48][i] = attrib;
         stencilBuffer[line / 48][i] = 0;
     }
 
@@ -141,6 +143,54 @@ void Gpu3DRenderer::drawScanline1(int line)
     // Draw the translucent polygons
     for (int i = 0; i < translucent.size(); i++)
         drawPolygon(line, translucent[i]);
+
+    // Draw fog if enabled
+    if (disp3DCnt & BIT(7))
+    {
+        uint32_t fog = rgba5ToRgba6(((fogColor & 0x001F0000) >> 1) | (fogColor & 0x00007FFF));
+        int fogStep = 0x400 >> ((disp3DCnt & 0x0F00) >> 8);
+
+        for (int i = 0; i < 256; i++)
+        {
+            if (attribBuffer[line / 48][i] & BIT(7)) // Fog bit
+            {
+                // Determine the fog table index for the current pixel's depth
+                int32_t offset = ((depthBuffer[line / 48][i] / 0x200) - fogOffset);
+                int n = (fogStep > 0) ? (offset / fogStep) : ((offset > 0) ? 31 : 0);
+
+                // Get the fog density from the table
+                uint8_t density;
+                if (n >= 31) // Maximum
+                {
+                    density = fogTable[31];
+                }
+                else if (n < 0 || fogStep == 0) // Minimum
+                {
+                    density = fogTable[0];
+                }
+                else // Linear interpolation
+                {
+                    int m = offset % fogStep;
+                    density = ((m >= 0) ? ((fogTable[n + 1] * m + fogTable[n] * (fogStep - m)) / fogStep) : fogTable[0]);
+                }
+
+                // Blend the fog with the pixel
+                uint32_t *pixel = &framebuffer[line * 256 + i];
+                uint8_t a = (((fog >> 18) & 0x3F) * density + ((*pixel >> 18) & 0x3F) * (128 - density)) / 128;
+                if (disp3DCnt & BIT(6)) // Only alpha
+                {
+                    *pixel = (*pixel & ~(0x3F << 18)) | (a << 18);
+                }
+                else
+                {
+                    uint8_t r = (((fog >>  0) & 0x3F) * density + ((*pixel >>  0) & 0x3F) * (128 - density)) / 128;
+                    uint8_t g = (((fog >>  6) & 0x3F) * density + ((*pixel >>  6) & 0x3F) * (128 - density)) / 128;
+                    uint8_t b = (((fog >> 12) & 0x3F) * density + ((*pixel >> 12) & 0x3F) * (128 - density)) / 128;
+                    *pixel = BIT(26) | (a << 18) | (b << 12) | (g << 6) | r;
+                }
+            }
+        }
+    }
 }
 
 uint8_t *Gpu3DRenderer::getTexture(uint32_t address)
@@ -563,7 +613,7 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
                     stencilBuffer[line / 48][x] = 1;
                     continue;
                 }
-                else if (stencilBuffer[line / 48][x] || attribBuffer[line / 48][x] == polygon->id)
+                else if (stencilBuffer[line / 48][x] || (attribBuffer[line / 48][x] & 0x3F) == polygon->id)
                 {
                     // Shadow polygons with ID not 0 only render if the stencil bit is clear and the pixel ID differs
                     stencilBuffer[line / 48][x] = 0;
@@ -661,19 +711,20 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
             if (color & 0xFC0000)
             {
                 uint32_t *pixel = &framebuffer[line * 256 + x];
+                uint8_t *attrib = &attribBuffer[line / 48][x];
 
                 if ((color >> 18) < 0x3F && (*pixel & 0xFC0000)) // Alpha blending
                 {
                     *pixel = BIT(26) | interpolateColor(*pixel, color, 0, color >> 18, 63);
                     if (polygon->transNewDepth) depthBuffer[line / 48][x] = depth;
+                    *attrib = (*attrib & (polygon->fog << 7)) | polygon->id;
                 }
                 else
                 {
                     *pixel = BIT(26) | color;
                     depthBuffer[line / 48][x] = depth;
+                    *attrib = (polygon->fog << 7) | polygon->id;
                 }
-
-                attribBuffer[line / 48][x] = polygon->id;
             }
         }
     }
@@ -709,4 +760,24 @@ void Gpu3DRenderer::writeToonTable(int index, uint16_t mask, uint16_t value)
     // Write to one of the TOON_TABLE registers
     mask &= 0x7FFF;
     toonTable[index] = (toonTable[index] & ~mask) | (value & mask);
+}
+
+void Gpu3DRenderer::writeFogColor(uint32_t mask, uint32_t value)
+{
+    // Write to the FOG_COLOR register
+    mask &= 0x001F7FFF;
+    fogColor = (fogColor & ~mask) | (value & mask);
+}
+
+void Gpu3DRenderer::writeFogOffset(uint16_t mask, uint16_t value)
+{
+    // Write to the FOG_OFFSET register
+    mask &= 0x7FFF;
+    fogOffset = (fogOffset & ~mask) | (value & mask);
+}
+
+void Gpu3DRenderer::writeFogTable(int index, uint8_t value)
+{
+    // Write to one of the FOG_TABLE registers
+    fogTable[index] = value & 0x7F;
 }

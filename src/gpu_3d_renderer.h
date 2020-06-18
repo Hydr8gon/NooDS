@@ -45,6 +45,9 @@ class Gpu3DRenderer
         void writeDisp3DCnt(uint16_t mask, uint16_t value);
         void writeClearColor(uint32_t mask, uint32_t value);
         void writeClearDepth(uint16_t mask, uint16_t value);
+        void writeFogColor(uint32_t mask, uint32_t value);
+        void writeFogOffset(uint16_t mask, uint16_t value);
+        void writeFogTable(int index, uint8_t value);
         void writeToonTable(int index, uint16_t mask, uint16_t value);
 
     private:
@@ -61,8 +64,11 @@ class Gpu3DRenderer
 
         uint16_t disp3DCnt = 0;
         uint32_t clearColor = 0;
-        uint32_t clearDepth = 0;
-        uint32_t toonTable[32] = {};
+        uint16_t clearDepth = 0;
+        uint32_t fogColor = 0;
+        uint16_t fogOffset = 0;
+        uint8_t fogTable[32] = {};
+        uint16_t toonTable[32] = {};
 
         Gpu3D *gpu3D;
 
