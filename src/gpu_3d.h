@@ -90,7 +90,9 @@ class Gpu3D
         _Polygon *getPolygons()     { return polygonsOut;     }
         int       getPolygonCount() { return polygonCountOut; }
 
-        uint32_t readGxStat() { return gxStat; }
+        uint32_t readGxStat()             { return gxStat;           }
+        uint32_t readPosResult(int index) { return posResult[index]; }
+        uint32_t readVecResult(int index) { return vecResult[index]; }
         uint32_t readRamCount();
         uint32_t readClipMtxResult(int index);
         uint32_t readVecMtxResult(int index);
@@ -189,6 +191,8 @@ class Gpu3D
 
         uint32_t gxFifo = 0x00000000;
         uint32_t gxStat = 0x04000000;
+        int32_t posResult[4] = {};
+        int16_t vecResult[3] = {};
 
         int gxFifoCount = 0;
 
@@ -241,6 +245,8 @@ class Gpu3D
         void swapBuffersCmd(uint32_t param);
         void viewportCmd(uint32_t param);
         void boxTestCmd(uint32_t param);
+        void posTestCmd(uint32_t param);
+        void vecTestCmd(uint32_t param);
 
         void addEntry(Entry entry);
 };

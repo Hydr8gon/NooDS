@@ -119,6 +119,8 @@ void Gpu3D::runCycle()
         case 0x50: swapBuffersCmd(entry.param);   break; // SWAP_BUFFERS
         case 0x60: viewportCmd(entry.param);      break; // VIEWPORT
         case 0x70: boxTestCmd(entry.param);       break; // BOX_TEST
+        case 0x71: posTestCmd(entry.param);       break; // POS_TEST
+        case 0x72: vecTestCmd(entry.param);       break; // VEC_TEST
 
         default:
         {
@@ -1418,6 +1420,53 @@ void Gpu3D::boxTestCmd(uint32_t param)
 
     // Clear the result bit if none of the faces were in view
     gxStat &= ~BIT(1);
+}
+
+void Gpu3D::posTestCmd(uint32_t param)
+{
+    if (paramCount == 0)
+    {
+        // Set the X and Y coordinates
+        // Yes, it is supposed to overwrite the saved vertex
+        savedVertex.x = (int16_t)(param >>  0);
+        savedVertex.y = (int16_t)(param >> 16);
+    }
+    else
+    {
+        // Set the Z and W coordinates
+        savedVertex.z = (int16_t)param;
+        savedVertex.w = 1 << 12;
+
+        // Update the clip matrix if necessary
+        if (clipDirty)
+        {
+            clip = multiply(&coordinate, &projection);
+            clipDirty = false;
+        }
+
+        // Multiply the vertex with the clip matrix and set the result
+        Vertex vertex = multiply(&savedVertex, &clip);
+        posResult[0] = vertex.x;
+        posResult[1] = vertex.y;
+        posResult[2] = vertex.z;
+        posResult[3] = vertex.w;
+    }
+}
+
+void Gpu3D::vecTestCmd(uint32_t param)
+{
+    // Set the vector components
+    Vertex vector;
+    vector.x = ((int16_t)((param & 0x000003FF) <<  6)) >> 3;
+    vector.y = ((int16_t)((param & 0x000FFC00) >>  4)) >> 3;
+    vector.z = ((int16_t)((param & 0x3FF00000) >> 14)) >> 3;
+
+    // Multiply the vector with the directional matrix and set the result
+    // The result has 4-bit signs and 12-bit fractions
+    vector = multiply(&vector, &direction);
+    vecResult[0] = ((int16_t)(vector.x << 3)) >> 3;
+    vecResult[1] = ((int16_t)(vector.y << 3)) >> 3;
+    vecResult[2] = ((int16_t)(vector.z << 3)) >> 3;
 }
 
 void Gpu3D::addEntry(Entry entry)

@@ -709,6 +709,28 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x4000605:
             case 0x4000606:
             case 0x4000607: base -= 0x4000604; size = 4; data = gpu3D->readRamCount();          break; // RAM_COUNT
+            case 0x4000620:
+            case 0x4000621:
+            case 0x4000622:
+            case 0x4000623: base -= 0x4000620; size = 4; data = gpu3D->readPosResult(0);        break; // POS_RESULT
+            case 0x4000624:
+            case 0x4000625:
+            case 0x4000626:
+            case 0x4000627: base -= 0x4000624; size = 4; data = gpu3D->readPosResult(1);        break; // POS_RESULT
+            case 0x4000628:
+            case 0x4000629:
+            case 0x400062A:
+            case 0x400062B: base -= 0x4000628; size = 4; data = gpu3D->readPosResult(2);        break; // POS_RESULT
+            case 0x400062C:
+            case 0x400062D:
+            case 0x400062E:
+            case 0x400062F: base -= 0x400062C; size = 4; data = gpu3D->readPosResult(3);        break; // POS_RESULT
+            case 0x4000630:
+            case 0x4000631: base -= 0x4000630; size = 2; data = gpu3D->readVecResult(0);        break; // VEC_RESULT
+            case 0x4000632:
+            case 0x4000633: base -= 0x4000632; size = 2; data = gpu3D->readVecResult(1);        break; // VEC_RESULT
+            case 0x4000634:
+            case 0x4000635: base -= 0x4000634; size = 2; data = gpu3D->readVecResult(2);        break; // VEC_RESULT
             case 0x4000640:
             case 0x4000641:
             case 0x4000642:
