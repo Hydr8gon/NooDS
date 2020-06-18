@@ -630,19 +630,26 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
 
                     case 2: // Toon/Highlight
                     {
-                        uint32_t toon = rgba5ToRgba6(toonTable[((color >>  0) & 0x3F) / 2]);
-                        uint8_t r = ((((texel >>  0) & 0x3F) + 1) * (((toon  >>  0) & 0x3F) + 1) - 1) / 64;
-                        uint8_t g = ((((texel >>  6) & 0x3F) + 1) * (((toon  >>  6) & 0x3F) + 1) - 1) / 64;
-                        uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((toon  >> 12) & 0x3F) + 1) - 1) / 64;
-                        uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
+                        uint32_t toon = rgba5ToRgba6(toonTable[(color & 0x3F) / 2]);
+                        uint8_t r, g, b;
 
-                        if (disp3DCnt & BIT(1))
+                        if (disp3DCnt & BIT(1)) // Highlight
                         {
+                            r = ((((texel >>  0) & 0x3F) + 1) * (((color >>  0) & 0x3F) + 1) - 1) / 64;
+                            g = ((((texel >>  6) & 0x3F) + 1) * (((color >>  6) & 0x3F) + 1) - 1) / 64;
+                            b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
                             r += ((toon >>  0) & 0x3F); if (r > 63) r = 63;
                             g += ((toon >>  6) & 0x3F); if (g > 63) g = 63;
                             b += ((toon >> 12) & 0x3F); if (b > 63) b = 63;
                         }
+                        else // Toon
+                        {
+                            r = ((((texel >>  0) & 0x3F) + 1) * (((toon >>  0) & 0x3F) + 1) - 1) / 64;
+                            g = ((((texel >>  6) & 0x3F) + 1) * (((toon >>  6) & 0x3F) + 1) - 1) / 64;
+                            b = ((((texel >> 12) & 0x3F) + 1) * (((toon >> 12) & 0x3F) + 1) - 1) / 64;
+                        }
 
+                        uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
                         color = (a << 18) | (b << 12) | (g << 6) | r;
                         break;
                     }
