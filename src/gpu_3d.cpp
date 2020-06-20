@@ -325,7 +325,7 @@ void Gpu3D::addPolygon()
                 ((clipped[2].x << 12) / clipped[2].w - (clipped[0].x << 12) / clipped[0].w);
     }
 
-    // Every other polygon strip is stored clockwise instead of counter-clockwise
+    // Every other triangle strip polygon is stored clockwise instead of counter-clockwise
     // Keep track of this, and reverse the cross product of clockwise polygons to accomodate
     if (polygonType == 2)
     {
@@ -460,6 +460,7 @@ void Gpu3D::addPolygon()
 
     // Set the new polygon
     polygonsIn[polygonCountIn] = savedPolygon;
+    polygonsIn[polygonCountIn].crossed = (polygonType == 3 && !clip);
     polygonsIn[polygonCountIn].paletteAddr *= ((savedPolygon.textureFmt == 2) ? 8 : 16);
 
     // Move to the next polygon
