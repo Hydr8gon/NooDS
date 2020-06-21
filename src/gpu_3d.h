@@ -75,6 +75,7 @@ struct _Polygon
     bool transparent0 = false;
 
     bool wBuffer = false;
+    int wShift = 0;
 };
 
 

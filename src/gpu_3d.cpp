@@ -185,6 +185,39 @@ void Gpu3D::swapBuffers()
         }
     }
 
+    // Determine each polygon's W-shift value to be used for reducing (or expanding) W values to 16 bits
+    for (int i = 0; i < polygonCountIn; i++)
+    {
+        _Polygon *p = &polygonsIn[i];
+
+        // Reduce precision in 4-bit increments until all W values fit in the 16-bit range
+        for (int j = 0; j < p->size; j++)
+        {
+            while ((p->vertices[j].w >> p->wShift) != (uint16_t)(p->vertices[j].w >> p->wShift))
+                p->wShift += 4;
+        }
+
+        // If precision wasn't reduced, try increasing precision in 4-bit increments
+        // Once a W value is found that no longer fits in the 16-bit range, reduce precision to the last valid value
+        if (p->wShift == 0)
+        {
+            bool fits = true;
+            while (fits)
+            {
+                p->wShift -= 4;
+                for (int j = 0; j < p->size; j++)
+                {
+                    if ((p->vertices[j].w << -p->wShift) != (uint16_t)(p->vertices[j].w << -p->wShift))
+                    {
+                        fits = false;
+                        break;
+                    }
+                }
+            }
+            p->wShift += 4;
+        }
+    }
+
     // Swap the vertex buffers
     Vertex *vertices = verticesOut;
     verticesOut = verticesIn;

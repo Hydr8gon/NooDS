@@ -546,22 +546,22 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
         v4 = v;
     }
 
-    // "Normalize" the W values by reducing them to 16-bits
-    int64_t vw[] = { v1->w, v2->w, v3->w, v4->w };
-    int wShift = 0;
-    for (int i = 0; i < 4; i++)
-    {
-        while (vw[i] != (int16_t)vw[i])
-        {
-            for (int j = 0; j < 4; j++)
-                vw[j] >>= 4;
-            wShift += 4;
-        }
-    }
-
     // Calculate the Z values of the polygon edges on the current line
     int z1 = polygon->wBuffer ? 0 : interpolate(v1->z, v2->z, v1->y, line, v2->y);
     int z2 = polygon->wBuffer ? 0 : interpolate(v3->z, v4->z, v3->y, line, v4->y);
+
+    // Apply W-shift to reduce (or expand) W values to 16 bits
+    int64_t vw[] = { v1->w, v2->w, v3->w, v4->w };
+    if (polygon->wShift > 0)
+    {
+        for (int i = 0; i < 4; i++)
+            vw[i] >>= polygon->wShift;
+    }
+    else if (polygon->wShift < 0)
+    {
+        for (int i = 0; i < 4; i++)
+            vw[i] <<= -polygon->wShift;
+    }
 
     // Calculate the W values of the polygon edges on the current line
     int w1 = interpolateW(vw[0], vw[1], v1->y, line, v2->y);
@@ -590,7 +590,19 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
     for (int x = x1; x < x2; x++)
     {
         // Calculate the depth value of the current pixel
-        int depth = polygon->wBuffer ? (interpolateW(w1, w2, x1, x, x2) << wShift) : interpolate(z1, z2, x1, x, x2);
+        int depth;
+        if (polygon->wBuffer)
+        {
+            depth = interpolateW(w1, w2, x1, x, x2);
+            if (polygon->wShift > 0)
+                depth <<= polygon->wShift;
+            else if (polygon->wShift < 0)
+                depth >>= -polygon->wShift;
+        }
+        else
+        {
+            depth = interpolate(z1, z2, x1, x, x2);
+        }
 
         // Draw a new pixel if the old one is behind the new one
         // The polygon can optionally use an "equal" depth test, which has a margin of 0x200
