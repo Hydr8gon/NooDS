@@ -55,6 +55,7 @@ class Gpu3DRenderer
         int32_t depthBuffer[4][256] = {};
         uint8_t attribBuffer[4][256] = {};
         uint8_t stencilBuffer[4][256] = {};
+        bool stencilClear[4] = {};
 
         std::thread *threads[4] = {};
         int activeThreads = 0;

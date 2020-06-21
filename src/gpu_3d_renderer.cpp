@@ -17,6 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <cstring>
 #include <vector>
 
 #include "gpu_3d_renderer.h"
@@ -112,10 +113,11 @@ void Gpu3DRenderer::drawScanline48(int block)
 void Gpu3DRenderer::drawScanline1(int line)
 {
     // Convert the clear values
-    // The attribute buffer contains the polygon ID, and the fog bit in bit 7
+    // The attribute buffer contains the polygon ID, the transparency bit (6), and the fog bit (7)
     uint32_t color = BIT(26) | rgba5ToRgba6(((clearColor & 0x001F0000) >> 1) | (clearColor & 0x00007FFF));
     int32_t depth = (clearDepth * 0x200) + ((clearDepth + 1) / 0x8000) * 0x1FF;
     uint8_t attrib = ((clearColor & BIT(15)) >> 8) | ((clearColor & 0x3F000000) >> 24);
+    if (((clearColor & 0x001F0000) >> 16) < 31) attrib |= BIT(6);
 
     // Clear the scanline buffers with the clear values
     for (int i = 0; i < 256; i++)
@@ -123,8 +125,9 @@ void Gpu3DRenderer::drawScanline1(int line)
         framebuffer[line * 256 + i] = color;
         depthBuffer[line / 48][i] = depth;
         attribBuffer[line / 48][i] = attrib;
-        stencilBuffer[line / 48][i] = 0;
     }
+
+    stencilClear[line / 48] = false;
 
     std::vector<_Polygon*> translucent;
 
@@ -567,6 +570,22 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
     int r1, r2, g1, g2, b1, b2, s1, s2, t1, t2;
     bool colorDone = false, texDone = false;
 
+    // Keep track of shadow mask polygons
+    if (polygon->mode == 3 && polygon->id == 0) // Shadow mask polygon
+    {
+        // Clear the stencil buffer at the start of a shadow mask polygon group
+        if (!stencilClear[line / 48])
+        {
+            memset(stencilBuffer[line / 48], 0, 256 * sizeof(uint8_t));
+            stencilClear[line / 48] = true;
+        }
+    }
+    else
+    {
+        // End a shadow mask polygon group
+        stencilClear[line / 48] = false;
+    }
+
     // Draw a line segment
     for (int x = x1; x < x2; x++)
     {
@@ -577,22 +596,9 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
         // The polygon can optionally use an "equal" depth test, which has a margin of 0x200
         if ((polygon->depthTestEqual && depthBuffer[line / 48][x] + 0x200 >= depth) || depthBuffer[line / 48][x] > depth)
         {
-            // Handle shadow polygons
-            if (polygon->mode == 3)
-            {
-                if (polygon->id == 0)
-                {
-                    // Shadow polygons with ID 0 set a stencil buffer bit instead of rendering
-                    stencilBuffer[line / 48][x] = 1;
-                    continue;
-                }
-                else if (stencilBuffer[line / 48][x] || (attribBuffer[line / 48][x] & 0x3F) == polygon->id)
-                {
-                    // Shadow polygons with ID not 0 only render if the stencil bit is clear and the pixel ID differs
-                    stencilBuffer[line / 48][x] = 0;
-                    continue;
-                }
-            }
+            // Only render non-mask shadow polygons if the stencil bit is set and the old pixel's polygon ID differs
+            if (polygon->mode == 3 && (polygon->id == 0 || !stencilBuffer[line / 48][x] || (attribBuffer[line / 48][x] & 0x3F) == polygon->id))
+                continue;
 
             // Interpolate the vertex color at the polygon edges
             // The color values are expanded to 9 bits during interpolation for extra precision
@@ -694,11 +700,15 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
                 uint32_t *pixel = &framebuffer[line * 256 + x];
                 uint8_t *attrib = &attribBuffer[line / 48][x];
 
-                if ((color >> 18) < 0x3F && (*pixel & 0xFC0000)) // Alpha blending
+                if ((disp3DCnt & BIT(3)) && ((color & 0xFC0000) >> 18) < 0x3F && (*pixel & 0xFC0000)) // Alpha blending
                 {
-                    *pixel = BIT(26) | interpolateColor(*pixel, color, 0, color >> 18, 63);
-                    if (polygon->transNewDepth) depthBuffer[line / 48][x] = depth;
-                    *attrib = (*attrib & (polygon->fog << 7)) | polygon->id;
+                    // Only render transparent pixels if the old pixel isn't transparent or the polygon ID differs
+                    if (!(*attrib & BIT(6)) || (*attrib & 0x3F) != polygon->id)
+                    {
+                        *pixel = BIT(26) | interpolateColor(*pixel, color, 0, color >> 18, 63);
+                        if (polygon->transNewDepth) depthBuffer[line / 48][x] = depth;
+                        *attrib = (*attrib & (polygon->fog << 7)) | BIT(6) | polygon->id;
+                    }
                 }
                 else
                 {
@@ -707,6 +717,11 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
                     *attrib = (polygon->fog << 7) | polygon->id;
                 }
             }
+        }
+        else if (polygon->mode == 3 && polygon->id == 0)
+        {
+            // Set a stencil buffer bit for shadow mask pixels that fail the depth test
+            stencilBuffer[line / 48][x] = 1;
         }
     }
 }
