@@ -64,6 +64,7 @@ struct _Polygon
     bool transNewDepth = false;
     bool depthTestEqual = false;
     bool fog = false;
+    uint8_t alpha = 0;
     int id = 0;
 
     uint32_t textureAddr = 0, paletteAddr = 0;

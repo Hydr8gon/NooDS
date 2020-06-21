@@ -235,16 +235,6 @@ uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x
     return (a << 18) | (b << 12) | (g << 6) | r;
 }
 
-uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2, int w1, int w2)
-{
-    // Apply perspective-correct interpolation separately on the RGB values
-    int r = interpolate((c1 >>  0) & 0x3F, (c2 >>  0) & 0x3F, x1, x, x2, w1, w2);
-    int g = interpolate((c1 >>  6) & 0x3F, (c2 >>  6) & 0x3F, x1, x, x2, w1, w2);
-    int b = interpolate((c1 >> 12) & 0x3F, (c2 >> 12) & 0x3F, x1, x, x2, w1, w2);
-    int a = (((c1 >> 18) & 0x3F) > ((c2 >> 18) & 0x3F)) ? ((c1 >> 18) & 0x3F) : ((c2 >> 18) & 0x3F);
-    return (a << 18) | (b << 12) | (g << 6) | r;
-}
-
 uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
 {
     // Handle S-coordinate overflows
@@ -574,7 +564,7 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
     int w1 = interpolateW(vw[0], vw[1], v1->y, line, v2->y);
     int w2 = interpolateW(vw[2], vw[3], v3->y, line, v4->y);
 
-    int c1, c2, s1, s2, t1, t2;
+    int r1, r2, g1, g2, b1, b2, s1, s2, t1, t2;
     bool colorDone = false, texDone = false;
 
     // Draw a line segment
@@ -605,15 +595,23 @@ void Gpu3DRenderer::rasterize(int line, _Polygon *polygon, Vertex *v1, Vertex *v
             }
 
             // Interpolate the vertex color at the polygon edges
+            // The color values are expanded to 9 bits during interpolation for extra precision
             if (!colorDone)
             {
-                c1 = interpolateColor(v1->color, v2->color, v1->y, line, v2->y, vw[0], vw[1]);
-                c2 = interpolateColor(v3->color, v4->color, v3->y, line, v4->y, vw[2], vw[3]);
+                r1 = interpolate(((v1->color >>  0) & 0x3F) << 3, ((v2->color >>  0) & 0x3F) << 3, v1->y, line, v2->y, vw[0], vw[1]);
+                g1 = interpolate(((v1->color >>  6) & 0x3F) << 3, ((v2->color >>  6) & 0x3F) << 3, v1->y, line, v2->y, vw[0], vw[1]);
+                b1 = interpolate(((v1->color >> 12) & 0x3F) << 3, ((v2->color >> 12) & 0x3F) << 3, v1->y, line, v2->y, vw[0], vw[1]);
+                r2 = interpolate(((v3->color >>  0) & 0x3F) << 3, ((v4->color >>  0) & 0x3F) << 3, v3->y, line, v4->y, vw[2], vw[3]);
+                g2 = interpolate(((v3->color >>  6) & 0x3F) << 3, ((v4->color >>  6) & 0x3F) << 3, v3->y, line, v4->y, vw[2], vw[3]);
+                b2 = interpolate(((v3->color >> 12) & 0x3F) << 3, ((v4->color >> 12) & 0x3F) << 3, v3->y, line, v4->y, vw[2], vw[3]);
                 colorDone = true;
             }
 
             // Interpolate the vertex color at the current pixel
-            uint32_t color = interpolateColor(c1, c2, x1, x, x2, w1, w2);
+            int r = interpolate(r1, r2, x1, x, x2, w1, w2) >> 3;
+            int g = interpolate(g1, g2, x1, x, x2, w1, w2) >> 3;
+            int b = interpolate(b1, b2, x1, x, x2, w1, w2) >> 3;
+            uint32_t color = (polygon->alpha << 18) | (b << 12) | (g << 6) | r;
 
             // Blend the texture with the vertex color
             if (polygon->textureFmt != 0)

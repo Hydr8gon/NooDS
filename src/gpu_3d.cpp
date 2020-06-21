@@ -1045,7 +1045,7 @@ void Gpu3D::mtxTransCmd(uint32_t param)
 void Gpu3D::colorCmd(uint32_t param)
 {
     // Set the vertex color
-    savedVertex.color = (savedVertex.color & 0xFC0000) | rgb5ToRgb6(param);
+    savedVertex.color = rgb5ToRgb6(param);
 }
 
 void Gpu3D::normalCmd(uint32_t param)
@@ -1080,7 +1080,7 @@ void Gpu3D::normalCmd(uint32_t param)
     normalVector = multiply(&normalVector, &direction);
 
     // Set the base vertex color
-    savedVertex.color = (savedVertex.color & 0xFC0000) | emissionColor;
+    savedVertex.color = emissionColor;
 
     // Calculate the vertex color
     // This is a translation of the pseudocode from GBATEK to C++
@@ -1119,7 +1119,7 @@ void Gpu3D::normalCmd(uint32_t param)
             if (g < 0) g = 0; if (g > 0x3F) g = 0x3F;
             if (b < 0) b = 0; if (b > 0x3F) b = 0x3F;
 
-            savedVertex.color = (savedVertex.color & 0xFC0000) | (b << 12) | (g << 6) | r;
+            savedVertex.color = (b << 12) | (g << 6) | r;
         }
     }
 }
@@ -1254,7 +1254,7 @@ void Gpu3D::difAmbCmd(uint32_t param)
 
     // Directly set the vertex color
     if (param & BIT(15))
-        savedVertex.color = (savedVertex.color & 0xFC0000) | diffuseColor;
+        savedVertex.color = diffuseColor;
 }
 
 void Gpu3D::speEmiCmd(uint32_t param)
@@ -1320,8 +1320,8 @@ void Gpu3D::beginVtxsCmd(uint32_t param)
     savedPolygon.transNewDepth = polygonAttr & BIT(11);
     savedPolygon.depthTestEqual = polygonAttr & BIT(14);
     savedPolygon.fog = polygonAttr & BIT(15);
-    int a = (polygonAttr & 0x001F0000) >> 16; a = a * 2 + (a + 31) / 32;
-    savedVertex.color = (a << 18) | (savedVertex.color & 0x03FFFF);
+    savedPolygon.alpha = ((polygonAttr & 0x001F0000) >> 16) * 2;
+    if (savedPolygon.alpha > 0) savedPolygon.alpha++;
     savedPolygon.id = (polygonAttr & 0x3F000000) >> 24;
 }
 
