@@ -104,7 +104,11 @@ FORCE_INLINE void Interpreter::ldrshOf(uint32_t opcode, uint32_t op2) // LDRSH R
     uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
 
     // Signed half-word load, pre-adjust without writeback
-    *op0 = memory->read<int16_t>(cp15, op1 + op2);
+    *op0 = memory->read<int16_t>(cp15, op1 += op2);
+
+    // Shift misaligned reads on ARM7
+    if (!cp15 && (op1 & 1))
+        *op0 = (int16_t)*op0 >> 8;
 
     // Handle pipelining
     if (op0 == registers[15])
@@ -153,7 +157,11 @@ FORCE_INLINE void Interpreter::ldrhOf(uint32_t opcode, uint32_t op2) // LDRH Rd,
     uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
 
     // Half-word load, pre-adjust without writeback
-    *op0 = memory->read<uint16_t>(cp15, op1 + op2);
+    *op0 = memory->read<uint16_t>(cp15, op1 += op2);
+
+    // Rotate misaligned reads on ARM7
+    if (!cp15 && (op1 & 1))
+        *op0 = (*op0 << 24) | (*op0 >> 8);
 
     // Handle pipelining
     if (op0 == registers[15])
@@ -261,10 +269,15 @@ FORCE_INLINE void Interpreter::ldrshPr(uint32_t opcode, uint32_t op2) // LDRSH R
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+    uint32_t address;
 
     // Signed half-word load, pre-adjust with writeback
     *op1 += op2;
-    *op0 = memory->read<int16_t>(cp15, *op1);
+    *op0 = memory->read<int16_t>(cp15, address = *op1);
+
+    // Shift misaligned reads on ARM7
+    if (!cp15 && (address & 1))
+        *op0 = (int16_t)*op0 >> 8;
 
     // Handle pipelining
     if (op0 == registers[15])
@@ -313,10 +326,15 @@ FORCE_INLINE void Interpreter::ldrhPr(uint32_t opcode, uint32_t op2) // LDRH Rd,
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+    uint32_t address;
 
     // Half-word load, pre-adjust with writeback
     *op1 += op2;
-    *op0 = memory->read<uint16_t>(cp15, *op1);
+    *op0 = memory->read<uint16_t>(cp15, address = *op1);
+
+    // Rotate misaligned reads on ARM7
+    if (!cp15 && (address & 1))
+        *op0 = (*op0 << 24) | (*op0 >> 8);
 
     // Handle pipelining
     if (op0 == registers[15])
@@ -430,10 +448,15 @@ FORCE_INLINE void Interpreter::ldrshPt(uint32_t opcode, uint32_t op2) // LDRSH R
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+    uint32_t address;
 
     // Signed half-word load, post-adjust
-    *op0 = memory->read<int16_t>(cp15, *op1);
+    *op0 = memory->read<int16_t>(cp15, address = *op1);
     if (op0 != op1) *op1 += op2;
+
+    // Shift misaligned reads on ARM7
+    if (!cp15 && (address & 1))
+        *op0 = (int16_t)*op0 >> 8;
 
     // Handle pipelining
     if (op0 == registers[15])
@@ -482,10 +505,15 @@ FORCE_INLINE void Interpreter::ldrhPt(uint32_t opcode, uint32_t op2) // LDRH Rd,
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
+    uint32_t address;
 
     // Half-word load, post-adjust
-    *op0 = memory->read<uint16_t>(cp15, *op1);
+    *op0 = memory->read<uint16_t>(cp15, address = *op1);
     *op1 += op2;
+
+    // Rotate misaligned reads on ARM7
+    if (!cp15 && (address & 1))
+        *op0 = (*op0 << 24) | (*op0 >> 8);
 
     // Handle pipelining
     if (op0 == registers[15])
@@ -603,6 +631,13 @@ FORCE_INLINE void Interpreter::swp(uint32_t opcode) // SWP Rd,Rm,[Rn]
     // Swap
     *op0 = memory->read<uint32_t>(cp15, op2);
     memory->write<uint32_t>(cp15, op2, op1);
+
+    // Rotate misaligned reads
+    if (op2 & 3)
+    {
+        int shift = (op2 & 3) * 8;
+        *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
+    }
 }
 
 FORCE_INLINE void Interpreter::ldmda(uint32_t opcode) // LDMDA Rn, <Rlist>
@@ -1926,7 +1961,11 @@ FORCE_INLINE void Interpreter::ldrshRegT(uint16_t opcode) // LDRSH Rd,[Rb,Ro]
     uint32_t op2 = *registers[(opcode & 0x01C0) >> 6];
 
     // Signed half-word load, pre-adjust without writeback
-    *op0 = memory->read<int16_t>(cp15, op1 + op2);
+    *op0 = memory->read<int16_t>(cp15, op1 += op2);
+
+    // Shift misaligned reads on ARM7
+    if (!cp15 && (op1 & 1))
+        *op0 = (int16_t)*op0 >> 8;
 }
 
 FORCE_INLINE void Interpreter::ldrbRegT(uint16_t opcode) // LDRB Rd,[Rb,Ro]
@@ -1959,7 +1998,11 @@ FORCE_INLINE void Interpreter::ldrhRegT(uint16_t opcode) // LDRH Rd,[Rb,Ro]
     uint32_t op2 = *registers[(opcode & 0x01C0) >> 6];
 
     // Half-word load, pre-adjust without writeback
-    *op0 = memory->read<uint16_t>(cp15, op1 + op2);
+    *op0 = memory->read<uint16_t>(cp15, op1 += op2);
+
+    // Rotate misaligned reads on ARM7
+    if (!cp15 && (op1 & 1))
+        *op0 = (*op0 << 24) | (*op0 >> 8);
 }
 
 FORCE_INLINE void Interpreter::strhRegT(uint16_t opcode) // STRH Rd,[Rb,Ro]
@@ -2032,7 +2075,11 @@ FORCE_INLINE void Interpreter::ldrhImm5T(uint16_t opcode) // LDRH Rd,[Rb,#i]
     uint32_t op2 = (opcode & 0x07C0) >> 5;
 
     // Half-word load, pre-adjust without writeback
-    *op0 = memory->read<uint16_t>(cp15, op1 + op2);
+    *op0 = memory->read<uint16_t>(cp15, op1 += op2);
+
+    // Rotate misaligned reads on ARM7
+    if (!cp15 && (op1 & 1))
+        *op0 = (*op0 << 24) | (*op0 >> 8);
 }
 
 FORCE_INLINE void Interpreter::strhImm5T(uint16_t opcode) // STRH Rd,[Rb,#i]
