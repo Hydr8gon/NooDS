@@ -257,11 +257,29 @@ FORCE_INLINE uint32_t Interpreter::rrrS(uint32_t opcode) // Rm,ROR Rs (S)
     return (value << (32 - shift % 32)) | (value >> (shift % 32));
 }
 
+FORCE_INLINE uint32_t Interpreter::immS(uint32_t opcode) // #i (S)
+{
+    // Decode the operands
+    uint32_t value = opcode & 0x000000FF;
+    uint8_t shift = (opcode & 0x00000F00) >> 7;
+
+    // Set the carry flag
+    if (shift > 0)
+    {
+        if (value & BIT(shift - 1)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
+    }
+
+    // Immediate
+    // Can be any 8 bits rotated right by a multiple of 2
+    return (value << (32 - shift)) | (value >> shift);
+}
+
 FORCE_INLINE void Interpreter::_and(uint32_t opcode, uint32_t op2) // AND Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Bitwise and
     *op0 = op1 & op2;
@@ -274,8 +292,9 @@ FORCE_INLINE void Interpreter::_and(uint32_t opcode, uint32_t op2) // AND Rd,Rn,
 FORCE_INLINE void Interpreter::eor(uint32_t opcode, uint32_t op2) // EOR Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Bitwise exclusive or
     *op0 = op1 ^ op2;
@@ -288,8 +307,9 @@ FORCE_INLINE void Interpreter::eor(uint32_t opcode, uint32_t op2) // EOR Rd,Rn,o
 FORCE_INLINE void Interpreter::sub(uint32_t opcode, uint32_t op2) // SUB Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Subtraction
     *op0 = op1 - op2;
@@ -302,8 +322,9 @@ FORCE_INLINE void Interpreter::sub(uint32_t opcode, uint32_t op2) // SUB Rd,Rn,o
 FORCE_INLINE void Interpreter::rsb(uint32_t opcode, uint32_t op2) // RSB Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Reverse subtraction
     *op0 = op2 - op1;
@@ -316,8 +337,9 @@ FORCE_INLINE void Interpreter::rsb(uint32_t opcode, uint32_t op2) // RSB Rd,Rn,o
 FORCE_INLINE void Interpreter::add(uint32_t opcode, uint32_t op2) // ADD Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Addition
     *op0 = op1 + op2;
@@ -330,8 +352,9 @@ FORCE_INLINE void Interpreter::add(uint32_t opcode, uint32_t op2) // ADD Rd,Rn,o
 FORCE_INLINE void Interpreter::adc(uint32_t opcode, uint32_t op2) // ADC Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Addition with carry
     *op0 = op1 + op2 + ((cpsr & BIT(29)) >> 29);
@@ -344,8 +367,9 @@ FORCE_INLINE void Interpreter::adc(uint32_t opcode, uint32_t op2) // ADC Rd,Rn,o
 FORCE_INLINE void Interpreter::sbc(uint32_t opcode, uint32_t op2) // SBC Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Subtraction with carry
     *op0 = op1 - op2 - 1 + ((cpsr & BIT(29)) >> 29);
@@ -358,8 +382,9 @@ FORCE_INLINE void Interpreter::sbc(uint32_t opcode, uint32_t op2) // SBC Rd,Rn,o
 FORCE_INLINE void Interpreter::rsc(uint32_t opcode, uint32_t op2) // RSC Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Reverse subtraction with carry
     *op0 = op2 - op1 - 1 + ((cpsr & BIT(29)) >> 29);
@@ -372,7 +397,8 @@ FORCE_INLINE void Interpreter::rsc(uint32_t opcode, uint32_t op2) // RSC Rd,Rn,o
 FORCE_INLINE void Interpreter::tst(uint32_t opcode, uint32_t op2) // TST Rn,op2
 {
     // Decode the other operand
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    // When used as Rn when shifting by register, the program counter is read with +4
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Test bits
     uint32_t res = op1 & op2;
@@ -385,7 +411,8 @@ FORCE_INLINE void Interpreter::tst(uint32_t opcode, uint32_t op2) // TST Rn,op2
 FORCE_INLINE void Interpreter::teq(uint32_t opcode, uint32_t op2) // TEQ Rn,op2
 {
     // Decode the other operand
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    // When used as Rn when shifting by register, the program counter is read with +4
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Test bits
     uint32_t res = op1 ^ op2;
@@ -398,7 +425,8 @@ FORCE_INLINE void Interpreter::teq(uint32_t opcode, uint32_t op2) // TEQ Rn,op2
 FORCE_INLINE void Interpreter::cmp(uint32_t opcode, uint32_t op2) // CMP Rn,op2
 {
     // Decode the other operand
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    // When used as Rn when shifting by register, the program counter is read with +4
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Compare
     uint32_t res = op1 - op2;
@@ -414,7 +442,8 @@ FORCE_INLINE void Interpreter::cmp(uint32_t opcode, uint32_t op2) // CMP Rn,op2
 FORCE_INLINE void Interpreter::cmn(uint32_t opcode, uint32_t op2) // CMN Rn,op2
 {
     // Decode the other operand
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    // When used as Rn when shifting by register, the program counter is read with +4
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Compare negative
     uint32_t res = op1 + op2;
@@ -430,8 +459,9 @@ FORCE_INLINE void Interpreter::cmn(uint32_t opcode, uint32_t op2) // CMN Rn,op2
 FORCE_INLINE void Interpreter::orr(uint32_t opcode, uint32_t op2) // ORR Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Bitwise or
     *op0 = op1 | op2;
@@ -457,8 +487,9 @@ FORCE_INLINE void Interpreter::mov(uint32_t opcode, uint32_t op2) // MOV Rd,op2
 FORCE_INLINE void Interpreter::bic(uint32_t opcode, uint32_t op2) // BIC Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Bit clear
     *op0 = op1 & ~op2;
@@ -484,8 +515,9 @@ FORCE_INLINE void Interpreter::mvn(uint32_t opcode, uint32_t op2) // MVN Rd,op2
 FORCE_INLINE void Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Bitwise and
     *op0 = op1 & op2;
@@ -517,8 +549,9 @@ FORCE_INLINE void Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn
 FORCE_INLINE void Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Bitwise exclusive or
     *op0 = op1 ^ op2;
@@ -550,8 +583,9 @@ FORCE_INLINE void Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn
 FORCE_INLINE void Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Subtraction
     *op0 = op1 - op2;
@@ -586,8 +620,9 @@ FORCE_INLINE void Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn
 FORCE_INLINE void Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Reverse subtraction
     *op0 = op2 - op1;
@@ -622,8 +657,9 @@ FORCE_INLINE void Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn
 FORCE_INLINE void Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Addition
     *op0 = op1 + op2;
@@ -658,8 +694,9 @@ FORCE_INLINE void Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn
 FORCE_INLINE void Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Addition with carry
     *op0 = op1 + op2 + ((cpsr & BIT(29)) >> 29);
@@ -694,8 +731,9 @@ FORCE_INLINE void Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn
 FORCE_INLINE void Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Subtraction with carry
     *op0 = op1 - op2 - 1 + ((cpsr & BIT(29)) >> 29);
@@ -730,8 +768,9 @@ FORCE_INLINE void Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn
 FORCE_INLINE void Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Reverse subtraction with carry
     *op0 = op2 - op1 - 1 + ((cpsr & BIT(29)) >> 29);
@@ -766,8 +805,9 @@ FORCE_INLINE void Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn
 FORCE_INLINE void Interpreter::orrs(uint32_t opcode, uint32_t op2) // ORRS Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Bitwise or
     *op0 = op1 | op2;
@@ -831,8 +871,9 @@ FORCE_INLINE void Interpreter::movs(uint32_t opcode, uint32_t op2) // MOVS Rd,op
 FORCE_INLINE void Interpreter::bics(uint32_t opcode, uint32_t op2) // BICS Rd,Rn,op2
 {
     // Decode the other operands
+    // When used as Rn when shifting by register, the program counter is read with +4
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
-    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
+    uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16] + (((opcode & 0x020F0010) == 0x000F0010) ? 4 : 0);
 
     // Bit clear
     *op0 = op1 & ~op2;

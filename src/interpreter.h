@@ -95,6 +95,7 @@ class Interpreter
         uint32_t arrS(uint32_t opcode);
         uint32_t rriS(uint32_t opcode);
         uint32_t rrrS(uint32_t opcode);
+        uint32_t immS(uint32_t opcode);
 
         void _and(uint32_t opcode, uint32_t op2);
         void eor(uint32_t opcode, uint32_t op2);

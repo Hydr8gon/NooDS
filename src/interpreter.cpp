@@ -1754,7 +1754,7 @@ void Interpreter::runCycle()
                 case 0x214: case 0x215: case 0x216: case 0x217:
                 case 0x218: case 0x219: case 0x21A: case 0x21B:
                 case 0x21C: case 0x21D: case 0x21E: case 0x21F:
-                    ands(opcode, imm(opcode)); // ANDS Rd,Rn,#i
+                    ands(opcode, immS(opcode)); // ANDS Rd,Rn,#i
                     break;
 
                 case 0x220: case 0x221: case 0x222: case 0x223:
@@ -1768,7 +1768,7 @@ void Interpreter::runCycle()
                 case 0x234: case 0x235: case 0x236: case 0x237:
                 case 0x238: case 0x239: case 0x23A: case 0x23B:
                 case 0x23C: case 0x23D: case 0x23E: case 0x23F:
-                    eors(opcode, imm(opcode)); // EORS Rd,Rn,#i
+                    eors(opcode, immS(opcode)); // EORS Rd,Rn,#i
                     break;
 
                 case 0x240: case 0x241: case 0x242: case 0x243:
@@ -1782,7 +1782,7 @@ void Interpreter::runCycle()
                 case 0x254: case 0x255: case 0x256: case 0x257:
                 case 0x258: case 0x259: case 0x25A: case 0x25B:
                 case 0x25C: case 0x25D: case 0x25E: case 0x25F:
-                    subs(opcode, imm(opcode)); // SUBS Rd,Rn,#i
+                    subs(opcode, immS(opcode)); // SUBS Rd,Rn,#i
                     break;
 
                 case 0x260: case 0x261: case 0x262: case 0x263:
@@ -1796,7 +1796,7 @@ void Interpreter::runCycle()
                 case 0x274: case 0x275: case 0x276: case 0x277:
                 case 0x278: case 0x279: case 0x27A: case 0x27B:
                 case 0x27C: case 0x27D: case 0x27E: case 0x27F:
-                    rsbs(opcode, imm(opcode)); // RSBS Rd,Rn,#i
+                    rsbs(opcode, immS(opcode)); // RSBS Rd,Rn,#i
                     break;
 
                 case 0x280: case 0x281: case 0x282: case 0x283:
@@ -1810,7 +1810,7 @@ void Interpreter::runCycle()
                 case 0x294: case 0x295: case 0x296: case 0x297:
                 case 0x298: case 0x299: case 0x29A: case 0x29B:
                 case 0x29C: case 0x29D: case 0x29E: case 0x29F:
-                    adds(opcode, imm(opcode)); // ADDS Rd,Rn,#i
+                    adds(opcode, immS(opcode)); // ADDS Rd,Rn,#i
                     break;
 
                 case 0x2A0: case 0x2A1: case 0x2A2: case 0x2A3:
@@ -1824,7 +1824,7 @@ void Interpreter::runCycle()
                 case 0x2B4: case 0x2B5: case 0x2B6: case 0x2B7:
                 case 0x2B8: case 0x2B9: case 0x2BA: case 0x2BB:
                 case 0x2BC: case 0x2BD: case 0x2BE: case 0x2BF:
-                    adcs(opcode, imm(opcode)); // ADCS Rd,Rn,#i
+                    adcs(opcode, immS(opcode)); // ADCS Rd,Rn,#i
                     break;
 
                 case 0x2C0: case 0x2C1: case 0x2C2: case 0x2C3:
@@ -1838,7 +1838,7 @@ void Interpreter::runCycle()
                 case 0x2D4: case 0x2D5: case 0x2D6: case 0x2D7:
                 case 0x2D8: case 0x2D9: case 0x2DA: case 0x2DB:
                 case 0x2DC: case 0x2DD: case 0x2DE: case 0x2DF:
-                    sbcs(opcode, imm(opcode)); // SBCS Rd,Rn,#i
+                    sbcs(opcode, immS(opcode)); // SBCS Rd,Rn,#i
                     break;
 
                 case 0x2E0: case 0x2E1: case 0x2E2: case 0x2E3:
@@ -1852,14 +1852,14 @@ void Interpreter::runCycle()
                 case 0x2F4: case 0x2F5: case 0x2F6: case 0x2F7:
                 case 0x2F8: case 0x2F9: case 0x2FA: case 0x2FB:
                 case 0x2FC: case 0x2FD: case 0x2FE: case 0x2FF:
-                    rscs(opcode, imm(opcode)); // RSCS Rd,Rn,#i
+                    rscs(opcode, immS(opcode)); // RSCS Rd,Rn,#i
                     break;
 
                 case 0x310: case 0x311: case 0x312: case 0x313:
                 case 0x314: case 0x315: case 0x316: case 0x317:
                 case 0x318: case 0x319: case 0x31A: case 0x31B:
                 case 0x31C: case 0x31D: case 0x31E: case 0x31F:
-                    tst(opcode, imm(opcode)); // TST Rn,#i
+                    tst(opcode, immS(opcode)); // TST Rn,#i
                     break;
 
                 case 0x320: case 0x321: case 0x322: case 0x323:
@@ -1873,14 +1873,14 @@ void Interpreter::runCycle()
                 case 0x334: case 0x335: case 0x336: case 0x337:
                 case 0x338: case 0x339: case 0x33A: case 0x33B:
                 case 0x33C: case 0x33D: case 0x33E: case 0x33F:
-                    teq(opcode, imm(opcode)); // TEQ Rn,#i
+                    teq(opcode, immS(opcode)); // TEQ Rn,#i
                     break;
 
                 case 0x350: case 0x351: case 0x352: case 0x353:
                 case 0x354: case 0x355: case 0x356: case 0x357:
                 case 0x358: case 0x359: case 0x35A: case 0x35B:
                 case 0x35C: case 0x35D: case 0x35E: case 0x35F:
-                    cmp(opcode, imm(opcode)); // CMP Rn,#i
+                    cmp(opcode, immS(opcode)); // CMP Rn,#i
                     break;
 
                 case 0x360: case 0x361: case 0x362: case 0x363:
@@ -1894,7 +1894,7 @@ void Interpreter::runCycle()
                 case 0x374: case 0x375: case 0x376: case 0x377:
                 case 0x378: case 0x379: case 0x37A: case 0x37B:
                 case 0x37C: case 0x37D: case 0x37E: case 0x37F:
-                    cmn(opcode, imm(opcode)); // CMN Rn,#i
+                    cmn(opcode, immS(opcode)); // CMN Rn,#i
                     break;
 
                 case 0x380: case 0x381: case 0x382: case 0x383:
@@ -1908,7 +1908,7 @@ void Interpreter::runCycle()
                 case 0x394: case 0x395: case 0x396: case 0x397:
                 case 0x398: case 0x399: case 0x39A: case 0x39B:
                 case 0x39C: case 0x39D: case 0x39E: case 0x39F:
-                    orrs(opcode, imm(opcode)); // ORRS Rd,Rn,#i
+                    orrs(opcode, immS(opcode)); // ORRS Rd,Rn,#i
                     break;
 
                 case 0x3A0: case 0x3A1: case 0x3A2: case 0x3A3:
@@ -1922,7 +1922,7 @@ void Interpreter::runCycle()
                 case 0x3B4: case 0x3B5: case 0x3B6: case 0x3B7:
                 case 0x3B8: case 0x3B9: case 0x3BA: case 0x3BB:
                 case 0x3BC: case 0x3BD: case 0x3BE: case 0x3BF:
-                    movs(opcode, imm(opcode)); // MOVS Rd,#i
+                    movs(opcode, immS(opcode)); // MOVS Rd,#i
                     break;
 
                 case 0x3C0: case 0x3C1: case 0x3C2: case 0x3C3:
@@ -1936,7 +1936,7 @@ void Interpreter::runCycle()
                 case 0x3D4: case 0x3D5: case 0x3D6: case 0x3D7:
                 case 0x3D8: case 0x3D9: case 0x3DA: case 0x3DB:
                 case 0x3DC: case 0x3DD: case 0x3DE: case 0x3DF:
-                    bics(opcode, imm(opcode)); // BICS Rd,Rn,#i
+                    bics(opcode, immS(opcode)); // BICS Rd,Rn,#i
                     break;
 
                 case 0x3E0: case 0x3E1: case 0x3E2: case 0x3E3:
@@ -1950,7 +1950,7 @@ void Interpreter::runCycle()
                 case 0x3F4: case 0x3F5: case 0x3F6: case 0x3F7:
                 case 0x3F8: case 0x3F9: case 0x3FA: case 0x3FB:
                 case 0x3FC: case 0x3FD: case 0x3FE: case 0x3FF:
-                    mvns(opcode, imm(opcode)); // MVNS Rd,#i
+                    mvns(opcode, immS(opcode)); // MVNS Rd,#i
                     break;
 
                 case 0x400: case 0x401: case 0x402: case 0x403:
