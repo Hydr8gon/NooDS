@@ -22,9 +22,11 @@
 
 enum Event
 {
-    EEPROM_05 = 1,
+    NONE = 1,
+    EEPROM_05,
     EEPROM_8,
     EEPROM_64,
+    EEPROM_128,
     FRAM_32,
     FLASH_256,
     FLASH_512,
@@ -33,9 +35,11 @@ enum Event
 };
 
 wxBEGIN_EVENT_TABLE(SaveDialog, wxDialog)
+EVT_RADIOBUTTON(NONE,       SaveDialog::none)
 EVT_RADIOBUTTON(EEPROM_05,  SaveDialog::eeprom05)
 EVT_RADIOBUTTON(EEPROM_8,   SaveDialog::eeprom8)
 EVT_RADIOBUTTON(EEPROM_64,  SaveDialog::eeprom64)
+EVT_RADIOBUTTON(EEPROM_128, SaveDialog::eeprom128)
 EVT_RADIOBUTTON(FRAM_32,    SaveDialog::fram32)
 EVT_RADIOBUTTON(FLASH_256,  SaveDialog::flash256)
 EVT_RADIOBUTTON(FLASH_512,  SaveDialog::flash512)
@@ -54,13 +58,15 @@ SaveDialog::SaveDialog(std::string path): wxDialog(nullptr, wxID_ANY, "Select Sa
 
     // Set up the radio buttons on the left side
     wxBoxSizer *leftRadio = new wxBoxSizer(wxVERTICAL);
-    leftRadio->Add(new wxRadioButton(this, EEPROM_05, "EEPROM 0.5KB"), 1);
-    leftRadio->Add(new wxRadioButton(this, EEPROM_8,  "EEPROM 8KB"),   1);
-    leftRadio->Add(new wxRadioButton(this, EEPROM_64, "EEPROM 64KB"),  1);
-    leftRadio->Add(new wxRadioButton(this, FRAM_32,   "FRAM 32KB"),    1);
+    leftRadio->Add(new wxRadioButton(this, NONE,       "None"),         1);
+    leftRadio->Add(new wxRadioButton(this, EEPROM_05,  "EEPROM 0.5KB"), 1);
+    leftRadio->Add(new wxRadioButton(this, EEPROM_8,   "EEPROM 8KB"),   1);
+    leftRadio->Add(new wxRadioButton(this, EEPROM_64,  "EEPROM 64KB"),  1);
+    leftRadio->Add(new wxRadioButton(this, EEPROM_128, "EEPROM 128KB"), 1);
 
     // Set up the radio buttons on the right side
     wxBoxSizer *rightRadio = new wxBoxSizer(wxVERTICAL);
+    rightRadio->Add(new wxRadioButton(this, FRAM_32,    "FRAM 32KB"),    1);
     rightRadio->Add(new wxRadioButton(this, FLASH_256,  "FLASH 256KB"),  1);
     rightRadio->Add(new wxRadioButton(this, FLASH_512,  "FLASH 512KB"),  1);
     rightRadio->Add(new wxRadioButton(this, FLASH_1024, "FLASH 1024KB"), 1);
@@ -93,16 +99,22 @@ SaveDialog::SaveDialog(std::string path): wxDialog(nullptr, wxID_ANY, "Select Sa
     SetMaxSize(GetSize());
 }
 
+void SaveDialog::none(wxCommandEvent &event)
+{
+    // Set the selection to none
+    selection = 0;
+}
+
 void SaveDialog::eeprom05(wxCommandEvent &event)
 {
     // Set the selection to EEPROM 0.5KB
-    selection = 0;
+    selection = 1;
 }
 
 void SaveDialog::eeprom8(wxCommandEvent &event)
 {
     // Set the selection to EEPROM 8KB
-    selection = 1;
+    selection = 2;
 }
 
 void SaveDialog::eeprom64(wxCommandEvent &event)
@@ -111,34 +123,40 @@ void SaveDialog::eeprom64(wxCommandEvent &event)
     selection = 3;
 }
 
+void SaveDialog::eeprom128(wxCommandEvent &event)
+{
+    // Set the selection to EEPROM 128KB
+    selection = 4;
+}
+
 void SaveDialog::fram32(wxCommandEvent &event)
 {
     // Set the selection to FRAM 32KB
-    selection = 2;
+    selection = 5;
 }
 
 void SaveDialog::flash256(wxCommandEvent &event)
 {
     // Set the selection to FLASH 256KB
-    selection = 4;
+    selection = 6;
 }
 
 void SaveDialog::flash512(wxCommandEvent &event)
 {
     // Set the selection to FLASH 512KB
-    selection = 5;
+    selection = 7;
 }
 
 void SaveDialog::flash1024(wxCommandEvent &event)
 {
     // Set the selection to FLASH 1024KB
-    selection = 6;
+    selection = 8;
 }
 
 void SaveDialog::flash8192(wxCommandEvent &event)
 {
     // Set the selection to FLASH 8192KB
-    selection = 7;
+    selection = 9;
 }
 
 void SaveDialog::confirm(wxCommandEvent &event)

@@ -32,9 +32,11 @@ class SaveDialog: public wxDialog
         std::string path;
         int selection = 0;
 
+        void none(wxCommandEvent &event);
         void eeprom05(wxCommandEvent &event);
         void eeprom8(wxCommandEvent &event);
         void eeprom64(wxCommandEvent &event);
+        void eeprom128(wxCommandEvent &event);
         void fram32(wxCommandEvent &event);
         void flash256(wxCommandEvent &event);
         void flash512(wxCommandEvent &event);

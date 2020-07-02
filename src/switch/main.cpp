@@ -384,7 +384,7 @@ void fileBrowser()
                             SwitchUI::message("Missing Save", message);
 
                             // Assume a save type of FLASH 512KB
-                            Core::createSave(path, 5);
+                            Core::createSave(path, 7);
 
                             // Boot the ROM again
                             core = new Core(path, gba);

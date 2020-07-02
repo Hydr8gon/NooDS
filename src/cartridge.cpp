@@ -132,11 +132,33 @@ void Cartridge::loadGbaRom(std::string filename)
         {
             switch (match)
             {
-                case 0: gbaSaveSize =  0x2000; break; // EEPROM  8KB
-                case 1: gbaSaveSize =  0x8000; break; // SRAM   32KB
-                case 2: gbaSaveSize = 0x10000; break; // FLASH  64KB
-                case 3: gbaSaveSize = 0x10000; break; // FLASH  64KB
-                case 4: gbaSaveSize = 0x20000; break; // FLASH 128KB
+                case 0: // EEPROM
+                {
+                    // EEPROM can be either 0.5KB or 8KB, so it will have to be determined by how the ROM interacts with it
+                    gbaSaveSize = -1;
+                    return;
+                }
+
+                case 1: // SRAM 32KB
+                {
+                    gbaSaveSize = 0x8000;
+                    printf("Detected SRAM 32KB save type\n");
+                    break;
+                }
+
+                case 2: case 3: // FLASH 64KB
+                {
+                    gbaSaveSize = 0x10000;
+                    printf("Detected FLASH 64KB save type\n");
+                    break;
+                }
+
+                case 4: // FLASH 128KB
+                {
+                    gbaSaveSize = 0x20000;
+                    printf("Detected FLASH 128KB save type\n");
+                    break;
+                }
             }
 
             gbaSave = new uint8_t[gbaSaveSize];
@@ -224,19 +246,43 @@ template <typename T> T Cartridge::gbaRomRead(uint32_t address)
     {
         // EEPROM can be accesssed at the top 256 bytes of the 32MB ROM address block
         // If the ROM is 16MB or smaller, it can be accessed in the full upper 16MB
-        if (gbaSaveSize == 0x2000 && ((gbaRomSize <= 0x1000000 && (address & 0xFF000000) == 0x0D000000) ||
+        if ((gbaSaveSize == -1 || gbaSaveSize == 0x200 || gbaSaveSize == 0x2000) &&
+            ((gbaRomSize <= 0x1000000 && (address & 0xFF000000) == 0x0D000000) ||
             (gbaRomSize > 0x1000000 && address >= 0x0DFFFF00 && address < 0x0E000000))) // EEPROM
         {
-            if (((gbaEepromCmd & 0xC000) >> 14) == 0x3 && gbaEepromCount >= 17) // Read
+            if (gbaSaveSize == -1)
             {
-                if (++gbaEepromCount >= 22)
+                // Detect the save size based on how many command bits were sent before reading
+                if (gbaEepromCount == 9)
+                {
+                    gbaSaveSize = 0x200;
+                    printf("Detected EEPROM 0.5KB save type\n");
+                }
+                else
+                {
+                    gbaSaveSize = 0x2000;
+                    printf("Detected EEPROM 8KB save type\n");
+                }
+
+                // Create a new save
+                gbaSave = new uint8_t[gbaSaveSize];
+                memset(gbaSave, 0xFF, gbaSaveSize * sizeof(uint8_t));
+            }
+
+            // EEPROM 0.5KB uses 8-bit commands, and EEPROM 8KB uses 16-bit commands
+            int length = (gbaSaveSize == 0x200) ? 8 : 16;
+
+            if (((gbaEepromCmd & 0xC000) >> 14) == 0x3 && gbaEepromCount >= length + 1) // Read
+            {
+                if (++gbaEepromCount >= length + 6)
                 {
                     // Read the data bits, MSB first
-                    int bit = 63 - (gbaEepromCount - 22);
-                    T value = (gbaSave[(gbaEepromCmd & 0x03FF) * 8 + bit / 8] & BIT(bit % 8)) >> (bit % 8);
+                    int bit = 63 - (gbaEepromCount - (length + 6));
+                    uint16_t addr = (gbaSaveSize == 0x200) ? ((gbaEepromCmd & 0x3F00) >> 8) : (gbaEepromCmd & 0x03FF);
+                    T value = (gbaSave[addr * 8 + bit / 8] & BIT(bit % 8)) >> (bit % 8);
 
                     // Reset the transfer at the end
-                    if (gbaEepromCount >= 85)
+                    if (gbaEepromCount >= length + 69)
                     {
                         gbaEepromCount = 0;
                         gbaEepromCmd = 0;
@@ -318,12 +364,16 @@ template <typename T> void Cartridge::gbaRomWrite(uint32_t address, T value)
             }
         }
     }
-    else if (gbaSaveSize == 0x2000 && ((gbaRomSize <= 0x1000000 && (address & 0xFF000000) == 0x0D000000) ||
-            (gbaRomSize > 0x1000000 && address >= 0x0DFFFF00 && address < 0x0E000000))) // EEPROM
+    else if ((gbaSaveSize == -1 || gbaSaveSize == 0x200 || gbaSaveSize == 0x2000) &&
+        ((gbaRomSize <= 0x1000000 && (address & 0xFF000000) == 0x0D000000) ||
+        (gbaRomSize > 0x1000000 && address >= 0x0DFFFF00 && address < 0x0E000000))) // EEPROM
     {
         gbaEepromDone = false;
 
-        if (gbaEepromCount < 16)
+        // EEPROM 0.5KB uses 8-bit commands, and EEPROM 8KB uses 16-bit commands
+        int length = (gbaSaveSize == 0x200) ? 8 : 16;
+
+        if (gbaEepromCount < length)
         {
             // Get the command bits
             gbaEepromCmd |= (value & BIT(0)) << (16 - ++gbaEepromCount);
@@ -331,20 +381,32 @@ template <typename T> void Cartridge::gbaRomWrite(uint32_t address, T value)
         else if (((gbaEepromCmd & 0xC000) >> 14) == 0x3) // Read
         {
             // Accept the last bit to finish the read command
-            if (gbaEepromCount < 17)
+            if (gbaEepromCount < length + 1)
                 gbaEepromCount++;
         }
         else if (((gbaEepromCmd & 0xC000) >> 14) == 0x2) // Write
         {
             // Get the data bits, MSB first
-            if (++gbaEepromCount <= 80)
-                gbaEepromData |= (uint64_t)(value & BIT(0)) << (80 - gbaEepromCount);
+            if (++gbaEepromCount <= length + 64)
+                gbaEepromData |= (uint64_t)(value & BIT(0)) << (length + 64 - gbaEepromCount);
 
-            if (gbaEepromCount >= 81)
+            if (gbaEepromCount >= length + 65)
             {
+                // Games will probably read first, so the save size can be detected from that
+                // If something decides to write first, it becomes a lot harder to detect the size
+                // In this case, just assume EEPROM 8KB and create an empty save
+                if (gbaSaveSize == -1)
+                {
+                    gbaSaveSize = 0x2000;
+                    printf("Detected EEPROM 8KB save type\n");
+                    gbaSave = new uint8_t[gbaSaveSize];
+                    memset(gbaSave, 0xFF, gbaSaveSize * sizeof(uint8_t));
+                }
+
                 // Write the data after all the bits have been received
+                uint16_t addr = (gbaSaveSize == 0x200) ? ((gbaEepromCmd & 0x3F00) >> 8) : (gbaEepromCmd & 0x03FF);
                 for (unsigned int i = 0; i < 8; i++)
-                    gbaSave[(gbaEepromCmd & 0x03FF) * 8 + i] = gbaEepromData >> (i * 8);
+                    gbaSave[addr * 8 + i] = gbaEepromData >> (i * 8);
 
                 // Reset the transfer
                 gbaEepromCount = 0;
@@ -478,6 +540,9 @@ void Cartridge::writeRomCmdOutH(bool cpu, uint32_t mask, uint32_t value)
 
 void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
 {
+    // Do nothing if there is no save
+    if (saveSize == 0) return;
+
     if (auxWriteCount[cpu] == 0)
     {
         // On the first write, set the command byte
@@ -574,16 +639,17 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
                 break;
             }
 
-            case 0x2000: case 0x8000: case 0x10000: // EEPROM/FRAM 8KB, 32KB, 64KB
+            case 0x2000: case 0x8000: case 0x10000: case 0x20000: // EEPROM 8KB, 64KB, 128KB; FRAM 32KB
             {
                 switch (auxCommand[cpu])
                 {
                     case 0x03: // Read from memory
                     {
-                        if (auxWriteCount[cpu] < 3)
+                        if (auxWriteCount[cpu] < ((saveSize == 0x20000) ? 4 : 3))
                         {
-                            // On writes 2-3, set the 2 byte address to read from
-                            auxAddress[cpu] |= value << ((2 - auxWriteCount[cpu]) * 8);
+                            // On writes 2-3, set the 2 byte address to read from (not EEPROM 128KB)
+                            // EEPROM 128KB uses a 3 byte address, so it's set on writes 2-4
+                            auxAddress[cpu] |= value << ((((saveSize == 0x20000) ? 3 : 2) - auxWriteCount[cpu]) * 8);
                             auxSpiData[cpu] = 0;
                         }
                         else
@@ -597,10 +663,11 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
 
                     case 0x02: // Write to memory
                     {
-                        if (auxWriteCount[cpu] < 3)
+                        if (auxWriteCount[cpu] < ((saveSize == 0x20000) ? 4 : 3))
                         {
-                            // On writes 2-3, set the 2 byte address to write to
-                            auxAddress[cpu] |= value << ((2 - auxWriteCount[cpu]) * 8);
+                            // On writes 2-3, set the 2 byte address to write to (not EEPROM 128KB)
+                            // EEPROM 128KB uses a 3 byte address, so it's set on writes 2-4
+                            auxAddress[cpu] |= value << ((((saveSize == 0x20000) ? 3 : 2) - auxWriteCount[cpu]) * 8);
                             auxSpiData[cpu] = 0;
                         }
                         else
@@ -645,7 +712,6 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
                     }
 
                     case 0x0A: // Page write
-                    case 0x02: // Page program
                     {
                         if (auxWriteCount[cpu] < 4)
                         {
