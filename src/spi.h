@@ -22,12 +22,15 @@
 
 #include <cstdint>
 
-class Interpreter;
+class Core;
 
 class Spi
 {
     public:
-        Spi(Interpreter *arm7, uint8_t *firmware): arm7(arm7), firmware(firmware) {}
+        Spi(Core *core): core(core) {}
+
+        void loadFirmware();
+        void directBoot();
 
         void setTouch(int x, int y);
         void clearTouch();
@@ -39,6 +42,10 @@ class Spi
         void writeSpiData(uint8_t value);
 
     private:
+        Core *core;
+
+        uint8_t firmware[0x40000] = {};
+
         unsigned int writeCount = 0;
         uint32_t address = 0;
         uint8_t command = 0;
@@ -46,9 +53,6 @@ class Spi
         uint16_t touchX = 0x000, touchY = 0xFFF;
         uint16_t spiCnt = 0;
         uint8_t spiData = 0;
-
-        Interpreter *arm7;
-        uint8_t *firmware;
 };
 
 #endif // SPI_H

@@ -23,14 +23,14 @@
 #include <cstdint>
 #include <thread>
 
-class Gpu3D;
+class Core;
 struct Vertex;
 struct _Polygon;
 
 class Gpu3DRenderer
 {
     public:
-        Gpu3DRenderer(Gpu3D *gpu3D): gpu3D(gpu3D) {};
+        Gpu3DRenderer(Core *core): core(core) {};
         ~Gpu3DRenderer();
 
         void drawScanline(int line);
@@ -51,6 +51,8 @@ class Gpu3DRenderer
         void writeToonTable(int index, uint16_t mask, uint16_t value);
 
     private:
+        Core *core;
+
         uint32_t framebuffer[256 * 192] = {};
         int32_t depthBuffer[4][256] = {};
         uint8_t attribBuffer[4][256] = {};
@@ -70,8 +72,6 @@ class Gpu3DRenderer
         uint16_t fogOffset = 0;
         uint8_t fogTable[32] = {};
         uint16_t toonTable[32] = {};
-
-        Gpu3D *gpu3D;
 
         uint32_t rgba5ToRgba6(uint32_t color);
 

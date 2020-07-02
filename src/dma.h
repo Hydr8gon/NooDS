@@ -22,13 +22,12 @@
 
 #include <cstdint>
 
-class Interpreter;
-class Memory;
+class Core;
 
 class Dma
 {
     public:
-        Dma(Interpreter *cpu, Memory *memory, bool dma9 = false): cpu(cpu), memory(memory), dma9(dma9) {}
+        Dma(Core *core, bool cpu): core(core), cpu(cpu) {}
 
         void transfer();
         void setMode(int mode, bool active);
@@ -44,6 +43,9 @@ class Dma
         void writeDmaCnt(int channel, uint32_t mask, uint32_t value);
 
     private:
+        Core *core;
+        bool cpu;
+
         uint32_t dmaSad[4] = {};
         uint32_t dmaDad[4] = {};
         uint32_t dmaCnt[4] = {};
@@ -56,10 +58,6 @@ class Dma
 
         uint8_t active = 0;
         bool modes[10] = { true };
-
-        bool dma9;
-        Interpreter *cpu;
-        Memory *memory;
 
         void update();
 };

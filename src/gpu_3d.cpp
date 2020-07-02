@@ -20,11 +20,9 @@
 #include <cstring>
 
 #include "gpu_3d.h"
-#include "defines.h"
-#include "dma.h"
-#include "interpreter.h"
+#include "core.h"
 
-Gpu3D::Gpu3D(Dma *dma9, Interpreter *arm9): dma9(dma9), arm9(arm9)
+Gpu3D::Gpu3D(Core *core): core(core)
 {
     // Set the parameter counts
     paramCounts[0x10] = 1;
@@ -155,14 +153,14 @@ void Gpu3D::runCycle()
     if (fifo.size() < 128 && !(gxStat & BIT(25)))
     {
         gxStat |= BIT(25);
-        dma9->setMode(7, true);
+        core->dma[0].setMode(7, true);
     }
 
     // Send a GXFIFO interrupt if enabled
     switch ((gxStat & 0xC0000000) >> 30)
     {
-        case 1: if (gxStat & BIT(25)) arm9->sendInterrupt(21); break;
-        case 2: if (gxStat & BIT(26)) arm9->sendInterrupt(21); break;
+        case 1: if (gxStat & BIT(25)) core->interpreter[0].sendInterrupt(21); break;
+        case 2: if (gxStat & BIT(26)) core->interpreter[0].sendInterrupt(21); break;
     }
 }
 
@@ -1531,7 +1529,7 @@ void Gpu3D::addEntry(Entry entry)
         if (fifo.size() >= 128 && (gxStat & BIT(25)))
         {
             gxStat &= ~BIT(25);
-            dma9->setMode(7, false);
+            core->dma[0].setMode(7, false);
         }
     }
 }

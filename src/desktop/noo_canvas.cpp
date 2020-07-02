@@ -74,7 +74,7 @@ void NooCanvas::draw(wxPaintEvent &event)
     {
         // Request a new frame
         bool gba = (emulator->core->isGbaMode() && ScreenLayout::getGbaCrop());
-        uint32_t *fb = emulator->core->getFrame(gba);
+        uint32_t *fb = emulator->core->gpu.getFrame(gba);
 
         if (fb)
         {
@@ -183,7 +183,7 @@ void NooCanvas::pressKey(wxKeyEvent &event)
     for (int i = 0; i < 12; i++)
     {
         if (event.GetKeyCode() == NooApp::getKeyBind(i))
-            emulator->core->pressKey(i);
+            emulator->core->input.pressKey(i);
     }
 }
 
@@ -195,7 +195,7 @@ void NooCanvas::releaseKey(wxKeyEvent &event)
     for (int i = 0; i < 12; i++)
     {
         if (event.GetKeyCode() == NooApp::getKeyBind(i))
-            emulator->core->releaseKey(i);
+            emulator->core->input.releaseKey(i);
     }
 }
 
@@ -209,11 +209,16 @@ void NooCanvas::pressScreen(wxMouseEvent &event)
     int touchY = layout.getTouchY(event.GetX(), event.GetY());
 
     // Send the touch coordinates to the core
-    emulator->core->pressScreen(touchX, touchY);
+    emulator->core->input.pressScreen();
+    emulator->core->spi.setTouch(touchX, touchY);
 }
 
 void NooCanvas::releaseScreen(wxMouseEvent &event)
 {
     // Send a touch release to the core
-    if (emulator->running) emulator->core->releaseScreen();
+    if (emulator->running)
+    {
+        emulator->core->input.releaseScreen();
+        emulator->core->spi.clearTouch();
+    }
 }

@@ -22,13 +22,12 @@
 
 #include <cstdint>
 
-class Interpreter;
-class Memory;
+class Core;
 
 class Wifi
 {
     public:
-        Wifi(Interpreter *arm7, Memory *memory);
+        Wifi(Core *core);
 
         uint16_t readWIrf()              { return wIrf;            }
         uint16_t readWIe()               { return wIe;             }
@@ -76,6 +75,8 @@ class Wifi
         void writeWIrfSet(uint16_t mask, uint16_t value);
 
     private:
+        Core *core;
+
         uint8_t bbRegisters[0x100] = {};
         int bbCount = 0;
 
@@ -105,9 +106,6 @@ class Wifi
             0x8064, 0x0000, 0x2443, 0x0042, 0x0016,
             0x0016, 0x0016, 0x162C, 0x0204, 0x0058
         };
-
-        Interpreter *arm7;
-        Memory *memory;
 
         void sendInterrupt(int bit);
 };

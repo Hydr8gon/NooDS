@@ -18,8 +18,24 @@
 */
 
 #include "spi.h"
-#include "defines.h"
-#include "interpreter.h"
+#include "core.h"
+#include "settings.h"
+
+void Spi::loadFirmware()
+{
+    // Attempt to load the firmware
+    FILE *firmwareFile = fopen(Settings::getFirmwarePath().c_str(), "rb");
+    if (!firmwareFile) throw 1;
+    fread(firmware, sizeof(uint8_t), 0x40000, firmwareFile);
+    fclose(firmwareFile);
+}
+
+void Spi::directBoot()
+{
+    // Load the user settings into memory
+    for (uint32_t i = 0; i < 0x70; i++)
+        core->memory.write<uint8_t>(0, 0x27FFC80 + i, firmware[0x3FF00 + i]);
+}
 
 void Spi::setTouch(int x, int y)
 {
@@ -156,5 +172,5 @@ void Spi::writeSpiData(uint8_t value)
 
     // Trigger a transfer finished IRQ if enabled
     if (spiCnt & BIT(14))
-        arm7->sendInterrupt(23);
+        core->interpreter[1].sendInterrupt(23);
 }

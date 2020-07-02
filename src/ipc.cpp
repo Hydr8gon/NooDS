@@ -18,8 +18,7 @@
 */
 
 #include "ipc.h"
-#include "defines.h"
-#include "interpreter.h"
+#include "core.h"
 
 void Ipc::writeIpcSync(bool cpu, uint16_t mask, uint16_t value)
 {
@@ -32,7 +31,7 @@ void Ipc::writeIpcSync(bool cpu, uint16_t mask, uint16_t value)
 
     // Trigger a remote IRQ if enabled on both sides
     if ((value & BIT(13)) && (ipcSync[!cpu] & BIT(14)))
-        cpus[!cpu]->sendInterrupt(16);
+        core->interpreter[!cpu].sendInterrupt(16);
 }
 
 void Ipc::writeIpcFifoCnt(bool cpu, uint16_t mask, uint16_t value)
@@ -53,16 +52,16 @@ void Ipc::writeIpcFifoCnt(bool cpu, uint16_t mask, uint16_t value)
 
         // Trigger a send FIFO empty IRQ if enabled
         if (ipcFifoCnt[cpu] & BIT(2))
-            cpus[cpu]->sendInterrupt(17);
+            core->interpreter[cpu].sendInterrupt(17);
     }
 
     // Trigger a send FIFO empty IRQ if the enable bit is set and the FIFO is empty
     if ((ipcFifoCnt[cpu] & BIT(0)) && !(ipcFifoCnt[cpu] & BIT(2)) && (value & BIT(2)))
-        cpus[cpu]->sendInterrupt(17);
+        core->interpreter[cpu].sendInterrupt(17);
 
     // Trigger a receive FIFO not empty IRQ if the enable bit is set and the FIFO isn't empty
     if (!(ipcFifoCnt[cpu] & BIT(8)) && !(ipcFifoCnt[cpu] & BIT(10)) && (value & BIT(10)))
-        cpus[cpu]->sendInterrupt(18);
+        core->interpreter[cpu].sendInterrupt(18);
 
     // If the error bit is set, acknowledge the error by clearing it
     if (value & BIT(14)) ipcFifoCnt[cpu] &= ~BIT(14);
@@ -89,7 +88,7 @@ void Ipc::writeIpcFifoSend(bool cpu, uint32_t mask, uint32_t value)
 
                 // Trigger a receive FIFO not empty IRQ if enabled
                 if (ipcFifoCnt[!cpu] & BIT(10))
-                    cpus[!cpu]->sendInterrupt(18);
+                    core->interpreter[!cpu].sendInterrupt(18);
             }
             else if (fifos[cpu].size() == 16)
             {
@@ -126,7 +125,7 @@ uint32_t Ipc::readIpcFifoRecv(bool cpu)
 
                 // Trigger a receive FIFO empty IRQ if enabled
                 if (ipcFifoCnt[!cpu] & BIT(2))
-                    cpus[!cpu]->sendInterrupt(17);
+                    core->interpreter[!cpu].sendInterrupt(17);
             }
             else if (fifos[!cpu].size() == 15)
             {

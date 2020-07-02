@@ -22,16 +22,17 @@
 
 #include <cstdint>
 
-#include "cp15.h"
-#include "memory.h"
 #include "defines.h"
+
+class Core;
 
 class Interpreter
 {
     public:
-        Interpreter(Memory *memory, Cp15 *cp15 = nullptr);
+        Interpreter(Core *core, bool cpu);
 
-        void directBoot(uint32_t entryAddr);
+        void directBoot();
+        void enterGbaMode();
 
         void runCycle();
         void interrupt();
@@ -41,8 +42,6 @@ class Interpreter
 
         bool shouldRun()       { return !halted;  }
         bool shouldInterrupt() { return ie & irf; }
-
-        void setPc(uint32_t value) { registersUsr[15] = value; }
 
         uint8_t  readIme()     { return ime;     }
         uint32_t readIe()      { return ie;      }
@@ -55,6 +54,9 @@ class Interpreter
         void writePostFlg(uint8_t value);
 
     private:
+        Core *core;
+        bool cpu;
+
         uint32_t *registers[16]   = {};
         uint32_t registersUsr[16] = {};
         uint32_t registersFiq[7]  = {};
@@ -71,9 +73,6 @@ class Interpreter
         uint8_t ime = 0;
         uint32_t ie = 0, irf = 0;
         uint8_t postFlg = 0;
-
-        Cp15 *cp15;
-        Memory *memory;
 
         bool condition(uint32_t opcode);
         void setMode(uint8_t mode);

@@ -23,20 +23,12 @@
 #include <cstdint>
 #include <mutex>
 
-class Dma;
-class Gpu2D;
-class Gpu3D;
-class Gpu3DRenderer;
-class Interpreter;
-class Memory;
+class Core;
 
 class Gpu
 {
     public:
-        Gpu(Dma *dma9, Dma *dma7, Gpu2D *engineA, Gpu2D *engineB, Gpu3D *gpu3D,
-            Gpu3DRenderer *gpu3DRenderer, Interpreter *arm9, Interpreter *arm7, Memory *memory):
-            dmas { dma9, dma7 }, engineA(engineA), engineB(engineB), gpu3D(gpu3D),
-            gpu3DRenderer(gpu3DRenderer), cpus { arm9, arm7 }, memory(memory) {}
+        Gpu(Core *core): core(core) {}
 
         uint32_t *getFrame(bool gbaCrop);
 
@@ -55,6 +47,8 @@ class Gpu
         void writePowCnt1(uint16_t mask, uint16_t value);
 
     private:
+        Core *core;
+
         uint32_t framebuffer[256 * 192 * 2] = {};
         bool ready = true;
         std::mutex mutex;
@@ -65,13 +59,6 @@ class Gpu
         uint16_t vCount = 0;
         uint32_t dispCapCnt = 0;
         uint16_t powCnt1 = 0;
-
-        Dma *dmas[2];
-        Gpu2D *engineA, *engineB;
-        Gpu3D *gpu3D;
-        Gpu3DRenderer *gpu3DRenderer;
-        Interpreter *cpus[2];
-        Memory *memory;
 
         uint16_t rgb6ToRgb5(uint32_t color);
 };

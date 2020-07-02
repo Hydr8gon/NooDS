@@ -22,13 +22,12 @@
 
 #include <cstdint>
 
-class Interpreter;
-class Spu;
+class Core;
 
 class Timers
 {
     public:
-        Timers(Interpreter *cpu, Spu *spu = nullptr): cpu(cpu), spu(spu) {}
+        Timers(Core *core, bool cpu): core(core), cpu(cpu) {}
 
         void tick(bool twice);
 
@@ -41,15 +40,15 @@ class Timers
         void writeTmCntH(int timer, uint16_t mask, uint16_t value);
 
     private:
+        Core *core;
+        bool cpu;
+
         uint16_t tmCntL[4] = {};
         uint16_t tmCntH[4] = {};
 
         uint16_t reloads[4] = {};
         uint16_t scalers[4] = {};
         uint8_t enabled = 0;
-
-        Interpreter *cpu;
-        Spu *spu;
 };
 
 #endif // TIMERS_H

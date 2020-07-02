@@ -20,12 +20,7 @@
 #include <cstring>
 
 #include "gpu.h"
-#include "defines.h"
-#include "dma.h"
-#include "gpu_2d.h"
-#include "gpu_3d.h"
-#include "gpu_3d_renderer.h"
-#include "interpreter.h"
+#include "core.h"
 
 uint32_t *Gpu::getFrame(bool gbaCrop)
 {
@@ -96,10 +91,10 @@ void Gpu::gbaScanline240()
     if (vCount < 160)
     {
         // Draw visible scanlines
-        engineA->drawGbaScanline(vCount);
+        core->gpu2D[0].drawGbaScanline(vCount);
 
         // Enable H-blank DMA transfers for visible scanlines
-        dmas[1]->setMode(2, true);
+        core->dma[1].setMode(2, true);
     }
 
     // Set the H-blank flag
@@ -107,7 +102,7 @@ void Gpu::gbaScanline240()
 
     // Trigger an H-blank IRQ if enabled
     if (dispStat[1] & BIT(4))
-        cpus[1]->sendInterrupt(1);
+        core->interpreter[1].sendInterrupt(1);
 }
 
 void Gpu::gbaScanline308()
@@ -120,7 +115,7 @@ void Gpu::gbaScanline308()
 
         // Trigger a V-counter IRQ if enabled
         if (dispStat[1] & BIT(5))
-            cpus[1]->sendInterrupt(2);
+            core->interpreter[1].sendInterrupt(2);
     }
     else if (dispStat[1] & BIT(2))
     {
@@ -141,23 +136,23 @@ void Gpu::gbaScanline308()
 
             // Trigger a V-blank IRQ if enabled
             if (dispStat[1] & BIT(3))
-                cpus[1]->sendInterrupt(0);
+                core->interpreter[1].sendInterrupt(0);
 
             // Enable V-blank DMA transfers
-            dmas[1]->setMode(1, true);
+            core->dma[1].setMode(1, true);
 
             mutex.lock();
 
             // Copy the completed sub-framebuffers to the main framebuffer
             if (powCnt1 & BIT(15)) // Display swap
             {
-                memcpy(&framebuffer[0],         engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-                memset(&framebuffer[256 * 192], 0,                         256 * 192 * sizeof(uint32_t));
+                memcpy(&framebuffer[0],         core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                memset(&framebuffer[256 * 192], 0,                               256 * 192 * sizeof(uint32_t));
             }
             else
             {
-                memset(&framebuffer[0],         0,                         256 * 192 * sizeof(uint32_t));
-                memcpy(&framebuffer[256 * 192], engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                memset(&framebuffer[0],         0,                               256 * 192 * sizeof(uint32_t));
+                memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
             }
 
             ready = true;
@@ -186,11 +181,11 @@ void Gpu::scanline256()
     if (vCount < 192)
     {
         // Draw visible scanlines
-        engineA->drawScanline(vCount);
-        engineB->drawScanline(vCount);
+        core->gpu2D[0].drawScanline(vCount);
+        core->gpu2D[1].drawScanline(vCount);
 
         // Enable H-blank DMA transfers for visible scanlines (ARM9 only)
-        dmas[0]->setMode(2, true);
+        core->dma[0].setMode(2, true);
 
         // Start a display capture at the beginning of the frame if one was requested
         if (vCount == 0 && (dispCapCnt & BIT(31)))
@@ -200,7 +195,7 @@ void Gpu::scanline256()
         if (displayCapture)
         {
             // Get the capture destination
-            uint8_t *block = memory->getVramBlock((dispCapCnt & 0x00030000) >> 16);
+            uint8_t *block = core->memory.getVramBlock((dispCapCnt & 0x00030000) >> 16);
             uint32_t writeOffset = (dispCapCnt & 0x000C0000) >> 3;
 
             // Determine the capture size
@@ -221,9 +216,9 @@ void Gpu::scanline256()
                     // Choose from 2D engine A or the 3D engine
                     uint32_t *source;
                     if (dispCapCnt & BIT(24))
-                        source = &gpu3DRenderer->getFramebuffer()[vCount * 256];
+                        source = &core->gpu3DRenderer.getFramebuffer()[vCount * 256];
                     else
-                        source = &engineA->getFramebuffer()[vCount * 256];
+                        source = &core->gpu2D[0].getFramebuffer()[vCount * 256];
 
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
@@ -269,9 +264,9 @@ void Gpu::scanline256()
                     // Choose from 2D engine A or the 3D engine
                     uint32_t *source;
                     if (dispCapCnt & BIT(24))
-                        source = &engineA->getFramebuffer()[vCount * 256];
+                        source = &core->gpu2D[0].getFramebuffer()[vCount * 256];
                     else
-                        source = &gpu3DRenderer->getFramebuffer()[vCount * 256];
+                        source = &core->gpu3DRenderer.getFramebuffer()[vCount * 256];
 
                     // Get the VRAM source address
                     uint32_t readOffset = (dispCapCnt & 0x0C000000) >> 11;
@@ -311,13 +306,13 @@ void Gpu::scanline256()
 
         // Display captures are performed on the layers, even if the display is set to something else
         // After the display capture, redraw the scanline or apply master brightness if needed
-        engineA->finishScanline(vCount);
-        engineB->finishScanline(vCount);
+        core->gpu2D[0].finishScanline(vCount);
+        core->gpu2D[1].finishScanline(vCount);
     }
 
     // Draw 3D scanlines 48 lines in advance
-    if ((engineA->readDispCnt() & BIT(3)) && ((vCount + 48) % 263) < 192)
-        gpu3DRenderer->drawScanline((vCount + 48) % 263);
+    if ((core->gpu2D[0].readDispCnt() & BIT(3)) && ((vCount + 48) % 263) < 192)
+        core->gpu3DRenderer.drawScanline((vCount + 48) % 263);
 
     for (int i = 0; i < 2; i++)
     {
@@ -326,7 +321,7 @@ void Gpu::scanline256()
 
         // Trigger an H-blank IRQ if enabled
         if (dispStat[i] & BIT(4))
-            cpus[i]->sendInterrupt(1);
+            core->interpreter[i].sendInterrupt(1);
     }
 }
 
@@ -342,7 +337,7 @@ void Gpu::scanline355()
 
             // Trigger a V-counter IRQ if enabled
             if (dispStat[i] & BIT(5))
-                cpus[i]->sendInterrupt(2);
+                core->interpreter[i].sendInterrupt(2);
         }
         else if (dispStat[i] & BIT(2))
         {
@@ -366,15 +361,15 @@ void Gpu::scanline355()
 
                 // Trigger a V-blank IRQ if enabled
                 if (dispStat[i] & BIT(3))
-                    cpus[i]->sendInterrupt(0);
+                    core->interpreter[i].sendInterrupt(0);
 
                 // Enable V-blank DMA transfers
-                dmas[i]->setMode(1, true);
+                core->dma[i].setMode(1, true);
             }
 
             // Swap the buffers of the 3D engine if needed
-            if (gpu3D->shouldSwap())
-                gpu3D->swapBuffers();
+            if (core->gpu3D.shouldSwap())
+                core->gpu3D.swapBuffers();
 
             mutex.lock();
 
@@ -383,13 +378,13 @@ void Gpu::scanline355()
             {
                 if (powCnt1 & BIT(15)) // Display swap
                 {
-                    memcpy(&framebuffer[0],         engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-                    memcpy(&framebuffer[256 * 192], engineB->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    memcpy(&framebuffer[0],         core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    memcpy(&framebuffer[256 * 192], core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                 }
                 else
                 {
-                    memcpy(&framebuffer[0],         engineB->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-                    memcpy(&framebuffer[256 * 192], engineA->getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    memcpy(&framebuffer[0],         core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                 }
             }
             else

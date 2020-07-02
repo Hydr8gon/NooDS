@@ -22,9 +22,13 @@
 
 #include <cstdint>
 
+class Core;
+
 class Math
 {
     public:
+        Math(Core *core): core(core) {}
+
         uint16_t readDivCnt()        { return divCnt;             }
         uint32_t readDivNumerL()     { return divNumer;           }
         uint32_t readDivNumerH()     { return divNumer     >> 32; }
@@ -49,6 +53,8 @@ class Math
         void writeSqrtParamH(uint32_t mask, uint32_t value);
 
     private:
+        Core *core;
+
         uint16_t divCnt = 0;
         int64_t divNumer = 0;
         int64_t divDenom = 0;

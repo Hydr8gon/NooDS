@@ -168,10 +168,12 @@ void NooFrame::startCore()
     // Ensure the core is stopped
     stopCore();
 
+    bool gba = (path.find(".gba", path.length() - 4) != std::string::npos);
+
     try
     {
         // Attempt to boot the ROM
-        emulator->core = new Core(path);
+        emulator->core = new Core(path, gba);
     }
     catch (int e)
     {
@@ -198,7 +200,7 @@ void NooFrame::startCore()
                 SaveDialog saveDialog(path);
                 if (saveDialog.ShowModal() == wxID_OK)
                 {
-                    emulator->core = new Core(path);
+                    emulator->core = new Core(path, gba);
                     break;
                 }
                 return;

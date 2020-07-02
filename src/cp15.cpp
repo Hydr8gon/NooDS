@@ -18,8 +18,7 @@
 */
 
 #include "cp15.h"
-#include "defines.h"
-#include "interpreter.h"
+#include "core.h"
 
 uint32_t Cp15::read(int cn, int cm, int cp)
 {
@@ -67,7 +66,7 @@ void Cp15::write(int cn, int cm, int cp, uint32_t value)
 
         case 0x070004: case 0x070802: // Wait for interrupt
         {
-            arm9->halt();
+            core->interpreter[0].halt();
             return;
         }
 

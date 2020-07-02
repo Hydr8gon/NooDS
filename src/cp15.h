@@ -22,12 +22,12 @@
 
 #include <cstdint>
 
-class Interpreter;
+class Core;
 
 class Cp15
 {
     public:
-        Cp15(Interpreter *arm9): arm9(arm9) {}
+        Cp15(Core *core): core(core) {}
 
         uint32_t read(int cn, int cm, int cp);
         void write(int cn, int cm, int cp, uint32_t value);
@@ -40,6 +40,8 @@ class Cp15
         uint32_t getItcmSize()      { return itcmSize;      }
 
     private:
+        Core *core;
+
         uint32_t ctrlReg = 0x00000078;
         uint32_t dtcmReg = 0x00000000;
         uint32_t itcmReg = 0x00000000;
@@ -49,8 +51,6 @@ class Cp15
         bool itcmEnabled = false;
         uint32_t dtcmAddr = 0, dtcmSize = 0;
         uint32_t itcmSize = 0;
-
-        Interpreter *arm9;
 };
 
 #endif // CP15_H

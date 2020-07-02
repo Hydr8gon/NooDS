@@ -22,9 +22,7 @@
 #include <functional>
 
 #include "spu.h"
-#include "defines.h"
-#include "dma.h"
-#include "memory.h"
+#include "core.h"
 #include "settings.h"
 
 const int Spu::indexTable[] =
@@ -453,13 +451,13 @@ void Spu::runSample()
         {
             case 0: // PCM8
             {
-                data = memory->read<int8_t>(false, soundCurrent[i]) << 8;
+                data = core->memory.read<int8_t>(1, soundCurrent[i]) << 8;
                 break;
             }
 
             case 1: // PCM16
             {
-                data = memory->read<int16_t>(false, soundCurrent[i]);
+                data = core->memory.read<int16_t>(1, soundCurrent[i]);
                 break;
             }
 
@@ -511,7 +509,7 @@ void Spu::runSample()
                 case 2: // ADPCM
                 {
                     // Get the 4-bit ADPCM data
-                    uint8_t adpcmData = memory->read<uint8_t>(false, soundCurrent[i]);
+                    uint8_t adpcmData = core->memory.read<uint8_t>(1, soundCurrent[i]);
                     adpcmData = adpcmToggle[i] ? ((adpcmData & 0xF0) >> 4) : (adpcmData & 0x0F);
 
                     // Calculate the sample difference
@@ -687,8 +685,6 @@ void Spu::runSample()
 
 void Spu::gbaFifoTimer(int timer)
 {
-    if (!memory->isGbaMode()) return;
-
     if (((gbaMainSoundCntH & BIT(10)) >> 10) == timer) // FIFO A
     {
         // Get a new sample
@@ -700,7 +696,7 @@ void Spu::gbaFifoTimer(int timer)
 
         // Request more data from the DMA if half empty
         if (gbaFifoA.size() <= 16)
-            dma7->setMode(8, true);
+            core->dma[1].setMode(8, true);
     }
 
     if (((gbaMainSoundCntH & BIT(14)) >> 14) == timer) // FIFO B
@@ -714,7 +710,7 @@ void Spu::gbaFifoTimer(int timer)
 
         // Request more data from the DMA if half empty
         if (gbaFifoB.size() <= 16)
-            dma7->setMode(9, true);
+            core->dma[1].setMode(9, true);
     }
 }
 
@@ -874,7 +870,7 @@ void Spu::writeSoundCnt(int channel, uint32_t mask, uint32_t value)
             case 2: // ADPCM
             {
                 // Read the ADPCM header
-                uint32_t header = memory->read<uint32_t>(false, soundSad[channel]);
+                uint32_t header = core->memory.read<uint32_t>(1, soundSad[channel]);
                 adpcmValue[channel] = (int16_t)header;
                 adpcmIndex[channel] = (header & 0x007F0000) >> 16;
                 if (adpcmIndex[channel] > 88) adpcmIndex[channel] = 88;

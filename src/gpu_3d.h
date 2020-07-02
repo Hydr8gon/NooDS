@@ -25,8 +25,7 @@
 
 #include "defines.h"
 
-class Dma;
-class Interpreter;
+class Core;
 
 struct Entry
 {
@@ -82,7 +81,7 @@ struct _Polygon
 class Gpu3D
 {
     public:
-        Gpu3D(Dma *dma9, Interpreter *arm9);
+        Gpu3D(Core *core);
 
         void runCycle();
         void swapBuffers();
@@ -141,6 +140,8 @@ class Gpu3D
         void writeGxStat(uint32_t mask, uint32_t value);
 
     private:
+        Core *core;
+
         bool halted = false;
 
         std::queue<Entry> fifo, pipe;
@@ -199,9 +200,6 @@ class Gpu3D
 
         int gxFifoCount = 0;
 
-        Dma *dma9;
-        Interpreter *arm9;
-
         Matrix multiply(Matrix *mtx1, Matrix *mtx2);
         Vertex multiply(Vertex *vtx, Matrix *mtx);
         int64_t multiply(Vertex *vec1, Vertex *vec2);
@@ -255,4 +253,3 @@ class Gpu3D
 };
 
 #endif // GPU_3D_H
-

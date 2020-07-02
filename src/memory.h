@@ -22,45 +22,30 @@
 
 #include <cstdint>
 
-class Cartridge;
-class Cp15;
-class Dma;
-class Gpu;
-class Gpu2D;
-class Gpu3D;
-class Gpu3DRenderer;
-class Input;
-class Interpreter;
-class Ipc;
-class Math;
-class Rtc;
-class Spi;
-class Spu;
-class Timers;
-class Wifi;
+class Core;
 
 class Memory
 {
     public:
-        Memory(uint8_t *bios9, uint8_t *bios7, uint8_t *gbaBios, Cartridge *cartridge, Cp15 *cp15,
-               Dma *dma9, Dma *dma7, Gpu *gpu, Gpu2D *engineA, Gpu2D *engineB, Gpu3D *gpu3D,
-               Gpu3DRenderer *gpu3DRenderer, Input *input, Interpreter *arm9, Interpreter *arm7, Ipc *ipc,
-               Math *math, Rtc *rtc, Spi *spi, Spu *spu, Timers *timers9, Timers *timers7, Wifi *wifi):
-               bios9(bios9), bios7(bios7), gbaBios(gbaBios), cartridge(cartridge), cp15(cp15),
-               dma9(dma9), dma7(dma7), gpu(gpu), engineA(engineA), engineB(engineB), gpu3D(gpu3D),
-               gpu3DRenderer(gpu3DRenderer), input(input), arm9(arm9), arm7(arm7), ipc(ipc),
-               math(math), rtc(rtc), spi(spi), spu(spu), timers9(timers9), timers7(timers7), wifi(wifi) {}
+        Memory(Core *core): core(core) {};
 
-        template <typename T> T read(bool arm9, uint32_t address);
-        template <typename T> void write(bool arm9, uint32_t address, T value);
+        void loadBios();
+        void loadGbaBios();
+
+        template <typename T> T read(bool cpu, uint32_t address);
+        template <typename T> void write(bool cpu, uint32_t address, T value);
 
         uint8_t *getVramBlock(int block);
         uint8_t *getPalette() { return palette; }
         uint8_t *getOam() { return oam; }
 
-        bool isGbaMode() { return gbaMode; }
-
     private:
+        Core *core;
+
+        uint8_t bios9[0x8000]   = {}; // 32KB ARM9 BIOS
+        uint8_t bios7[0x4000]   = {}; // 16KB ARM7 BIOS
+        uint8_t gbaBios[0x4000] = {}; // 16KB GBA BIOS
+
         uint8_t ram[0x400000]    = {}; //  4MB main RAM
         uint8_t wram[0x8000]     = {}; // 32KB shared WRAM
         uint8_t instrTcm[0x8000] = {}; // 32KB instruction TCM
@@ -85,27 +70,6 @@ class Memory
 
         uint32_t dmaFill[4] = {};
         uint8_t haltCnt = 0;
-
-        bool gbaMode = false;
-
-        uint8_t *bios9, *bios7;
-        uint8_t *gbaBios;
-        Cartridge *cartridge;
-        Cp15 *cp15;
-        Dma *dma9, *dma7;
-        Gpu *gpu;
-        Gpu2D *engineA, *engineB;
-        Gpu3D *gpu3D;
-        Gpu3DRenderer *gpu3DRenderer;
-        Input *input;
-        Interpreter *arm9, *arm7;
-        Ipc *ipc;
-        Math *math;
-        Rtc *rtc;
-        Spi *spi;
-        Spu *spu;
-        Timers *timers9, *timers7;
-        Wifi *wifi;
 
         template <typename T> T ioRead9(uint32_t address);
         template <typename T> T ioRead7(uint32_t address);

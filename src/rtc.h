@@ -22,14 +22,20 @@
 
 #include <cstdint>
 
+class Core;
+
 class Rtc
 {
     public:
+        Rtc(Core *core): core(core) {}
+
         uint8_t readRtc() { return rtc; }
 
         void writeRtc(uint8_t value);
 
     private:
+        Core *core;
+
         uint8_t writeCount = 0;
         uint8_t command = 0;
         uint8_t status1 = 0;

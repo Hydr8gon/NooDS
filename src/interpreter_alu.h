@@ -20,7 +20,7 @@
 #ifndef INTERPRETER_ALU
 #define INTERPRETER_ALU
 
-#include "interpreter.h"
+#include "core.h"
 
 FORCE_INLINE uint32_t Interpreter::lli(uint32_t opcode) // Rm,LSL #i
 {
@@ -523,7 +523,7 @@ FORCE_INLINE void Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn
     *op0 = op1 & op2;
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -557,7 +557,7 @@ FORCE_INLINE void Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn
     *op0 = op1 ^ op2;
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -591,7 +591,7 @@ FORCE_INLINE void Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn
     *op0 = op1 - op2;
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -628,7 +628,7 @@ FORCE_INLINE void Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn
     *op0 = op2 - op1;
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -665,7 +665,7 @@ FORCE_INLINE void Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn
     *op0 = op1 + op2;
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -702,7 +702,7 @@ FORCE_INLINE void Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn
     *op0 = op1 + op2 + ((cpsr & BIT(29)) >> 29);
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -739,7 +739,7 @@ FORCE_INLINE void Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn
     *op0 = op1 - op2 - 1 + ((cpsr & BIT(29)) >> 29);
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -776,7 +776,7 @@ FORCE_INLINE void Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn
     *op0 = op2 - op1 - 1 + ((cpsr & BIT(29)) >> 29);
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -813,7 +813,7 @@ FORCE_INLINE void Interpreter::orrs(uint32_t opcode, uint32_t op2) // ORRS Rd,Rn
     *op0 = op1 | op2;
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -845,7 +845,7 @@ FORCE_INLINE void Interpreter::movs(uint32_t opcode, uint32_t op2) // MOVS Rd,op
     *op0 = op2;
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -879,7 +879,7 @@ FORCE_INLINE void Interpreter::bics(uint32_t opcode, uint32_t op2) // BICS Rd,Rn
     *op0 = op1 & ~op2;
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -911,7 +911,7 @@ FORCE_INLINE void Interpreter::mvns(uint32_t opcode, uint32_t op2) // MVNS Rd,op
     *op0 = ~op2;
 
     // Handle pipelining and mode switching
-    if(op0 == registers[15])
+    if (op0 == registers[15])
     {
         if (spsr)
         {
@@ -1030,7 +1030,7 @@ FORCE_INLINE void Interpreter::muls(uint32_t opcode) // MULS Rd,Rm,Rs
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (!cp15) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
 }
 
 FORCE_INLINE void Interpreter::mlas(uint32_t opcode) // MLAS Rd,Rm,Rs,Rn
@@ -1047,7 +1047,7 @@ FORCE_INLINE void Interpreter::mlas(uint32_t opcode) // MLAS Rd,Rm,Rs,Rn
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (!cp15) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
 }
 
 FORCE_INLINE void Interpreter::umulls(uint32_t opcode) // UMULLS RdLo,RdHi,Rm,Rs
@@ -1066,7 +1066,7 @@ FORCE_INLINE void Interpreter::umulls(uint32_t opcode) // UMULLS RdLo,RdHi,Rm,Rs
     // Set the flags
     if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (!cp15) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
 }
 
 FORCE_INLINE void Interpreter::umlals(uint32_t opcode) // UMLALS RdLo,RdHi,Rm,Rs
@@ -1086,7 +1086,7 @@ FORCE_INLINE void Interpreter::umlals(uint32_t opcode) // UMLALS RdLo,RdHi,Rm,Rs
     // Set the flags
     if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (!cp15) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
 }
 
 FORCE_INLINE void Interpreter::smulls(uint32_t opcode) // SMULLS RdLo,RdHi,Rm,Rs
@@ -1106,7 +1106,7 @@ FORCE_INLINE void Interpreter::smulls(uint32_t opcode) // SMULLS RdLo,RdHi,Rm,Rs
     // Set the flags
     if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (!cp15) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
 }
 
 FORCE_INLINE void Interpreter::smlals(uint32_t opcode) // SMLALS RdLo,RdHi,Rm,Rs
@@ -1127,12 +1127,12 @@ FORCE_INLINE void Interpreter::smlals(uint32_t opcode) // SMLALS RdLo,RdHi,Rm,Rs
     // Set the flags
     if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (!cp15) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
 }
 
 FORCE_INLINE void Interpreter::smulbb(uint32_t opcode) // SMULBB Rd,Rm,Rs
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1145,7 +1145,7 @@ FORCE_INLINE void Interpreter::smulbb(uint32_t opcode) // SMULBB Rd,Rm,Rs
 
 FORCE_INLINE void Interpreter::smulbt(uint32_t opcode) // SMULBT Rd,Rm,Rs
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1158,7 +1158,7 @@ FORCE_INLINE void Interpreter::smulbt(uint32_t opcode) // SMULBT Rd,Rm,Rs
 
 FORCE_INLINE void Interpreter::smultb(uint32_t opcode) // SMULTB Rd,Rm,Rs
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1171,7 +1171,7 @@ FORCE_INLINE void Interpreter::smultb(uint32_t opcode) // SMULTB Rd,Rm,Rs
 
 FORCE_INLINE void Interpreter::smultt(uint32_t opcode) // SMULTT Rd,Rm,Rs
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1184,7 +1184,7 @@ FORCE_INLINE void Interpreter::smultt(uint32_t opcode) // SMULTT Rd,Rm,Rs
 
 FORCE_INLINE void Interpreter::smulwb(uint32_t opcode) // SMULWB Rd,Rm,Rs
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1197,7 +1197,7 @@ FORCE_INLINE void Interpreter::smulwb(uint32_t opcode) // SMULWB Rd,Rm,Rs
 
 FORCE_INLINE void Interpreter::smulwt(uint32_t opcode) // SMULWT Rd,Rm,Rs
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1210,7 +1210,7 @@ FORCE_INLINE void Interpreter::smulwt(uint32_t opcode) // SMULWT Rd,Rm,Rs
 
 FORCE_INLINE void Interpreter::smlabb(uint32_t opcode) // SMLABB Rd,Rm,Rs,Rn
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1228,7 +1228,7 @@ FORCE_INLINE void Interpreter::smlabb(uint32_t opcode) // SMLABB Rd,Rm,Rs,Rn
 
 FORCE_INLINE void Interpreter::smlabt(uint32_t opcode) // SMLABT Rd,Rm,Rs,Rn
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1246,7 +1246,7 @@ FORCE_INLINE void Interpreter::smlabt(uint32_t opcode) // SMLABT Rd,Rm,Rs,Rn
 
 FORCE_INLINE void Interpreter::smlatb(uint32_t opcode) // SMLATB Rd,Rm,Rs,Rn
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1264,7 +1264,7 @@ FORCE_INLINE void Interpreter::smlatb(uint32_t opcode) // SMLATB Rd,Rm,Rs,Rn
 
 FORCE_INLINE void Interpreter::smlatt(uint32_t opcode) // SMLATT Rd,Rm,Rs,Rn
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1282,7 +1282,7 @@ FORCE_INLINE void Interpreter::smlatt(uint32_t opcode) // SMLATT Rd,Rm,Rs,Rn
 
 FORCE_INLINE void Interpreter::smlawb(uint32_t opcode) // SMLAWB Rd,Rm,Rs,Rn
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1300,7 +1300,7 @@ FORCE_INLINE void Interpreter::smlawb(uint32_t opcode) // SMLAWB Rd,Rm,Rs,Rn
 
 FORCE_INLINE void Interpreter::smlawt(uint32_t opcode) // SMLAWT Rd,Rm,Rs,Rn
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1494,7 +1494,7 @@ FORCE_INLINE void Interpreter::qdsub(uint32_t opcode) // QDSUB Rd,Rm,Rn
 
 FORCE_INLINE void Interpreter::clz(uint32_t opcode) // CLZ Rd,Rm
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -2045,7 +2045,7 @@ FORCE_INLINE void Interpreter::mulDpT(uint16_t opcode) // MUL Rd,Rs
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (!cp15) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
 }
 
 #endif // INTERPRETER_ALU

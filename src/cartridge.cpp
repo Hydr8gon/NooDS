@@ -20,25 +20,164 @@
 #include <cstring>
 
 #include "cartridge.h"
-#include "defines.h"
-#include "dma.h"
-#include "interpreter.h"
-#include "memory.h"
+#include "core.h"
+#include "settings.h"
 
-void Cartridge::setRom(uint8_t *rom, uint32_t romSize, uint8_t *save, uint32_t saveSize)
+Cartridge::~Cartridge()
 {
-    this->rom = rom;
-    this->romSize = romSize;
-    this->save = save;
-    this->saveSize = saveSize;
+    // Write the NDS save file before exiting
+    if (saveSize > 0)
+    {
+        FILE *saveFile = fopen(saveName.c_str(), "wb");
+        if (saveFile)
+        {
+            fwrite(save, sizeof(uint8_t), saveSize, saveFile);
+            fclose(saveFile);
+        }
+    }
+
+    // Write the GBA save file before exiting
+    if (gbaSaveSize > 0)
+    {
+        FILE *gbaSaveFile = fopen(gbaSaveName.c_str(), "wb");
+        if (gbaSaveFile)
+        {
+            fwrite(gbaSave, sizeof(uint8_t), gbaSaveSize, gbaSaveFile);
+            fclose(gbaSaveFile);
+        }
+    }
+
+    // Free the ROM and save memory
+    if (rom)     delete[] rom;
+    if (save)    delete[] save;
+    if (gbaRom)  delete[] gbaRom;
+    if (gbaSave) delete[] gbaSave;
 }
 
-void Cartridge::setGbaRom(uint8_t *gbaRom, uint32_t gbaRomSize, uint8_t *gbaSave, uint32_t gbaSaveSize)
+void Cartridge::loadRom(std::string filename)
 {
-    this->gbaRom = gbaRom;
-    this->gbaRomSize = gbaRomSize;
-    this->gbaSave = gbaSave;
-    this->gbaSaveSize = gbaSaveSize;
+    // Attempt to load an NDS ROM
+    FILE *romFile = fopen(filename.c_str(), "rb");
+    if (!romFile) throw 2;
+    fseek(romFile, 0, SEEK_END);
+    romSize = ftell(romFile);
+    fseek(romFile, 0, SEEK_SET);
+    rom = new uint8_t[romSize];
+    fread(rom, sizeof(uint8_t), romSize, romFile);
+    fclose(romFile);
+
+    // Attempt to load the ROM's save file
+    saveName = filename.substr(0, filename.rfind(".")) + ".sav";
+    FILE *saveFile = fopen(saveName.c_str(), "rb");
+    if (!saveFile) throw 3;
+    fseek(saveFile, 0, SEEK_END);
+    saveSize = ftell(saveFile);
+    fseek(saveFile, 0, SEEK_SET);
+    save = new uint8_t[saveSize];
+    fread(save, sizeof(uint8_t), saveSize, saveFile);
+    fclose(saveFile);
+}
+
+void Cartridge::loadGbaRom(std::string filename)
+{
+    // Attempt to load a GBA ROM
+    FILE *gbaRomFile = fopen(filename.c_str(), "rb");
+    if (!gbaRomFile) throw 2;
+    fseek(gbaRomFile, 0, SEEK_END);
+    gbaRomSize = ftell(gbaRomFile);
+    fseek(gbaRomFile, 0, SEEK_SET);
+    gbaRom = new uint8_t[gbaRomSize];
+    fread(gbaRom, sizeof(uint8_t), gbaRomSize, gbaRomFile);
+    fclose(gbaRomFile);
+
+    // Attempt to load the ROM's save file
+    gbaSaveName = filename.substr(0, filename.rfind(".")) + ".sav";
+    FILE *gbaSaveFile = fopen(gbaSaveName.c_str(), "rb");
+    if (gbaSaveFile)
+    {
+        fseek(gbaSaveFile, 0, SEEK_END);
+        gbaSaveSize = ftell(gbaSaveFile);
+        fseek(gbaSaveFile, 0, SEEK_SET);
+        gbaSave = new uint8_t[gbaSaveSize];
+        fread(gbaSave, sizeof(uint8_t), gbaSaveSize, gbaSaveFile);
+        fclose(gbaSaveFile);
+    }
+    else
+    {
+        const std::string saveStrs[] = { "EEPROM_V", "SRAM_V", "FLASH_V", "FLASH512_V", "FLASH1M_V" };
+        int match = -1;
+
+        // Unlike the DS, a GBA cart's save type can be reliably detected by searching for strings in the ROM
+        // Search the ROM for a save string so a new save of that type can be created
+        for (unsigned int i = 0; i < gbaRomSize; i += 4)
+        {
+            for (unsigned int j = 0; j < 5; j++)
+            {
+                match = j;
+                for (unsigned int k = 0; k < saveStrs[j].length(); k++)
+                {
+                    if (i + k >= gbaRomSize || gbaRom[i + k] != saveStrs[j][k])
+                    {
+                        match = -1;
+                        break;
+                    }
+                }
+                if (match != -1) break;
+            }
+            if (match != -1) break;
+        }
+
+        // Create a new GBA save of the detected type
+        if (match != -1)
+        {
+            switch (match)
+            {
+                case 0: gbaSaveSize =  0x2000; break; // EEPROM  8KB
+                case 1: gbaSaveSize =  0x8000; break; // SRAM   32KB
+                case 2: gbaSaveSize = 0x10000; break; // FLASH  64KB
+                case 3: gbaSaveSize = 0x10000; break; // FLASH  64KB
+                case 4: gbaSaveSize = 0x20000; break; // FLASH 128KB
+            }
+
+            gbaSave = new uint8_t[gbaSaveSize];
+            memset(gbaSave, 0xFF, gbaSaveSize * sizeof(uint8_t));
+        }
+    }
+}
+
+void Cartridge::directBoot()
+{
+    // Extract some information about the initial ARM9 code from the header
+    uint32_t offset9    = U8TO32(rom, 0x20);
+    uint32_t entryAddr9 = U8TO32(rom, 0x24);
+    uint32_t ramAddr9   = U8TO32(rom, 0x28);
+    uint32_t size9      = U8TO32(rom, 0x2C);
+    printf("ARM9 code ROM offset:    0x%X\n", offset9);
+    printf("ARM9 code entry address: 0x%X\n", entryAddr9);
+    printf("ARM9 RAM address:        0x%X\n", ramAddr9);
+    printf("ARM9 code size:          0x%X\n", size9);
+
+    // Extract some information about the initial ARM7 code from the header
+    uint32_t offset7    = U8TO32(rom, 0x30);
+    uint32_t entryAddr7 = U8TO32(rom, 0x34);
+    uint32_t ramAddr7   = U8TO32(rom, 0x38);
+    uint32_t size7      = U8TO32(rom, 0x3C);
+    printf("ARM7 code ROM offset:    0x%X\n", offset7);
+    printf("ARM7 code entry address: 0x%X\n", entryAddr7);
+    printf("ARM7 RAM address:        0x%X\n", ramAddr7);
+    printf("ARM7 code size:          0x%X\n", size7);
+
+    // Load the ROM header into memory
+    for (uint32_t i = 0; i < 0x170; i++)
+        core->memory.write<uint8_t>(0, 0x27FFE00 + i, rom[i]);
+
+    // Load the initial ARM9 code into memory
+    for (uint32_t i = 0; i < size9; i++)
+        core->memory.write<uint8_t>(0, ramAddr9 + i, rom[offset9 + i]);
+
+    // Load the initial ARM7 code into memory
+    for (uint32_t i = 0; i < size7; i++)
+        core->memory.write<uint8_t>(1, ramAddr7 + i, rom[offset7 + i]);
 }
 
 template int8_t   Cartridge::gbaRomRead(uint32_t address);
@@ -269,7 +408,7 @@ void Cartridge::initKeycode(int level)
     // This is a translation of the pseudocode from GBATEK to C++
 
     for (int i = 0; i < 0x412; i++)
-        encTable[i] = memory->read<uint32_t>(false, 0x30 + i * 4);
+        encTable[i] = core->memory.read<uint32_t>(1, 0x30 + i * 4);
 
     uint32_t code = U8TO32(rom, 0x0C);
 
@@ -619,11 +758,11 @@ void Cartridge::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
         romCtrl[cpu] &= ~BIT(31); // Block ready
 
         // Disable DS cartridge DMA transfers
-        dmas[cpu]->setMode(5, false);
+        core->dma[cpu].setMode(5, false);
 
         // Trigger a block ready IRQ if enabled
         if (auxSpiCnt[cpu] & BIT(14))
-            cpus[cpu]->sendInterrupt(19);
+            core->interpreter[cpu].sendInterrupt(19);
     }
     else
     {
@@ -631,7 +770,7 @@ void Cartridge::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
         romCtrl[cpu] |= BIT(23);
 
         // Enable DS cartridge DMA transfers
-        dmas[cpu]->setMode(5, true);
+        core->dma[cpu].setMode(5, true);
 
         readCount[cpu] = 0;
     }
@@ -725,11 +864,11 @@ uint32_t Cartridge::readRomDataIn(bool cpu)
         romCtrl[cpu] &= ~BIT(31); // Block ready
 
         // Disable DS cartridge DMA transfers
-        dmas[cpu]->setMode(5, false);
+        core->dma[cpu].setMode(5, false);
 
         // Trigger a block ready IRQ if enabled
         if (auxSpiCnt[cpu] & BIT(14))
-            cpus[cpu]->sendInterrupt(19);
+            core->interpreter[cpu].sendInterrupt(19);
     }
 
     return value;

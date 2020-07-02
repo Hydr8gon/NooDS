@@ -20,7 +20,7 @@
 #ifndef INTERPRETER_BRANCH
 #define INTERPRETER_BRANCH
 
-#include "interpreter.h"
+#include "core.h"
 
 FORCE_INLINE void Interpreter::bx(uint32_t opcode) // BX Rn
 {
@@ -41,7 +41,7 @@ FORCE_INLINE void Interpreter::bx(uint32_t opcode) // BX Rn
 
 FORCE_INLINE void Interpreter::blxReg(uint32_t opcode) // BLX Rn
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operand
     uint32_t op0 = *registers[opcode & 0x0000000F];
@@ -80,7 +80,7 @@ FORCE_INLINE void Interpreter::bl(uint32_t opcode) // BL label
 
 FORCE_INLINE void Interpreter::blx(uint32_t opcode) // BLX label
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(23)) ? 0xFC000000 : 0) | ((opcode & 0x00FFFFFF) << 2) | ((opcode & BIT(24)) >> 23);
@@ -99,7 +99,7 @@ FORCE_INLINE void Interpreter::swi() // SWI #i
     *spsr = cpsrOld;
     cpsr |= BIT(7);
     *registers[14] = *registers[15] - 4;
-    *registers[15] = (cp15 ? cp15->getExceptionAddr() : 0) + 0x08 + 4;
+    *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0) + 0x08 + 4;
 }
 
 FORCE_INLINE void Interpreter::bxRegT(uint16_t opcode) // BX Rs
@@ -121,7 +121,7 @@ FORCE_INLINE void Interpreter::bxRegT(uint16_t opcode) // BX Rs
 
 FORCE_INLINE void Interpreter::blxRegT(uint16_t opcode) // BLX Rs
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operand
     uint32_t op0 = *registers[(opcode & 0x0078) >> 3];
@@ -310,7 +310,7 @@ FORCE_INLINE void Interpreter::blOffT(uint16_t opcode) // BL label
 
 FORCE_INLINE void Interpreter::blxOffT(uint16_t opcode) // BLX label
 {
-    if (!cp15) return; // ARM9 exclusive
+    if (cpu == 1) return; // ARM9 exclusive
 
     // Decode the operand
     uint32_t op0 = (opcode & 0x07FF) << 1;
@@ -331,7 +331,7 @@ FORCE_INLINE void Interpreter::swiT() // SWI #i
     cpsr &= ~BIT(5);
     cpsr |= BIT(7);
     *registers[14] = *registers[15] - 2;
-    *registers[15] = (cp15 ? cp15->getExceptionAddr() : 0) + 0x08 + 6;
+    *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0) + 0x08 + 6;
 }
 
 #endif // INTERPRETER_BRANCH

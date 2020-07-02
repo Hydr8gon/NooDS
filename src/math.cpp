@@ -20,7 +20,7 @@
 #include <cmath>
 
 #include "math.h"
-#include "defines.h"
+#include "core.h"
 
 void Math::divide()
 {

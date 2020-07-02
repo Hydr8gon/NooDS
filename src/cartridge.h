@@ -21,21 +21,19 @@
 #define CARTRIDGE_H
 
 #include <cstdint>
+#include <string>
 
-#include "defines.h"
-
-class Dma;
-class Interpreter;
-class Memory;
+class Core;
 
 class Cartridge
 {
     public:
-        Cartridge(Dma *dma9, Dma *dma7, Interpreter *arm9, Interpreter *arm7, Memory *memory):
-            dmas { dma9, dma7 }, cpus { arm9, arm7 }, memory(memory) {}
+        Cartridge(Core *core): core(core) {}
+        ~Cartridge();
 
-        void setRom(uint8_t *rom, uint32_t romSize, uint8_t *save, uint32_t saveSize);
-        void setGbaRom(uint8_t *gbaRom, uint32_t gbaRomSize, uint8_t *gbaSave, uint32_t gbaSaveSize);
+        void loadRom(std::string filename);
+        void loadGbaRom(std::string filename);
+        void directBoot();
 
         template <typename T> T gbaRomRead(uint32_t address);
         template <typename T> void gbaRomWrite(uint32_t address, T value);
@@ -52,6 +50,16 @@ class Cartridge
         void writeRomCmdOutH(bool cpu, uint32_t mask, uint32_t value);
 
     private:
+        Core *core;
+
+        uint8_t *gbaRom = nullptr, *gbaSave = nullptr;
+        int gbaRomSize = 0, gbaSaveSize = 0;
+        std::string saveName;
+
+        uint8_t *rom = nullptr, *save = nullptr;
+        int romSize = 0, saveSize = 0;
+        std::string gbaSaveName;
+
         int gbaEepromCount = 0;
         uint16_t gbaEepromCmd = 0;
         uint64_t gbaEepromData = 0;
@@ -76,16 +84,6 @@ class Cartridge
         uint8_t auxSpiData[2] = {};
         uint32_t romCtrl[2] = {};
         uint64_t romCmdOut[2] = {};
-
-        uint8_t *rom = nullptr, *save = nullptr;
-        int romSize = 0, saveSize = 0;
-
-        uint8_t *gbaRom = nullptr, *gbaSave = nullptr;
-        int gbaRomSize = 0, gbaSaveSize = 0;
-
-        Dma *dmas[2];
-        Interpreter *cpus[2];
-        Memory *memory;
 
         uint64_t encrypt64(uint64_t value);
         uint64_t decrypt64(uint64_t value);

@@ -26,6 +26,7 @@
 
 #include "cartridge.h"
 #include "cp15.h"
+#include "defines.h"
 #include "dma.h"
 #include "gpu.h"
 #include "gpu_2d.h"
@@ -45,62 +46,45 @@
 class Core
 {
     public:
-        Core(std::string filename = "");
-        ~Core();
+        Core(std::string filename = "", bool gba = false);
 
         static void createSave(std::string filename, int type);
 
         void runFrame() { (this->*runFunc)(); }
 
-        void pressKey(int key)         { input.pressKey(key);                       }
-        void releaseKey(int key)       { input.releaseKey(key);                     }
-        void pressScreen(int x, int y) { input.pressScreen();   spi.setTouch(x, y); }
-        void releaseScreen()           { input.releaseScreen(); spi.clearTouch();   }
+        bool isGbaMode() { return gbaMode; }
+        int  getFps()    { return fps;     }
 
-        bool      isGbaMode()            { return memory.isGbaMode();    }
-        uint32_t *getFrame(bool gbaCrop) { return gpu.getFrame(gbaCrop); }
-        uint32_t *getSamples(int count)  { return spu.getSamples(count); }
-        int       getFps()               { return fps;                   }
-
-    private:
-        uint8_t bios9[0x8000];
-        uint8_t bios7[0x4000];
-        uint8_t firmware[0x40000];
-        uint8_t gbaBios[0x4000];
-
-        uint8_t *rom = nullptr, *save = nullptr;
-        uint32_t saveSize = 0;
-        std::string saveName;
-
-        uint8_t *gbaRom = nullptr, *gbaSave = nullptr;
-        uint32_t gbaSaveSize = 0;
-        std::string gbaSaveName;
-
-        void runNdsFrame();
-        void runGbaFrame();
-        void (Core::*runFunc)();
-
-        int fps = 0, fpsCount = 0;
-        std::chrono::steady_clock::time_point lastFpsTime;
-        int spuTimer = 0;
+        void enterGbaMode();
 
         Cartridge cartridge;
         Cp15 cp15;
-        Dma dma9, dma7;
+        Dma dma[2];
         Gpu gpu;
-        Gpu2D engineA, engineB;
+        Gpu2D gpu2D[2];
         Gpu3D gpu3D;
         Gpu3DRenderer gpu3DRenderer;
         Input input;
-        Interpreter arm9, arm7;
+        Interpreter interpreter[2];
         Ipc ipc;
         Math math;
         Memory memory;
         Rtc rtc;
         Spi spi;
         Spu spu;
-        Timers timers9, timers7;
+        Timers timers[2];
         Wifi wifi;
+
+    private:
+        bool gbaMode = false;
+        void (Core::*runFunc)() = &Core::runNdsFrame;
+
+        int fps = 0, fpsCount = 0;
+        std::chrono::steady_clock::time_point lastFpsTime;
+        int spuTimer = 0;
+
+        void runNdsFrame();
+        void runGbaFrame();
 };
 
 #endif // CORE_H

@@ -25,13 +25,12 @@
 #include <queue>
 #include <mutex>
 
-class Dma;
-class Memory;
+class Core;
 
 class Spu
 {
     public:
-        Spu(Dma *dma7, Memory *memory): dma7(dma7), memory(memory) {}
+        Spu(Core *core): core(core) {}
         ~Spu();
 
         uint32_t *getSamples(int count);
@@ -74,6 +73,8 @@ class Spu
         void writeSoundBias(uint16_t mask, uint16_t value);
 
     private:
+        Core *core;
+
         uint32_t *bufferIn = nullptr, *bufferOut = nullptr;
         int bufferSize = 0, bufferPointer = 0;
 
@@ -120,9 +121,6 @@ class Spu
         uint32_t soundLen[16] = {};
         uint16_t mainSoundCnt = 0;
         uint16_t soundBias = 0;
-
-        Dma *dma7;
-        Memory *memory;
 
         bool shouldPlay() { return  ready; }
         bool shouldFill() { return !ready; }

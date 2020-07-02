@@ -23,12 +23,12 @@
 #include <cstdint>
 #include <queue>
 
-class Interpreter;
+class Core;
 
 class Ipc
 {
     public:
-        Ipc(Interpreter *arm9, Interpreter *arm7): cpus { arm9, arm7 } {}
+        Ipc(Core *core): core(core) {}
 
         uint16_t readIpcSync(bool cpu)    { return ipcSync[cpu];    }
         uint16_t readIpcFifoCnt(bool cpu) { return ipcFifoCnt[cpu]; }
@@ -39,13 +39,13 @@ class Ipc
         void writeIpcFifoSend(bool cpu, uint32_t mask, uint32_t value);
 
     private:
+        Core *core;
+
         std::queue<uint32_t> fifos[2];
 
         uint16_t ipcSync[2] = {};
         uint16_t ipcFifoCnt[2] = { 0x0101, 0x0101 };
         uint32_t ipcFifoRecv[2] = {};
-
-        Interpreter *cpus[2];
 };
 
 #endif // IPC_H

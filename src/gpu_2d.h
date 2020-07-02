@@ -22,15 +22,12 @@
 
 #include <cstdint>
 
-#include "defines.h"
-
-class Memory;
-class Gpu3DRenderer;
+class Core;
 
 class Gpu2D
 {
     public:
-        Gpu2D(Memory *memory, Gpu3DRenderer *gpu3DRenderer = nullptr);
+        Gpu2D(Core *core, bool engine);
 
         void drawGbaScanline(int line);
         void drawScanline(int line);
@@ -68,6 +65,9 @@ class Gpu2D
         void writeMasterBright(uint16_t mask, uint16_t value);
 
     private:
+        Core *core;
+        bool engine;
+
         uint32_t framebuffer[256 * 192] = {};
         uint32_t layers[8][256] = {};
 
@@ -100,9 +100,6 @@ class Gpu2D
         uint32_t bgVramAddr, objVramAddr;
         uint8_t *palette, *oam;
         uint8_t *extPalettes[5] = {};
-
-        Gpu3DRenderer *gpu3DRenderer;
-        Memory *memory;
 
         uint32_t rgb5ToRgb6(uint32_t color);
 

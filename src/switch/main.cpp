@@ -72,7 +72,7 @@ void outputAudio(void *args)
 
         // The NDS sample rate is 32768Hz, but audout uses 48000Hz
         // Get 699 samples at 32768Hz, which is equal to approximately 1024 samples at 48000Hz
-        uint32_t *original = core->getSamples(699);
+        uint32_t *original = core->spu.getSamples(699);
 
         // Stretch the 699 samples out to 1024 samples in the audio buffer
         for (int i = 0; i < 1024; i++)
@@ -325,13 +325,14 @@ void fileBrowser()
             path += "/" + files[menu.index].name;
             index = 0;
 
+            bool gba = (path.find(".gba", path.length() - 4) != std::string::npos);
+
             // If a ROM was selected, attempt to boot it
-            if (path.find(".nds", path.length() - 4) != std::string::npos ||
-                path.find(".gba", path.length() - 4) != std::string::npos)
+            if (path.find(".nds", path.length() - 4) != std::string::npos || gba)
             {
                 try
                 {
-                    core = new Core(path);
+                    core = new Core(path, gba);
                 }
                 catch (int e)
                 {
@@ -385,10 +386,9 @@ void fileBrowser()
                             // Assume a save type of FLASH 512KB
                             Core::createSave(path, 5);
 
-                            // Remove the ROM from the path and return to the file browser
-                            path = path.substr(0, path.rfind("/"));
-                            index = 0;
-                            continue;
+                            // Boot the ROM again
+                            core = new Core(path, gba);
+                            break;
                         }
                     }
                 }
@@ -525,9 +525,9 @@ int main()
         for (int i = 0; i < 12; i++)
         {
             if (pressed & keyMap[i])
-                core->pressKey(i);
+                core->input.pressKey(i);
             else if (released & keyMap[i])
-                core->releaseKey(i);
+                core->input.releaseKey(i);
         }
 
         // Scan for touch input
@@ -541,17 +541,19 @@ int main()
             int touchY = layout.getTouchY(touch.px, touch.py);
 
             // Send the touch coordinates to the core
-            core->pressScreen(touchX, touchY);
+            core->input.pressScreen();
+            core->spi.setTouch(touchX, touchY);
         }
         else
         {
             // If the screen isn't being touched, release the touch screen press
-            core->releaseScreen();
+            core->input.releaseScreen();
+            core->spi.clearTouch();
         }
 
         // Request a new frame
         bool gba = (core->isGbaMode() && ScreenLayout::getGbaCrop());
-        uint32_t *framebuffer = core->getFrame(gba);
+        uint32_t *framebuffer = core->gpu.getFrame(gba);
 
         // Update GBA mode status to match the new frame
         if (gbaMode != gba)

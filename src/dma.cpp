@@ -18,9 +18,7 @@
 */
 
 #include "dma.h"
-#include "defines.h"
-#include "interpreter.h"
-#include "memory.h"
+#include "core.h"
 
 void Dma::transfer()
 {
@@ -39,7 +37,7 @@ void Dma::transfer()
             for (unsigned int j = 0; j < 4; j++)
             {
                 // Transfer a word
-                memory->write<uint32_t>(dma9, dstAddrs[i], memory->read<uint32_t>(dma9, srcAddrs[i]));
+                core->memory.write<uint32_t>(cpu, dstAddrs[i], core->memory.read<uint32_t>(cpu, srcAddrs[i]));
 
                 // Adjust the source address
                 if (srcAddrCnt == 0) // Increment
@@ -53,7 +51,7 @@ void Dma::transfer()
             for (unsigned int j = 0; j < wordCounts[i]; j++)
             {
                 // Transfer a word
-                memory->write<uint32_t>(dma9, dstAddrs[i], memory->read<uint32_t>(dma9, srcAddrs[i]));
+                core->memory.write<uint32_t>(cpu, dstAddrs[i], core->memory.read<uint32_t>(cpu, srcAddrs[i]));
 
                 // Adjust the source address
                 if (srcAddrCnt == 0) // Increment
@@ -81,7 +79,7 @@ void Dma::transfer()
             for (unsigned int j = 0; j < wordCounts[i]; j++)
             {
                 // Transfer a half-word
-                memory->write<uint16_t>(dma9, dstAddrs[i], memory->read<uint16_t>(dma9, srcAddrs[i]));
+                core->memory.write<uint16_t>(cpu, dstAddrs[i], core->memory.read<uint16_t>(cpu, srcAddrs[i]));
 
                 // Adjust the source address
                 if (srcAddrCnt == 0) // Increment
@@ -130,12 +128,12 @@ void Dma::transfer()
 
         // Trigger an end of transfer IRQ if enabled
         if (dmaCnt[i] & BIT(30))
-            cpu->sendInterrupt(8 + i);
+            core->interpreter[cpu].sendInterrupt(8 + i);
     }
 
     // Some transfers are only triggered once at a time, so disable them after one transfer
     modes[1] = false;
-    if (memory->isGbaMode())
+    if (core->isGbaMode())
     {
         modes[4] = false;
         modes[8] = false;
@@ -152,7 +150,7 @@ void Dma::transfer()
 void Dma::setMode(int mode, bool active)
 {
     // Redirect ARM9 DMA modes on the ARM7 DMA
-    if (!dma9)
+    if (cpu == 1)
     {
         switch (mode)
         {
@@ -183,7 +181,7 @@ void Dma::update()
     }
 
     // Handle special GBA modes
-    if (memory->isGbaMode())
+    if (core->isGbaMode())
     {
         for (int i = 1; i < 3; i++)
         {
@@ -197,14 +195,14 @@ void Dma::update()
 void Dma::writeDmaSad(int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMASAD registers
-    mask &= ((dma9 || channel != 0) ? 0x0FFFFFFF : 0x07FFFFFF);
+    mask &= ((cpu == 0 || channel != 0) ? 0x0FFFFFFF : 0x07FFFFFF);
     dmaSad[channel] = (dmaSad[channel] & ~mask) | (value & mask);
 }
 
 void Dma::writeDmaDad(int channel, uint32_t mask, uint32_t value)
 {
     // Write to one of the DMADAD registers
-    mask &= ((dma9 || channel == 3) ? 0x0FFFFFFF : 0x07FFFFFF);
+    mask &= ((cpu == 0 || channel == 3) ? 0x0FFFFFFF : 0x07FFFFFF);
     dmaDad[channel] = (dmaDad[channel] & ~mask) | (value & mask);
 }
 
@@ -217,7 +215,7 @@ void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value)
         reload = true;
 
     // Write to one of the DMACNT registers
-    mask &= (dma9 ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF));
+    mask &= ((cpu == 0) ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF));
     dmaCnt[channel] = (dmaCnt[channel] & ~mask) | (value & mask);
 
     // Reload the internal registers

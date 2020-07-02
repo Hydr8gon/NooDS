@@ -20,7 +20,7 @@
 #include <ctime>
 
 #include "rtc.h"
-#include "defines.h"
+#include "core.h"
 
 // I find GBATEK's RTC documentation to be lacking, so here's a quick summary of how the I/O works
 //

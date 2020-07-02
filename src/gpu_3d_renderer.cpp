@@ -21,8 +21,7 @@
 #include <vector>
 
 #include "gpu_3d_renderer.h"
-#include "defines.h"
-#include "gpu_3d.h"
+#include "core.h"
 #include "settings.h"
 
 Gpu3DRenderer::~Gpu3DRenderer()
@@ -132,9 +131,9 @@ void Gpu3DRenderer::drawScanline1(int line)
     std::vector<_Polygon*> translucent;
 
     // Draw the solid polygons
-    for (int i = 0; i < gpu3D->getPolygonCount(); i++)
+    for (int i = 0; i < core->gpu3D.getPolygonCount(); i++)
     {
-        _Polygon *polygon = &gpu3D->getPolygons()[i];
+        _Polygon *polygon = &core->gpu3D.getPolygons()[i];
 
         // If the polygon is translucent, save it for last
         if (polygon->alpha < 0x3F || polygon->textureFmt == 1 || polygon->textureFmt == 6)

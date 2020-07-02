@@ -18,7 +18,7 @@
 */
 
 #include "input.h"
-#include "defines.h"
+#include "core.h"
 
 void Input::pressKey(int key)
 {

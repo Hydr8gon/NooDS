@@ -22,37 +22,48 @@
 #include "interpreter_branch.h"
 #include "interpreter_transfer.h"
 
-Interpreter::Interpreter(Memory *memory, Cp15 *cp15): memory(memory), cp15(cp15)
+Interpreter::Interpreter(Core *core, bool cpu): core(core), cpu(cpu)
 {
     for (int i = 0; i < 16; i++)
         registers[i] = &registersUsr[i];
 
     // Prepare to boot the BIOS
-    registersUsr[15] = (cp15 ? 0xFFFF0000 : 0x00000000) + 8;
+    registersUsr[15] = ((cpu == 0) ? 0xFFFF0000 : 0x00000000) + 8;
     cpsr = 0x000000C0;
     setMode(0x13); // Supervisor
 }
 
-void Interpreter::directBoot(uint32_t entryAddr)
+void Interpreter::directBoot()
 {
-    // Prepare to directly boot a DS game
-    registersUsr[12] = entryAddr;
-    registersUsr[14] = entryAddr;
-    registersUsr[15] = entryAddr + 8;
-    setMode(0x1F); // System
+    uint32_t entryAddr;
 
-    if (cp15) // ARM9
+    // Prepare to directly boot an NDS ROM
+    if (cpu == 0) // ARM9
     {
+        entryAddr = core->memory.read<uint32_t>(0, 0x27FFE24);
         registersUsr[13] = 0x03002F7C;
         registersIrq[0]  = 0x03003F80;
         registersSvc[0]  = 0x03003FC0;
     }
     else // ARM7
     {
+        entryAddr = core->memory.read<uint32_t>(0, 0x27FFE34);
         registersUsr[13] = 0x0380FD80;
         registersIrq[0]  = 0x0380FF80;
         registersSvc[0]  = 0x0380FFC0;
     }
+
+    registersUsr[12] = entryAddr;
+    registersUsr[14] = entryAddr;
+    registersUsr[15] = entryAddr + 8;
+    setMode(0x1F); // System
+}
+
+void Interpreter::enterGbaMode()
+{
+    // Point the program counter to the GBA BIOS
+    // The GBA BIOS will take care of initializing everything else
+    registersUsr[15] = 0x00000000 + 4;
 }
 
 void Interpreter::runCycle()
@@ -62,7 +73,7 @@ void Interpreter::runCycle()
     {
         // Execute 2 opcodes behind the program counter because of pipelining
         // In THUMB mode, this is 4 bytes behind
-        uint16_t opcode = memory->read<uint16_t>(cp15, *registers[15] - 4);
+        uint16_t opcode = core->memory.read<uint16_t>(cpu, *registers[15] - 4);
 
         // THUMB lookup table, based on the map found at http://imrannazar.com/ARM-Opcode-Map
         // Uses bits 15-8 of an opcode to find the appropriate instruction
@@ -376,7 +387,7 @@ void Interpreter::runCycle()
                 break;
 
             default:
-                printf("Unknown ARM%d THUMB opcode: 0x%X\n", (cp15 ? 9 : 7), opcode);
+                printf("Unknown ARM%d THUMB opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
                 break;
         }
 
@@ -387,7 +398,7 @@ void Interpreter::runCycle()
     {
         // Execute 2 opcodes behind the program counter because of pipelining
         // In ARM mode, this is 8 bytes behind
-        uint32_t opcode = memory->read<uint32_t>(cp15, *registers[15] - 8);
+        uint32_t opcode = core->memory.read<uint32_t>(cpu, *registers[15] - 8);
 
         if (condition(opcode))
         {
@@ -2975,7 +2986,7 @@ void Interpreter::runCycle()
                     break;
 
                 default:
-                    printf("Unknown ARM%d ARM opcode: 0x%X\n", (cp15 ? 9 : 7), opcode);
+                    printf("Unknown ARM%d ARM opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
                     break;
             }
         }
@@ -3001,11 +3012,11 @@ void Interpreter::interrupt()
 
         // Save the return address and jump to the interrupt handler
         *registers[14] = *registers[15] - ((cpsrOld & BIT(5)) ? 0 : 4);
-        *registers[15] = (cp15 ? cp15->getExceptionAddr() : 0) + 0x18 + 8;
+        *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0) + 0x18 + 8;
     }
 
     // The ARM9 only unhalts if interrupts are enabled, but the ARM7 doesn't care
-    if (ime || !cp15)
+    if (ime || cpu == 1)
         halted = false;
 }
 
@@ -3036,7 +3047,7 @@ bool Interpreter::condition(uint32_t opcode)
             if ((opcode & 0x0E000000) == 0x0A000000)
                 return true;
 
-            printf("Unknown ARM%d ARM opcode: 0x%X\n", (cp15 ? 9 : 7), opcode);
+            printf("Unknown ARM%d ARM opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
             return false;
         }
     }
@@ -3115,7 +3126,7 @@ void Interpreter::setMode(uint8_t mode)
             break;
 
         default:
-            printf("Unknown ARM%d CPU mode: 0x%X\n", (cp15 ? 9 : 7), mode & 0x1F);
+            printf("Unknown ARM%d CPU mode: 0x%X\n", ((cpu == 0) ? 9 : 7), mode & 0x1F);
             return;
     }
 
@@ -3132,7 +3143,7 @@ void Interpreter::writeIme(uint8_t value)
 void Interpreter::writeIe(uint32_t mask, uint32_t value)
 {
     // Write to the IE register
-    mask &= (cp15 ? 0x003F3F7F : 0x01FF3FFF);
+    mask &= ((cpu == 0) ? 0x003F3F7F : 0x01FF3FFF);
     ie = (ie & ~mask) | (value & mask);
 }
 
@@ -3149,5 +3160,5 @@ void Interpreter::writePostFlg(uint8_t value)
     // The first bit can be set, but never cleared
     // For some reason, the second bit is writable on the ARM9
     postFlg |= value & 0x01;
-    if (cp15) postFlg = (postFlg & ~0x02) | (value & 0x02);
+    if (cpu == 0) postFlg = (postFlg & ~0x02) | (value & 0x02);
 }
