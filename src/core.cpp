@@ -128,13 +128,12 @@ void Core::runGbaFrame()
         for (int j = 0; j < 308 * 2; j++) // 308 dots per scanline
         {
             // Run the ARM7
-            if (interpreter[1].shouldInterrupt()) interpreter[1].interrupt();
-            if (interpreter[1].shouldRun())       interpreter[1].runCycle();
-            if (dma[1].shouldTransfer())          dma[1].transfer();
-            if (timers[1].shouldTick())           timers[1].tick(true);
+            if (interpreter[1].shouldRun()) interpreter[1].runCycle();
+            if (dma[1].shouldTransfer())    dma[1].transfer();
+            if (timers[1].shouldTick())     timers[1].tick(true);
 
-            // Run the SPU every 256 cycles
-            if (++spuTimer >= 256)
+            // Run the SPU every 512 cycles
+            if (++spuTimer >= 512 / 2)
             {
                 spu.runGbaSample();
                 spuTimer = 0;
@@ -171,18 +170,16 @@ void Core::runNdsFrame()
             // Run the ARM9 at twice the speed of the ARM7
             for (int k = 0; k < 2; k++)
             {
-                if (interpreter[0].shouldInterrupt()) interpreter[0].interrupt();
-                if (interpreter[0].shouldRun())       interpreter[0].runCycle();
-                if (dma[0].shouldTransfer())          dma[0].transfer();
-                if (timers[0].shouldTick())           timers[0].tick(false);
+                if (interpreter[0].shouldRun()) interpreter[0].runCycle();
+                if (dma[0].shouldTransfer())    dma[0].transfer();
+                if (timers[0].shouldTick())     timers[0].tick(false);
             }
 
             // Run the ARM7
-            if (interpreter[1].shouldInterrupt()) interpreter[1].interrupt();
-            if (interpreter[1].shouldRun())       interpreter[1].runCycle();
-            if (dma[1].shouldTransfer())          dma[1].transfer();
-            if (timers[1].shouldTick())           timers[1].tick(true);
-    
+            if (interpreter[1].shouldRun()) interpreter[1].runCycle();
+            if (dma[1].shouldTransfer())    dma[1].transfer();
+            if (timers[1].shouldTick())     timers[1].tick(true);
+
             // Run the 3D engine
             if (gpu3D.shouldRun()) gpu3D.runCycle();
 

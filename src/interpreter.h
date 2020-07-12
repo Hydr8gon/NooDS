@@ -35,13 +35,11 @@ class Interpreter
         void enterGbaMode();
 
         void runCycle();
-        void interrupt();
 
-        void halt()                 { halted = true;   }
-        void sendInterrupt(int bit) { irf |= BIT(bit); }
+        void halt();
+        void sendInterrupt(int bit);
 
-        bool shouldRun()       { return !halted;  }
-        bool shouldInterrupt() { return ie & irf; }
+        bool shouldRun() { return !halted;  }
 
         uint8_t  readIme()     { return ime;     }
         uint32_t readIe()      { return ie;      }

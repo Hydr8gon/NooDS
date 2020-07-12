@@ -68,6 +68,23 @@ void Interpreter::enterGbaMode()
 
 void Interpreter::runCycle()
 {
+    // Trigger an interrupt if one was requested and enabled
+    if (ime && (ie & irf) && !(cpsr & BIT(7)))
+    {
+        // Switch the CPU to interrupt mode
+        uint32_t cpsrOld = cpsr;
+        setMode(0x12);
+        *spsr = cpsrOld;
+
+        // Switch to ARM mode and block other interrupts
+        cpsr &= ~BIT(5);
+        cpsr |= BIT(7);
+
+        // Save the return address and jump to the interrupt handler
+        *registers[14] = *registers[15] - ((cpsrOld & BIT(5)) ? 0 : 4);
+        *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0) + 0x18 + 8;
+    }
+
     // Execute an instruction
     if (cpsr & BIT(5)) // THUMB mode
     {
@@ -2996,27 +3013,24 @@ void Interpreter::runCycle()
     }
 }
 
-void Interpreter::interrupt()
+void Interpreter::halt()
 {
-    // Respond to an interrupt request
-    if (ime && !(cpsr & BIT(7))) // Interrupts enabled
-    {
-        // Switch the CPU to interrupt mode
-        uint32_t cpsrOld = cpsr;
-        setMode(0x12);
-        *spsr = cpsrOld;
+    // Halt the CPU
+    halted = true;
 
-        // Switch to ARM mode and block other interrupts
-        cpsr &= ~BIT(5);
-        cpsr |= BIT(7);
+    // The ARM9 needs the IME to be set when halting, or else it locks up
+    // It makes more sense to check this when unhalting, but doing so causes mysterious slowdown
+    if (cpu == 0 && !ime)
+        ie = 0;
+}
 
-        // Save the return address and jump to the interrupt handler
-        *registers[14] = *registers[15] - ((cpsrOld & BIT(5)) ? 0 : 4);
-        *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0) + 0x18 + 8;
-    }
+void Interpreter::sendInterrupt(int bit)
+{
+    // Set the interrupt's request bit
+    irf |= BIT(bit);
 
-    // The ARM9 only unhalts if interrupts are enabled, but the ARM7 doesn't care
-    if (ime || cpu == 1)
+    // Unhalt the CPU if the requested interrupt is enabled
+    if (ie & irf)
         halted = false;
 }
 
