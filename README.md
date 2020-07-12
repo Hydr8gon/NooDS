@@ -21,4 +21,4 @@ NooDS doesn't provide high-level emulation of the BIOS yet. To actually run game
 
 ### Other Links
 [The NooDS Discord server](https://discord.gg/JbNz7y4), where we can chat and do other fun stuff! \
-[My Patreon](https://www.patreon.com/Hydr8gon), where you can support the project or read about my progress!
+[Hydra's Lair](https://hydr8gon.github.io/), where you can read about my progress!
