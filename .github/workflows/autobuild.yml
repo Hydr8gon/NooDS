@@ -10,14 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Update package lists
-      run: sudo apt update
     - name: Install wxWidgets and PortAudio
-      run: sudo apt install libwxgtk3.0-dev portaudio19-dev -y
+      run: sudo apt update && sudo apt install libwxgtk3.0-dev portaudio19-dev -y
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: make
+      run: make -j$(nproc)
     - name: Upload
       uses: actions/upload-artifact@master
       with:
@@ -33,7 +31,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: make
+      run: make -j$(sysctl -n hw.logicalcpu)
     - name: Upload
       uses: actions/upload-artifact@master
       with:
@@ -47,13 +45,13 @@ jobs:
     - name: Install MSYS2
       run: choco install msys2
       shell: cmd
-    - name: Install MinGW, wxWidgets, and PortAudio
+    - name: Install build tools, wxWidgets, and PortAudio
       run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-wxWidgets mingw-w64-x86_64-portaudio mingw-w64-x86_64-jbigkit make --noconfirm"
       shell: cmd
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: C:\tools\msys64\usr\bin\bash -lc "cd /d/a/NooDS/NooDS && export PATH=$PATH:/mingw64/bin && make && strip noods.exe"
+      run: C:\tools\msys64\usr\bin\bash -lc "cd /d/a/NooDS/NooDS && export PATH=$PATH:/mingw64/bin && make -j$(nproc) && strip noods.exe"
       shell: cmd
     - name: Upload
       uses: actions/upload-artifact@master
@@ -63,18 +61,15 @@ jobs:
 
   build-switch:
     runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
 
     steps:
-    - name: Install devkitPro pacman
-      run: wget https://github.com/devkitPro/pacman/releases/download/v1.0.2/devkitpro-pacman.amd64.deb && sudo dpkg -i devkitpro-pacman.amd64.deb
-    - name: Install Switch dev tools
-      run: sudo dkp-pacman -S switch-dev switch-mesa switch-glad --noconfirm
     - name: Downgrade devkitA64 to r14
       run: wget "https://wii.leseratte10.de/devkitPro/devkitA64/r14 (2019-12)/devkitA64-r14-3-linux.pkg.tar.xz" && sudo dkp-pacman -U devkitA64-r14-3-linux.pkg.tar.xz --noconfirm
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: export DEVKITPRO=/opt/devkitpro && make -f Makefile.switch
+      run: make -f Makefile.switch -j$(nproc)
     - name: Upload
       uses: actions/upload-artifact@master
       with:
