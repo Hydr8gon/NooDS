@@ -41,21 +41,22 @@ std::vector<Setting> Settings::settings =
     Setting("gbaBiosPath",  &gbaBiosPath,  true)
 };
 
-void Settings::add(std::vector<Setting> platformSettings)
+bool Settings::add(std::vector<Setting> platformSettings)
 {
-    // Add the platform settings
+    // Add additional platform settings if the settings haven't been loaded yet
     if (!loaded)
         settings.insert(settings.end(), platformSettings.begin(), platformSettings.end());
+    return !loaded;
 }
 
-void Settings::load()
+bool Settings::load(std::string filename)
 {
-    if (loaded) return;
+    if (loaded) return false;
 
     // Attempt to open the settings file
     // If the file can't be opened, the default values will be used
-    FILE *settingsFile = fopen("noods.ini", "r");
-    if (!settingsFile) return;
+    FILE *settingsFile = fopen(filename.c_str(), "r");
+    if (!settingsFile) return false;
 
     char data[1024];
 
@@ -82,13 +83,14 @@ void Settings::load()
 
     fclose(settingsFile);
     loaded = true;
+    return true;
 }
 
-void Settings::save()
+bool Settings::save(std::string filename)
 {
     // Attempt to open the settings file
-    FILE *settingsFile = fopen("noods.ini", "w");
-    if (!settingsFile) return;
+    FILE *settingsFile = fopen(filename.c_str(), "w");
+    if (!settingsFile) return false;
 
     // Write each setting to the settings file
     for (unsigned int i = 0; i < settings.size(); i++)
@@ -98,4 +100,5 @@ void Settings::save()
     }
 
     fclose(settingsFile);
+    return true;
 }

@@ -75,3 +75,21 @@ jobs:
       with:
         name: noods-switch
         path: noods.nro
+
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Compile
+      run: ./gradlew assembleRelease && mv build-android/outputs/apk/release/android-release-unsigned.apk noods.apk
+    - name: Sign
+      run: $ANDROID_SDK_ROOT/build-tools/29.0.3/apksigner sign --ks keystore.jks --ks-pass pass:$KEYSTORE_PASS noods.apk
+      env:
+        KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+    - name: Upload
+      uses: actions/upload-artifact@master
+      with:
+        name: noods-android
+        path: noods.apk

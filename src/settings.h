@@ -35,9 +35,9 @@ struct Setting
 class Settings
 {
     public:
-        static void add(std::vector<Setting> platformSettings);
-        static void load();
-        static void save();
+        static bool add(std::vector<Setting> platformSettings);
+        static bool load(std::string filename = "noods.ini");
+        static bool save(std::string filename = "noods.ini");
 
         static int         getDirectBoot()   { return directBoot;   }
         static int         getFpsLimiter()   { return fpsLimiter;   }
