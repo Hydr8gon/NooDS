@@ -69,7 +69,8 @@ class Gpu2D
         bool engine;
 
         uint32_t framebuffer[256 * 192] = {};
-        uint32_t layers[8][256] = {};
+        uint32_t layers[5][256] = {};
+        uint8_t objPrio[256] = {};
 
         int gbaBlock = 0;
 
