@@ -60,6 +60,7 @@ class Gpu
         uint32_t dispCapCnt = 0;
         uint16_t powCnt1 = 0;
 
+        uint32_t rgb6ToRgb8(uint32_t color);
         uint16_t rgb6ToRgb5(uint32_t color);
 };
 

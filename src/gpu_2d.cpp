@@ -54,11 +54,6 @@ uint32_t Gpu2D::rgb5ToRgb6(uint32_t color)
 
 void Gpu2D::drawGbaScanline(int line)
 {
-    // The DS draws the GBA screen by capturing it to VRAM and then displaying that
-    // The current frame is captured to one VRAM block and the previous is displayed from another
-    // Get the VRAM block that the current frame is being captured to
-    uint8_t *block = core->memory.getVramBlock(gbaBlock);
-
     // Reload the internal registers at the start of the frame
     if (line == 0)
     {
@@ -209,20 +204,27 @@ void Gpu2D::drawGbaScanline(int line)
             pixel = (b << 10) | (g << 5) | r;
         }
 
-        // Write the pixel to the VRAM block
-        block[((line + 16) * 256 + (i + 8)) * 2 + 0] = pixel >> 0;
-        block[((line + 16) * 256 + (i + 8)) * 2 + 1] = pixel >> 8;
+        // Write the pixel to the framebuffer, centered on the screen
+        framebuffer[(line + 16) * 256 + 8 + i] = rgb5ToRgb6(pixel);
     }
 
-    if (line == 159) // End of frame
+    // At the end of the frame, copy the VRAM border to the framebuffer around the GBA display
+    // The DS draws the GBA screen by capturing it to VRAM and then displaying that
+    // The current frame is captured to one VRAM block and the previous is displayed from another
+    // This introduces a frame of latency on hardware, but is avoided here by simply drawing directly to the framebuffer
+    if (line == 159)
     {
-        // Copy the finished frame in the current VRAM block to the framebuffer
-        // This avoids the frame of latency that is present on hardware
-        for (int i = 0; i < 256 * 192; i++)
-            framebuffer[i] = rgb5ToRgb6(U8TO16(block, i * 2));
-
-        // Switch VRAM blocks
+        uint32_t base = 0x6800000 + gbaBlock * 0x20000;
         gbaBlock = !gbaBlock;
+
+        for (int y = 0; y < 192; y++)
+        {
+            for (int x = 0; x < 256; x++)
+            {
+                if (x == 8 && y >= 16 && y < 192 - 16) x += 240;
+                framebuffer[y * 256 + x] = rgb5ToRgb6(core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
+            }
+        }
     }
 }
 
@@ -442,9 +444,9 @@ void Gpu2D::finishScanline(int line)
         case 2: // VRAM display
         {
             // Draw raw bitmap data from a VRAM block
-            uint8_t *data = core->memory.getVramBlock((dispCnt & 0x000C0000) >> 18);
+            uint32_t address = 0x6800000 + ((dispCnt & 0x000C0000) >> 18) * 0x20000 + line * 256 * 2;
             for (int i = 0; i < 256; i++)
-                framebuffer[line * 256 + i] = rgb5ToRgb6(U8TO16(data, (line * 256 + i) * 2));
+                framebuffer[line * 256 + i] = rgb5ToRgb6(core->memory.read<uint16_t>(0, address + i * 2));
             break;
         }
 

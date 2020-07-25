@@ -213,8 +213,13 @@ void Core::runNdsFrame()
 
 void Core::enterGbaMode()
 {
-    // Switch to GBA mode if enabled
+    // Switch to GBA mode
     interpreter[1].enterGbaMode();
     runFunc = &Core::runGbaFrame;
     gbaMode = true;
+
+    // Set VRAM blocks A and B to plain access mode
+    // This is used by the GPU to access the VRAM borders
+    memory.write<uint8_t>(0, 0x4000240, 0x80); // VRAMCNT_A
+    memory.write<uint8_t>(0, 0x4000241, 0x80); // VRAMCNT_B
 }

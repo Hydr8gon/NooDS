@@ -22,59 +22,13 @@
 #include "gpu.h"
 #include "core.h"
 
-uint32_t *Gpu::getFrame(bool gbaCrop)
+uint32_t Gpu::rgb6ToRgb8(uint32_t color)
 {
-    mutex.lock();
-
-    // Return the current frame in RGBA8 format if it's ready
-    // If it's not ready (the current frame has already been requested), return nothing
-    // Frontends should only draw each frame once to avoid stutter, or at least reuse the old frame to avoid repeated conversion
-    if (ready)
-    {
-        uint32_t *out;
-
-        if (gbaCrop)
-        {
-            out = new uint32_t[240 * 160];
-
-            // Convert the framebuffer to RGBA8 format (GBA window only)
-            int offset = (powCnt1 & BIT(15)) ? 0 : (256 * 192); // Display swap
-            for (int y = 0; y < 160; y++)
-            {
-                for (int x = 0; x < 240; x++)
-                {
-                    uint32_t color = framebuffer[offset + (y + 16) * 256 + (x + 8)];
-                    uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
-                    uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
-                    uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
-                    out[y * 240 + x] = (0xFF << 24) | (b << 16) | (g << 8) | r;
-                }
-            }
-        }
-        else
-        {
-            out = new uint32_t[256 * 192 * 2];
-
-            // Convert the framebuffer to RGBA8 format
-            for (int i = 0; i < 256 * 192 * 2; i++)
-            {
-                uint32_t color = framebuffer[i];
-                uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
-                uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
-                uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
-                out[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
-            }
-        }
-
-        ready = false;
-        mutex.unlock();
-        return out;
-    }
-    else
-    {
-        mutex.unlock();
-        return nullptr;
-    }
+    // Convert an RGB6 value to an RGB8 value
+    uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
+    uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
+    uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
+    return (0xFF << 24) | (b << 16) | (g << 8) | r;
 }
 
 uint16_t Gpu::rgb6ToRgb5(uint32_t color)
@@ -84,6 +38,37 @@ uint16_t Gpu::rgb6ToRgb5(uint32_t color)
     uint8_t g = ((color >>  6) & 0x3F) / 2;
     uint8_t b = ((color >> 12) & 0x3F) / 2;
     return BIT(15) | (b << 10) | (g << 5) | r;
+}
+
+uint32_t *Gpu::getFrame(bool gbaCrop)
+{
+    mutex.lock();
+    uint32_t *out = nullptr;
+
+    // If a new frame is ready, get it, convert it to RGB8 format, and crop it if needed
+    // If a new frame isn't ready yet, nothing will be returned
+    // In that case, frontends should reuse the previous frame (or skip redrawing) to avoid repeated conversion
+    if (ready)
+    {
+        if (gbaCrop)
+        {
+            int offset = (powCnt1 & BIT(15)) ? 0 : (256 * 192); // Display swap
+            out = new uint32_t[240 * 160];
+            for (int y = 0; y < 160; y++)
+                for (int x = 0; x < 240; x++)
+                    out[y * 240 + x] = rgb6ToRgb8(framebuffer[offset + (y + 16) * 256 + (x + 8)]);
+        }
+        else
+        {
+            out = new uint32_t[256 * 192 * 2];
+            for (int i = 0; i < 256 * 192 * 2; i++)
+                out[i] = rgb6ToRgb8(framebuffer[i]);
+        }
+    }
+
+    ready = false;
+    mutex.unlock();
+    return out;
 }
 
 void Gpu::gbaScanline240()
@@ -194,10 +179,6 @@ void Gpu::scanline256()
         // Perform a display capture
         if (displayCapture)
         {
-            // Get the capture destination
-            uint8_t *block = core->memory.getVramBlock((dispCapCnt & 0x00030000) >> 16);
-            uint32_t writeOffset = (dispCapCnt & 0x000C0000) >> 3;
-
             // Determine the capture size
             int width, height;
             switch ((dispCapCnt & 0x00300000) >> 20) // Capture size
@@ -207,6 +188,10 @@ void Gpu::scanline256()
                 case 2: width = 256; height = 128; break;
                 case 3: width = 256; height = 192; break;
             }
+
+            // Get the VRAM destination address for the current scanline
+            uint32_t base = 0x6800000 + ((dispCapCnt & 0x00030000) >> 16) * 0x20000;
+            uint32_t writeOffset = ((dispCapCnt & 0x000C0000) >> 3) + vCount * width * 2;
 
             // Copy the source contents to memory as a 15-bit bitmap
             switch ((dispCapCnt & 0x60000000) >> 29) // Capture source
@@ -222,11 +207,7 @@ void Gpu::scanline256()
 
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
-                    {
-                        uint16_t color = rgb6ToRgb5(source[i]);
-                        block[(writeOffset + (vCount * width + i) * 2 + 0) % 0x20000] = color >> 0;
-                        block[(writeOffset + (vCount * width + i) * 2 + 1) % 0x20000] = color >> 8;
-                    }
+                        core->memory.write<uint16_t>(0, base + (writeOffset + i * 2) % 0x20000, rgb6ToRgb5(source[i]));
 
                     break;
                 }
@@ -239,15 +220,14 @@ void Gpu::scanline256()
                         break;
                     }
 
-                    // Get the VRAM source address
-                    uint32_t readOffset = (dispCapCnt & 0x0C000000) >> 11;
+                    // Get the VRAM source address for the current scanline
+                    uint32_t readOffset = ((dispCapCnt & 0x0C000000) >> 11) + vCount * width * 2;
 
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
                     {
-                        uint16_t color = U8TO16(block, (readOffset + (vCount * width + i) * 2) % 0x20000);
-                        block[(writeOffset + (vCount * width + i) * 2 + 0) % 0x20000] = color >> 0;
-                        block[(writeOffset + (vCount * width + i) * 2 + 1) % 0x20000] = color >> 8;
+                        uint16_t color = core->memory.read<uint16_t>(0, base + (readOffset + i * 2) % 0x20000);
+                        core->memory.write<uint16_t>(0, base + (writeOffset + i * 2) % 0x20000, color);
                     }
 
                     break;
@@ -268,15 +248,15 @@ void Gpu::scanline256()
                     else
                         source = &core->gpu3DRenderer.getFramebuffer()[vCount * 256];
 
-                    // Get the VRAM source address
-                    uint32_t readOffset = (dispCapCnt & 0x0C000000) >> 11;
+                    // Get the VRAM source address for the current scanline
+                    uint32_t readOffset = ((dispCapCnt & 0x0C000000) >> 11) + vCount * width * 2;
 
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
                     {
                         // Get colors from the two sources
                         uint16_t c1 = rgb6ToRgb5(source[i]);
-                        uint16_t c2 = U8TO16(block, (readOffset + (vCount * width + i) * 2) % 0x20000);
+                        uint16_t c2 = core->memory.read<uint16_t>(0, base + (readOffset + i * 2) % 0x20000);
 
                         // Get the blending factors for the two sources
                         int eva = (dispCapCnt & 0x0000001F) >> 0; if (eva > 16) eva = 16;
@@ -288,8 +268,7 @@ void Gpu::scanline256()
                         uint8_t b = (((c1 >> 10) & 0x1F) * eva + ((c2 >> 10) & 0x1F) * evb) / 16;
 
                         uint16_t color = BIT(15) | (b << 10) | (g << 5) | r;
-                        block[(writeOffset + (vCount * width + i) * 2 + 0) % 0x20000] = color >> 0;
-                        block[(writeOffset + (vCount * width + i) * 2 + 1) % 0x20000] = color >> 8;
+                        core->memory.write<uint16_t>(0, base + (writeOffset + i * 2) % 0x20000, color);
                     }
 
                     break;

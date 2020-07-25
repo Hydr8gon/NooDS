@@ -497,20 +497,6 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
     }
 }
 
-uint8_t *Memory::getVramBlock(int block)
-{
-    // Get a pointer to a VRAM block
-    // Only blocks A through D are ever directly needed externally
-    switch (block)
-    {
-        case 0:  return vramA;
-        case 1:  return vramB;
-        case 2:  return vramC;
-        case 3:  return vramD;
-        default: return nullptr;
-    }
-}
-
 template <typename T> T Memory::ioRead9(uint32_t address)
 {
     T value = 0;

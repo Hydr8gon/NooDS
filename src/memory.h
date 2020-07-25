@@ -35,7 +35,6 @@ class Memory
         template <typename T> T read(bool cpu, uint32_t address);
         template <typename T> void write(bool cpu, uint32_t address, T value);
 
-        uint8_t *getVramBlock(int block);
         uint8_t *getPalette() { return palette; }
         uint8_t *getOam() { return oam; }
 
