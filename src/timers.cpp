@@ -20,7 +20,7 @@
 #include "timers.h"
 #include "core.h"
 
-void Timers::tick(bool twice)
+void Timers::tick(int cycles)
 {
     bool countUp = false;
 
@@ -32,24 +32,9 @@ void Timers::tick(bool twice)
 
         int amount;
 
-        if ((tmCntH[i] & 0x0003) > 0)
+        if (countUp)
         {
-            // Timers can tick at frequencies of f/1, f/64, f/256, or f/1024
-            // For slower frequencies, increment the scaler value until it reaches the desired amount, and only then tick
-            scalers[i] += 1 + twice;
-            if (scalers[i] == (0x10 << ((tmCntH[i] & 0x0003) * 2)))
-            {
-                amount = 1;
-                scalers[i] = 0;
-            }
-            else
-            {
-                continue;
-            }
-        }
-        else if (countUp)
-        {
-            // Always tick once in count-up mode
+            // If count-up mode was triggered, tick once and disable the timer until the next trigger
             amount = 1;
             enabled &= ~BIT(i);
             countUp = false;
@@ -57,17 +42,17 @@ void Timers::tick(bool twice)
         else
         {
             // Tick normally
-            amount = 1 + twice;
+            amount = cycles;
         }
 
         // Tick the timer
-        tmCntL[i] += amount;
+        timers[i] += amount;
 
         // Handle overflow
-        if (tmCntL[i] < amount)
+        if ((timers[i] & masks[i]) < amount)
         {
             // Reload the timer
-            tmCntL[i] += reloads[i];
+            timers[i] += tmCntL[i] << shifts[i];
 
             // Trigger a timer overflow IRQ if enabled
             if (tmCntH[i] & BIT(6))
@@ -77,8 +62,8 @@ void Timers::tick(bool twice)
             if (core->isGbaMode() && i < 2)
                 core->spu.gbaFifoTimer(i);
 
-            // In count-up timing mode, the timer only ticks when the previous timer overflows
             // If the next timer has count-up timing enabled, let it tick now
+            // In count-up timing mode, the timer only ticks when the previous timer overflows
             if (i < 3 && (tmCntH[i + 1] & BIT(2)))
             {
                 enabled |= BIT(i + 1);
@@ -91,18 +76,26 @@ void Timers::tick(bool twice)
 void Timers::writeTmCntL(int timer, uint16_t mask, uint16_t value)
 {
     // Write to one of the TMCNT_L registers
-    // The value gets redirected and used as the reload value
-    reloads[timer] = (reloads[timer] & ~mask) | (value & mask);
+    // This value doesn't affect the current counter, and is instead used as the reload value
+    tmCntL[timer] = (tmCntL[timer] & ~mask) | (value & mask);
 }
 
 void Timers::writeTmCntH(int timer, uint16_t mask, uint16_t value)
 {
+    // Update the timer shift if the prescaler setting was changed
+    // The prescaler allows timers to tick at frequencies of f/1, f/64, f/256, or f/1024
+    // The timers are implemented as fixed-point numbers, with the shift representing the fractional length
+    if (mask & 0x0003)
+    {
+        int shift = ((value & 0x0003) ? (4 + (value & 0x0003) * 2) : 0);
+        timers[timer] = (timers[timer] >> shifts[timer]) << shift;
+        masks[timer] = (1 << (16 + shift)) - 1;
+        shifts[timer] = shift;
+    }
+
     // Reload the counter if the enable bit changes from 0 to 1
     if (!(tmCntH[timer] & BIT(7)) && (value & BIT(7)))
-    {
-        tmCntL[timer] = reloads[timer];
-        scalers[timer] = 0;
-    }
+        timers[timer] = tmCntL[timer] << shifts[timer];
 
     // Write to one of the TMCNT_H registers
     mask &= 0x00C7;
@@ -114,4 +107,10 @@ void Timers::writeTmCntH(int timer, uint16_t mask, uint16_t value)
         enabled |= BIT(timer);
     else
         enabled &= ~BIT(timer);
+}
+
+uint16_t Timers::readTmCntL(int timer)
+{
+    // Read the current timer value, shifted to remove the prescaler fraction
+    return timers[timer] >> shifts[timer];
 }

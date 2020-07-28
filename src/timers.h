@@ -29,12 +29,12 @@ class Timers
     public:
         Timers(Core *core, bool cpu): core(core), cpu(cpu) {}
 
-        void tick(bool twice);
+        void tick(int cycles);
 
         bool shouldTick() { return enabled; }
 
-        uint16_t readTmCntL(int timer) { return tmCntL[timer]; }
         uint16_t readTmCntH(int timer) { return tmCntH[timer]; }
+        uint16_t readTmCntL(int timer);
 
         void writeTmCntL(int timer, uint16_t mask, uint16_t value);
         void writeTmCntH(int timer, uint16_t mask, uint16_t value);
@@ -43,12 +43,14 @@ class Timers
         Core *core;
         bool cpu;
 
+        uint8_t enabled = 0;
+
+        uint32_t timers[4] = {};
+        uint32_t masks[4] = {};
+        int shifts[4] = {};
+
         uint16_t tmCntL[4] = {};
         uint16_t tmCntH[4] = {};
-
-        uint16_t reloads[4] = {};
-        uint16_t scalers[4] = {};
-        uint8_t enabled = 0;
 };
 
 #endif // TIMERS_H

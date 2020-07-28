@@ -130,7 +130,7 @@ void Core::runGbaFrame()
             // Run the ARM7
             if (interpreter[1].shouldRun()) interpreter[1].runCycle();
             if (dma[1].shouldTransfer())    dma[1].transfer();
-            if (timers[1].shouldTick())     timers[1].tick(true);
+            if (timers[1].shouldTick())     timers[1].tick(2);
 
             // Run the SPU every 512 cycles
             if (++spuTimer >= 512 / 2)
@@ -172,13 +172,13 @@ void Core::runNdsFrame()
             {
                 if (interpreter[0].shouldRun()) interpreter[0].runCycle();
                 if (dma[0].shouldTransfer())    dma[0].transfer();
-                if (timers[0].shouldTick())     timers[0].tick(false);
+                if (timers[0].shouldTick())     timers[0].tick(1);
             }
 
             // Run the ARM7
             if (interpreter[1].shouldRun()) interpreter[1].runCycle();
             if (dma[1].shouldTransfer())    dma[1].transfer();
-            if (timers[1].shouldTick())     timers[1].tick(true);
+            if (timers[1].shouldTick())     timers[1].tick(2);
 
             // Run the 3D engine
             if (gpu3D.shouldRun()) gpu3D.runCycle();
