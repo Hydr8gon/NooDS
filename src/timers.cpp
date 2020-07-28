@@ -83,11 +83,11 @@ void Timers::writeTmCntL(int timer, uint16_t mask, uint16_t value)
 void Timers::writeTmCntH(int timer, uint16_t mask, uint16_t value)
 {
     // Update the timer shift if the prescaler setting was changed
-    // The prescaler allows timers to tick at frequencies of f/1, f/64, f/256, or f/1024
+    // The prescaler allows timers to tick at frequencies of f/1, f/64, f/256, or f/1024 (when not in count-up mode)
     // The timers are implemented as fixed-point numbers, with the shift representing the fractional length
-    if (mask & 0x0003)
+    if (mask & 0x00FF)
     {
-        int shift = ((value & 0x0003) ? (4 + (value & 0x0003) * 2) : 0);
+        int shift = (((value & 0x0003) && (timer == 0 || !(value & BIT(2)))) ? (4 + (value & 0x0003) * 2) : 0);
         timers[timer] = (timers[timer] >> shifts[timer]) << shift;
         masks[timer] = (1 << (16 + shift)) - 1;
         shifts[timer] = shift;
