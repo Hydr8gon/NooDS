@@ -65,7 +65,7 @@ jobs:
 
     steps:
     - name: Downgrade devkitA64 to r14
-      run: wget "https://wii.leseratte10.de/devkitPro/devkitA64/r14 (2019-12)/devkitA64-r14-3-linux.pkg.tar.xz" && sudo dkp-pacman -U devkitA64-r14-3-linux.pkg.tar.xz --noconfirm
+      run: sudo dkp-pacman -Rs devkitA64 devkitA64-gdb devkita64-rules --noconfirm && wget "https://wii.leseratte10.de/devkitPro/devkitA64/r14 (2019-12)/devkitA64-r14-3-linux.pkg.tar.xz" && sudo dkp-pacman -U devkitA64-r14-3-linux.pkg.tar.xz --noconfirm
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
