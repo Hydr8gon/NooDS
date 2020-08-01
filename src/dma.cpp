@@ -190,6 +190,8 @@ void Dma::update()
                 active |= BIT(i) | BIT(i + 4);
         }
     }
+
+    active &= ~inactive;
 }
 
 void Dma::writeDmaSad(int channel, uint32_t mask, uint32_t value)
@@ -213,6 +215,16 @@ void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value)
     // Reload the internal registers if the enable bit changes from 0 to 1
     if (!(dmaCnt[channel] & BIT(31)) && (value & BIT(31)))
         reload = true;
+
+    // Disable the channel if the repeat bit changes from 1 to 0 while the channel is enabled and the mode is immediate
+    // This is a weird quirk; the transfer never happens and the enabled bit stays on indefinitely
+    if (mask & 0xFF000000)
+    {
+        if (((dmaCnt[channel] & 0x82000000) == 0x82000000) && !(value & 0x3A000000))
+            inactive |= BIT(channel);
+        else if ((value & 0x3A000000) || reload)
+            inactive &= ~BIT(channel);
+    }
 
     // Write to one of the DMACNT registers
     mask &= ((cpu == 0) ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF));

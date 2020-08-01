@@ -56,7 +56,7 @@ class Dma
 
         int gxFifoCount[4] = {};
 
-        uint8_t active = 0;
+        uint8_t active = 0, inactive = 0;
         bool modes[10] = { true };
 
         void update();
