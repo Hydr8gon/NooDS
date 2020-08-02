@@ -270,6 +270,9 @@ void NooFrame::pause(wxCommandEvent &event)
         delete coreThread;
         coreThread = nullptr;
 
+        // Write the save as an extra precaution
+        emulator->core->cartridge.writeSave();
+
         // Update the menu item
         systemMenu->SetLabel(PAUSE, "&Resume");
     }

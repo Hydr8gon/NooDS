@@ -93,7 +93,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooButton_releaseKey(JNIE
     core->input.releaseKey(key);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_closeRom(JNIEnv *env, jobject obj)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_writeSave(JNIEnv *env, jobject obj)
 {
-    delete core;
+    core->cartridge.writeSave();
 }

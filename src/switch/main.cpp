@@ -423,7 +423,9 @@ void fileBrowser()
 
 void pauseMenu()
 {
+    // Stop the core and write the save as an extra precaution
     stopCore();
+    core->cartridge.writeSave();
 
     unsigned int index = 0;
 

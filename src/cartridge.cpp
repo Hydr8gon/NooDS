@@ -25,27 +25,8 @@
 
 Cartridge::~Cartridge()
 {
-    // Write the NDS save file before exiting
-    if (saveSize > 0)
-    {
-        FILE *saveFile = fopen(saveName.c_str(), "wb");
-        if (saveFile)
-        {
-            fwrite(save, sizeof(uint8_t), saveSize, saveFile);
-            fclose(saveFile);
-        }
-    }
-
-    // Write the GBA save file before exiting
-    if (gbaSaveSize > 0)
-    {
-        FILE *gbaSaveFile = fopen(gbaSaveName.c_str(), "wb");
-        if (gbaSaveFile)
-        {
-            fwrite(gbaSave, sizeof(uint8_t), gbaSaveSize, gbaSaveFile);
-            fclose(gbaSaveFile);
-        }
-    }
+    // Write the save before exiting
+    writeSave();
 
     // Free the ROM and save memory
     if (rom)     delete[] rom;
@@ -200,6 +181,31 @@ void Cartridge::directBoot()
     // Load the initial ARM7 code into memory
     for (uint32_t i = 0; i < size7; i++)
         core->memory.write<uint8_t>(1, ramAddr7 + i, rom[offset7 + i]);
+}
+
+void Cartridge::writeSave()
+{
+    // Write an NDS save file if one is open
+    if (saveSize > 0)
+    {
+        FILE *saveFile = fopen(saveName.c_str(), "wb");
+        if (saveFile)
+        {
+            fwrite(save, sizeof(uint8_t), saveSize, saveFile);
+            fclose(saveFile);
+        }
+    }
+
+    // Write a GBA save file if one is open
+    if (gbaSaveSize > 0)
+    {
+        FILE *gbaSaveFile = fopen(gbaSaveName.c_str(), "wb");
+        if (gbaSaveFile)
+        {
+            fwrite(gbaSave, sizeof(uint8_t), gbaSaveSize, gbaSaveFile);
+            fclose(gbaSaveFile);
+        }
+    }
 }
 
 template int8_t   Cartridge::gbaRomRead(uint32_t address);

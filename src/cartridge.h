@@ -34,6 +34,7 @@ class Cartridge
         void loadRom(std::string filename);
         void loadGbaRom(std::string filename);
         void directBoot();
+        void writeSave();
 
         template <typename T> T gbaRomRead(uint32_t address);
         template <typename T> void gbaRomWrite(uint32_t address, T value);

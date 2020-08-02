@@ -78,6 +78,10 @@ public class NooActivity extends AppCompatActivity
         {
             // Oh well, I guess
         }
+
+        // Write the save file
+        // There's no reliable way to call something on program termination, so this has to be done here
+        writeSave();
     }
 
     @Override
@@ -127,28 +131,6 @@ public class NooActivity extends AppCompatActivity
     }
 
     @Override
-    protected void onDestroy()
-    {
-        super.onDestroy();
-
-        running = false;
-
-        // Wait for the emulator to stop
-        try
-        {
-            core.join();
-            audio.join();
-        }
-        catch (Exception e)
-        {
-            // Oh well, I guess
-        }
-
-        // Close the core to ensure the save gets written
-        closeRom();
-    }
-
-    @Override
     public void onBackPressed()
     {
         // Do nothing
@@ -156,5 +138,5 @@ public class NooActivity extends AppCompatActivity
 
     public native void runFrame();
     public native void fillAudioBuffer(short[] buffer);
-    public native void closeRom();
+    public native void writeSave();
 }
