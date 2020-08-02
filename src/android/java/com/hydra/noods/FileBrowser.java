@@ -17,6 +17,7 @@ import android.widget.ListView;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class FileBrowser extends AppCompatActivity
 {
@@ -148,6 +149,7 @@ public class FileBrowser extends AppCompatActivity
                 fileList.add(files[i].getName());
         }
 
+        Collections.sort(fileList);
         fileView.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, fileList));
     }
 

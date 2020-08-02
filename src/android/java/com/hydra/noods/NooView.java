@@ -12,10 +12,9 @@ public class NooView extends View
 {
     private Bitmap bitmap;
 
-    public NooView(Context context, AttributeSet attrs)
+    public NooView(Context context)
     {
-        super(context, attrs);
-
+        super(context);
         bitmap = Bitmap.createBitmap(256, 192 * 2, Bitmap.Config.ARGB_8888);
     }
 

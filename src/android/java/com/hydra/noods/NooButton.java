@@ -4,34 +4,98 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 
 public class NooButton extends Button
 {
     private int id;
 
-    public NooButton(Context context, AttributeSet attrs)
+    public NooButton(Context context, int resId, int btnId, int x, int y, int width, int height)
     {
-        super(context, attrs);
+        super(context);
 
-        // The button ID is set by the tag, and determines which input to send to the core
-        id = Integer.parseInt(getTag().toString());
+        // Set the button parameters
+        setBackgroundResource(resId);
+        id = btnId;
+        setX(x);
+        setY(y);
+        setLayoutParams(new LayoutParams(width, height));
+        setAlpha(0.5f);
 
-        setOnTouchListener(new Button.OnTouchListener()
+        // Handle button touches
+        if (id >= 4 && id <= 7) // D-pad
         {
-            @Override
-            public boolean onTouch(View view, MotionEvent event)
+            setOnTouchListener(new Button.OnTouchListener()
             {
-                // Send a button press or release to the core
-                switch (event.getAction())
+                @Override
+                public boolean onTouch(View view, MotionEvent event)
                 {
-                    case MotionEvent.ACTION_DOWN: pressKey(id); break;
-                    case MotionEvent.ACTION_UP: releaseKey(id); break;
-                }
+                    switch (event.getAction())
+                    {
+                        case MotionEvent.ACTION_DOWN:
+                        case MotionEvent.ACTION_MOVE:
+                        {
+                            // Press the right key if in range, otherwise release
+                            if (event.getX() > view.getWidth() * 2 / 3)
+                                pressKey(4);
+                            else
+                                releaseKey(4);
 
-                return true;
-            }
-        });
+                            // Press the left key if in range, otherwise release
+                            if (event.getX() < view.getWidth() * 1 / 3)
+                                pressKey(5);
+                            else
+                                releaseKey(5);
+
+                            // Press the up key if in range, otherwise release
+                            if (event.getY() < view.getHeight() * 1 / 3)
+                                pressKey(6);
+                            else
+                                releaseKey(6);
+
+                            // Press the down key if in range, otherwise release
+                            if (event.getY() > view.getHeight() * 2 / 3)
+                                pressKey(7);
+                            else
+                                releaseKey(7);
+
+                            break;
+                        }
+
+                        case MotionEvent.ACTION_UP:
+                        {
+                            // Release all directional keys
+                            releaseKey(4);
+                            releaseKey(5);
+                            releaseKey(6);
+                            releaseKey(7);
+                            break;
+                        }
+                    }
+
+                    return true;
+                }
+            });
+        }
+        else
+        {
+            setOnTouchListener(new Button.OnTouchListener()
+            {
+                @Override
+                public boolean onTouch(View view, MotionEvent event)
+                {
+                    // Press or release the key specified by the ID
+                    switch (event.getAction())
+                    {
+                        case MotionEvent.ACTION_DOWN: pressKey(id); break;
+                        case MotionEvent.ACTION_UP: releaseKey(id); break;
+                    }
+
+                    return true;
+                }
+            });
+        }
     }
 
     public native void pressKey(int key);
