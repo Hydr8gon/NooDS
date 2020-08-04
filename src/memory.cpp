@@ -81,7 +81,7 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
 
                 case 0x03000000: // Shared WRAM
                 {
-                    switch (wramStat)
+                    switch (wramCnt)
                     {
                         case 0: data = &wram[address % 0x8000];          break;
                         case 1: data = &wram[address % 0x4000 + 0x4000]; break;
@@ -221,7 +221,7 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
             {
                 if (!(address & 0x00800000)) // Shared WRAM
                 {
-                    switch (wramStat)
+                    switch (wramCnt)
                     {
                         case 1: data = &wram[address % 0x4000];          break;
                         case 2: data = &wram[address % 0x4000 + 0x4000]; break;
@@ -319,7 +319,7 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
 
                 case 0x03000000: // Shared WRAM
                 {
-                    switch (wramStat)
+                    switch (wramCnt)
                     {
                         case 0: data = &wram[address % 0x8000];          break;
                         case 1: data = &wram[address % 0x4000 + 0x4000]; break;
@@ -435,7 +435,7 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
             {
                 if (!(address & 0x00800000)) // Shared WRAM
                 {
-                    switch (wramStat)
+                    switch (wramCnt)
                     {
                         case 1: data = &wram[address % 0x4000];          break;
                         case 2: data = &wram[address % 0x4000 + 0x4000]; break;
@@ -645,6 +645,16 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x4000215:
             case 0x4000216:
             case 0x4000217: base -= 0x4000214; size = 4; data = core->interpreter[0].readIrf();      break; // IF (ARM9)
+            case 0x4000240: base -= 0x4000240; size = 1; data = readVramCnt(0);                      break; // VRAMCNT_A
+            case 0x4000241: base -= 0x4000241; size = 1; data = readVramCnt(1);                      break; // VRAMCNT_B
+            case 0x4000242: base -= 0x4000242; size = 1; data = readVramCnt(2);                      break; // VRAMCNT_C
+            case 0x4000243: base -= 0x4000243; size = 1; data = readVramCnt(3);                      break; // VRAMCNT_D
+            case 0x4000244: base -= 0x4000244; size = 1; data = readVramCnt(4);                      break; // VRAMCNT_E
+            case 0x4000245: base -= 0x4000245; size = 1; data = readVramCnt(5);                      break; // VRAMCNT_F
+            case 0x4000246: base -= 0x4000246; size = 1; data = readVramCnt(6);                      break; // VRAMCNT_G
+            case 0x4000247: base -= 0x4000247; size = 1; data = readWramCnt();                       break; // WRAMCNT
+            case 0x4000248: base -= 0x4000248; size = 1; data = readVramCnt(7);                      break; // VRAMCNT_H
+            case 0x4000249: base -= 0x4000249; size = 1; data = readVramCnt(8);                      break; // VRAMCNT_I
             case 0x4000280:
             case 0x4000281: base -= 0x4000280; size = 2; data = core->math.readDivCnt();             break; // DIVCNT
             case 0x4000290:
@@ -990,7 +1000,8 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4000215:
             case 0x4000216:
             case 0x4000217: base -= 0x4000214; size = 4; data = core->interpreter[1].readIrf();     break; // IF (ARM7)
-            case 0x4000241: base -= 0x4000241; size = 1; data = readWramStat();                     break; // WRAMSTAT
+            case 0x4000240: base -= 0x4000240; size = 1; data = readVramStat();                     break; // VRAMSTAT
+            case 0x4000241: base -= 0x4000241; size = 1; data = readWramCnt();                      break; // WRAMSTAT
             case 0x4000300: base -= 0x4000300; size = 1; data = core->interpreter[1].readPostFlg(); break; // POSTFLG (ARM7)
             case 0x4000301: base -= 0x4000301; size = 1; data = readHaltCnt();                      break; // HALTCNT
             case 0x4000400:
@@ -2742,6 +2753,9 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value)
 
 void Memory::writeVramCntA(uint8_t value)
 {
+    // Write to the VRAMCNT_A register
+    vramCnt[0] = value & 0x9B;
+
     // Remap VRAM block A
     if (value & BIT(7)) // VRAM enabled
     {
@@ -2767,6 +2781,9 @@ void Memory::writeVramCntA(uint8_t value)
 
 void Memory::writeVramCntB(uint8_t value)
 {
+    // Write to the VRAMCNT_B register
+    vramCnt[1] = value & 0x9B;
+
     // Remap VRAM block B
     if (value & BIT(7)) // VRAM enabled
     {
@@ -2792,6 +2809,9 @@ void Memory::writeVramCntB(uint8_t value)
 
 void Memory::writeVramCntC(uint8_t value)
 {
+    // Write to the VRAMCNT_C register
+    vramCnt[2] = value & 0x9F;
+
     // Remap VRAM block C
     if (value & BIT(7)) // VRAM enabled
     {
@@ -2818,6 +2838,9 @@ void Memory::writeVramCntC(uint8_t value)
 
 void Memory::writeVramCntD(uint8_t value)
 {
+    // Write to the VRAMCNT_D register
+    vramCnt[3] = value & 0x9F;
+
     // Remap VRAM block D
     if (value & BIT(7)) // VRAM enabled
     {
@@ -2828,7 +2851,7 @@ void Memory::writeVramCntD(uint8_t value)
             case 0: vramBases[3] = 0x6860000;                            vramStat &= ~BIT(1); return; // Plain ARM9 access
             case 1: vramBases[3] = 0x6000000 + 0x20000 * ofs;            vramStat &= ~BIT(1); return; // Engine A BG VRAM
             case 2: vramBases[3] = 0x6000000 + 0x20000 * (ofs & BIT(0)); vramStat |=  BIT(1); return; // Plain ARM7 access
-            case 3: core->gpu3DRenderer.setTexture(ofs, vramD);          vramStat &= ~BIT(0); break;  // 3D texture data
+            case 3: core->gpu3DRenderer.setTexture(ofs, vramD);          vramStat &= ~BIT(1); break;  // 3D texture data
             case 4: vramBases[3] = 0x6600000;                            vramStat &= ~BIT(1); return; // Engine B OBJ VRAM
 
             default:
@@ -2844,6 +2867,9 @@ void Memory::writeVramCntD(uint8_t value)
 
 void Memory::writeVramCntE(uint8_t value)
 {
+    // Write to the VRAMCNT_E register
+    vramCnt[4] = value & 0x87;
+
     // Remap VRAM block E
     if (value & BIT(7)) // VRAM enabled
     {
@@ -2881,6 +2907,9 @@ void Memory::writeVramCntE(uint8_t value)
 
 void Memory::writeVramCntF(uint8_t value)
 {
+    // Write to the VRAMCNT_F register
+    vramCnt[5] = value & 0x9F;
+
     // Remap VRAM block F
     if (value & BIT(7)) // VRAM enabled
     {
@@ -2914,6 +2943,9 @@ void Memory::writeVramCntF(uint8_t value)
 
 void Memory::writeVramCntG(uint8_t value)
 {
+    // Write to the VRAMCNT_G register
+    vramCnt[6] = value & 0x9F;
+
     // Remap VRAM block G
     if (value & BIT(7)) // VRAM enabled
     {
@@ -2947,11 +2979,15 @@ void Memory::writeVramCntG(uint8_t value)
 
 void Memory::writeWramCnt(uint8_t value)
 {
-    wramStat = value & 0x03;
+    // Write to the WRAMCNT register
+    wramCnt = value & 0x03;
 }
 
 void Memory::writeVramCntH(uint8_t value)
 {
+    // Write to the VRAMCNT_H register
+    vramCnt[7] = value & 0x83;
+
     // Remap VRAM block H
     if (value & BIT(7)) // VRAM enabled
     {
@@ -2981,6 +3017,9 @@ void Memory::writeVramCntH(uint8_t value)
 
 void Memory::writeVramCntI(uint8_t value)
 {
+    // Write to the VRAMCNT_I register
+    vramCnt[8] = value & 0x83;
+
     // Remap VRAM block I
     if (value & BIT(7)) // VRAM enabled
     {

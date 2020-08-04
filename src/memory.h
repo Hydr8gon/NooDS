@@ -64,10 +64,12 @@ class Memory
         uint8_t vramI[0x4000]  = {}; //  16KB VRAM block I
         uint8_t oam[0x800]     = {}; //   2KB OAM
 
-        uint8_t vramStat = 0, wramStat = 0;
         uint32_t vramBases[9] = {};
 
         uint32_t dmaFill[4] = {};
+        uint8_t vramCnt[9] = {};
+        uint8_t vramStat = 0;
+        uint8_t wramCnt = 0;
         uint8_t haltCnt = 0;
 
         template <typename T> T ioRead9(uint32_t address);
@@ -77,10 +79,13 @@ class Memory
         template <typename T> void ioWrite7(uint32_t address, T value);
         template <typename T> void ioWriteGba(uint32_t address, T value);
 
-        uint8_t  readWramStat()           { return wramStat;         }
         uint32_t readDmaFill(int channel) { return dmaFill[channel]; }
+        uint8_t  readVramCnt(int block)   { return vramCnt[block];   }
+        uint8_t  readVramStat()           { return vramStat;         }
+        uint8_t  readWramCnt()            { return wramCnt;          }
         uint8_t  readHaltCnt()            { return haltCnt;          }
 
+        void writeDmaFill(int channel, uint32_t mask, uint32_t value);
         void writeVramCntA(uint8_t value);
         void writeVramCntB(uint8_t value);
         void writeVramCntC(uint8_t value);
@@ -91,7 +96,6 @@ class Memory
         void writeWramCnt(uint8_t value);
         void writeVramCntH(uint8_t value);
         void writeVramCntI(uint8_t value);
-        void writeDmaFill(int channel, uint32_t mask, uint32_t value);
         void writeHaltCnt(uint8_t value);
 };
 
