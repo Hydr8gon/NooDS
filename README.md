@@ -22,6 +22,12 @@ To compile for the Switch, you'll need to install [devkitPro](https://devkitpro.
 ### Compiling for Android
 To compile for Android, you'll need to setup the [Android SDK](https://developer.android.com/studio#command-tools). Create a folder where you want to install the SDK, and within that folder extract the contents of the downloaded `tools` folder to `cmdline-tools/latest`. Use the `sdkmanager` command in the resulting `bin` folder to install `build-tools`, `cmake`, `ndk-bundle`, `platform-tools`, and `platforms;android-30`. You'll also need to set an `ANDROID_SDK_ROOT` environment variable to the folder containing `cmdline-tools` and the other installed components. If everything is set up properly, you should be able to compile by running `./gradlew assembleRelease` in the project root directory. To make the resulting .apk installable, you'll need to sign it using [apksigner](https://developer.android.com/studio/command-line/apksigner).
 
+### References
+* [GBATEK](https://problemkaputt.de/gbatek.htm) by Martin Korth - This is where most of my information came from
+* [GBATEK Addendum](http://melonds.kuribo64.net/board/thread.php?id=13) by Arisotura - GBATEK isn't perfect, so some information came from here as well
+* [ARM Opcode Map](http://imrannazar.com/ARM-Opcode-Map) by Imran Nazar - Used to create the interpreter lookup table
+* Hardware tests by me - When there's something that I can't find or want to verify, I write tests for it myself!
+
 ### Other Links
-[The NooDS Discord server](https://discord.gg/JbNz7y4), where we can chat and do other fun stuff! \
-[Hydra's Lair](https://hydr8gon.github.io/), where you can read about my progress!
+* [Hydra's Lair](https://hydr8gon.github.io/) - you can read about my progress here!
+* [NooDS Discord](https://discord.gg/JbNz7y4) - here we can chat and do other fun stuff!
