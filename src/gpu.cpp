@@ -78,8 +78,8 @@ void Gpu::gbaScanline240()
         // Draw visible scanlines
         core->gpu2D[0].drawGbaScanline(vCount);
 
-        // Enable H-blank DMA transfers for visible scanlines
-        core->dma[1].setMode(2, true);
+        // Trigger H-blank DMA transfers for visible scanlines
+        core->dma[1].trigger(2);
     }
 
     // Set the H-blank flag
@@ -123,8 +123,8 @@ void Gpu::gbaScanline308()
             if (dispStat[1] & BIT(3))
                 core->interpreter[1].sendInterrupt(0);
 
-            // Enable V-blank DMA transfers
-            core->dma[1].setMode(1, true);
+            // Trigger V-blank DMA transfers
+            core->dma[1].trigger(1);
 
             mutex.lock();
 
@@ -169,8 +169,8 @@ void Gpu::scanline256()
         core->gpu2D[0].drawScanline(vCount);
         core->gpu2D[1].drawScanline(vCount);
 
-        // Enable H-blank DMA transfers for visible scanlines (ARM9 only)
-        core->dma[0].setMode(2, true);
+        // Trigger H-blank DMA transfers for visible scanlines (ARM9 only)
+        core->dma[0].trigger(2);
 
         // Start a display capture at the beginning of the frame if one was requested
         if (vCount == 0 && (dispCapCnt & BIT(31)))
@@ -342,8 +342,8 @@ void Gpu::scanline355()
                 if (dispStat[i] & BIT(3))
                     core->interpreter[i].sendInterrupt(0);
 
-                // Enable V-blank DMA transfers
-                core->dma[i].setMode(1, true);
+                // Trigger V-blank DMA transfers
+                core->dma[i].trigger(1);
             }
 
             // Swap the buffers of the 3D engine if needed

@@ -28,15 +28,21 @@ void Dma::transfer()
         if (!(active & BIT(i)))
             continue;
 
+        // Deactivate the channel now that it's being processed
+        active &= ~BIT(i);
+
         int dstAddrCnt = (dmaCnt[i] & 0x00600000) >> 21;
         int srcAddrCnt = (dmaCnt[i] & 0x01800000) >> 23;
+        int mode       = (dmaCnt[i] & 0x38000000) >> 27;
+        int gxFifoCount = 0;
 
         // Perform the transfer
-        if (active & BIT(i + 4)) // Sound DMA
+        if (core->isGbaMode() && mode == 6 && (i == 1 || i == 2)) // GBA sound DMA
         {
             for (unsigned int j = 0; j < 4; j++)
             {
                 // Transfer a word
+                // GBA sound DMAs always transfer 4 words and never adjust the destination address
                 core->memory.write<uint32_t>(cpu, dstAddrs[i], core->memory.read<uint32_t>(cpu, srcAddrs[i]));
 
                 // Adjust the source address
@@ -65,13 +71,9 @@ void Dma::transfer()
                 else if (dstAddrCnt == 1) // Decrement
                     dstAddrs[i] -= 4;
 
-                // In GXFIFO mode, only 112 words are sent at a time
-                if (((dmaCnt[i] & 0x38000000) >> 27) == 7)
-                {
-                    gxFifoCount[i]++;
-                    if (gxFifoCount[i] == 112)
-                        break;
-                }
+                // In GXFIFO mode, only send 112 words at a time
+                if (mode == 7 && ++gxFifoCount == 112)
+                    break;
             }
         }
         else // Half-word transfer
@@ -93,26 +95,25 @@ void Dma::transfer()
                 else if (dstAddrCnt == 1) // Decrement
                     dstAddrs[i] -= 2;
 
-                // In GXFIFO mode, only 112 words are sent at a time
-                if (((dmaCnt[i] & 0x38000000) >> 27) == 7)
-                {
-                    gxFifoCount[i]++;
-                    if (gxFifoCount[i] == 112)
-                        break;
-                }
+                // In GXFIFO mode, only send 112 words at a time
+                if (mode == 7 && ++gxFifoCount == 112)
+                    break;
             }
         }
 
-        // Don't end the GXFIFO transfer if there are still words left
-        if (gxFifoCount[i] == 112)
+        if (mode == 7)
         {
-            wordCounts[i] -= 112;
-            gxFifoCount[i] = 0;
+            // In GXFIFO mode, keep the channel active if the FIFO is still half empty
+            if (core->gpu3D.readGxStat() & BIT(25))
+                active |= BIT(i);
+
+            // Don't end a GXFIFO transfer if there are still words left
+            wordCounts[i] -= gxFifoCount;
             if (wordCounts[i] > 0)
                 continue;
         }
 
-        if (dmaCnt[i] & BIT(25)) // Repeat
+        if ((dmaCnt[i] & BIT(25)) && mode != 0) // Repeat
         {
             // Reload the internal registers on repeat
             wordCounts[i] = dmaCnt[i] & 0x001FFFFF;
@@ -123,75 +124,41 @@ void Dma::transfer()
         {
             // End the transfer
             dmaCnt[i] &= ~BIT(31);
-            gxFifoCount[i] = 0;
+            active &= ~BIT(i);
         }
 
         // Trigger an end of transfer IRQ if enabled
         if (dmaCnt[i] & BIT(30))
             core->interpreter[cpu].sendInterrupt(8 + i);
     }
-
-    // Some transfers are only triggered once at a time, so disable them after one transfer
-    modes[1] = false;
-    if (core->isGbaMode())
-    {
-        modes[4] = false;
-        modes[8] = false;
-        modes[9] = false;
-    }
-    else
-    {
-        modes[2] = false;
-    }
-
-    update();
 }
 
-void Dma::setMode(int mode, bool active)
+void Dma::trigger(int mode, uint8_t channels)
 {
-    // Redirect ARM9 DMA modes on the ARM7 DMA
-    if (cpu == 1)
-    {
-        switch (mode)
-        {
-            case 0: mode = 0; break; // Immediate
-            case 1: mode = 2; break; // V-blank
-            case 2: mode = 4; break; // H-blank (GBA)
-            case 5: mode = 4; break; // DS cart (NDS)
-        }
-    }
+    // ARM7 DMAs don't use the lowest mode bit, so adjust accordingly
+    if (cpu == 1) mode <<= 1;
 
-    // Change the state of a DMA mode
-    if (modes[mode] != active)
-    {
-        modes[mode] = active;
-        update();
-    }
-}
-
-void Dma::update()
-{
-    active = 0;
-
-    // If a channel is enabled and its mode is active, set the channel as active
+    // Activate channels that are set to the triggered mode
     for (int i = 0; i < 4; i++)
     {
-        if ((dmaCnt[i] & BIT(31)) && modes[(dmaCnt[i] & 0x38000000) >> 27])
+        if ((channels & BIT(i)) && (dmaCnt[i] & BIT(31)) && ((dmaCnt[i] & 0x38000000) >> 27) == mode)
             active |= BIT(i);
     }
+}
 
-    // Handle special GBA modes
-    if (core->isGbaMode())
+void Dma::disable(int mode, uint8_t channels)
+{
+    // ARM7 DMAs don't use the lowest mode bit, so adjust accordingly
+    if (cpu == 1) mode <<= 1;
+
+    // Deactivate channels that are set to the disabled mode
+    // This usually isn't necessary, because most modes transfer once on a trigger event and then deactivate
+    // However, there are edge cases, such as having two GXFIFO DMAs and the first one fills the FIFO more than half
+    for (int i = 0; i < 4; i++)
     {
-        for (int i = 1; i < 3; i++)
-        {
-            if ((dmaCnt[i] & BIT(31)) && ((dmaCnt[i] & 0x38000000) >> 27) == 6 &&
-               ((dmaDad[i] == 0x40000A0 && modes[8]) || (dmaDad[i] == 0x40000A4 && modes[9])))
-                active |= BIT(i) | BIT(i + 4);
-        }
+        if ((channels & BIT(i)) && (dmaCnt[i] & BIT(31)) && ((dmaCnt[i] & 0x38000000) >> 27) == mode)
+            active &= ~BIT(i);
     }
-
-    active &= ~inactive;
 }
 
 void Dma::writeDmaSad(int channel, uint32_t mask, uint32_t value)
@@ -210,33 +177,34 @@ void Dma::writeDmaDad(int channel, uint32_t mask, uint32_t value)
 
 void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value)
 {
-    bool reload = false;
-
-    // Reload the internal registers if the enable bit changes from 0 to 1
-    if (!(dmaCnt[channel] & BIT(31)) && (value & BIT(31)))
-        reload = true;
-
-    // Disable the channel if the repeat bit changes from 1 to 0 while the channel is enabled and the mode is immediate
-    // This is a weird quirk; the transfer never happens and the enabled bit stays on indefinitely
-    if (mask & 0xFF000000)
-    {
-        if (((dmaCnt[channel] & 0x82000000) == 0x82000000) && !(value & 0x3A000000))
-            inactive |= BIT(channel);
-        else if ((value & 0x3A000000) || reload)
-            inactive &= ~BIT(channel);
-    }
+    uint32_t old = dmaCnt[channel];
 
     // Write to one of the DMACNT registers
     mask &= ((cpu == 0) ? 0xFFFFFFFF : (channel == 3 ? 0xF7E0FFFF : 0xF7E03FFF));
     dmaCnt[channel] = (dmaCnt[channel] & ~mask) | (value & mask);
 
-    // Reload the internal registers
-    if (reload)
-    {
-        dstAddrs[channel] = dmaDad[channel];
-        srcAddrs[channel] = dmaSad[channel];
-        wordCounts[channel] = dmaCnt[channel] & 0x001FFFFF;
-    }
+    // Deactivate the channel if it's disabled or the mode changed
+    if (!(dmaCnt[channel] & BIT(31)) || (dmaCnt[channel] & 0x38000000) != (old & 0x38000000))
+        active &= ~BIT(channel);
 
-    update();
+    // In GXFIFO mode, activate the channel immediately if the FIFO is already half empty
+    // All other modes are only triggered at the moment when the event happens
+    // For example, if a word from the DS cart is ready before starting a DMA, the DMA will not be triggered
+    if ((dmaCnt[channel] & BIT(31)) && ((dmaCnt[channel] & 0x38000000) >> 27) == 7 && (core->gpu3D.readGxStat() & BIT(25)))
+        active |= BIT(channel);
+
+    // Don't reload the internal registers unless the enable bit changed from 0 to 1
+    if ((old & BIT(31)) || !(dmaCnt[channel] & BIT(31)))
+        return;
+
+    // Reload the internal registers
+    dstAddrs[channel] = dmaDad[channel];
+    srcAddrs[channel] = dmaSad[channel];
+    wordCounts[channel] = dmaCnt[channel] & 0x001FFFFF;
+
+    // Activate the channel if it's set to immediate mode
+    // Reloading seems to be the only trigger for this, so an enabled channel changed to immediate will never transfer
+    // This also means that repeating doesn't work; in this case, the enabled bit is cleared after only one transfer
+    if (((dmaCnt[channel] & 0x38000000) >> 27) == 0)
+        active |= BIT(channel);
 }

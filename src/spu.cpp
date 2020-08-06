@@ -696,7 +696,7 @@ void Spu::gbaFifoTimer(int timer)
 
         // Request more data from the DMA if half empty
         if (gbaFifoA.size() <= 16)
-            core->dma[1].setMode(8, true);
+            core->dma[1].trigger(3, 0x02);
     }
 
     if (((gbaMainSoundCntH & BIT(14)) >> 14) == timer) // FIFO B
@@ -710,7 +710,7 @@ void Spu::gbaFifoTimer(int timer)
 
         // Request more data from the DMA if half empty
         if (gbaFifoB.size() <= 16)
-            core->dma[1].setMode(9, true);
+            core->dma[1].trigger(3, 0x04);
     }
 }
 

@@ -30,7 +30,8 @@ class Dma
         Dma(Core *core, bool cpu): core(core), cpu(cpu) {}
 
         void transfer();
-        void setMode(int mode, bool active);
+        void trigger(int mode, uint8_t channels = 0x0F);
+        void disable(int mode, uint8_t channels = 0x0F);
 
         bool shouldTransfer() { return active; }
 
@@ -46,20 +47,15 @@ class Dma
         Core *core;
         bool cpu;
 
-        uint32_t dmaSad[4] = {};
-        uint32_t dmaDad[4] = {};
-        uint32_t dmaCnt[4] = {};
+        uint8_t active = 0;
 
         uint32_t srcAddrs[4] = {};
         uint32_t dstAddrs[4] = {};
         uint32_t wordCounts[4] = {};
 
-        int gxFifoCount[4] = {};
-
-        uint8_t active = 0, inactive = 0;
-        bool modes[10] = { true };
-
-        void update();
+        uint32_t dmaSad[4] = {};
+        uint32_t dmaDad[4] = {};
+        uint32_t dmaCnt[4] = {};
 };
 
 #endif // DMA_H

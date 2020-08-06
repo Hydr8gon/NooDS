@@ -149,11 +149,12 @@ void Gpu3D::runCycle()
     if (fifo.size() == 0) gxStat |=  BIT(26); // Empty
     if (pipe.size() == 0) gxStat &= ~BIT(27); // Commands not executing
 
-    // If the FIFO is less than half full, enable GXFIFO DMA transfers
+    // If the FIFO becomes less than half full, trigger GXFIFO DMA transfers
+    // If the FIFO is already less than half full when a DMA starts, it will automatically activate
     if (fifo.size() < 128 && !(gxStat & BIT(25)))
     {
         gxStat |= BIT(25);
-        core->dma[0].setMode(7, true);
+        core->dma[0].trigger(7);
     }
 
     // Send a GXFIFO interrupt if enabled
@@ -1530,11 +1531,11 @@ void Gpu3D::addEntry(Entry entry)
         gxStat = (gxStat & ~0x01FF0000) | (fifo.size() << 16); // Count
         gxStat &= ~BIT(26); // Not empty
 
-        // If the FIFO is more than half full, disable GXFIFO DMA transfers
+        // If the FIFO is half full or more, disable GXFIFO DMA transfers
         if (fifo.size() >= 128 && (gxStat & BIT(25)))
         {
             gxStat &= ~BIT(25);
-            core->dma[0].setMode(7, false);
+            core->dma[0].disable(7);
         }
     }
 }
