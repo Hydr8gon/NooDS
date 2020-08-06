@@ -15,8 +15,13 @@ import android.widget.Button;
 public class NooActivity extends AppCompatActivity
 {
     private boolean running;
-    private AudioTrack track;
     private Thread core, audio;
+    private AudioTrack track;
+
+    private boolean hidden;
+    private ConstraintLayout layout;
+    private NooView view;
+    private NooButton buttons[];
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -28,31 +33,26 @@ public class NooActivity extends AppCompatActivity
         int   w = getResources().getDisplayMetrics().widthPixels;
         int   h = getResources().getDisplayMetrics().heightPixels;
 
-        ConstraintLayout layout = new ConstraintLayout(this);
-        NooView view = new NooView(this);
+        hidden = false;
+        layout = new ConstraintLayout(this);
+        view = new NooView(this);
+        buttons = new NooButton[9];
 
-        // Place the buttons based on the display information
-        NooButton a      = new NooButton(this, R.drawable.a,       0, w     - (int)(d *  60), h - (int)(d * 135), (int)(d *  55), (int)(d *  55));
-        NooButton b      = new NooButton(this, R.drawable.b,       1, w     - (int)(d * 115), h - (int)(d *  80), (int)(d *  55), (int)(d *  55));
-        NooButton x      = new NooButton(this, R.drawable.x,      10, w     - (int)(d * 115), h - (int)(d * 190), (int)(d *  55), (int)(d *  55));
-        NooButton y      = new NooButton(this, R.drawable.y,      11, w     - (int)(d * 170), h - (int)(d * 135), (int)(d *  55), (int)(d *  55));
-        NooButton start  = new NooButton(this, R.drawable.start,   3, w / 2 + (int)(d *  16), h - (int)(d *  38), (int)(d *  33), (int)(d *  33));
-        NooButton select = new NooButton(this, R.drawable.select,  2, w / 2 - (int)(d *  49), h - (int)(d *  38), (int)(d *  33), (int)(d *  33));
-        NooButton l      = new NooButton(this, R.drawable.l,       9,         (int)(d *   5), h - (int)(d * 400), (int)(d * 110), (int)(d *  44));
-        NooButton r      = new NooButton(this, R.drawable.r,       8, w     - (int)(d * 115), h - (int)(d * 400), (int)(d * 110), (int)(d *  44));
-        NooButton dpad   = new NooButton(this, R.drawable.dpad,    4,         (int)(d *   5), h - (int)(d * 174), (int)(d * 132), (int)(d * 132));
+        // Create the buttons and place them based on the display information
+        buttons[0] = new NooButton(this, R.drawable.a,       0, w     - (int)(d *  60), h - (int)(d * 135), (int)(d *  55), (int)(d *  55));
+        buttons[1] = new NooButton(this, R.drawable.b,       1, w     - (int)(d * 115), h - (int)(d *  80), (int)(d *  55), (int)(d *  55));
+        buttons[2] = new NooButton(this, R.drawable.x,      10, w     - (int)(d * 115), h - (int)(d * 190), (int)(d *  55), (int)(d *  55));
+        buttons[3] = new NooButton(this, R.drawable.y,      11, w     - (int)(d * 170), h - (int)(d * 135), (int)(d *  55), (int)(d *  55));
+        buttons[4] = new NooButton(this, R.drawable.start,   3, w / 2 + (int)(d *  16), h - (int)(d *  38), (int)(d *  33), (int)(d *  33));
+        buttons[5] = new NooButton(this, R.drawable.select,  2, w / 2 - (int)(d *  49), h - (int)(d *  38), (int)(d *  33), (int)(d *  33));
+        buttons[6] = new NooButton(this, R.drawable.l,       9,         (int)(d *   5), h - (int)(d * 400), (int)(d * 110), (int)(d *  44));
+        buttons[7] = new NooButton(this, R.drawable.r,       8, w     - (int)(d * 115), h - (int)(d * 400), (int)(d * 110), (int)(d *  44));
+        buttons[8] = new NooButton(this, R.drawable.dpad,    4,         (int)(d *   5), h - (int)(d * 174), (int)(d * 132), (int)(d * 132));
 
         // Prepare the layout
         layout.addView(view);
-        layout.addView(a);
-        layout.addView(b);
-        layout.addView(x);
-        layout.addView(y);
-        layout.addView(start);
-        layout.addView(select);
-        layout.addView(l);
-        layout.addView(r);
-        layout.addView(dpad);
+        for (int i = 0; i < 9; i++)
+            layout.addView(buttons[i]);
         setContentView(layout);
 
         // Set up audio playback
@@ -133,7 +133,20 @@ public class NooActivity extends AppCompatActivity
     @Override
     public void onBackPressed()
     {
-        // Do nothing
+        // Toggle hiding the buttons
+        hidden = !hidden;
+
+        // Add or remove the buttons from the layout accordingly
+        if (hidden)
+        {
+            for (int i = 0; i < 9; i++)
+                layout.removeView(buttons[i]);
+        }
+        else
+        {
+            for (int i = 0; i < 9; i++)
+                layout.addView(buttons[i]);
+        }
     }
 
     public native void runFrame();

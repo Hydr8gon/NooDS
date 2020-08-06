@@ -93,6 +93,18 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooButton_releaseKey(JNIE
     core->input.releaseKey(key);
 }
 
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooView_pressScreen(JNIEnv *env, jobject obj, jint x, jint y)
+{
+    core->input.pressScreen();
+    core->spi.setTouch(x, y);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooView_releaseScreen(JNIEnv *env, jobject obj)
+{
+    core->input.releaseScreen();
+    core->spi.clearTouch();
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_writeSave(JNIEnv *env, jobject obj)
 {
     core->cartridge.writeSave();
