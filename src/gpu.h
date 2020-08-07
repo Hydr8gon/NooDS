@@ -23,6 +23,8 @@
 #include <cstdint>
 #include <mutex>
 
+#include "defines.h"
+
 class Core;
 
 class Gpu
@@ -36,6 +38,8 @@ class Gpu
         void gbaScanline308();
         void scanline256();
         void scanline355();
+
+        void invalidate3D() { dirty3D |= BIT(0); }
 
         uint16_t readDispStat(bool cpu) { return dispStat[cpu]; }
         uint16_t readVCount()           { return vCount;        }
@@ -54,6 +58,7 @@ class Gpu
         std::mutex mutex;
 
         bool displayCapture = false;
+        uint8_t dirty3D = 0;
 
         uint16_t dispStat[2] = {};
         uint16_t vCount = 0;

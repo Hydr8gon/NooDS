@@ -237,8 +237,9 @@ void Gpu3D::swapBuffers()
     polygonCountOut = polygonCountIn;
     polygonCountIn = 0;
 
-    // Unhalt the geometry engine
+    // Unhalt the geometry engine and invalidate the 3D
     halted = false;
+    core->gpu.invalidate3D();
 }
 
 Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)

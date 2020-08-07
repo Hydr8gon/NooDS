@@ -2738,9 +2738,13 @@ void Memory::writeDmaFill(int channel, uint32_t mask, uint32_t value)
 
 void Memory::writeVramCnt(int index, uint8_t value)
 {
-    // Write to one of the VRAMCNT registers
+    // Write to one of the VRAMCNT registers and invalidate the 3D if a parameter changed
     const uint8_t masks[] = { 0x9B, 0x9B, 0x9F, 0x9F, 0x87, 0x9F, 0x9F, 0x83, 0x83 };
-    vramCnt[index] = value & masks[index];
+    if ((value & masks[index]) != (vramCnt[index] & masks[index]))
+    {
+        vramCnt[index] = value & masks[index];
+        core->gpu.invalidate3D();
+    }
 
     // Clear the previous mappings
     memset(lcdc,       0, 64 * sizeof(uint8_t*));

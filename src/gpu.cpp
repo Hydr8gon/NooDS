@@ -289,9 +289,15 @@ void Gpu::scanline256()
         core->gpu2D[1].finishScanline(vCount);
     }
 
-    // Draw 3D scanlines 48 lines in advance
-    if ((core->gpu2D[0].readDispCnt() & BIT(3)) && ((vCount + 48) % 263) < 192)
+    // Draw 3D scanlines 48 lines in advance, if the current 3D is dirty
+    // If the 3D parameters haven't changed since the last frame, there's no need to draw it again
+    // Bit 0 of the dirty variable represents invalidation, and bit 1 represents a frame currently drawing
+    if (dirty3D && (core->gpu2D[0].readDispCnt() & BIT(3)) && ((vCount + 48) % 263) < 192)
+    {
+        if (vCount == 215) dirty3D = BIT(1);
         core->gpu3DRenderer.drawScanline((vCount + 48) % 263);
+        if (vCount == 143) dirty3D &= ~BIT(1);
+    }
 
     for (int i = 0; i < 2; i++)
     {

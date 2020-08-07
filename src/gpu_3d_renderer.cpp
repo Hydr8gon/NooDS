@@ -821,48 +821,62 @@ void Gpu3DRenderer::writeDisp3DCnt(uint16_t mask, uint16_t value)
     if (value & BIT(12)) disp3DCnt &= ~BIT(12);
     if (value & BIT(13)) disp3DCnt &= ~BIT(13);
 
-    // Write to the DISP3DCNT register
+    // Write to the DISP3DCNT register and invalidate the 3D if a parameter changed
     mask &= 0x4FFF;
+    if ((value & mask) == (disp3DCnt & mask)) return;
     disp3DCnt = (disp3DCnt & ~mask) | (value & mask);
+    core->gpu.invalidate3D();
 }
 
 void Gpu3DRenderer::writeClearColor(uint32_t mask, uint32_t value)
 {
-    // Write to the CLEAR_COLOR register
+    // Write to the CLEAR_COLOR register and invalidate the 3D if a parameter changed
     mask &= 0x3F1FFFFF;
+    if ((value & mask) == (clearColor & mask)) return;
     clearColor = (clearColor & ~mask) | (value & mask);
+    core->gpu.invalidate3D();
 }
 
 void Gpu3DRenderer::writeClearDepth(uint16_t mask, uint16_t value)
 {
-    // Write to the CLEAR_DEPTH register
+    // Write to the CLEAR_DEPTH register and invalidate the 3D if a parameter changed
     mask &= 0x7FFF;
+    if ((value & mask) == (clearDepth & mask)) return;
     clearDepth = (clearDepth & ~mask) | (value & mask);
+    core->gpu.invalidate3D();
 }
 
 void Gpu3DRenderer::writeToonTable(int index, uint16_t mask, uint16_t value)
 {
-    // Write to one of the TOON_TABLE registers
+    // Write to one of the TOON_TABLE registers and invalidate the 3D if a parameter changed
     mask &= 0x7FFF;
+    if ((value & mask) == (toonTable[index] & mask)) return;
     toonTable[index] = (toonTable[index] & ~mask) | (value & mask);
+    core->gpu.invalidate3D();
 }
 
 void Gpu3DRenderer::writeFogColor(uint32_t mask, uint32_t value)
 {
-    // Write to the FOG_COLOR register
+    // Write to the FOG_COLOR register and invalidate the 3D if a parameter changed
     mask &= 0x001F7FFF;
+    if ((value & mask) == (fogColor & mask)) return;
     fogColor = (fogColor & ~mask) | (value & mask);
+    core->gpu.invalidate3D();
 }
 
 void Gpu3DRenderer::writeFogOffset(uint16_t mask, uint16_t value)
 {
-    // Write to the FOG_OFFSET register
+    // Write to the FOG_OFFSET register and invalidate the 3D if a parameter changed
     mask &= 0x7FFF;
+    if ((value & mask) == (fogOffset & mask)) return;
     fogOffset = (fogOffset & ~mask) | (value & mask);
+    core->gpu.invalidate3D();
 }
 
 void Gpu3DRenderer::writeFogTable(int index, uint8_t value)
 {
-    // Write to one of the FOG_TABLE registers
+    // Write to one of the FOG_TABLE registers and invalidate the 3D if a parameter changed
+    if ((value & 0x7F) == (fogTable[index] & 0x7F)) return;
     fogTable[index] = value & 0x7F;
+    core->gpu.invalidate3D();
 }
