@@ -30,15 +30,12 @@ struct _Polygon;
 class Gpu3DRenderer
 {
     public:
-        Gpu3DRenderer(Core *core): core(core) {};
+        Gpu3DRenderer(Core *core): core(core) {}
         ~Gpu3DRenderer();
 
         void drawScanline(int line);
 
         uint32_t *getFramebuffer() { return framebuffer; }
-
-        void setTexture(int slot, uint8_t *data) { textures[slot] = data; }
-        void setPalette(int slot, uint8_t *data) { palettes[slot] = data; }
 
         uint16_t readDisp3DCnt() { return disp3DCnt; }
 
@@ -61,9 +58,6 @@ class Gpu3DRenderer
 
         std::thread *threads[4] = {};
         int activeThreads = 0;
-
-        uint8_t *textures[4] = {};
-        uint8_t *palettes[6] = {};
 
         uint16_t disp3DCnt = 0;
         uint32_t clearColor = 0;

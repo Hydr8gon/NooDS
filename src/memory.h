@@ -35,8 +35,12 @@ class Memory
         template <typename T> T read(bool cpu, uint32_t address);
         template <typename T> void write(bool cpu, uint32_t address, T value);
 
-        uint8_t *getPalette() { return palette; }
-        uint8_t *getOam() { return oam; }
+        uint8_t  *getPalette()    { return palette;    }
+        uint8_t  *getOam()        { return oam;        }
+        uint8_t **getEngAExtPal() { return engAExtPal; }
+        uint8_t **getEngBExtPal() { return engBExtPal; }
+        uint8_t **getTex3D()      { return tex3D;      }
+        uint8_t **getPal3D()      { return pal3D;      }
 
     private:
         Core *core;
@@ -64,7 +68,16 @@ class Memory
         uint8_t vramI[0x4000]  = {}; //  16KB VRAM block I
         uint8_t oam[0x800]     = {}; //   2KB OAM
 
-        uint32_t vramBases[9] = {};
+        uint8_t *lcdc[64]      = {};
+        uint8_t *engABg[32]    = {};
+        uint8_t *engAObj[16]   = {};
+        uint8_t *engAExtPal[5] = {};
+        uint8_t *engBBg[8]     = {};
+        uint8_t *engBObj[8]    = {};
+        uint8_t *engBExtPal[5] = {};
+        uint8_t *vram7[2]      = {};
+        uint8_t *tex3D[4]      = {};
+        uint8_t *pal3D[6]      = {};
 
         uint32_t dmaFill[4] = {};
         uint8_t vramCnt[9] = {};
@@ -86,16 +99,8 @@ class Memory
         uint8_t  readHaltCnt()            { return haltCnt;          }
 
         void writeDmaFill(int channel, uint32_t mask, uint32_t value);
-        void writeVramCntA(uint8_t value);
-        void writeVramCntB(uint8_t value);
-        void writeVramCntC(uint8_t value);
-        void writeVramCntD(uint8_t value);
-        void writeVramCntE(uint8_t value);
-        void writeVramCntF(uint8_t value);
-        void writeVramCntG(uint8_t value);
+        void writeVramCnt(int index, uint8_t value);
         void writeWramCnt(uint8_t value);
-        void writeVramCntH(uint8_t value);
-        void writeVramCntI(uint8_t value);
         void writeHaltCnt(uint8_t value);
 };
 

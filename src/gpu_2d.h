@@ -35,8 +35,6 @@ class Gpu2D
 
         uint32_t *getFramebuffer() { return framebuffer; }
 
-        void setExtPalette(int slot, uint8_t *data) { extPalettes[slot] = data; }
-
         uint32_t readDispCnt()      { return dispCnt;      }
         uint16_t readBgCnt(int bg)  { return bgCnt[bg];    }
         uint16_t readWinIn()        { return winIn;        }
@@ -68,6 +66,10 @@ class Gpu2D
         Core *core;
         bool engine;
 
+        uint32_t bgVramAddr, objVramAddr;
+        uint8_t *palette, *oam;
+        uint8_t **extPalettes;
+
         uint32_t framebuffer[256 * 192] = {};
         uint32_t layers[5][256] = {};
         uint8_t objPrio[256] = {};
@@ -97,10 +99,6 @@ class Gpu2D
         uint16_t bldAlpha = 0;
         uint8_t bldY = 0;
         uint16_t masterBright = 0;
-
-        uint32_t bgVramAddr, objVramAddr;
-        uint8_t *palette, *oam;
-        uint8_t *extPalettes[5] = {};
 
         uint32_t rgb5ToRgb6(uint32_t color);
 

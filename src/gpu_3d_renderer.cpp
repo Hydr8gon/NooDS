@@ -198,15 +198,15 @@ void Gpu3DRenderer::drawScanline1(int line)
 uint8_t *Gpu3DRenderer::getTexture(uint32_t address)
 {
     // Get a pointer to texture data
-    uint8_t *slot = textures[address / 0x20000];
-    return slot ? &slot[address % 0x20000] : nullptr;
+    uint8_t *slot = core->memory.getTex3D()[address >> 17];
+    return slot ? &slot[address & 0x1FFFF] : nullptr;
 }
 
 uint8_t *Gpu3DRenderer::getPalette(uint32_t address)
 {
     // Get a pointer to palette data
-    uint8_t *slot = palettes[address / 0x4000];
-    return slot ? &slot[address % 0x4000] : nullptr;
+    uint8_t *slot = core->memory.getPal3D()[address >> 14];
+    return slot ? &slot[address & 0x3FFF] : nullptr;
 }
 
 int Gpu3DRenderer::interpolate(int64_t v1, int64_t v2, int x1, int x, int x2)

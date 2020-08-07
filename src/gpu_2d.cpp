@@ -31,6 +31,7 @@ Gpu2D::Gpu2D(Core *core, bool engine): core(core), engine(engine)
         objVramAddr = 0x6400000;
         palette = core->memory.getPalette();
         oam = core->memory.getOam();
+        extPalettes = core->memory.getEngAExtPal();
     }
     else
     {
@@ -39,6 +40,7 @@ Gpu2D::Gpu2D(Core *core, bool engine): core(core), engine(engine)
         objVramAddr = 0x6600000;
         palette = core->memory.getPalette() + 0x400;
         oam = core->memory.getOam() + 0x400;
+        extPalettes = core->memory.getEngBExtPal();
     }
 }
 
@@ -559,7 +561,7 @@ void Gpu2D::drawText(int bg, int line)
 
                 // In extended palette mode, the tile can select from multiple 256-color palettes
                 if (!extPalettes[slot]) return;
-                pal = &extPalettes[slot][((tile & 0xF000) >> 12) * 512];
+                pal = &extPalettes[slot][(tile & 0xF000) >> 3];
             }
             else // Standard palette
             {
@@ -635,18 +637,6 @@ void Gpu2D::drawAffine(int bg, int line)
     // Get the background's size
     int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
 
-    // Get the background's palette
-    uint8_t *pal;
-    if (dispCnt & BIT(30)) // Extended palette
-    {
-        if (!extPalettes[bg]) return;
-        pal = extPalettes[bg];
-    }
-    else // Standard palette
-    {
-        pal = palette;
-    }
-
     // Draw a line
     for (int i = 0; i < 256; i++)
     {
@@ -674,7 +664,7 @@ void Gpu2D::drawAffine(int bg, int line)
 
         // Draw a pixel
         if (index)
-            layers[bg][i] = U8TO16(pal, index * 2) | BIT(15);
+            layers[bg][i] = U8TO16(palette, index * 2) | BIT(15);
     }
 
     // Increment the internal registers at the end of the scanline
@@ -816,7 +806,7 @@ void Gpu2D::drawExtended(int bg, int line)
             {
                 // In extended palette mode, the tile can select from multiple 256-color palettes
                 if (!extPalettes[bg]) continue;
-                pal = &extPalettes[bg][((tile & 0xF000) >> 12) * 512];
+                pal = &extPalettes[bg][(tile & 0xF000) >> 3];
             }
             else // Standard palette
             {
@@ -1081,7 +1071,7 @@ void Gpu2D::drawObjects(int line)
                 {
                     // In extended palette mode, the object can select from multiple 256-color palettes
                     if (!extPalettes[4]) continue;
-                    pal = &extPalettes[4][((object[2] & 0xF000) >> 12) * 512];
+                    pal = &extPalettes[4][(object[2] & 0xF000) >> 3];
                 }
                 else // Standard palette
                 {
@@ -1193,7 +1183,7 @@ void Gpu2D::drawObjects(int line)
             {
                 // In extended palette mode, the object can select from multiple 256-color palettes
                 if (!extPalettes[4]) continue;
-                pal = &extPalettes[4][((object[2] & 0xF000) >> 12) * 512];
+                pal = &extPalettes[4][(object[2] & 0xF000) >> 3];
             }
             else // Standard palette
             {
