@@ -42,6 +42,12 @@ const int16_t Spu::adpcmTable[] =
     0x5771, 0x602F, 0x69CE, 0x7462, 0x7FFF
 };
 
+Spu::Spu(Core *core): core(core)
+{
+    // Mark the buffer as not ready
+    ready.store(false);
+}
+
 Spu::~Spu()
 {
     // Free the buffers
@@ -70,18 +76,17 @@ uint32_t *Spu::getSamples(int count)
     if (Settings::getFpsLimiter() == 2) // Accurate
     {
         std::chrono::steady_clock::time_point waitTime = std::chrono::steady_clock::now();
-        wait = true;
+        wait = false;
 
         // Use a while loop to constantly check if the wait condition has been satisfied
         // This is wasteful, but ensures a swift break from the wait state
-        while (wait)
+        while (!ready.load())
         {
-            mutex1.lock();
-            if (ready) wait = false;
-            mutex1.unlock();
-
-            if (!wait || std::chrono::steady_clock::now() - waitTime > std::chrono::microseconds(1000000 / 60))
+            if (std::chrono::steady_clock::now() - waitTime > std::chrono::microseconds(1000000 / 60))
+            {
+                wait = true;
                 break;
+            }
         }
     }
     else // Disabled/Light
@@ -107,16 +112,9 @@ uint32_t *Spu::getSamples(int count)
     }
 
     // Signal that the buffer was played
-    if (Settings::getFpsLimiter() == 2) // Accurate
-    {
-        mutex1.lock();
-        ready = false;
-        mutex1.unlock();
-    }
-    else // Disabled/Light
     {
         std::lock_guard<std::mutex> guard(mutex1);
-        ready = false;
+        ready.store(false);
         cond1.notify_one();
     }
 
@@ -393,18 +391,12 @@ void Spu::runGbaSample()
         // Synchronizing to the audio eliminites the potential for nasty audio crackles
         if (Settings::getFpsLimiter() == 2) // Accurate
         {
-            bool wait = true;
-            while (wait)
-            {
-                mutex1.lock();
-                if (!ready) wait = false;
-                mutex1.unlock();
-            }
+            while (ready.load());
         }
         else if (Settings::getFpsLimiter() == 1) // Light
         {
             std::unique_lock<std::mutex> lock(mutex1);
-            cond1.wait(lock, std::bind(&Spu::shouldFill, this));
+            cond1.wait(lock, [&]{ return !ready.load(); });
         }
 
         // Swap the buffers
@@ -413,16 +405,9 @@ void Spu::runGbaSample()
         bufferIn = buffer;
 
         // Signal that the buffer is ready to play
-        if (Settings::getFpsLimiter() == 2) // Accurate
-        {
-            mutex1.lock();
-            ready = true;
-            mutex1.unlock();
-        }
-        else // Disabled/Light
         {
             std::lock_guard<std::mutex> guard(mutex2);
-            ready = true;
+            ready.store(true);
             cond2.notify_one();
         }
 
@@ -645,18 +630,12 @@ void Spu::runSample()
         // Synchronizing to the audio eliminites the potential for nasty audio crackles
         if (Settings::getFpsLimiter() == 2) // Accurate
         {
-            bool wait = true;
-            while (wait)
-            {
-                mutex1.lock();
-                if (!ready) wait = false;
-                mutex1.unlock();
-            }
+            while (ready.load());
         }
         else if (Settings::getFpsLimiter() == 1) // Light
         {
             std::unique_lock<std::mutex> lock(mutex1);
-            cond1.wait(lock, std::bind(&Spu::shouldFill, this));
+            cond1.wait(lock, [&]{ return !ready.load(); });
         }
 
         // Swap the buffers
@@ -665,16 +644,9 @@ void Spu::runSample()
         bufferIn = buffer;
 
         // Signal that the buffer is ready to play
-        if (Settings::getFpsLimiter() == 2) // Accurate
-        {
-            mutex1.lock();
-            ready = true;
-            mutex1.unlock();
-        }
-        else // Disabled/Light
         {
             std::lock_guard<std::mutex> guard(mutex2);
-            ready = true;
+            ready.store(true);
             cond2.notify_one();
         }
 

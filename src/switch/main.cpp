@@ -116,7 +116,7 @@ void startCore()
     }
 
     // Start the audio thread
-    threadCreate(&audioThread, outputAudio, NULL, NULL, 0x8000, 0x30, 2);
+    threadCreate(&audioThread, outputAudio, NULL, NULL, 0x8000, 0x20, 0);
     threadStart(&audioThread);
 
     // Start the emulator thread
@@ -234,13 +234,13 @@ void settingsMenu()
         if (menu.pressed & KEY_A)
         {
             // Change the chosen setting to its next value
-            // Light is always the best option for FPS limiter, so there's no need for selection
-            // 2 threads is always the best option for threaded 3D, so there's no need for selection
+            // Light FPS limiter doesn't seem to have issues, so there's no need for advanced selection
+            // 1 thread for 3D seems to work best, so there's no need for advanced selection
             switch (index)
             {
                 case  0: Settings::setDirectBoot(!Settings::getDirectBoot());                                break;
                 case  1: Settings::setFpsLimiter(!Settings::getFpsLimiter());                                break;
-                case  2: Settings::setThreaded3D(Settings::getThreaded3D() ? 0 : 2);                         break;
+                case  2: Settings::setThreaded3D(!Settings::getThreaded3D());                                break;
                 case  3: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
                 case  4: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
                 case  5: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;

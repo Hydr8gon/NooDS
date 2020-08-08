@@ -33,7 +33,7 @@ class Gpu2D
         void drawScanline(int line);
         void finishScanline(int line);
 
-        uint32_t *getFramebuffer() { return framebuffer; }
+        uint32_t *getFramebuffer(int line) { return &framebuffer[256 * line]; }
 
         uint32_t readDispCnt()      { return dispCnt;      }
         uint16_t readBgCnt(int bg)  { return bgCnt[bg];    }

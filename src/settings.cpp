@@ -24,7 +24,7 @@ bool Settings::loaded = false;
 
 int Settings::directBoot = 1;
 int Settings::fpsLimiter = 1;
-int Settings::threaded3D = 2;
+int Settings::threaded3D = 1;
 std::string Settings::bios9Path = "bios9.bin";
 std::string Settings::bios7Path = "bios7.bin";
 std::string Settings::firmwarePath = "firmware.bin";

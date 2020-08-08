@@ -20,6 +20,7 @@
 #ifndef SPU_H
 #define SPU_H
 
+#include <atomic>
 #include <condition_variable>
 #include <cstdint>
 #include <queue>
@@ -30,7 +31,7 @@ class Core;
 class Spu
 {
     public:
-        Spu(Core *core): core(core) {}
+        Spu(Core *core);
         ~Spu();
 
         uint32_t *getSamples(int count);
@@ -80,7 +81,7 @@ class Spu
 
         std::condition_variable cond1, cond2;
         std::mutex mutex1, mutex2;
-        bool ready = false;
+        std::atomic<bool> ready;
 
         static const int indexTable[8];
         static const int16_t adpcmTable[89];

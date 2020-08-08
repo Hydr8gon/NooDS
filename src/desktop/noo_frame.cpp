@@ -42,7 +42,6 @@ enum Event
     THREADED_3D_1,
     THREADED_3D_2,
     THREADED_3D_3,
-    THREADED_3D_4,
     DIRECT_BOOT,
     UPDATE_FPS
 };
@@ -63,7 +62,6 @@ EVT_MENU(THREADED_3D_0,  NooFrame::threaded3D0)
 EVT_MENU(THREADED_3D_1,  NooFrame::threaded3D1)
 EVT_MENU(THREADED_3D_2,  NooFrame::threaded3D2)
 EVT_MENU(THREADED_3D_3,  NooFrame::threaded3D3)
-EVT_MENU(THREADED_3D_4,  NooFrame::threaded3D4)
 EVT_MENU(DIRECT_BOOT,    NooFrame::directBootToggle)
 EVT_MENU(wxID_EXIT,      NooFrame::exit)
 EVT_CLOSE(NooFrame::close)
@@ -109,7 +107,6 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     threaded3D->AppendRadioItem(THREADED_3D_1, "&1 Thread");
     threaded3D->AppendRadioItem(THREADED_3D_2, "&2 Threads");
     threaded3D->AppendRadioItem(THREADED_3D_3, "&3 Threads");
-    threaded3D->AppendRadioItem(THREADED_3D_4, "&4 Threads");
 
     // Set the current value of the threaded 3D setting
     switch (Settings::getThreaded3D())
@@ -117,8 +114,7 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
         case 0:  threaded3D->Check(THREADED_3D_0, true); break;
         case 1:  threaded3D->Check(THREADED_3D_1, true); break;
         case 2:  threaded3D->Check(THREADED_3D_2, true); break;
-        case 3:  threaded3D->Check(THREADED_3D_3, true); break;
-        default: threaded3D->Check(THREADED_3D_4, true); break;
+        default: threaded3D->Check(THREADED_3D_3, true); break;
     }
 
     // Set up the Settings menu
@@ -366,12 +362,6 @@ void NooFrame::threaded3D3(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to 3 threads
     Settings::setThreaded3D(3);
-}
-
-void NooFrame::threaded3D4(wxCommandEvent &event)
-{
-    // Set the threaded 3D setting to 4 threads
-    Settings::setThreaded3D(4);
 }
 
 void NooFrame::exit(wxCommandEvent &event)

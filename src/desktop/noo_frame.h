@@ -63,7 +63,6 @@ class NooFrame: public wxFrame
         void threaded3D1(wxCommandEvent &event);
         void threaded3D2(wxCommandEvent &event);
         void threaded3D3(wxCommandEvent &event);
-        void threaded3D4(wxCommandEvent &event);
         void exit(wxCommandEvent &event);
 
         void close(wxCloseEvent &event);

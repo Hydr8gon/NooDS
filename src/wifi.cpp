@@ -143,7 +143,6 @@ void Wifi::writeWTxbufWrAddr(uint16_t mask, uint16_t value)
     wTxbufWrAddr = (wTxbufWrAddr & ~mask) | (value & mask);
 }
 
-
 void Wifi::writeWTxbufCount(uint16_t mask, uint16_t value)
 {
     // Write to the W_TXBUF_COUNT register

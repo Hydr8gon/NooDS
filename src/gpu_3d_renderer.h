@@ -20,6 +20,7 @@
 #ifndef GPU_3D_RENDERER_H
 #define GPU_3D_RENDERER_H
 
+#include <atomic>
 #include <cstdint>
 #include <thread>
 
@@ -30,12 +31,12 @@ struct _Polygon;
 class Gpu3DRenderer
 {
     public:
-        Gpu3DRenderer(Core *core): core(core) {}
+        Gpu3DRenderer(Core *core);
         ~Gpu3DRenderer();
 
         void drawScanline(int line);
 
-        uint32_t *getFramebuffer() { return framebuffer; }
+        uint32_t *getFramebuffer(int line);
 
         uint16_t readDisp3DCnt() { return disp3DCnt; }
 
@@ -51,13 +52,14 @@ class Gpu3DRenderer
         Core *core;
 
         uint32_t framebuffer[256 * 192] = {};
-        int32_t depthBuffer[4][256] = {};
-        uint8_t attribBuffer[4][256] = {};
-        uint8_t stencilBuffer[4][256] = {};
-        bool stencilClear[4] = {};
+        int32_t depthBuffer[3][256] = {};
+        uint8_t attribBuffer[3][256] = {};
+        uint8_t stencilBuffer[3][256] = {};
+        bool stencilClear[3] = {};
 
-        std::thread *threads[4] = {};
         int activeThreads = 0;
+        std::thread *threads[3] = {};
+        std::atomic<bool> ready[192];
 
         uint16_t disp3DCnt = 0;
         uint32_t clearColor = 0;
@@ -69,8 +71,8 @@ class Gpu3DRenderer
 
         uint32_t rgba5ToRgba6(uint32_t color);
 
-        void drawScanline48(int block);
-        void drawScanline1(int line);
+        void drawThreaded(int thread);
+        void drawScanline1(int line, int thread);
 
         uint8_t *getTexture(uint32_t address);
         uint8_t *getPalette(uint32_t address);
@@ -81,7 +83,7 @@ class Gpu3DRenderer
         uint32_t interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2);
 
         uint32_t readTexture(_Polygon *polygon, int s, int t);
-        void drawPolygon(int line, _Polygon *polygon);
+        void drawPolygon(int line, int thread, _Polygon *polygon);
 };
 
 #endif // GPU_3D_RENDERER_H
