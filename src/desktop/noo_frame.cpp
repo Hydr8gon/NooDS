@@ -35,14 +35,15 @@ enum Event
     PATH_SETTINGS,
     INPUT_BINDINGS,
     SCREEN_LAYOUT,
+    DIRECT_BOOT,
     FPS_DISABLED,
     FPS_LIGHT,
     FPS_ACCURATE,
+    THREADED_2D,
     THREADED_3D_0,
     THREADED_3D_1,
     THREADED_3D_2,
     THREADED_3D_3,
-    DIRECT_BOOT,
     UPDATE_FPS
 };
 
@@ -55,14 +56,15 @@ EVT_MENU(STOP,           NooFrame::stop)
 EVT_MENU(PATH_SETTINGS,  NooFrame::pathSettings)
 EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
 EVT_MENU(SCREEN_LAYOUT,  NooFrame::layoutSettings)
+EVT_MENU(DIRECT_BOOT,    NooFrame::directBootToggle)
 EVT_MENU(FPS_DISABLED,   NooFrame::fpsDisabled)
 EVT_MENU(FPS_LIGHT,      NooFrame::fpsLight)
 EVT_MENU(FPS_ACCURATE,   NooFrame::fpsAccurate)
+EVT_MENU(THREADED_2D,    NooFrame::threaded2D)
 EVT_MENU(THREADED_3D_0,  NooFrame::threaded3D0)
 EVT_MENU(THREADED_3D_1,  NooFrame::threaded3D1)
 EVT_MENU(THREADED_3D_2,  NooFrame::threaded3D2)
 EVT_MENU(THREADED_3D_3,  NooFrame::threaded3D3)
-EVT_MENU(DIRECT_BOOT,    NooFrame::directBootToggle)
 EVT_MENU(wxID_EXIT,      NooFrame::exit)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
@@ -123,13 +125,15 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     settingsMenu->Append(INPUT_BINDINGS, "&Input Bindings");
     settingsMenu->Append(SCREEN_LAYOUT,  "&Screen Layout");
     settingsMenu->AppendSeparator();
-    settingsMenu->AppendSubMenu(fpsLimiter, "&FPS Limiter");
-    settingsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
-    settingsMenu->AppendSeparator();
     settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
+    settingsMenu->AppendSubMenu(fpsLimiter, "&FPS Limiter");
+    settingsMenu->AppendSeparator();
+    settingsMenu->AppendCheckItem(THREADED_2D, "&Threaded 2D");
+    settingsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
 
-    // Set the current value of the direct boot setting
+    // Set the current values of the checkboxes
     settingsMenu->Check(DIRECT_BOOT, Settings::getDirectBoot());
+    settingsMenu->Check(THREADED_2D, Settings::getThreaded2D());
 
     // Set up the menu bar
     wxMenuBar *menuBar = new wxMenuBar();
@@ -338,6 +342,12 @@ void NooFrame::fpsAccurate(wxCommandEvent &event)
 {
     // Set the FPS limiter setting to accurate
     Settings::setFpsLimiter(2);
+}
+
+void NooFrame::threaded2D(wxCommandEvent &event)
+{
+    // Toggle the threaded 2D setting
+    Settings::setThreaded2D(!Settings::getThreaded2D());
 }
 
 void NooFrame::threaded3D0(wxCommandEvent &event)

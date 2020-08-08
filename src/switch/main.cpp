@@ -21,6 +21,7 @@
 #include <cstring>
 #include <dirent.h>
 #include <switch.h>
+#include <thread>
 #include <malloc.h>
 
 #include "switch_ui.h"
@@ -51,19 +52,19 @@ int16_t *audioData[2];
 uint32_t count;
 
 Core *core;
-Thread coreThread, audioThread;
+std::thread *coreThread, *audioThread;
 
 ScreenLayout layout;
 bool gbaMode = false;
 
-void runCore(void *args)
+void runCore()
 {
     // Run the emulator
     while (running)
         core->runFrame();
 }
 
-void outputAudio(void *args)
+void outputAudio()
 {
     while (running)
     {
@@ -115,13 +116,9 @@ void startCore()
         audoutAppendAudioOutBuffer(&audioBuffers[i]);
     }
 
-    // Start the audio thread
-    threadCreate(&audioThread, outputAudio, NULL, NULL, 0x8000, 0x20, 0);
-    threadStart(&audioThread);
-
-    // Start the emulator thread
-    threadCreate(&coreThread, runCore, NULL, NULL, 0x8000, 0x30, 1);
-    threadStart(&coreThread);
+    // Start the threads
+    audioThread = new std::thread(outputAudio);
+    coreThread = new std::thread(runCore);
 }
 
 void stopCore()
@@ -129,13 +126,11 @@ void stopCore()
     if (!running) return;
     running = false;
 
-    // Wait for the emulator thread to stop
-    threadWaitForExit(&coreThread);
-    threadClose(&coreThread);
-
-    // Wait for the audio thread to stop
-    threadWaitForExit(&audioThread);
-    threadClose(&audioThread);
+    // Wait for the threads to stop
+    coreThread->join();
+    delete coreThread;
+    audioThread->join();
+    delete audioThread;
 
     // Free the audio buffers
     delete[] audioData[0];
@@ -215,6 +210,7 @@ void settingsMenu()
         {
             ListItem("Direct Boot",        toggle[Settings::getDirectBoot()]),
             ListItem("FPS Limiter",        toggle[Settings::getFpsLimiter()]),
+            ListItem("Threaded 2D",        toggle[Settings::getThreaded2D()]),
             ListItem("Threaded 3D",        toggle[(bool)Settings::getThreaded3D()]),
             ListItem("Screen Rotation",    rotation[ScreenLayout::getScreenRotation()]),
             ListItem("Screen Arrangement", arrangement[ScreenLayout::getScreenArrangement()]),
@@ -240,15 +236,16 @@ void settingsMenu()
             {
                 case  0: Settings::setDirectBoot(!Settings::getDirectBoot());                                break;
                 case  1: Settings::setFpsLimiter(!Settings::getFpsLimiter());                                break;
-                case  2: Settings::setThreaded3D(!Settings::getThreaded3D());                                break;
-                case  3: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
-                case  4: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
-                case  5: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
-                case  6: ScreenLayout::setScreenGap(!ScreenLayout::getScreenGap());                          break;
-                case  7: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
-                case  8: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
-                case  9: screenFilter   = !screenFilter;                                                     break;
-                case 10: showFpsCounter = !showFpsCounter;                                                   break;
+                case  2: Settings::setThreaded2D(!Settings::getThreaded2D());                                break;
+                case  3: Settings::setThreaded3D(!Settings::getThreaded3D());                                break;
+                case  4: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
+                case  5: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
+                case  6: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
+                case  7: ScreenLayout::setScreenGap(!ScreenLayout::getScreenGap());                          break;
+                case  8: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
+                case  9: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
+                case 10: screenFilter   = !screenFilter;                                                     break;
+                case 11: showFpsCounter = !showFpsCounter;                                                   break;
             }
         }
         else

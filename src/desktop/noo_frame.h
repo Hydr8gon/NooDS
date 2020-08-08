@@ -59,6 +59,7 @@ class NooFrame: public wxFrame
         void fpsDisabled(wxCommandEvent &event);
         void fpsLight(wxCommandEvent &event);
         void fpsAccurate(wxCommandEvent &event);
+        void threaded2D(wxCommandEvent &event);
         void threaded3D0(wxCommandEvent &event);
         void threaded3D1(wxCommandEvent &event);
         void threaded3D2(wxCommandEvent &event);

@@ -21,6 +21,24 @@
 
 #include "gpu.h"
 #include "core.h"
+#include "settings.h"
+
+Gpu::Gpu(Core *core): core(core)
+{
+    // Mark the thread as not drawing to start
+    drawing.store(false);
+}
+
+Gpu::~Gpu()
+{
+    // Clean up the thread
+    if (thread)
+    {
+        running = false;
+        thread->join();
+        delete thread;
+    }
+}
 
 uint32_t Gpu::rgb6ToRgb8(uint32_t color)
 {
@@ -75,8 +93,16 @@ void Gpu::gbaScanline240()
 {
     if (vCount < 160)
     {
-        // Draw visible scanlines
-        core->gpu2D[0].drawGbaScanline(vCount);
+        if (thread)
+        {
+            // Wait for the scanline to finish drawing
+            while (drawing.load()) std::this_thread::yield();
+        }
+        else
+        {
+            // Draw visible scanlines
+            core->gpu2D[0].drawGbaScanline(vCount);
+        }
 
         // Trigger H-blank DMA transfers for visible scanlines
         core->dma[1].trigger(2);
@@ -116,6 +142,15 @@ void Gpu::gbaScanline308()
     {
         case 160: // End of visible scanlines
         {
+            // Stop the thread now that the frame has been drawn
+            if (thread)
+            {
+                running = false;
+                thread->join();
+                delete thread;
+                thread = nullptr;
+            }
+
             // Set the V-blank flag
             dispStat[1] |= BIT(0);
 
@@ -156,18 +191,38 @@ void Gpu::gbaScanline308()
         {
             // Start the next frame
             vCount = 0;
+
+            // Start the 2D thread if enabled
+            if (Settings::getThreaded2D() && !thread)
+            {
+                running = true;
+                thread = new std::thread(&Gpu::drawGbaThreaded, this);
+            }
+
             break;
         }
     }
+
+    // Signal that the next scanline has started
+    if (vCount < 160 && thread)
+        drawing.store(true);
 }
 
 void Gpu::scanline256()
 {
     if (vCount < 192)
     {
-        // Draw visible scanlines
-        core->gpu2D[0].drawScanline(vCount);
-        core->gpu2D[1].drawScanline(vCount);
+        if (thread)
+        {
+            // Wait for the scanlines to finish drawing
+            while (drawing.load()) std::this_thread::yield();
+        }
+        else
+        {
+            // Draw visible scanlines
+            core->gpu2D[0].drawScanline(vCount);
+            core->gpu2D[1].drawScanline(vCount);
+        }
 
         // Trigger H-blank DMA transfers for visible scanlines (ARM9 only)
         core->dma[0].trigger(2);
@@ -339,6 +394,15 @@ void Gpu::scanline355()
     {
         case 192: // End of visible scanlines
         {
+            // Stop the thread now that the frame has been drawn
+            if (thread)
+            {
+                running = false;
+                thread->join();
+                delete thread;
+                thread = nullptr;
+            }
+
             for (int i = 0; i < 2; i++)
             {
                 // Set the V-blank flag
@@ -394,8 +458,59 @@ void Gpu::scanline355()
         {
             // Start the next frame
             vCount = 0;
+
+            // Start the 2D thread if enabled
+            if (Settings::getThreaded2D() && !thread)
+            {
+                running = true;
+                thread = new std::thread(&Gpu::drawThreaded, this);
+            }
+
             break;
         }
+    }
+
+    // Signal that the next scanline has started
+    if (vCount < 192 && thread)
+        drawing.store(true);
+}
+
+void Gpu::drawGbaThreaded()
+{
+    while (running)
+    {
+        // Wait until the next scanline starts
+        while (!drawing.load())
+        {
+            if (!running) return;
+            std::this_thread::yield();
+        }
+
+        // Draw the scanline
+        core->gpu2D[0].drawGbaScanline(vCount);
+
+        // Signal that the scanline is finished
+        drawing.store(false);
+    }
+}
+
+void Gpu::drawThreaded()
+{
+    while (running)
+    {
+        // Wait until the next scanline starts
+        while (!drawing.load())
+        {
+            if (!running) return;
+            std::this_thread::yield();
+        }
+
+        // Draw the scanlines
+        core->gpu2D[0].drawScanline(vCount);
+        core->gpu2D[1].drawScanline(vCount);
+
+        // Signal that the scanline is finished
+        drawing.store(false);
     }
 }
 

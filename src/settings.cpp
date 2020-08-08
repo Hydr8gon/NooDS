@@ -24,6 +24,7 @@ bool Settings::loaded = false;
 
 int Settings::directBoot = 1;
 int Settings::fpsLimiter = 1;
+int Settings::threaded2D = 1;
 int Settings::threaded3D = 1;
 std::string Settings::bios9Path = "bios9.bin";
 std::string Settings::bios7Path = "bios7.bin";
@@ -34,6 +35,7 @@ std::vector<Setting> Settings::settings =
 {
     Setting("directBoot",   &directBoot,   false),
     Setting("fpsLimiter",   &fpsLimiter,   false),
+    Setting("threaded2D",   &threaded2D,   false),
     Setting("threaded3D",   &threaded3D,   false),
     Setting("bios9Path",    &bios9Path,    true),
     Setting("bios7Path",    &bios7Path,    true),

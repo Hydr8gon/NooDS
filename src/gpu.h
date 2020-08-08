@@ -20,7 +20,9 @@
 #ifndef GPU_H
 #define GPU_H
 
+#include <atomic>
 #include <cstdint>
+#include <thread>
 #include <mutex>
 
 #include "defines.h"
@@ -30,7 +32,8 @@ class Core;
 class Gpu
 {
     public:
-        Gpu(Core *core): core(core) {}
+        Gpu(Core *core);
+        ~Gpu();
 
         uint32_t *getFrame(bool gbaCrop);
 
@@ -57,6 +60,10 @@ class Gpu
         bool ready = true;
         std::mutex mutex;
 
+        bool running = false;
+        std::atomic<bool> drawing;
+        std::thread *thread = nullptr;
+
         bool displayCapture = false;
         uint8_t dirty3D = 0;
 
@@ -67,6 +74,9 @@ class Gpu
 
         uint32_t rgb6ToRgb8(uint32_t color);
         uint16_t rgb6ToRgb5(uint32_t color);
+
+        void drawGbaThreaded();
+        void drawThreaded();
 };
 
 #endif // GPU_H
