@@ -123,9 +123,14 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
                     break;
                 }
 
-                case 0x08000000: case 0x09000000: // GBA slot
+                case 0x08000000: case 0x09000000: // GBA ROM
                 {
                     return core->cartridge.gbaRomRead<T>(address);
+                }
+
+                case 0x0A000000: // GBA SRAM
+                {
+                    return core->cartridge.gbaRomRead<T>(address + 0x4000000);
                 }
 
                 case 0xFF000000: // ARM9 BIOS
@@ -183,10 +188,10 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
                 break;
             }
 
-            case 0x08000000: case 0x09000000:
-            case 0x0A000000: case 0x0B000000:
-            case 0x0C000000: case 0x0D000000:
-            case 0x0E000000: // GBA slot
+            case 0x08000000: case 0x09000000: // GBA ROM
+            case 0x0A000000: case 0x0B000000: // GBA ROM
+            case 0x0C000000: case 0x0D000000: // GBA ROM
+            case 0x0E000000: // GBA SRAM
             {
                 return core->cartridge.gbaRomRead<T>(address);
             }
@@ -249,9 +254,14 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
                 break;
             }
 
-            case 0x08000000: case 0x09000000:  // GBA slot
+            case 0x08000000: case 0x09000000:  // GBA ROM
             {
                 return core->cartridge.gbaRomRead<T>(address);
+            }
+
+            case 0x0A000000: // GBA SRAM
+            {
+                return core->cartridge.gbaRomRead<T>(address + 0x4000000);
             }
         }
     }
@@ -350,6 +360,12 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
                     data = &oam[address & 0x7FF];
                     break;
                 }
+
+                case 0x0A000000: // GBA SRAM
+                {
+                    core->cartridge.gbaRomWrite<T>(address + 0x4000000, value);
+                    return;
+                }
             }
         }
     }
@@ -394,7 +410,7 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
                 break;
             }
 
-            case 0x0D000000: case 0x0E000000: // GBA slot
+            case 0x0D000000: case 0x0E000000: // GBA SRAM
             {
                 core->cartridge.gbaRomWrite<T>(address, value);
                 return;
@@ -456,6 +472,12 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
                 data = vram7[(address & 0x3FFFF) >> 17];
                 if (data) data += (address & 0x1FFFF);
                 break;
+            }
+
+            case 0x0A000000: // GBA SRAM
+            {
+                core->cartridge.gbaRomWrite<T>(address + 0x4000000, value);
+                return;
             }
         }
     }

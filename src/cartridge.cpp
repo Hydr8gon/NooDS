@@ -576,7 +576,7 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
                         else
                         {
                             // On writes 3+, read data from the save and send it back
-                            auxSpiData[cpu] = (auxAddress[cpu] < 0x100) ? save[auxAddress[cpu]] : 0;
+                            auxSpiData[cpu] = (auxAddress[cpu] < 0x200) ? save[auxAddress[cpu]] : 0;
                             auxAddress[cpu]++;
                         }
                         break;
@@ -610,7 +610,7 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
                         else
                         {
                             // On writes 3+, write data to the save
-                            if (auxAddress[cpu] < 0x100) save[auxAddress[cpu]] = value;
+                            if (auxAddress[cpu] < 0x200) save[auxAddress[cpu]] = value;
                             auxAddress[cpu]++;
                             auxSpiData[cpu] = 0;
                         }
