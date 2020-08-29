@@ -9,7 +9,7 @@
 
         <activity android:name=".FileBrowser"
             android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
-            android:screenOrientation="portrait">
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -21,12 +21,11 @@
         <activity android:name=".SettingsMenu"
             android:label="Settings"
             android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
-            android:screenOrientation="portrait">
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
         </activity>
 
         <activity android:name=".NooActivity"
-            android:theme="@style/Theme.AppCompat.NoActionBar"
-            android:screenOrientation="portrait">
+            android:theme="@style/Theme.AppCompat.NoActionBar">
         </activity>
 
     </application>

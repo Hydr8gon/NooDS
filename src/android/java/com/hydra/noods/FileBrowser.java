@@ -81,12 +81,9 @@ public class FileBrowser extends AppCompatActivity
                 startActivity(new Intent(this, SettingsMenu.class));
                 return true;
             }
-
-            default:
-            {
-                return super.onOptionsItemSelected(item);
-            }    
         }
+
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
