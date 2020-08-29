@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -12,13 +13,15 @@ import android.view.View;
 public class NooView extends View
 {
     private Bitmap bitmap;
-    private int scale, x;
+    private Paint paint;
+    private boolean started, gbaMode;
 
     public NooView(Context context)
     {
         super(context);
-        bitmap = Bitmap.createBitmap(256, 192 * 2, Bitmap.Config.ARGB_8888);
-        scale = -1;
+
+        paint = new Paint();
+        started = false;
 
         // Handle screen touches
         setOnTouchListener(new View.OnTouchListener()
@@ -31,12 +34,8 @@ public class NooView extends View
                     case MotionEvent.ACTION_DOWN:
                     case MotionEvent.ACTION_MOVE:
                     {
-                        // Determine the touch position relative to the emulated touch screen
-                        int touchX = ((int)event.getX() - x) / scale;
-                        int touchY = (int)event.getY() / scale - 192;
-
                         // Send the touch coordinates to the core
-                        pressScreen(touchX, touchY);
+                        pressScreen((int)event.getX(), (int)event.getY());
                         break;
                     }
 
@@ -56,25 +55,69 @@ public class NooView extends View
     @Override
     protected void onDraw(Canvas canvas)
     {
-        // Calculate the screen dimensions
-        if (scale == -1)
+        // Check the current GBA mode status
+        boolean gba = (isGbaMode() && getGbaCrop() != 0);
+
+        // Update the layout if just starting or if GBA mode changed
+        if (!started || gbaMode != gba)
         {
-            scale = getWidth() / 256;
-            x = (getWidth() - 256 * scale) / 2;
+            started = true;
+            gbaMode = gba;
+            updateLayout(getWidth(), getHeight());
+            bitmap = Bitmap.createBitmap((gbaMode ? 240 : 256), (gbaMode ? 160 : (192 * 2)), Bitmap.Config.ARGB_8888);
         }
 
-        // Clear the screen
+        // Clear the display
         canvas.drawColor(Color.BLACK);
 
-        // Draw the framebuffer
-        copyFramebuffer(bitmap);
-        canvas.drawBitmap(Bitmap.createScaledBitmap(bitmap, 256 * scale, 192 * 2 * scale, false), x, 0, new Paint());
+        // Copy the current frame to the bitmap
+        copyFramebuffer(bitmap, gbaMode);
+
+        // Rotate the screen(s) if necessary
+        Matrix matrix = new Matrix();
+        switch (getScreenRotation())
+        {
+            case 1: matrix.postRotate(90);  break; // Clockwise
+            case 2: matrix.postRotate(270); break; // Counter-clockwise
+        }
+
+        if (gbaMode)
+        {
+            // Draw the GBA screen
+            matrix.postScale((float)getTopWidth() / ((getScreenRotation() == 0) ? 240 : 160), (float)getTopHeight() / ((getScreenRotation() == 0) ? 160 : 240));
+            canvas.drawBitmap(Bitmap.createBitmap(bitmap, 0, 0, 240, 160, matrix, getScreenFilter() != 0), getTopX(), getTopY(), paint);
+        }
+        else
+        {
+            // Draw the DS top screen
+            Matrix top = new Matrix(matrix);
+            top.postScale((float)getTopWidth() / ((getScreenRotation() == 0) ? 256 : 192), (float)getTopHeight() / ((getScreenRotation() == 0) ? 192 : 256));
+            canvas.drawBitmap(Bitmap.createBitmap(bitmap, 0, 0, 256, 192, top, getScreenFilter() != 0), getTopX(), getTopY(), paint);
+
+            // Draw the DS bottom screen
+            Matrix bot = new Matrix(matrix);
+            bot.postScale((float)getBotWidth() / ((getScreenRotation() == 0) ? 256 : 192), (float)getBotHeight() / ((getScreenRotation() == 0) ? 192 : 256));
+            canvas.drawBitmap(Bitmap.createBitmap(bitmap, 0, 192, 256, 192, bot, getScreenFilter() != 0), getBotX(), getBotY(), paint);
+        }
 
         // Request more
         invalidate();
     }
 
-    public native void copyFramebuffer(Bitmap bitmap);
+    public native void copyFramebuffer(Bitmap bitmap, boolean gbaCrop);
+    public native int getScreenRotation();
+    public native int getGbaCrop();
+    public native int getScreenFilter();
+    public native void updateLayout(int width, int height);
+    public native int getTopX();
+    public native int getBotX();
+    public native int getTopY();
+    public native int getBotY();
+    public native int getTopWidth();
+    public native int getBotWidth();
+    public native int getTopHeight();
+    public native int getBotHeight();
+    public native boolean isGbaMode();
     public native void pressScreen(int x, int y);
     public native void releaseScreen();
 }

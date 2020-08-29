@@ -3,6 +3,7 @@ package com.hydra.noods;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import android.graphics.Color;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -10,18 +11,19 @@ import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
+import android.widget.TextView;
 
 public class NooActivity extends AppCompatActivity
 {
     private boolean running;
-    private Thread core, audio;
+    private Thread core, audio, fps;
     private AudioTrack track;
 
     private boolean hidden;
     private ConstraintLayout layout;
     private NooView view;
     private NooButton buttons[];
+    private TextView fpsCounter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -49,10 +51,20 @@ public class NooActivity extends AppCompatActivity
         buttons[7] = new NooButton(this, R.drawable.r,       8, w     - (int)(d * 115), h - (int)(d * 400), (int)(d * 110), (int)(d *  44));
         buttons[8] = new NooButton(this, R.drawable.dpad,    4,         (int)(d *   5), h - (int)(d * 174), (int)(d * 132), (int)(d * 132));
 
-        // Prepare the layout
+        // Add the view and buttons to the layout
         layout.addView(view);
         for (int i = 0; i < 9; i++)
             layout.addView(buttons[i]);
+
+        // Add the FPS counter to the layout if enabled
+        if (getShowFpsCounter() != 0)
+        {
+            fpsCounter = new TextView(this);
+            fpsCounter.setTextSize(24);
+            fpsCounter.setTextColor(Color.WHITE);
+            layout.addView(fpsCounter);
+        }
+
         setContentView(layout);
 
         // Set up audio playback
@@ -73,6 +85,8 @@ public class NooActivity extends AppCompatActivity
         {
             core.join();
             audio.join();
+            if (getShowFpsCounter() != 0)
+                fps.join();
         }
         catch (Exception e)
         {
@@ -106,6 +120,9 @@ public class NooActivity extends AppCompatActivity
             }
         };
 
+        core.setPriority(Thread.MAX_PRIORITY);
+        core.start();
+
         // Prepare the audio thread
         audio = new Thread()
         {
@@ -121,13 +138,45 @@ public class NooActivity extends AppCompatActivity
             }
         };
 
-        // Start the core thread
-        core.setPriority(Thread.MAX_PRIORITY);
-        core.start();
-
-        // Start the audio thread
-        audio.setPriority(Thread.MIN_PRIORITY);
+        audio.setPriority(Thread.NORM_PRIORITY);
         audio.start();
+
+        // Prepare the FPS counter thread if enabled
+        if (getShowFpsCounter() != 0)
+        {
+            fps = new Thread()
+            {
+                @Override
+                public void run()
+                {             
+                    while (running)
+                    {
+                        // Update the FPS counter text on the UI thread
+                        runOnUiThread(new Runnable()
+                        {
+                            @Override
+                            public void run()
+                            {
+                                fpsCounter.setText(Integer.toString(getFps()) + " FPS");
+                            }
+                        });
+
+                        // Wait a second before updating the FPS counter again
+                        try
+                        {
+                            Thread.sleep(1000);
+                        }
+                        catch (Exception e)
+                        {
+                            // Oh well, I guess
+                        }
+                    }
+                }
+            };
+
+            fps.setPriority(Thread.MIN_PRIORITY);
+            fps.start();
+        }
     }
 
     @Override
@@ -149,7 +198,9 @@ public class NooActivity extends AppCompatActivity
         }
     }
 
-    public native void runFrame();
     public native void fillAudioBuffer(short[] buffer);
+    public native int getShowFpsCounter();
+    public native int getFps();
+    public native void runFrame();
     public native void writeSave();
 }

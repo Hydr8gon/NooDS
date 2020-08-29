@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string-array name="fps_limiter_entries">
+        <item>Disabled</item>
+        <item>Light</item>
+        <item>Accurate</item>
+    </string-array>
+
+    <string-array name="threaded_3d_entries">
+        <item>Disabled</item>
+        <item>1 Thread</item>
+        <item>2 Threads</item>
+        <item>3 Threads</item>
+    </string-array>
+
+    <string-array name="screen_rotation_entries">
+        <item>None</item>
+        <item>Clockwise</item>
+        <item>Counter-Clockwise</item>
+    </string-array>
+
+    <string-array name="screen_arrangement_entries">
+        <item>Automatic</item>
+        <item>Vertical</item>
+        <item>Horizontal</item>
+    </string-array>
+
+    <string-array name="screen_sizing_entries">
+        <item>Even</item>
+        <item>Enlarge Top</item>
+        <item>Enlarge Bottom</item>
+    </string-array>
+
+    <string-array name="entry_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+</resources>

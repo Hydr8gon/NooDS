@@ -10,6 +10,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -59,6 +61,32 @@ public class FileBrowser extends AppCompatActivity
         update();
 
         loadSettings(path);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
+        getMenuInflater().inflate(R.menu.file_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        switch (item.getItemId())
+        {
+            case R.id.settings_action:
+            {
+                // Open the settings menu
+                startActivity(new Intent(this, SettingsMenu.class));
+                return true;
+            }
+
+            default:
+            {
+                return super.onOptionsItemSelected(item);
+            }    
+        }
     }
 
     @Override
