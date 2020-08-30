@@ -37,6 +37,12 @@ void Wifi::sendInterrupt(int bit)
     wIrf |= BIT(bit);
 }
 
+void Wifi::writeWModeWep(uint16_t mask, uint16_t value)
+{
+    // Write to the W_MODE_WEP register
+    wModeWep = (wModeWep & ~mask) | (value & mask);
+}
+
 void Wifi::writeWIrf(uint16_t mask, uint16_t value)
 {
     // Write to the W_IF register
@@ -57,14 +63,21 @@ void Wifi::writeWIe(uint16_t mask, uint16_t value)
 
 void Wifi::writeWMacaddr(int index, uint16_t mask, uint16_t value)
 {
-    // Write to one of the the W_MACADDR registers
+    // Write to one of the W_MACADDR registers
     wMacaddr[index] = (wMacaddr[index] & ~mask) | (value & mask);
 }
 
 void Wifi::writeWBssid(int index, uint16_t mask, uint16_t value)
 {
-    // Write to one of the the W_BSSID registers
+    // Write to one of the W_BSSID registers
     wBssid[index] = (wBssid[index] & ~mask) | (value & mask);
+}
+
+void Wifi::writeWAidFull(uint16_t mask, uint16_t value)
+{
+    // Write to the W_AID_FULL register
+    mask &= 0x07FF;
+    wAidFull = (wAidFull & ~mask) | (value & mask);
 }
 
 void Wifi::writeWPowerstate(uint16_t mask, uint16_t value)
@@ -99,6 +112,13 @@ void Wifi::writeWRxbufEnd(uint16_t mask, uint16_t value)
 {
     // Write to the W_RXBUF_END register
     wRxbufEnd = (wRxbufEnd & ~mask) | (value & mask);
+}
+
+void Wifi::writeWRxbufWrAddr(uint16_t mask, uint16_t value)
+{
+    // Write to the W_RXBUF_WR_ADDR register
+    mask &= 0x0FFF;
+    wRxbufWrAddr = (wRxbufWrAddr & ~mask) | (value & mask);
 }
 
 void Wifi::writeWRxbufRdAddr(uint16_t mask, uint16_t value)
@@ -194,6 +214,12 @@ void Wifi::writeWConfig(int index, uint16_t mask, uint16_t value)
     wConfig[index] = (wConfig[index] & ~mask) | (value & mask);
 }
 
+void Wifi::writeWBeaconcount2(uint16_t mask, uint16_t value)
+{
+    // Write to the W_BEACONCOUNT2 register
+    wBeaconcount2 = (wBeaconcount2 & ~mask) | (value & mask);
+}
+
 void Wifi::writeWBbCnt(uint16_t mask, uint16_t value)
 {
     int index = value & 0x00FF;
@@ -216,10 +242,6 @@ void Wifi::writeWBbCnt(uint16_t mask, uint16_t value)
             break;
         }
     }
-
-    // Trigger the busy flag
-    if (bbCount == 0)
-        bbCount++;
 }
 
 void Wifi::writeWBbWrite(uint16_t mask, uint16_t value)
@@ -257,23 +279,4 @@ uint16_t Wifi::readWRxbufRdData()
         sendInterrupt(9);
 
     return value;
-}
-
-uint16_t Wifi::readWBbBusy()
-{
-    // If a BB transfer was triggered, set the busy flag for an arbitrary amount of reads
-    // This is a gross hack meant to stall WiFi initialization in the 4th gen Pokémon games
-    // The games give an error message on the save select screen, preventing save loading
-    // This allows enough time to load a save, and shouldn't break anything since it eventually clears
-    // This is temporary; a proper fix will likely require a good chunk of the WiFi to be implemented
-    if (bbCount > 0)
-    {
-        if (++bbCount == 3000)
-            bbCount = 0;
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
 }

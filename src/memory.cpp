@@ -1081,6 +1081,8 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4100011:
             case 0x4100012:
             case 0x4100013: base -= 0x4100010; size = 4; data = core->cartridge.readRomDataIn(1);   break; // ROMDATAIN (ARM7)
+            case 0x4800006:
+            case 0x4800007: base -= 0x4800006; size = 2; data = core->wifi.readWModeWep();          break; // W_MODE_WEP
             case 0x4800010:
             case 0x4800011: base -= 0x4800010; size = 2; data = core->wifi.readWIrf();              break; // W_IF
             case 0x4800012:
@@ -1097,6 +1099,8 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4800023: base -= 0x4800022; size = 2; data = core->wifi.readWBssid(1);           break; // W_BSSID_1
             case 0x4800024:
             case 0x4800025: base -= 0x4800024; size = 2; data = core->wifi.readWBssid(2);           break; // W_BSSID_2
+            case 0x480002A:
+            case 0x480002B: base -= 0x480002A; size = 2; data = core->wifi.readWAidFull();          break; // W_AID_FULL
             case 0x480003C:
             case 0x480003D: base -= 0x480003C; size = 2; data = core->wifi.readWPowerstate();       break; // W_POWERSTATE
             case 0x4800040:
@@ -1105,6 +1109,8 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4800051: base -= 0x4800050; size = 2; data = core->wifi.readWRxbufBegin();       break; // W_RXBUF_BEGIN
             case 0x4800052:
             case 0x4800053: base -= 0x4800052; size = 2; data = core->wifi.readWRxbufEnd();         break; // W_RXBUF_END
+            case 0x4800056:
+            case 0x4800057: base -= 0x4800056; size = 2; data = core->wifi.readWRxbufWrAddr();      break; // W_RXBUF_WR_ADDR
             case 0x4800058:
             case 0x4800059: base -= 0x4800058; size = 2; data = core->wifi.readWRxbufRdAddr();      break; // W_RXBUF_RD_ADDR
             case 0x480005A:
@@ -1137,6 +1143,8 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4800131: base -= 0x4800130; size = 2; data = core->wifi.readWConfig(4);          break; // W_CONFIG_130
             case 0x4800132:
             case 0x4800133: base -= 0x4800132; size = 2; data = core->wifi.readWConfig(5);          break; // W_CONFIG_132
+            case 0x4800134:
+            case 0x4800135: base -= 0x4800134; size = 2; data = core->wifi.readWBeaconcount2();     break; // W_BEACONCOUNT2
             case 0x4800140:
             case 0x4800141: base -= 0x4800140; size = 2; data = core->wifi.readWConfig(6);          break; // W_CONFIG_140
             case 0x4800142:
@@ -1157,8 +1165,6 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4800155: base -= 0x4800154; size = 2; data = core->wifi.readWConfig(14);         break; // W_CONFIG_154
             case 0x480015C:
             case 0x480015D: base -= 0x480015C; size = 2; data = core->wifi.readWBbRead();           break; // W_BB_READ
-            case 0x480015E:
-            case 0x480015F: base -= 0x480015E; size = 2; data = core->wifi.readWBbBusy();           break; // W_BB_BUSY
 
             default:
             {
@@ -2416,6 +2422,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4000501: base -= 0x4000500; size = 2; core->spu.writeMainSoundCnt(mask << (base * 8), data << (base * 8));        break; // SOUNDCNT
             case 0x4000504:
             case 0x4000505: base -= 0x4000504; size = 2; core->spu.writeSoundBias(mask << (base * 8), data << (base * 8));           break; // SOUNDBIAS
+            case 0x4800006:
+            case 0x4800007: base -= 0x4800006; size = 2; core->wifi.writeWModeWep(mask << (base * 8), data << (base * 8));           break; // W_MODE_WEP
             case 0x4800010:
             case 0x4800011: base -= 0x4800010; size = 2; core->wifi.writeWIrf(mask << (base * 8), data << (base * 8));               break; // W_IF
             case 0x4800012:
@@ -2432,6 +2440,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4800023: base -= 0x4800022; size = 2; core->wifi.writeWBssid(1, mask << (base * 8), data << (base * 8));          break; // W_BSSID_1
             case 0x4800024:
             case 0x4800025: base -= 0x4800024; size = 2; core->wifi.writeWBssid(2, mask << (base * 8), data << (base * 8));          break; // W_BSSID_2
+            case 0x480002A:
+            case 0x480002B: base -= 0x480002A; size = 2; core->wifi.writeWAidFull(mask << (base * 8), data << (base * 8));           break; // W_AID_FULL
             case 0x480003C:
             case 0x480003D: base -= 0x480003C; size = 2; core->wifi.writeWPowerstate(mask << (base * 8), data << (base * 8));        break; // W_POWERSTATE
             case 0x4800040:
@@ -2440,6 +2450,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4800051: base -= 0x4800050; size = 2; core->wifi.writeWRxbufBegin(mask << (base * 8), data << (base * 8));        break; // W_RXBUF_BEGIN
             case 0x4800052:
             case 0x4800053: base -= 0x4800052; size = 2; core->wifi.writeWRxbufEnd(mask << (base * 8), data << (base * 8));          break; // W_RXBUF_END
+            case 0x4800056:
+            case 0x4800057: base -= 0x4800056; size = 2; core->wifi.writeWRxbufWrAddr(mask << (base * 8), data << (base * 8));       break; // W_RXBUF_WR_ADDR
             case 0x4800058:
             case 0x4800059: base -= 0x4800058; size = 2; core->wifi.writeWRxbufRdAddr(mask << (base * 8), data << (base * 8));       break; // W_RXBUF_RD_ADDR
             case 0x480005A:
@@ -2472,6 +2484,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4800131: base -= 0x4800130; size = 2; core->wifi.writeWConfig(4,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_130
             case 0x4800132:
             case 0x4800133: base -= 0x4800132; size = 2; core->wifi.writeWConfig(5,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_132
+            case 0x4800134:
+            case 0x4800135: base -= 0x4800134; size = 2; core->wifi.writeWBeaconcount2(mask << (base * 8), data << (base * 8));      break; // W_BEACONCOUNT2
             case 0x4800140:
             case 0x4800141: base -= 0x4800140; size = 2; core->wifi.writeWConfig(6,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_140
             case 0x4800142:
