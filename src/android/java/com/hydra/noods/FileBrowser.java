@@ -38,29 +38,21 @@ public class FileBrowser extends AppCompatActivity
     {
         super.onCreate(savedInstanceState);
 
-        // Request storage permissions
+        // Request storage permissions if they haven't been given
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED)
-            ActivityCompat.requestPermissions(this, new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE }, 0);
+            ActivityCompat.requestPermissions(this, new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE }, 0);
+        else
+            init();
+    }
 
-        fileList = new ArrayList<String>();
-        fileView = new ListView(this);
-        path = Environment.getExternalStorageDirectory().getAbsolutePath();
-
-        fileView.setOnItemClickListener(new AdapterView.OnItemClickListener()
-        {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id)
-            {
-                // Navigate to the selected directory
-                path += "/" + fileList.get(position);
-                update();
-            }
-        });
-
-        setContentView(fileView);
-        update();
-
-        loadSettings(path);
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)
+    {
+        // Continue requesting storage permissions until they are given
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+            init();
+        else
+            ActivityCompat.requestPermissions(this, new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE }, 0);
     }
 
     @Override
@@ -95,6 +87,32 @@ public class FileBrowser extends AppCompatActivity
             path = path.substring(0, path.lastIndexOf('/'));
             update();
         }
+    }
+
+    private void init()
+    {
+        fileList = new ArrayList<String>();
+        fileView = new ListView(this);
+        path = Environment.getExternalStorageDirectory().getAbsolutePath();
+
+        fileView.setOnItemClickListener(new AdapterView.OnItemClickListener()
+        {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id)
+            {
+                // Navigate to the selected directory
+                path += "/" + fileList.get(position);
+                update();
+            }
+        });
+
+        // Load the settings, creating the emulator directory if it doesn't exist
+        File dir = new File(path + "/noods");
+        if (!dir.exists()) dir.mkdir();
+        loadSettings(path);
+
+        setContentView(fileView);
+        update();
     }
 
     private void update()
