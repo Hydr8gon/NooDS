@@ -39,7 +39,7 @@ class NooFrame: public wxFrame
     private:
         std::thread *coreThread = nullptr;
         Emulator *emulator;
-        std::string path;
+        std::string ndsPath, gbaPath;
 
         wxMenu *systemMenu;
 

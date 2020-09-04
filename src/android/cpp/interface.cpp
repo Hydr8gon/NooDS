@@ -6,10 +6,11 @@
 #include "../../settings.h"
 #include "../../common/screen_layout.h"
 
-std::string settingsPath = "";
-
 int screenFilter = 1;
 int showFpsCounter = 0;
+
+std::string settingsPath;
+std::string ndsPath, gbaPath;
 
 Core *core = nullptr;
 ScreenLayout layout;
@@ -54,10 +55,12 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_loadRom(JNIEn
     std::string path = str;
     env->ReleaseStringUTFChars(romPath, str);
 
-    // Load the ROM, or return the error code if loading failed
+    // Load the ROM, or return an error code if loading failed
     try
     {
-        core = new Core(path, (path.find(".gba", path.length() - 4) != std::string::npos));
+        ndsPath = (path.find(".nds", path.length() - 4) != std::string::npos) ? path : "";
+        gbaPath = (path.find(".gba", path.length() - 4) != std::string::npos) ? path : "";
+        core = new Core(ndsPath, gbaPath);
         return 0;
     }
     catch (int e)

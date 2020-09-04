@@ -23,37 +23,22 @@
 #include "core.h"
 #include "settings.h"
 
-Core::Core(std::string filename, bool gba): cartridge(this), cp15(this), dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) },
-                                            gpu3D(this), gpu3DRenderer(this), input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this),
-                                            math(this), memory(this), rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
+Core::Core(std::string ndsPath, std::string gbaPath):
+    cartridge(this), cp15(this), dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) },
+    gpu3D(this), gpu3DRenderer(this), input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this),
+    math(this), memory(this), rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
 {
-    // Load the NDS BIOS and firmware if not directly booting a GBA ROM
-    if (filename == "" || !gba || !Settings::getDirectBoot())
+    // Load the NDS BIOS and firmware unless directly booting a GBA ROM
+    if (ndsPath != "" || gbaPath == "" || !Settings::getDirectBoot())
     {
         memory.loadBios();
         spi.loadFirmware();
     }
 
-    // Skip ROM loading if one wasn't specified
-    if (filename == "") return;
-
-    if (gba) // GBA
+    if (ndsPath != "")
     {
-        // Load the GBA BIOS and ROM
-        memory.loadGbaBios();
-        cartridge.loadGbaRom(filename);
-
-        // Enable GBA mode right away if direct boot is enabled
-        if (Settings::getDirectBoot())
-        {
-            memory.write<uint16_t>(0, 0x4000304, 0x8003); // POWCNT1
-            enterGbaMode();
-        }
-    }
-    else // NDS
-    {
-        // Load the NDS ROM
-        cartridge.loadRom(filename);
+        // Load an NDS ROM
+        cartridge.loadRom(ndsPath);
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled
         if (Settings::getDirectBoot())
@@ -82,6 +67,23 @@ Core::Core(std::string filename, bool gba): cartridge(this), cp15(this), dma { D
             interpreter[0].directBoot();
             interpreter[1].directBoot();
             spi.directBoot();
+        }
+    }
+
+    if (gbaPath != "")
+    {
+        // Load the GBA BIOS unless directly booting an NDS ROM
+        if (ndsPath == "" || !Settings::getDirectBoot())
+            memory.loadGbaBios();
+
+        // Load a GBA ROM
+        cartridge.loadGbaRom(gbaPath);
+
+        // Enable GBA mode right away if direct boot is enabled
+        if (ndsPath == "" && Settings::getDirectBoot())
+        {
+            memory.write<uint16_t>(0, 0x4000304, 0x8003); // POWCNT1
+            enterGbaMode();
         }
     }
 }

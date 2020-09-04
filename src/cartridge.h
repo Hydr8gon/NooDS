@@ -31,8 +31,8 @@ class Cartridge
         Cartridge(Core *core): core(core) {}
         ~Cartridge();
 
-        void loadRom(std::string filename);
-        void loadGbaRom(std::string filename);
+        void loadRom(std::string path);
+        void loadGbaRom(std::string path);
         void directBoot();
         void writeSave();
 

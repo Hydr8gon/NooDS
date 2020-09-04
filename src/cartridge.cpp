@@ -35,10 +35,10 @@ Cartridge::~Cartridge()
     if (gbaSave) delete[] gbaSave;
 }
 
-void Cartridge::loadRom(std::string filename)
+void Cartridge::loadRom(std::string path)
 {
     // Attempt to load an NDS ROM
-    FILE *romFile = fopen(filename.c_str(), "rb");
+    FILE *romFile = fopen(path.c_str(), "rb");
     if (!romFile) throw 2;
     fseek(romFile, 0, SEEK_END);
     romSize = ftell(romFile);
@@ -48,7 +48,7 @@ void Cartridge::loadRom(std::string filename)
     fclose(romFile);
 
     // Attempt to load the ROM's save file
-    saveName = filename.substr(0, filename.rfind(".")) + ".sav";
+    saveName = path.substr(0, path.rfind(".")) + ".sav";
     FILE *saveFile = fopen(saveName.c_str(), "rb");
     if (!saveFile) throw 3;
     fseek(saveFile, 0, SEEK_END);
@@ -59,10 +59,10 @@ void Cartridge::loadRom(std::string filename)
     fclose(saveFile);
 }
 
-void Cartridge::loadGbaRom(std::string filename)
+void Cartridge::loadGbaRom(std::string path)
 {
     // Attempt to load a GBA ROM
-    FILE *gbaRomFile = fopen(filename.c_str(), "rb");
+    FILE *gbaRomFile = fopen(path.c_str(), "rb");
     if (!gbaRomFile) throw 2;
     fseek(gbaRomFile, 0, SEEK_END);
     gbaRomSize = ftell(gbaRomFile);
@@ -72,7 +72,7 @@ void Cartridge::loadGbaRom(std::string filename)
     fclose(gbaRomFile);
 
     // Attempt to load the ROM's save file
-    gbaSaveName = filename.substr(0, filename.rfind(".")) + ".sav";
+    gbaSaveName = path.substr(0, path.rfind(".")) + ".sav";
     FILE *gbaSaveFile = fopen(gbaSaveName.c_str(), "rb");
     if (gbaSaveFile)
     {

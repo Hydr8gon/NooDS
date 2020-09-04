@@ -40,7 +40,7 @@ const uint32_t keyMap[] =
 int screenFilter = 1;
 int showFpsCounter = 0;
 
-std::string path;
+std::string ndsPath, gbaPath;
 
 bool running = false;
 
@@ -259,7 +259,7 @@ void settingsMenu()
 
 void fileBrowser()
 {
-    path = "sdmc:/";
+    std::string path = "sdmc:/";
     unsigned int index = 0;
 
     // Load the appropriate icons for the current theme
@@ -322,14 +322,16 @@ void fileBrowser()
             path += "/" + files[menu.index].name;
             index = 0;
 
-            bool gba = (path.find(".gba", path.length() - 4) != std::string::npos);
+            // Check if a ROM was selected
+            ndsPath = (path.find(".nds", path.length() - 4) != std::string::npos) ? path : "";
+            gbaPath = (path.find(".gba", path.length() - 4) != std::string::npos) ? path : "";
 
             // If a ROM was selected, attempt to boot it
-            if (path.find(".nds", path.length() - 4) != std::string::npos || gba)
+            if (ndsPath != "" || gbaPath != "")
             {
                 try
                 {
-                    core = new Core(path, gba);
+                    core = new Core(ndsPath, gbaPath);
                 }
                 catch (int e)
                 {
@@ -381,10 +383,10 @@ void fileBrowser()
                             SwitchUI::message("Missing Save", message);
 
                             // Assume a save type of FLASH 512KB
-                            Core::createSave(path, 7);
+                            Core::createSave(ndsPath, 7);
 
                             // Boot the ROM again
-                            core = new Core(path, gba);
+                            core = new Core(ndsPath, gbaPath);
                             break;
                         }
                     }
@@ -457,7 +459,7 @@ void pauseMenu()
                 {
                     // Restart and return to the emulator
                     delete core;
-                    core = new Core(path);
+                    core = new Core(ndsPath, gbaPath);
                     startCore();
                     return;
                 }

@@ -69,7 +69,7 @@ EVT_MENU(wxID_EXIT,      NooFrame::exit)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
-NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator), path(path)
+NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator)
 {
     // Set up the File menu
     wxMenu *fileMenu = new wxMenu();
@@ -153,7 +153,14 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     Show(true);
 
     // Start the core right away if a filename was passed through the command line
-    if (path != "") startCore();
+    if (path != "")
+    {
+        if (path.find(".nds", path.length() - 4) != std::string::npos)
+            ndsPath = path;
+        else if (path.find(".gba", path.length() - 4) != std::string::npos)
+            gbaPath = path;
+        startCore();
+    }
 }
 
 void NooFrame::runCore()
@@ -168,12 +175,10 @@ void NooFrame::startCore()
     // Ensure the core is stopped
     stopCore();
 
-    bool gba = (path.find(".gba", path.length() - 4) != std::string::npos);
-
     try
     {
         // Attempt to boot the ROM
-        emulator->core = new Core(path, gba);
+        emulator->core = new Core(ndsPath, gbaPath);
     }
     catch (int e)
     {
@@ -197,10 +202,10 @@ void NooFrame::startCore()
             case 3: // Missing save file
             {
                 // Show the save dialog and boot the ROM again if a save was created
-                SaveDialog saveDialog(path);
+                SaveDialog saveDialog(ndsPath);
                 if (saveDialog.ShowModal() == wxID_OK)
                 {
-                    emulator->core = new Core(path, gba);
+                    emulator->core = new Core(ndsPath, gbaPath);
                     break;
                 }
                 return;
@@ -248,15 +253,37 @@ void NooFrame::loadRom(wxCommandEvent &event)
     if (romSelect.ShowModal() == wxID_CANCEL)
         return;
 
-    // Set the ROM path and start the core
-    path = (const char*)romSelect.GetPath().mb_str(wxConvUTF8);
+    std::string path = (const char*)romSelect.GetPath().mb_str(wxConvUTF8);
+
+    // Set the NDS or GBA ROM path depending on the extension of the selected file
+    // If a ROM of the other type is already loaded, ask if the new ROM should be loaded alongside it
+    if (path.find(".nds", path.length() - 4) != std::string::npos) // NDS ROM
+    {
+        if (gbaPath != "")
+        {
+            wxMessageDialog dialog(this, "Load this ROM alongside the current GBA ROM?", "Loading NDS ROM", wxYES_NO | wxICON_NONE);
+            if (dialog.ShowModal() == wxID_NO) gbaPath = "";
+        }
+        ndsPath = path;
+    }
+    else // GBA ROM
+    {
+        if (ndsPath != "")
+        {
+            wxMessageDialog dialog(this, "Load this ROM alongside the current NDS ROM?", "Loading GBA ROM", wxYES_NO | wxICON_NONE);
+            if (dialog.ShowModal() == wxID_NO) ndsPath = "";
+        }
+        gbaPath = path;
+    }
+
     startCore();
 }
 
 void NooFrame::bootFirmware(wxCommandEvent &event)
 {
     // Start the core with no ROM
-    path = "";
+    ndsPath = "";
+    gbaPath = "";
     startCore();
 }
 

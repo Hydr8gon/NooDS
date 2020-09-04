@@ -46,7 +46,7 @@
 class Core
 {
     public:
-        Core(std::string filename = "", bool gba = false);
+        Core(std::string ndsPath = "", std::string gbaPath = "");
 
         static void createSave(std::string filename, int type);
 

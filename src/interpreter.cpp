@@ -64,6 +64,7 @@ void Interpreter::enterGbaMode()
     // Point the program counter to the GBA BIOS
     // The GBA BIOS will take care of initializing everything else
     registersUsr[15] = 0x00000000 + 4;
+    postFlg = 0;
 }
 
 void Interpreter::runCycle()
