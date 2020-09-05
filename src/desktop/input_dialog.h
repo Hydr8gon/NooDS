@@ -28,7 +28,7 @@ class InputDialog: public wxDialog
         InputDialog();
 
     private:
-        int keyBinds[12];
+        int keyBinds[14];
 
         wxButton *keyA;
         wxButton *keyB;
@@ -42,6 +42,8 @@ class InputDialog: public wxDialog
         wxButton *keyRight;
         wxButton *keyL;
         wxButton *keyR;
+        wxButton *keyFastForward;
+        wxButton *keyFullScreen;
 
         wxButton *current = nullptr;
         int keyIndex = 0;
@@ -62,6 +64,8 @@ class InputDialog: public wxDialog
         void remapRight(wxCommandEvent &event);
         void remapL(wxCommandEvent &event);
         void remapR(wxCommandEvent &event);
+        void remapFastForward(wxCommandEvent &event);
+        void remapFullScreen(wxCommandEvent &event);
         void confirm(wxCommandEvent &event);
         void pressKey(wxKeyEvent &event);
 

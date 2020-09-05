@@ -34,23 +34,27 @@ enum Event
     REMAP_LEFT,
     REMAP_RIGHT,
     REMAP_L,
-    REMAP_R
+    REMAP_R,
+    REMAP_FAST_FORWARD,
+    REMAP_FULL_SCREEN
 };
 
 wxBEGIN_EVENT_TABLE(InputDialog, wxDialog)
-EVT_BUTTON(REMAP_A,      InputDialog::remapA)
-EVT_BUTTON(REMAP_B,      InputDialog::remapB)
-EVT_BUTTON(REMAP_X,      InputDialog::remapX)
-EVT_BUTTON(REMAP_Y,      InputDialog::remapY)
-EVT_BUTTON(REMAP_START,  InputDialog::remapStart)
-EVT_BUTTON(REMAP_SELECT, InputDialog::remapSelect)
-EVT_BUTTON(REMAP_UP,     InputDialog::remapUp)
-EVT_BUTTON(REMAP_DOWN,   InputDialog::remapDown)
-EVT_BUTTON(REMAP_LEFT,   InputDialog::remapLeft)
-EVT_BUTTON(REMAP_RIGHT,  InputDialog::remapRight)
-EVT_BUTTON(REMAP_L,      InputDialog::remapL)
-EVT_BUTTON(REMAP_R,      InputDialog::remapR)
-EVT_BUTTON(wxID_OK,      InputDialog::confirm)
+EVT_BUTTON(REMAP_A,            InputDialog::remapA)
+EVT_BUTTON(REMAP_B,            InputDialog::remapB)
+EVT_BUTTON(REMAP_X,            InputDialog::remapX)
+EVT_BUTTON(REMAP_Y,            InputDialog::remapY)
+EVT_BUTTON(REMAP_START,        InputDialog::remapStart)
+EVT_BUTTON(REMAP_SELECT,       InputDialog::remapSelect)
+EVT_BUTTON(REMAP_UP,           InputDialog::remapUp)
+EVT_BUTTON(REMAP_DOWN,         InputDialog::remapDown)
+EVT_BUTTON(REMAP_LEFT,         InputDialog::remapLeft)
+EVT_BUTTON(REMAP_RIGHT,        InputDialog::remapRight)
+EVT_BUTTON(REMAP_L,            InputDialog::remapL)
+EVT_BUTTON(REMAP_R,            InputDialog::remapR)
+EVT_BUTTON(REMAP_FAST_FORWARD, InputDialog::remapFastForward)
+EVT_BUTTON(REMAP_FULL_SCREEN,  InputDialog::remapFullScreen)
+EVT_BUTTON(wxID_OK,            InputDialog::confirm)
 EVT_CHAR_HOOK(InputDialog::pressKey)
 wxEND_EVENT_TABLE()
 
@@ -169,7 +173,7 @@ std::string InputDialog::keyToString(int key)
 InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Bindings")
 {
     // Load the key bindings
-    for (int i = 0; i < 12; i++)
+    for (int i = 0; i < 14; i++)
         keyBinds[i] = NooApp::getKeyBind(i);
 
     // Determine the height of a button
@@ -238,6 +242,16 @@ InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Bindings")
     rSizer->Add(new wxStaticText(this, wxID_ANY, "R:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
     rSizer->Add(keyR = new wxButton(this, REMAP_R, keyToString(keyBinds[8]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
+    // Set up the fast forward button setting
+    wxBoxSizer *fastForwardSizer = new wxBoxSizer(wxHORIZONTAL);
+    fastForwardSizer->Add(new wxStaticText(this, wxID_ANY, "Fast Forward:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    fastForwardSizer->Add(keyFastForward = new wxButton(this, REMAP_FAST_FORWARD, keyToString(keyBinds[12]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+
+    // Set up the full screen button setting
+    wxBoxSizer *fullScreenSizer = new wxBoxSizer(wxHORIZONTAL);
+    fullScreenSizer->Add(new wxStaticText(this, wxID_ANY, "Full Screen:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    fullScreenSizer->Add(keyFullScreen = new wxButton(this, REMAP_FULL_SCREEN, keyToString(keyBinds[13]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+
     // Set up the cancel and confirm buttons
     wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
     buttonSizer->Add(new wxStaticText(this, wxID_ANY, ""), 1);
@@ -246,23 +260,25 @@ InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Bindings")
 
     // Combine all of the left contents
     wxBoxSizer *leftContents = new wxBoxSizer(wxVERTICAL);
-    leftContents->Add(aSizer,      1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(bSizer,      1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(xSizer,      1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(ySizer,      1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(startSizer,  1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(selectSizer, 1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(aSizer,           1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(bSizer,           1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(xSizer,           1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(ySizer,           1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(startSizer,       1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(selectSizer,      1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(fastForwardSizer, 1, wxEXPAND | wxALL, size / 8);
     leftContents->Add(new wxStaticText(this, wxID_ANY, ""), 1, wxEXPAND | wxALL, size / 8);
 
     // Combine all of the right contents
     wxBoxSizer *rightContents = new wxBoxSizer(wxVERTICAL);
-    rightContents->Add(upSizer,     1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(downSizer,   1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(leftSizer,   1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(rightSizer,  1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(lSizer,      1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(rSizer,      1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(buttonSizer, 1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(upSizer,         1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(downSizer,       1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(leftSizer,       1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(rightSizer,      1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(lSizer,          1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(rSizer,          1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(fullScreenSizer, 1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(buttonSizer,     1, wxEXPAND | wxALL, size / 8);
 
     // Add a final border around everything
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -402,10 +418,28 @@ void InputDialog::remapR(wxCommandEvent &event)
     keyIndex = 8;
 }
 
+void InputDialog::remapFastForward(wxCommandEvent &event)
+{
+    // Prepare the fast forward button for remapping
+    resetLabels();
+    keyFastForward->SetLabel("Press a key");
+    current = keyFastForward;
+    keyIndex = 12;
+}
+
+void InputDialog::remapFullScreen(wxCommandEvent &event)
+{
+    // Prepare the full screen button for remapping
+    resetLabels();
+    keyFullScreen->SetLabel("Press a key");
+    current = keyFullScreen;
+    keyIndex = 13;
+}
+
 void InputDialog::confirm(wxCommandEvent &event)
 {
     // Save the key mappings
-    for (int i = 0; i < 12; i++)
+    for (int i = 0; i < 14; i++)
         NooApp::setKeyBind(i, keyBinds[i]);
 
     event.Skip(true);

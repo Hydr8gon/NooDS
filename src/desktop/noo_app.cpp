@@ -31,26 +31,28 @@ EVT_TIMER(UPDATE, NooApp::update)
 wxEND_EVENT_TABLE()
 
 int NooApp::screenFilter = 1;
-int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I' };
+int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I', WXK_TAB, WXK_ESCAPE };
 
 bool NooApp::OnInit()
 {
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
-        Setting("screenFilter", &screenFilter, false),
-        Setting("keyA",         &keyBinds[0],  false),
-        Setting("keyB",         &keyBinds[1],  false),
-        Setting("keySelect",    &keyBinds[2],  false),
-        Setting("keyStart",     &keyBinds[3],  false),
-        Setting("keyRight",     &keyBinds[4],  false),
-        Setting("keyLeft",      &keyBinds[5],  false),
-        Setting("keyUp",        &keyBinds[6],  false),
-        Setting("keyDown",      &keyBinds[7],  false),
-        Setting("keyR",         &keyBinds[8],  false),
-        Setting("keyL",         &keyBinds[9],  false),
-        Setting("keyX",         &keyBinds[10], false),
-        Setting("keyY",         &keyBinds[11], false)
+        Setting("screenFilter",   &screenFilter, false),
+        Setting("keyA",           &keyBinds[0],  false),
+        Setting("keyB",           &keyBinds[1],  false),
+        Setting("keySelect",      &keyBinds[2],  false),
+        Setting("keyStart",       &keyBinds[3],  false),
+        Setting("keyRight",       &keyBinds[4],  false),
+        Setting("keyLeft",        &keyBinds[5],  false),
+        Setting("keyUp",          &keyBinds[6],  false),
+        Setting("keyDown",        &keyBinds[7],  false),
+        Setting("keyR",           &keyBinds[8],  false),
+        Setting("keyL",           &keyBinds[9],  false),
+        Setting("keyX",           &keyBinds[10], false),
+        Setting("keyY",           &keyBinds[11], false),
+        Setting("keyFastForward", &keyBinds[12], false),
+        Setting("keyFullScreen",  &keyBinds[13], false)
     };
 
     // Load the settings

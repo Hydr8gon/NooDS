@@ -19,6 +19,7 @@
 
 #include "noo_canvas.h"
 #include "noo_app.h"
+#include "../settings.h"
 
 #ifdef _WIN32
 #include <GL/gl.h>
@@ -162,7 +163,19 @@ void NooCanvas::resize(wxSizeEvent &event)
     // Update the screen layout
     wxSize size = GetSize();
     layout.update(size.x, size.y, gbaMode);
-    frame->SetMinClientSize(wxSize(layout.getMinWidth(), layout.getMinHeight()));
+
+    // Prevent resizing smaller than the minimum layout size
+    // The minimum size breaks when returning from full screen, but fixes when changing to a different value
+    // As a workaround, the minium size is cleared when returning from full screen and then reset on the next resize
+    if (frameReset)
+    {
+        frame->SetMinClientSize(wxSize(0, 0));
+        frameReset = false;
+    }
+    else
+    {
+        frame->SetMinClientSize(wxSize(layout.getMinWidth(), layout.getMinHeight()));
+    }
 
     // Update the display dimensions
     glMatrixMode(GL_PROJECTION);
@@ -177,25 +190,48 @@ void NooCanvas::resize(wxSizeEvent &event)
 
 void NooCanvas::pressKey(wxKeyEvent &event)
 {
-    if (!emulator->running) return;
-
     // Send a key press to the core
-    for (int i = 0; i < 12; i++)
+    if (emulator->running)
     {
-        if (event.GetKeyCode() == NooApp::getKeyBind(i))
-            emulator->core->input.pressKey(i);
+        for (int i = 0; i < 12; i++)
+        {
+            if (event.GetKeyCode() == NooApp::getKeyBind(i))
+                emulator->core->input.pressKey(i);
+        }
+    }
+
+    // Disable the FPS limiter if the fast forward key is pressed
+    if (event.GetKeyCode() == NooApp::getKeyBind(12) && Settings::getFpsLimiter() != 0)
+    {
+        fpsLimiterBackup = Settings::getFpsLimiter();
+        Settings::setFpsLimiter(0);
+    }
+
+    // Toggle full screen mode if the full screen key is pressed
+    if (event.GetKeyCode() == NooApp::getKeyBind(13))
+    {
+        frame->ShowFullScreen(fullScreen = !fullScreen);
+        if (!fullScreen) frameReset = true;
     }
 }
 
 void NooCanvas::releaseKey(wxKeyEvent &event)
 {
-    if (!emulator->running) return;
-
     // Send a key release to the core
-    for (int i = 0; i < 12; i++)
+    if (emulator->running)
     {
-        if (event.GetKeyCode() == NooApp::getKeyBind(i))
-            emulator->core->input.releaseKey(i);
+        for (int i = 0; i < 12; i++)
+        {
+            if (event.GetKeyCode() == NooApp::getKeyBind(i))
+                emulator->core->input.releaseKey(i);
+        }
+    }
+
+    // Restore the FPS limiter setting if the fast forward key is released
+    if (event.GetKeyCode() == NooApp::getKeyBind(12) && fpsLimiterBackup != 0)
+    {
+        Settings::setFpsLimiter(fpsLimiterBackup);
+        fpsLimiterBackup = 0;
     }
 }
 

@@ -40,7 +40,7 @@ class NooApp: public wxApp
         Emulator emulator;
 
         static int screenFilter;
-        static int keyBinds[12];
+        static int keyBinds[14];
 
         bool OnInit();
 
