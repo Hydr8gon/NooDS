@@ -60,18 +60,25 @@ bool NooApp::OnInit()
     Settings::add(platformSettings);
     Settings::load();
 
+    // Prepare a joystick if one is connected
+    joystick = new wxJoystick();
+    if (!joystick->IsOk())
+    {
+        delete joystick;
+        joystick = nullptr;
+    }
+
     // Set up the window
     // If a filename is passed through the command line, pass it along
-    frame = new NooFrame(&emulator, ((argc > 1) ? argv[1].ToStdString() : ""));
+    frame = new NooFrame(joystick, &emulator, ((argc > 1) ? argv[1].ToStdString() : ""));
     canvas = new NooCanvas(frame, &emulator);
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
     sizer->Add(canvas, 1, wxEXPAND);
     frame->SetSizer(sizer);
 
     // Set up the update timer
-    // Timers aren't entirely accurate (especially on Windows!), so just run as fast as possible to avoid frame drops
     wxTimer *timer = new wxTimer(this, UPDATE);
-    timer->Start(1);
+    timer->Start(10);
 
     // Start the audio service
     PaStream *stream;

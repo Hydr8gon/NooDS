@@ -22,6 +22,7 @@
 
 #include <portaudio.h>
 #include <wx/wx.h>
+#include <wx/joystick.h>
 
 #include "noo_canvas.h"
 
@@ -37,6 +38,7 @@ class NooApp: public wxApp
     private:
         NooFrame *frame;
         NooCanvas *canvas;
+        wxJoystick *joystick;
         Emulator emulator;
 
         static int screenFilter;

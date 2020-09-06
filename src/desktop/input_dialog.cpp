@@ -56,10 +56,20 @@ EVT_BUTTON(REMAP_FAST_FORWARD, InputDialog::remapFastForward)
 EVT_BUTTON(REMAP_FULL_SCREEN,  InputDialog::remapFullScreen)
 EVT_BUTTON(wxID_OK,            InputDialog::confirm)
 EVT_CHAR_HOOK(InputDialog::pressKey)
+EVT_JOYSTICK_EVENTS(InputDialog::joystickInput)
 wxEND_EVENT_TABLE()
 
 std::string InputDialog::keyToString(int key)
 {
+    // Handle joystick keys
+    // 1000, 2000, and 3000 are offsets assigned to these keys to identify them and hopefully avoid conflict
+    if (key >= 3000)
+        return "Axis " + std::to_string(key - 3000) + " -";
+    else if (key >= 2000)
+        return "Axis " + std::to_string(key - 2000) + " +";
+    else if (key >= 1000)
+        return "Button " + std::to_string(key - 1000);
+
     // Convert special keys to words representing their respective keys
     switch (key)
     {
@@ -170,7 +180,7 @@ std::string InputDialog::keyToString(int key)
     return regular;
 }
 
-InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Bindings")
+InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Input Bindings"), joystick(joystick)
 {
     // Load the key bindings
     for (int i = 0; i < 14; i++)
@@ -290,6 +300,14 @@ InputDialog::InputDialog(): wxDialog(nullptr, wxID_ANY, "Input Bindings")
     sizer->Fit(this);
     SetMinSize(GetSize());
     SetMaxSize(GetSize());
+
+    // Capture joystick input if a joystick is connected
+    if (joystick)
+    {
+        joystick->SetCapture(this, 10);
+        for (int i = 0; i < joystick->GetNumberAxes(); i++)
+            axisBases.push_back(joystick->GetPosition(i));
+    }
 }
 
 void InputDialog::resetLabels()
@@ -449,8 +467,44 @@ void InputDialog::pressKey(wxKeyEvent &event)
 {
     if (!current) return;
 
-    // Update the key mapping of the current button
+    // Map the current button to the pressed key
     keyBinds[keyIndex] = event.GetKeyCode();
     current->SetLabel(keyToString(keyBinds[keyIndex]));
     current = nullptr;
+}
+
+void InputDialog::joystickInput(wxJoystickEvent &event)
+{
+    if (!current) return;
+
+    // Map the current button to a joystick button if one is pressed
+    for (int i = 0; i < joystick->GetNumberButtons(); i++)
+    {
+        if (joystick->GetButtonState(i))
+        {
+            keyBinds[keyIndex] = 1000 + i;
+            current->SetLabel(keyToString(keyBinds[keyIndex]));
+            current = nullptr;
+            return;
+        }
+    }
+
+    // Map the current button to a joystick axis if one is held
+    for (int i = 0; i < joystick->GetNumberAxes(); i++)
+    {
+        if (joystick->GetPosition(i) - axisBases[i] > 16384) // Positive axis
+        {
+            keyBinds[keyIndex] = 2000 + i;
+            current->SetLabel(keyToString(keyBinds[keyIndex]));
+            current = nullptr;
+            return;
+        }
+        else if (joystick->GetPosition(i) - axisBases[i] < -16384) // Negative axis
+        {
+            keyBinds[keyIndex] = 3000 + i;
+            current->SetLabel(keyToString(keyBinds[keyIndex]));
+            current = nullptr;
+            return;
+        }
+    }
 }

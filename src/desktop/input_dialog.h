@@ -20,15 +20,17 @@
 #ifndef INPUT_DIALOG_H
 #define INPUT_DIALOG_H
 
+#include <vector>
 #include <wx/wx.h>
+#include <wx/joystick.h>
 
 class InputDialog: public wxDialog
 {
     public:
-        InputDialog();
+        InputDialog(wxJoystick *joystick);
 
     private:
-        int keyBinds[14];
+        wxJoystick *joystick;
 
         wxButton *keyA;
         wxButton *keyB;
@@ -45,6 +47,8 @@ class InputDialog: public wxDialog
         wxButton *keyFastForward;
         wxButton *keyFullScreen;
 
+        int keyBinds[14];
+        std::vector<int> axisBases;
         wxButton *current = nullptr;
         int keyIndex = 0;
 
@@ -68,6 +72,7 @@ class InputDialog: public wxDialog
         void remapFullScreen(wxCommandEvent &event);
         void confirm(wxCommandEvent &event);
         void pressKey(wxKeyEvent &event);
+        void joystickInput(wxJoystickEvent &event);
 
         wxDECLARE_EVENT_TABLE();
 };

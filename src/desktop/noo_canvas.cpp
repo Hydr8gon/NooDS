@@ -167,10 +167,10 @@ void NooCanvas::resize(wxSizeEvent &event)
     // Prevent resizing smaller than the minimum layout size
     // The minimum size breaks when returning from full screen, but fixes when changing to a different value
     // As a workaround, the minium size is cleared when returning from full screen and then reset on the next resize
-    if (frameReset)
+    if (emulator->frameReset)
     {
         frame->SetMinClientSize(wxSize(0, 0));
-        frameReset = false;
+        emulator->frameReset = false;
     }
     else
     {
@@ -190,48 +190,21 @@ void NooCanvas::resize(wxSizeEvent &event)
 
 void NooCanvas::pressKey(wxKeyEvent &event)
 {
-    // Send a key press to the core
-    if (emulator->running)
+    // Trigger a key press if a mapped key was pressed
+    for (int i = 0; i < 14; i++)
     {
-        for (int i = 0; i < 12; i++)
-        {
-            if (event.GetKeyCode() == NooApp::getKeyBind(i))
-                emulator->core->input.pressKey(i);
-        }
-    }
-
-    // Disable the FPS limiter if the fast forward key is pressed
-    if (event.GetKeyCode() == NooApp::getKeyBind(12) && Settings::getFpsLimiter() != 0)
-    {
-        fpsLimiterBackup = Settings::getFpsLimiter();
-        Settings::setFpsLimiter(0);
-    }
-
-    // Toggle full screen mode if the full screen key is pressed
-    if (event.GetKeyCode() == NooApp::getKeyBind(13))
-    {
-        frame->ShowFullScreen(fullScreen = !fullScreen);
-        if (!fullScreen) frameReset = true;
+        if (event.GetKeyCode() == NooApp::getKeyBind(i))
+            frame->pressKey(i);
     }
 }
 
 void NooCanvas::releaseKey(wxKeyEvent &event)
 {
-    // Send a key release to the core
-    if (emulator->running)
+    // Trigger a key release if a mapped key was released
+    for (int i = 0; i < 14; i++)
     {
-        for (int i = 0; i < 12; i++)
-        {
-            if (event.GetKeyCode() == NooApp::getKeyBind(i))
-                emulator->core->input.releaseKey(i);
-        }
-    }
-
-    // Restore the FPS limiter setting if the fast forward key is released
-    if (event.GetKeyCode() == NooApp::getKeyBind(12) && fpsLimiterBackup != 0)
-    {
-        Settings::setFpsLimiter(fpsLimiterBackup);
-        fpsLimiterBackup = 0;
+        if (event.GetKeyCode() == NooApp::getKeyBind(i))
+            frame->releaseKey(i);
     }
 }
 

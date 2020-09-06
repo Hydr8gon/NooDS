@@ -42,10 +42,6 @@ class NooCanvas: public wxGLCanvas
         bool gbaMode = false;
         bool display = true;
 
-        int fpsLimiterBackup = 0;
-        bool fullScreen = false;
-        bool frameReset = false;
-
         void resize();
 
         void draw(wxPaintEvent &event);

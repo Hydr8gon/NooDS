@@ -20,6 +20,7 @@
 #include "noo_frame.h"
 #include "input_dialog.h"
 #include "layout_dialog.h"
+#include "noo_app.h"
 #include "path_dialog.h"
 #include "save_dialog.h"
 #include "../common/screen_layout.h"
@@ -66,10 +67,11 @@ EVT_MENU(THREADED_3D_1,  NooFrame::threaded3D1)
 EVT_MENU(THREADED_3D_2,  NooFrame::threaded3D2)
 EVT_MENU(THREADED_3D_3,  NooFrame::threaded3D3)
 EVT_MENU(wxID_EXIT,      NooFrame::exit)
+EVT_JOYSTICK_EVENTS(NooFrame::joystickInput)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
-NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator)
+NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): wxFrame(nullptr, wxID_ANY, "NooDS"), joystick(joystick), emulator(emulator)
 {
     // Set up the File menu
     wxMenu *fileMenu = new wxMenu();
@@ -148,9 +150,19 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     SetClientSize(wxSize(layout.getMinWidth(), layout.getMinHeight()));
 
     SetBackgroundColour(*wxBLACK);
-
     Centre();
     Show(true);
+
+    // Capture joystick input if a joystick is connected
+    // The initial axis values are saved so that inputs can be detected as offsets instead of raw values
+    // This avoids issues with axes that have non-zero values in their resting position
+    // Just make sure you aren't touching the controller when the program starts!
+    if (joystick)
+    {
+        joystick->SetCapture(this, 10);
+        for (int i = 0; i < joystick->GetNumberAxes(); i++)
+            axisBases.push_back(joystick->GetPosition(i));
+    }
 
     // Start the core right away if a filename was passed through the command line
     if (path != "")
@@ -246,6 +258,66 @@ void NooFrame::stopCore()
     emulator->core = nullptr;
 }
 
+void NooFrame::pressKey(int key)
+{
+    // Handle a key press separate from the key's actual mapping
+    switch (key)
+    {
+        case 12: // Fast Forward
+        {
+            // Disable the FPS limiter
+            if (Settings::getFpsLimiter() != 0)
+            {
+                fpsLimiterBackup = Settings::getFpsLimiter();
+                Settings::setFpsLimiter(0);
+            }
+            break;
+        }
+
+        case 13: // Full Screen
+        {
+            // Toggle full screen mode
+            ShowFullScreen(fullScreen = !fullScreen);
+            if (!fullScreen) emulator->frameReset = true;
+            break;
+        }
+
+        default: // Core input
+        {
+            // Send a key press to the core
+            if (emulator->running)
+                emulator->core->input.pressKey(key);
+            break;
+        }
+    }
+}
+
+void NooFrame::releaseKey(int key)
+{
+    // Handle a key release separate from the key's actual mapping
+    switch (key)
+    {
+        case 12: // Fast Forward
+        {
+            // Restore the previous FPS limiter setting
+            if (fpsLimiterBackup != 0)
+            {
+                Settings::setFpsLimiter(fpsLimiterBackup);
+                fpsLimiterBackup = 0;
+            }
+            break;
+        }
+
+        default: // Core input
+        {
+            // Send a key release to the core
+            if (emulator->running)
+                emulator->core->input.releaseKey(key);
+            break;
+        }
+    }
+}
+
 void NooFrame::loadRom(wxCommandEvent &event)
 {
     // Show the file browser
@@ -335,9 +407,10 @@ void NooFrame::pathSettings(wxCommandEvent &event)
 
 void NooFrame::inputSettings(wxCommandEvent &event)
 {
-    // Show the input settings dialog
-    InputDialog inputDialog;
+    // Show the input settings dialog and recapture joystick input afterwards
+    InputDialog inputDialog(joystick);
     inputDialog.ShowModal();
+    if (joystick) joystick->SetCapture(this, 10);
 }
 
 void NooFrame::layoutSettings(wxCommandEvent &event)
@@ -407,8 +480,44 @@ void NooFrame::exit(wxCommandEvent &event)
     Close(true);
 }
 
+void NooFrame::joystickInput(wxJoystickEvent &event)
+{
+    // Check the status of mapped joystick inputs and trigger key presses and releases accordingly
+    for (int i = 0; i < 14; i++)
+    {
+        if (NooApp::getKeyBind(i) >= 3000 && joystick->GetNumberAxes() > NooApp::getKeyBind(i) - 3000) // Axis -
+        {
+            if (joystick->GetPosition(NooApp::getKeyBind(i) - 3000) - axisBases[NooApp::getKeyBind(i) - 3000] < -16384)
+                pressKey(i);
+            else
+                releaseKey(i);
+        }
+        else if (NooApp::getKeyBind(i) >= 2000 && joystick->GetNumberAxes() > NooApp::getKeyBind(i) - 2000) // Axis +
+        {
+            if (joystick->GetPosition(NooApp::getKeyBind(i) - 2000) - axisBases[NooApp::getKeyBind(i) - 2000] > 16384)
+                pressKey(i);
+            else
+                releaseKey(i);
+        }
+        else if (NooApp::getKeyBind(i) >= 1000 && joystick->GetNumberButtons() > NooApp::getKeyBind(i) - 1000) // Button
+        {
+            if (joystick->GetButtonState(NooApp::getKeyBind(i) - 1000))
+                pressKey(i);
+            else
+                releaseKey(i);
+        }
+    }
+}
+
 void NooFrame::close(wxCloseEvent &event)
 {
+    // Free the joystick if one was connected
+    if (joystick)
+    {
+        joystick->ReleaseCapture();
+        delete joystick;
+    }
+
     // Properly shut down the emulator
     stopCore();
     Settings::save();

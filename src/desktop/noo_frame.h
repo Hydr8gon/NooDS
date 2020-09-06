@@ -22,6 +22,7 @@
 
 #include <thread>
 #include <wx/wx.h>
+#include <wx/joystick.h>
 
 #include "../core.h"
 
@@ -29,19 +30,28 @@ struct Emulator
 {
     Core *core = nullptr;
     bool running = false;
+    bool frameReset = false;
 };
 
 class NooFrame: public wxFrame
 {
     public:
-        NooFrame(Emulator *emulator, std::string path);
+        NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path);
+
+        void pressKey(int key);
+        void releaseKey(int key);
 
     private:
-        std::thread *coreThread = nullptr;
+        wxJoystick *joystick;
         Emulator *emulator;
-        std::string ndsPath, gbaPath;
 
         wxMenu *systemMenu;
+
+        std::string ndsPath, gbaPath;
+        std::thread *coreThread = nullptr;
+        std::vector<int> axisBases;
+        int fpsLimiterBackup = 0;
+        bool fullScreen = false;
 
         void runCore();
         void startCore();
@@ -65,7 +75,7 @@ class NooFrame: public wxFrame
         void threaded3D2(wxCommandEvent &event);
         void threaded3D3(wxCommandEvent &event);
         void exit(wxCommandEvent &event);
-
+        void joystickInput(wxJoystickEvent &event);
         void close(wxCloseEvent &event);
 
         wxDECLARE_EVENT_TABLE();
