@@ -87,11 +87,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_fillAudioBuff
     delete[] samples;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooView_copyFramebuffer(JNIEnv *env, jobject obj, jobject bitmap, jboolean gbaCrop)
+extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooRenderer_copyFramebuffer(JNIEnv *env, jobject obj, jobject bitmap, jboolean gbaCrop)
 {
     // Get a new frame if one is ready
     uint32_t *framebuffer = core->gpu.getFrame(gbaCrop);
-    if (!framebuffer) return;
+    if (!framebuffer) return false;
 
     // Copy the frame to the bitmap
     uint32_t *data;
@@ -100,6 +100,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooView_copyFramebuffer(J
     AndroidBitmap_unlockPixels(env, bitmap);
 
     delete[] framebuffer;
+    return true;
 }
 
 // The below functions are pretty much direct forwarders to core functions
@@ -250,81 +251,81 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_writeSave(JNI
     core->cartridge.writeSave();
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getScreenRotation(JNIEnv* env, jobject obj)
-{
-    return ScreenLayout::getScreenRotation();
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getGbaCrop(JNIEnv* env, jobject obj)
-{
-    return ScreenLayout::getGbaCrop();
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getScreenFilter(JNIEnv* env, jobject obj)
-{
-    return screenFilter;
-}
-
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooView_updateLayout(JNIEnv *env, jobject obj, jint width, jint height)
-{
-    layout.update(width, height, core->isGbaMode());
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getTopX(JNIEnv *env, jobject obj)
-{
-    return layout.getTopX();
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getBotX(JNIEnv *env, jobject obj)
-{
-    return layout.getBotX();
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getTopY(JNIEnv *env, jobject obj)
-{
-    return layout.getTopY();
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getBotY(JNIEnv *env, jobject obj)
-{
-    return layout.getBotY();
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getTopWidth(JNIEnv *env, jobject obj)
-{
-    return layout.getTopWidth();
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getBotWidth(JNIEnv *env, jobject obj)
-{
-    return layout.getBotWidth();
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getTopHeight(JNIEnv *env, jobject obj)
-{
-    return layout.getTopHeight();
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooView_getBotHeight(JNIEnv *env, jobject obj)
-{
-    return layout.getBotHeight();
-}
-
-extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooView_isGbaMode(JNIEnv *env, jobject obj)
-{
-    return core->isGbaMode();
-}
-
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooView_pressScreen(JNIEnv *env, jobject obj, jint x, jint y)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_pressScreen(JNIEnv *env, jobject obj, jint x, jint y)
 {
     core->input.pressScreen();
     core->spi.setTouch(layout.getTouchX(x, y), layout.getTouchY(x, y));
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooView_releaseScreen(JNIEnv *env, jobject obj)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_releaseScreen(JNIEnv *env, jobject obj)
 {
     core->input.releaseScreen();
     core->spi.clearTouch();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenRotation(JNIEnv* env, jobject obj)
+{
+    return ScreenLayout::getScreenRotation();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getGbaCrop(JNIEnv* env, jobject obj)
+{
+    return ScreenLayout::getGbaCrop();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenFilter(JNIEnv* env, jobject obj)
+{
+    return screenFilter;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooRenderer_updateLayout(JNIEnv *env, jobject obj, jint width, jint height)
+{
+    layout.update(width, height, core->isGbaMode());
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getTopX(JNIEnv *env, jobject obj)
+{
+    return layout.getTopX();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getBotX(JNIEnv *env, jobject obj)
+{
+    return layout.getBotX();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getTopY(JNIEnv *env, jobject obj)
+{
+    return layout.getTopY();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getBotY(JNIEnv *env, jobject obj)
+{
+    return layout.getBotY();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getTopWidth(JNIEnv *env, jobject obj)
+{
+    return layout.getTopWidth();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getBotWidth(JNIEnv *env, jobject obj)
+{
+    return layout.getBotWidth();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getTopHeight(JNIEnv *env, jobject obj)
+{
+    return layout.getTopHeight();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getBotHeight(JNIEnv *env, jobject obj)
+{
+    return layout.getBotHeight();
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooRenderer_isGbaMode(JNIEnv *env, jobject obj)
+{
+    return core->isGbaMode();
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooButton_pressKey(JNIEnv *env, jobject obj, jint key)

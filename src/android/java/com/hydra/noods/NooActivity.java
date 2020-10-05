@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
+import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
@@ -21,7 +22,8 @@ public class NooActivity extends AppCompatActivity
 
     private boolean hidden;
     private ConstraintLayout layout;
-    private NooView view;
+    private GLSurfaceView view;
+    private NooRenderer renderer;
     private NooButton buttons[];
     private TextView fpsCounter;
 
@@ -30,15 +32,48 @@ public class NooActivity extends AppCompatActivity
     {
         super.onCreate(savedInstanceState);
 
-        // Get the display density and dimensions
-        float d = getResources().getDisplayMetrics().density;
-        int   w = getResources().getDisplayMetrics().widthPixels;
-        int   h = getResources().getDisplayMetrics().heightPixels;
-
         hidden = false;
         layout = new ConstraintLayout(this);
-        view = new NooView(this);
+        view = new GLSurfaceView(this);
+        renderer = new NooRenderer();
         buttons = new NooButton[9];
+
+        // Prepare the GL renderer
+        view.setEGLContextClientVersion(2);
+        view.setRenderer(renderer);
+
+        // Handle non-button screen touches
+        view.setOnTouchListener(new View.OnTouchListener()
+        {
+            @Override
+            public boolean onTouch(View view, MotionEvent event)
+            {
+                switch (event.getAction())
+                {
+                    case MotionEvent.ACTION_DOWN:
+                    case MotionEvent.ACTION_MOVE:
+                    {
+                        // Send the touch coordinates to the core
+                        pressScreen((int)event.getX(), (int)event.getY());
+                        break;
+                    }
+
+                    case MotionEvent.ACTION_UP:
+                    {
+                        // Send a touch release to the core
+                        releaseScreen();
+                        break;
+                    }
+                }
+
+                return true;
+            }
+        });
+
+        // Get the display density and dimensions
+        final float d = getResources().getDisplayMetrics().density;
+        final int   w = getResources().getDisplayMetrics().widthPixels;
+        final int   h = getResources().getDisplayMetrics().heightPixels;
 
         // Create the buttons and place them based on the display information
         buttons[0] = new NooButton(this, R.drawable.a,       0, w     - (int)(d *  60), h - (int)(d * 135), (int)(d *  55), (int)(d *  55));
@@ -77,6 +112,7 @@ public class NooActivity extends AppCompatActivity
     protected void onPause()
     {
         super.onPause();
+        view.onPause();
 
         running = false;
 
@@ -102,6 +138,7 @@ public class NooActivity extends AppCompatActivity
     protected void onResume()
     {
         super.onResume();
+        view.onResume();
 
         // Hide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
@@ -203,4 +240,6 @@ public class NooActivity extends AppCompatActivity
     public native int getFps();
     public native void runFrame();
     public native void writeSave();
+    public native void pressScreen(int x, int y);
+    public native void releaseScreen();
 }
