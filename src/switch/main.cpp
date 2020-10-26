@@ -200,6 +200,7 @@ void settingsMenu()
     const std::vector<std::string> rotation    = { "None", "Clockwise", "Counter-Clockwise" };
     const std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal"    };
     const std::vector<std::string> sizing      = { "Even", "Enlarge Top", "Enlarge Bottom"  };
+    const std::vector<std::string> gap         = { "None", "Quarter", "Half", "Full"        };
 
     unsigned int index = 0;
 
@@ -215,7 +216,7 @@ void settingsMenu()
             ListItem("Screen Rotation",    rotation[ScreenLayout::getScreenRotation()]),
             ListItem("Screen Arrangement", arrangement[ScreenLayout::getScreenArrangement()]),
             ListItem("Screen Sizing",      sizing[ScreenLayout::getScreenSizing()]),
-            ListItem("Screen Gap",         toggle[ScreenLayout::getScreenGap()]),
+            ListItem("Screen Gap",         gap[ScreenLayout::getScreenGap()]),
             ListItem("Integer Scale",      toggle[ScreenLayout::getIntegerScale()]),
             ListItem("GBA Crop",           toggle[ScreenLayout::getGbaCrop()]),
             ListItem("Screen Filter",      toggle[screenFilter]),
@@ -241,7 +242,7 @@ void settingsMenu()
                 case  4: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
                 case  5: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
                 case  6: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
-                case  7: ScreenLayout::setScreenGap(!ScreenLayout::getScreenGap());                          break;
+                case  7: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
                 case  8: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
                 case  9: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
                 case 10: screenFilter   = !screenFilter;                                                     break;

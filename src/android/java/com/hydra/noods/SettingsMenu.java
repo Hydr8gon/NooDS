@@ -37,7 +37,7 @@ public class SettingsMenu extends AppCompatActivity
         editor.putString("screen_rotation", Integer.toString(getScreenRotation()));
         editor.putString("screen_arrangement", Integer.toString(getScreenArrangement()));
         editor.putString("screen_sizing", Integer.toString(getScreenSizing()));
-        editor.putBoolean("screen_gap", (getScreenGap() == 0) ? false : true);
+        editor.putString("screen_gap", Integer.toString(getScreenGap()));
         editor.putBoolean("integer_scale", (getIntegerScale() == 0) ? false : true);
         editor.putBoolean("gba_crop", (getGbaCrop() == 0) ? false : true);
         editor.putBoolean("screen_filter", (getScreenFilter() == 0) ? false : true);
@@ -60,7 +60,7 @@ public class SettingsMenu extends AppCompatActivity
         setScreenRotation(Integer.parseInt(prefs.getString("screen_rotation", "0")));
         setScreenArrangement(Integer.parseInt(prefs.getString("screen_arrangement", "0")));
         setScreenSizing(Integer.parseInt(prefs.getString("screen_sizing", "0")));
-        setScreenGap(prefs.getBoolean("screen_gap", false) ? 1 : 0);
+        setScreenGap(Integer.parseInt(prefs.getString("screen_gap", "0")));
         setIntegerScale(prefs.getBoolean("integer_scale", false) ? 1 : 0);
         setGbaCrop(prefs.getBoolean("gba_crop", true) ? 1 : 0);
         setScreenFilter(prefs.getBoolean("screen_filter", true) ? 1 : 0);

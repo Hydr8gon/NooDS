@@ -43,7 +43,10 @@ class LayoutDialog: public wxDialog
         void sizeEven(wxCommandEvent &event);
         void sizeTop(wxCommandEvent &event);
         void sizeBot(wxCommandEvent &event);
-        void gap(wxCommandEvent &event);
+        void gapNone(wxCommandEvent &event);
+        void gapQuart(wxCommandEvent &event);
+        void gapHalf(wxCommandEvent &event);
+        void gapFull(wxCommandEvent &event);
         void intScale(wxCommandEvent &event);
         void gbaCrop(wxCommandEvent &event);
         void filter(wxCommandEvent &event);

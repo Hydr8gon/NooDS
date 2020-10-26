@@ -80,6 +80,10 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
         int width  = (screenRotation ? 192 : 256);
         int height = (screenRotation ? 256 : 192);
 
+        // Determine the screen gap based on the current setting
+        int gap = (screenGap ? (12 * (1 << screenGap)) : 0);
+        if (gap > 96) gap = 96;
+
         float largeScale, smallScale;
 
         // Calculate the scale of each screen
@@ -90,7 +94,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
         if (vertical)
         {
             // Add the extra gap weight if enabled
-            if (screenGap) height += 48;
+            if (screenGap) height += gap / 2;
 
             // Set the minimum dimensions for the layout
             minWidth  = width;
@@ -123,12 +127,12 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
             }
 
             // Remove the extra gap weight for the next calculations
-        if (screenGap) height -= 48;
+            if (screenGap) height -= gap / 2;
         }
         else // Horizontal
         {
             // Add the extra gap weight if enabled
-            if (screenGap) width += 48;
+            if (screenGap) width += gap / 2;
 
             // Set the minimum dimensions for the layout
             minWidth  = width * 2;
@@ -161,7 +165,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
             }
 
             // Remove the extra gap weight for the next calculations
-            if (screenGap) width -= 48;
+            if (screenGap) width -= gap / 2;
         }
 
         // Calculate the dimensions of each screen
@@ -196,8 +200,8 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
                 // Add the gap between the screens if enabled
                 if (screenGap)
                 {
-                    botY -= (largeScale * 48 + smallScale * 48) / 2;
-                    topY += (largeScale * 48 + smallScale * 48) / 2;
+                    botY -= (largeScale * gap + smallScale * gap) / 4;
+                    topY += (largeScale * gap + smallScale * gap) / 4;
                 }
             }
             else // None/Counter-Clockwise
@@ -208,8 +212,8 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
                 // Add the gap between the screens if enabled
                 if (screenGap)
                 {
-                    topY -= (largeScale * 48 + smallScale * 48) / 2;
-                    botY += (largeScale * 48 + smallScale * 48) / 2;
+                    topY -= (largeScale * gap + smallScale * gap) / 4;
+                    botY += (largeScale * gap + smallScale * gap) / 4;
                 }
             }
         }
@@ -227,8 +231,8 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
                 // Add the gap between the screens if enabled
                 if (screenGap)
                 {
-                    botX -= (largeScale * 48 + smallScale * 48) / 2;
-                    topX += (largeScale * 48 + smallScale * 48) / 2;
+                    botX -= (largeScale * gap + smallScale * gap) / 4;
+                    topX += (largeScale * gap + smallScale * gap) / 4;
                 }
             }
             else // None/Counter-Clockwise
@@ -239,8 +243,8 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
                 // Add the gap between the screens if enabled
                 if (screenGap)
                 {
-                    topX -= (largeScale * 48 + smallScale * 48) / 2;
-                    botX += (largeScale * 48 + smallScale * 48) / 2;
+                    topX -= (largeScale * gap + smallScale * gap) / 4;
+                    botX += (largeScale * gap + smallScale * gap) / 4;
                 }
             }
         }

@@ -64,9 +64,12 @@
         app:allowDividerAbove="true"
         app:allowDividerBelow="true" />
 
-    <SwitchPreferenceCompat
+    <ListPreference
         app:key="screen_gap"
         app:title="Screen Gap"
+        app:entries="@array/screen_gap_entries"
+        app:entryValues="@array/entry_values"
+        app:useSimpleSummaryProvider="true"
         app:iconSpaceReserved="false"
         app:allowDividerAbove="true"
         app:allowDividerBelow="true" />

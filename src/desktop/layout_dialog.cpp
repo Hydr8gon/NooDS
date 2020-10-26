@@ -32,7 +32,10 @@ enum Event
     SIZE_EVEN,
     SIZE_TOP,
     SIZE_BOT,
-    GAP,
+    GAP_NONE,
+    GAP_QUART,
+    GAP_HALF,
+    GAP_FULL,
     INT_SCALE,
     GBA_CROP,
     FILTER
@@ -48,7 +51,10 @@ EVT_RADIOBUTTON(ARRANGE_HORI, LayoutDialog::arrangeHori)
 EVT_RADIOBUTTON(SIZE_EVEN,    LayoutDialog::sizeEven)
 EVT_RADIOBUTTON(SIZE_TOP,     LayoutDialog::sizeTop)
 EVT_RADIOBUTTON(SIZE_BOT,     LayoutDialog::sizeBot)
-EVT_CHECKBOX(GAP,             LayoutDialog::gap)
+EVT_RADIOBUTTON(GAP_NONE,     LayoutDialog::gapNone)
+EVT_RADIOBUTTON(GAP_QUART,    LayoutDialog::gapQuart)
+EVT_RADIOBUTTON(GAP_HALF,     LayoutDialog::gapHalf)
+EVT_RADIOBUTTON(GAP_FULL,     LayoutDialog::gapFull)
 EVT_CHECKBOX(INT_SCALE,       LayoutDialog::intScale)
 EVT_CHECKBOX(GBA_CROP,        LayoutDialog::gbaCrop)
 EVT_CHECKBOX(FILTER,          LayoutDialog::filter)
@@ -102,13 +108,23 @@ LayoutDialog::LayoutDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Screen
     sizeSizer->Add(sizeBtns[1] = new wxRadioButton(this, SIZE_TOP, "Enlarge Top"),    0, wxLEFT, size / 8);
     sizeSizer->Add(sizeBtns[2] = new wxRadioButton(this, SIZE_BOT, "Enlarge Bottom"), 0, wxLEFT, size / 8);
 
+    // Set up the gap settings
+    wxRadioButton *gapBtns[4];
+    wxBoxSizer *gapSizer = new wxBoxSizer(wxHORIZONTAL);
+    gapSizer->Add(new wxStaticText(this, wxID_ANY, "Gap:", wxDefaultPosition,
+        wxSize(wxDefaultSize.GetWidth(), size)), 0, wxALIGN_CENTRE | wxRIGHT, size / 8);
+    gapSizer->Add(gapBtns[0] = new wxRadioButton(this, GAP_NONE, "None",
+        wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
+    gapSizer->Add(gapBtns[1] = new wxRadioButton(this, GAP_QUART, "Quarter"), 0, wxLEFT, size / 8);
+    gapSizer->Add(gapBtns[2] = new wxRadioButton(this, GAP_HALF,  "Half"),    0, wxLEFT, size / 8);
+    gapSizer->Add(gapBtns[3] = new wxRadioButton(this, GAP_FULL,  "Full"),    0, wxLEFT, size / 8);
+
     // Set up the checkbox settings
-    wxCheckBox *boxes[4];
+    wxCheckBox *boxes[3];
     wxBoxSizer *checkSizer = new wxBoxSizer(wxHORIZONTAL);
-    checkSizer->Add(boxes[0] = new wxCheckBox(this, GAP,       "Gap"));
-    checkSizer->Add(boxes[1] = new wxCheckBox(this, INT_SCALE, "Integer Scale"), 0, wxLEFT, size / 8);
-    checkSizer->Add(boxes[2] = new wxCheckBox(this, GBA_CROP,  "GBA Crop"),      0, wxLEFT, size / 8);
-    checkSizer->Add(boxes[3] = new wxCheckBox(this, FILTER,    "Filter"),        0, wxLEFT, size / 8);
+    checkSizer->Add(boxes[0] = new wxCheckBox(this, INT_SCALE, "Integer Scale"), 0, wxLEFT, size / 8);
+    checkSizer->Add(boxes[1] = new wxCheckBox(this, GBA_CROP,  "GBA Crop"),      0, wxLEFT, size / 8);
+    checkSizer->Add(boxes[2] = new wxCheckBox(this, FILTER,    "Filter"),        0, wxLEFT, size / 8);
 
     // Set the current values of the radio buttons
     if (ScreenLayout::getScreenRotation() < 3)
@@ -117,12 +133,13 @@ LayoutDialog::LayoutDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Screen
         arrangeBtns[ScreenLayout::getScreenArrangement()]->SetValue(true);
     if (ScreenLayout::getScreenSizing() < 3)
         sizeBtns[ScreenLayout::getScreenSizing()]->SetValue(true);
+    if (ScreenLayout::getScreenGap() < 4)
+        gapBtns[ScreenLayout::getScreenGap()]->SetValue(true);
 
     // Set the current values of the checkboxes
-    boxes[0]->SetValue(ScreenLayout::getScreenGap());
-    boxes[1]->SetValue(ScreenLayout::getIntegerScale());
-    boxes[2]->SetValue(ScreenLayout::getGbaCrop());
-    boxes[3]->SetValue(NooApp::getScreenFilter());
+    boxes[0]->SetValue(ScreenLayout::getIntegerScale());
+    boxes[1]->SetValue(ScreenLayout::getGbaCrop());
+    boxes[2]->SetValue(NooApp::getScreenFilter());
 
     // Set up the cancel and confirm buttons
     wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -135,6 +152,7 @@ LayoutDialog::LayoutDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Screen
     contents->Add(rotateSizer,  1, wxEXPAND);
     contents->Add(arrangeSizer, 1, wxEXPAND);
     contents->Add(sizeSizer,    1, wxEXPAND);
+    contents->Add(gapSizer,     1, wxEXPAND);
     contents->Add(checkSizer,   1, wxEXPAND);
     contents->Add(buttonSizer,  1, wxEXPAND);
 
@@ -230,10 +248,37 @@ void LayoutDialog::sizeBot(wxCommandEvent &event)
     frame->SendSizeEvent();
 }
 
-void LayoutDialog::gap(wxCommandEvent &event)
+void LayoutDialog::gapNone(wxCommandEvent &event)
 {
-    // Toggle the screen gap setting
-    ScreenLayout::setScreenGap(!ScreenLayout::getScreenGap());
+    // Set the screen gap setting to none
+    ScreenLayout::setScreenGap(0);
+
+    // Trigger a resize to update the screen layout
+    frame->SendSizeEvent();
+}
+
+void LayoutDialog::gapQuart(wxCommandEvent &event)
+{
+    // Set the screen gap setting to quarter
+    ScreenLayout::setScreenGap(1);
+
+    // Trigger a resize to update the screen layout
+    frame->SendSizeEvent();
+}
+
+void LayoutDialog::gapHalf(wxCommandEvent &event)
+{
+    // Set the screen gap setting to half
+    ScreenLayout::setScreenGap(2);
+
+    // Trigger a resize to update the screen layout
+    frame->SendSizeEvent();
+}
+
+void LayoutDialog::gapFull(wxCommandEvent &event)
+{
+    // Set the screen gap setting to full
+    ScreenLayout::setScreenGap(3);
 
     // Trigger a resize to update the screen layout
     frame->SendSizeEvent();
