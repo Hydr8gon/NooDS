@@ -371,25 +371,6 @@ void fileBrowser()
                             index = 0;
                             continue;
                         }
-
-                        case 3: // Missing save file
-                        {
-                            // Inform the user of the error
-                            std::vector<std::string> message =
-                            {
-                                "This ROM does not have a save file.",
-                                "NooDS cannot automatically detect save type, so FLASH 512KB will be assumed.",
-                                "If the game fails to save, provide a save with the correct file size."
-                            };
-                            SwitchUI::message("Missing Save", message);
-
-                            // Assume a save type of FLASH 512KB
-                            Core::createSave(ndsPath, 7);
-
-                            // Boot the ROM again
-                            core = new Core(ndsPath, gbaPath);
-                            break;
-                        }
                     }
                 }
 

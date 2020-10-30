@@ -88,40 +88,6 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     }
 }
 
-void Core::createSave(std::string filename, int type)
-{
-    // Determine the save size
-    int saveSize;
-    switch (type)
-    {
-        case 1:  saveSize =    0x200; break; // EEPROM 0.5KB
-        case 2:  saveSize =   0x2000; break; // EEPROM   8KB
-        case 3:  saveSize =  0x10000; break; // EEPROM  64KB
-        case 4:  saveSize =  0x20000; break; // EEPROM 128KB
-        case 5:  saveSize =   0x8000; break; // FRAM    32KB
-        case 6:  saveSize =  0x40000; break; // FLASH  256KB
-        case 7:  saveSize =  0x80000; break; // FLASH  512KB
-        case 8:  saveSize = 0x100000; break; // FLASH 1024KB
-        case 9:  saveSize = 0x800000; break; // FLASH 8192KB
-        default: saveSize =        0; break; // None
-    }
-
-    // Create an empty save
-    uint8_t *save = new uint8_t[saveSize];
-    memset(save, 0xFF, saveSize * sizeof(uint8_t));
-
-    // Write the save to a file
-    std::string saveName = filename.substr(0, filename.rfind(".")) + ".sav";
-    FILE *saveFile = fopen(saveName.c_str(), "wb");
-    if (saveFile)
-    {
-        fwrite(save, sizeof(uint8_t), saveSize, saveFile);
-        fclose(saveFile);
-    }
-
-    delete[] save;
-}
-
 void Core::runGbaFrame()
 {
     // Run a frame in GBA mode

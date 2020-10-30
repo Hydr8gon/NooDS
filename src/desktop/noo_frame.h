@@ -38,6 +38,9 @@ class NooFrame: public wxFrame
     public:
         NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path);
 
+        void startCore(bool full);
+        void stopCore(bool full);
+
         void pressKey(int key);
         void releaseKey(int key);
 
@@ -45,7 +48,7 @@ class NooFrame: public wxFrame
         wxJoystick *joystick;
         Emulator *emulator;
 
-        wxMenu *systemMenu;
+        wxMenu *fileMenu, *systemMenu;
 
         std::string ndsPath, gbaPath;
         std::thread *coreThread = nullptr;
@@ -54,11 +57,11 @@ class NooFrame: public wxFrame
         bool fullScreen = false;
 
         void runCore();
-        void startCore();
-        void stopCore();
 
         void loadRom(wxCommandEvent &event);
         void bootFirmware(wxCommandEvent &event);
+        void changeSave(wxCommandEvent &event);
+        void quit(wxCommandEvent &event);
         void pause(wxCommandEvent &event);
         void restart(wxCommandEvent &event);
         void stop(wxCommandEvent &event);
@@ -74,7 +77,6 @@ class NooFrame: public wxFrame
         void threaded3D1(wxCommandEvent &event);
         void threaded3D2(wxCommandEvent &event);
         void threaded3D3(wxCommandEvent &event);
-        void exit(wxCommandEvent &event);
         void joystickInput(wxJoystickEvent &event);
         void close(wxCloseEvent &event);
 

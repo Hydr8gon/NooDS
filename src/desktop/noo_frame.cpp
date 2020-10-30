@@ -30,6 +30,8 @@ enum Event
 {
     LOAD_ROM = 1,
     BOOT_FIRMWARE,
+    CHANGE_SAVE,
+    QUIT,
     PAUSE,
     RESTART,
     STOP,
@@ -51,6 +53,8 @@ enum Event
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
 EVT_MENU(LOAD_ROM,       NooFrame::loadRom)
 EVT_MENU(BOOT_FIRMWARE,  NooFrame::bootFirmware)
+EVT_MENU(CHANGE_SAVE,    NooFrame::changeSave)
+EVT_MENU(QUIT,           NooFrame::quit)
 EVT_MENU(PAUSE,          NooFrame::pause)
 EVT_MENU(RESTART,        NooFrame::restart)
 EVT_MENU(STOP,           NooFrame::stop)
@@ -66,7 +70,6 @@ EVT_MENU(THREADED_3D_0,  NooFrame::threaded3D0)
 EVT_MENU(THREADED_3D_1,  NooFrame::threaded3D1)
 EVT_MENU(THREADED_3D_2,  NooFrame::threaded3D2)
 EVT_MENU(THREADED_3D_3,  NooFrame::threaded3D3)
-EVT_MENU(wxID_EXIT,      NooFrame::exit)
 EVT_JOYSTICK_EVENTS(NooFrame::joystickInput)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
@@ -74,11 +77,13 @@ wxEND_EVENT_TABLE()
 NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): wxFrame(nullptr, wxID_ANY, "NooDS"), joystick(joystick), emulator(emulator)
 {
     // Set up the File menu
-    wxMenu *fileMenu = new wxMenu();
+    fileMenu = new wxMenu();
     fileMenu->Append(LOAD_ROM,      "&Load ROM");
     fileMenu->Append(BOOT_FIRMWARE, "&Boot Firmware");
     fileMenu->AppendSeparator();
-    fileMenu->Append(wxID_EXIT);
+    fileMenu->Append(CHANGE_SAVE,   "&Change Save Type");
+    fileMenu->AppendSeparator();
+    fileMenu->Append(QUIT,          "&Quit");
 
     // Set up the System menu
     systemMenu = new wxMenu();
@@ -86,10 +91,11 @@ NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): 
     systemMenu->Append(RESTART, "&Restart");
     systemMenu->Append(STOP,    "&Stop");
 
-    // Disable the System menu items until the core is running
-    systemMenu->Enable(PAUSE,   false);
-    systemMenu->Enable(RESTART, false);
-    systemMenu->Enable(STOP,    false);
+    // Disable some menu items until the core is running
+    fileMenu->Enable(CHANGE_SAVE, false);
+    systemMenu->Enable(PAUSE,     false);
+    systemMenu->Enable(RESTART,   false);
+    systemMenu->Enable(STOP,      false);
 
     // Set up the FPS Limiter submenu
     wxMenu *fpsLimiter = new wxMenu();
@@ -171,7 +177,7 @@ NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): 
             ndsPath = path;
         else if (path.find(".gba", path.length() - 4) != std::string::npos)
             gbaPath = path;
-        startCore();
+        startCore(true);
     }
 }
 
@@ -182,70 +188,61 @@ void NooFrame::runCore()
         emulator->core->runFrame();
 }
 
-void NooFrame::startCore()
+void NooFrame::startCore(bool full)
 {
-    // Ensure the core is stopped
-    stopCore();
+    if (full)
+    {
+        // Ensure the core is shut down
+        stopCore(true);
 
-    try
-    {
-        // Attempt to boot the ROM
-        emulator->core = new Core(ndsPath, gbaPath);
-    }
-    catch (int e)
-    {
-        // Handle errors during ROM boot
-        switch (e)
+        try
         {
-            case 1: // Missing BIOS and/or firmware files
+            // Attempt to boot the core
+            emulator->core = new Core(ndsPath, gbaPath);
+        }
+        catch (int e)
+        {
+            // Handle errors during ROM load
+            switch (e)
             {
-                // Inform the user of the error
-                wxMessageBox("Initialization failed. Make sure the path settings point to valid BIOS and firmware files and try again.");
-                return;
-            }
-
-            case 2: // Unreadable ROM file
-            {
-                // Inform the user of the error
-                wxMessageBox("Initialization failed. Make sure the ROM file is accessible and try again.");
-                return;
-            }
-
-            case 3: // Missing save file
-            {
-                // Show the save dialog and boot the ROM again if a save was created
-                SaveDialog saveDialog(ndsPath);
-                if (saveDialog.ShowModal() == wxID_OK)
+                case 1: // Missing BIOS and/or firmware files
                 {
-                    emulator->core = new Core(ndsPath, gbaPath);
-                    break;
+                    // Inform the user of the error
+                    wxMessageBox("Initialization failed. Make sure the path settings point to valid BIOS and firmware files and try again.");
+                    return;
                 }
-                return;
+
+                case 2: // Unreadable ROM file
+                {
+                    // Inform the user of the error
+                    wxMessageBox("Initialization failed. Make sure the ROM file is accessible and try again.");
+                    return;
+                }
             }
         }
     }
 
-    // Start the core and enable the System menu items
-    emulator->running = true;
-    systemMenu->Enable(PAUSE,   true);
-    systemMenu->Enable(RESTART, true);
-    systemMenu->Enable(STOP,    true);
-    systemMenu->SetLabel(PAUSE, "&Pause");
+    if (emulator->core)
+    {
+        systemMenu->SetLabel(PAUSE, "&Pause");
 
-    // Start the core thread
-    coreThread = new std::thread(&NooFrame::runCore, this);
+        // Enable some menu items
+        if (ndsPath != "" || gbaPath != "")
+            fileMenu->Enable(CHANGE_SAVE, true);
+        systemMenu->Enable(PAUSE,   true);
+        systemMenu->Enable(RESTART, true);
+        systemMenu->Enable(STOP,    true);
+
+        // Start the core thread
+        emulator->running = true;
+        coreThread = new std::thread(&NooFrame::runCore, this);
+    }
 }
 
-void NooFrame::stopCore()
+void NooFrame::stopCore(bool full)
 {
-    // Stop the core and disable the System menu items
+    // Stop the core thread
     emulator->running = false;
-    systemMenu->Enable(PAUSE,   false);
-    systemMenu->Enable(RESTART, false);
-    systemMenu->Enable(STOP,    false);
-    systemMenu->SetLabel(PAUSE, "&Resume");
-
-    // Ensure the core thread is stopped
     if (coreThread)
     {
         coreThread->join();
@@ -253,9 +250,25 @@ void NooFrame::stopCore()
         coreThread = nullptr;
     }
 
-    // Close the core to ensure the save gets written
-    if (emulator->core) delete emulator->core;
-    emulator->core = nullptr;
+    systemMenu->SetLabel(PAUSE, "&Resume");
+
+    if (full)
+    {
+        // Disable some menu items
+        fileMenu->Enable(CHANGE_SAVE, false);
+        systemMenu->Enable(PAUSE,     false);
+        systemMenu->Enable(RESTART,   false);
+        systemMenu->Enable(STOP,      false);
+
+        // Shut down the core
+        if (emulator->core) delete emulator->core;
+        emulator->core = nullptr;
+    }
+    else if (emulator->core)
+    {
+        // Update the save file since the core isn't running
+        emulator->core->cartridge.writeSave();
+    }
 }
 
 void NooFrame::pressKey(int key)
@@ -348,7 +361,7 @@ void NooFrame::loadRom(wxCommandEvent &event)
         gbaPath = path;
     }
 
-    startCore();
+    startCore(true);
 }
 
 void NooFrame::bootFirmware(wxCommandEvent &event)
@@ -356,46 +369,41 @@ void NooFrame::bootFirmware(wxCommandEvent &event)
     // Start the core with no ROM
     ndsPath = "";
     gbaPath = "";
-    startCore();
+    startCore(true);
+}
+
+void NooFrame::changeSave(wxCommandEvent &event)
+{
+    // Show the save dialog
+    SaveDialog saveDialog(this, emulator);
+    saveDialog.ShowModal();
+}
+
+void NooFrame::quit(wxCommandEvent &event)
+{
+    // Close the program
+    Close(true);
 }
 
 void NooFrame::pause(wxCommandEvent &event)
 {
-    if (emulator->running) // Pause
-    {
-        // Stop the core thread without closing the core
-        emulator->running = false;
-        coreThread->join();
-        delete coreThread;
-        coreThread = nullptr;
-
-        // Write the save as an extra precaution
-        emulator->core->cartridge.writeSave();
-
-        // Update the menu item
-        systemMenu->SetLabel(PAUSE, "&Resume");
-    }
-    else if (emulator->core) // Resume
-    {
-        // Start the core thread
-        emulator->running = true;
-        coreThread = new std::thread(&NooFrame::runCore, this);
-
-        // Update the menu item
-        systemMenu->SetLabel(PAUSE, "&Pause");
-    }
+    // Pause or resume the core
+    if (emulator->running)
+        stopCore(false);
+    else
+        startCore(false);
 }
 
 void NooFrame::restart(wxCommandEvent &event)
 {
     // Restart the core
-    startCore();
+    startCore(true);
 }
 
 void NooFrame::stop(wxCommandEvent &event)
 {
     // Stop the core
-    stopCore();
+    stopCore(true);
 }
 
 void NooFrame::pathSettings(wxCommandEvent &event)
@@ -474,12 +482,6 @@ void NooFrame::threaded3D3(wxCommandEvent &event)
     Settings::setThreaded3D(3);
 }
 
-void NooFrame::exit(wxCommandEvent &event)
-{
-    // Close the program
-    Close(true);
-}
-
 void NooFrame::joystickInput(wxJoystickEvent &event)
 {
     // Check the status of mapped joystick inputs and trigger key presses and releases accordingly
@@ -519,7 +521,7 @@ void NooFrame::close(wxCloseEvent &event)
     }
 
     // Properly shut down the emulator
-    stopCore();
+    stopCore(true);
     Settings::save();
 
     event.Skip(true);

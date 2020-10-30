@@ -36,6 +36,9 @@ class Cartridge
         void directBoot();
         void writeSave();
 
+        int getSaveSize(bool gba);
+        void setSaveSize(bool gba, int size);
+
         template <typename T> T gbaRomRead(uint32_t address);
         template <typename T> void gbaRomWrite(uint32_t address, T value);
 
@@ -55,11 +58,13 @@ class Cartridge
 
         uint8_t *gbaRom = nullptr, *gbaSave = nullptr;
         int gbaRomSize = 0, gbaSaveSize = 0;
-        std::string saveName;
+        bool gbaSaveDirty = false;
+        std::string gbaSaveName;
 
         uint8_t *rom = nullptr, *save = nullptr;
         int romSize = 0, saveSize = 0;
-        std::string gbaSaveName;
+        bool saveDirty = false;
+        std::string saveName;
 
         int gbaEepromCount = 0;
         uint16_t gbaEepromCmd = 0;

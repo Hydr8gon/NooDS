@@ -20,28 +20,35 @@
 #ifndef SAVE_DIALOG_H
 #define SAVE_DIALOG_H
 
-#include <string>
 #include <wx/wx.h>
+
+#include "noo_frame.h"
 
 class SaveDialog: public wxDialog
 {
     public:
-        SaveDialog(std::string path);
+        SaveDialog(NooFrame *frame, Emulator *emulator);
 
     private:
-        std::string path;
+        NooFrame *frame;
+        Emulator *emulator;
+
+        bool gba = false;
         int selection = 0;
 
-        void none(wxCommandEvent &event);
-        void eeprom05(wxCommandEvent &event);
-        void eeprom8(wxCommandEvent &event);
-        void eeprom64(wxCommandEvent &event);
-        void eeprom128(wxCommandEvent &event);
-        void fram32(wxCommandEvent &event);
-        void flash256(wxCommandEvent &event);
-        void flash512(wxCommandEvent &event);
-        void flash1024(wxCommandEvent &event);
-        void flash8192(wxCommandEvent &event);
+        int selectionToSize(int selection);
+        int sizeToSelection(int size);
+
+        void selection0(wxCommandEvent &event);
+        void selection1(wxCommandEvent &event);
+        void selection2(wxCommandEvent &event);
+        void selection3(wxCommandEvent &event);
+        void selection4(wxCommandEvent &event);
+        void selection5(wxCommandEvent &event);
+        void selection6(wxCommandEvent &event);
+        void selection7(wxCommandEvent &event);
+        void selection8(wxCommandEvent &event);
+        void selection9(wxCommandEvent &event);
         void confirm(wxCommandEvent &event);
 
         wxDECLARE_EVENT_TABLE();

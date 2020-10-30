@@ -50,13 +50,22 @@ void Cartridge::loadRom(std::string path)
     // Attempt to load the ROM's save file
     saveName = path.substr(0, path.rfind(".")) + ".sav";
     FILE *saveFile = fopen(saveName.c_str(), "rb");
-    if (!saveFile) throw 3;
-    fseek(saveFile, 0, SEEK_END);
-    saveSize = ftell(saveFile);
-    fseek(saveFile, 0, SEEK_SET);
-    save = new uint8_t[saveSize];
-    fread(save, sizeof(uint8_t), saveSize, saveFile);
-    fclose(saveFile);
+    if (saveFile)
+    {
+        fseek(saveFile, 0, SEEK_END);
+        saveSize = ftell(saveFile);
+        fseek(saveFile, 0, SEEK_SET);
+        save = new uint8_t[saveSize];
+        fread(save, sizeof(uint8_t), saveSize, saveFile);
+        fclose(saveFile);
+    }
+    else
+    {
+        // The save size is unknown, so just assume FLASH 512KB and hope the user will change it if it doesn't work
+        saveSize = 0x80000;
+        save = new uint8_t[saveSize];
+        memset(save, 0xFF, saveSize * sizeof(uint8_t));
+    }
 }
 
 void Cartridge::loadGbaRom(std::string path)
@@ -115,7 +124,7 @@ void Cartridge::loadGbaRom(std::string path)
             {
                 case 0: // EEPROM
                 {
-                    // EEPROM can be either 0.5KB or 8KB, so it will have to be determined by how the ROM interacts with it
+                    // EEPROM can be either 0.5KB or 8KB, so it must be guessed based on how the game uses it
                     gbaSaveSize = -1;
                     return;
                 }
@@ -185,26 +194,94 @@ void Cartridge::directBoot()
 
 void Cartridge::writeSave()
 {
-    // Write an NDS save file if one is open
-    if (saveSize > 0)
+    // Update the NDS save file if necessary
+    if (saveDirty)
     {
         FILE *saveFile = fopen(saveName.c_str(), "wb");
         if (saveFile)
         {
-            fwrite(save, sizeof(uint8_t), saveSize, saveFile);
+            if (saveSize > 0)
+                fwrite(save, sizeof(uint8_t), saveSize, saveFile);
             fclose(saveFile);
+            saveDirty = false;
         }
     }
 
-    // Write a GBA save file if one is open
-    if (gbaSaveSize > 0)
+    // Update the GBA save file if necessary
+    if (gbaSaveDirty)
     {
         FILE *gbaSaveFile = fopen(gbaSaveName.c_str(), "wb");
         if (gbaSaveFile)
         {
-            fwrite(gbaSave, sizeof(uint8_t), gbaSaveSize, gbaSaveFile);
+            if (gbaSaveSize > 0)
+                fwrite(gbaSave, sizeof(uint8_t), gbaSaveSize, gbaSaveFile);
             fclose(gbaSaveFile);
+            gbaSaveDirty = false;
         }
+    }
+}
+
+int Cartridge::getSaveSize(bool gba)
+{
+    // Get the save size of the ROM for the specified system
+    return (gba ? gbaSaveSize : saveSize);
+}
+
+void Cartridge::setSaveSize(bool gba, int size)
+{
+    if (gba)
+    {
+        // Resize the GBA save
+        if (size > 0)
+        {
+            uint8_t *newSave = new uint8_t[size];
+
+            if (gbaSaveSize < size) // New save is larger
+            {
+                // Copy all of the old save and fill the rest with 0xFF
+                if (gbaSaveSize < 0) gbaSaveSize = 0;
+                memcpy(newSave, gbaSave, gbaSaveSize * sizeof(uint8_t));
+                memset(&newSave[gbaSaveSize], 0xFF, (size - gbaSaveSize) * sizeof(uint8_t));
+            }
+            else // New save is smaller
+            {
+                // Copy as much of the old save as possible
+                memcpy(newSave, gbaSave, size * sizeof(uint8_t));
+            }
+
+            delete[] gbaSave;
+            gbaSave = newSave;
+        }
+
+        gbaSaveSize = size;
+        gbaSaveDirty = true;
+    }
+    else
+    {
+        // Resize the NDS save
+        if (size > 0)
+        {
+            uint8_t *newSave = new uint8_t[size];
+
+            if (saveSize < size) // New save is larger
+            {
+                // Copy all of the old save and fill the rest with 0xFF
+                if (saveSize < 0) saveSize = 0;
+                memcpy(newSave, save, saveSize * sizeof(uint8_t));
+                memset(&newSave[saveSize], 0xFF, (size - saveSize) * sizeof(uint8_t));
+            }
+            else // New save is smaller
+            {
+                // Copy as much of the old save as possible
+                memcpy(newSave, save, size * sizeof(uint8_t));
+            }
+
+            delete[] save;
+            save = newSave;
+        }
+
+        saveSize = size;
+        saveDirty = true;
     }
 }
 
@@ -331,6 +408,7 @@ template <typename T> void Cartridge::gbaRomWrite(uint32_t address, T value)
         {
             // Write a single byte because the data bus is only 8 bits
             gbaSave[address - 0xE000000] = value;
+            gbaSaveDirty = true;
         }
         else if ((gbaSaveSize == 0x10000 || gbaSaveSize == 0x20000) && address < 0xE010000) // FLASH
         {
@@ -340,6 +418,7 @@ template <typename T> void Cartridge::gbaRomWrite(uint32_t address, T value)
                 // Write a single byte
                 if (gbaBankSwap) address += 0x10000;
                 gbaSave[address - 0xE000000] = value;
+                gbaSaveDirty = true;
                 gbaFlashCmd = 0xF0;
             }
             else if (gbaFlashErase && (address & ~0x000F000) == 0xE000000 && (value & 0xFF) == 0x30)
@@ -347,6 +426,7 @@ template <typename T> void Cartridge::gbaRomWrite(uint32_t address, T value)
                 // Erase a sector
                 if (gbaBankSwap) address += 0x10000;
                 memset(&gbaSave[address - 0xE000000], 0xFF, 0x1000 * sizeof(uint8_t));
+                gbaSaveDirty = true;
                 gbaFlashErase = false;
             }
             else if (gbaSaveSize == 0x20000 && gbaFlashCmd == 0xB0 && address == 0xE000000)
@@ -362,11 +442,18 @@ template <typename T> void Cartridge::gbaRomWrite(uint32_t address, T value)
 
                 // Handle erase commands
                 if (gbaFlashCmd == 0x80)
+                {
                     gbaFlashErase = true;
+                }
                 else if (gbaFlashCmd != 0xAA)
+                {
                     gbaFlashErase = false;
+                }
                 else if (gbaFlashErase && gbaFlashCmd == 0x10)
+                {
                     memset(gbaSave, 0xFF, gbaSaveSize * sizeof(uint8_t));
+                    gbaSaveDirty = true;
+                }
             }
         }
     }
@@ -413,6 +500,7 @@ template <typename T> void Cartridge::gbaRomWrite(uint32_t address, T value)
                 uint16_t addr = (gbaSaveSize == 0x200) ? ((gbaEepromCmd & 0x3F00) >> 8) : (gbaEepromCmd & 0x03FF);
                 for (unsigned int i = 0; i < 8; i++)
                     gbaSave[addr * 8 + i] = gbaEepromData >> (i * 8);
+                gbaSaveDirty = true;
 
                 // Reset the transfer
                 gbaEepromCount = 0;
@@ -610,7 +698,12 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
                         else
                         {
                             // On writes 3+, write data to the save
-                            if (auxAddress[cpu] < 0x200) save[auxAddress[cpu]] = value;
+                            if (auxAddress[cpu] < 0x200)
+                            {
+                                save[auxAddress[cpu]] = value;
+                                saveDirty = true;
+                            }
+
                             auxAddress[cpu]++;
                             auxSpiData[cpu] = 0;
                         }
@@ -628,7 +721,12 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
                         else
                         {
                             // On writes 3+, write data to the save
-                            if (auxAddress[cpu] < 0x200) save[auxAddress[cpu]] = value;
+                            if (auxAddress[cpu] < 0x200)
+                            {
+                                save[auxAddress[cpu]] = value;
+                                saveDirty = true;
+                            }
+
                             auxAddress[cpu]++;
                             auxSpiData[cpu] = 0;
                         }
@@ -679,7 +777,12 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
                         else
                         {
                             // On writes 4+, write data to the save
-                            if (auxAddress[cpu] < saveSize) save[auxAddress[cpu]] = value;
+                            if (auxAddress[cpu] < saveSize)
+                            {
+                                save[auxAddress[cpu]] = value;
+                                saveDirty = true;
+                            }
+
                             auxAddress[cpu]++;
                             auxSpiData[cpu] = 0;
                         }
@@ -728,7 +831,12 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
                         else
                         {
                             // On writes 5+, write data to the save
-                            if (auxAddress[cpu] < saveSize) save[auxAddress[cpu]] = value;
+                            if (auxAddress[cpu] < saveSize)
+                            {
+                                save[auxAddress[cpu]] = value;
+                                saveDirty = true;
+                            }
+
                             auxAddress[cpu]++;
                             auxSpiData[cpu] = 0;
                         }
@@ -756,7 +864,7 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
 
             default:
             {
-                printf("Write to AUX SPI with unknown save type\n");
+                printf("Write to AUX SPI with unknown save size: 0x%X\n", saveSize);
                 break;
             }
         }

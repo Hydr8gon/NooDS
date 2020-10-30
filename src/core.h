@@ -48,8 +48,6 @@ class Core
     public:
         Core(std::string ndsPath = "", std::string gbaPath = "");
 
-        static void createSave(std::string filename, int type);
-
         void runFrame() { (this->*runFunc)(); }
 
         bool isGbaMode() { return gbaMode; }

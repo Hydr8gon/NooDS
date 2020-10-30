@@ -154,15 +154,6 @@ public class FileBrowser extends AppCompatActivity
                                            "Make sure the ROM file is accessible and try again.");
                         break;
                     }
-
-                    case 3: // Missing save file
-                    {
-                        builder.setTitle("Missing Save");
-                        builder.setMessage("This ROM does not have a save file. " +
-                                           "NooDS cannot automatically detect save type. " +
-                                           "Please provide a save with the correct file size.");
-                        break;
-                    }
                 }
 
                 builder.setPositiveButton("OK", new DialogInterface.OnClickListener()

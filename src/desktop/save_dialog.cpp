@@ -22,33 +22,67 @@
 
 enum Event
 {
-    NONE = 1,
-    EEPROM_05,
-    EEPROM_8,
-    EEPROM_64,
-    EEPROM_128,
-    FRAM_32,
-    FLASH_256,
-    FLASH_512,
-    FLASH_1024,
-    FLASH_8192
+    SELECTION_0 = 1,
+    SELECTION_1,
+    SELECTION_2,
+    SELECTION_3,
+    SELECTION_4,
+    SELECTION_5,
+    SELECTION_6,
+    SELECTION_7,
+    SELECTION_8,
+    SELECTION_9
 };
 
 wxBEGIN_EVENT_TABLE(SaveDialog, wxDialog)
-EVT_RADIOBUTTON(NONE,       SaveDialog::none)
-EVT_RADIOBUTTON(EEPROM_05,  SaveDialog::eeprom05)
-EVT_RADIOBUTTON(EEPROM_8,   SaveDialog::eeprom8)
-EVT_RADIOBUTTON(EEPROM_64,  SaveDialog::eeprom64)
-EVT_RADIOBUTTON(EEPROM_128, SaveDialog::eeprom128)
-EVT_RADIOBUTTON(FRAM_32,    SaveDialog::fram32)
-EVT_RADIOBUTTON(FLASH_256,  SaveDialog::flash256)
-EVT_RADIOBUTTON(FLASH_512,  SaveDialog::flash512)
-EVT_RADIOBUTTON(FLASH_1024, SaveDialog::flash1024)
-EVT_RADIOBUTTON(FLASH_8192, SaveDialog::flash8192)
-EVT_BUTTON(wxID_OK,         SaveDialog::confirm)
+EVT_RADIOBUTTON(SELECTION_0, SaveDialog::selection0)
+EVT_RADIOBUTTON(SELECTION_1, SaveDialog::selection1)
+EVT_RADIOBUTTON(SELECTION_2, SaveDialog::selection2)
+EVT_RADIOBUTTON(SELECTION_3, SaveDialog::selection3)
+EVT_RADIOBUTTON(SELECTION_4, SaveDialog::selection4)
+EVT_RADIOBUTTON(SELECTION_5, SaveDialog::selection5)
+EVT_RADIOBUTTON(SELECTION_6, SaveDialog::selection6)
+EVT_RADIOBUTTON(SELECTION_7, SaveDialog::selection7)
+EVT_RADIOBUTTON(SELECTION_8, SaveDialog::selection8)
+EVT_RADIOBUTTON(SELECTION_9, SaveDialog::selection9)
+EVT_BUTTON(wxID_OK,          SaveDialog::confirm)
 wxEND_EVENT_TABLE()
 
-SaveDialog::SaveDialog(std::string path): wxDialog(nullptr, wxID_ANY, "Select Save Type"), path(path)
+int SaveDialog::selectionToSize(int selection)
+{
+    switch (selection)
+    {
+        case 1:  return    0x200; //  0.5KB
+        case 2:  return   0x2000; //    8KB
+        case 3:  return   0x8000; //   32KB
+        case 4:  return  0x10000; //   64KB
+        case 5:  return  0x20000; //  128KB
+        case 6:  return  0x40000; //  256KB
+        case 7:  return  0x80000; //  512KB
+        case 8:  return 0x100000; // 1024KB
+        case 9:  return 0x800000; // 8192KB
+        default: return        0; // None
+    }
+}
+
+int SaveDialog::sizeToSelection(int size)
+{
+    switch (size)
+    {
+        case    0x200: return 1; //  0.5KB
+        case   0x2000: return 2; //    8KB
+        case   0x8000: return 3; //   32KB
+        case  0x10000: return 4; //   64KB
+        case  0x20000: return 5; //  128KB
+        case  0x40000: return 6; //  256KB
+        case  0x80000: return 7; //  512KB
+        case 0x100000: return 8; // 1024KB
+        case 0x800000: return 9; // 8192KB
+        default:       return 0; // None
+    }
+}
+
+SaveDialog::SaveDialog(NooFrame *frame, Emulator *emulator): wxDialog(nullptr, wxID_ANY, "Change Save Type"), frame(frame), emulator(emulator)
 {
     // Determine the height of a button
     // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
@@ -56,21 +90,39 @@ SaveDialog::SaveDialog(std::string path): wxDialog(nullptr, wxID_ANY, "Select Sa
     int size = dummy->GetSize().y;
     delete dummy;
 
-    // Set up the radio buttons on the left side
+    gba = emulator->core->isGbaMode();
     wxBoxSizer *leftRadio = new wxBoxSizer(wxVERTICAL);
-    leftRadio->Add(new wxRadioButton(this, NONE,       "None"),         1);
-    leftRadio->Add(new wxRadioButton(this, EEPROM_05,  "EEPROM 0.5KB"), 1);
-    leftRadio->Add(new wxRadioButton(this, EEPROM_8,   "EEPROM 8KB"),   1);
-    leftRadio->Add(new wxRadioButton(this, EEPROM_64,  "EEPROM 64KB"),  1);
-    leftRadio->Add(new wxRadioButton(this, EEPROM_128, "EEPROM 128KB"), 1);
-
-    // Set up the radio buttons on the right side
     wxBoxSizer *rightRadio = new wxBoxSizer(wxVERTICAL);
-    rightRadio->Add(new wxRadioButton(this, FRAM_32,    "FRAM 32KB"),    1);
-    rightRadio->Add(new wxRadioButton(this, FLASH_256,  "FLASH 256KB"),  1);
-    rightRadio->Add(new wxRadioButton(this, FLASH_512,  "FLASH 512KB"),  1);
-    rightRadio->Add(new wxRadioButton(this, FLASH_1024, "FLASH 1024KB"), 1);
-    rightRadio->Add(new wxRadioButton(this, FLASH_8192, "FLASH 8192KB"), 1);
+    wxRadioButton *buttons[10];
+
+    if (gba)
+    {
+        // Set up radio buttons for GBA save types
+        leftRadio->Add(buttons[0]  = new wxRadioButton(this, SELECTION_0, "None"),         1);
+        leftRadio->Add(buttons[1]  = new wxRadioButton(this, SELECTION_1, "EEPROM 0.5KB"), 1);
+        leftRadio->Add(buttons[2]  = new wxRadioButton(this, SELECTION_2, "EEPROM 8KB"),   1);
+        rightRadio->Add(buttons[3] = new wxRadioButton(this, SELECTION_3, "SRAM 32KB"),    1);
+        rightRadio->Add(buttons[4] = new wxRadioButton(this, SELECTION_4, "FLASH 64KB"),   1);
+        rightRadio->Add(buttons[5] = new wxRadioButton(this, SELECTION_5, "FLASH 128KB"),  1);
+    }
+    else
+    {
+        // Set up radio buttons for NDS save types
+        leftRadio->Add(buttons[0] =  new wxRadioButton(this, SELECTION_0, "None"),         1);
+        leftRadio->Add(buttons[1] =  new wxRadioButton(this, SELECTION_1, "EEPROM 0.5KB"), 1);
+        leftRadio->Add(buttons[2] =  new wxRadioButton(this, SELECTION_2, "EEPROM 8KB"),   1);
+        leftRadio->Add(buttons[4] =  new wxRadioButton(this, SELECTION_4, "EEPROM 64KB"),  1);
+        leftRadio->Add(buttons[5] =  new wxRadioButton(this, SELECTION_5, "EEPROM 128KB"), 1);
+        rightRadio->Add(buttons[3] = new wxRadioButton(this, SELECTION_3, "FRAM 32KB"),    1);
+        rightRadio->Add(buttons[6] = new wxRadioButton(this, SELECTION_6, "FLASH 256KB"),  1);
+        rightRadio->Add(buttons[7] = new wxRadioButton(this, SELECTION_7, "FLASH 512KB"),  1);
+        rightRadio->Add(buttons[8] = new wxRadioButton(this, SELECTION_8, "FLASH 1024KB"), 1);
+        rightRadio->Add(buttons[9] = new wxRadioButton(this, SELECTION_9, "FLASH 8192KB"), 1);
+    }
+
+    // Select the current save type by default
+    selection = sizeToSelection(emulator->core->cartridge.getSaveSize(gba));
+    buttons[selection]->SetValue(true);
 
     // Combine all of the radio buttons
     wxBoxSizer *radioSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -99,70 +151,76 @@ SaveDialog::SaveDialog(std::string path): wxDialog(nullptr, wxID_ANY, "Select Sa
     SetMaxSize(GetSize());
 }
 
-void SaveDialog::none(wxCommandEvent &event)
+void SaveDialog::selection0(wxCommandEvent &event)
 {
-    // Set the selection to none
+    // Set the selection to 0
     selection = 0;
 }
 
-void SaveDialog::eeprom05(wxCommandEvent &event)
+void SaveDialog::selection1(wxCommandEvent &event)
 {
-    // Set the selection to EEPROM 0.5KB
+    // Set the selection to 1
     selection = 1;
 }
 
-void SaveDialog::eeprom8(wxCommandEvent &event)
+void SaveDialog::selection2(wxCommandEvent &event)
 {
-    // Set the selection to EEPROM 8KB
+    // Set the selection to 2
     selection = 2;
 }
 
-void SaveDialog::eeprom64(wxCommandEvent &event)
+void SaveDialog::selection3(wxCommandEvent &event)
 {
-    // Set the selection to EEPROM 64KB
+    // Set the selection to 3
     selection = 3;
 }
 
-void SaveDialog::eeprom128(wxCommandEvent &event)
+void SaveDialog::selection4(wxCommandEvent &event)
 {
-    // Set the selection to EEPROM 128KB
+    // Set the selection to 4
     selection = 4;
 }
 
-void SaveDialog::fram32(wxCommandEvent &event)
+void SaveDialog::selection5(wxCommandEvent &event)
 {
-    // Set the selection to FRAM 32KB
+    // Set the selection to 5
     selection = 5;
 }
 
-void SaveDialog::flash256(wxCommandEvent &event)
+void SaveDialog::selection6(wxCommandEvent &event)
 {
-    // Set the selection to FLASH 256KB
+    // Set the selection to 6
     selection = 6;
 }
 
-void SaveDialog::flash512(wxCommandEvent &event)
+void SaveDialog::selection7(wxCommandEvent &event)
 {
-    // Set the selection to FLASH 512KB
+    // Set the selection to 7
     selection = 7;
 }
 
-void SaveDialog::flash1024(wxCommandEvent &event)
+void SaveDialog::selection8(wxCommandEvent &event)
 {
-    // Set the selection to FLASH 1024KB
+    // Set the selection to 8
     selection = 8;
 }
 
-void SaveDialog::flash8192(wxCommandEvent &event)
+void SaveDialog::selection9(wxCommandEvent &event)
 {
-    // Set the selection to FLASH 8192KB
+    // Set the selection to 9
     selection = 9;
 }
 
 void SaveDialog::confirm(wxCommandEvent &event)
 {
-    // Create a save of the selected type
-    Core::createSave(path, selection);
-
-    event.Skip(true);
+    // Confirm the change because accidentally resizing a working save file could be bad!
+    // On confirmation, apply the change and restart the core
+    wxMessageDialog dialog(this, "Are you sure? This may result in data loss!", "Changing Save Type", wxYES_NO | wxICON_NONE);
+    if (dialog.ShowModal() == wxID_YES)
+    {
+        frame->stopCore(false);
+        emulator->core->cartridge.setSaveSize(gba, selectionToSize(selection));
+        frame->startCore(true);
+        event.Skip(true);
+    }
 }
