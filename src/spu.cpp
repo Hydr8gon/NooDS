@@ -811,21 +811,21 @@ void Spu::writeGbaWaveRam(int index, uint8_t value)
 
 void Spu::writeGbaFifoA(uint32_t mask, uint32_t value)
 {
-    // Push 4 bytes of PCM8 data to the GBA sound FIFO A
+    // Push PCM8 data to the GBA sound FIFO A
     for (int i = 0; i < 32; i += 8)
     {
-        if (gbaFifoA.size() < 32)
-            gbaFifoA.push((value & mask) >> i);
+        if (gbaFifoA.size() < 32 && (mask & (0xFF << i)))
+            gbaFifoA.push(value >> i);
     }
 }
 
 void Spu::writeGbaFifoB(uint32_t mask, uint32_t value)
 {
-    // Push 4 bytes of PCM8 data to the GBA sound FIFO B
+    // Push PCM8 data to the GBA sound FIFO B
     for (int i = 0; i < 32; i += 8)
     {
-        if (gbaFifoB.size() < 32)
-            gbaFifoB.push((value & mask) >> i);
+        if (gbaFifoB.size() < 32 && (mask & (0xFF << i)))
+            gbaFifoB.push(value >> i);
     }
 }
 
