@@ -639,9 +639,7 @@ void Spu::runSample()
         }
 
         // Swap the buffers
-        uint32_t *buffer = bufferOut;
-        bufferOut = bufferIn;
-        bufferIn = buffer;
+        SWAP(bufferOut, bufferIn);
 
         // Signal that the buffer is ready to play
         {

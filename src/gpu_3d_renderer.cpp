@@ -48,10 +48,10 @@ Gpu3DRenderer::~Gpu3DRenderer()
 uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 {
     // Convert an RGBA5 value to an RGBA6 value (the way the 3D engine does it)
-    uint8_t r = ((color >>  0) & 0x1F); r = r * 2 + (r + 31) / 32;
-    uint8_t g = ((color >>  5) & 0x1F); g = g * 2 + (g + 31) / 32;
-    uint8_t b = ((color >> 10) & 0x1F); b = b * 2 + (b + 31) / 32;
-    uint8_t a = ((color >> 15) & 0x1F); a = a * 2 + (a + 31) / 32;
+    uint8_t r = ((color >>  0) & 0x1F) * 2; if (r > 0) r++;
+    uint8_t g = ((color >>  5) & 0x1F) * 2; if (g > 0) g++;
+    uint8_t b = ((color >> 10) & 0x1F) * 2; if (b > 0) b++;
+    uint8_t a = ((color >> 15) & 0x1F) * 2; if (a > 0) a++;
     return (a << 18) | (b << 12) | (g << 6) | r;
 }
 
@@ -487,11 +487,7 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
 
     // Unclipped quad strip polygons have their vertices crossed, so uncross them
     if (polygon->crossed)
-    {
-        Vertex *vertex = vertices[2];
-        vertices[2] = vertices[3];
-        vertices[3] = vertex;
-    }
+        SWAP(vertices[2], vertices[3]);
 
     Vertex *vCur[4];
     int countCur = 0;
@@ -527,17 +523,9 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
     // Swap the bounds if the first one is on the right
     if (x1 > x2)
     {
-        int x = x1;
-        x1 = x2;
-        x2 = x;
-
-        Vertex *v = vCur[0];
-        vCur[0] = vCur[2];
-        vCur[2] = v;
-
-        v = vCur[1];
-        vCur[1] = vCur[3];
-        vCur[3] = v;
+        SWAP(x1, x2);
+        SWAP(vCur[0], vCur[2]);
+        SWAP(vCur[1], vCur[3]);
     }
 
     int x3 = 0, x4 = 0;
@@ -592,21 +580,9 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
             int xc = interpolate(vBot[0]->x, vBot[1]->x, vBot[0]->y, line + 1, vBot[1]->y);
             int xd = interpolate(vBot[2]->x, vBot[3]->x, vBot[2]->y, line + 1, vBot[3]->y);
 
-            // Swap the top bounds if the first one is on the right
-            if (xa > xb)
-            {
-                int x = xa;
-                xa = xb;
-                xb = x;
-            }
-
-            // Swap the bottom bounds if the first one is on the right
-            if (xc > xd)
-            {
-                int x = xc;
-                xc = xd;
-                xd = x;
-            }
+            // Swap the bounds if the first one is on the right
+            if (xa > xb) SWAP(xa, xb);
+            if (xc > xd) SWAP(xc, xd);
 
             // Set the X bounds of the polygon interior
             // On the left, the polygon will be drawn from the left edge to the point where the edge starts on an adjacent line

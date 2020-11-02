@@ -223,17 +223,13 @@ void Gpu3D::swapBuffers()
     }
 
     // Swap the vertex buffers
-    Vertex *vertices = verticesOut;
-    verticesOut = verticesIn;
-    verticesIn = vertices;
+    SWAP(verticesOut, verticesIn);
     vertexCountOut = vertexCountIn;
     vertexCountIn = 0;
     vertexCount = 0;
 
     // Swap the polygon buffers
-    _Polygon *polygons = polygonsOut;
-    polygonsOut = polygonsIn;
-    polygonsIn = polygons;
+    SWAP(polygonsOut, polygonsIn);
     polygonCountOut = polygonCountIn;
     polygonCountIn = 0;
 

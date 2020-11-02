@@ -37,6 +37,14 @@
 // Simple bit macro
 #define BIT(i) (1 << (i))
 
+// Macro to swap two values
+#define SWAP(a, b) \
+{                  \
+    auto c = a;    \
+    a = b;         \
+    b = c;         \
+}
+
 // Macros that read a value larger than 8 bits from an 8-bit array
 #define U8TO16(data, index) ((data[(index) + 1] << 8) | data[index])
 #define U8TO32(data, index) ((data[(index) + 3] << 24) | (data[(index) + 2] << 16) | (data[(index) + 1] << 8) | data[index])
