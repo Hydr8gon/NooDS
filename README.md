@@ -25,6 +25,7 @@ To compile for Android, you'll need to setup the [Android SDK](https://developer
 ### References
 * [GBATEK](https://problemkaputt.de/gbatek.htm) by Martin Korth - This is where most of my information came from
 * [GBATEK Addendum](http://melonds.kuribo64.net/board/thread.php?id=13) by Arisotura - GBATEK isn't perfect, so some information came from here as well
+* [DS GPU Interpolation](http://melonds.kuribo64.net/comments.php?id=85) by Arisotura - Another great resource that details the GPU's interpolation quirks
 * [ARM Opcode Map](http://imrannazar.com/ARM-Opcode-Map) by Imran Nazar - Used to create the interpreter lookup table
 * Hardware tests by me - When there's something that I can't find or want to verify, I write tests for it myself!
 

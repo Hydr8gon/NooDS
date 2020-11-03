@@ -52,7 +52,7 @@ class Gpu3DRenderer
         Core *core;
 
         uint32_t framebuffer[256 * 192] = {};
-        int32_t depthBuffer[3][256] = {};
+        uint32_t depthBuffer[3][256] = {};
         uint8_t attribBuffer[3][256] = {};
         uint8_t stencilBuffer[3][256] = {};
         bool stencilClear[3] = {};
@@ -77,10 +77,10 @@ class Gpu3DRenderer
         uint8_t *getTexture(uint32_t address);
         uint8_t *getPalette(uint32_t address);
 
-        int interpolate(int64_t v1, int64_t v2, int x1, int x, int x2);
-        int interpolateW(int64_t w1, int64_t w2, int x1, int x, int x2);
-        int interpolate(int64_t v1, int64_t v2, int x1, int x, int x2, int w1, int w2);
-        uint32_t interpolateColor(uint32_t c1, uint32_t c2, int x1, int x, int x2);
+        uint32_t interpolateLinear(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2);
+        uint32_t interpolateFill(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2);
+        uint32_t interpolateEdge(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2);
+        uint32_t interpolateColor(uint32_t c1, uint32_t c2, uint32_t x1, uint32_t x, uint32_t x2);
 
         uint32_t readTexture(_Polygon *polygon, int s, int t);
         void drawPolygon(int line, int thread, _Polygon *polygon);
