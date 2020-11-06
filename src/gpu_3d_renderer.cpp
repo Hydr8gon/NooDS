@@ -846,12 +846,12 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
                 uint32_t *pixel = &framebuffer[line * 256 + x];
                 uint8_t *attrib = &attribBuffer[thread][x];
 
-                if ((disp3DCnt & BIT(3)) && ((color & 0xFC0000) >> 18) < 0x3F && (*pixel & 0xFC0000)) // Alpha blending
+                if ((disp3DCnt & BIT(3)) && ((color & 0xFC0000) >> 18) < 0x3F) // Alpha blending
                 {
                     // Only render transparent pixels if the old pixel isn't transparent or the polygon ID differs
                     if (!(*attrib & BIT(6)) || (*attrib & 0x3F) != polygon->id)
                     {
-                        *pixel = BIT(26) | interpolateColor(*pixel, color, 0, color >> 18, 63);
+                        *pixel = BIT(26) | ((*pixel & 0xFC0000) ? interpolateColor(*pixel, color, 0, color >> 18, 63) : color);
                         if (polygon->transNewDepth) depthBuffer[thread][x] = depth;
                         *attrib = (*attrib & (polygon->fog << 7)) | BIT(6) | polygon->id;
                     }
