@@ -746,6 +746,9 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
         // Skip the polygon interior for wireframe polygons
         if (x3 < x4 && x == x3) x = x4;
 
+        // Invalid viewports can cause out-of-bounds vertices, so only draw within bounds
+        if (x >= 256) break;
+
         // Calculate the depth value of the current pixel
         uint32_t depth;
         if (polygon->wBuffer)

@@ -172,12 +172,10 @@ void Gpu3D::swapBuffers()
     {
         if (verticesIn[i].w != 0)
         {
-            // The below formula results in Y coordinates that are one pixel off, so adjust for that
-            verticesIn[i].y += (verticesIn[i].w * 2) / viewportHeight;
-
             // Normalize and scale the vertices to the viewport
-            verticesIn[i].x =       ((verticesIn[i].x + verticesIn[i].w) * viewportWidth  / (verticesIn[i].w * 2) + viewportX);
-            verticesIn[i].y = 192 - ((verticesIn[i].y + verticesIn[i].w) * viewportHeight / (verticesIn[i].w * 2) + viewportY);
+            // X coordinates are 9-bit and Y coordinates are 8-bit; invalid viewports can cause wraparound
+            verticesIn[i].x = (( verticesIn[i].x + verticesIn[i].w) * viewportWidth  / (verticesIn[i].w * 2) + viewportX) & 0x1FF;
+            verticesIn[i].y = ((-verticesIn[i].y + verticesIn[i].w) * viewportHeight / (verticesIn[i].w * 2) + viewportY) &  0xFF;
             verticesIn[i].z = (((verticesIn[i].z * 0x4000) / verticesIn[i].w) + 0x3FFF) * 0x200;
         }
         else
@@ -1372,10 +1370,10 @@ void Gpu3D::swapBuffersCmd(uint32_t param)
 void Gpu3D::viewportCmd(uint32_t param)
 {
     // Set the viewport dimensions
-    viewportX = (param & 0x000000FF) >> 0;
-    viewportY = (param & 0x0000FF00) >> 8;
-    viewportWidth  = ((param & 0x00FF0000) >> 16) - viewportX + 1;
-    viewportHeight = ((param & 0xFF000000) >> 24) - viewportY + 1;
+    viewportX      =         ((param & 0x000000FF) >>  0)                   & 0x1FF;
+    viewportY      =  (191 - ((param & 0xFF000000) >> 24))                  &  0xFF;
+    viewportWidth  =        (((param & 0x00FF0000) >> 16)  - viewportX + 1) & 0x1FF;
+    viewportHeight = ((191 - ((param & 0x0000FF00) >>  8)) - viewportY + 1) &  0xFF;
 }
 
 void Gpu3D::boxTestCmd(uint32_t param)
