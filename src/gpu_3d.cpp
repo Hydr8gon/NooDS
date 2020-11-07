@@ -67,9 +67,9 @@ Gpu3D::Gpu3D(Core *core): core(core)
 uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
 {
     // Convert an RGB5 value to an RGB6 value (the way the 3D engine does it)
-    uint8_t r = ((color >>  0) & 0x1F); r = r * 2 + (r + 31) / 32;
-    uint8_t g = ((color >>  5) & 0x1F); g = g * 2 + (g + 31) / 32;
-    uint8_t b = ((color >> 10) & 0x1F); b = b * 2 + (b + 31) / 32;
+    uint8_t r = ((color >>  0) & 0x1F) * 2; if (r > 0) r++;
+    uint8_t g = ((color >>  5) & 0x1F) * 2; if (g > 0) g++;
+    uint8_t b = ((color >> 10) & 0x1F) * 2; if (b > 0) b++;
     return (b << 12) | (g << 6) | r;
 }
 
@@ -174,9 +174,10 @@ void Gpu3D::swapBuffers()
         {
             // Normalize and scale the vertices to the viewport
             // X coordinates are 9-bit and Y coordinates are 8-bit; invalid viewports can cause wraparound
-            verticesIn[i].x = (( verticesIn[i].x + verticesIn[i].w) * viewportWidth  / (verticesIn[i].w * 2) + viewportX) & 0x1FF;
-            verticesIn[i].y = ((-verticesIn[i].y + verticesIn[i].w) * viewportHeight / (verticesIn[i].w * 2) + viewportY) &  0xFF;
-            verticesIn[i].z = (((verticesIn[i].z * 0x4000) / verticesIn[i].w) + 0x3FFF) * 0x200;
+            // Z coordinates (and depth values in general) are 24-bit
+            verticesIn[i].x = (( (int64_t)verticesIn[i].x + verticesIn[i].w) * viewportWidth  / (verticesIn[i].w * 2) + viewportX) & 0x1FF;
+            verticesIn[i].y = ((-(int64_t)verticesIn[i].y + verticesIn[i].w) * viewportHeight / (verticesIn[i].w * 2) + viewportY) &  0xFF;
+            verticesIn[i].z = (((((int64_t)verticesIn[i].z << 14) / verticesIn[i].w) + 0x3FFF) << 9) & 0xFFFFFF;
         }
         else
         {
@@ -195,28 +196,23 @@ void Gpu3D::swapBuffers()
         // Reduce precision in 4-bit increments until all W values fit in the 16-bit range
         for (int j = 0; j < p->size; j++)
         {
-            while ((p->vertices[j].w >> p->wShift) != (uint16_t)(p->vertices[j].w >> p->wShift))
+            while (((uint32_t)p->vertices[j].w >> p->wShift) > 0xFFFF)
                 p->wShift += 4;
         }
 
-        // If precision wasn't reduced, try increasing precision in 4-bit increments
-        // Once a W value is found that no longer fits in the 16-bit range, reduce precision to the last valid value
+        // If precision wasn't reduced, increase it in 4-bit increments until a W value no longer fits in the 16-bit range
         if (p->wShift == 0)
         {
-            bool fits = true;
-            while (fits)
+            while (true)
             {
-                p->wShift -= 4;
                 for (int j = 0; j < p->size; j++)
                 {
-                    if ((p->vertices[j].w << -p->wShift) != (uint16_t)(p->vertices[j].w << -p->wShift))
-                    {
-                        fits = false;
-                        break;
-                    }
+                    if (p->vertices[j].w == 0 || ((uint32_t)p->vertices[j].w << -(p->wShift - 4)) > 0xFFFF)
+                        goto out;
                 }
+                p->wShift -= 4;
             }
-            p->wShift += 4;
+            out:;
         }
     }
 
@@ -231,7 +227,7 @@ void Gpu3D::swapBuffers()
     polygonCountOut = polygonCountIn;
     polygonCountIn = 0;
 
-    // Unhalt the geometry engine and invalidate the 3D
+    // Unhalt the geometry engine
     halted = false;
     core->gpu.invalidate3D();
 }
@@ -245,10 +241,9 @@ Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)
     {
         for (int x = 0; x < 4; x++)
         {
-            int64_t *index = &matrix.data[y * 4 + x];
-            *index = 0;
-            for (int i = 0; i < 4; i++) *index += mtx1->data[y * 4 + i] * mtx2->data[i * 4 + x];
-            *index >>= 12;
+            int64_t value = 0;
+            for (int i = 0; i < 4; i++) value += (int64_t)mtx1->data[y * 4 + i] * mtx2->data[i * 4 + x];
+            matrix.data[y * 4 + x] = value >> 12;
         }
     }
 
@@ -260,18 +255,18 @@ Vertex Gpu3D::multiply(Vertex *vtx, Matrix *mtx)
     Vertex vertex = *vtx;
 
     // Multiply a vertex with a matrix
-    vertex.x = (vtx->x * mtx->data[0] + vtx->y * mtx->data[4] + vtx->z * mtx->data[8]  + vtx->w * mtx->data[12]) >> 12;
-    vertex.y = (vtx->x * mtx->data[1] + vtx->y * mtx->data[5] + vtx->z * mtx->data[9]  + vtx->w * mtx->data[13]) >> 12;
-    vertex.z = (vtx->x * mtx->data[2] + vtx->y * mtx->data[6] + vtx->z * mtx->data[10] + vtx->w * mtx->data[14]) >> 12;
-    vertex.w = (vtx->x * mtx->data[3] + vtx->y * mtx->data[7] + vtx->z * mtx->data[11] + vtx->w * mtx->data[15]) >> 12;
+    vertex.x = ((int64_t)vtx->x * mtx->data[0] + (int64_t)vtx->y * mtx->data[4] + (int64_t)vtx->z * mtx->data[8]  + (int64_t)vtx->w * mtx->data[12]) >> 12;
+    vertex.y = ((int64_t)vtx->x * mtx->data[1] + (int64_t)vtx->y * mtx->data[5] + (int64_t)vtx->z * mtx->data[9]  + (int64_t)vtx->w * mtx->data[13]) >> 12;
+    vertex.z = ((int64_t)vtx->x * mtx->data[2] + (int64_t)vtx->y * mtx->data[6] + (int64_t)vtx->z * mtx->data[10] + (int64_t)vtx->w * mtx->data[14]) >> 12;
+    vertex.w = ((int64_t)vtx->x * mtx->data[3] + (int64_t)vtx->y * mtx->data[7] + (int64_t)vtx->z * mtx->data[11] + (int64_t)vtx->w * mtx->data[15]) >> 12;
 
     return vertex;
 }
 
-int64_t Gpu3D::multiply(Vertex *vec1, Vertex *vec2)
+int32_t Gpu3D::multiply(Vertex *vec1, Vertex *vec2)
 {
     // Multiply 2 vectors
-    return (vec1->x * vec2->x + vec1->y * vec2->y + vec1->z * vec2->z) >> 12;
+    return ((int64_t)vec1->x * vec2->x + (int64_t)vec1->y * vec2->y + (int64_t)vec1->z * vec2->z) >> 12;
 }
 
 void Gpu3D::addVertex()
@@ -287,8 +282,8 @@ void Gpu3D::addVertex()
     {
         // Get the texture matrix with the texture coordinates
         Matrix matrix = texture;
-        matrix.data[12] = s << 12;
-        matrix.data[13] = t << 12;
+        matrix.data[12] = (int32_t)s << 12;
+        matrix.data[13] = (int32_t)t << 12;
 
         // Multiply the vertex with the texture matrix
         Vertex vertex = multiply(&verticesIn[vertexCountIn], &matrix);
@@ -332,7 +327,7 @@ void Gpu3D::addPolygon()
     savedPolygon.vertices = &verticesIn[vertexCountIn - size];
 
     // Save a copy of the unclipped vertices
-    Vertex unclipped[8];
+    Vertex unclipped[10];
     memcpy(unclipped, savedPolygon.vertices, size * sizeof(Vertex));
 
     // Rearrange quad strip vertices to be counter-clockwise
@@ -344,17 +339,17 @@ void Gpu3D::addPolygon()
     }
 
     // Clip the polygon
-    Vertex clipped[8];
+    Vertex clipped[10];
     bool clip = clipPolygon(unclipped, clipped, &savedPolygon.size);
 
     // Calculate the cross product of the normalized polygon vertices to determine orientation
     int64_t cross = 0;
     if (savedPolygon.size >= 3)
     {
-        cross = ((clipped[1].x << 12) / clipped[1].w - (clipped[0].x << 12) / clipped[0].w) *
-                ((clipped[2].y << 12) / clipped[2].w - (clipped[0].y << 12) / clipped[0].w) -
-                ((clipped[1].y << 12) / clipped[1].w - (clipped[0].y << 12) / clipped[0].w) *
-                ((clipped[2].x << 12) / clipped[2].w - (clipped[0].x << 12) / clipped[0].w);
+        cross = (((int64_t)clipped[1].x << 12) / clipped[1].w - ((int64_t)clipped[0].x << 12) / clipped[0].w) *
+                (((int64_t)clipped[2].y << 12) / clipped[2].w - ((int64_t)clipped[0].y << 12) / clipped[0].w) -
+                (((int64_t)clipped[1].y << 12) / clipped[1].w - ((int64_t)clipped[0].y << 12) / clipped[0].w) *
+                (((int64_t)clipped[2].x << 12) / clipped[2].w - ((int64_t)clipped[0].x << 12) / clipped[0].w);
     }
 
     // Every other triangle strip polygon is stored clockwise instead of counter-clockwise
@@ -493,13 +488,13 @@ void Gpu3D::addPolygon()
     // Set the new polygon
     polygonsIn[polygonCountIn] = savedPolygon;
     polygonsIn[polygonCountIn].crossed = (polygonType == 3 && !clip);
-    polygonsIn[polygonCountIn].paletteAddr *= ((savedPolygon.textureFmt == 2) ? 8 : 16);
+    polygonsIn[polygonCountIn].paletteAddr <<= 4 - (savedPolygon.textureFmt == 2);
 
     // Move to the next polygon
     polygonCountIn++;
 }
 
-Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int64_t val1, int64_t val2)
+Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2)
 {
     Vertex vertex;
 
@@ -509,17 +504,17 @@ Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int64_t val1, int64_t val
     if (d2 == d1) return *vtx1;
 
     // Interpolate the vertex coordinates
-    vertex.x = ((vtx1->x * d2) - (vtx2->x * d1)) / (d2 - d1);
-    vertex.y = ((vtx1->y * d2) - (vtx2->y * d1)) / (d2 - d1);
-    vertex.z = ((vtx1->z * d2) - (vtx2->z * d1)) / (d2 - d1);
-    vertex.w = ((vtx1->w * d2) - (vtx2->w * d1)) / (d2 - d1);
-    vertex.s = ((vtx1->s * d2) - (vtx2->s * d1)) / (d2 - d1);
-    vertex.t = ((vtx1->t * d2) - (vtx2->t * d1)) / (d2 - d1);
+    vertex.x = ((d2 * vtx1->x) - (d1 * vtx2->x)) / (d2 - d1);
+    vertex.y = ((d2 * vtx1->y) - (d1 * vtx2->y)) / (d2 - d1);
+    vertex.z = ((d2 * vtx1->z) - (d1 * vtx2->z)) / (d2 - d1);
+    vertex.w = ((d2 * vtx1->w) - (d1 * vtx2->w)) / (d2 - d1);
+    vertex.s = ((d2 * vtx1->s) - (d1 * vtx2->s)) / (d2 - d1);
+    vertex.t = ((d2 * vtx1->t) - (d1 * vtx2->t)) / (d2 - d1);
 
     // Interpolate the vertex color
-    uint8_t r = ((((vtx1->color >>  0) & 0x3F) * d2) - (((vtx2->color >>  0) & 0x3F) * d1)) / (d2 - d1);
-    uint8_t g = ((((vtx1->color >>  6) & 0x3F) * d2) - (((vtx2->color >>  6) & 0x3F) * d1)) / (d2 - d1);
-    uint8_t b = ((((vtx1->color >> 12) & 0x3F) * d2) - (((vtx2->color >> 12) & 0x3F) * d1)) / (d2 - d1);
+    uint8_t r = ((d2 * ((vtx1->color >>  0) & 0x3F)) - (d1 * ((vtx2->color >>  0) & 0x3F))) / (d2 - d1);
+    uint8_t g = ((d2 * ((vtx1->color >>  6) & 0x3F)) - (d1 * ((vtx2->color >>  6) & 0x3F))) / (d2 - d1);
+    uint8_t b = ((d2 * ((vtx1->color >> 12) & 0x3F)) - (d1 * ((vtx2->color >> 12) & 0x3F))) / (d2 - d1);
     vertex.color = (vtx1->color & 0xFC0000) | (b << 12) | (g << 6) | r;
 
     return vertex;
@@ -546,7 +541,7 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int *size)
             Vertex *previous = &unclipped[(j - 1 + oldSize) % oldSize];
 
             // Choose which coordinates to check based on the current side being clipped against
-            int64_t currentVal, previousVal;
+            int32_t currentVal, previousVal;
             switch (i)
             {
                 case 0: currentVal =  current->x; previousVal =  previous->x; break;
@@ -1260,7 +1255,7 @@ void Gpu3D::polygonAttrCmd(uint32_t param)
 void Gpu3D::texImageParamCmd(uint32_t param)
 {
     // Set the texture parameters
-    savedPolygon.textureAddr = (param & 0x0000FFFF) * 8;
+    savedPolygon.textureAddr = (param & 0x0000FFFF) << 3;
     savedPolygon.sizeS = 8 << ((param & 0x00700000) >> 20);
     savedPolygon.sizeT = 8 << ((param & 0x03800000) >> 23);
     savedPolygon.repeatS = param & BIT(16);
@@ -1441,7 +1436,7 @@ void Gpu3D::boxTestCmd(uint32_t param)
     for (int i = 0; i < 6; i++)
     {
         int size = 4;
-        Vertex clipped[8];
+        Vertex clipped[10];
         clipPolygon(faces[i], clipped, &size);
 
         if (size > 0)

@@ -37,7 +37,7 @@ struct Entry
 
 struct Matrix
 {
-    int64_t data[4 * 4] =
+    int32_t data[4 * 4] =
     {
         1 << 12, 0 << 12, 0 << 12, 0 << 12,
         0 << 12, 1 << 12, 0 << 12, 0 << 12,
@@ -48,8 +48,8 @@ struct Matrix
 
 struct Vertex
 {
-    int64_t x = 0, y = 0, z = 0, w = 0;
-    int64_t s = 0, t = 0;
+    int32_t x = 0, y = 0, z = 0, w = 0;
+    int16_t s = 0, t = 0;
     uint32_t color = 0;
 };
 
@@ -170,7 +170,7 @@ class Gpu3D
 
         Vertex savedVertex;
         _Polygon savedPolygon;
-        int64_t s, t;
+        int16_t s, t;
 
         int vertexCount = 0;
         bool clockwise = false;
@@ -202,14 +202,14 @@ class Gpu3D
 
         Matrix multiply(Matrix *mtx1, Matrix *mtx2);
         Vertex multiply(Vertex *vtx, Matrix *mtx);
-        int64_t multiply(Vertex *vec1, Vertex *vec2);
+        int32_t multiply(Vertex *vec1, Vertex *vec2);
 
         uint32_t rgb5ToRgb6(uint16_t color);
 
         void addVertex();
         void addPolygon();
 
-        Vertex intersection(Vertex *vtx1, Vertex *vtx2, int64_t val1, int64_t val2);
+        Vertex intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2);
         bool clipPolygon(Vertex *unclipped, Vertex *clipped, int *size);
 
         void mtxModeCmd(uint32_t param);

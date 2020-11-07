@@ -115,7 +115,7 @@ void Gpu3DRenderer::drawScanline1(int line, int thread)
     // Convert the clear values
     // The attribute buffer contains the polygon ID, the transparency bit (6), and the fog bit (7)
     uint32_t color = BIT(26) | rgba5ToRgba6(((clearColor & 0x001F0000) >> 1) | (clearColor & 0x00007FFF));
-    uint32_t depth = (clearDepth * 0x200) + ((clearDepth + 1) / 0x8000) * 0x1FF;
+    uint32_t depth = (clearDepth << 9) + ((clearDepth == 0x7FFF) ? 0x1FF : 0);
     uint8_t attrib = ((clearColor & BIT(15)) >> 8) | ((clearColor & 0x3F000000) >> 24);
     if (((clearColor & 0x001F0000) >> 16) < 31) attrib |= BIT(6);
 
@@ -510,7 +510,7 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
 void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
 {
     // Get the polygon vertices
-    Vertex *vertices[8];
+    Vertex *vertices[10];
     for (int i = 0; i < polygon->size; i++)
         vertices[i] = &polygon->vertices[i];
 
@@ -633,7 +633,7 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
         for (int i = 0; i < 4; i++)
             vw[i] = vCur[i]->w >> polygon->wShift;
     }
-    else if (polygon->wShift < 0)
+    else
     {
         for (int i = 0; i < 4; i++)
             vw[i] = vCur[i]->w << -polygon->wShift;
@@ -719,10 +719,11 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
     uint32_t b2 = interpolateEdge(((vCur[e[2]]->color >> 12) & 0x3F) << 3, ((vCur[e[3]]->color >> 12) & 0x3F) << 3, rx1, rx, rx2, vw[e[2]], vw[e[3]]);
 
     // Interpolate the texture coordinates of the polygon edges on the current line
-    int s1 = interpolateEdge(vCur[e[0]]->s + 0xFFFF, vCur[e[1]]->s + 0xFFFF, lx1, lx, lx2, vw[e[0]], vw[e[1]]) - 0xFFFF;
-    int s2 = interpolateEdge(vCur[e[2]]->s + 0xFFFF, vCur[e[3]]->s + 0xFFFF, rx1, rx, rx2, vw[e[2]], vw[e[3]]) - 0xFFFF;
-    int t1 = interpolateEdge(vCur[e[0]]->t + 0xFFFF, vCur[e[1]]->t + 0xFFFF, lx1, lx, lx2, vw[e[0]], vw[e[1]]) - 0xFFFF;
-    int t2 = interpolateEdge(vCur[e[2]]->t + 0xFFFF, vCur[e[3]]->t + 0xFFFF, rx1, rx, rx2, vw[e[2]], vw[e[3]]) - 0xFFFF;
+    // Interpolation is unsigned, so temporarily convert the signed values to unsigned
+    int s1 = interpolateEdge((int32_t)vCur[e[0]]->s + 0xFFFF, (int32_t)vCur[e[1]]->s + 0xFFFF, lx1, lx, lx2, vw[e[0]], vw[e[1]]) - 0xFFFF;
+    int s2 = interpolateEdge((int32_t)vCur[e[2]]->s + 0xFFFF, (int32_t)vCur[e[3]]->s + 0xFFFF, rx1, rx, rx2, vw[e[2]], vw[e[3]]) - 0xFFFF;
+    int t1 = interpolateEdge((int32_t)vCur[e[0]]->t + 0xFFFF, (int32_t)vCur[e[1]]->t + 0xFFFF, lx1, lx, lx2, vw[e[0]], vw[e[1]]) - 0xFFFF;
+    int t2 = interpolateEdge((int32_t)vCur[e[2]]->t + 0xFFFF, (int32_t)vCur[e[3]]->t + 0xFFFF, rx1, rx, rx2, vw[e[2]], vw[e[3]]) - 0xFFFF;
 
     // Keep track of shadow mask polygons
     if (polygon->mode == 3 && polygon->id == 0) // Shadow mask polygon
@@ -758,6 +759,7 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
                 depth <<= polygon->wShift;
             else if (polygon->wShift < 0)
                 depth >>= -polygon->wShift;
+            depth &= 0xFFFFFF;
         }
         else
         {
