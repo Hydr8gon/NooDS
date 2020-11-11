@@ -36,6 +36,9 @@ class Cartridge
         void directBoot();
         void writeSave();
 
+        int getRomSize(bool gba);
+        void trimRom(bool gba);
+
         int getSaveSize(bool gba);
         void setSaveSize(bool gba, int size);
 
@@ -56,15 +59,15 @@ class Cartridge
     private:
         Core *core;
 
+        std::string gbaRomName, gbaSaveName;
         uint8_t *gbaRom = nullptr, *gbaSave = nullptr;
         int gbaRomSize = 0, gbaSaveSize = 0;
         bool gbaSaveDirty = false;
-        std::string gbaSaveName;
 
+        std::string romName, saveName;
         uint8_t *rom = nullptr, *save = nullptr;
         int romSize = 0, saveSize = 0;
         bool saveDirty = false;
-        std::string saveName;
 
         int gbaEepromCount = 0;
         uint16_t gbaEepromCmd = 0;

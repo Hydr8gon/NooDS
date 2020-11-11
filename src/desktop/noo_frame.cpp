@@ -30,6 +30,7 @@ enum Event
 {
     LOAD_ROM = 1,
     BOOT_FIRMWARE,
+    TRIM_ROM,
     CHANGE_SAVE,
     QUIT,
     PAUSE,
@@ -53,6 +54,7 @@ enum Event
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
 EVT_MENU(LOAD_ROM,       NooFrame::loadRom)
 EVT_MENU(BOOT_FIRMWARE,  NooFrame::bootFirmware)
+EVT_MENU(TRIM_ROM,       NooFrame::trimRom)
 EVT_MENU(CHANGE_SAVE,    NooFrame::changeSave)
 EVT_MENU(QUIT,           NooFrame::quit)
 EVT_MENU(PAUSE,          NooFrame::pause)
@@ -81,6 +83,7 @@ NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): 
     fileMenu->Append(LOAD_ROM,      "&Load ROM");
     fileMenu->Append(BOOT_FIRMWARE, "&Boot Firmware");
     fileMenu->AppendSeparator();
+    fileMenu->Append(TRIM_ROM,      "&Trim ROM");
     fileMenu->Append(CHANGE_SAVE,   "&Change Save Type");
     fileMenu->AppendSeparator();
     fileMenu->Append(QUIT,          "&Quit");
@@ -92,6 +95,7 @@ NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): 
     systemMenu->Append(STOP,    "&Stop");
 
     // Disable some menu items until the core is running
+    fileMenu->Enable(TRIM_ROM,    false);
     fileMenu->Enable(CHANGE_SAVE, false);
     systemMenu->Enable(PAUSE,     false);
     systemMenu->Enable(RESTART,   false);
@@ -208,14 +212,16 @@ void NooFrame::startCore(bool full)
                 case 1: // Missing BIOS and/or firmware files
                 {
                     // Inform the user of the error
-                    wxMessageBox("Initialization failed. Make sure the path settings point to valid BIOS and firmware files and try again.");
+                    wxMessageDialog(this, "Make sure the path settings point to valid BIOS and firmware files and try again.",
+                        "Initialization Failed", wxICON_NONE).ShowModal();
                     return;
                 }
 
                 case 2: // Unreadable ROM file
                 {
                     // Inform the user of the error
-                    wxMessageBox("Initialization failed. Make sure the ROM file is accessible and try again.");
+                    wxMessageDialog(this, "Make sure the ROM file is accessible and try again.",
+                        "Initialization Failed", wxICON_NONE).ShowModal();
                     return;
                 }
             }
@@ -228,7 +234,10 @@ void NooFrame::startCore(bool full)
 
         // Enable some menu items
         if (ndsPath != "" || gbaPath != "")
+        {
+            fileMenu->Enable(TRIM_ROM,    true);
             fileMenu->Enable(CHANGE_SAVE, true);
+        }
         systemMenu->Enable(PAUSE,   true);
         systemMenu->Enable(RESTART, true);
         systemMenu->Enable(STOP,    true);
@@ -255,6 +264,7 @@ void NooFrame::stopCore(bool full)
     if (full)
     {
         // Disable some menu items
+        fileMenu->Enable(TRIM_ROM,    false);
         fileMenu->Enable(CHANGE_SAVE, false);
         systemMenu->Enable(PAUSE,     false);
         systemMenu->Enable(RESTART,   false);
@@ -370,6 +380,31 @@ void NooFrame::bootFirmware(wxCommandEvent &event)
     ndsPath = "";
     gbaPath = "";
     startCore(true);
+}
+
+void NooFrame::trimRom(wxCommandEvent &event)
+{
+    bool gba = emulator->core->isGbaMode();
+
+    // Confirm that the current ROM should be trimmed
+    wxMessageDialog dialog(this, "Trim the current ROM to save space?", "Trimming ROM", wxYES_NO | wxICON_NONE);
+    if (dialog.ShowModal() == wxID_YES)
+    {
+        // Pause the core for safety and trim the ROM
+        int oldSize = emulator->core->cartridge.getRomSize(gba);
+        stopCore(false);
+        emulator->core->cartridge.trimRom(gba);
+        startCore(false);
+        int newSize = emulator->core->cartridge.getRomSize(gba);
+
+        // Show the results
+        wxString str;
+        if (oldSize != newSize)
+            str.Printf("ROM trimmed from %.2fMB to %.2fMB!", (float)oldSize / 1024 / 1024, (float)newSize / 1024 / 1024);
+        else
+            str.Printf("This ROM is already trimmed!");
+        wxMessageDialog(this, str, "ROM Trimmed", wxICON_NONE).ShowModal();
+    }
 }
 
 void NooFrame::changeSave(wxCommandEvent &event)

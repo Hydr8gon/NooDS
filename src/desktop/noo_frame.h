@@ -60,6 +60,7 @@ class NooFrame: public wxFrame
 
         void loadRom(wxCommandEvent &event);
         void bootFirmware(wxCommandEvent &event);
+        void trimRom(wxCommandEvent &event);
         void changeSave(wxCommandEvent &event);
         void quit(wxCommandEvent &event);
         void pause(wxCommandEvent &event);

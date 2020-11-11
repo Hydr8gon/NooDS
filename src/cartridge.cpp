@@ -38,7 +38,8 @@ Cartridge::~Cartridge()
 void Cartridge::loadRom(std::string path)
 {
     // Attempt to load an NDS ROM
-    FILE *romFile = fopen(path.c_str(), "rb");
+    romName = path;
+    FILE *romFile = fopen(romName.c_str(), "rb");
     if (!romFile) throw 2;
     fseek(romFile, 0, SEEK_END);
     romSize = ftell(romFile);
@@ -71,7 +72,8 @@ void Cartridge::loadRom(std::string path)
 void Cartridge::loadGbaRom(std::string path)
 {
     // Attempt to load a GBA ROM
-    FILE *gbaRomFile = fopen(path.c_str(), "rb");
+    gbaRomName = path;
+    FILE *gbaRomFile = fopen(gbaRomName.c_str(), "rb");
     if (!gbaRomFile) throw 2;
     fseek(gbaRomFile, 0, SEEK_END);
     gbaRomSize = ftell(gbaRomFile);
@@ -217,6 +219,74 @@ void Cartridge::writeSave()
                 fwrite(gbaSave, sizeof(uint8_t), gbaSaveSize, gbaSaveFile);
             fclose(gbaSaveFile);
             gbaSaveDirty = false;
+        }
+    }
+}
+
+int Cartridge::getRomSize(bool gba)
+{
+    // Get the size of the ROM for the specified system
+    return (gba ? gbaRomSize : romSize);
+}
+
+void Cartridge::trimRom(bool gba)
+{
+    if (gba)
+    {
+        // Starting from the end, reduce the file size until a non-filler word is found
+        int newSize;
+        for (newSize = gbaRomSize & ~3; newSize > 0; newSize -= 4)
+        {
+            if (U8TO32(gbaRom, newSize - 4) != 0xFFFFFFFF)
+                break;
+        }
+
+        if (newSize < gbaRomSize)
+        {
+            // Update the ROM in memory
+            gbaRomSize = newSize;
+            uint8_t *newRom = new uint8_t[gbaRomSize];
+            memcpy(newRom, gbaRom, gbaRomSize * sizeof(uint8_t));
+            delete[] gbaRom;
+            gbaRom = newRom;
+
+            // Update the ROM file
+            FILE *gbaRomFile = fopen(gbaRomName.c_str(), "wb");
+            if (gbaRomFile)
+            {
+                if (gbaRomSize > 0)
+                    fwrite(gbaRom, sizeof(uint8_t), gbaRomSize, gbaRomFile);
+                fclose(gbaRomFile);
+            }
+        }
+    }
+    else
+    {
+        // Starting from the end, reduce the file size until a non-filler word is found
+        int newSize;
+        for (newSize = romSize & ~3; newSize > 0; newSize -= 4)
+        {
+            if (U8TO32(rom, newSize - 4) != 0xFFFFFFFF)
+                break;
+        }
+
+        if (newSize < romSize)
+        {
+            // Update the ROM in memory
+            romSize = newSize;
+            uint8_t *newRom = new uint8_t[romSize];
+            memcpy(newRom, rom, romSize * sizeof(uint8_t));
+            delete[] rom;
+            rom = newRom;
+
+            // Update the ROM file
+            FILE *romFile = fopen(romName.c_str(), "wb");
+            if (romFile)
+            {
+                if (romSize > 0)
+                    fwrite(rom, sizeof(uint8_t), romSize, romFile);
+                fclose(romFile);
+            }
         }
     }
 }
