@@ -57,6 +57,7 @@ class NooFrame: public wxFrame
         bool fullScreen = false;
 
         void runCore();
+        void loadRomPath(std::string path);
 
         void loadRom(wxCommandEvent &event);
         void bootFirmware(wxCommandEvent &event);
@@ -78,6 +79,7 @@ class NooFrame: public wxFrame
         void threaded3D1(wxCommandEvent &event);
         void threaded3D2(wxCommandEvent &event);
         void threaded3D3(wxCommandEvent &event);
+        void dropFiles(wxDropFilesEvent &event);
         void joystickInput(wxJoystickEvent &event);
         void close(wxCloseEvent &event);
 

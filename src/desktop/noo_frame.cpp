@@ -72,6 +72,7 @@ EVT_MENU(THREADED_3D_0,  NooFrame::threaded3D0)
 EVT_MENU(THREADED_3D_1,  NooFrame::threaded3D1)
 EVT_MENU(THREADED_3D_2,  NooFrame::threaded3D2)
 EVT_MENU(THREADED_3D_3,  NooFrame::threaded3D3)
+EVT_DROP_FILES(NooFrame::dropFiles)
 EVT_JOYSTICK_EVENTS(NooFrame::joystickInput)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
@@ -159,6 +160,8 @@ NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): 
     layout.update(0, 0, false);
     SetClientSize(wxSize(layout.getMinWidth(), layout.getMinHeight()));
 
+    // Prepare and show the window
+    DragAcceptFiles(true);
     SetBackgroundColour(*wxBLACK);
     Centre();
     Show(true);
@@ -174,15 +177,9 @@ NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): 
             axisBases.push_back(joystick->GetPosition(i));
     }
 
-    // Start the core right away if a filename was passed through the command line
+    // Load a filename passed through the command line
     if (path != "")
-    {
-        if (path.find(".nds", path.length() - 4) != std::string::npos)
-            ndsPath = path;
-        else if (path.find(".gba", path.length() - 4) != std::string::npos)
-            gbaPath = path;
-        startCore(true);
-    }
+        loadRomPath(path);
 }
 
 void NooFrame::runCore()
@@ -341,16 +338,9 @@ void NooFrame::releaseKey(int key)
     }
 }
 
-void NooFrame::loadRom(wxCommandEvent &event)
+void NooFrame::loadRomPath(std::string path)
 {
-    // Show the file browser
-    wxFileDialog romSelect(this, "Select ROM File", "", "", "NDS/GBA ROM files (*.nds, *.gba)|*.nds;*.gba", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
-    if (romSelect.ShowModal() == wxID_CANCEL)
-        return;
-
-    std::string path = (const char*)romSelect.GetPath().mb_str(wxConvUTF8);
-
-    // Set the NDS or GBA ROM path depending on the extension of the selected file
+    // Set the NDS or GBA ROM path depending on the extension of the given file
     // If a ROM of the other type is already loaded, ask if the new ROM should be loaded alongside it
     if (path.find(".nds", path.length() - 4) != std::string::npos) // NDS ROM
     {
@@ -361,7 +351,7 @@ void NooFrame::loadRom(wxCommandEvent &event)
         }
         ndsPath = path;
     }
-    else // GBA ROM
+    else if (path.find(".gba", path.length() - 4) != std::string::npos) // GBA ROM
     {
         if (ndsPath != "")
         {
@@ -370,8 +360,21 @@ void NooFrame::loadRom(wxCommandEvent &event)
         }
         gbaPath = path;
     }
+    else
+    {
+        return;
+    }
 
+    // Restart the core
     startCore(true);
+}
+
+void NooFrame::loadRom(wxCommandEvent &event)
+{
+    // Show the file browser
+    wxFileDialog romSelect(this, "Select ROM File", "", "", "NDS/GBA ROM files (*.nds, *.gba)|*.nds;*.gba", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (romSelect.ShowModal() != wxID_CANCEL)
+        loadRomPath((const char*)romSelect.GetPath().mb_str(wxConvUTF8));
 }
 
 void NooFrame::bootFirmware(wxCommandEvent &event)
@@ -515,6 +518,15 @@ void NooFrame::threaded3D3(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to 3 threads
     Settings::setThreaded3D(3);
+}
+
+void NooFrame::dropFiles(wxDropFilesEvent &event)
+{
+    // Load a single dropped file
+    if (event.GetNumberOfFiles() != 1) return;
+    wxString path = event.GetFiles()[0];
+    if (!wxFileExists(path)) return;
+    loadRomPath((const char*)path.mb_str(wxConvUTF8));
 }
 
 void NooFrame::joystickInput(wxJoystickEvent &event)
