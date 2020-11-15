@@ -117,7 +117,7 @@ void Gpu3DRenderer::drawScanline1(int line, int thread)
     uint32_t color = BIT(26) | rgba5ToRgba6(((clearColor & 0x001F0000) >> 1) | (clearColor & 0x00007FFF));
     uint32_t depth = (clearDepth << 9) + ((clearDepth == 0x7FFF) ? 0x1FF : 0);
     uint8_t attrib = ((clearColor & BIT(15)) >> 8) | ((clearColor & 0x3F000000) >> 24);
-    if (((clearColor & 0x001F0000) >> 16) < 31) attrib |= BIT(6);
+    if ((clearColor & 0x001F0000) && ((clearColor & 0x001F0000) >> 16) < 31) attrib |= BIT(6);
 
     // Clear the scanline buffers with the clear values
     for (int i = 0; i < 256; i++)
