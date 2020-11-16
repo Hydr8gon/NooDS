@@ -19,10 +19,10 @@
 
 #include <cmath>
 
-#include "math.h"
+#include "div_sqrt.h"
 #include "core.h"
 
-void Math::divide()
+void DivSqrt::divide()
 {
     // Set the division by zero error bit
     // The bit only gets set if the full 64-bit denominator is zero, even in 32-bit mode
@@ -57,7 +57,7 @@ void Math::divide()
     }
 }
 
-void Math::squareRoot()
+void DivSqrt::squareRoot()
 {
     // Calculate the square root result
     switch (sqrtCnt & 0x0001) // Square root mode
@@ -72,7 +72,7 @@ void Math::squareRoot()
     }
 }
 
-void Math::writeDivCnt(uint16_t mask, uint16_t value)
+void DivSqrt::writeDivCnt(uint16_t mask, uint16_t value)
 {
     // Write to the DIVCNT register
     mask &= 0x0003;
@@ -81,7 +81,7 @@ void Math::writeDivCnt(uint16_t mask, uint16_t value)
     divide();
 }
 
-void Math::writeDivNumerL(uint32_t mask, uint32_t value)
+void DivSqrt::writeDivNumerL(uint32_t mask, uint32_t value)
 {
     // Write to the DIVNUMER register
     divNumer = (divNumer & ~((uint64_t)mask)) | (value & mask);
@@ -89,7 +89,7 @@ void Math::writeDivNumerL(uint32_t mask, uint32_t value)
     divide();
 }
 
-void Math::writeDivNumerH(uint32_t mask, uint32_t value)
+void DivSqrt::writeDivNumerH(uint32_t mask, uint32_t value)
 {
     // Write to the DIVNUMER register
     divNumer = (divNumer & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
@@ -97,7 +97,7 @@ void Math::writeDivNumerH(uint32_t mask, uint32_t value)
     divide();
 }
 
-void Math::writeDivDenomL(uint32_t mask, uint32_t value)
+void DivSqrt::writeDivDenomL(uint32_t mask, uint32_t value)
 {
     // Write to the DIVDENOM register
     divDenom = (divDenom & ~((uint64_t)mask)) | (value & mask);
@@ -105,7 +105,7 @@ void Math::writeDivDenomL(uint32_t mask, uint32_t value)
     divide();
 }
 
-void Math::writeDivDenomH(uint32_t mask, uint32_t value)
+void DivSqrt::writeDivDenomH(uint32_t mask, uint32_t value)
 {
     // Write to the DIVDENOM register
     divDenom = (divDenom & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
@@ -113,7 +113,7 @@ void Math::writeDivDenomH(uint32_t mask, uint32_t value)
     divide();
 }
 
-void Math::writeSqrtCnt(uint16_t mask, uint16_t value)
+void DivSqrt::writeSqrtCnt(uint16_t mask, uint16_t value)
 {
     // Write to the SQRTCNT register
     mask &= 0x0001;
@@ -122,7 +122,7 @@ void Math::writeSqrtCnt(uint16_t mask, uint16_t value)
     squareRoot();
 }
 
-void Math::writeSqrtParamL(uint32_t mask, uint32_t value)
+void DivSqrt::writeSqrtParamL(uint32_t mask, uint32_t value)
 {
     // Write to the DIVDENOM register
     sqrtParam = (sqrtParam & ~((uint64_t)mask)) | (value & mask);
@@ -130,7 +130,7 @@ void Math::writeSqrtParamL(uint32_t mask, uint32_t value)
     squareRoot();
 }
 
-void Math::writeSqrtParamH(uint32_t mask, uint32_t value)
+void DivSqrt::writeSqrtParamH(uint32_t mask, uint32_t value)
 {
     // Write to the SQRTPARAM register
     sqrtParam = (sqrtParam & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);

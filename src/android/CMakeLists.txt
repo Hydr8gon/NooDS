@@ -9,6 +9,7 @@ add_library(noods-core SHARED
             ../cartridge.cpp
             ../core.cpp
             ../cp15.cpp
+            ../div_sqrt.cpp
             ../dma.cpp
             ../gpu.cpp
             ../gpu_2d.cpp
@@ -17,7 +18,6 @@ add_library(noods-core SHARED
             ../input.cpp
             ../interpreter.cpp
             ../ipc.cpp
-            ../math.cpp
             ../memory.cpp
             ../rtc.cpp
             ../settings.cpp

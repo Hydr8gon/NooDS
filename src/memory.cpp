@@ -657,53 +657,53 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x4000248: base -= 0x4000248; size = 1; data = readVramCnt(7);                      break; // VRAMCNT_H
             case 0x4000249: base -= 0x4000249; size = 1; data = readVramCnt(8);                      break; // VRAMCNT_I
             case 0x4000280:
-            case 0x4000281: base -= 0x4000280; size = 2; data = core->math.readDivCnt();             break; // DIVCNT
+            case 0x4000281: base -= 0x4000280; size = 2; data = core->divSqrt.readDivCnt();          break; // DIVCNT
             case 0x4000290:
             case 0x4000291:
             case 0x4000292:
-            case 0x4000293: base -= 0x4000290; size = 4; data = core->math.readDivNumerL();          break; // DIVNUMER_L
+            case 0x4000293: base -= 0x4000290; size = 4; data = core->divSqrt.readDivNumerL();       break; // DIVNUMER_L
             case 0x4000294:
             case 0x4000295:
             case 0x4000296:
-            case 0x4000297: base -= 0x4000294; size = 4; data = core->math.readDivNumerH();          break; // DIVNUMER_H
+            case 0x4000297: base -= 0x4000294; size = 4; data = core->divSqrt.readDivNumerH();       break; // DIVNUMER_H
             case 0x4000298:
             case 0x4000299:
             case 0x400029A:
-            case 0x400029B: base -= 0x4000298; size = 4; data = core->math.readDivDenomL();          break; // DIVDENOM_L
+            case 0x400029B: base -= 0x4000298; size = 4; data = core->divSqrt.readDivDenomL();       break; // DIVDENOM_L
             case 0x400029C:
             case 0x400029D:
             case 0x400029E:
-            case 0x400029F: base -= 0x400029C; size = 4; data = core->math.readDivDenomH();          break; // DIVDENOM_H
+            case 0x400029F: base -= 0x400029C; size = 4; data = core->divSqrt.readDivDenomH();       break; // DIVDENOM_H
             case 0x40002A0:
             case 0x40002A1:
             case 0x40002A2:
-            case 0x40002A3: base -= 0x40002A0; size = 4; data = core->math.readDivResultL();         break; // DIVRESULT_L
+            case 0x40002A3: base -= 0x40002A0; size = 4; data = core->divSqrt.readDivResultL();      break; // DIVRESULT_L
             case 0x40002A4:
             case 0x40002A5:
             case 0x40002A6:
-            case 0x40002A7: base -= 0x40002A4; size = 4; data = core->math.readDivResultH();         break; // DIVRESULT_H
+            case 0x40002A7: base -= 0x40002A4; size = 4; data = core->divSqrt.readDivResultH();      break; // DIVRESULT_H
             case 0x40002A8:
             case 0x40002A9:
             case 0x40002AA:
-            case 0x40002AB: base -= 0x40002A8; size = 4; data = core->math.readDivRemResultL();      break; // DIVREMRESULT_L
+            case 0x40002AB: base -= 0x40002A8; size = 4; data = core->divSqrt.readDivRemResultL();   break; // DIVREMRESULT_L
             case 0x40002AC:
             case 0x40002AD:
             case 0x40002AE:
-            case 0x40002AF: base -= 0x40002AC; size = 4; data = core->math.readDivRemResultH();      break; // DIVREMRESULT_H
+            case 0x40002AF: base -= 0x40002AC; size = 4; data = core->divSqrt.readDivRemResultH();   break; // DIVREMRESULT_H
             case 0x40002B0:
-            case 0x40002B1: base -= 0x40002B0; size = 2; data = core->math.readSqrtCnt();            break; // SQRTCNT
+            case 0x40002B1: base -= 0x40002B0; size = 2; data = core->divSqrt.readSqrtCnt();         break; // SQRTCNT
             case 0x40002B4:
             case 0x40002B5:
             case 0x40002B6:
-            case 0x40002B7: base -= 0x40002B4; size = 4; data = core->math.readSqrtResult();         break; // SQRTRESULT
+            case 0x40002B7: base -= 0x40002B4; size = 4; data = core->divSqrt.readSqrtResult();      break; // SQRTRESULT
             case 0x40002B8:
             case 0x40002B9:
             case 0x40002BA:
-            case 0x40002BB: base -= 0x40002B8; size = 4; data = core->math.readSqrtParamL();         break; // SQRTPARAM_L
+            case 0x40002BB: base -= 0x40002B8; size = 4; data = core->divSqrt.readSqrtParamL();      break; // SQRTPARAM_L
             case 0x40002BC:
             case 0x40002BD:
             case 0x40002BE:
-            case 0x40002BF: base -= 0x40002BC; size = 4; data = core->math.readSqrtParamH();         break; // SQRTPARAM_H
+            case 0x40002BF: base -= 0x40002BC; size = 4; data = core->divSqrt.readSqrtParamH();      break; // SQRTPARAM_H
             case 0x4000300: base -= 0x4000300; size = 1; data = core->interpreter[0].readPostFlg();  break; // POSTFLG (ARM9)
             case 0x4000304:
             case 0x4000305: base -= 0x4000304; size = 2; data = core->gpu.readPowCnt1();             break; // POWCNT1
@@ -1590,33 +1590,33 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x4000248: base -= 0x4000248; size = 1; writeVramCnt(7, data << (base * 8));                                            break; // VRAMCNT_H
             case 0x4000249: base -= 0x4000249; size = 1; writeVramCnt(8, data << (base * 8));                                            break; // VRAMCNT_I
             case 0x4000280:
-            case 0x4000281: base -= 0x4000280; size = 2; core->math.writeDivCnt(mask << (base * 8), data << (base * 8));                 break; // DIVCNT
+            case 0x4000281: base -= 0x4000280; size = 2; core->divSqrt.writeDivCnt(mask << (base * 8), data << (base * 8));              break; // DIVCNT
             case 0x4000290:
             case 0x4000291:
             case 0x4000292:
-            case 0x4000293: base -= 0x4000290; size = 4; core->math.writeDivNumerL(mask << (base * 8), data << (base * 8));              break; // DIVNUMER_L
+            case 0x4000293: base -= 0x4000290; size = 4; core->divSqrt.writeDivNumerL(mask << (base * 8), data << (base * 8));           break; // DIVNUMER_L
             case 0x4000294:
             case 0x4000295:
             case 0x4000296:
-            case 0x4000297: base -= 0x4000294; size = 4; core->math.writeDivNumerH(mask << (base * 8), data << (base * 8));              break; // DIVNUMER_H
+            case 0x4000297: base -= 0x4000294; size = 4; core->divSqrt.writeDivNumerH(mask << (base * 8), data << (base * 8));           break; // DIVNUMER_H
             case 0x4000298:
             case 0x4000299:
             case 0x400029A:
-            case 0x400029B: base -= 0x4000298; size = 4; core->math.writeDivDenomL(mask << (base * 8), data << (base * 8));              break; // DIVDENOM_L
+            case 0x400029B: base -= 0x4000298; size = 4; core->divSqrt.writeDivDenomL(mask << (base * 8), data << (base * 8));           break; // DIVDENOM_L
             case 0x400029C:
             case 0x400029D:
             case 0x400029E:
-            case 0x400029F: base -= 0x400029C; size = 4; core->math.writeDivDenomH(mask << (base * 8), data << (base * 8));              break; // DIVDENOM_H
+            case 0x400029F: base -= 0x400029C; size = 4; core->divSqrt.writeDivDenomH(mask << (base * 8), data << (base * 8));           break; // DIVDENOM_H
             case 0x40002B0:
-            case 0x40002B1: base -= 0x40002B0; size = 2; core->math.writeSqrtCnt(mask << (base * 8), data << (base * 8));                break; // SQRTCNT
+            case 0x40002B1: base -= 0x40002B0; size = 2; core->divSqrt.writeSqrtCnt(mask << (base * 8), data << (base * 8));             break; // SQRTCNT
             case 0x40002B8:
             case 0x40002B9:
             case 0x40002BA:
-            case 0x40002BB: base -= 0x40002B8; size = 4; core->math.writeSqrtParamL(mask << (base * 8), data << (base * 8));             break; // SQRTPARAM_L
+            case 0x40002BB: base -= 0x40002B8; size = 4; core->divSqrt.writeSqrtParamL(mask << (base * 8), data << (base * 8));          break; // SQRTPARAM_L
             case 0x40002BC:
             case 0x40002BD:
             case 0x40002BE:
-            case 0x40002BF: base -= 0x40002BC; size = 4; core->math.writeSqrtParamH(mask << (base * 8), data << (base * 8));             break; // SQRTPARAM_H
+            case 0x40002BF: base -= 0x40002BC; size = 4; core->divSqrt.writeSqrtParamH(mask << (base * 8), data << (base * 8));          break; // SQRTPARAM_H
             case 0x4000300: base -= 0x4000300; size = 1; core->interpreter[0].writePostFlg(data << (base * 8));                          break; // POSTFLG (ARM9)
             case 0x4000304:
             case 0x4000305: base -= 0x4000304; size = 2; core->gpu.writePowCnt1(mask << (base * 8), data << (base * 8));                 break; // POWCNT1

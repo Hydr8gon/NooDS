@@ -17,17 +17,17 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef MATH_H
-#define MATH_H
+#ifndef DIV_SQRT_H
+#define DIV_SQRT_H
 
 #include <cstdint>
 
 class Core;
 
-class Math
+class DivSqrt
 {
     public:
-        Math(Core *core): core(core) {}
+        DivSqrt(Core *core): core(core) {}
 
         uint16_t readDivCnt()        { return divCnt;             }
         uint32_t readDivNumerL()     { return divNumer;           }
@@ -69,4 +69,4 @@ class Math
         void squareRoot();
 };
 
-#endif // MATH_H
+#endif // DIV_SQRT_H

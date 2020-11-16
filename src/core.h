@@ -27,6 +27,7 @@
 #include "cartridge.h"
 #include "cp15.h"
 #include "defines.h"
+#include "div_sqrt.h"
 #include "dma.h"
 #include "gpu.h"
 #include "gpu_2d.h"
@@ -35,7 +36,6 @@
 #include "input.h"
 #include "interpreter.h"
 #include "ipc.h"
-#include "math.h"
 #include "memory.h"
 #include "rtc.h"
 #include "spi.h"
@@ -57,6 +57,7 @@ class Core
 
         Cartridge cartridge;
         Cp15 cp15;
+        DivSqrt divSqrt;
         Dma dma[2];
         Gpu gpu;
         Gpu2D gpu2D[2];
@@ -65,7 +66,6 @@ class Core
         Input input;
         Interpreter interpreter[2];
         Ipc ipc;
-        Math math;
         Memory memory;
         Rtc rtc;
         Spi spi;
