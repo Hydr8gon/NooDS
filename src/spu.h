@@ -102,6 +102,8 @@ class Spu
         std::queue<int8_t> gbaFifoA, gbaFifoB;
         int8_t gbaSampleA = 0, gbaSampleB = 0;
 
+        uint16_t enabled = 0;
+
         int dutyCycles[6] = {};
         uint16_t noiseValues[2] = {};
         uint32_t soundCurrent[16] = {};
@@ -123,8 +125,7 @@ class Spu
         uint16_t mainSoundCnt = 0;
         uint16_t soundBias = 0;
 
-        bool shouldPlay() { return  ready; }
-        bool shouldFill() { return !ready; }
+        void startChannel(int channel);
 };
 
 #endif // SPU_H

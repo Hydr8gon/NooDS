@@ -19,7 +19,6 @@
 
 #include <chrono>
 #include <cstring>
-#include <functional>
 
 #include "spu.h"
 #include "core.h"
@@ -94,7 +93,7 @@ uint32_t *Spu::getSamples(int count)
         // Use a condition variable to save CPU cycles
         // This might take longer than expected due to the OS scheduler and other factors
         std::unique_lock<std::mutex> lock(mutex2);
-        wait = !cond2.wait_for(lock, std::chrono::microseconds(1000000 / 60), std::bind(&Spu::shouldPlay, this));
+        wait = !cond2.wait_for(lock, std::chrono::microseconds(1000000 / 60), [&]{ return ready.load(); });
     }
 
     uint32_t *out = new uint32_t[count];
@@ -425,7 +424,7 @@ void Spu::runSample()
     for (int i = 0; i < 16; i++)
     {
         // Skip disabled channels
-        if (!(soundCnt[i] & BIT(31)))
+        if (!(enabled & BIT(i)))
             continue;
 
         int format = (soundCnt[i] & 0x60000000) >> 29;
@@ -556,7 +555,7 @@ void Spu::runSample()
             }
 
             // Repeat or end the sound if the end of the data is reached
-            if (format != 3 && soundCurrent[i] == soundSad[i] + (soundPnt[i] + soundLen[i]) * 4)
+            if (format != 3 && soundCurrent[i] >= soundSad[i] + (soundPnt[i] + soundLen[i]) * 4)
             {
                 if ((soundCnt[i] & 0x18000000) >> 27 == 1) // Loop infinite
                 {
@@ -573,6 +572,7 @@ void Spu::runSample()
                 else // One-shot
                 {
                     soundCnt[i] &= ~BIT(31);
+                    enabled &= ~BIT(i);
                 }
             }
         }
@@ -651,6 +651,41 @@ void Spu::runSample()
         // Reset the buffer pointer
         bufferPointer = 0;
     }
+}
+
+void Spu::startChannel(int channel)
+{
+    // Reload the channel's internal registers
+    soundCurrent[channel] = soundSad[channel];
+    soundTimers[channel] = soundTmr[channel];
+
+    switch ((soundCnt[channel] & 0x60000000) >> 29) // Format
+    {
+        case 2: // ADPCM
+        {
+            // Read the ADPCM header
+            uint32_t header = core->memory.read<uint32_t>(1, soundSad[channel]);
+            adpcmValue[channel] = (int16_t)header;
+            adpcmIndex[channel] = (header & 0x007F0000) >> 16;
+            if (adpcmIndex[channel] > 88) adpcmIndex[channel] = 88;
+            adpcmToggle[channel] = false;
+            soundCurrent[channel] += 4;
+            break;
+        }
+
+        case 3: // Pulse/Noise
+        {
+            // Reset the pulse or noise values
+            if (channel >= 8 && channel <= 13) // Pulse waves
+                dutyCycles[channel - 8] = 0;
+            else if (channel >= 14) // Noise
+                noiseValues[channel - 14] = 0x7FFF;
+            break;
+        }
+    }
+
+    // Enable the channel
+    enabled |= BIT(channel);
 }
 
 void Spu::gbaFifoTimer(int timer)
@@ -829,41 +864,17 @@ void Spu::writeGbaFifoB(uint32_t mask, uint32_t value)
 
 void Spu::writeSoundCnt(int channel, uint32_t mask, uint32_t value)
 {
-    // Reload the internal registers if the enable bit changes from 0 to 1
-    if (!(soundCnt[channel] & BIT(31)) && (value & BIT(31)))
-    {
-        soundCurrent[channel] = soundSad[channel];
-        soundTimers[channel] = soundTmr[channel];
-
-        switch ((soundCnt[channel] & 0x60000000) >> 29) // Format
-        {
-            case 2: // ADPCM
-            {
-                // Read the ADPCM header
-                uint32_t header = core->memory.read<uint32_t>(1, soundSad[channel]);
-                adpcmValue[channel] = (int16_t)header;
-                adpcmIndex[channel] = (header & 0x007F0000) >> 16;
-                if (adpcmIndex[channel] > 88) adpcmIndex[channel] = 88;
-                adpcmToggle[channel] = false;
-                soundCurrent[channel] += 4;
-                break;
-            }
-
-            case 3: // Pulse/Noise
-            {
-                // Reset the pulse or noise values
-                if (channel >= 8 && channel <= 13) // Pulse waves
-                    dutyCycles[channel - 8] = 0;
-                else if (channel >= 14) // Noise
-                    noiseValues[channel - 14] = 0x7FFF;
-                break;
-            }
-        }
-    }
+    // Start the channel if the enable bit changes from 0 to 1 and the other conditions are met
+    if (!(soundCnt[channel] & BIT(31)) && (value & BIT(31)) && (mainSoundCnt & BIT(15)) && soundSad[channel] != 0)
+        startChannel(channel);
 
     // Write to one of the SOUNDCNT registers
     mask &= 0xFF7F837F;
     soundCnt[channel] = (soundCnt[channel] & ~mask) | (value & mask);
+
+    // Disable the channel if it's turned off
+    if (!(soundCnt[channel] & BIT(31)))
+        enabled &= ~BIT(channel);
 }
 
 void Spu::writeSoundSad(int channel, uint32_t mask, uint32_t value)
@@ -871,6 +882,12 @@ void Spu::writeSoundSad(int channel, uint32_t mask, uint32_t value)
     // Write to one of the SOUNDSAD registers
     mask &= 0x07FFFFFC;
     soundSad[channel] = (soundSad[channel] & ~mask) | (value & mask);
+
+    // Restart the channel if the source address is valid and the other conditions are met
+    if (soundSad[channel] != 0 && (mainSoundCnt & BIT(15)) && (soundCnt[channel] & BIT(31)))
+        startChannel(channel);
+    else
+        enabled &= ~BIT(channel);
 }
 
 void Spu::writeSoundTmr(int channel, uint16_t mask, uint16_t value)
@@ -894,9 +911,23 @@ void Spu::writeSoundLen(int channel, uint32_t mask, uint32_t value)
 
 void Spu::writeMainSoundCnt(uint16_t mask, uint16_t value)
 {
+    // Start the channels if the enable bit changes from 0 to 1 and the other conditions are met
+    if (!(mainSoundCnt & BIT(15)) && (value & BIT(15)))
+    {
+        for (int i = 0; i < 16; i++)
+        {
+            if ((soundCnt[i] & BIT(31)) && soundSad[i] != 0)
+                startChannel(i);
+        }
+    }
+
     // Write to the main SOUNDCNT register
     mask &= 0xBF7F;
     mainSoundCnt = (mainSoundCnt & ~mask) | (value & mask);
+
+    // Disable all channels if the master enable is turned off
+    if (!(mainSoundCnt & BIT(15)))
+        enabled = 0;
 }
 
 void Spu::writeSoundBias(uint16_t mask, uint16_t value)
