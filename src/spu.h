@@ -50,9 +50,11 @@ class Spu
         uint16_t readGbaSoundBias()     { return gbaSoundBias;     }
         uint8_t  readGbaWaveRam(int index);
 
-        uint32_t readSoundCnt(int channel) { return soundCnt[channel]; }
-        uint16_t readMainSoundCnt()        { return mainSoundCnt;      }
-        uint16_t readSoundBias()           { return soundBias;         }
+        uint32_t readSoundCnt(int channel)  { return soundCnt[channel];  }
+        uint16_t readMainSoundCnt()         { return mainSoundCnt;       }
+        uint16_t readSoundBias()            { return soundBias;          }
+        uint8_t  readSndCapCnt(int channel) { return sndCapCnt[channel]; }
+        uint32_t readSndCapDad(int channel) { return sndCapDad[channel]; }
 
         void writeGbaSoundCntL(int channel, uint8_t value);
         void writeGbaSoundCntH(int channel, uint16_t mask, uint16_t value);
@@ -72,6 +74,9 @@ class Spu
         void writeSoundLen(int channel, uint32_t mask, uint32_t value);
         void writeMainSoundCnt(uint16_t mask, uint16_t value);
         void writeSoundBias(uint16_t mask, uint16_t value);
+        void writeSndCapCnt(int channel, uint8_t value);
+        void writeSndCapDad(int channel, uint32_t mask, uint32_t value);
+        void writeSndCapLen(int channel, uint16_t mask, uint16_t value);
 
     private:
         Core *core;
@@ -82,13 +87,6 @@ class Spu
         std::condition_variable cond1, cond2;
         std::mutex mutex1, mutex2;
         std::atomic<bool> ready;
-
-        static const int indexTable[8];
-        static const int16_t adpcmTable[89];
-
-        int32_t adpcmValue[16] = {}, adpcmLoopValue[16] = {};
-        int adpcmIndex[16] = {}, adpcmLoopIndex[16] = {};
-        bool adpcmToggle[16] = {};
 
         int gbaFrameSequencer = 0;
         int gbaSoundTimers[4] = {};
@@ -104,10 +102,19 @@ class Spu
 
         uint16_t enabled = 0;
 
+        static const int indexTable[8];
+        static const int16_t adpcmTable[89];
+
+        int32_t adpcmValue[16] = {}, adpcmLoopValue[16] = {};
+        int adpcmIndex[16] = {}, adpcmLoopIndex[16] = {};
+        bool adpcmToggle[16] = {};
+
         int dutyCycles[6] = {};
         uint16_t noiseValues[2] = {};
         uint32_t soundCurrent[16] = {};
         uint16_t soundTimers[16] = {};
+        uint32_t sndCapCurrent[2] = {};
+        uint16_t sndCapTimers[2] = {};
 
         uint8_t gbaSoundCntL[2] = {};
         uint16_t gbaSoundCntH[4] = {};
@@ -124,6 +131,9 @@ class Spu
         uint32_t soundLen[16] = {};
         uint16_t mainSoundCnt = 0;
         uint16_t soundBias = 0;
+        uint8_t sndCapCnt[2] = {};
+        uint32_t sndCapDad[2] = {};
+        uint16_t sndCapLen[2] = {};
 
         void startChannel(int channel);
 };

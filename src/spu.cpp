@@ -417,8 +417,8 @@ void Spu::runGbaSample()
 
 void Spu::runSample()
 {
-    int64_t sampleLeft = 0;
-    int64_t sampleRight = 0;
+    int64_t mixerLeft = 0, mixerRight = 0;
+    int64_t channelsLeft[2] = {}, channelsRight[2] = {};
 
     // Mix the sound channels
     for (int i = 0; i < 16; i++)
@@ -573,6 +573,7 @@ void Spu::runSample()
                 {
                     soundCnt[i] &= ~BIT(31);
                     enabled &= ~BIT(i);
+                    break;
                 }
             }
         }
@@ -590,23 +591,103 @@ void Spu::runSample()
         data = (data << 7) * mulFactor / 128;
 
         // Apply panning
-        // The sample has 18 fractional bits after panning, but is then rounded to 8 fractional bits
+        // The samples are now rounded to 8 fractional bits
         int panValue = (soundCnt[i] & 0x007F0000) >> 16;
         if (panValue == 127) panValue++;
-        sampleLeft  += ((data << 7) * (128 - panValue) / 128) >> 10;
-        sampleRight += ((data << 7) *        panValue  / 128) >> 10;
+        int64_t dataLeft  = (data * (128 - panValue) / 128) >> 3;
+        int64_t dataRight = (data *        panValue  / 128) >> 3;
+
+        // Redirect channels 1 and 3 if enabled
+        if (i == 1 || i == 3)
+        {
+            channelsLeft[i >> 1]  = dataLeft;
+            channelsRight[i >> 1] = dataRight;
+            if (mainSoundCnt & BIT(12 + (i >> 1)))
+                continue;
+        }
+
+        // Add the channel to the mixer
+        mixerLeft  += dataLeft;
+        mixerRight += dataRight;
+    }
+
+    // Capture sound
+    for (int i = 0; i < 2; i++)
+    {
+        // Skip disabled capture channels
+        if (!(sndCapCnt[i] & BIT(7)))
+            continue;
+
+        // Increment the timer for the length of a sample
+        sndCapTimers[i] += 512;
+        bool overflow = (sndCapTimers[i] < 512);
+
+        // Handle timer overflow
+        while (overflow)
+        {
+            // Reload the timer
+            sndCapTimers[i] += soundTmr[1 + (i << 1)];
+            overflow = (sndCapTimers[i] < soundTmr[1 + (i << 1)]);
+
+            // Write a sample to the buffer
+            int64_t sample = ((i == 0) ? mixerLeft : mixerRight);
+            if (sndCapCnt[i] & BIT(3)) // PCM8
+            {
+                core->memory.write<uint8_t>(1, sndCapCurrent[i], sample >> 16);
+                sndCapCurrent[i]++;
+            }
+            else // PCM16
+            {
+                core->memory.write<uint16_t>(1, sndCapCurrent[i], sample >> 8);
+                sndCapCurrent[i] += 2;
+            }
+
+            // Repeat or end the capture if the end of the buffer is reached
+            if (sndCapCurrent[i] >= sndCapDad[i] + sndCapLen[i] * 4)
+            {
+                if (sndCapCnt[i] & BIT(2)) // One-shot
+                {
+                    sndCapCnt[i] &= ~BIT(7);
+                    continue;
+                }
+                else // Loop
+                {
+                    sndCapCurrent[i] = sndCapDad[i];
+                }
+            }
+        }
+    }
+
+    // Get the left output sample
+    int64_t sampleLeft;
+    switch ((mainSoundCnt & 0x0300) >> 8) // Left output selection
+    {
+        case 0: sampleLeft = mixerLeft;                         break; // Mixer
+        case 1: sampleLeft = channelsLeft[0];                   break; // Channel 1
+        case 2: sampleLeft = channelsLeft[1];                   break; // Channel 3
+        case 3: sampleLeft = channelsLeft[0] + channelsLeft[1]; break; // Channel 1 + 3
+    }
+
+    // Get the right output sample
+    int64_t sampleRight;
+    switch ((mainSoundCnt & 0x0C00) >> 10) // Right output selection
+    {
+        case 0: sampleRight = mixerRight;                          break; // Mixer
+        case 1: sampleRight = channelsRight[0];                    break; // Channel 1
+        case 2: sampleRight = channelsRight[1];                    break; // Channel 3
+        case 3: sampleRight = channelsRight[0] + channelsRight[1]; break; // Channel 1 + 3
     }
 
     // Apply the master volume
-    // The samples now have 21 fractional bits
+    // The samples are now rounded to no fractional bits
     int masterVol = (mainSoundCnt & 0x007F);
     if (masterVol == 127) masterVol++;
-    sampleLeft  = (sampleLeft  << 13) * masterVol / 128 / 64;
-    sampleRight = (sampleRight << 13) * masterVol / 128 / 64;
+    sampleLeft  = (sampleLeft  * masterVol / 128) >> 8;
+    sampleRight = (sampleRight * masterVol / 128) >> 8;
 
-    // Round to 0 fractional bits and apply the sound bias
-    sampleLeft  = (sampleLeft  >> 21) + soundBias;
-    sampleRight = (sampleRight >> 21) + soundBias;
+    // Convert to 10-bit and apply the sound bias
+    sampleLeft  = (sampleLeft  >> 6) + soundBias;
+    sampleRight = (sampleRight >> 6) + soundBias;
 
     // Apply clipping
     if (sampleLeft  < 0x000) sampleLeft  = 0x000;
@@ -935,6 +1016,36 @@ void Spu::writeSoundBias(uint16_t mask, uint16_t value)
     // Write to the SOUNDBIAS register
     mask &= 0x03FF;
     soundBias = (soundBias & ~mask) | (value & mask);
+}
+
+void Spu::writeSndCapCnt(int channel, uint8_t value)
+{
+    // Start the capture if the enable bit changes from 0 to 1
+    if (!(sndCapCnt[channel] & BIT(7)) && (value & BIT(7)))
+    {
+        sndCapCurrent[channel] = sndCapDad[channel];
+        sndCapTimers[channel] = soundTmr[1 + (channel << 1)];
+    }
+
+    // Write to one of the SNDCAPCNT registers
+    sndCapCnt[channel] = (value & 0x8F);
+}
+
+void Spu::writeSndCapDad(int channel, uint32_t mask, uint32_t value)
+{
+    // Write to one of the SNDCAPDAD registers
+    mask &= 0x07FFFFFC;
+    sndCapDad[channel] = (sndCapDad[channel] & ~mask) | (value & mask);
+
+    // Restart the capture
+    sndCapCurrent[channel] = sndCapDad[channel];
+    sndCapTimers[channel] = soundTmr[1 + (channel << 1)];
+}
+
+void Spu::writeSndCapLen(int channel, uint16_t mask, uint16_t value)
+{
+    // Write to one of the SNDCAPLEN registers
+    sndCapLen[channel] = (sndCapLen[channel] & ~mask) | (value & mask);
 }
 
 uint8_t Spu::readGbaSoundCntL(int channel)
