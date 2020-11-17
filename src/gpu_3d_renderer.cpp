@@ -843,6 +843,26 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
                     }
                 }
             }
+            else if (polygon->mode == 2) // Toon/Highlight (no texture)
+            {
+                uint32_t toon = rgba5ToRgba6(toonTable[(color & 0x3F) / 2]);
+                uint8_t r, g, b;
+
+                if (disp3DCnt & BIT(1)) // Highlight
+                {
+                    r = ((color >>  0) & 0x3F) + ((toon >>  0) & 0x3F); if (r > 63) r = 63;
+                    g = ((color >>  6) & 0x3F) + ((toon >>  6) & 0x3F); if (g > 63) g = 63;
+                    b = ((color >> 12) & 0x3F) + ((toon >> 12) & 0x3F); if (b > 63) b = 63;
+                }
+                else // Toon
+                {
+                    r = ((toon >>  0) & 0x3F);
+                    g = ((toon >>  6) & 0x3F);
+                    b = ((toon >> 12) & 0x3F);
+                }
+
+                color = (color & 0xFC0000) | (b << 12) | (g << 6) | r;
+            }
 
             // Draw a pixel
             // 3D pixels are marked with an extra bit as an indicator for 2D blending
