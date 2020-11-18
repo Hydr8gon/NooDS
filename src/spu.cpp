@@ -945,16 +945,16 @@ void Spu::writeGbaFifoB(uint32_t mask, uint32_t value)
 
 void Spu::writeSoundCnt(int channel, uint32_t mask, uint32_t value)
 {
-    // Start the channel if the enable bit changes from 0 to 1 and the other conditions are met
-    if (!(soundCnt[channel] & BIT(31)) && (value & BIT(31)) && (mainSoundCnt & BIT(15)) && soundSad[channel] != 0)
-        startChannel(channel);
+    bool enable = (!(soundCnt[channel] & BIT(31)) && (value & BIT(31)));
 
     // Write to one of the SOUNDCNT registers
     mask &= 0xFF7F837F;
     soundCnt[channel] = (soundCnt[channel] & ~mask) | (value & mask);
 
-    // Disable the channel if it's turned off
-    if (!(soundCnt[channel] & BIT(31)))
+    // Start the channel if the enable bit changes from 0 to 1 and the other conditions are met
+    if (enable && (mainSoundCnt & BIT(15)) && (soundSad[channel] != 0 || ((soundCnt[channel] & 0x60000000) >> 29) == 3))
+        startChannel(channel);
+    else if (!(soundCnt[channel] & BIT(31)))
         enabled &= ~BIT(channel);
 }
 
@@ -965,10 +965,13 @@ void Spu::writeSoundSad(int channel, uint32_t mask, uint32_t value)
     soundSad[channel] = (soundSad[channel] & ~mask) | (value & mask);
 
     // Restart the channel if the source address is valid and the other conditions are met
-    if (soundSad[channel] != 0 && (mainSoundCnt & BIT(15)) && (soundCnt[channel] & BIT(31)))
-        startChannel(channel);
-    else
-        enabled &= ~BIT(channel);
+    if (((soundCnt[channel] & 0x60000000) >> 29) != 3) // Not pulse/noise
+    {
+        if (soundSad[channel] != 0 && (mainSoundCnt & BIT(15)) && (soundCnt[channel] & BIT(31)))
+            startChannel(channel);
+        else
+            enabled &= ~BIT(channel);
+    }
 }
 
 void Spu::writeSoundTmr(int channel, uint16_t mask, uint16_t value)
@@ -992,23 +995,26 @@ void Spu::writeSoundLen(int channel, uint32_t mask, uint32_t value)
 
 void Spu::writeMainSoundCnt(uint16_t mask, uint16_t value)
 {
-    // Start the channels if the enable bit changes from 0 to 1 and the other conditions are met
-    if (!(mainSoundCnt & BIT(15)) && (value & BIT(15)))
-    {
-        for (int i = 0; i < 16; i++)
-        {
-            if ((soundCnt[i] & BIT(31)) && soundSad[i] != 0)
-                startChannel(i);
-        }
-    }
+    bool enable = (!(mainSoundCnt & BIT(15)) && (value & BIT(15)));
 
     // Write to the main SOUNDCNT register
     mask &= 0xBF7F;
     mainSoundCnt = (mainSoundCnt & ~mask) | (value & mask);
 
-    // Disable all channels if the master enable is turned off
-    if (!(mainSoundCnt & BIT(15)))
+    if (enable)
+    {
+        // Start the channels if the enable bit changes from 0 to 1 and the other conditions are met
+        for (int i = 0; i < 16; i++)
+        {
+            if ((soundCnt[i] & BIT(31)) && (soundSad[i] != 0 || ((soundCnt[i] & 0x60000000) >> 29) == 3))
+                startChannel(i);
+        }
+    }
+    else if (!(mainSoundCnt & BIT(15)))
+    {
+        // Disable all channels if the master enable is turned off
         enabled = 0;
+    }
 }
 
 void Spu::writeSoundBias(uint16_t mask, uint16_t value)
