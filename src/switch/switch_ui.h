@@ -76,7 +76,7 @@ class SwitchUI
 
         static Selection menu(std::string title, std::vector<ListItem> *items, unsigned int index = 0,
                               std::string actionX = "", std::string actionPlus = "");
-        static void message(std::string title, std::vector<std::string> text);
+        static bool message(std::string title, std::vector<std::string> text, bool cancel = false);
 
         static bool isDarkTheme() { return darkTheme; }
 

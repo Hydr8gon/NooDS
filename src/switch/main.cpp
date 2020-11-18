@@ -402,6 +402,89 @@ void fileBrowser()
     }
 }
 
+void saveTypeMenu()
+{
+    unsigned int index = 0;
+    std::vector<ListItem> items;
+
+    if (core->isGbaMode())
+    {
+        // Set up list items for GBA save types
+        items.push_back(ListItem("None"));
+        items.push_back(ListItem("EEPROM 0.5KB"));
+        items.push_back(ListItem("EEPROM 8KB"));
+        items.push_back(ListItem("SRAM 32KB"));
+        items.push_back(ListItem("FLASH 64KB"));
+        items.push_back(ListItem("FLASH 128KB"));
+    }
+    else
+    {
+        // Set up list items for NDS save types
+        items.push_back(ListItem("None"));
+        items.push_back(ListItem("EEPROM 0.5KB"));
+        items.push_back(ListItem("EEPROM 8KB"));
+        items.push_back(ListItem("EEPROM 64KB"));
+        items.push_back(ListItem("EEPROM 128KB"));
+        items.push_back(ListItem("FRAM 32KB"));
+        items.push_back(ListItem("FLASH 256KB"));
+        items.push_back(ListItem("FLASH 512KB"));
+        items.push_back(ListItem("FLASH 1024KB"));
+        items.push_back(ListItem("FLASH 8192KB"));
+    }
+
+    while (true)
+    {
+        // Create the save type menu
+        Selection menu = SwitchUI::menu("Change Save Type", &items, index);
+        index = menu.index;
+
+        // Handle menu input
+        if (menu.pressed & KEY_A)
+        {
+            // Confirm the change because accidentally resizing a working save file could be bad!
+            if (!SwitchUI::message("Changing Save Type", std::vector<std::string>{"Are you sure? This may result in data loss!"}, true))
+                continue;
+
+            // Apply the change
+            if (core->isGbaMode())
+            {
+                switch (index)
+                {
+                    case 0: core->cartridge.setSaveSize(true,       0); break; // None
+                    case 1: core->cartridge.setSaveSize(true,   0x200); break; // EEPROM 0.5KB
+                    case 2: core->cartridge.setSaveSize(true,  0x2000); break; // EEPROM 8KB
+                    case 3: core->cartridge.setSaveSize(true,  0x8000); break; // SRAM 32KB
+                    case 4: core->cartridge.setSaveSize(true, 0x10000); break; // FLASH 64KB
+                    case 5: core->cartridge.setSaveSize(true, 0x20000); break; // FLASH 128KB
+                }
+            }
+            else
+            {
+                switch (index)
+                {
+                    case 0: core->cartridge.setSaveSize(false,        0); break; // None
+                    case 1: core->cartridge.setSaveSize(false,    0x200); break; // EEPROM 0.5KB
+                    case 2: core->cartridge.setSaveSize(false,   0x2000); break; // EEPROM 8KB
+                    case 3: core->cartridge.setSaveSize(false,  0x10000); break; // EEPROM 64KB
+                    case 4: core->cartridge.setSaveSize(false,  0x20000); break; // EEPROM 128KB
+                    case 5: core->cartridge.setSaveSize(false,   0x8000); break; // FRAM 32KB
+                    case 6: core->cartridge.setSaveSize(false,  0x40000); break; // FLASH 256KB
+                    case 7: core->cartridge.setSaveSize(false,  0x80000); break; // FLASH 512KB
+                    case 8: core->cartridge.setSaveSize(false, 0x100000); break; // FLASH 1024KB
+                    case 9: core->cartridge.setSaveSize(false, 0x800000); break; // FLASH 8192KB
+                }
+            }
+
+            // Restart the core
+            delete core;
+            core = new Core(ndsPath, gbaPath);
+        }
+
+        // Return to the pause menu
+        return;
+    }
+}
+
 void pauseMenu()
 {
     // Stop the core and write the save as an extra precaution
@@ -414,6 +497,7 @@ void pauseMenu()
     {
         ListItem("Resume"),
         ListItem("Restart"),
+        ListItem("Change Save Type"),
         ListItem("Settings"),
         ListItem("File Browser")
     };
@@ -446,14 +530,21 @@ void pauseMenu()
                     return;
                 }
 
-                case 2: // Settings
+                case 2: // Change Save Type
+                {
+                    // Open the save type menu
+                    saveTypeMenu();
+                    break;
+                }
+
+                case 3: // Settings
                 {
                     // Open the settings menu
                     settingsMenu();
                     break;
                 }
 
-                case 3: // File Browser
+                case 4: // File Browser
                 {
                     // Open the file browser and close the pause menu
                     fileBrowser();

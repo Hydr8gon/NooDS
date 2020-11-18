@@ -570,20 +570,23 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
     return Selection(0, 0);
 }
 
-void SwitchUI::message(std::string title, std::vector<std::string> text)
+bool SwitchUI::message(std::string title, std::vector<std::string> text, bool cancel)
 {
     clear(palette[0]);
 
-    // Calculate the touch bounds for the action button
+    std::string actionB = "\x81 Back     ";
     std::string actionA = "\x80 OK";
-    unsigned int boundsR = 1218 + (2.5f * charWidths[0]) * 34 / 48;
-    unsigned int boundsL = 1218 - (stringWidth(actionA) + 2.5f * charWidths[0]) * 34 / 48;
+
+    // Calculate the touch bounds for the action buttons
+    unsigned int boundsA  = 1218 + (2.5f * charWidths[0]) * 34 / 48;
+    unsigned int boundsAB = 1218 - (stringWidth(actionA) + 2.5f * charWidths[0]) * 34 / 48;
+    unsigned int boundsB  = boundsAB - stringWidth(actionB) * 34 / 48;
 
     // Draw the borders
     drawString(title, 72, 30, 42, palette[1]);
     drawRectangle(30,  88, 1220, 1, palette[1]);
     drawRectangle(30, 648, 1220, 1, palette[1]);
-    drawString(actionA, 1218, 667, 34, palette[1], true);
+    drawString((cancel ? actionB : "") + actionA, 1218, 667, 34, palette[1], true);
 
     // Draw the message contents
     // Each string in the array is drawn on a separate line
@@ -602,9 +605,11 @@ void SwitchUI::message(std::string title, std::vector<std::string> text)
         hidScanInput();
         u32 pressed = hidKeysDown(CONTROLLER_P1_AUTO);
 
-        // Dismiss the message if the A button is pressed
+        // Dismiss the message and return the result if an action is pressed
         if (pressed & KEY_A)
-            return;
+            return true;
+        else if ((pressed & KEY_B) && cancel)
+            return false;
 
         // Handle touch input
         if (hidTouchCount() > 0) // Pressed
@@ -630,8 +635,13 @@ void SwitchUI::message(std::string title, std::vector<std::string> text)
         {
             // Simulate a button press if its action text was touched
             // If the touch is dragged instead of just pressed, this won't register
-            if (!touchScroll && touch.py >= 650 && touch.px >= boundsL && touch.px < boundsR)
-                return;
+            if (!touchScroll && touch.py >= 650)
+            {
+                if (touch.px >= boundsAB && touch.px < boundsA)
+                    return true;
+                else if (touch.px >= boundsB && touch.px < boundsAB && cancel)
+                    return false;
+            }
 
             touchStarted = false;
         }
@@ -639,4 +649,5 @@ void SwitchUI::message(std::string title, std::vector<std::string> text)
 
     // appletMainLoop only seems to return false once, so remember when it does
     shouldExit = true;
+    return false;
 }
