@@ -130,6 +130,7 @@ public class FileBrowser extends AppCompatActivity
             {
                 // Start the emulator if loading was successful
                 startActivity(new Intent(this, NooActivity.class));
+                finish();
             }
             else
             {

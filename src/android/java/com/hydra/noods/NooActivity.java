@@ -3,6 +3,7 @@ package com.hydra.noods;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -10,8 +11,12 @@ import android.media.AudioTrack;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
+import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.inputmethod.BaseInputConnection;
 import android.widget.TextView;
 
 public class NooActivity extends AppCompatActivity
@@ -20,23 +25,23 @@ public class NooActivity extends AppCompatActivity
     private Thread core, audio, fps;
     private AudioTrack track;
 
-    private boolean hidden;
     private ConstraintLayout layout;
     private GLSurfaceView view;
     private NooRenderer renderer;
     private NooButton buttons[];
     private TextView fpsCounter;
+    private boolean showingButtons, showingFps;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
 
-        hidden = false;
         layout = new ConstraintLayout(this);
         view = new GLSurfaceView(this);
         renderer = new NooRenderer();
         buttons = new NooButton[9];
+        fpsCounter = new TextView(this);
 
         // Prepare the GL renderer
         view.setEGLContextClientVersion(2);
@@ -70,6 +75,9 @@ public class NooActivity extends AppCompatActivity
             }
         });
 
+        // Add the view to the layout
+        layout.addView(view);
+
         // Get the display density and dimensions
         final float d = getResources().getDisplayMetrics().density;
         final int   w = getResources().getDisplayMetrics().widthPixels;
@@ -86,19 +94,18 @@ public class NooActivity extends AppCompatActivity
         buttons[7] = new NooButton(this, R.drawable.r,       8, w     - (int)(d * 115), h - (int)(d * 400), (int)(d * 110), (int)(d *  44));
         buttons[8] = new NooButton(this, R.drawable.dpad,    4,         (int)(d *   5), h - (int)(d * 174), (int)(d * 132), (int)(d * 132));
 
-        // Add the view and buttons to the layout
-        layout.addView(view);
+        // Add the buttons to the layout
         for (int i = 0; i < 9; i++)
             layout.addView(buttons[i]);
+        showingButtons = true;
+
+        // Create the FPS counter
+        fpsCounter.setTextSize(24);
+        fpsCounter.setTextColor(Color.WHITE);
 
         // Add the FPS counter to the layout if enabled
-        if (getShowFpsCounter() != 0)
-        {
-            fpsCounter = new TextView(this);
-            fpsCounter.setTextSize(24);
-            fpsCounter.setTextColor(Color.WHITE);
+        if (showingFps = (getShowFpsCounter() != 0))
             layout.addView(fpsCounter);
-        }
 
         setContentView(layout);
 
@@ -178,9 +185,16 @@ public class NooActivity extends AppCompatActivity
         audio.setPriority(Thread.NORM_PRIORITY);
         audio.start();
 
-        // Prepare the FPS counter thread if enabled
         if (getShowFpsCounter() != 0)
         {
+            // Add the FPS counter to the layout if enabled
+            if (!showingFps)
+            {
+                layout.addView(fpsCounter);
+                showingFps = true;
+            }
+
+            // Prepare the FPS counter thread if enabled
             fps = new Thread()
             {
                 @Override
@@ -214,25 +228,78 @@ public class NooActivity extends AppCompatActivity
             fps.setPriority(Thread.MIN_PRIORITY);
             fps.start();
         }
+        else if (showingFps)
+        {
+            // Remove the FPS counter from the layout if disabled
+            layout.removeView(fpsCounter);
+            showingFps = false;
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
+        getMenuInflater().inflate(R.menu.noo_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        switch (item.getItemId())
+        {
+            case R.id.controls_action:
+            {
+                // Toggle hiding the on-screen buttons
+                if (showingButtons = !showingButtons)
+                {
+                    for (int i = 0; i < 9; i++)
+                        layout.addView(buttons[i]);
+                }
+                else
+                {
+                    for (int i = 0; i < 9; i++)
+                        layout.removeView(buttons[i]);
+                }
+                return true;
+            }
+
+            case R.id.settings_action:
+            {
+                // Open the settings menu
+                startActivity(new Intent(this, SettingsMenu.class));
+                return true;
+            }
+
+            case R.id.browser_action:
+            {
+                // Go back to the file browser
+                startActivity(new Intent(this, FileBrowser.class));
+                finish();
+                return true;
+            }
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onOptionsMenuClosed(Menu menu)
+    {
+        super.onOptionsMenuClosed(menu);
+
+        // Rehide the status bar
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
     }
 
     @Override
     public void onBackPressed()
     {
-        // Toggle hiding the buttons
-        hidden = !hidden;
-
-        // Add or remove the buttons from the layout accordingly
-        if (hidden)
-        {
-            for (int i = 0; i < 9; i++)
-                layout.removeView(buttons[i]);
-        }
-        else
-        {
-            for (int i = 0; i < 9; i++)
-                layout.addView(buttons[i]);
-        }
+        // Simulate a menu button press to open the menu
+        BaseInputConnection inputConnection = new BaseInputConnection(view, true);
+        inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MENU));
+        inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MENU));
     }
 
     public native void fillAudioBuffer(short[] buffer);

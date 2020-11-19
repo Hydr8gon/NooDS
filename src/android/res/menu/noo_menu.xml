@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item android:id="@+id/controls_action"
+        android:title="Toggle Controls" />
+
+    <item android:id="@+id/settings_action"
+        android:title="Settings" />
+
+    <item android:id="@+id/browser_action"
+        android:title="File Browser" />
+
+</menu>
