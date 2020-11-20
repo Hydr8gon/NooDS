@@ -385,34 +385,7 @@ void Spu::runGbaSample()
 
     // Handle a full buffer
     if (bufferPointer == bufferSize)
-    {
-        // Wait until the buffer has been played, keeping the emulator throttled to 60 FPS
-        // Synchronizing to the audio eliminites the potential for nasty audio crackles
-        if (Settings::getFpsLimiter() == 2) // Accurate
-        {
-            while (ready.load());
-        }
-        else if (Settings::getFpsLimiter() == 1) // Light
-        {
-            std::unique_lock<std::mutex> lock(mutex1);
-            cond1.wait(lock, [&]{ return !ready.load(); });
-        }
-
-        // Swap the buffers
-        uint32_t *buffer = bufferOut;
-        bufferOut = bufferIn;
-        bufferIn = buffer;
-
-        // Signal that the buffer is ready to play
-        {
-            std::lock_guard<std::mutex> guard(mutex2);
-            ready.store(true);
-            cond2.notify_one();
-        }
-
-        // Reset the buffer pointer
-        bufferPointer = 0;
-    }
+        swapBuffers();
 }
 
 void Spu::runSample()
@@ -706,32 +679,36 @@ void Spu::runSample()
 
     // Handle a full buffer
     if (bufferPointer == bufferSize)
+        swapBuffers();
+}
+
+void Spu::swapBuffers()
+{
+    // Wait until the buffer has been played, keeping the emulator throttled to 60 FPS
+    // Synchronizing to the audio eliminites the potential for nasty audio crackles
+    if (Settings::getFpsLimiter() == 2) // Accurate
     {
-        // Wait until the buffer has been played, keeping the emulator throttled to 60 FPS
-        // Synchronizing to the audio eliminites the potential for nasty audio crackles
-        if (Settings::getFpsLimiter() == 2) // Accurate
-        {
-            while (ready.load());
-        }
-        else if (Settings::getFpsLimiter() == 1) // Light
-        {
-            std::unique_lock<std::mutex> lock(mutex1);
-            cond1.wait(lock, [&]{ return !ready.load(); });
-        }
-
-        // Swap the buffers
-        SWAP(bufferOut, bufferIn);
-
-        // Signal that the buffer is ready to play
-        {
-            std::lock_guard<std::mutex> guard(mutex2);
-            ready.store(true);
-            cond2.notify_one();
-        }
-
-        // Reset the buffer pointer
-        bufferPointer = 0;
+        std::chrono::steady_clock::time_point waitTime = std::chrono::steady_clock::now();
+        while (ready.load() && std::chrono::steady_clock::now() - waitTime <= std::chrono::microseconds(1000000));
     }
+    else if (Settings::getFpsLimiter() == 1) // Light
+    {
+        std::unique_lock<std::mutex> lock(mutex1);
+        cond1.wait_for(lock, std::chrono::microseconds(1000000), [&]{ return !ready.load(); });
+    }
+
+    // Swap the buffers
+    SWAP(bufferOut, bufferIn);
+
+    // Signal that the buffer is ready to play
+    {
+        std::lock_guard<std::mutex> guard(mutex2);
+        ready.store(true);
+        cond2.notify_one();
+    }
+
+    // Reset the buffer pointer
+    bufferPointer = 0;
 }
 
 void Spu::startChannel(int channel)
