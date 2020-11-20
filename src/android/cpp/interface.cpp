@@ -60,6 +60,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_loadRom(JNIEn
     {
         ndsPath = (path.find(".nds", path.length() - 4) != std::string::npos) ? path : "";
         gbaPath = (path.find(".gba", path.length() - 4) != std::string::npos) ? path : "";
+        if (core) delete core;
         core = new Core(ndsPath, gbaPath);
         return 0;
     }
@@ -241,6 +242,11 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooActivity_getFps(JNIEnv
     return core->getFps();
 }
 
+extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooActivity_isGbaMode(JNIEnv *env, jobject obj)
+{
+    return core->isGbaMode();
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_runFrame(JNIEnv *env, jobject obj)
 {
     core->runFrame();
@@ -249,6 +255,12 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_runFrame(JNIE
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_writeSave(JNIEnv *env, jobject obj)
 {
     core->cartridge.writeSave();
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_restartCore(JNIEnv *env, jobject obj)
+{
+    if (core) delete core;
+    core = new Core(ndsPath, gbaPath);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_pressScreen(JNIEnv *env, jobject obj, jint x, jint y)
@@ -261,6 +273,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_releaseScreen
 {
     core->input.releaseScreen();
     core->spi.clearTouch();
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_setSaveSize(JNIEnv *env, jobject obj, jboolean gba, jint size)
+{
+    core->cartridge.setSaveSize(gba, size);
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenRotation(JNIEnv* env, jobject obj)
@@ -321,11 +338,6 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getTopHeight(
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getBotHeight(JNIEnv *env, jobject obj)
 {
     return layout.getBotHeight();
-}
-
-extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooRenderer_isGbaMode(JNIEnv *env, jobject obj)
-{
-    return core->isGbaMode();
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooButton_pressKey(JNIEnv *env, jobject obj, jint key)

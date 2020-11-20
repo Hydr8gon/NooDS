@@ -39,11 +39,55 @@
         <item>Full</item>
     </string-array>
 
-    <string-array name="entry_values">
+    <string-array name="setting_values">
         <item>0</item>
         <item>1</item>
         <item>2</item>
         <item>3</item>
     </string-array>
+
+    <string-array name="save_entries_gba">
+        <item>None</item>
+        <item>EEPROM 0.5KB</item>
+        <item>EEPROM 8KB</item>
+        <item>SRAM 32KB</item>
+        <item>FLASH 64KB</item>
+        <item>FLASH 128KB</item>
+    </string-array>
+
+    <integer-array name="save_values_gba">
+        <item>0</item>
+        <item>0x200</item>
+        <item>0x2000</item>
+        <item>0x8000</item>
+        <item>0x10000</item>
+        <item>0x20000</item>
+    </integer-array>
+
+    <string-array name="save_entries_nds">
+        <item>None</item>
+        <item>EEPROM 0.5KB</item>
+        <item>EEPROM 8KB</item>
+        <item>EEPROM 64KB</item>
+        <item>EEPROM 128KB</item>
+        <item>FRAM 32KB</item>
+        <item>FLASH 256KB</item>
+        <item>FLASH 512KB</item>
+        <item>FLASH 1024KB</item>
+        <item>FLASH 8192KB</item>
+    </string-array>
+
+    <integer-array name="save_values_nds">
+        <item>0</item>
+        <item>0x200</item>
+        <item>0x2000</item>
+        <item>0x10000</item>
+        <item>0x20000</item>
+        <item>0x8000</item>
+        <item>0x40000</item>
+        <item>0x80000</item>
+        <item>0x100000</item>
+        <item>0x800000</item>
+    </integer-array>
 
 </resources>

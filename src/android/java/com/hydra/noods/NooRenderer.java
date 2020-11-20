@@ -14,6 +14,8 @@ import java.nio.FloatBuffer;
 
 public class NooRenderer implements GLSurfaceView.Renderer
 {
+    NooActivity activity;
+
     private int program;
     private int textures[];
     private Bitmap bitmap;
@@ -40,6 +42,12 @@ public class NooRenderer implements GLSurfaceView.Renderer
         "{"                                                  +
         "    gl_FragColor = texture2D(uTexture, vTexCoord);" +
         "}";
+
+    NooRenderer(NooActivity activity)
+    {
+        super();
+        this.activity = activity;
+    }
 
     @Override
     public void onSurfaceCreated(GL10 unused, EGLConfig config)
@@ -106,7 +114,7 @@ public class NooRenderer implements GLSurfaceView.Renderer
     public void onDrawFrame(GL10 unused)
     {
         // Update the layout if GBA mode changed
-        if (gbaMode != (isGbaMode() && getGbaCrop() != 0))
+        if (gbaMode != (activity.isGbaMode() && getGbaCrop() != 0))
         {
             gbaMode = !gbaMode;
             updateLayout(width, height);
@@ -119,7 +127,7 @@ public class NooRenderer implements GLSurfaceView.Renderer
 
         // Wait until a new frame is ready to prevent stuttering
         // This sucks, but buffers are automatically swapped, so returning would cause even worse stutter
-        while (!copyFramebuffer(bitmap, gbaMode));
+        while (!copyFramebuffer(bitmap, gbaMode) && activity.isRunning());
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
         if (gbaMode)
@@ -177,5 +185,4 @@ public class NooRenderer implements GLSurfaceView.Renderer
     public native int getBotWidth();
     public native int getTopHeight();
     public native int getBotHeight();
-    public native boolean isGbaMode();
 }

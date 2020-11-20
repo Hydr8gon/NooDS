@@ -3,6 +3,8 @@ package com.hydra.noods;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.media.AudioFormat;
@@ -39,7 +41,7 @@ public class NooActivity extends AppCompatActivity
 
         layout = new ConstraintLayout(this);
         view = new GLSurfaceView(this);
-        renderer = new NooRenderer();
+        renderer = new NooRenderer(this);
         buttons = new NooButton[9];
         fpsCounter = new TextView(this);
 
@@ -118,9 +120,148 @@ public class NooActivity extends AppCompatActivity
     @Override
     protected void onPause()
     {
+        pauseCore();
         super.onPause();
-        view.onPause();
+    }
 
+    @Override
+    protected void onResume()
+    {
+        resumeCore();
+        super.onResume();
+
+        // Hide the status bar
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
+        getMenuInflater().inflate(R.menu.noo_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        switch (item.getItemId())
+        {
+            case R.id.controls_action:
+            {
+                // Toggle hiding the on-screen buttons
+                if (showingButtons = !showingButtons)
+                {
+                    for (int i = 0; i < 9; i++)
+                        layout.addView(buttons[i]);
+                }
+                else
+                {
+                    for (int i = 0; i < 9; i++)
+                        layout.removeView(buttons[i]);
+                }
+                return true;
+            }
+
+            case R.id.save_action:
+            {
+                final boolean gba = isGbaMode();
+                final String[] names = getResources().getStringArray(gba ? R.array.save_entries_gba : R.array.save_entries_nds);
+                final int[] values = getResources().getIntArray(gba ? R.array.save_values_gba : R.array.save_values_nds);
+
+                // Create the save type dialog
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Change Save Type");
+
+                builder.setItems(names, new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, final int which)
+                    {
+                        // Confirm the change because accidentally resizing a working save file could be bad!
+                        AlertDialog.Builder builder2 = new AlertDialog.Builder(NooActivity.this);
+                        builder2.setTitle("Changing Save Type");
+                        builder2.setMessage("Are you sure? This may result in data loss!");
+
+                        builder2.setPositiveButton("OK", new DialogInterface.OnClickListener()
+                        {
+                            @Override
+                            public void onClick(DialogInterface dialog, int id)
+                            {
+                                // Apply the change and restart the core
+                                pauseCore();
+                                setSaveSize(gba, values[which]);
+                                restartCore();
+                                resumeCore();
+                            }
+                        });
+
+                        builder2.setNegativeButton("Cancel", new DialogInterface.OnClickListener()
+                        {
+                            @Override
+                            public void onClick(DialogInterface dialog, int id)
+                            {
+                                // Close the dialog
+                            }
+                        });
+
+                        builder2.create().show();
+                    }
+                });
+
+                builder.create().show();
+                return true;
+            }
+
+            case R.id.restart_action:
+            {
+                // Restart the core
+                pauseCore();
+                restartCore();
+                resumeCore();
+                return true;
+            }
+
+            case R.id.settings_action:
+            {
+                // Open the settings menu
+                startActivity(new Intent(this, SettingsMenu.class));
+                return true;
+            }
+
+            case R.id.browser_action:
+            {
+                // Go back to the file browser
+                startActivity(new Intent(this, FileBrowser.class));
+                finish();
+                return true;
+            }
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onOptionsMenuClosed(Menu menu)
+    {
+        super.onOptionsMenuClosed(menu);
+
+        // Rehide the status bar
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+    }
+
+    @Override
+    public void onBackPressed()
+    {
+        // Simulate a menu button press to open the menu
+        BaseInputConnection inputConnection = new BaseInputConnection(view, true);
+        inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MENU));
+        inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MENU));
+    }
+
+    private void pauseCore()
+    {
         running = false;
 
         // Wait for the emulator to stop
@@ -136,21 +277,13 @@ public class NooActivity extends AppCompatActivity
             // Oh well, I guess
         }
 
-        // Write the save file
-        // There's no reliable way to call something on program termination, so this has to be done here
+        // Write the save file and pause rendering
         writeSave();
+        view.onPause();
     }
 
-    @Override
-    protected void onResume()
+    private void resumeCore()
     {
-        super.onResume();
-        view.onResume();
-
-        // Hide the status bar
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
-            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-
         running = true;
 
         // Prepare the core thread
@@ -234,79 +367,21 @@ public class NooActivity extends AppCompatActivity
             layout.removeView(fpsCounter);
             showingFps = false;
         }
+
+        // Resume rendering
+        view.onResume();
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu)
-    {
-        getMenuInflater().inflate(R.menu.noo_menu, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        switch (item.getItemId())
-        {
-            case R.id.controls_action:
-            {
-                // Toggle hiding the on-screen buttons
-                if (showingButtons = !showingButtons)
-                {
-                    for (int i = 0; i < 9; i++)
-                        layout.addView(buttons[i]);
-                }
-                else
-                {
-                    for (int i = 0; i < 9; i++)
-                        layout.removeView(buttons[i]);
-                }
-                return true;
-            }
-
-            case R.id.settings_action:
-            {
-                // Open the settings menu
-                startActivity(new Intent(this, SettingsMenu.class));
-                return true;
-            }
-
-            case R.id.browser_action:
-            {
-                // Go back to the file browser
-                startActivity(new Intent(this, FileBrowser.class));
-                finish();
-                return true;
-            }
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onOptionsMenuClosed(Menu menu)
-    {
-        super.onOptionsMenuClosed(menu);
-
-        // Rehide the status bar
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
-            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-    }
-
-    @Override
-    public void onBackPressed()
-    {
-        // Simulate a menu button press to open the menu
-        BaseInputConnection inputConnection = new BaseInputConnection(view, true);
-        inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MENU));
-        inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MENU));
-    }
+    public boolean isRunning() { return running; }
 
     public native void fillAudioBuffer(short[] buffer);
     public native int getShowFpsCounter();
     public native int getFps();
+    public native boolean isGbaMode();
     public native void runFrame();
     public native void writeSave();
+    public native void restartCore();
     public native void pressScreen(int x, int y);
     public native void releaseScreen();
+    public native void setSaveSize(boolean gba, int size);
 }
