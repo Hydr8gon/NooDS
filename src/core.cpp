@@ -44,8 +44,9 @@ Core::Core(std::string ndsPath, std::string gbaPath):
         if (Settings::getDirectBoot())
         {
             // Set some registers as the BIOS/firmware would
-            cp15.write(9, 1, 0, 0x027C0005); // Data TCM base/size
-            cp15.write(9, 1, 1, 0x00000010); // Instruction TCM size
+            cp15.write(1, 0, 0, 0x0005707D); // CP15 Control
+            cp15.write(9, 1, 0, 0x0300000A); // Data TCM base/size
+            cp15.write(9, 1, 1, 0x00000020); // Instruction TCM size
             memory.write<uint8_t>(0,  0x4000247,   0x03); // WRAMCNT
             memory.write<uint8_t>(0,  0x4000300,   0x01); // POSTFLG (ARM9)
             memory.write<uint8_t>(1,  0x4000300,   0x01); // POSTFLG (ARM7)
