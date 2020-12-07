@@ -32,28 +32,64 @@ void DivSqrt::divide()
     switch (divCnt & 0x0003) // Division mode
     {
         case 0: // 32-bit / 32-bit
-            if ((int32_t)divDenom != 0)
+        {
+            if ((int32_t)divNumer == INT32_MIN && (int32_t)divDenom == -1) // Overflow
+            {
+                divResult    = (int32_t)divNumer ^ (0xFFFFFFFFULL << 32);
+                divRemResult = 0;
+            }
+            else if ((int32_t)divDenom != 0)
             {
                 divResult    = (int32_t)divNumer / (int32_t)divDenom;
                 divRemResult = (int32_t)divNumer % (int32_t)divDenom;
             }
+            else // Division by 0
+            {
+                divResult    = (((int32_t)divNumer < 0) ? 1 : -1) ^ (0xFFFFFFFFULL << 32);
+                divRemResult = (int32_t)divNumer;
+            }
             break;
+        }
 
         case 1: case 3: // 64-bit / 32-bit
-            if ((int32_t)divDenom != 0)
+        {
+            if (divNumer == INT64_MIN && (int32_t)divDenom == -1) // Overflow
+            {
+                divResult    = divNumer;
+                divRemResult = 0;
+            }
+            else if ((int32_t)divDenom != 0)
             {
                 divResult    = divNumer / (int32_t)divDenom;
                 divRemResult = divNumer % (int32_t)divDenom;
             }
+            else // Division by 0
+            {
+                divResult    = (divNumer < 0) ? 1 : -1;
+                divRemResult = divNumer;
+            }
             break;
+        }
 
         case 2: // 64-bit / 64-bit
-            if (divDenom != 0)
+        {
+            if (divNumer == INT64_MIN && divDenom == -1) // Overflow
+            {
+                divResult    = divNumer;
+                divRemResult = 0;
+            }
+            else if (divDenom != 0)
             {
                 divResult    = divNumer / divDenom;
                 divRemResult = divNumer % divDenom;
             }
+            else // Division by 0
+            {
+                divResult    = (divNumer < 0) ? 1 : -1;
+                divRemResult = divNumer;
+            }
             break;
+        }
     }
 }
 
@@ -67,7 +103,7 @@ void DivSqrt::squareRoot()
             break;
 
         case 1: // 64-bit
-            sqrtResult = sqrt(sqrtParam);
+            sqrtResult = sqrtl(sqrtParam);
             break;
     }
 }
