@@ -362,10 +362,6 @@ template uint16_t Cartridge::gbaRomRead(uint32_t address);
 template uint32_t Cartridge::gbaRomRead(uint32_t address);
 template <typename T> T Cartridge::gbaRomRead(uint32_t address)
 {
-    // If nothing is inserted in the GBA slot, return endless 0xFFs
-    if (gbaRomSize == 0)
-        return (T)0xFFFFFFFF;
-
     // Read a value from the GBA cartridge
     if ((address & 0xFF000000) == 0x0E000000)
     {
@@ -395,75 +391,69 @@ template <typename T> T Cartridge::gbaRomRead(uint32_t address)
             }
         }
     }
-    else
+    else if ((address & 0xFF000000) == 0x0D000000 && (gbaSaveSize == -1 || gbaSaveSize == 0x200 ||
+        gbaSaveSize == 0x2000) && (gbaRomSize <= 0x1000000 || address >= 0x0DFFFF00)) // EEPROM
     {
-        // EEPROM can be accesssed at the top 256 bytes of the 32MB ROM address block
-        // If the ROM is 16MB or smaller, it can be accessed in the full upper 16MB
-        if ((gbaSaveSize == -1 || gbaSaveSize == 0x200 || gbaSaveSize == 0x2000) &&
-            ((gbaRomSize <= 0x1000000 && (address & 0xFF000000) == 0x0D000000) ||
-            (gbaRomSize > 0x1000000 && address >= 0x0DFFFF00 && address < 0x0E000000))) // EEPROM
+        if (gbaSaveSize == -1)
         {
-            if (gbaSaveSize == -1)
+            // Detect the save size based on how many command bits were sent before reading
+            if (gbaEepromCount == 9)
             {
-                // Detect the save size based on how many command bits were sent before reading
-                if (gbaEepromCount == 9)
-                {
-                    gbaSaveSize = 0x200;
-                    printf("Detected EEPROM 0.5KB save type\n");
-                }
-                else
-                {
-                    gbaSaveSize = 0x2000;
-                    printf("Detected EEPROM 8KB save type\n");
-                }
-
-                // Create a new save
-                gbaSave = new uint8_t[gbaSaveSize];
-                memset(gbaSave, 0xFF, gbaSaveSize * sizeof(uint8_t));
+                gbaSaveSize = 0x200;
+                printf("Detected EEPROM 0.5KB save type\n");
+            }
+            else
+            {
+                gbaSaveSize = 0x2000;
+                printf("Detected EEPROM 8KB save type\n");
             }
 
-            // EEPROM 0.5KB uses 8-bit commands, and EEPROM 8KB uses 16-bit commands
-            int length = (gbaSaveSize == 0x200) ? 8 : 16;
-
-            if (((gbaEepromCmd & 0xC000) >> 14) == 0x3 && gbaEepromCount >= length + 1) // Read
-            {
-                if (++gbaEepromCount >= length + 6)
-                {
-                    // Read the data bits, MSB first
-                    int bit = 63 - (gbaEepromCount - (length + 6));
-                    uint16_t addr = (gbaSaveSize == 0x200) ? ((gbaEepromCmd & 0x3F00) >> 8) : (gbaEepromCmd & 0x03FF);
-                    T value = (gbaSave[addr * 8 + bit / 8] & BIT(bit % 8)) >> (bit % 8);
-
-                    // Reset the transfer at the end
-                    if (gbaEepromCount >= length + 69)
-                    {
-                        gbaEepromCount = 0;
-                        gbaEepromCmd = 0;
-                        gbaEepromData = 0;
-                    }
-
-                    return value;
-                }
-            }
-            else if (gbaEepromDone)
-            {
-                // Signal that a write has finished
-                return 1;
-            }
-
-            return 0;
+            // Create a new save
+            gbaSave = new uint8_t[gbaSaveSize];
+            memset(gbaSave, 0xFF, gbaSaveSize * sizeof(uint8_t));
         }
-        else if ((address & 0x01FFFFFF) < gbaRomSize) // ROM
+
+        // EEPROM 0.5KB uses 8-bit commands, and EEPROM 8KB uses 16-bit commands
+        int length = (gbaSaveSize == 0x200) ? 8 : 16;
+
+        if (((gbaEepromCmd & 0xC000) >> 14) == 0x3 && gbaEepromCount >= length + 1) // Read
         {
-            // Form an LSB-first value from the data at the ROM address
-            T value = 0;
-            for (unsigned int i = 0; i < sizeof(T); i++)
-                value |= gbaRom[(address & 0x01FFFFFF) + i] << (i * 8);
-            return value;
+            if (++gbaEepromCount >= length + 6)
+            {
+                // Read the data bits, MSB first
+                int bit = 63 - (gbaEepromCount - (length + 6));
+                uint16_t addr = (gbaSaveSize == 0x200) ? ((gbaEepromCmd & 0x3F00) >> 8) : (gbaEepromCmd & 0x03FF);
+                T value = (gbaSave[addr * 8 + bit / 8] & BIT(bit % 8)) >> (bit % 8);
+
+                // Reset the transfer at the end
+                if (gbaEepromCount >= length + 69)
+                {
+                    gbaEepromCount = 0;
+                    gbaEepromCmd = 0;
+                    gbaEepromData = 0;
+                }
+
+                return value;
+            }
         }
+        else if (gbaEepromDone)
+        {
+            // Signal that a write has finished
+            return 1;
+        }
+
+        return 0;
+    }
+    else if ((address & 0x01FFFFFF) < gbaRomSize) // ROM
+    {
+        // Form an LSB-first value from the data at the ROM address
+        T value = 0;
+        for (unsigned int i = 0; i < sizeof(T); i++)
+            value |= gbaRom[(address & 0x01FFFFFF) + i] << (i * 8);
+        return value;
     }
 
-    return 0;
+    return (T)0xFFFFFFFF;
 }
 
 template void Cartridge::gbaRomWrite(uint32_t address, uint8_t value);
@@ -527,9 +517,8 @@ template <typename T> void Cartridge::gbaRomWrite(uint32_t address, T value)
             }
         }
     }
-    else if ((gbaSaveSize == -1 || gbaSaveSize == 0x200 || gbaSaveSize == 0x2000) &&
-        ((gbaRomSize <= 0x1000000 && (address & 0xFF000000) == 0x0D000000) ||
-        (gbaRomSize > 0x1000000 && address >= 0x0DFFFF00 && address < 0x0E000000))) // EEPROM
+    else if ((address & 0xFF000000) == 0x0D000000 && (gbaSaveSize == -1 || gbaSaveSize == 0x200 ||
+        gbaSaveSize == 0x2000) && (gbaRomSize <= 0x1000000 || address >= 0x0DFFFF00)) // EEPROM
     {
         gbaEepromDone = false;
 
@@ -579,8 +568,6 @@ template <typename T> void Cartridge::gbaRomWrite(uint32_t address, T value)
                 gbaEepromDone = true;
             }
         }
-
-        return;
     }
 }
 
