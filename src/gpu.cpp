@@ -299,9 +299,9 @@ void Gpu::scanline256()
                     // Choose from 2D engine A or the 3D engine
                     uint32_t *source;
                     if (dispCapCnt & BIT(24))
-                        source = core->gpu2D[0].getFramebuffer(vCount);
-                    else
                         source = core->gpu3DRenderer.getFramebuffer(vCount);
+                    else
+                        source = core->gpu2D[0].getFramebuffer(vCount);
 
                     // Get the VRAM source address for the current scanline
                     uint32_t readOffset = ((dispCapCnt & 0x0C000000) >> 11) + vCount * width * 2;
