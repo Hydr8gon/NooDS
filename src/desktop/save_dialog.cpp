@@ -121,7 +121,7 @@ SaveDialog::SaveDialog(NooFrame *frame, Emulator *emulator): wxDialog(nullptr, w
     }
 
     // Select the current save type by default
-    selection = sizeToSelection(emulator->core->cartridge.getSaveSize(gba));
+    selection = sizeToSelection(gba ? emulator->core->cartridge.getGbaSaveSize() : emulator->core->cartridge.getNdsSaveSize());
     buttons[selection]->SetValue(true);
 
     // Combine all of the radio buttons
@@ -219,7 +219,10 @@ void SaveDialog::confirm(wxCommandEvent &event)
     if (dialog.ShowModal() == wxID_YES)
     {
         frame->stopCore(false);
-        emulator->core->cartridge.setSaveSize(gba, selectionToSize(selection));
+        if (gba)
+            emulator->core->cartridge.resizeGbaSave(selectionToSize(selection));
+        else
+            emulator->core->cartridge.resizeNdsSave(selectionToSize(selection));
         frame->startCore(true);
         event.Skip(true);
     }

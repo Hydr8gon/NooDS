@@ -31,19 +31,34 @@ class Cartridge
         Cartridge(Core *core): core(core) {}
         ~Cartridge();
 
-        void loadRom(std::string path);
+        void loadNdsRom(std::string path);
         void loadGbaRom(std::string path);
         void directBoot();
         void writeSave();
 
-        int getRomSize(bool gba);
-        void trimRom(bool gba);
+        void trimNdsRom() { trimRom(&ndsRom, &ndsRomSize, &ndsRomName); }
+        void trimGbaRom() { trimRom(&gbaRom, &gbaRomSize, &gbaRomName); }
 
-        int getSaveSize(bool gba);
-        void setSaveSize(bool gba, int size);
+        void resizeNdsSave(int newSize) { resizeSave(newSize, &ndsSave, &ndsSaveSize, &ndsSaveDirty); }
+        void resizeGbaSave(int newSize) { resizeSave(newSize, &gbaSave, &gbaSaveSize, &gbaSaveDirty); }
 
-        template <typename T> T gbaRomRead(uint32_t address);
-        template <typename T> void gbaRomWrite(uint32_t address, T value);
+        int getNdsRomSize()  { return ndsRomSize;  }
+        int getNdsSaveSize() { return ndsSaveSize; }
+
+        int getGbaRomSize()  { return gbaRomSize;  }
+        int getGbaSaveSize() { return gbaSaveSize; }
+        uint8_t *getGbaRom() { return gbaRom;      }
+
+        bool isGbaEeprom(uint32_t address)
+        {
+            return (gbaSaveSize == -1 || gbaSaveSize == 0x200 || gbaSaveSize == 0x2000) &&
+                (gbaRomSize <= 0x1000000 || address >= 0x0DFFFF00);
+        }
+        uint8_t gbaEepromRead();
+        void gbaEepromWrite(uint8_t value);
+
+        uint8_t gbaSramRead(uint32_t address);
+        void gbaSramWrite(uint32_t address, uint8_t value);
 
         uint16_t readAuxSpiCnt(bool cpu)  { return auxSpiCnt[cpu];  }
         uint8_t  readAuxSpiData(bool cpu) { return auxSpiData[cpu]; }
@@ -64,10 +79,10 @@ class Cartridge
         int gbaRomSize = 0, gbaSaveSize = 0;
         bool gbaSaveDirty = false;
 
-        std::string romName, saveName;
-        uint8_t *rom = nullptr, *save = nullptr;
-        int romSize = 0, saveSize = 0;
-        bool saveDirty = false;
+        std::string ndsRomName, ndsSaveName;
+        uint8_t *ndsRom = nullptr, *ndsSave = nullptr;
+        int ndsRomSize = 0, ndsSaveSize = 0;
+        bool ndsSaveDirty = false;
 
         int gbaEepromCount = 0;
         uint16_t gbaEepromCmd = 0;
@@ -93,6 +108,9 @@ class Cartridge
         uint8_t auxSpiData[2] = {};
         uint32_t romCtrl[2] = {};
         uint64_t romCmdOut[2] = {};
+
+        static void trimRom(uint8_t **rom, int *romSize, std::string *romName);
+        static void resizeSave(int newSize, uint8_t **save, int *saveSize, bool *saveDirty);
 
         uint64_t encrypt64(uint64_t value);
         uint64_t decrypt64(uint64_t value);

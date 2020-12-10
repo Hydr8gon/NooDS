@@ -190,7 +190,10 @@ public class NooActivity extends AppCompatActivity
                             {
                                 // Apply the change and restart the core
                                 pauseCore();
-                                setSaveSize(gba, values[which]);
+                                if (gba)
+                                    resizeGbaSave(values[which]);
+                                else
+                                    resizeNdsSave(values[which]);
                                 restartCore();
                                 resumeCore();
                             }
@@ -383,5 +386,6 @@ public class NooActivity extends AppCompatActivity
     public native void restartCore();
     public native void pressScreen(int x, int y);
     public native void releaseScreen();
-    public native void setSaveSize(boolean gba, int size);
+    public native void resizeGbaSave(int size);
+    public native void resizeNdsSave(int size);
 }

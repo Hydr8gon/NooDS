@@ -393,12 +393,23 @@ void NooFrame::trimRom(wxCommandEvent &event)
     wxMessageDialog dialog(this, "Trim the current ROM to save space?", "Trimming ROM", wxYES_NO | wxICON_NONE);
     if (dialog.ShowModal() == wxID_YES)
     {
+        int oldSize, newSize;
+
         // Pause the core for safety and trim the ROM
-        int oldSize = emulator->core->cartridge.getRomSize(gba);
         stopCore(false);
-        emulator->core->cartridge.trimRom(gba);
+        if (gba)
+        {
+            oldSize = emulator->core->cartridge.getGbaRomSize();
+            emulator->core->cartridge.trimGbaRom();
+            newSize = emulator->core->cartridge.getGbaRomSize();
+        }
+        else
+        {
+            oldSize = emulator->core->cartridge.getNdsRomSize();
+            emulator->core->cartridge.trimNdsRom();
+            newSize = emulator->core->cartridge.getNdsRomSize();
+        }
         startCore(false);
-        int newSize = emulator->core->cartridge.getRomSize(gba);
 
         // Show the results
         wxString str;

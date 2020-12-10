@@ -38,7 +38,7 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     if (ndsPath != "")
     {
         // Load an NDS ROM
-        cartridge.loadRom(ndsPath);
+        cartridge.loadNdsRom(ndsPath);
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled
         if (Settings::getDirectBoot())

@@ -46,7 +46,7 @@
 }
 
 // Macros that read a value larger than 8 bits from an 8-bit array
-#define U8TO16(data, index) ((data[(index) + 1] << 8) | data[index])
-#define U8TO32(data, index) ((data[(index) + 3] << 24) | (data[(index) + 2] << 16) | (data[(index) + 1] << 8) | data[index])
+#define U8TO16(data, index) ((data)[index] | ((data)[(index) + 1] << 8))
+#define U8TO32(data, index) ((data)[index] | ((data)[(index) + 1] << 8) | ((data)[(index) + 2] << 16) | ((data)[(index) + 3] << 24))
 
 #endif // DEFINES_H

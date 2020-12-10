@@ -125,12 +125,17 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
 
                 case 0x08000000: case 0x09000000: // GBA ROM
                 {
-                    return core->cartridge.gbaRomRead<T>(address);
+                    if ((address & 0x01FFFFFF) < core->cartridge.getGbaRomSize())
+                    {
+                        data = &core->cartridge.getGbaRom()[address & 0x01FFFFFF];
+                        break;
+                    }
+                    return (T)0xFFFFFFFF;
                 }
 
                 case 0x0A000000: // GBA SRAM
                 {
-                    return core->cartridge.gbaRomRead<T>(address + 0x4000000);
+                    return core->cartridge.gbaSramRead(address + 0x4000000);
                 }
 
                 case 0xFF000000: // ARM9 BIOS
@@ -188,12 +193,27 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
                 break;
             }
 
-            case 0x08000000: case 0x09000000: // GBA ROM
-            case 0x0A000000: case 0x0B000000: // GBA ROM
-            case 0x0C000000: case 0x0D000000: // GBA ROM
-            case 0x0E000000: // GBA SRAM
+            case 0x0D000000: // EEPROM/ROM
             {
-                return core->cartridge.gbaRomRead<T>(address);
+                if (core->cartridge.isGbaEeprom(address))
+                    return core->cartridge.gbaEepromRead();
+            }
+
+            case 0x08000000: case 0x09000000:
+            case 0x0A000000: case 0x0B000000:
+            case 0x0C000000: // ROM
+            {
+                if ((address & 0x01FFFFFF) < core->cartridge.getGbaRomSize())
+                {
+                    data = &core->cartridge.getGbaRom()[address & 0x01FFFFFF];
+                    break;
+                }
+                return (T)0xFFFFFFFF;
+            }
+
+            case 0x0E000000: // SRAM
+            {
+                return core->cartridge.gbaSramRead(address);
             }
         }
     }
@@ -254,14 +274,19 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
                 break;
             }
 
-            case 0x08000000: case 0x09000000:  // GBA ROM
+            case 0x08000000: case 0x09000000: // GBA ROM
             {
-                return core->cartridge.gbaRomRead<T>(address);
+                if ((address & 0x01FFFFFF) < core->cartridge.getGbaRomSize())
+                {
+                    data = &core->cartridge.getGbaRom()[address & 0x01FFFFFF];
+                    break;
+                }
+                return (T)0xFFFFFFFF;
             }
 
             case 0x0A000000: // GBA SRAM
             {
-                return core->cartridge.gbaRomRead<T>(address + 0x4000000);
+                return core->cartridge.gbaSramRead(address + 0x4000000);
             }
         }
     }
@@ -363,7 +388,7 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
 
                 case 0x0A000000: // GBA SRAM
                 {
-                    core->cartridge.gbaRomWrite<T>(address + 0x4000000, value);
+                    core->cartridge.gbaSramWrite(address + 0x4000000, value);
                     return;
                 }
             }
@@ -410,9 +435,16 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
                 break;
             }
 
-            case 0x0D000000: case 0x0E000000: // GBA SRAM
+            case 0x0D000000: // EEPROM
             {
-                core->cartridge.gbaRomWrite<T>(address, value);
+                if (core->cartridge.isGbaEeprom(address))
+                    core->cartridge.gbaEepromWrite(value);
+                return;
+            }
+
+            case 0x0E000000: // SRAM
+            {
+                core->cartridge.gbaSramWrite(address, value);
                 return;
             }
         }
@@ -476,7 +508,7 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
 
             case 0x0A000000: // GBA SRAM
             {
-                core->cartridge.gbaRomWrite<T>(address + 0x4000000, value);
+                core->cartridge.gbaSramWrite(address + 0x4000000, value);
                 return;
             }
         }

@@ -275,9 +275,14 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_releaseScreen
     core->spi.clearTouch();
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_setSaveSize(JNIEnv *env, jobject obj, jboolean gba, jint size)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_resizeGbaSave(JNIEnv *env, jobject obj, jint size)
 {
-    core->cartridge.setSaveSize(gba, size);
+    core->cartridge.resizeGbaSave(size);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_resizeNdsSave(JNIEnv *env, jobject obj, jint size)
+{
+    core->cartridge.resizeNdsSave(size);
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenRotation(JNIEnv* env, jobject obj)
