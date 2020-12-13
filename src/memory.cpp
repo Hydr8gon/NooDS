@@ -1383,7 +1383,6 @@ template <typename T> T Memory::ioReadGba(uint32_t address)
             case 0x4000203: base -= 0x4000202; size = 2; data = core->interpreter[1].readIrf();     break; // IF
             case 0x4000208: base -= 0x4000208; size = 1; data = core->interpreter[1].readIme();     break; // IME
             case 0x4000300: base -= 0x4000300; size = 1; data = core->interpreter[1].readPostFlg(); break; // POSTFLG
-            case 0x4000301: base -= 0x4000301; size = 1; data = readHaltCnt();                      break; // HALTCNT
 
             default:
             {
@@ -2800,7 +2799,7 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value)
             case 0x4000203: base -= 0x4000202; size = 2; core->interpreter[1].writeIrf(mask << (base * 8), data << (base * 8));   break; // IF
             case 0x4000208: base -= 0x4000208; size = 1; core->interpreter[1].writeIme(data << (base * 8));                       break; // IME
             case 0x4000300: base -= 0x4000300; size = 1; core->interpreter[1].writePostFlg(data << (base * 8));                   break; // POSTFLG
-            case 0x4000301: base -= 0x4000301; size = 1; writeHaltCnt(data << (base * 8));                                        break; // HALTCNT
+            case 0x4000301: base -= 0x4000301; size = 1; writeGbaHaltCnt(data << (base * 8));                                     break; // HALTCNT
 
             default:
             {
@@ -3004,4 +3003,13 @@ void Memory::writeHaltCnt(uint8_t value)
             break;
         }
     }
+}
+
+void Memory::writeGbaHaltCnt(uint8_t value)
+{
+    // Halt the CPU
+    core->interpreter[1].halt();
+
+    if (value & BIT(7)) // Stop
+        printf("Unhandled request for stop mode\n");
 }

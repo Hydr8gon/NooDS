@@ -102,6 +102,7 @@ class Memory
         void writeVramCnt(int index, uint8_t value);
         void writeWramCnt(uint8_t value);
         void writeHaltCnt(uint8_t value);
+        void writeGbaHaltCnt(uint8_t value);
 };
 
 #endif // MEMORY_H
