@@ -37,8 +37,11 @@ const uint32_t keyMap[] =
     (KEY_L | KEY_R)
 };
 
+const int clockSpeeds[] = { 1020000000, 1224000000, 1581000000, 1785000000 };
+
 int screenFilter = 1;
 int showFpsCounter = 0;
+int switchOverclock = 3;
 
 std::string ndsPath, gbaPath;
 
@@ -95,7 +98,7 @@ void startCore()
     // Overclock the Switch CPU
     clkrstInitialize();
     clkrstOpenSession(&cpuSession, PcvModuleId_CpuBus, 0);
-    clkrstSetClockRate(&cpuSession, 1785000000);
+    clkrstSetClockRate(&cpuSession, clockSpeeds[switchOverclock]);
 
     // Start audio output
     audoutInitialize();
@@ -196,11 +199,12 @@ uint32_t *getRomIcon(std::string filename)
 
 void settingsMenu()
 {
-    const std::vector<std::string> toggle      = { "Off", "On"                              };
-    const std::vector<std::string> rotation    = { "None", "Clockwise", "Counter-Clockwise" };
-    const std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal"    };
-    const std::vector<std::string> sizing      = { "Even", "Enlarge Top", "Enlarge Bottom"  };
-    const std::vector<std::string> gap         = { "None", "Quarter", "Half", "Full"        };
+    const std::vector<std::string> toggle      = { "Off", "On"                                    };
+    const std::vector<std::string> rotation    = { "None", "Clockwise", "Counter-Clockwise"       };
+    const std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal"          };
+    const std::vector<std::string> sizing      = { "Even", "Enlarge Top", "Enlarge Bottom"        };
+    const std::vector<std::string> gap         = { "None", "Quarter", "Half", "Full"              };
+    const std::vector<std::string> overclock   = { "1020 MHz", "1224 MHz", "1581 MHz", "1785 MHz" };
 
     unsigned int index = 0;
 
@@ -220,7 +224,8 @@ void settingsMenu()
             ListItem("Integer Scale",      toggle[ScreenLayout::getIntegerScale()]),
             ListItem("GBA Crop",           toggle[ScreenLayout::getGbaCrop()]),
             ListItem("Screen Filter",      toggle[screenFilter]),
-            ListItem("Show FPS Counter",   toggle[showFpsCounter])
+            ListItem("Show FPS Counter",   toggle[showFpsCounter]),
+            ListItem("Switch Overclock",   overclock[switchOverclock])
         };
 
         // Create the settings menu
@@ -247,6 +252,7 @@ void settingsMenu()
                 case  9: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
                 case 10: screenFilter   = !screenFilter;                                                     break;
                 case 11: showFpsCounter = !showFpsCounter;                                                   break;
+                case 12: switchOverclock = (switchOverclock + 1) % 4;                                        break;
             }
         }
         else
@@ -574,8 +580,9 @@ int main()
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
-        Setting("screenFilter",   &screenFilter,   false),
-        Setting("showFpsCounter", &showFpsCounter, false)
+        Setting("screenFilter",    &screenFilter,    false),
+        Setting("showFpsCounter",  &showFpsCounter,  false),
+        Setting("switchOverclock", &switchOverclock, false)
     };
 
     // Load the settings
