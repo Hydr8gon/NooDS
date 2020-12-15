@@ -84,7 +84,7 @@ Core::Core(std::string ndsPath, std::string gbaPath):
         if (ndsPath == "" && Settings::getDirectBoot())
         {
             memory.write<uint16_t>(0, 0x4000304, 0x8003); // POWCNT1
-            enterGbaMode();
+            enterGbaMode(true);
         }
     }
 }
@@ -180,10 +180,10 @@ void Core::runNdsFrame()
     }
 }
 
-void Core::enterGbaMode()
+void Core::enterGbaMode(bool direct)
 {
     // Switch to GBA mode
-    interpreter[1].enterGbaMode();
+    interpreter[1].enterGbaMode(direct);
     runFunc = &Core::runGbaFrame;
     gbaMode = true;
 

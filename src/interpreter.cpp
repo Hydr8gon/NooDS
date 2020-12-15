@@ -59,11 +59,11 @@ void Interpreter::directBoot()
     setMode(0x1F); // System
 }
 
-void Interpreter::enterGbaMode()
+void Interpreter::enterGbaMode(bool direct)
 {
-    // Point the program counter to the GBA BIOS
-    // The GBA BIOS will take care of initializing everything else
-    registersUsr[15] = 0x00000000 + 4;
+    // Prepare to boot the GBA BIOS (and rely on it to initialize everything else)
+    registersUsr[15] = 0x00000000 + (direct ? 8 : ((cpsr & BIT(5)) ? 4 : 6));
+    cpsr = 0x000000C0;
     postFlg = 0;
 }
 

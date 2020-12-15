@@ -528,14 +528,9 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
         Vertex *previous = vertices[(i - 1 + polygon->size) % polygon->size];
 
         if (current->y > previous->y)
-        {
-            if (current->y > line && previous->y <= line)
-            {
-                vCur[countCur++] = previous;
-                vCur[countCur++] = current;
-            }
-        }
-        else if (previous->y > line && current->y <= line)
+            SWAP(current, previous);
+
+        if (previous->y > line && current->y <= line)
         {
             vCur[countCur++] = current;
             vCur[countCur++] = previous;
@@ -574,34 +569,22 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
             Vertex *previous = vertices[(i - 1 + polygon->size) % polygon->size];
 
             if (current->y > previous->y)
+                SWAP(current, previous);
+
+            if (previous->y > line - 1 && current->y <= line - 1)
             {
-                if (current->y > line - 1 && previous->y <= line - 1)
-                {
-                    vTop[countTop++] = previous;
-                    vTop[countTop++] = current;
-                }
-                if (current->y > line + 1 && previous->y <= line + 1)
-                {
-                    vBot[countBot++] = previous;
-                    vBot[countBot++] = current;
-                }
+                vTop[countTop++] = current;
+                vTop[countTop++] = previous;
             }
-            else
+
+            if (previous->y > line + 1 && current->y <= line + 1)
             {
-                if (previous->y > line - 1 && current->y <= line - 1)
-                {
-                    vTop[countTop++] = current;
-                    vTop[countTop++] = previous;
-                }
-                if (previous->y > line + 1 && current->y <= line + 1)
-                {
-                    vBot[countBot++] = current;
-                    vBot[countBot++] = previous;
-                }
+                vBot[countBot++] = current;
+                vBot[countBot++] = previous;
             }
         }
 
-        if (countTop == 4 && countBot == 4) // Both lines intersect
+        if (countTop >= 4 && countBot >= 4) // Both lines intersect
         {
             // Calculate the X bounds of the polygon on the above and below lines
             uint32_t xa = interpolateLinear(vTop[0]->x, vTop[1]->x, vTop[0]->y, line - 1, vTop[1]->y);
@@ -647,16 +630,9 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
     if (abs(vCur[1]->x - vCur[0]->x) > vCur[1]->y - vCur[0]->y)
     {
         // Reorder the vertices so the greater X coordinate comes last
-        if (vCur[1]->x > vCur[0]->x)
-        {
-            e[0] = 0;
-            e[1] = 1;
-        }
-        else
-        {
-            e[0] = 1;
-            e[1] = 0;
-        }
+        const bool greater = (vCur[1]->x > vCur[0]->x);
+        e[0] = !greater;
+        e[1] =  greater;
 
         lx1 = vCur[e[0]]->x;
         lx = x1;
@@ -676,16 +652,9 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
     if (abs(vCur[3]->x - vCur[2]->x) > vCur[3]->y - vCur[2]->y)
     {
         // Reorder the vertices so the greater X coordinate comes last
-        if (vCur[3]->x > vCur[2]->x)
-        {
-            e[2] = 2;
-            e[3] = 3;
-        }
-        else
-        {
-            e[2] = 3;
-            e[3] = 2;
-        }
+        const bool greater = (vCur[3]->x > vCur[2]->x);
+        e[2] = 2 + !greater;
+        e[3] = 2 +  greater;
 
         rx1 = vCur[e[2]]->x;
         rx = x2;

@@ -2987,7 +2987,7 @@ void Memory::writeHaltCnt(uint8_t value)
     {
         case 1: // GBA
         {
-            core->enterGbaMode();
+            core->enterGbaMode(false);
             break;
         }
 

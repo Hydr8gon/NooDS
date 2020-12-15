@@ -32,7 +32,7 @@ class Interpreter
         Interpreter(Core *core, bool cpu);
 
         void directBoot();
-        void enterGbaMode();
+        void enterGbaMode(bool direct);
 
         void runCycle();
 

@@ -53,7 +53,7 @@ class Core
         bool isGbaMode() { return gbaMode; }
         int  getFps()    { return fps;     }
 
-        void enterGbaMode();
+        void enterGbaMode(bool direct);
 
         Cartridge cartridge;
         Cp15 cp15;
