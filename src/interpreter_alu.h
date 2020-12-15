@@ -529,12 +529,7 @@ FORCE_INLINE void Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -563,12 +558,7 @@ FORCE_INLINE void Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -597,12 +587,7 @@ FORCE_INLINE void Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -634,12 +619,7 @@ FORCE_INLINE void Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -671,12 +651,7 @@ FORCE_INLINE void Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -708,12 +683,7 @@ FORCE_INLINE void Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -745,12 +715,7 @@ FORCE_INLINE void Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -782,12 +747,7 @@ FORCE_INLINE void Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -819,12 +779,7 @@ FORCE_INLINE void Interpreter::orrs(uint32_t opcode, uint32_t op2) // ORRS Rd,Rn
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -851,12 +806,7 @@ FORCE_INLINE void Interpreter::movs(uint32_t opcode, uint32_t op2) // MOVS Rd,op
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -885,12 +835,7 @@ FORCE_INLINE void Interpreter::bics(uint32_t opcode, uint32_t op2) // BICS Rd,Rn
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 
@@ -917,12 +862,7 @@ FORCE_INLINE void Interpreter::mvns(uint32_t opcode, uint32_t op2) // MVNS Rd,op
         {
             cpsr = *spsr;
             setMode(cpsr);
-
-            if (cpsr & BIT(5))
-                *registers[15] &= ~1;
-            else
-                *registers[15] = (*registers[15] & ~3) + 4;
-
+            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
             return;
         }
 

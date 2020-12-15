@@ -31,7 +31,7 @@ FORCE_INLINE void Interpreter::bx(uint32_t opcode) // BX Rn
     if (op0 & BIT(0))
     {
         cpsr |= BIT(5);
-        *registers[15] = op0 & ~1;
+        *registers[15] = (op0 & ~1) + 2;
     }
     else
     {
@@ -51,7 +51,7 @@ FORCE_INLINE void Interpreter::blxReg(uint32_t opcode) // BLX Rn
     if (op0 & BIT(0))
     {
         cpsr |= BIT(5);
-        *registers[15] = op0 & ~1;
+        *registers[15] = (op0 & ~1) + 2;
     }
     else
     {
@@ -87,7 +87,7 @@ FORCE_INLINE void Interpreter::blx(uint32_t opcode) // BLX label
 
     // Branch to offset with link and switch to THUMB
     *registers[14] = *registers[15] - 4;
-    *registers[15] += op0;
+    *registers[15] += op0 + 2;
     cpsr |= BIT(5);
 }
 
@@ -99,7 +99,7 @@ FORCE_INLINE void Interpreter::swi() // SWI #i
     *spsr = cpsrOld;
     cpsr |= BIT(7);
     *registers[14] = *registers[15] - 4;
-    *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0) + 0x08 + 4;
+    *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x08 + 4;
 }
 
 FORCE_INLINE void Interpreter::bxRegT(uint16_t opcode) // BX Rs
@@ -115,7 +115,7 @@ FORCE_INLINE void Interpreter::bxRegT(uint16_t opcode) // BX Rs
     else
     {
         cpsr &= ~BIT(5);
-        *registers[15] = (op0 & ~3) + 6;
+        *registers[15] = (op0 & ~3) + 4;
     }
 }
 
@@ -135,7 +135,7 @@ FORCE_INLINE void Interpreter::blxRegT(uint16_t opcode) // BLX Rs
     else
     {
         cpsr &= ~BIT(5);
-        *registers[15] = (op0 & ~3) + 6;
+        *registers[15] = (op0 & ~3) + 4;
     }
 }
 
@@ -318,7 +318,7 @@ FORCE_INLINE void Interpreter::blxOffT(uint16_t opcode) // BLX label
     // Long branch to offset with link and switch to ARM mode
     cpsr &= ~BIT(5);
     uint32_t ret = *registers[15] - 1;
-    *registers[15] = ((*registers[14] + op0) & ~3) + 6;
+    *registers[15] = ((*registers[14] + op0) & ~3) + 4;
     *registers[14] = ret;
 }
 
@@ -331,7 +331,7 @@ FORCE_INLINE void Interpreter::swiT() // SWI #i
     cpsr &= ~BIT(5);
     cpsr |= BIT(7);
     *registers[14] = *registers[15] - 2;
-    *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0) + 0x08 + 6;
+    *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x08 + 4;
 }
 
 #endif // INTERPRETER_BRANCH

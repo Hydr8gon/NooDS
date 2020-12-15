@@ -130,7 +130,7 @@ FORCE_INLINE void Interpreter::ldrbOf(uint32_t opcode, uint32_t op2) // LDRB Rd,
         if (cpu == 0 && (*op0 & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -201,7 +201,7 @@ FORCE_INLINE void Interpreter::ldrOf(uint32_t opcode, uint32_t op2) // LDR Rd,[R
         if (cpu == 0 && (*op0 & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -300,7 +300,7 @@ FORCE_INLINE void Interpreter::ldrbPr(uint32_t opcode, uint32_t op2) // LDRB Rd,
         if (cpu == 0 && (*op0 & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -377,7 +377,7 @@ FORCE_INLINE void Interpreter::ldrPr(uint32_t opcode, uint32_t op2) // LDR Rd,[R
         if (cpu == 0 && (*op0 & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -479,7 +479,7 @@ FORCE_INLINE void Interpreter::ldrbPt(uint32_t opcode, uint32_t op2) // LDRB Rd,
         if (cpu == 0 && (*op0 & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -558,7 +558,7 @@ FORCE_INLINE void Interpreter::ldrPt(uint32_t opcode, uint32_t op2) // LDR Rd,[R
         if (cpu == 0 && (*op0 & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -668,7 +668,7 @@ FORCE_INLINE void Interpreter::ldmda(uint32_t opcode) // LDMDA Rn, <Rlist>
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -721,7 +721,7 @@ FORCE_INLINE void Interpreter::ldmia(uint32_t opcode) // LDMIA Rn, <Rlist>
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -774,7 +774,7 @@ FORCE_INLINE void Interpreter::ldmdb(uint32_t opcode) // LDMDB Rn, <Rlist>
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -827,7 +827,7 @@ FORCE_INLINE void Interpreter::ldmib(uint32_t opcode) // LDMIB Rn, <Rlist>
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -889,7 +889,7 @@ FORCE_INLINE void Interpreter::ldmdaW(uint32_t opcode) // LDMDA Rn!, <Rlist>
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -960,7 +960,7 @@ FORCE_INLINE void Interpreter::ldmiaW(uint32_t opcode) // LDMIA Rn!, <Rlist>
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -1039,7 +1039,7 @@ FORCE_INLINE void Interpreter::ldmdbW(uint32_t opcode) // LDMDB Rn!, <Rlist>
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -1110,7 +1110,7 @@ FORCE_INLINE void Interpreter::ldmibW(uint32_t opcode) // LDMIB Rn!, <Rlist>
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -1187,7 +1187,7 @@ FORCE_INLINE void Interpreter::ldmdaU(uint32_t opcode) // LDMDA Rn, <Rlist>^
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -1259,7 +1259,7 @@ FORCE_INLINE void Interpreter::ldmiaU(uint32_t opcode) // LDMIA Rn, <Rlist>^
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -1331,7 +1331,7 @@ FORCE_INLINE void Interpreter::ldmdbU(uint32_t opcode) // LDMDB Rn, <Rlist>^
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -1403,7 +1403,7 @@ FORCE_INLINE void Interpreter::ldmibU(uint32_t opcode) // LDMIB Rn, <Rlist>^
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -1478,7 +1478,7 @@ FORCE_INLINE void Interpreter::ldmdaUW(uint32_t opcode) // LDMDA Rn!, <Rlist>^
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -1568,7 +1568,7 @@ FORCE_INLINE void Interpreter::ldmiaUW(uint32_t opcode) // LDMIA Rn!, <Rlist>^
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -1666,7 +1666,7 @@ FORCE_INLINE void Interpreter::ldmdbUW(uint32_t opcode) // LDMDB Rn!, <Rlist>^
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -1756,7 +1756,7 @@ FORCE_INLINE void Interpreter::ldmibUW(uint32_t opcode) // LDMIB Rn!, <Rlist>^
         if (cpu == 0 && (*registers[15] & BIT(0)))
         {
             cpsr |= BIT(5);
-            *registers[15] &= ~1;
+            *registers[15] = (*registers[15] & ~1) + 2;
         }
         else
         {
@@ -2298,7 +2298,7 @@ FORCE_INLINE void Interpreter::popPcT(uint16_t opcode) // POP <Rlist>,PC
     else
     {
         cpsr &= ~BIT(5);
-        *registers[15] = (*registers[15] & ~3) + 6;
+        *registers[15] = (*registers[15] & ~3) + 4;
     }
 }
 
