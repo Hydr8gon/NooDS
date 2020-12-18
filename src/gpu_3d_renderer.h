@@ -57,6 +57,9 @@ class Gpu3DRenderer
         uint8_t stencilBuffer[3][256] = {};
         bool stencilClear[3] = {};
 
+        int polygonTop[2048] = {};
+        int polygonBot[2048] = {};
+
         int activeThreads = 0;
         std::thread *threads[3] = {};
         std::atomic<bool> ready[192];

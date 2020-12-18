@@ -66,6 +66,21 @@ void Gpu3DRenderer::drawScanline(int line)
 {
     if (line == 0)
     {
+        // Calculate the scanline bounds for each polygon
+        for (int i = 0; i < core->gpu3D.getPolygonCount(); i++)
+        {
+            polygonTop[i] = 192;
+            polygonBot[i] =   0;
+
+            _Polygon *polygon = &core->gpu3D.getPolygons()[i];
+            for (int j = 0; j < polygon->size; j++)
+            {
+                Vertex *vertex = &polygon->vertices[j];
+                if (vertex->y < polygonTop[i]) polygonTop[i] = vertex->y;
+                if (vertex->y > polygonBot[i]) polygonBot[i] = vertex->y;
+            }
+        }
+
         // Clean up any existing threads
         for (int i = 0; i < activeThreads; i++)
         {
@@ -131,12 +146,15 @@ void Gpu3DRenderer::drawScanline1(int line, int thread)
 
     std::vector<_Polygon*> translucent;
 
-    // Draw the solid polygons
+    // Draw the polygons
     for (int i = 0; i < core->gpu3D.getPolygonCount(); i++)
     {
-        _Polygon *polygon = &core->gpu3D.getPolygons()[i];
+        // Skip polygons that aren't on the current scanline
+        if (line < polygonTop[i] || line >= polygonBot[i])
+            continue;
 
-        // If the polygon is translucent, save it for last
+        // Draw solid polygons and save the translucent ones for later
+        _Polygon *polygon = &core->gpu3D.getPolygons()[i];
         if (polygon->alpha < 0x3F || polygon->textureFmt == 1 || polygon->textureFmt == 6)
             translucent.push_back(polygon);
         else
