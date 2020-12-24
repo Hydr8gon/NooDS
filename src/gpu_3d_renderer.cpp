@@ -79,6 +79,9 @@ void Gpu3DRenderer::drawScanline(int line)
                 if (vertex->y < polygonTop[i]) polygonTop[i] = vertex->y;
                 if (vertex->y > polygonBot[i]) polygonBot[i] = vertex->y;
             }
+
+            // Allow horizontal line polygons to be drawn
+            if (polygonTop[i] == polygonBot[i]) polygonTop[i]--;
         }
 
         // Clean up any existing threads
@@ -144,7 +147,7 @@ void Gpu3DRenderer::drawScanline1(int line, int thread)
 
     stencilClear[thread] = false;
 
-    std::vector<_Polygon*> translucent;
+    std::vector<int> translucent;
 
     // Draw the polygons
     for (int i = 0; i < core->gpu3D.getPolygonCount(); i++)
@@ -156,9 +159,9 @@ void Gpu3DRenderer::drawScanline1(int line, int thread)
         // Draw solid polygons and save the translucent ones for later
         _Polygon *polygon = &core->gpu3D.getPolygons()[i];
         if (polygon->alpha < 0x3F || polygon->textureFmt == 1 || polygon->textureFmt == 6)
-            translucent.push_back(polygon);
+            translucent.push_back(i);
         else
-            drawPolygon(line, thread, polygon);
+            drawPolygon(line, thread, i);
     }
 
     // Draw the translucent polygons
@@ -230,6 +233,9 @@ uint8_t *Gpu3DRenderer::getPalette(uint32_t address)
 
 uint32_t Gpu3DRenderer::interpolateLinear(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2)
 {
+    if (x <= x1) return v1;
+    if (x >= x2) return v2;
+
     // Linearly interpolate a new value between the min and max values
     if (v1 <= v2)
         return v1 + (v2 - v1) * (x - x1) / (x2 - x1);
@@ -237,8 +243,23 @@ uint32_t Gpu3DRenderer::interpolateLinear(uint32_t v1, uint32_t v2, uint32_t x1,
         return v2 + (v1 - v2) * (x2 - x) / (x2 - x1);
 }
 
+uint32_t Gpu3DRenderer::interpolateLinRev(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2)
+{
+    if (x <= x1) return v1;
+    if (x >= x2) return v2;
+
+    // Linearly interpolate a new value between the min and max values (reverse formula)
+    if (v1 <= v2)
+        return v2 - (v2 - v1) * (x2 - x) / (x2 - x1);
+    else
+        return v1 - (v1 - v2) * (x - x1) / (x2 - x1);
+}
+
 uint32_t Gpu3DRenderer::interpolateFill(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2)
 {
+    if (x <= x1) return v1;
+    if (x >= x2) return v2;
+
     // Fall back to linear interpolation if the W values are equal and their lower bits are clear
     if (w1 == w2 && !(w1 & 0x007F))
         return interpolateLinear(v1, v2, x1, x, x2);
@@ -255,6 +276,9 @@ uint32_t Gpu3DRenderer::interpolateFill(uint32_t v1, uint32_t v2, uint32_t x1, u
 
 uint32_t Gpu3DRenderer::interpolateEdge(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2)
 {
+    if (x <= x1) return v1;
+    if (x >= x2) return v2;
+
     // Fall back to linear interpolation if the W values are equal and their lower bits are clear
     if (w1 == w2 && !(w1 & 0x00FE))
         return interpolateLinear(v1, v2, x1, x, x2);
@@ -525,8 +549,10 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
     }
 }
 
-void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
+void Gpu3DRenderer::drawPolygon(int line, int thread, int polygonIndex)
 {
+    _Polygon *polygon = &core->gpu3D.getPolygons()[polygonIndex];
+
     // Get the polygon vertices
     Vertex *vertices[10];
     for (int i = 0; i < polygon->size; i++)
@@ -536,181 +562,213 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
     if (polygon->crossed)
         SWAP(vertices[2], vertices[3]);
 
-    Vertex *vCur[4];
-    int countCur = 0;
-
-    // Find the polygon edges that intersect with the current line
-    for (int i = 0; i < polygon->size && countCur < 4; i++)
+    // Find the starting (top-left) vertex
+    int start = 0;
+    for (int i = 0; i < polygon->size; i++)
     {
-        Vertex *current = vertices[i];
-        Vertex *previous = vertices[(i - 1 + polygon->size) % polygon->size];
+        if (vertices[start]->y > vertices[i]->y || (vertices[start]->y == vertices[i]->y && vertices[start]->x > vertices[i]->x))
+            start = i;
+    }
 
-        if (current->y > previous->y)
-            SWAP(current, previous);
+    // Set the starting edges
+    int v[4] =
+    {
+        start, (start + 1)                 % polygon->size,
+        start, (start - 1 + polygon->size) % polygon->size
+    };
 
-        if (previous->y > line && current->y <= line)
+    // Follow the vertices forwards to the first intersecting edge
+    while (vertices[v[1]]->y <= line)
+    {
+        if (v[1] == start) return; // Full loop, no intersection
+        v[0] = v[1];
+        v[1] = (v[1] + 1) % polygon->size;
+    }
+
+    // Follow the vertices backwards to the first intersecting edge
+    while (vertices[v[3]]->y <= line)
+    {
+        if (v[3] == start) return; // Full loop, no intersection
+        v[2] = v[3];
+        v[3] = (v[3] - 1 + polygon->size) % polygon->size;
+    }
+
+    // Swap the edges depending on polygon orientation
+    if (polygon->clockwise)
+    {
+        SWAP(v[0], v[2]);
+        SWAP(v[1], v[3]);
+    }
+
+    // Rearrange the vertices so the lower Y values come first
+    if (vertices[v[0]]->y > vertices[v[1]]->y) SWAP(v[0], v[1]);
+    if (vertices[v[2]]->y > vertices[v[3]]->y) SWAP(v[2], v[3]);
+
+    uint32_t x1, x2, x3, x4;
+
+    // Calculate the left edge bounds
+    if (vertices[v[0]]->y == vertices[v[1]]->y) // Horizontal
+    {
+        x1 = vertices[v[0]]->x;
+        x2 = vertices[v[1]]->x;
+
+        // Rearrange the vertices so the lower X values come first
+        if (vertices[v[0]]->x > vertices[v[1]]->x)
         {
-            vCur[countCur++] = current;
-            vCur[countCur++] = previous;
+            SWAP(v[0], v[1]);
+            SWAP(x1, x2);
         }
     }
-
-    // Don't draw anything if the polygon doesn't intersect with the current line
-    if (countCur < 4) return;
-
-    // Calculate the X bounds of the polygon on the current line
-    uint32_t x1 = interpolateLinear(vCur[0]->x, vCur[1]->x, vCur[0]->y, line, vCur[1]->y);
-    uint32_t x2 = interpolateLinear(vCur[2]->x, vCur[3]->x, vCur[2]->y, line, vCur[3]->y);
-
-    // Swap the bounds if the first one is on the right
-    if (x1 > x2)
+    else if (abs(vertices[v[1]]->x - vertices[v[0]]->x) > vertices[v[1]]->y - vertices[v[0]]->y) // X-major
     {
-        SWAP(x1, x2);
-        SWAP(vCur[0], vCur[2]);
-        SWAP(vCur[1], vCur[3]);
-    }
+        // Interpolate with an extra bit of precision so the result can be rounded
+        x1 = (interpolateLinear(vertices[v[0]]->x << 1, vertices[v[1]]->x << 1, vertices[v[0]]->y, line,     vertices[v[1]]->y) + 1) >> 1;
+        x2 = (interpolateLinear(vertices[v[0]]->x << 1, vertices[v[1]]->x << 1, vertices[v[0]]->y, line + 1, vertices[v[1]]->y) + 1) >> 1;
 
-    uint32_t x3 = 0, x4 = 0;
-
-    // Polygons with an alpha value of 0 are rendered as opaque wireframe polygons
-    // In this case, calculate the X bounds of the polygon interior so it can be skipped during rendering
-    if (polygon->alpha == 0)
-    {
-        Vertex *vTop[4], *vBot[4];
-        int countTop = 0, countBot = 0;
-
-        // Find the polygon edges that intersect with the above and below lines
-        // If either line doesn't intersect, the current line is along an edge and can be drawn normally
-        for (int i = 0; i < polygon->size && (countTop < 4 || countBot < 4); i++)
+        // Rearrange the vertices so the lower X values come first
+        if (vertices[v[0]]->x > vertices[v[1]]->x)
         {
-            Vertex *current = vertices[i];
-            Vertex *previous = vertices[(i - 1 + polygon->size) % polygon->size];
-
-            if (current->y > previous->y)
-                SWAP(current, previous);
-
-            if (previous->y > line - 1 && current->y <= line - 1)
-            {
-                vTop[countTop++] = current;
-                vTop[countTop++] = previous;
-            }
-
-            if (previous->y > line + 1 && current->y <= line + 1)
-            {
-                vBot[countBot++] = current;
-                vBot[countBot++] = previous;
-            }
-        }
-
-        if (countTop >= 4 && countBot >= 4) // Both lines intersect
-        {
-            // Calculate the X bounds of the polygon on the above and below lines
-            uint32_t xa = interpolateLinear(vTop[0]->x, vTop[1]->x, vTop[0]->y, line - 1, vTop[1]->y);
-            uint32_t xb = interpolateLinear(vTop[2]->x, vTop[3]->x, vTop[2]->y, line - 1, vTop[3]->y);
-            uint32_t xc = interpolateLinear(vBot[0]->x, vBot[1]->x, vBot[0]->y, line + 1, vBot[1]->y);
-            uint32_t xd = interpolateLinear(vBot[2]->x, vBot[3]->x, vBot[2]->y, line + 1, vBot[3]->y);
-
-            // Swap the bounds if the first one is on the right
-            if (xa > xb) SWAP(xa, xb);
-            if (xc > xd) SWAP(xc, xd);
-
-            // Set the X bounds of the polygon interior
-            // On the left, the polygon will be drawn from the left edge to the point where the edge starts on an adjacent line
-            // On the right, the polygon will be drawn from the point where the edge starts on an adjacent line to the right edge
-            // For this, the left interior bound should be larger, and the right interior bound should be smaller
-            x3 = (xa > xc) ? xa : xc;
-            x4 = (xb < xd) ? xb : xd;
-
-            // If the difference between bounds is less than a pixel, adjust them so the edge will still be drawn
-            if (x3 <= x1) x3 = x1 + 1;
-            if (x4 >= x2) x4 = x2 - 1;
+            SWAP(v[0], v[1]);
+            SWAP(x1, x2);
         }
     }
-
-    // Apply W-shift to reduce (or expand) W values to 16 bits
-    uint32_t vw[4];
-    if (polygon->wShift >= 0)
+    else // Y-major
     {
-        for (int i = 0; i < 4; i++)
-            vw[i] = vCur[i]->w >> polygon->wShift;
-    }
-    else
-    {
-        for (int i = 0; i < 4; i++)
-            vw[i] = vCur[i]->w << -polygon->wShift;
+        // Interpolate without rounding; since the edge is only one pixel thick, only one interpolation is needed
+        x1 = interpolateLinear(vertices[v[0]]->x, vertices[v[1]]->x, vertices[v[0]]->y, line, vertices[v[1]]->y);
+        x2 = x1;
     }
 
-    int e[4];
+    // Calculate the right edge bounds
+    if (vertices[v[2]]->y == vertices[v[3]]->y) // Horizontal
+    {
+        x3 = vertices[v[2]]->x;
+        x4 = vertices[v[3]]->x;
+
+        // Rearrange the vertices so the lower X values come first
+        if (vertices[v[2]]->x > vertices[v[3]]->x)
+        {
+            SWAP(v[2], v[3]);
+            SWAP(x3, x4);
+        }
+    }
+    else if (vertices[v[2]]->x == vertices[v[3]]->x) // Vertical
+    {
+        // Unless a line polygon, vertical right edges have their X reduced by 1
+        x3 = vertices[v[2]]->x;
+        if ((vertices[v[0]]->x != vertices[v[1]]->x || vertices[v[0]]->x != vertices[v[2]]->x) && x3 > 0) x3--;
+        x4 = x3;
+    }
+    else if (abs(vertices[v[3]]->x - vertices[v[2]]->x) > vertices[v[3]]->y - vertices[v[2]]->y) // X-major
+    {
+        // Interpolate with an extra bit of precision so the result can be rounded
+        x3 = (interpolateLinear(vertices[v[2]]->x << 1, vertices[v[3]]->x << 1, vertices[v[2]]->y, line,     vertices[v[3]]->y) + 1) >> 1;
+        x4 = (interpolateLinear(vertices[v[2]]->x << 1, vertices[v[3]]->x << 1, vertices[v[2]]->y, line + 1, vertices[v[3]]->y) + 1) >> 1;
+
+        // Rearrange the vertices so the lower X values come first
+        if (vertices[v[2]]->x > vertices[v[3]]->x)
+        {
+            SWAP(v[2], v[3]);
+            SWAP(x3, x4);
+        }
+    }
+    else // Y-major
+    {
+        // Interpolate without rounding; since the edge is only one pixel thick, only one interpolation is needed
+        // Note that negative Y-major right edges seem to be interpolated in reverse from other edges
+        if (vertices[v[2]]->x > vertices[v[3]]->x)
+            x3 = interpolateLinRev(vertices[v[2]]->x, vertices[v[3]]->x, vertices[v[2]]->y, line, vertices[v[3]]->y) - 1;
+        else
+            x3 = interpolateLinear(vertices[v[2]]->x, vertices[v[3]]->x, vertices[v[2]]->y, line, vertices[v[3]]->y);
+        x4 = x3;
+    }
+
+    // Reduce the bounds so they don't overlap
+    if (x2 > x1) x2--;
+    if (x4 > x3) x4--;
+
+    // Handle crossed edges; these become "dotted" if their orientation is wrong
+    if (x2 > x3) x2 = x3;
+    if (x1 > x2) x2 = x1;
+    if (x2 > x3) x3 = x2;
+    if (x3 > x4) x3 = x4;
+
+    // Swap the edges so the leftmost one comes first
+    if (x1 > x4)
+    {
+        SWAP(v[0], v[2]);
+        SWAP(v[1], v[3]);
+        SWAP(x1, x3);
+        SWAP(x2, x4);
+    }
+
     uint32_t lx1, lx, lx2;
     uint32_t rx1, rx, rx2;
 
-    // Choose between X and Y coordinates for edge interpolation on the left side (whichever is more precise)
-    if (abs(vCur[1]->x - vCur[0]->x) > vCur[1]->y - vCur[0]->y)
+    // Choose between X and Y coordinates for interpolation on the left (whichever is more precise)
+    if (abs(vertices[v[1]]->x - vertices[v[0]]->x) > abs(vertices[v[1]]->y - vertices[v[0]]->y))
     {
-        // Reorder the vertices so the greater X coordinate comes last
-        const bool greater = (vCur[1]->x > vCur[0]->x);
-        e[0] = !greater;
-        e[1] =  greater;
-
-        lx1 = vCur[e[0]]->x;
+        lx1 = vertices[v[0]]->x;
         lx = x1;
-        lx2 = vCur[e[1]]->x;
+        lx2 = vertices[v[1]]->x;
     }
     else
     {
-        e[0] = 0;
-        e[1] = 1;
-
-        lx1 = vCur[0]->y;
+        lx1 = vertices[v[0]]->y;
         lx = line;
-        lx2 = vCur[1]->y;
+        lx2 = vertices[v[1]]->y;
     }
 
-    // Choose between X and Y coordinates for edge interpolation on the right side (whichever is more precise)
-    if (abs(vCur[3]->x - vCur[2]->x) > vCur[3]->y - vCur[2]->y)
+    // Choose between X and Y coordinates for interpolation on the right (whichever is more precise)
+    if (abs(vertices[v[3]]->x - vertices[v[2]]->x) > abs(vertices[v[3]]->y - vertices[v[2]]->y))
     {
-        // Reorder the vertices so the greater X coordinate comes last
-        const bool greater = (vCur[3]->x > vCur[2]->x);
-        e[2] = 2 + !greater;
-        e[3] = 2 +  greater;
-
-        rx1 = vCur[e[2]]->x;
-        rx = x2;
-        rx2 = vCur[e[3]]->x;
+        rx1 = vertices[v[2]]->x;
+        rx = x4;
+        rx2 = vertices[v[3]]->x;
     }
     else
     {
-        e[2] = 2;
-        e[3] = 3;
-
-        rx1 = vCur[2]->y;
+        rx1 = vertices[v[2]]->y;
         rx = line;
-        rx2 = vCur[3]->y;
+        rx2 = vertices[v[3]]->y;
+    }
+
+    // Apply W-shift to reduce (or expand) W values to 16 bits
+    uint32_t ws[4];
+    if (polygon->wShift >= 0)
+    {
+        for (int i = 0; i < 4; i++)
+            ws[i] = vertices[v[i]]->w >> polygon->wShift;
+    }
+    else
+    {
+        for (int i = 0; i < 4; i++)
+            ws[i] = vertices[v[i]]->w << -polygon->wShift;
     }
 
     // Calculate the Z values of the polygon edges on the current line
-    uint32_t z1 = interpolateLinear(vCur[e[0]]->z, vCur[e[1]]->z, lx1, lx, lx2);
-    uint32_t z2 = interpolateLinear(vCur[e[2]]->z, vCur[e[3]]->z, rx1, rx, rx2);
+    uint32_t z1 = interpolateLinear(vertices[v[0]]->z, vertices[v[1]]->z, lx1, lx, lx2);
+    uint32_t z2 = interpolateLinear(vertices[v[2]]->z, vertices[v[3]]->z, rx1, rx, rx2);
 
     // Calculate the W values of the polygon edges on the current line
-    uint32_t w1 = interpolateEdge(vw[e[0]], vw[e[1]], lx1, lx, lx2, vw[e[0]], vw[e[1]]);
-    uint32_t w2 = interpolateEdge(vw[e[2]], vw[e[3]], rx1, rx, rx2, vw[e[2]], vw[e[3]]);
+    uint32_t w1 = interpolateEdge(ws[0], ws[1], lx1, lx, lx2, ws[0], ws[1]);
+    uint32_t w2 = interpolateEdge(ws[2], ws[3], rx1, rx, rx2, ws[2], ws[3]);
 
     // Interpolate the vertex color of the polygon edges on the current line
     // The color values are expanded to 9 bits during interpolation for extra precision
-    uint32_t r1 = interpolateEdge(((vCur[e[0]]->color >>  0) & 0x3F) << 3, ((vCur[e[1]]->color >>  0) & 0x3F) << 3, lx1, lx, lx2, vw[e[0]], vw[e[1]]);
-    uint32_t g1 = interpolateEdge(((vCur[e[0]]->color >>  6) & 0x3F) << 3, ((vCur[e[1]]->color >>  6) & 0x3F) << 3, lx1, lx, lx2, vw[e[0]], vw[e[1]]);
-    uint32_t b1 = interpolateEdge(((vCur[e[0]]->color >> 12) & 0x3F) << 3, ((vCur[e[1]]->color >> 12) & 0x3F) << 3, lx1, lx, lx2, vw[e[0]], vw[e[1]]);
-    uint32_t r2 = interpolateEdge(((vCur[e[2]]->color >>  0) & 0x3F) << 3, ((vCur[e[3]]->color >>  0) & 0x3F) << 3, rx1, rx, rx2, vw[e[2]], vw[e[3]]);
-    uint32_t g2 = interpolateEdge(((vCur[e[2]]->color >>  6) & 0x3F) << 3, ((vCur[e[3]]->color >>  6) & 0x3F) << 3, rx1, rx, rx2, vw[e[2]], vw[e[3]]);
-    uint32_t b2 = interpolateEdge(((vCur[e[2]]->color >> 12) & 0x3F) << 3, ((vCur[e[3]]->color >> 12) & 0x3F) << 3, rx1, rx, rx2, vw[e[2]], vw[e[3]]);
+    uint32_t r1 = interpolateEdge(((vertices[v[0]]->color >>  0) & 0x3F) << 3, ((vertices[v[1]]->color >>  0) & 0x3F) << 3, lx1, lx, lx2, ws[0], ws[1]);
+    uint32_t g1 = interpolateEdge(((vertices[v[0]]->color >>  6) & 0x3F) << 3, ((vertices[v[1]]->color >>  6) & 0x3F) << 3, lx1, lx, lx2, ws[0], ws[1]);
+    uint32_t b1 = interpolateEdge(((vertices[v[0]]->color >> 12) & 0x3F) << 3, ((vertices[v[1]]->color >> 12) & 0x3F) << 3, lx1, lx, lx2, ws[0], ws[1]);
+    uint32_t r2 = interpolateEdge(((vertices[v[2]]->color >>  0) & 0x3F) << 3, ((vertices[v[3]]->color >>  0) & 0x3F) << 3, rx1, rx, rx2, ws[2], ws[3]);
+    uint32_t g2 = interpolateEdge(((vertices[v[2]]->color >>  6) & 0x3F) << 3, ((vertices[v[3]]->color >>  6) & 0x3F) << 3, rx1, rx, rx2, ws[2], ws[3]);
+    uint32_t b2 = interpolateEdge(((vertices[v[2]]->color >> 12) & 0x3F) << 3, ((vertices[v[3]]->color >> 12) & 0x3F) << 3, rx1, rx, rx2, ws[2], ws[3]);
 
     // Interpolate the texture coordinates of the polygon edges on the current line
     // Interpolation is unsigned, so temporarily convert the signed values to unsigned
-    int s1 = interpolateEdge((int32_t)vCur[e[0]]->s + 0xFFFF, (int32_t)vCur[e[1]]->s + 0xFFFF, lx1, lx, lx2, vw[e[0]], vw[e[1]]) - 0xFFFF;
-    int s2 = interpolateEdge((int32_t)vCur[e[2]]->s + 0xFFFF, (int32_t)vCur[e[3]]->s + 0xFFFF, rx1, rx, rx2, vw[e[2]], vw[e[3]]) - 0xFFFF;
-    int t1 = interpolateEdge((int32_t)vCur[e[0]]->t + 0xFFFF, (int32_t)vCur[e[1]]->t + 0xFFFF, lx1, lx, lx2, vw[e[0]], vw[e[1]]) - 0xFFFF;
-    int t2 = interpolateEdge((int32_t)vCur[e[2]]->t + 0xFFFF, (int32_t)vCur[e[3]]->t + 0xFFFF, rx1, rx, rx2, vw[e[2]], vw[e[3]]) - 0xFFFF;
+    int32_t s1 = interpolateEdge((int32_t)vertices[v[0]]->s + 0xFFFF, (int32_t)vertices[v[1]]->s + 0xFFFF, lx1, lx, lx2, ws[0], ws[1]) - 0xFFFF;
+    int32_t t1 = interpolateEdge((int32_t)vertices[v[0]]->t + 0xFFFF, (int32_t)vertices[v[1]]->t + 0xFFFF, lx1, lx, lx2, ws[0], ws[1]) - 0xFFFF;
+    int32_t s2 = interpolateEdge((int32_t)vertices[v[2]]->s + 0xFFFF, (int32_t)vertices[v[3]]->s + 0xFFFF, rx1, rx, rx2, ws[2], ws[3]) - 0xFFFF;
+    int32_t t2 = interpolateEdge((int32_t)vertices[v[2]]->t + 0xFFFF, (int32_t)vertices[v[3]]->t + 0xFFFF, rx1, rx, rx2, ws[2], ws[3]) - 0xFFFF;
 
     // Keep track of shadow mask polygons
     if (polygon->mode == 3 && polygon->id == 0) // Shadow mask polygon
@@ -728,11 +786,20 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
         stencilClear[thread] = false;
     }
 
+    // Increment the right bound not only for drawing, but for interpolation across the scanline as well
+    // This seems to give results accurate to hardwate
+    x4++;
+
+    // Because edge traversal doesn't consider equal values to be intersecting, it skips horizontal edges
+    // Instead, the hardware simply considers the entire span across the top and bottom of a polygon to be an edge
+    if (line == polygonTop[polygonIndex] || line == polygonBot[polygonIndex] - 1)
+        x2 = x3 = x4;
+
     // Draw a line segment
-    for (uint32_t x = x1; x < x2; x++)
+    for (uint32_t x = x1; x < x4; x++)
     {
         // Skip the polygon interior for wireframe polygons
-        if (x3 < x4 && x == x3) x = x4;
+        if (polygon->alpha == 0 && x == x2 + 1 && x3 > x2) x = x3;
 
         // Invalid viewports can cause out-of-bounds vertices, so only draw within bounds
         if (x >= 256) break;
@@ -741,7 +808,7 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
         uint32_t depth;
         if (polygon->wBuffer)
         {
-            depth = interpolateFill(w1, w2, x1, x, x2, w1, w2);
+            depth = interpolateFill(w1, w2, x1, x, x4, w1, w2);
             if (polygon->wShift > 0)
                 depth <<= polygon->wShift;
             else if (polygon->wShift < 0)
@@ -750,7 +817,7 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
         }
         else
         {
-            depth = interpolateLinear(z1, z2, x1, x, x2);
+            depth = interpolateLinear(z1, z2, x1, x, x4);
         }
 
         // Draw a new pixel if the old one is behind the new one
@@ -762,17 +829,17 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, _Polygon *polygon)
                 continue;
 
             // Interpolate the vertex color at the current pixel
-            uint32_t r = interpolateFill(r1, r2, x1, x, x2, w1, w2) >> 3;
-            uint32_t g = interpolateFill(g1, g2, x1, x, x2, w1, w2) >> 3;
-            uint32_t b = interpolateFill(b1, b2, x1, x, x2, w1, w2) >> 3;
+            uint32_t r = interpolateFill(r1, r2, x1, x, x4, w1, w2) >> 3;
+            uint32_t g = interpolateFill(g1, g2, x1, x, x4, w1, w2) >> 3;
+            uint32_t b = interpolateFill(b1, b2, x1, x, x4, w1, w2) >> 3;
             uint32_t color = ((polygon->alpha ? polygon->alpha : 0x3F) << 18) | (b << 12) | (g << 6) | r;
 
             // Blend the texture with the vertex color
             if (polygon->textureFmt != 0)
             {
                 // Interpolate the texture coordinates at the current pixel
-                int s = interpolateFill(s1 + 0xFFFF, s2 + 0xFFFF, x1, x, x2, w1, w2) - 0xFFFF;
-                int t = interpolateFill(t1 + 0xFFFF, t2 + 0xFFFF, x1, x, x2, w1, w2) - 0xFFFF;
+                int s = interpolateFill(s1 + 0xFFFF, s2 + 0xFFFF, x1, x, x4, w1, w2) - 0xFFFF;
+                int t = interpolateFill(t1 + 0xFFFF, t2 + 0xFFFF, x1, x, x4, w1, w2) - 0xFFFF;
 
                 // Read a texel from the texture
                 uint32_t texel = readTexture(polygon, s >> 4, t >> 4);

@@ -58,6 +58,7 @@ struct _Polygon
     int size = 0;
     Vertex *vertices = nullptr;
     bool crossed = false;
+    bool clockwise = false;
 
     int mode = 0;
     bool transNewDepth = false;

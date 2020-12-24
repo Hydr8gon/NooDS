@@ -332,36 +332,50 @@ void Gpu3D::addPolygon()
 
     // Rearrange quad strip vertices to be counter-clockwise
     if (polygonType == 3)
+        SWAP(unclipped[2], unclipped[3]);
+
+    // Get the components of the second and third vertices, relative to the first
+    int64_t x1 = unclipped[1].x - unclipped[0].x;
+    int64_t y1 = unclipped[1].y - unclipped[0].y;
+    int64_t w1 = unclipped[1].w - unclipped[0].w;
+    int64_t x2 = unclipped[2].x - unclipped[0].x;
+    int64_t y2 = unclipped[2].y - unclipped[0].y;
+    int64_t w2 = unclipped[2].w - unclipped[0].w;
+
+    // Calculate the 3D cross product of the vertices
+    int64_t xc = y1 * w2 - w1 * y2;
+    int64_t yc = w1 * x2 - x1 * w2;
+    int64_t wc = x1 * y2 - y1 * x2;
+
+    // Reduce the result to 32 bits to avoid overflow
+    while (xc != (int32_t)xc || yc != (int32_t)yc || wc != (int32_t)wc)
     {
-        Vertex vertex = unclipped[2];
-        unclipped[2] = unclipped[3];
-        unclipped[3] = vertex;
+        xc >>= 4;
+        yc >>= 4;
+        wc >>= 4;
     }
 
-    // Clip the polygon
-    Vertex clipped[10];
-    bool clip = clipPolygon(unclipped, clipped, &savedPolygon.size);
+    // Calculate the dot product of the cross product and the first vertex to determine 2D orientation
+    int64_t dot = xc * unclipped[0].x + yc * unclipped[0].y + wc * unclipped[0].w;
 
-    // Calculate the cross product of the normalized polygon vertices to determine orientation
-    int64_t cross = 0;
-    if (savedPolygon.size >= 3)
-    {
-        cross = (((int64_t)clipped[1].x << 12) / clipped[1].w - ((int64_t)clipped[0].x << 12) / clipped[0].w) *
-                (((int64_t)clipped[2].y << 12) / clipped[2].w - ((int64_t)clipped[0].y << 12) / clipped[0].w) -
-                (((int64_t)clipped[1].y << 12) / clipped[1].w - ((int64_t)clipped[0].y << 12) / clipped[0].w) *
-                (((int64_t)clipped[2].x << 12) / clipped[2].w - ((int64_t)clipped[0].x << 12) / clipped[0].w);
-    }
+    // Separate from vertex store order, the renderer needs to know the raw polygon orientation to calculate edges
+    savedPolygon.clockwise = (dot < 0);
 
     // Every other triangle strip polygon is stored clockwise instead of counter-clockwise
-    // Keep track of this, and reverse the cross product of clockwise polygons to accomodate
+    // Keep track of this, and reverse the dot product of clockwise polygons to accomodate
     if (polygonType == 2)
     {
-        if (clockwise) cross = -cross;
+        if (clockwise) dot = -dot;
         clockwise = !clockwise;
     }
 
-    // Discard polygons that are outside of the view area or should be culled
-    if (savedPolygon.size == 0 || (!renderFront && cross > 0) || (!renderBack && cross < 0))
+    // Check if the polygon should be culled, and clip it if not
+    Vertex clipped[10];
+    bool cull = (!renderFront && dot > 0) || (!renderBack && dot < 0);
+    bool clip = cull ? false : clipPolygon(unclipped, clipped, &savedPolygon.size);
+
+    // Discard polygons that should be culled or are outside of the view area
+    if (cull || savedPolygon.size == 0)
     {
         switch (polygonType)
         {

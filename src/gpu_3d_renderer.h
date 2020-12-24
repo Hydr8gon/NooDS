@@ -81,12 +81,13 @@ class Gpu3DRenderer
         uint8_t *getPalette(uint32_t address);
 
         uint32_t interpolateLinear(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2);
+        uint32_t interpolateLinRev(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2);
         uint32_t interpolateFill(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2);
         uint32_t interpolateEdge(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2);
         uint32_t interpolateColor(uint32_t c1, uint32_t c2, uint32_t x1, uint32_t x, uint32_t x2);
 
         uint32_t readTexture(_Polygon *polygon, int s, int t);
-        void drawPolygon(int line, int thread, _Polygon *polygon);
+        void drawPolygon(int line, int thread, int polygonIndex);
 };
 
 #endif // GPU_3D_RENDERER_H
