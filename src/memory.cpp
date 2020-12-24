@@ -1661,6 +1661,22 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x4000300: base -= 0x4000300; size = 1; core->interpreter[0].writePostFlg(data << (base * 8));                          break; // POSTFLG (ARM9)
             case 0x4000304:
             case 0x4000305: base -= 0x4000304; size = 2; core->gpu.writePowCnt1(mask << (base * 8), data << (base * 8));                 break; // POWCNT1
+            case 0x4000330:
+            case 0x4000331: base -= 0x4000330; size = 2; core->gpu3DRenderer.writeEdgeColor(0, mask << (base * 8), data << (base * 8));  break; // EDGE_COLOR
+            case 0x4000332:
+            case 0x4000333: base -= 0x4000332; size = 2; core->gpu3DRenderer.writeEdgeColor(1, mask << (base * 8), data << (base * 8));  break; // EDGE_COLOR
+            case 0x4000334:
+            case 0x4000335: base -= 0x4000334; size = 2; core->gpu3DRenderer.writeEdgeColor(2, mask << (base * 8), data << (base * 8));  break; // EDGE_COLOR
+            case 0x4000336:
+            case 0x4000337: base -= 0x4000336; size = 2; core->gpu3DRenderer.writeEdgeColor(3, mask << (base * 8), data << (base * 8));  break; // EDGE_COLOR
+            case 0x4000338:
+            case 0x4000339: base -= 0x4000338; size = 2; core->gpu3DRenderer.writeEdgeColor(4, mask << (base * 8), data << (base * 8));  break; // EDGE_COLOR
+            case 0x400033A:
+            case 0x400033B: base -= 0x400033A; size = 2; core->gpu3DRenderer.writeEdgeColor(5, mask << (base * 8), data << (base * 8));  break; // EDGE_COLOR
+            case 0x400033C:
+            case 0x400033D: base -= 0x400033C; size = 2; core->gpu3DRenderer.writeEdgeColor(6, mask << (base * 8), data << (base * 8));  break; // EDGE_COLOR
+            case 0x400033E:
+            case 0x400033F: base -= 0x400033E; size = 2; core->gpu3DRenderer.writeEdgeColor(7, mask << (base * 8), data << (base * 8));  break; // EDGE_COLOR
             case 0x4000350:
             case 0x4000351:
             case 0x4000352:

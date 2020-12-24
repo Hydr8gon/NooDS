@@ -41,6 +41,7 @@ class Gpu3DRenderer
         uint16_t readDisp3DCnt() { return disp3DCnt; }
 
         void writeDisp3DCnt(uint16_t mask, uint16_t value);
+        void writeEdgeColor(int index, uint16_t mask, uint16_t value);
         void writeClearColor(uint32_t mask, uint32_t value);
         void writeClearDepth(uint16_t mask, uint16_t value);
         void writeFogColor(uint32_t mask, uint32_t value);
@@ -52,19 +53,20 @@ class Gpu3DRenderer
         Core *core;
 
         uint32_t framebuffer[256 * 192] = {};
-        uint32_t depthBuffer[3][256] = {};
-        uint8_t attribBuffer[3][256] = {};
-        uint8_t stencilBuffer[3][256] = {};
-        bool stencilClear[3] = {};
+        uint32_t depthBuffer[256 * 192] = {};
+        uint16_t attribBuffer[256 * 192] = {};
+        uint8_t stencilBuffer[256 * 192] = {};
+        bool stencilClear[256] = {};
 
         int polygonTop[2048] = {};
         int polygonBot[2048] = {};
 
         int activeThreads = 0;
         std::thread *threads[3] = {};
-        std::atomic<bool> ready[192];
+        std::atomic<int> ready[192];
 
         uint16_t disp3DCnt = 0;
+        uint16_t edgeColor[8] = {};
         uint32_t clearColor = 0;
         uint16_t clearDepth = 0;
         uint32_t fogColor = 0;
@@ -75,7 +77,8 @@ class Gpu3DRenderer
         static uint32_t rgba5ToRgba6(uint32_t color);
 
         void drawThreaded(int thread);
-        void drawScanline1(int line, int thread);
+        void drawScanline1(int line);
+        void finishScanline(int line);
 
         uint8_t *getTexture(uint32_t address);
         uint8_t *getPalette(uint32_t address);
@@ -87,7 +90,7 @@ class Gpu3DRenderer
         static uint32_t interpolateColor(uint32_t c1, uint32_t c2, uint32_t x1, uint32_t x, uint32_t x2);
 
         uint32_t readTexture(_Polygon *polygon, int s, int t);
-        void drawPolygon(int line, int thread, int polygonIndex);
+        void drawPolygon(int line, int polygonIndex);
 };
 
 #endif // GPU_3D_RENDERER_H
