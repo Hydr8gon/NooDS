@@ -704,33 +704,38 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, int polygonIndex)
 
     uint32_t lx1, lx, lx2;
     uint32_t rx1, rx, rx2;
+    bool hideLeft, hideRight;
 
     // Choose between X and Y coordinates for interpolation on the left (whichever is more precise)
-    if (abs(vertices[v[1]]->x - vertices[v[0]]->x) > abs(vertices[v[1]]->y - vertices[v[0]]->y))
+    if (abs(vertices[v[1]]->x - vertices[v[0]]->x) > abs(vertices[v[1]]->y - vertices[v[0]]->y)) // X-major
     {
         lx1 = vertices[v[0]]->x;
         lx = x1;
         lx2 = vertices[v[1]]->x;
+        hideLeft = (vertices[v[0]]->y < vertices[v[1]]->y);
     }
-    else
+    else // Y-major
     {
         lx1 = vertices[v[0]]->y;
         lx = line;
         lx2 = vertices[v[1]]->y;
+        hideLeft = false;
     }
 
     // Choose between X and Y coordinates for interpolation on the right (whichever is more precise)
-    if (abs(vertices[v[3]]->x - vertices[v[2]]->x) > abs(vertices[v[3]]->y - vertices[v[2]]->y))
+    if (abs(vertices[v[3]]->x - vertices[v[2]]->x) > abs(vertices[v[3]]->y - vertices[v[2]]->y)) // X-major
     {
         rx1 = vertices[v[2]]->x;
         rx = x4;
         rx2 = vertices[v[3]]->x;
+        hideRight = (vertices[v[2]]->y > vertices[v[3]]->y);
     }
-    else
+    else // Y-major
     {
         rx1 = vertices[v[2]]->y;
         rx = line;
         rx2 = vertices[v[3]]->y;
+        hideRight = (vertices[v[2]]->x != vertices[v[3]]->x);
     }
 
     // Apply W-shift to reduce (or expand) W values to 16 bits
@@ -788,7 +793,16 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, int polygonIndex)
 
     // Increment the right bound not only for drawing, but for interpolation across the scanline as well
     // This seems to give results accurate to hardware
-    x4++;
+    uint32_t x1a = x1, x4a = ++x4;
+
+    // Hide some edges for opaque polygons with no edge effects
+    if (polygon->alpha == 63 && !(disp3DCnt & (BIT(4) | BIT(5))))
+    {
+        if (hideLeft)  x1a = x2 + 1;
+        if (hideRight) x4a = x3;
+        if (!(hideLeft && hideRight) && x4a <= x1a)
+            x4a = x1a + 1;
+    }
 
     // Because edge traversal doesn't consider equal values to be intersecting, it skips horizontal edges
     // Instead, the hardware simply considers the entire span across the top and bottom of a polygon to be an edge
@@ -796,7 +810,7 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, int polygonIndex)
         x2 = x3 = x4;
 
     // Draw a line segment
-    for (uint32_t x = x1; x < x4; x++)
+    for (uint32_t x = x1a; x < x4a; x++)
     {
         // Skip the polygon interior for wireframe polygons
         if (polygon->alpha == 0 && x == x2 + 1 && x3 > x2) x = x3;
