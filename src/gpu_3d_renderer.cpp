@@ -795,8 +795,8 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, int polygonIndex)
     // This seems to give results accurate to hardware
     uint32_t x1a = x1, x4a = ++x4;
 
-    // Hide some edges for opaque polygons with no edge effects
-    if (polygon->alpha == 63 && !(disp3DCnt & (BIT(4) | BIT(5))))
+    // Set special bounds that hide some edges for opaque pixels with no edge effects
+    if (polygon->alpha != 0 && !(disp3DCnt & (BIT(4) | BIT(5))))
     {
         if (hideLeft)  x1a = x2 + 1;
         if (hideRight) x4a = x3;
@@ -810,7 +810,7 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, int polygonIndex)
         x2 = x3 = x4;
 
     // Draw a line segment
-    for (uint32_t x = x1a; x < x4a; x++)
+    for (uint32_t x = x1; x < x4; x++)
     {
         // Skip the polygon interior for wireframe polygons
         if (polygon->alpha == 0 && x == x2 + 1 && x3 > x2) x = x3;
@@ -949,7 +949,7 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, int polygonIndex)
                         *attrib = (*attrib & (polygon->fog << 7)) | BIT(6) | polygon->id;
                     }
                 }
-                else
+                else if (x >= x1a && x < x4a)
                 {
                     *pixel = BIT(26) | color;
                     depthBuffer[thread][x] = depth;
