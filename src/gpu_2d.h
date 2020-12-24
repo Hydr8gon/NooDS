@@ -100,7 +100,7 @@ class Gpu2D
         uint8_t bldY = 0;
         uint16_t masterBright = 0;
 
-        uint32_t rgb5ToRgb6(uint32_t color);
+        static uint32_t rgb5ToRgb6(uint32_t color);
 
         void drawText(int bg, int line);
         void drawAffine(int bg, int line);

@@ -787,7 +787,7 @@ void Gpu3DRenderer::drawPolygon(int line, int thread, int polygonIndex)
     }
 
     // Increment the right bound not only for drawing, but for interpolation across the scanline as well
-    // This seems to give results accurate to hardwate
+    // This seems to give results accurate to hardware
     x4++;
 
     // Because edge traversal doesn't consider equal values to be intersecting, it skips horizontal edges

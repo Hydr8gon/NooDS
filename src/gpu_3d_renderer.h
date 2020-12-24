@@ -72,7 +72,7 @@ class Gpu3DRenderer
         uint8_t fogTable[32] = {};
         uint16_t toonTable[32] = {};
 
-        uint32_t rgba5ToRgba6(uint32_t color);
+        static uint32_t rgba5ToRgba6(uint32_t color);
 
         void drawThreaded(int thread);
         void drawScanline1(int line, int thread);
@@ -80,11 +80,11 @@ class Gpu3DRenderer
         uint8_t *getTexture(uint32_t address);
         uint8_t *getPalette(uint32_t address);
 
-        uint32_t interpolateLinear(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2);
-        uint32_t interpolateLinRev(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2);
-        uint32_t interpolateFill(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2);
-        uint32_t interpolateEdge(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2);
-        uint32_t interpolateColor(uint32_t c1, uint32_t c2, uint32_t x1, uint32_t x, uint32_t x2);
+        static uint32_t interpolateLinear(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2);
+        static uint32_t interpolateLinRev(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2);
+        static uint32_t interpolateFill(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2);
+        static uint32_t interpolateEdge(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2);
+        static uint32_t interpolateColor(uint32_t c1, uint32_t c2, uint32_t x1, uint32_t x, uint32_t x2);
 
         uint32_t readTexture(_Polygon *polygon, int s, int t);
         void drawPolygon(int line, int thread, int polygonIndex);

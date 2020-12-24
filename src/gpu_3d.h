@@ -201,17 +201,17 @@ class Gpu3D
 
         int gxFifoCount = 0;
 
-        Matrix multiply(Matrix *mtx1, Matrix *mtx2);
-        Vertex multiply(Vertex *vtx, Matrix *mtx);
-        int32_t multiply(Vertex *vec1, Vertex *vec2);
+        static Matrix multiply(Matrix *mtx1, Matrix *mtx2);
+        static Vertex multiply(Vertex *vtx, Matrix *mtx);
+        static int32_t multiply(Vertex *vec1, Vertex *vec2);
 
-        uint32_t rgb5ToRgb6(uint16_t color);
+        static uint32_t rgb5ToRgb6(uint16_t color);
 
         void addVertex();
         void addPolygon();
 
-        Vertex intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2);
-        bool clipPolygon(Vertex *unclipped, Vertex *clipped, int *size);
+        static Vertex intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2);
+        static bool clipPolygon(Vertex *unclipped, Vertex *clipped, int *size);
 
         void mtxModeCmd(uint32_t param);
         void mtxPushCmd();
