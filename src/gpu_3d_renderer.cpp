@@ -132,22 +132,27 @@ void Gpu3DRenderer::drawThreaded(int thread)
         drawScanline1(i);
         ready[i].store(1);
 
-        // Wait for the scanline after this thread's previous scanline to be drawn
-        if (i == thread) continue;
-        while (ready[i - activeThreads + 1].load() < 1) std::this_thread::yield();
+        if (i < activeThreads) continue;
+        int prev = i - activeThreads;
+
+        // Wait for the scanlines surrounding this thread's previous scanline to be drawn
+        while ((prev > 0 && ready[prev - 1].load() < 1) || ready[prev + 1].load() < 1)
+            std::this_thread::yield();
 
         // Finish this thread's previous scanline
-        finishScanline(i - activeThreads);
-        ready[i - activeThreads].store(2);
+        finishScanline(prev);
+        ready[prev].store(2);
     }
 
-    // Wait for the scanline after this thread's final scanline to be drawn, if any
-    if (i - activeThreads + 1 < 192)
-        while (ready[i - activeThreads + 1].load() < 1) std::this_thread::yield();
+    int prev = i - activeThreads;
+
+    // Wait for the scanlines surrounding this thread's final scanline to be drawn
+    while (ready[prev - 1].load() < 1 || (prev < 191 && ready[prev + 1].load() < 1))
+        std::this_thread::yield();
 
     // Finish this thread's final scanline
-    finishScanline(i - activeThreads);
-    ready[i - activeThreads].store(2);
+    finishScanline(prev);
+    ready[prev].store(2);
 }
 
 void Gpu3DRenderer::drawScanline1(int line)
