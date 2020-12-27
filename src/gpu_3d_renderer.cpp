@@ -81,7 +81,7 @@ void Gpu3DRenderer::drawScanline(int line)
             }
 
             // Allow horizontal line polygons to be drawn
-            if (polygonTop[i] == polygonBot[i]) polygonTop[i]--;
+            if (polygonTop[i] == polygonBot[i]) polygonBot[i]++;
         }
 
         // Clean up any existing threads
@@ -629,11 +629,11 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     if (polygon->crossed)
         SWAP(vertices[2], vertices[3]);
 
-    // Find the starting (top-left) vertex
+    // Find the starting (top) vertex
     int start = 0;
     for (int i = 0; i < polygon->size; i++)
     {
-        if (vertices[start]->y > vertices[i]->y || (vertices[start]->y == vertices[i]->y && vertices[start]->x > vertices[i]->x))
+        if (vertices[start]->y > vertices[i]->y)
             start = i;
     }
 
@@ -647,17 +647,17 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     // Follow the vertices forwards to the first intersecting edge
     while (vertices[v[1]]->y <= line)
     {
-        if (v[1] == start) return; // Full loop, no intersection
         v[0] = v[1];
         v[1] = (v[1] + 1) % polygon->size;
+        if (v[0] == start) break; // Full loop, no intersection
     }
 
     // Follow the vertices backwards to the first intersecting edge
     while (vertices[v[3]]->y <= line)
     {
-        if (v[3] == start) return; // Full loop, no intersection
         v[2] = v[3];
         v[3] = (v[3] - 1 + polygon->size) % polygon->size;
+        if (v[2] == start) break; // Full loop, no intersection
     }
 
     // Swap the edges depending on polygon orientation
@@ -701,8 +701,12 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     }
     else // Y-major
     {
-        // Interpolate without rounding; since the edge is only one pixel thick, only one interpolation is needed
-        x1 = interpolateLinear(vertices[v[0]]->x, vertices[v[1]]->x, vertices[v[0]]->y, line, vertices[v[1]]->y);
+        // Interpolate without rounding, and only once since the edge is only one pixel thick
+        // Note that negative Y-major edges seem to be interpolated in reverse from positive ones
+        if (vertices[v[0]]->x > vertices[v[1]]->x)
+            x1 = interpolateLinRev(vertices[v[0]]->x, vertices[v[1]]->x, vertices[v[0]]->y, line, vertices[v[1]]->y) - 1;
+        else
+            x1 = interpolateLinear(vertices[v[0]]->x, vertices[v[1]]->x, vertices[v[0]]->y, line, vertices[v[1]]->y);
         x2 = x1;
     }
 
@@ -741,8 +745,8 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     }
     else // Y-major
     {
-        // Interpolate without rounding; since the edge is only one pixel thick, only one interpolation is needed
-        // Note that negative Y-major right edges seem to be interpolated in reverse from other edges
+        // Interpolate without rounding, and only once since the edge is only one pixel thick
+        // Note that negative Y-major edges seem to be interpolated in reverse from positive ones
         if (vertices[v[2]]->x > vertices[v[3]]->x)
             x3 = interpolateLinRev(vertices[v[2]]->x, vertices[v[3]]->x, vertices[v[2]]->y, line, vertices[v[3]]->y) - 1;
         else
