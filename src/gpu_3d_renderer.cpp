@@ -59,7 +59,7 @@ uint32_t *Gpu3DRenderer::getFramebuffer(int line)
 {
     // Wait until a scanline is ready, and then return it
     while (ready[line].load() < 2) std::this_thread::yield();
-    return &framebuffer[256 * line];
+    return &framebuffer[0][256 * line];
 }
 
 void Gpu3DRenderer::drawScanline(int line)
@@ -158,18 +158,18 @@ void Gpu3DRenderer::drawThreaded(int thread)
 void Gpu3DRenderer::drawScanline1(int line)
 {
     // Convert the clear values
-    // The attribute buffer contains the polygon IDs (0-5, 6-11), transparency bit (12), fog bit (13), and edge bit (14)
+    // The attribute buffer contains the polygon IDs (0-5, 6-11), transparency bit (12), fog bit (13), edge bit (14), and edge alpha (15-20)
     uint32_t color = BIT(26) | rgba5ToRgba6(((clearColor & 0x001F0000) >> 1) | (clearColor & 0x00007FFF));
     uint32_t depth = (clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9);
-    uint8_t attrib = ((clearColor & BIT(15)) >> 2) | ((clearColor & 0x3F000000) >> 18) | ((clearColor & 0x3F000000) >> 24) |
-        (((clearColor & 0x001F0000) && ((clearColor & 0x001F0000) >> 16) < 31) << 12);
+    uint32_t attrib = ((clearColor & BIT(15)) >> 2) | ((clearColor & 0x3F000000) >> 18) | ((clearColor & 0x3F000000) >> 24) |
+        (0x3F << 15) | (((clearColor & 0x001F0000) && ((clearColor & 0x001F0000) >> 16) < 31) << 12);
 
     // Clear the scanline buffers with the clear values
     for (int i = line * 256; i < (line + 1) * 256; i++)
     {
-        framebuffer[i]  = color;
-        depthBuffer[i]  = depth;
-        attribBuffer[i] = attrib;
+        framebuffer[0][i]  = framebuffer[1][i]  = color;
+        depthBuffer[0][i]  = depthBuffer[1][i]  = depth;
+        attribBuffer[0][i] = attribBuffer[1][i] = attrib;
     }
 
     stencilClear[line] = false;
@@ -203,32 +203,33 @@ void Gpu3DRenderer::finishScanline(int line)
     {
         for (int i = line * 256; i < (line + 1) * 256; i++)
         {
-            if (attribBuffer[i] & BIT(14)) // Edge bit
+            if (attribBuffer[0][i] & BIT(14)) // Edge bit
             {
                 // Get the polygon IDs of the surrounding pixels
                 uint32_t id[4] =
                 {
-                    ((i % 256 >   0) ? attribBuffer[i -   1] : (clearColor >> 24)) & 0x3F, // Left
-                    ((i % 256 < 255) ? attribBuffer[i +   1] : (clearColor >> 24)) & 0x3F, // Right
-                    ((line    >   0) ? attribBuffer[i - 256] : (clearColor >> 24)) & 0x3F, // Up
-                    ((line    < 191) ? attribBuffer[i + 256] : (clearColor >> 24)) & 0x3F  // Down
+                    ((i % 256 >   0) ? attribBuffer[0][i -   1] : (clearColor >> 24)) & 0x3F, // Left
+                    ((i % 256 < 255) ? attribBuffer[0][i +   1] : (clearColor >> 24)) & 0x3F, // Right
+                    ((line    >   0) ? attribBuffer[0][i - 256] : (clearColor >> 24)) & 0x3F, // Up
+                    ((line    < 191) ? attribBuffer[0][i + 256] : (clearColor >> 24)) & 0x3F  // Down
                 };
 
                 // Get the depth values of the surrounding pixels
                 uint32_t depth[4] =
                 {
-                    ((i % 256 >   0) ? depthBuffer[i -   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Left
-                    ((i % 256 < 255) ? depthBuffer[i +   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Right
-                    ((line    >   0) ? depthBuffer[i - 256] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Up
-                    ((line    < 191) ? depthBuffer[i + 256] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9)))  // Down
+                    ((i % 256 >   0) ? depthBuffer[0][i -   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Left
+                    ((i % 256 < 255) ? depthBuffer[0][i +   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Right
+                    ((line    >   0) ? depthBuffer[0][i - 256] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Up
+                    ((line    < 191) ? depthBuffer[0][i + 256] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9)))  // Down
                 };
 
                 // Check the surrounding pixels, and mark the edge if at least one has a different ID and greater depth
                 for (int j = 0; j < 4; j++)
                 {
-                    if ((attribBuffer[i] & 0x3F) != id[j] && depthBuffer[i] < depth[j])
+                    if ((attribBuffer[0][i] & 0x3F) != id[j] && depthBuffer[0][i] < depth[j])
                     {
-                        framebuffer[i] = BIT(26) | rgba5ToRgba6((0x1F << 15) | edgeColor[(attribBuffer[i] & 0x3F) >> 3]);
+                        framebuffer[0][i] = BIT(26) | rgba5ToRgba6((0x1F << 15) | edgeColor[(attribBuffer[0][i] & 0x3F) >> 3]);
+                        attribBuffer[0][i] = (attribBuffer[0][i] & ~(0x3F << 15)) | (0x20 << 15);
                         break;
                     }
                 }
@@ -242,44 +243,57 @@ void Gpu3DRenderer::finishScanline(int line)
         uint32_t fog = rgba5ToRgba6(((fogColor & 0x001F0000) >> 1) | (fogColor & 0x00007FFF));
         int fogStep = 0x400 >> ((disp3DCnt & 0x0F00) >> 8);
 
-        for (int i = line * 256; i < (line + 1) * 256; i++)
+        for (int layer = 0; layer < ((disp3DCnt & BIT(4)) ? 2 : 1); layer++) // Apply to the back layer as well if anti-aliased
         {
-            if (attribBuffer[i] & BIT(13)) // Fog bit
+            for (int i = line * 256; i < (line + 1) * 256; i++)
             {
-                // Determine the fog table index for the current pixel's depth
-                int32_t offset = ((depthBuffer[i] / 0x200) - fogOffset);
-                int n = (fogStep > 0) ? (offset / fogStep) : ((offset > 0) ? 31 : 0);
+                if (attribBuffer[layer][i] & BIT(13)) // Fog bit
+                {
+                    // Determine the fog table index for the current pixel's depth
+                    int32_t offset = ((depthBuffer[layer][i] / 0x200) - fogOffset);
+                    int n = (fogStep > 0) ? (offset / fogStep) : ((offset > 0) ? 31 : 0);
 
-                // Get the fog density from the table
-                uint8_t density;
-                if (n >= 31) // Maximum
-                {
-                    density = fogTable[31];
-                }
-                else if (n < 0 || fogStep == 0) // Minimum
-                {
-                    density = fogTable[0];
-                }
-                else // Linear interpolation
-                {
-                    int m = offset % fogStep;
-                    density = ((m >= 0) ? ((fogTable[n + 1] * m + fogTable[n] * (fogStep - m)) / fogStep) : fogTable[0]);
-                }
+                    // Get the fog density from the table
+                    uint8_t density;
+                    if (n >= 31) // Maximum
+                    {
+                        density = fogTable[31];
+                    }
+                    else if (n < 0 || fogStep == 0) // Minimum
+                    {
+                        density = fogTable[0];
+                    }
+                    else // Linear interpolation
+                    {
+                        int m = offset % fogStep;
+                        density = ((m >= 0) ? ((fogTable[n + 1] * m + fogTable[n] * (fogStep - m)) / fogStep) : fogTable[0]);
+                    }
 
-                // Blend the fog with the pixel
-                uint8_t a = (((fog >> 18) & 0x3F) * density + ((framebuffer[i] >> 18) & 0x3F) * (128 - density)) / 128;
-                if (disp3DCnt & BIT(6)) // Only alpha
-                {
-                    framebuffer[i] = (framebuffer[i] & ~(0x3F << 18)) | (a << 18);
-                }
-                else
-                {
-                    uint8_t r = (((fog >>  0) & 0x3F) * density + ((framebuffer[i] >>  0) & 0x3F) * (128 - density)) / 128;
-                    uint8_t g = (((fog >>  6) & 0x3F) * density + ((framebuffer[i] >>  6) & 0x3F) * (128 - density)) / 128;
-                    uint8_t b = (((fog >> 12) & 0x3F) * density + ((framebuffer[i] >> 12) & 0x3F) * (128 - density)) / 128;
-                    framebuffer[i] = BIT(26) | (a << 18) | (b << 12) | (g << 6) | r;
+                    // Blend the fog with the pixel
+                    uint8_t a = (((fog >> 18) & 0x3F) * density + ((framebuffer[layer][i] >> 18) & 0x3F) * (128 - density)) / 128;
+                    if (disp3DCnt & BIT(6)) // Only alpha
+                    {
+                        framebuffer[layer][i] = (framebuffer[layer][i] & ~(0x3F << 18)) | (a << 18);
+                    }
+                    else
+                    {
+                        uint8_t r = (((fog >>  0) & 0x3F) * density + ((framebuffer[layer][i] >>  0) & 0x3F) * (128 - density)) / 128;
+                        uint8_t g = (((fog >>  6) & 0x3F) * density + ((framebuffer[layer][i] >>  6) & 0x3F) * (128 - density)) / 128;
+                        uint8_t b = (((fog >> 12) & 0x3F) * density + ((framebuffer[layer][i] >> 12) & 0x3F) * (128 - density)) / 128;
+                        framebuffer[layer][i] = BIT(26) | (a << 18) | (b << 12) | (g << 6) | r;
+                    }
                 }
             }
+        }
+    }
+
+    // Perform anti-aliasing if enabled
+    if (disp3DCnt & BIT(4))
+    {
+        for (int i = line * 256; i < (line + 1) * 256; i++)
+        {
+            if (((attribBuffer[0][i] >> 15) & 0x3F) != 0x3F)
+                framebuffer[0][i] = BIT(26) | interpolateColor(framebuffer[1][i], framebuffer[0][i], 0, ((attribBuffer[0][i] >> 15) & 0x3F), 0x3F);
         }
     }
 }
@@ -876,18 +890,14 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     }
 
     // Because edge traversal doesn't consider equal values to be intersecting, it skips horizontal edges
-    // Instead, the hardware simply considers the entire span across the top and bottom of a polygon to be an edge
-    if (line == polygonTop[polygonIndex] || line == polygonBot[polygonIndex] - 1)
-    {
-        x2 = x4;
-        x3 = x1;
-    }
+    // Instead, simply consider the entire span across the top and bottom of a polygon to be an edge
+    bool horiz = (line == polygonTop[polygonIndex] || line == polygonBot[polygonIndex] - 1);
 
     // Draw a line segment
     for (uint32_t x = x1; x < x4; x++)
     {
         // Skip the polygon interior for wireframe polygons
-        if (polygon->alpha == 0 && x == x2 + 1 && x3 > x2) x = x3;
+        if (!horiz && polygon->alpha == 0 && x == x2 + 1 && x3 > x2) x = x3;
 
         // Invalid viewports can cause out-of-bounds vertices, so only draw within bounds
         if (x >= 256) break;
@@ -908,133 +918,155 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
             depth = interpolateLinear(z1, z2, x1, x, x4);
         }
 
+        bool layer = 0;
         int i = line * 256 + x;
 
-        // Draw a new pixel if the old one is behind the new one
-        // The polygon can optionally use an "equal" depth test, which has a margin of 0x200
-        if ((polygon->depthTestEqual && depthBuffer[i] + 0x200 >= depth) || depthBuffer[i] > depth)
+        // Depth test the current pixel; for "equal" depth test, there's an error margin of 0x200
+        if (!((polygon->depthTestEqual && depthBuffer[0][i] + 0x200 >= depth) || depthBuffer[0][i] > depth))
         {
-            // Only render non-mask shadow polygons if the stencil bit is set and the old pixel's polygon ID differs
-            if (polygon->mode == 3 && (polygon->id == 0 || !stencilBuffer[i] || (attribBuffer[i] & 0x3F) == polygon->id))
+            // Set a stencil buffer bit for shadow mask pixels that fail the depth test
+            if (polygon->mode == 3 && polygon->id == 0)
+                stencilBuffer[i] |= BIT(0);
+
+            // Depth test against the back layer if anti-aliasing is enabled
+            if ((disp3DCnt & BIT(4)) && ((polygon->depthTestEqual && depthBuffer[1][i] + 0x200 >= depth) || depthBuffer[1][i] > depth))
+            {
+                // Draw the pixel on the back layer
+                layer = 1;
+            }
+            else
+            {
+                // Set a stencil buffer bit for shadow mask pixels that fail the depth test, and skip drawing the pixel
+                if (polygon->mode == 3 && polygon->id == 0)
+                    stencilBuffer[i] |= BIT(1);
                 continue;
-
-            // Interpolate the vertex color at the current pixel
-            uint32_t r = interpolateFill(r1, r2, x1, x, x4, w1, w2) >> 3;
-            uint32_t g = interpolateFill(g1, g2, x1, x, x4, w1, w2) >> 3;
-            uint32_t b = interpolateFill(b1, b2, x1, x, x4, w1, w2) >> 3;
-            uint32_t color = ((polygon->alpha ? polygon->alpha : 0x3F) << 18) | (b << 12) | (g << 6) | r;
-
-            // Blend the texture with the vertex color
-            if (polygon->textureFmt != 0)
-            {
-                // Interpolate the texture coordinates at the current pixel
-                int s = interpolateFill(s1 + 0xFFFF, s2 + 0xFFFF, x1, x, x4, w1, w2) - 0xFFFF;
-                int t = interpolateFill(t1 + 0xFFFF, t2 + 0xFFFF, x1, x, x4, w1, w2) - 0xFFFF;
-
-                // Read a texel from the texture
-                uint32_t texel = readTexture(polygon, s >> 4, t >> 4);
-
-                // Apply texture blending
-                // These formulas are a translation of the pseudocode from GBATEK to C++
-                switch (polygon->mode)
-                {
-                    case 0: // Modulation
-                    {
-                        uint8_t r = ((((texel >>  0) & 0x3F) + 1) * (((color >>  0) & 0x3F) + 1) - 1) / 64;
-                        uint8_t g = ((((texel >>  6) & 0x3F) + 1) * (((color >>  6) & 0x3F) + 1) - 1) / 64;
-                        uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
-                        uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
-                        color = (a << 18) | (b << 12) | (g << 6) | r;
-                        break;
-                    }
-
-                    case 1: // Decal
-                    case 3: // Shadow
-                    {
-                        uint8_t at = ((texel >> 18) & 0x3F);
-                        uint8_t r = (((texel >>  0) & 0x3F) * at + ((color >>  0) & 0x3F) * (63 - at)) / 64;
-                        uint8_t g = (((texel >>  6) & 0x3F) * at + ((color >>  6) & 0x3F) * (63 - at)) / 64;
-                        uint8_t b = (((texel >> 12) & 0x3F) * at + ((color >> 12) & 0x3F) * (63 - at)) / 64;
-                        uint8_t a =  ((color >> 18) & 0x3F);
-                        color = (a << 18) | (b << 12) | (g << 6) | r;
-                        break;
-                    }
-
-                    case 2: // Toon/Highlight
-                    {
-                        uint32_t toon = rgba5ToRgba6(toonTable[(color & 0x3F) / 2]);
-                        uint8_t r, g, b;
-
-                        if (disp3DCnt & BIT(1)) // Highlight
-                        {
-                            r = ((((texel >>  0) & 0x3F) + 1) * (((color >>  0) & 0x3F) + 1) - 1) / 64;
-                            g = ((((texel >>  6) & 0x3F) + 1) * (((color >>  6) & 0x3F) + 1) - 1) / 64;
-                            b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
-                            r += ((toon >>  0) & 0x3F); if (r > 63) r = 63;
-                            g += ((toon >>  6) & 0x3F); if (g > 63) g = 63;
-                            b += ((toon >> 12) & 0x3F); if (b > 63) b = 63;
-                        }
-                        else // Toon
-                        {
-                            r = ((((texel >>  0) & 0x3F) + 1) * (((toon >>  0) & 0x3F) + 1) - 1) / 64;
-                            g = ((((texel >>  6) & 0x3F) + 1) * (((toon >>  6) & 0x3F) + 1) - 1) / 64;
-                            b = ((((texel >> 12) & 0x3F) + 1) * (((toon >> 12) & 0x3F) + 1) - 1) / 64;
-                        }
-
-                        uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
-                        color = (a << 18) | (b << 12) | (g << 6) | r;
-                        break;
-                    }
-                }
             }
-            else if (polygon->mode == 2) // Toon/Highlight (no texture)
+        }
+
+        // Only render non-mask shadow polygons if the stencil bit is set and the old pixel's polygon ID differs
+        if (polygon->mode == 3 && (polygon->id == 0 || !(stencilBuffer[i] & BIT(layer)) || (attribBuffer[layer][i] & 0x3F) == polygon->id))
+            continue;
+
+        // Interpolate the vertex color at the current pixel
+        uint32_t r = interpolateFill(r1, r2, x1, x, x4, w1, w2) >> 3;
+        uint32_t g = interpolateFill(g1, g2, x1, x, x4, w1, w2) >> 3;
+        uint32_t b = interpolateFill(b1, b2, x1, x, x4, w1, w2) >> 3;
+        uint32_t color = ((polygon->alpha ? polygon->alpha : 0x3F) << 18) | (b << 12) | (g << 6) | r;
+
+        // Blend the texture with the vertex color
+        if (polygon->textureFmt != 0)
+        {
+            // Interpolate the texture coordinates at the current pixel
+            int s = interpolateFill(s1 + 0xFFFF, s2 + 0xFFFF, x1, x, x4, w1, w2) - 0xFFFF;
+            int t = interpolateFill(t1 + 0xFFFF, t2 + 0xFFFF, x1, x, x4, w1, w2) - 0xFFFF;
+
+            // Read a texel from the texture
+            uint32_t texel = readTexture(polygon, s >> 4, t >> 4);
+
+            // Apply texture blending
+            // These formulas are a translation of the pseudocode from GBATEK to C++
+            switch (polygon->mode)
             {
-                uint32_t toon = rgba5ToRgba6(toonTable[(color & 0x3F) / 2]);
-                uint8_t r, g, b;
-
-                if (disp3DCnt & BIT(1)) // Highlight
+                case 0: // Modulation
                 {
-                    r = ((color >>  0) & 0x3F) + ((toon >>  0) & 0x3F); if (r > 63) r = 63;
-                    g = ((color >>  6) & 0x3F) + ((toon >>  6) & 0x3F); if (g > 63) g = 63;
-                    b = ((color >> 12) & 0x3F) + ((toon >> 12) & 0x3F); if (b > 63) b = 63;
-                }
-                else // Toon
-                {
-                    r = ((toon >>  0) & 0x3F);
-                    g = ((toon >>  6) & 0x3F);
-                    b = ((toon >> 12) & 0x3F);
+                    uint8_t r = ((((texel >>  0) & 0x3F) + 1) * (((color >>  0) & 0x3F) + 1) - 1) / 64;
+                    uint8_t g = ((((texel >>  6) & 0x3F) + 1) * (((color >>  6) & 0x3F) + 1) - 1) / 64;
+                    uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
+                    uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
+                    color = (a << 18) | (b << 12) | (g << 6) | r;
+                    break;
                 }
 
-                color = (color & 0xFC0000) | (b << 12) | (g << 6) | r;
-            }
-
-            // Draw a pixel
-            // 3D pixels are marked with an extra bit as an indicator for 2D blending
-            if (color & 0xFC0000)
-            {
-                if ((disp3DCnt & BIT(3)) && ((color & 0xFC0000) >> 18) < 0x3F) // Alpha blending
+                case 1: // Decal
+                case 3: // Shadow
                 {
-                    // Only render transparent pixels if the old pixel isn't transparent or the polygon ID differs
-                    if (!(attribBuffer[i] & BIT(12)) || ((attribBuffer[i] >> 6) & 0x3F) != polygon->id)
+                    uint8_t at = ((texel >> 18) & 0x3F);
+                    uint8_t r = (((texel >>  0) & 0x3F) * at + ((color >>  0) & 0x3F) * (63 - at)) / 64;
+                    uint8_t g = (((texel >>  6) & 0x3F) * at + ((color >>  6) & 0x3F) * (63 - at)) / 64;
+                    uint8_t b = (((texel >> 12) & 0x3F) * at + ((color >> 12) & 0x3F) * (63 - at)) / 64;
+                    uint8_t a =  ((color >> 18) & 0x3F);
+                    color = (a << 18) | (b << 12) | (g << 6) | r;
+                    break;
+                }
+
+                case 2: // Toon/Highlight
+                {
+                    uint32_t toon = rgba5ToRgba6(toonTable[(color & 0x3F) / 2]);
+                    uint8_t r, g, b;
+
+                    if (disp3DCnt & BIT(1)) // Highlight
                     {
-                        framebuffer[i] = BIT(26) | ((framebuffer[i] & 0xFC0000) ? interpolateColor(framebuffer[i], color, 0, color >> 18, 63) : color);
-                        if (polygon->transNewDepth) depthBuffer[i] = depth;
-                        attribBuffer[i] = (attribBuffer[i] & 0x603F) | BIT(12) | (polygon->id << 6);
+                        r = ((((texel >>  0) & 0x3F) + 1) * (((color >>  0) & 0x3F) + 1) - 1) / 64;
+                        g = ((((texel >>  6) & 0x3F) + 1) * (((color >>  6) & 0x3F) + 1) - 1) / 64;
+                        b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
+                        r += ((toon >>  0) & 0x3F); if (r > 63) r = 63;
+                        g += ((toon >>  6) & 0x3F); if (g > 63) g = 63;
+                        b += ((toon >> 12) & 0x3F); if (b > 63) b = 63;
                     }
-                }
-                else if (x >= x1a && x < x4a)
-                {
-                    framebuffer[i] = BIT(26) | color;
-                    depthBuffer[i] = depth;
-                    attribBuffer[i] = (attribBuffer[i] & 0x0FC0) | ((x <= x2 || x >= x3) << 14) | (polygon->fog << 13) | polygon->id;
-                    
+                    else // Toon
+                    {
+                        r = ((((texel >>  0) & 0x3F) + 1) * (((toon >>  0) & 0x3F) + 1) - 1) / 64;
+                        g = ((((texel >>  6) & 0x3F) + 1) * (((toon >>  6) & 0x3F) + 1) - 1) / 64;
+                        b = ((((texel >> 12) & 0x3F) + 1) * (((toon >> 12) & 0x3F) + 1) - 1) / 64;
+                    }
+
+                    uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
+                    color = (a << 18) | (b << 12) | (g << 6) | r;
+                    break;
                 }
             }
         }
-        else if (polygon->mode == 3 && polygon->id == 0)
+        else if (polygon->mode == 2) // Toon/Highlight (no texture)
         {
-            // Set a stencil buffer bit for shadow mask pixels that fail the depth test
-            stencilBuffer[i] = 1;
+            uint32_t toon = rgba5ToRgba6(toonTable[(color & 0x3F) / 2]);
+            uint8_t r, g, b;
+
+            if (disp3DCnt & BIT(1)) // Highlight
+            {
+                r = ((color >>  0) & 0x3F) + ((toon >>  0) & 0x3F); if (r > 63) r = 63;
+                g = ((color >>  6) & 0x3F) + ((toon >>  6) & 0x3F); if (g > 63) g = 63;
+                b = ((color >> 12) & 0x3F) + ((toon >> 12) & 0x3F); if (b > 63) b = 63;
+            }
+            else // Toon
+            {
+                r = ((toon >>  0) & 0x3F);
+                g = ((toon >>  6) & 0x3F);
+                b = ((toon >> 12) & 0x3F);
+            }
+
+            color = (color & 0xFC0000) | (b << 12) | (g << 6) | r;
+        }
+
+        // Draw a pixel
+        // 3D pixels are marked with an extra bit as an indicator for 2D blending
+        if (color & 0xFC0000)
+        {
+            if ((disp3DCnt & BIT(3)) && ((color & 0xFC0000) >> 18) < 0x3F) // Transparent
+            {
+                // Only render transparent pixels if the old pixel isn't transparent or the polygon ID differs
+                if (!(attribBuffer[layer][i] & BIT(12)) || ((attribBuffer[layer][i] >> 6) & 0x3F) != polygon->id)
+                {
+                    framebuffer[layer][i] = BIT(26) | ((framebuffer[layer][i] & 0xFC0000) ?
+                        interpolateColor(framebuffer[layer][i], color, 0, color >> 18, 63) : color);
+                    if (polygon->transNewDepth) depthBuffer[layer][i] = depth;
+                    attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x603F) | (0x3F << 15) | BIT(12) | (polygon->id << 6);
+                }
+            }
+            else if (x >= x1a && x < x4a) // Opaque
+            {
+                // Push the previous pixel to the back layer if drawing to the front layer
+                if (layer == 0)
+                {
+                    framebuffer[1][i]  = framebuffer[0][i];
+                    depthBuffer[1][i]  = depthBuffer[0][i];
+                    attribBuffer[1][i] = attribBuffer[0][i];
+                }
+
+                framebuffer[layer][i] = BIT(26) | color;
+                depthBuffer[layer][i] = depth;
+                attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x0FC0) | (0x3F << 15) |
+                    ((x <= x2 || x >= x3 || horiz) << 14) | (polygon->fog << 13) | polygon->id;
+            }
         }
     }
 }

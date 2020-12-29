@@ -52,9 +52,9 @@ class Gpu3DRenderer
     private:
         Core *core;
 
-        uint32_t framebuffer[256 * 192] = {};
-        uint32_t depthBuffer[256 * 192] = {};
-        uint16_t attribBuffer[256 * 192] = {};
+        uint32_t framebuffer[2][256 * 192] = {};
+        uint32_t depthBuffer[2][256 * 192] = {};
+        uint32_t attribBuffer[2][256 * 192] = {};
         uint8_t stencilBuffer[256 * 192] = {};
         bool stencilClear[256] = {};
 
