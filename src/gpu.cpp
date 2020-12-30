@@ -118,22 +118,6 @@ void Gpu::gbaScanline240()
 
 void Gpu::gbaScanline308()
 {
-    // Check if the current scanline matches the V-counter
-    if (vCount == (dispStat[1] >> 8))
-    {
-        // Set the V-counter flag
-        dispStat[1] |= BIT(2);
-
-        // Trigger a V-counter IRQ if enabled
-        if (dispStat[1] & BIT(5))
-            core->interpreter[1].sendInterrupt(2);
-    }
-    else if (dispStat[1] & BIT(2))
-    {
-        // Clear the V-counter flag on the next line
-        dispStat[1] &= ~BIT(2);
-    }
-
     // Clear the H-blank flag
     dispStat[1] &= ~BIT(1);
 
@@ -206,6 +190,22 @@ void Gpu::gbaScanline308()
     // Signal that the next scanline has started
     if (vCount < 160 && thread)
         drawing.store(true);
+
+    // Check if the current scanline matches the V-counter
+    if (vCount == (dispStat[1] >> 8))
+    {
+        // Set the V-counter flag
+        dispStat[1] |= BIT(2);
+
+        // Trigger a V-counter IRQ if enabled
+        if (dispStat[1] & BIT(5))
+            core->interpreter[1].sendInterrupt(2);
+    }
+    else if (dispStat[1] & BIT(2))
+    {
+        // Clear the V-counter flag on the next line
+        dispStat[1] &= ~BIT(2);
+    }
 }
 
 void Gpu::scanline256()
@@ -367,28 +367,6 @@ void Gpu::scanline256()
 
 void Gpu::scanline355()
 {
-    for (int i = 0; i < 2; i++)
-    {
-        // Check if the current scanline matches the V-counter
-        if (vCount == ((dispStat[i] >> 8) | ((dispStat[i] & BIT(7)) << 1)))
-        {
-            // Set the V-counter flag
-            dispStat[i] |= BIT(2);
-
-            // Trigger a V-counter IRQ if enabled
-            if (dispStat[i] & BIT(5))
-                core->interpreter[i].sendInterrupt(2);
-        }
-        else if (dispStat[i] & BIT(2))
-        {
-            // Clear the V-counter flag on the next line
-            dispStat[i] &= ~BIT(2);
-        }
-
-        // Clear the H-blank flag
-        dispStat[i] &= ~BIT(1);
-    }
-
     // Move to the next scanline
     switch (++vCount)
     {
@@ -473,6 +451,28 @@ void Gpu::scanline355()
     // Signal that the next scanline has started
     if (vCount < 192 && thread)
         drawing.store(true);
+
+    for (int i = 0; i < 2; i++)
+    {
+        // Check if the current scanline matches the V-counter
+        if (vCount == ((dispStat[i] >> 8) | ((dispStat[i] & BIT(7)) << 1)))
+        {
+            // Set the V-counter flag
+            dispStat[i] |= BIT(2);
+
+            // Trigger a V-counter IRQ if enabled
+            if (dispStat[i] & BIT(5))
+                core->interpreter[i].sendInterrupt(2);
+        }
+        else if (dispStat[i] & BIT(2))
+        {
+            // Clear the V-counter flag on the next line
+            dispStat[i] &= ~BIT(2);
+        }
+
+        // Clear the H-blank flag
+        dispStat[i] &= ~BIT(1);
+    }
 }
 
 void Gpu::drawGbaThreaded()

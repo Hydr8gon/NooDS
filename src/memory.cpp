@@ -154,7 +154,8 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
         {
             case 0x00000000: // GBA BIOS
             {
-                data = &gbaBios[address & 0x3FFF];
+                if (address < 0x4000)
+                    data = &gbaBios[address];
                 break;
             }
 
