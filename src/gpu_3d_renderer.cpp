@@ -1142,7 +1142,16 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
                 framebuffer[layer][i] = BIT(26) | (((disp3DCnt & BIT(3)) && (framebuffer[layer][i] & 0xFC0000)) ?
                     interpolateColor(framebuffer[layer][i], color, 0, color >> 18, 63) : color);
                 if (polygon->transNewDepth) depthBuffer[layer][i] = depth;
-                attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x603F) | (0x3F << 15) | BIT(12) | (polygon->id << 6);
+                attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x1FE03F) | BIT(12) | (polygon->id << 6);
+
+                // Blend with the back layer as well if drawing to the front layer
+                if (layer == 0)
+                {
+                    framebuffer[1][i] = BIT(26) | (((disp3DCnt & BIT(3)) && (framebuffer[1][i] & 0xFC0000)) ?
+                        interpolateColor(framebuffer[1][i], color, 0, color >> 18, 63) : color);
+                    if (polygon->transNewDepth) depthBuffer[1][i] = depth;
+                    attribBuffer[1][i] = (attribBuffer[1][i] & 0x1FE03F) | BIT(12) | (polygon->id << 6);
+                }
             }
         }
     }
