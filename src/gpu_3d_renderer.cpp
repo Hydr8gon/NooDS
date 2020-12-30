@@ -292,8 +292,14 @@ void Gpu3DRenderer::finishScanline(int line)
     {
         for (int i = line * 256; i < (line + 1) * 256; i++)
         {
-            if (((attribBuffer[0][i] >> 15) & 0x3F) != 0x3F)
-                framebuffer[0][i] = BIT(26) | interpolateColor(framebuffer[1][i], framebuffer[0][i], 0, ((attribBuffer[0][i] >> 15) & 0x3F), 0x3F);
+            if (((attribBuffer[0][i] >> 15) & 0x3F) < 0x3F) // Edge not opaque
+            {
+                // Blend with the lower pixel, or simply set the alpha if the lower pixel has alpha 0
+                if ((framebuffer[1][i] >> 18) & 0x3F)
+                    framebuffer[0][i] = BIT(26) | interpolateColor(framebuffer[1][i], framebuffer[0][i], 0, ((attribBuffer[0][i] >> 15) & 0x3F), 0x3F);
+                else
+                    framebuffer[0][i] = (framebuffer[0][i] & ~0xFC0000) | ((attribBuffer[0][i] & 0x1F8000) << 3);
+            }
         }
     }
 }
@@ -686,6 +692,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     if (vertices[v[2]]->y > vertices[v[3]]->y) SWAP(v[2], v[3]);
 
     uint32_t x1, x2, x3, x4;
+    uint32_t x1a = 0x3F, x2a = 0x3F, x3a = 0x3F, x4a = 0x3F;
 
     // Calculate the left edge bounds
     if (vertices[v[0]]->y == vertices[v[1]]->y) // Horizontal
@@ -703,25 +710,53 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     else if (abs(vertices[v[1]]->x - vertices[v[0]]->x) > vertices[v[1]]->y - vertices[v[0]]->y) // X-major
     {
         // Interpolate with an extra bit of precision so the result can be rounded
-        x1 = (interpolateLinear(vertices[v[0]]->x << 1, vertices[v[1]]->x << 1, vertices[v[0]]->y, line,     vertices[v[1]]->y) + 1) >> 1;
-        x2 = (interpolateLinear(vertices[v[0]]->x << 1, vertices[v[1]]->x << 1, vertices[v[0]]->y, line + 1, vertices[v[1]]->y) + 1) >> 1;
+        x1 = interpolateLinear(vertices[v[0]]->x << 1, vertices[v[1]]->x << 1, vertices[v[0]]->y, line,     vertices[v[1]]->y) + 1;
+        x2 = interpolateLinear(vertices[v[0]]->x << 1, vertices[v[1]]->x << 1, vertices[v[0]]->y, line + 1, vertices[v[1]]->y) + 1;
+
+        bool negative = (vertices[v[0]]->x > vertices[v[1]]->x);
 
         // Rearrange the vertices so the lower X values come first
-        if (vertices[v[0]]->x > vertices[v[1]]->x)
+        if (negative)
         {
             SWAP(v[0], v[1]);
             SWAP(x1, x2);
         }
+
+        // Calculate the edge alpha values if anti-aliasing is enabled
+        if (disp3DCnt & BIT(4))
+        {
+            x1a = interpolateLinear(vertices[v[0]]->y << 6, vertices[v[1]]->y << 6, vertices[v[0]]->x << 1, x1,     vertices[v[1]]->x << 1) & 0x3F;
+            x2a = interpolateLinear(vertices[v[0]]->y << 6, vertices[v[1]]->y << 6, vertices[v[0]]->x << 1, x2 - 2, vertices[v[1]]->x << 1) & 0x3F;
+
+            if (negative)
+            {
+                x1a = 0x3F - x1a;
+                x2a = 0x3F - x2a;
+            }
+        }
+
+        x1 >>= 1;
+        x2 >>= 1;
     }
     else // Y-major
     {
-        // Interpolate without rounding, and only once since the edge is only one pixel thick
+        // Interpolate with extra precision for edge alpha calculation
         // Note that negative Y-major edges seem to be interpolated in reverse from positive ones
         if (vertices[v[0]]->x > vertices[v[1]]->x)
-            x1 = interpolateLinRev(vertices[v[0]]->x, vertices[v[1]]->x, vertices[v[0]]->y, line, vertices[v[1]]->y) - 1;
+            x1 = interpolateLinRev(vertices[v[0]]->x << 6, vertices[v[1]]->x << 6, vertices[v[0]]->y, line, vertices[v[1]]->y) - 1;
         else
-            x1 = interpolateLinear(vertices[v[0]]->x, vertices[v[1]]->x, vertices[v[0]]->y, line, vertices[v[1]]->y);
-        x2 = x1;
+            x1 = interpolateLinear(vertices[v[0]]->x << 6, vertices[v[1]]->x << 6, vertices[v[0]]->y, line, vertices[v[1]]->y);
+
+        // Set the edge alpha values if anti-aliasing is enabled
+        if (disp3DCnt & BIT(4))
+        {
+            if (abs(vertices[v[1]]->x - vertices[v[0]]->x) == vertices[v[1]]->y - vertices[v[0]]->y)
+                x2a = x1a = 0x20;
+            else
+                x2a = x1a = 0x3F - (x1 & 0x3F);
+        }
+
+        x2 = x1 >>= 6;
     }
 
     // Calculate the right edge bounds
@@ -747,25 +782,53 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     else if (abs(vertices[v[3]]->x - vertices[v[2]]->x) > vertices[v[3]]->y - vertices[v[2]]->y) // X-major
     {
         // Interpolate with an extra bit of precision so the result can be rounded
-        x3 = (interpolateLinear(vertices[v[2]]->x << 1, vertices[v[3]]->x << 1, vertices[v[2]]->y, line,     vertices[v[3]]->y) + 1) >> 1;
-        x4 = (interpolateLinear(vertices[v[2]]->x << 1, vertices[v[3]]->x << 1, vertices[v[2]]->y, line + 1, vertices[v[3]]->y) + 1) >> 1;
+        x3 = interpolateLinear(vertices[v[2]]->x << 1, vertices[v[3]]->x << 1, vertices[v[2]]->y, line,     vertices[v[3]]->y) + 1;
+        x4 = interpolateLinear(vertices[v[2]]->x << 1, vertices[v[3]]->x << 1, vertices[v[2]]->y, line + 1, vertices[v[3]]->y) + 1;
+
+        bool negative = (vertices[v[2]]->x > vertices[v[3]]->x);
 
         // Rearrange the vertices so the lower X values come first
-        if (vertices[v[2]]->x > vertices[v[3]]->x)
+        if (negative)
         {
             SWAP(v[2], v[3]);
             SWAP(x3, x4);
         }
+
+        // Calculate the edge alpha values if anti-aliasing is enabled
+        if (disp3DCnt & BIT(4))
+        {
+            x3a = interpolateLinear(vertices[v[2]]->y << 6, vertices[v[3]]->y << 6, vertices[v[2]]->x << 1, x3,     vertices[v[3]]->x << 1) & 0x3F;
+            x4a = interpolateLinear(vertices[v[2]]->y << 6, vertices[v[3]]->y << 6, vertices[v[2]]->x << 1, x4 - 2, vertices[v[3]]->x << 1) & 0x3F;
+
+            if (!negative)
+            {
+                x3a = 0x3F - x3a;
+                x4a = 0x3F - x4a;
+            }
+        }
+
+        x3 >>= 1;
+        x4 >>= 1;
     }
     else // Y-major
     {
-        // Interpolate without rounding, and only once since the edge is only one pixel thick
+        // Interpolate with extra precision for edge alpha calculation
         // Note that negative Y-major edges seem to be interpolated in reverse from positive ones
         if (vertices[v[2]]->x > vertices[v[3]]->x)
-            x3 = interpolateLinRev(vertices[v[2]]->x, vertices[v[3]]->x, vertices[v[2]]->y, line, vertices[v[3]]->y) - 1;
+            x3 = interpolateLinRev(vertices[v[2]]->x << 6, vertices[v[3]]->x << 6, vertices[v[2]]->y, line, vertices[v[3]]->y) - 1;
         else
-            x3 = interpolateLinear(vertices[v[2]]->x, vertices[v[3]]->x, vertices[v[2]]->y, line, vertices[v[3]]->y);
-        x4 = x3;
+            x3 = interpolateLinear(vertices[v[2]]->x << 6, vertices[v[3]]->x << 6, vertices[v[2]]->y, line, vertices[v[3]]->y);
+
+        // Set the edge alpha values if anti-aliasing is enabled
+        if (disp3DCnt & BIT(4))
+        {
+            if (abs(vertices[v[3]]->x - vertices[v[2]]->x) == vertices[v[3]]->y - vertices[v[2]]->y)
+                x4a = x3a = 0x20;
+            else
+                x4a = x3a = x3 & 0x3F;
+        }
+
+        x4 = x3 >>= 6;
     }
 
     // Reduce the bounds so they don't overlap
@@ -773,10 +836,10 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     if (x4 > x3) x4--;
 
     // Handle crossed edges; these become "dotted" if their orientation is wrong
-    if (x2 > x3) x2 = x3;
-    if (x1 > x2) x2 = x1;
-    if (x2 > x3) x3 = x2;
-    if (x3 > x4) x3 = x4;
+    if (x2 > x3) { x2 = x3;                                     }
+    if (x1 > x2) { x2 = x1; x1a = 0x3F - x1a; x2a = 0x3F - x2a; }
+    if (x2 > x3) { x3 = x2;                                     }
+    if (x3 > x4) { x3 = x4; x3a = 0x3F - x3a; x4a = 0x3F - x4a; }
 
     // Swap the edges so the leftmost one comes first
     if (x1 > x4)
@@ -785,6 +848,8 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
         SWAP(v[1], v[3]);
         SWAP(x1, x3);
         SWAP(x2, x4);
+        SWAP(x1a, x3a);
+        SWAP(x2a, x4a);
     }
 
     uint32_t lx1, lx, lx2;
@@ -878,26 +943,27 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
 
     // Increment the right bound not only for drawing, but for interpolation across the scanline as well
     // This seems to give results accurate to hardware
-    uint32_t x1a = x1, x4a = ++x4;
+    uint32_t x1e = x1, x4e = ++x4;
 
     // Set special bounds that hide some edges for opaque pixels with no edge effects
     if (polygon->alpha != 0 && !(disp3DCnt & (BIT(4) | BIT(5))))
     {
-        if (hideLeft)  x1a = x2 + 1;
-        if (hideRight) x4a = x3;
-        if (!(hideLeft && hideRight) && x4a <= x1a)
-            x4a = x1a + 1;
+        if (hideLeft)  x1e = x2 + 1;
+        if (hideRight) x4e = x3;
+        if (!(hideLeft && hideRight) && x4e <= x1e)
+            x4e = x1e + 1;
     }
 
     // Because edge traversal doesn't consider equal values to be intersecting, it skips horizontal edges
     // Instead, simply consider the entire span across the top and bottom of a polygon to be an edge
-    bool horiz = (line == polygonTop[polygonIndex] || line == polygonBot[polygonIndex] - 1);
+    bool horizontal = (line == polygonTop[polygonIndex] || line == polygonBot[polygonIndex] - 1);
 
     // Draw a line segment
     for (uint32_t x = x1; x < x4; x++)
     {
         // Skip the polygon interior for wireframe polygons
-        if (!horiz && polygon->alpha == 0 && x == x2 + 1 && x3 > x2) x = x3;
+        if (!horizontal && polygon->alpha == 0 && x == x2 + 1 && x3 > x2)
+            x = x3;
 
         // Invalid viewports can cause out-of-bounds vertices, so only draw within bounds
         if (x >= 256) break;
@@ -1037,35 +1103,46 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
             color = (color & 0xFC0000) | (b << 12) | (g << 6) | r;
         }
 
-        // Draw a pixel
-        // 3D pixels are marked with an extra bit as an indicator for 2D blending
-        if (color & 0xFC0000)
-        {
-            if ((disp3DCnt & BIT(3)) && ((color & 0xFC0000) >> 18) < 0x3F) // Transparent
-            {
-                // Only render transparent pixels if the old pixel isn't transparent or the polygon ID differs
-                if (!(attribBuffer[layer][i] & BIT(12)) || ((attribBuffer[layer][i] >> 6) & 0x3F) != polygon->id)
-                {
-                    framebuffer[layer][i] = BIT(26) | ((framebuffer[layer][i] & 0xFC0000) ?
-                        interpolateColor(framebuffer[layer][i], color, 0, color >> 18, 63) : color);
-                    if (polygon->transNewDepth) depthBuffer[layer][i] = depth;
-                    attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x603F) | (0x3F << 15) | BIT(12) | (polygon->id << 6);
-                }
-            }
-            else if (x >= x1a && x < x4a) // Opaque
-            {
-                // Push the previous pixel to the back layer if drawing to the front layer
-                if (layer == 0)
-                {
-                    framebuffer[1][i]  = framebuffer[0][i];
-                    depthBuffer[1][i]  = depthBuffer[0][i];
-                    attribBuffer[1][i] = attribBuffer[0][i];
-                }
+        // Skip fully transparent pixels, and hidden edge pixels if the pixel is opaque or blending is disabled
+        if (!(color & 0xFC0000) || ((x < x1e || x >= x4e) && ((color >> 18) == 0x3F || !(disp3DCnt & BIT(3)))))
+            continue;
 
-                framebuffer[layer][i] = BIT(26) | color;
-                depthBuffer[layer][i] = depth;
-                attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x0FC0) | (0x3F << 15) |
-                    ((x <= x2 || x >= x3 || horiz) << 14) | (polygon->fog << 13) | polygon->id;
+        // Draw a pixel, marked with an extra bit as an indicator for 2D blending
+        if ((color >> 18) == 0x3F) // Opaque
+        {
+            // Push the previous pixel to the back layer if drawing to the front layer
+            if (layer == 0)
+            {
+                framebuffer[1][i]  = framebuffer[0][i];
+                depthBuffer[1][i]  = depthBuffer[0][i];
+                attribBuffer[1][i] = attribBuffer[0][i];
+            }
+
+            framebuffer[layer][i] = BIT(26) | color;
+            depthBuffer[layer][i] = depth;
+            attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x0FC0) |
+                ((x <= x2 || x >= x3 || horizontal) << 14) | (polygon->fog << 13) | polygon->id;
+
+            // Set the pixel transparency for anti-aliasing
+            if (layer == 0)
+            {
+                if (x <= x2)
+                    attribBuffer[0][i] |= interpolateLinear(x1a, x2a, x1, x, x2) << 15;
+                else if (x >= x3)
+                    attribBuffer[0][i] |= interpolateLinear(x3a, x4a, x3, x, x4) << 15;
+                else
+                    attribBuffer[0][i] |= 0x3F << 15;
+            }
+        }
+        else // Transparent (applies even if blending is disabled)
+        {
+            // Only render transparent pixels if the old pixel isn't transparent or the polygon ID differs
+            if (!(attribBuffer[layer][i] & BIT(12)) || ((attribBuffer[layer][i] >> 6) & 0x3F) != polygon->id)
+            {
+                framebuffer[layer][i] = BIT(26) | (((disp3DCnt & BIT(3)) && (framebuffer[layer][i] & 0xFC0000)) ?
+                    interpolateColor(framebuffer[layer][i], color, 0, color >> 18, 63) : color);
+                if (polygon->transNewDepth) depthBuffer[layer][i] = depth;
+                attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x603F) | (0x3F << 15) | BIT(12) | (polygon->id << 6);
             }
         }
     }
