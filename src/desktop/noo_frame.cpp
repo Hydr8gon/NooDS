@@ -341,13 +341,13 @@ void NooFrame::releaseKey(int key)
 void NooFrame::loadRomPath(std::string path)
 {
     // Set the NDS or GBA ROM path depending on the extension of the given file
-    // If a ROM of the other type is already loaded, ask if the new ROM should be loaded alongside it
+    // If a ROM of the other type is already loaded, ask if it should be loaded alongside the new ROM
     if (path.find(".nds", path.length() - 4) != std::string::npos) // NDS ROM
     {
         if (gbaPath != "")
         {
-            wxMessageDialog dialog(this, "Load this ROM alongside the current GBA ROM?", "Loading NDS ROM", wxYES_NO | wxICON_NONE);
-            if (dialog.ShowModal() == wxID_NO) gbaPath = "";
+            wxMessageDialog dialog(this, "Load the current GBA ROM alongside this ROM?", "Loading NDS ROM", wxYES_NO | wxICON_NONE);
+            if (dialog.ShowModal() != wxID_YES) gbaPath = "";
         }
         ndsPath = path;
     }
@@ -355,8 +355,8 @@ void NooFrame::loadRomPath(std::string path)
     {
         if (ndsPath != "")
         {
-            wxMessageDialog dialog(this, "Load this ROM alongside the current NDS ROM?", "Loading GBA ROM", wxYES_NO | wxICON_NONE);
-            if (dialog.ShowModal() == wxID_NO) ndsPath = "";
+            wxMessageDialog dialog(this, "Load the current NDS ROM alongside this ROM?", "Loading GBA ROM", wxYES_NO | wxICON_NONE);
+            if (dialog.ShowModal() != wxID_YES) ndsPath = "";
         }
         gbaPath = path;
     }

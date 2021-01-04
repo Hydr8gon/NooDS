@@ -329,62 +329,80 @@ void fileBrowser()
             path += "/" + files[menu.index].name;
             index = 0;
 
-            // Check if a ROM was selected
-            ndsPath = (path.find(".nds", path.length() - 4) != std::string::npos) ? path : "";
-            gbaPath = (path.find(".gba", path.length() - 4) != std::string::npos) ? path : "";
+            // Check if a ROM was selected, and set the NDS or GBA ROM path depending on the file extension
+            // If a ROM of the other type is already loaded, ask if it should be loaded alongside the new ROM
+            if (path.find(".nds", path.length() - 4) != std::string::npos) // NDS ROM
+            {
+                if (gbaPath != "")
+                {
+                    if (!SwitchUI::message("Loading NDS ROM", std::vector<std::string>{"Load the previous GBA ROM alongside this ROM?"}, true))
+                        gbaPath = "";
+                }
+                ndsPath = path;
+            }
+            else if (path.find(".gba", path.length() - 4) != std::string::npos) // GBA ROM
+            {
+                if (ndsPath != "")
+                {
+                    if (!SwitchUI::message("Loading GBA ROM", std::vector<std::string>{"Load the previous NDS ROM alongside this ROM?"}, true))
+                        ndsPath = "";
+                }
+                gbaPath = path;
+            }
+            else
+            {
+                continue;
+            }
 
             // If a ROM was selected, attempt to boot it
-            if (ndsPath != "" || gbaPath != "")
+            try
             {
-                try
+                core = new Core(ndsPath, gbaPath);
+            }
+            catch (int e)
+            {
+                // Handle errors during ROM boot
+                switch (e)
                 {
-                    core = new Core(ndsPath, gbaPath);
-                }
-                catch (int e)
-                {
-                    // Handle errors during ROM boot
-                    switch (e)
+                    case 1: // Missing BIOS and/or firmware files
                     {
-                        case 1: // Missing BIOS and/or firmware files
+                        // Inform the user of the error
+                        std::vector<std::string> message =
                         {
-                            // Inform the user of the error
-                            std::vector<std::string> message =
-                            {
-                                "Initialization failed.",
-                                "Make sure the path settings point to valid BIOS and firmware files and try again.",
-                                "You can modify the path settings in the noods.ini file."
-                            };
-                            SwitchUI::message("Missing BIOS/Firmware", message);
+                            "Initialization failed.",
+                            "Make sure the path settings point to valid BIOS and firmware files and try again.",
+                            "You can modify the path settings in the noods.ini file."
+                        };
+                        SwitchUI::message("Missing BIOS/Firmware", message);
 
-                            // Remove the ROM from the path and return to the file browser
-                            path = path.substr(0, path.rfind("/"));
-                            index = 0;
-                            continue;
-                        }
+                        // Remove the ROM from the path and return to the file browser
+                        path = path.substr(0, path.rfind("/"));
+                        index = 0;
+                        continue;
+                    }
 
-                        case 2: // Unreadable ROM file
+                    case 2: // Unreadable ROM file
+                    {
+                        // Inform the user of the error
+                        std::vector<std::string> message =
                         {
-                            // Inform the user of the error
-                            std::vector<std::string> message =
-                            {
-                                "Initialization failed.",
-                                "Make sure the ROM file is accessible and try again."
-                            };
-                            SwitchUI::message("Unreadable ROM", message);
+                            "Initialization failed.",
+                            "Make sure the ROM file is accessible and try again."
+                        };
+                        SwitchUI::message("Unreadable ROM", message);
 
-                            // Remove the ROM from the path and return to the file browser
-                            path = path.substr(0, path.rfind("/"));
-                            index = 0;
-                            continue;
-                        }
+                        // Remove the ROM from the path and return to the file browser
+                        path = path.substr(0, path.rfind("/"));
+                        index = 0;
+                        continue;
                     }
                 }
-
-                delete[] folder.texture;
-                delete[] file.texture;
-                startCore();
-                return;
             }
+
+            delete[] folder.texture;
+            delete[] file.texture;
+            startCore();
+            return;
         }
         else if (menu.pressed & KEY_B)
         {

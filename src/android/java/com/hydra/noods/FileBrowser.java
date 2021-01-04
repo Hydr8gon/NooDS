@@ -115,6 +115,42 @@ public class FileBrowser extends AppCompatActivity
         update();
     }
 
+    private void tryStartCore()
+    {
+        // Attempt to start the core
+        int result = startCore();
+
+        if (result == 0)
+        {
+            // Switch to the emulator activity if loading was successful
+            startActivity(new Intent(this, NooActivity.class));
+            finish();
+        }
+        else
+        {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setPositiveButton("OK", null);
+
+            // Inform the user of the error if loading was not successful
+            if (result == 1) // Missing BIOS and/or firmware files
+            {
+                builder.setTitle("Missing BIOS/Firmware");
+                builder.setMessage("Initialization failed. " +
+                                   "Make sure the path settings point to valid BIOS and firmware files and try again. " +
+                                   "You can modify the path settings in the noods.ini file.");
+            }
+            else // Unreadable ROM file
+            {
+                builder.setTitle("Unreadable ROM");
+                builder.setMessage("Initialization failed. " +
+                                   "Make sure the ROM file is accessible and try again.");
+            }
+
+            builder.create().show();
+            onBackPressed();
+        }
+    }
+
     private void update()
     {
         File file = new File(path);
@@ -123,53 +159,96 @@ public class FileBrowser extends AppCompatActivity
         // Check if the current file is a ROM
         if (!file.isDirectory() && (ext.equals(".nds") || ext.equals(".gba")))
         {
-            // Attempt to load the ROM
-            int result = loadRom(path);
-
-            if (result == 0)
+            // Set the NDS or GBA ROM path depending on the file extension, and try to start the core
+            // If a ROM of the other type is already loaded, ask if it should be loaded alongside the new ROM
+            if (ext.equals(".nds"))
             {
-                // Start the emulator if loading was successful
-                startActivity(new Intent(this, NooActivity.class));
-                finish();
+                setNdsPath(path);
+
+                if (!getGbaPath().equals(""))
+                {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Loading NDS ROM");
+                    builder.setMessage("Load the previous GBA ROM alongside this ROM?");
+
+                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener()
+                    {
+                        @Override
+                        public void onClick(DialogInterface dialog, int id)
+                        {
+                            tryStartCore();
+                        }
+                    });
+
+                    builder.setNegativeButton("No", new DialogInterface.OnClickListener()
+                    {
+                        @Override
+                        public void onClick(DialogInterface dialog, int id)
+                        {
+                            setGbaPath("");
+                            tryStartCore();
+                        }
+                    });
+
+                    builder.setOnCancelListener(new DialogInterface.OnCancelListener()
+                    {
+                        @Override
+                        public void onCancel(DialogInterface dialog)
+                        {
+                            setGbaPath("");
+                            tryStartCore();
+                        }
+                    });
+
+                    builder.create().show();
+                    return;
+                }
             }
             else
             {
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                setGbaPath(path);
 
-                // Inform the user of the error if loading was not successful
-                switch (result)
+                if (!getNdsPath().equals(""))
                 {
-                    case 1: // Missing BIOS and/or firmware files
-                    {
-                        builder.setTitle("Missing BIOS/Firmware");
-                        builder.setMessage("Initialization failed. " +
-                                           "Make sure the path settings point to valid BIOS and firmware files and try again. " +
-                                           "You can modify the path settings in the noods.ini file.");
-                        break;
-                    }
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Loading GBA ROM");
+                    builder.setMessage("Load the previous NDS ROM alongside this ROM?");
 
-                    case 2: // Unreadable ROM file
+                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener()
                     {
-                        builder.setTitle("Unreadable ROM");
-                        builder.setMessage("Initialization failed. " +
-                                           "Make sure the ROM file is accessible and try again.");
-                        break;
-                    }
+                        @Override
+                        public void onClick(DialogInterface dialog, int id)
+                        {
+                            tryStartCore();
+                        }
+                    });
+
+                    builder.setNegativeButton("No", new DialogInterface.OnClickListener()
+                    {
+                        @Override
+                        public void onClick(DialogInterface dialog, int id)
+                        {
+                            setNdsPath("");
+                            tryStartCore();
+                        }
+                    });
+
+                    builder.setOnCancelListener(new DialogInterface.OnCancelListener()
+                    {
+                        @Override
+                        public void onCancel(DialogInterface dialog)
+                        {
+                            setNdsPath("");
+                            tryStartCore();
+                        }
+                    });
+
+                    builder.create().show();
+                    return;
                 }
-
-                builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
-                {
-                    @Override
-                    public void onClick(DialogInterface dialog, int id)
-                    {
-                        // Close the dialog
-                    }
-                });
-
-                builder.create().show();
-                onBackPressed();
             }
 
+            tryStartCore();
             return;
         }
 
@@ -189,5 +268,9 @@ public class FileBrowser extends AppCompatActivity
     }
 
     public native void loadSettings(String rootPath);
-    public native int loadRom(String romPath);
+    public native int startCore();
+    public native String getNdsPath();
+    public native String getGbaPath();
+    public native void setNdsPath(String value);
+    public native void setGbaPath(String value);
 }

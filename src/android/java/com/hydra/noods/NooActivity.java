@@ -182,6 +182,7 @@ public class NooActivity extends AppCompatActivity
                         AlertDialog.Builder builder2 = new AlertDialog.Builder(NooActivity.this);
                         builder2.setTitle("Changing Save Type");
                         builder2.setMessage("Are you sure? This may result in data loss!");
+                        builder2.setNegativeButton("Cancel", null);
 
                         builder2.setPositiveButton("OK", new DialogInterface.OnClickListener()
                         {
@@ -196,15 +197,6 @@ public class NooActivity extends AppCompatActivity
                                     resizeNdsSave(values[which]);
                                 restartCore();
                                 resumeCore();
-                            }
-                        });
-
-                        builder2.setNegativeButton("Cancel", new DialogInterface.OnClickListener()
-                        {
-                            @Override
-                            public void onClick(DialogInterface dialog, int id)
-                            {
-                                // Close the dialog
                             }
                         });
 

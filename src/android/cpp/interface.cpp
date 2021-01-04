@@ -48,18 +48,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(
     }
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_loadRom(JNIEnv* env, jobject obj, jstring romPath)
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_startCore(JNIEnv* env, jobject obj)
 {
-    // Convert the Java string to a C++ string
-    const char *str = env->GetStringUTFChars(romPath, nullptr);
-    std::string path = str;
-    env->ReleaseStringUTFChars(romPath, str);
-
-    // Load the ROM, or return an error code if loading failed
+    // Start the core, or return an error code on failure
     try
     {
-        ndsPath = (path.find(".nds", path.length() - 4) != std::string::npos) ? path : "";
-        gbaPath = (path.find(".gba", path.length() - 4) != std::string::npos) ? path : "";
         if (core) delete core;
         core = new Core(ndsPath, gbaPath);
         return 0;
@@ -68,6 +61,30 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_loadRom(JNIEn
     {
         return e;
     }
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_hydra_noods_FileBrowser_getNdsPath(JNIEnv* env, jobject obj)
+{
+    return env->NewStringUTF(ndsPath.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_hydra_noods_FileBrowser_getGbaPath(JNIEnv* env, jobject obj)
+{
+    return env->NewStringUTF(gbaPath.c_str());
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsPath(JNIEnv* env, jobject obj, jstring value)
+{
+    const char *str = env->GetStringUTFChars(value, nullptr);
+    ndsPath = str;
+    env->ReleaseStringUTFChars(value, str);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaPath(JNIEnv* env, jobject obj, jstring value)
+{
+    const char *str = env->GetStringUTFChars(value, nullptr);
+    gbaPath = str;
+    env->ReleaseStringUTFChars(value, str);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_fillAudioBuffer(JNIEnv *env, jobject obj, jshortArray buffer)
