@@ -24,22 +24,15 @@
 #include <vector>
 #include <glad/glad.h>
 
-struct Icon
-{
-    Icon(uint32_t *texture, int size): texture(texture), size(size) {}
-
-    uint32_t *texture;
-    int size;
-};
-
 struct ListItem
 {
-    ListItem(std::string name, std::string setting = "", Icon *icon = nullptr):
-        name(name), setting(setting), icon(icon) {}
+    ListItem(std::string name, std::string setting = "", uint32_t *icon = nullptr, int iconSize = 0):
+        name(name), setting(setting), icon(icon), iconSize(iconSize) {}
 
     std::string name;
     std::string setting;
-    Icon *icon;
+    uint32_t *icon;
+    int iconSize;
 
     bool operator < (const ListItem &item) { return (name < item.name); }
 };

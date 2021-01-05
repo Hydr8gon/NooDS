@@ -4,6 +4,7 @@
 
 #include "../../core.h"
 #include "../../settings.h"
+#include "../../common/nds_icon.h"
 #include "../../common/screen_layout.h"
 
 int screenFilter = 1;
@@ -46,6 +47,20 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(
         Settings::setGbaBiosPath(path + "/noods/gba_bios.bin");
         Settings::save(settingsPath);
     }
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_getNdsIcon(JNIEnv *env, jobject obj, jstring romName, jobject bitmap)
+{
+    // Get the NDS icon
+    const char *str = env->GetStringUTFChars(romName, nullptr);
+    NdsIcon icon(str);
+    env->ReleaseStringUTFChars(romName, str);
+
+    // Copy the data to the bitmap
+    uint32_t *data;
+    AndroidBitmap_lockPixels(env, bitmap, (void**)&data);
+    memcpy(data, icon.getIcon(), 32 * 32 * sizeof(uint32_t));
+    AndroidBitmap_unlockPixels(env, bitmap);
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_startCore(JNIEnv* env, jobject obj)

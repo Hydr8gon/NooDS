@@ -544,10 +544,10 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
                     drawRectangle(90, 194 + i * 70, 1100, 1, palette[2]);
                 }
 
-                if ((*items)[offset].icon)
+                if ((*items)[offset].iconSize > 0)
                 {
                     // Draw the item's icon and its name beside it
-                    drawImage((*items)[offset].icon->texture, (*items)[offset].icon->size, (*items)[offset].icon->size, 105, 126 + i * 70, 64, 64);
+                    drawImage((*items)[offset].icon, (*items)[offset].iconSize, (*items)[offset].iconSize, 105, 127 + i * 70, 64, 64);
                     drawString((*items)[offset].name, 184, 140 + i * 70, 38, palette[1]);
                 }
                 else

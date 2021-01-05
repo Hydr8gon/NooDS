@@ -25,6 +25,7 @@
 #include <malloc.h>
 
 #include "switch_ui.h"
+#include "../common/nds_icon.h"
 #include "../common/screen_layout.h"
 #include "../core.h"
 #include "../settings.h"
@@ -148,55 +149,6 @@ void stopCore()
     clkrstExit();
 }
 
-uint32_t *getRomIcon(std::string filename)
-{
-    // Attempt to open the ROM
-    FILE *rom = fopen(filename.c_str(), "rb");
-    if (!rom) return nullptr;
-
-    // Get the icon offset
-    uint32_t offset;
-    fseek(rom, 0x68, SEEK_SET);
-    fread(&offset, sizeof(uint32_t), 1, rom);
-
-    // Get the icon data
-    uint8_t data[512];
-    fseek(rom, 0x20 + offset, SEEK_SET);
-    fread(data, sizeof(uint8_t), 512, rom);
-
-    // Get the icon palette
-    uint16_t palette[16];
-    fseek(rom, 0x220 + offset, SEEK_SET);
-    fread(palette, sizeof(uint16_t), 16, rom);
-
-    fclose(rom);
-
-    // Get each pixel's 5-bit palette color and convert it to 8-bit
-    uint32_t tiles[32 * 32];
-    for (int i = 0; i < 32 * 32; i++)
-    {
-        uint8_t index = (i & 1) ? ((data[i / 2] & 0xF0) >> 4) : (data[i / 2] & 0x0F);
-        uint8_t r = index ? (((palette[index] >>  0) & 0x1F) * 255 / 31) : 0xFFFFFFFF;
-        uint8_t g = index ? (((palette[index] >>  5) & 0x1F) * 255 / 31) : 0xFFFFFFFF;
-        uint8_t b = index ? (((palette[index] >> 10) & 0x1F) * 255 / 31) : 0xFFFFFFFF;
-        tiles[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
-    }
-
-    uint32_t *texture = new uint32_t[32 * 32];
-
-    // Rearrange the pixels from 8x8 tiles to a 32x32 texture
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; j < 8; j++)
-        {
-            for (int k = 0; k < 4; k++)
-                memcpy(&texture[256 * i + 32 * j + 8 * k], &tiles[256 * i + 8 * j + 64 * k], 8 * sizeof(uint32_t));
-        }
-    }
-
-    return texture;
-}
-
 void settingsMenu()
 {
     const std::vector<std::string> toggle      = { "Off", "On"                                    };
@@ -271,14 +223,14 @@ void fileBrowser()
 
     // Load the appropriate icons for the current theme
     romfsInit();
-    Icon folder(SwitchUI::bmpToTexture(SwitchUI::isDarkTheme() ? "romfs:/folder-dark.bmp" : "romfs:/folder-light.bmp"), 64);
-    Icon file(SwitchUI::bmpToTexture(SwitchUI::isDarkTheme() ? "romfs:/file-dark.bmp" : "romfs:/file-light.bmp"), 64);
+    uint32_t *file   = SwitchUI::bmpToTexture(SwitchUI::isDarkTheme() ? "romfs:/file-dark.bmp"   : "romfs:/file-light.bmp");
+    uint32_t *folder = SwitchUI::bmpToTexture(SwitchUI::isDarkTheme() ? "romfs:/folder-dark.bmp" : "romfs:/folder-light.bmp");
     romfsExit();
 
     while (true)
     {
         std::vector<ListItem> files;
-        std::vector<Icon*> icons;
+        std::vector<NdsIcon*> icons;
         DIR *dir = opendir(path.c_str());
         dirent *entry;
 
@@ -290,18 +242,18 @@ void fileBrowser()
             if (entry->d_type == DT_DIR)
             {
                 // Add a directory with a generic icon to the list
-                files.push_back(ListItem(name, "", &folder));
+                files.push_back(ListItem(name, "", folder, 64));
             }
             else if (name.find(".nds", name.length() - 4) != std::string::npos)
             {
                 // Add an NDS ROM with its decoded icon to the list
-                icons.push_back(new Icon(getRomIcon(path + "/" + name), 32));
-                files.push_back(ListItem(name, "", icons[icons.size() - 1]));
+                icons.push_back(new NdsIcon(path + "/" + name));
+                files.push_back(ListItem(name, "", icons[icons.size() - 1]->getIcon(), 32));
             }
             else if (name.find(".gba", name.length() - 4) != std::string::npos)
             {
                 // Add a GBA ROM with a generic icon to the list
-                files.push_back(ListItem(name, "", &file));
+                files.push_back(ListItem(name, "", file, 64));
             }
         }
 
@@ -312,12 +264,9 @@ void fileBrowser()
         Selection menu = SwitchUI::menu("NooDS", &files, index, "Settings", "Exit");
         index = menu.index;
 
-        // Free the ROM icon memory
+        // Free the NDS icon memory
         for (unsigned int i = 0; i < icons.size(); i++)
-        {
-            delete[] icons[i]->texture;
             delete[] icons[i];
-        }
 
         // Handle menu input
         if (menu.pressed & KEY_A)
@@ -399,8 +348,8 @@ void fileBrowser()
                 }
             }
 
-            delete[] folder.texture;
-            delete[] file.texture;
+            delete[] folder;
+            delete[] file;
             startCore();
             return;
         }

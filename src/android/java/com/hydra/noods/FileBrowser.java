@@ -8,18 +8,19 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 
 public class FileBrowser extends AppCompatActivity
 {
@@ -29,7 +30,8 @@ public class FileBrowser extends AppCompatActivity
         System.loadLibrary("noods-core");
     }
 
-    private ArrayList<String> fileList;
+    private ArrayList<String> fileNames;
+    private ArrayList<Bitmap> fileIcons;
     private ListView fileView;
     private String path;
 
@@ -91,7 +93,8 @@ public class FileBrowser extends AppCompatActivity
 
     private void init()
     {
-        fileList = new ArrayList<String>();
+        fileNames = new ArrayList<String>();
+        fileIcons = new ArrayList<Bitmap>();
         fileView = new ListView(this);
         path = Environment.getExternalStorageDirectory().getAbsolutePath();
 
@@ -101,7 +104,7 @@ public class FileBrowser extends AppCompatActivity
             public void onItemClick(AdapterView<?> parent, View view, int position, long id)
             {
                 // Navigate to the selected directory
-                path += "/" + fileList.get(position);
+                path += "/" + fileNames.get(position);
                 update();
             }
         });
@@ -252,22 +255,44 @@ public class FileBrowser extends AppCompatActivity
             return;
         }
 
+        // Get all files in the current directory
         File[] files = file.listFiles();
-        fileList.clear();
+        Arrays.sort(files);
 
-        // Get all the folders and ROMs at the current path
+        fileNames.clear();
+        fileIcons.clear();
+
+        // Get file names and icons for all folders and ROMs at the current path
         for (int i = 0; i < files.length; i++)
         {
-            ext = (files[i].getName().length() >= 4) ? files[i].getName().substring(files[i].getName().length() - 4) : "";
-            if (files[i].isDirectory() || ext.equals(".nds") || ext.equals(".gba"))
-                fileList.add(files[i].getName());
+            if (files[i].isDirectory())
+            {
+                fileNames.add(files[i].getName());
+                fileIcons.add(BitmapFactory.decodeResource(getResources(), R.drawable.folder));
+            }
+            else
+            {
+                ext = (files[i].getName().length() >= 4) ? files[i].getName().substring(files[i].getName().length() - 4) : "";
+                if (ext.equals(".nds"))
+                {
+                    fileNames.add(files[i].getName());
+                    Bitmap bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
+                    getNdsIcon(path + "/" + files[i].getName(), bitmap);
+                    fileIcons.add(bitmap);
+                }
+                else if (ext.equals(".gba"))
+                {
+                    fileNames.add(files[i].getName());
+                    fileIcons.add(BitmapFactory.decodeResource(getResources(), R.drawable.file));
+                }
+            }
         }
 
-        Collections.sort(fileList);
-        fileView.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, fileList));
+        fileView.setAdapter(new FileAdapter(this, fileNames, fileIcons));
     }
 
     public native void loadSettings(String rootPath);
+    public native void getNdsIcon(String romPath, Bitmap bitmap);
     public native int startCore();
     public native String getNdsPath();
     public native String getGbaPath();

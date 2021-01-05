@@ -5,6 +5,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -flto")
 
 add_library(noods-core SHARED
             cpp/interface.cpp
+            ../common/nds_icon.cpp
             ../common/screen_layout.cpp
             ../cartridge.cpp
             ../core.cpp
