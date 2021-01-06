@@ -167,9 +167,9 @@ void Gpu3DRenderer::drawScanline1(int line)
     // Clear the scanline buffers with the clear values
     for (int i = line * 256; i < (line + 1) * 256; i++)
     {
-        framebuffer[0][i]  = framebuffer[1][i]  = color;
-        depthBuffer[0][i]  = depthBuffer[1][i]  = depth;
-        attribBuffer[0][i] = attribBuffer[1][i] = attrib;
+        framebuffer[0][i]  = color;
+        depthBuffer[0][i]  = depth;
+        attribBuffer[0][i] = attrib;
     }
 
     stencilClear[line] = false;
@@ -968,6 +968,9 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
         // Invalid viewports can cause out-of-bounds vertices, so only draw within bounds
         if (x >= 256) break;
 
+        bool layer = 0;
+        int i = line * 256 + x;
+
         // Calculate the depth value of the current pixel
         uint32_t depth;
         if (polygon->wBuffer)
@@ -984,34 +987,50 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
             depth = interpolateLinear(z1, z2, x1, x, x4);
         }
 
-        bool layer = 0;
-        int i = line * 256 + x;
-
-        // Depth test the current pixel; for "equal" depth test, there's an error margin of 0x200
-        if (!((polygon->depthTestEqual && depthBuffer[0][i] + 0x200 >= depth) || depthBuffer[0][i] > depth))
+        // Depth test the pixel on the front layer, and on the back layer if under an anti-aliased edge
+        bool depthPass[2];
+        if (polygon->depthTestEqual)
         {
-            // Set a stencil buffer bit for shadow mask pixels that fail the depth test
-            if (polygon->mode == 3 && polygon->id == 0)
-                stencilBuffer[i] |= BIT(0);
+            uint32_t margin = (polygon->wBuffer ? 0xFF : 0x200);
+            depthPass[0] = (depthBuffer[0][i] >= depth - margin && depthBuffer[0][i] <= depth + margin);
+            depthPass[1] = (disp3DCnt & BIT(4)) && (attribBuffer[0][i] & BIT(14)) &&
+                (depthBuffer[1][i] >= depth - margin && depthBuffer[1][i] <= depth + margin);
+        }
+        else
+        {
+            depthPass[0] = (depthBuffer[0][i] > depth);
+            depthPass[1] = (disp3DCnt & BIT(4)) && (attribBuffer[0][i] & BIT(14)) && (depthBuffer[1][i] > depth);
+        }
 
-            // Depth test against the back layer if anti-aliasing is enabled
-            if ((disp3DCnt & BIT(4)) && ((polygon->depthTestEqual && depthBuffer[1][i] + 0x200 >= depth) || depthBuffer[1][i] > depth))
+        // Check if the pixel should be drawn
+        if (polygon->mode == 3) // Shadow
+        {
+            if (polygon->id == 0) // Mask
             {
+                // Don't render shadow mask pixels, but set a stencil buffer bit for ones that fail the depth test
+                if (!depthPass[0]) stencilBuffer[i] |= BIT(0);
+                if (!depthPass[1]) stencilBuffer[i] |= BIT(1);
+                continue;
+            }
+            else if (!depthPass[0] || !(stencilBuffer[i] & BIT(0)) || (attribBuffer[0][i] & 0x3F) == polygon->id)
+            {
+                // Only render non-mask shadow pixels if the stencil bit is set and the old pixel's polygon ID differs
+                if (!depthPass[1] || !(stencilBuffer[i] & BIT(1)) || (attribBuffer[1][i] & 0x3F) == polygon->id)
+                    continue;
+
                 // Draw the pixel on the back layer
                 layer = 1;
             }
-            else
-            {
-                // Set a stencil buffer bit for shadow mask pixels that fail the depth test, and skip drawing the pixel
-                if (polygon->mode == 3 && polygon->id == 0)
-                    stencilBuffer[i] |= BIT(1);
-                continue;
-            }
         }
+        else if (!depthPass[0])
+        {
+            // Only render normal pixels if the depth test passes
+            if (!depthPass[1])
+                continue;
 
-        // Only render non-mask shadow polygons if the stencil bit is set and the old pixel's polygon ID differs
-        if (polygon->mode == 3 && (polygon->id == 0 || !(stencilBuffer[i] & BIT(layer)) || (attribBuffer[layer][i] & 0x3F) == polygon->id))
-            continue;
+            // Draw the pixel on the back layer
+            layer = 1;
+        }
 
         // Interpolate the vertex color at the current pixel
         uint32_t r = interpolateFill(r1, r2, x1, x, x4, w1, w2) >> 3;
@@ -1110,48 +1129,43 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
         // Draw a pixel, marked with an extra bit as an indicator for 2D blending
         if ((color >> 18) == 0x3F) // Opaque
         {
-            // Push the previous pixel to the back layer if drawing to the front layer
-            if (layer == 0)
+            uint8_t edgeAlpha = 0x3F;
+            bool edge = (x <= x2 || x >= x3 || horizontal);
+
+            // Push the previous pixel to the back layer if drawing a front anti-aliased edge pixel
+            if ((disp3DCnt & BIT(4)) && layer == 0 && edge)
             {
                 framebuffer[1][i]  = framebuffer[0][i];
                 depthBuffer[1][i]  = depthBuffer[0][i];
                 attribBuffer[1][i] = attribBuffer[0][i];
+
+                // Set the pixel transparency for anti-aliasing
+                if (x <= x2)
+                    edgeAlpha = interpolateLinear(x1a, x2a, x1, x, x2);
+                else if (x >= x3)
+                    edgeAlpha = interpolateLinear(x3a, x4a, x3, x, x4);
             }
 
             framebuffer[layer][i] = BIT(26) | color;
             depthBuffer[layer][i] = depth;
-            attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x0FC0) |
-                ((x <= x2 || x >= x3 || horizontal) << 14) | (polygon->fog << 13) | polygon->id;
-
-            // Set the pixel transparency for anti-aliasing
-            if (layer == 0)
-            {
-                if (x <= x2)
-                    attribBuffer[0][i] |= interpolateLinear(x1a, x2a, x1, x, x2) << 15;
-                else if (x >= x3)
-                    attribBuffer[0][i] |= interpolateLinear(x3a, x4a, x3, x, x4) << 15;
-                else
-                    attribBuffer[0][i] |= 0x3F << 15;
-            }
+            attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x0FC0) | (edgeAlpha << 15) |
+                (edge << 14) | (polygon->fog << 13) | polygon->id;
         }
-        else // Transparent (applies even if blending is disabled)
+        else if (!(attribBuffer[layer][i] & BIT(12)) || ((attribBuffer[layer][i] >> 6) & 0x3F) != polygon->id) // Transparent
         {
-            // Only render transparent pixels if the old pixel isn't transparent or the polygon ID differs
-            if (!(attribBuffer[layer][i] & BIT(12)) || ((attribBuffer[layer][i] >> 6) & 0x3F) != polygon->id)
-            {
-                framebuffer[layer][i] = BIT(26) | (((disp3DCnt & BIT(3)) && (framebuffer[layer][i] & 0xFC0000)) ?
-                    interpolateColor(framebuffer[layer][i], color, 0, color >> 18, 63) : color);
-                if (polygon->transNewDepth) depthBuffer[layer][i] = depth;
-                attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x1FE03F) | BIT(12) | (polygon->id << 6);
+            // Transparent pixels are only drawn if the old pixel isn't transparent or the polygon ID differs
+            framebuffer[layer][i] = BIT(26) | (((disp3DCnt & BIT(3)) && (framebuffer[layer][i] & 0xFC0000)) ?
+                interpolateColor(framebuffer[layer][i], color, 0, color >> 18, 63) : color);
+            if (polygon->transNewDepth) depthBuffer[layer][i] = depth;
+            attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x1FE03F) | BIT(12) | (polygon->id << 6);
 
-                // Blend with the back layer as well if drawing to the front layer
-                if (layer == 0)
-                {
-                    framebuffer[1][i] = BIT(26) | (((disp3DCnt & BIT(3)) && (framebuffer[1][i] & 0xFC0000)) ?
-                        interpolateColor(framebuffer[1][i], color, 0, color >> 18, 63) : color);
-                    if (polygon->transNewDepth) depthBuffer[1][i] = depth;
-                    attribBuffer[1][i] = (attribBuffer[1][i] & 0x1FE03F) | BIT(12) | (polygon->id << 6);
-                }
+            // Blend with the back layer as well if drawing over a front anti-aliased edge pixel
+            if ((disp3DCnt & BIT(4)) && layer == 0 && (attribBuffer[0][i] & BIT(14)))
+            {
+                framebuffer[1][i] = BIT(26) | (((disp3DCnt & BIT(3)) && (framebuffer[1][i] & 0xFC0000)) ?
+                    interpolateColor(framebuffer[1][i], color, 0, color >> 18, 63) : color);
+                if (polygon->transNewDepth) depthBuffer[1][i] = depth;
+                attribBuffer[1][i] = (attribBuffer[1][i] & 0x1FE03F) | BIT(12) | (polygon->id << 6);
             }
         }
     }
