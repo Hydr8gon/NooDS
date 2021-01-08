@@ -25,6 +25,7 @@
 #include "save_dialog.h"
 #include "../common/screen_layout.h"
 #include "../settings.h"
+#include "../../icon/icon.xpm"
 
 enum Event
 {
@@ -79,6 +80,10 @@ wxEND_EVENT_TABLE()
 
 NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): wxFrame(nullptr, wxID_ANY, "NooDS"), joystick(joystick), emulator(emulator)
 {
+    // Set the icon
+    wxIcon icon(icon_xpm);
+    SetIcon(icon);
+
     // Set up the File menu
     fileMenu = new wxMenu();
     fileMenu->Append(LOAD_ROM,      "&Load ROM");

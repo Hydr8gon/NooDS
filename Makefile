@@ -19,11 +19,18 @@ CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
 HFILES   := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.h))
 OFILES   := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
 
+ifeq ($(OS),Windows_NT)
+OFILES += $(BUILD)/icon.o
+endif
+
 $(NAME): $(OFILES)
 	g++ -o $@ $(ARGS) $^ $(LIBS)
 
 $(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
 	g++ -c -o $@ $(ARGS) $< $(LIBS)
+
+$(BUILD)/icon.o:
+	windres icon/icon.rc $@
 
 $(BUILD):
 	for dir in $(SOURCES); \

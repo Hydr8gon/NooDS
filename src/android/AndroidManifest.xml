@@ -8,6 +8,7 @@
     <uses-feature android:glEsVersion="0x00020000" android:required="true" />
 
     <application android:label="NooDS"
+        android:icon="@drawable/icon"
         android:requestLegacyExternalStorage="true">
 
         <activity android:name=".FileBrowser"

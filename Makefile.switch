@@ -47,6 +47,7 @@ ROMFS		:=	romfs
 APP_TITLE   := NooDS
 APP_AUTHOR  := Hydr8gon
 APP_VERSION := 0.1
+ICON        := icon/icon.jpg
 
 #---------------------------------------------------------------------------------
 # options for code generation
