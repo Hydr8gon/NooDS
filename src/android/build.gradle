@@ -2,7 +2,7 @@ apply plugin: "com.android.application"
 
 android {
     buildDir = "../../build-android"
-    android.ndkVersion "21.3.6528147"
+    android.ndkVersion "22.0.7026061"
     compileSdkVersion 29
 
     sourceSets {
