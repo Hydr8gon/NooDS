@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2020 Hydr8gon
+    Copyright 2019-2021 Hydr8gon
 
     This file is part of NooDS.
 
