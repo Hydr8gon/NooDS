@@ -150,13 +150,13 @@ void Gpu::gbaScanline308()
             // Copy the completed sub-framebuffers to the main framebuffer
             if (powCnt1 & BIT(15)) // Display swap
             {
-                memcpy(&framebuffer[0],         core->gpu2D[0].getFramebuffer(0), 256 * 192 * sizeof(uint32_t));
-                memset(&framebuffer[256 * 192], 0,                                256 * 192 * sizeof(uint32_t));
+                memcpy(&framebuffer[0],         core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                memset(&framebuffer[256 * 192], 0,                               256 * 192 * sizeof(uint32_t));
             }
             else
             {
-                memset(&framebuffer[0],         0,                                256 * 192 * sizeof(uint32_t));
-                memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(0), 256 * 192 * sizeof(uint32_t));
+                memset(&framebuffer[0],         0,                               256 * 192 * sizeof(uint32_t));
+                memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
             }
 
             ready = true;
@@ -254,11 +254,7 @@ void Gpu::scanline256()
                 case 0: // Source A
                 {
                     // Choose from 2D engine A or the 3D engine
-                    uint32_t *source;
-                    if (dispCapCnt & BIT(24))
-                        source = core->gpu3DRenderer.getFramebuffer(vCount);
-                    else
-                        source = core->gpu2D[0].getFramebuffer(vCount);
+                    uint32_t *source = (dispCapCnt & BIT(24)) ? core->gpu3DRenderer.getLine(vCount) : core->gpu2D[0].getRawLine();
 
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
@@ -297,11 +293,7 @@ void Gpu::scanline256()
                     }
 
                     // Choose from 2D engine A or the 3D engine
-                    uint32_t *source;
-                    if (dispCapCnt & BIT(24))
-                        source = core->gpu3DRenderer.getFramebuffer(vCount);
-                    else
-                        source = core->gpu2D[0].getFramebuffer(vCount);
+                    uint32_t *source = (dispCapCnt & BIT(24)) ? core->gpu3DRenderer.getLine(vCount) : core->gpu2D[0].getRawLine();
 
                     // Get the VRAM source address for the current scanline
                     uint32_t readOffset = ((dispCapCnt & 0x0C000000) >> 11) + vCount * width * 2;
@@ -337,11 +329,6 @@ void Gpu::scanline256()
                 dispCapCnt &= ~BIT(31);
             }
         }
-
-        // Display captures are performed on the layers, even if the display is set to something else
-        // After the display capture, redraw the scanline or apply master brightness if needed
-        core->gpu2D[0].finishScanline(vCount);
-        core->gpu2D[1].finishScanline(vCount);
     }
 
     // Draw 3D scanlines 48 lines in advance, if the current 3D is dirty
@@ -405,13 +392,13 @@ void Gpu::scanline355()
             {
                 if (powCnt1 & BIT(15)) // Display swap
                 {
-                    memcpy(&framebuffer[0],         core->gpu2D[0].getFramebuffer(0), 256 * 192 * sizeof(uint32_t));
-                    memcpy(&framebuffer[256 * 192], core->gpu2D[1].getFramebuffer(0), 256 * 192 * sizeof(uint32_t));
+                    memcpy(&framebuffer[0],         core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    memcpy(&framebuffer[256 * 192], core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                 }
                 else
                 {
-                    memcpy(&framebuffer[0],         core->gpu2D[1].getFramebuffer(0), 256 * 192 * sizeof(uint32_t));
-                    memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(0), 256 * 192 * sizeof(uint32_t));
+                    memcpy(&framebuffer[0],         core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                 }
             }
             else

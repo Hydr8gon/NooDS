@@ -321,10 +321,11 @@ void Gpu2D::drawScanline(int line)
     if (dispCnt & BIT(12)) drawObjects(line);
 
     // Blend the layers to form the final image
+    // This is done in a separate buffer so display capture can always access the raw 2D output
     for (int i = 0; i < 256; i++)
     {
         uint8_t enabled = BIT(5) | (dispCnt >> 8);
-        uint32_t *pixel = &framebuffer[line * 256 + i];
+        uint32_t *pixel = &layers[5][i];
 
         // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
         if (dispCnt & 0x0000E000) // Windows enabled
@@ -333,7 +334,7 @@ void Gpu2D::drawScanline(int line)
                 enabled &= winIn >> 0; // Window 0
             else if ((dispCnt & BIT(14)) && i >= winX1[1] && i < winX2[1] && line >= winY1[1] && line < winY2[1])
                 enabled &= winIn >> 8; // Window 1
-            else if ((dispCnt & BIT(15)) && (*pixel & BIT(24)))
+            else if ((dispCnt & BIT(15)) && (framebuffer[line * 256 + i] & BIT(24)))
                 enabled &= winOut >> 8; // Object window
             else
                 enabled &= winOut >> 0; // Outside of windows
@@ -429,17 +430,20 @@ void Gpu2D::drawScanline(int line)
             *pixel = (b << 12) | (g << 6) | r;
         }
     }
-}
 
-void Gpu2D::finishScanline(int line)
-{
-    // Redraw the scanline if the display isn't set to layer mode
+    // Copy the final image to the framebuffer
     switch ((dispCnt & 0x00030000) >> 16) // Display mode
     {
         case 0: // Display off
         {
             // Fill the display with white
             memset(&framebuffer[line * 256], 0xFF, 256 * sizeof(uint32_t));
+            break;
+        }
+
+        case 1: // Layers
+        {
+            memcpy(&framebuffer[line * 256], layers[5], 256 * sizeof(uint32_t));
             break;
         }
 
@@ -518,7 +522,7 @@ void Gpu2D::drawText(int bg, int line)
     // If 3D is enabled, render it to BG0 in text mode
     if (!core->isGbaMode() && bg == 0 && (dispCnt & BIT(3)))
     {
-        memcpy(layers[bg], core->gpu3DRenderer.getFramebuffer(line), 256 * sizeof(uint32_t));
+        memcpy(layers[bg], core->gpu3DRenderer.getLine(line), 256 * sizeof(uint32_t));
         return;
     }
 

@@ -31,9 +31,9 @@ class Gpu2D
 
         void drawGbaScanline(int line);
         void drawScanline(int line);
-        void finishScanline(int line);
 
-        uint32_t *getFramebuffer(int line) { return &framebuffer[256 * line]; }
+        uint32_t *getFramebuffer() { return framebuffer; }
+        uint32_t *getRawLine()     { return layers[5];   }
 
         uint32_t readDispCnt()      { return dispCnt;      }
         uint16_t readBgCnt(int bg)  { return bgCnt[bg];    }
@@ -71,7 +71,7 @@ class Gpu2D
         uint8_t **extPalettes;
 
         uint32_t framebuffer[256 * 192] = {};
-        uint32_t layers[5][256] = {};
+        uint32_t layers[6][256] = {};
         uint8_t objPrio[256] = {};
 
         int gbaBlock = 0;

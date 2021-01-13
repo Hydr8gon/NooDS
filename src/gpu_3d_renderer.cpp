@@ -55,7 +55,7 @@ uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
     return (a << 18) | (b << 12) | (g << 6) | r;
 }
 
-uint32_t *Gpu3DRenderer::getFramebuffer(int line)
+uint32_t *Gpu3DRenderer::getLine(int line)
 {
     // Wait until a scanline is ready, and then return it
     while (ready[line].load() < 2) std::this_thread::yield();

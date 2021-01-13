@@ -36,7 +36,7 @@ class Gpu3DRenderer
 
         void drawScanline(int line);
 
-        uint32_t *getFramebuffer(int line);
+        uint32_t *getLine(int line);
 
         uint16_t readDisp3DCnt() { return disp3DCnt; }
 
