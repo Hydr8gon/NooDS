@@ -34,7 +34,7 @@ class Interpreter
         void directBoot();
         void enterGbaMode();
 
-        void runCycle();
+        void runOpcode();
 
         void halt();
         void sendInterrupt(int bit);

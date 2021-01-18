@@ -22,6 +22,7 @@
 
 #include <cstdint>
 #include <queue>
+#include <vector>
 
 #include "defines.h"
 
@@ -84,11 +85,11 @@ class Gpu3D
     public:
         Gpu3D(Core *core);
 
-        void runCycle();
+        void runCommand();
         void swapBuffers();
 
-        bool shouldRun()  { return !halted && (gxStat & BIT(27)); }
-        bool shouldSwap() { return  halted;                       }
+        bool shouldRun()  { return !halted && paramsNeeded == 0; }
+        bool shouldSwap() { return  halted;                      }
 
         _Polygon *getPolygons()     { return polygonsOut;     }
         int       getPolygonCount() { return polygonCountOut; }
@@ -145,10 +146,11 @@ class Gpu3D
 
         bool halted = false;
 
-        std::queue<Entry> fifo, pipe;
+        std::queue<Entry> fifo;
+        int pipeSize = 0;
 
         int paramCounts[0x100] = {};
-        int paramCount = 0;
+        int paramsNeeded = -1;
 
         int matrixMode = 0;
         int projectionPtr = 0, coordinatePtr = 0;
@@ -219,17 +221,17 @@ class Gpu3D
         void mtxStoreCmd(uint32_t param);
         void mtxRestoreCmd(uint32_t param);
         void mtxIdentityCmd();
-        void mtxLoad44Cmd(uint32_t param);
-        void mtxLoad43Cmd(uint32_t param);
-        void mtxMult44Cmd(uint32_t param);
-        void mtxMult43Cmd(uint32_t param);
-        void mtxMult33Cmd(uint32_t param);
-        void mtxScaleCmd(uint32_t param);
-        void mtxTransCmd(uint32_t param);
+        void mtxLoad44Cmd(std::vector<uint32_t> *params);
+        void mtxLoad43Cmd(std::vector<uint32_t> *params);
+        void mtxMult44Cmd(std::vector<uint32_t> *params);
+        void mtxMult43Cmd(std::vector<uint32_t> *params);
+        void mtxMult33Cmd(std::vector<uint32_t> *params);
+        void mtxScaleCmd(std::vector<uint32_t> *params);
+        void mtxTransCmd(std::vector<uint32_t> *params);
         void colorCmd(uint32_t param);
         void normalCmd(uint32_t param);
         void texCoordCmd(uint32_t param);
-        void vtx16Cmd(uint32_t param);
+        void vtx16Cmd(std::vector<uint32_t> *params);
         void vtx10Cmd(uint32_t param);
         void vtxXYCmd(uint32_t param);
         void vtxXZCmd(uint32_t param);
@@ -242,12 +244,12 @@ class Gpu3D
         void speEmiCmd(uint32_t param);
         void lightVectorCmd(uint32_t param);
         void lightColorCmd(uint32_t param);
-        void shininessCmd(uint32_t param);
+        void shininessCmd(std::vector<uint32_t> *params);
         void beginVtxsCmd(uint32_t param);
         void swapBuffersCmd(uint32_t param);
         void viewportCmd(uint32_t param);
-        void boxTestCmd(uint32_t param);
-        void posTestCmd(uint32_t param);
+        void boxTestCmd(std::vector<uint32_t> *params);
+        void posTestCmd(std::vector<uint32_t> *params);
         void vecTestCmd(uint32_t param);
 
         void addEntry(Entry entry);

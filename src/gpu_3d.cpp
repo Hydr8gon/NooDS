@@ -73,11 +73,28 @@ uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
     return (b << 12) | (g << 6) | r;
 }
 
-void Gpu3D::runCycle()
+void Gpu3D::runCommand()
 {
     // Fetch the next geometry command
-    Entry entry = pipe.front();
-    pipe.pop();
+    Entry entry = fifo.front();
+    int count = paramCounts[entry.command];
+    std::vector<uint32_t> params;
+
+    // If the command has multiple parameters, fetch them all
+    if (count > 1)
+    {
+        params.reserve(count);
+        for (int i = 0; i < count; i++)
+        {
+            params.push_back(fifo.front().param);
+            fifo.pop();
+        }
+    }
+    else
+    {
+        count = 1;
+        fifo.pop();
+    }
 
     // Execute the geometry command
     switch (entry.command)
@@ -88,17 +105,17 @@ void Gpu3D::runCycle()
         case 0x13: mtxStoreCmd(entry.param);      break; // MTX_STORE
         case 0x14: mtxRestoreCmd(entry.param);    break; // MTX_RESTORE
         case 0x15: mtxIdentityCmd();              break; // MTX_IDENTITY
-        case 0x16: mtxLoad44Cmd(entry.param);     break; // MTX_LOAD_4x4
-        case 0x17: mtxLoad43Cmd(entry.param);     break; // MTX_LOAD_4x3
-        case 0x18: mtxMult44Cmd(entry.param);     break; // MTX_MULT_4x4
-        case 0x19: mtxMult43Cmd(entry.param);     break; // MTX_MULT_4x3
-        case 0x1A: mtxMult33Cmd(entry.param);     break; // MTX_MULT_3x3
-        case 0x1B: mtxScaleCmd(entry.param);      break; // MTX_SCALE
-        case 0x1C: mtxTransCmd(entry.param);      break; // MTX_TRANS
+        case 0x16: mtxLoad44Cmd(&params);         break; // MTX_LOAD_4x4
+        case 0x17: mtxLoad43Cmd(&params);         break; // MTX_LOAD_4x3
+        case 0x18: mtxMult44Cmd(&params);         break; // MTX_MULT_4x4
+        case 0x19: mtxMult43Cmd(&params);         break; // MTX_MULT_4x3
+        case 0x1A: mtxMult33Cmd(&params);         break; // MTX_MULT_3x3
+        case 0x1B: mtxScaleCmd(&params);          break; // MTX_SCALE
+        case 0x1C: mtxTransCmd(&params);          break; // MTX_TRANS
         case 0x20: colorCmd(entry.param);         break; // COLOR
         case 0x21: normalCmd(entry.param);        break; // NORMAL
         case 0x22: texCoordCmd(entry.param);      break; // TEXCOORD
-        case 0x23: vtx16Cmd(entry.param);         break; // VTX_16
+        case 0x23: vtx16Cmd(&params);             break; // VTX_16
         case 0x24: vtx10Cmd(entry.param);         break; // VTX_10
         case 0x25: vtxXYCmd(entry.param);         break; // VTX_XY
         case 0x26: vtxXZCmd(entry.param);         break; // VTX_XZ
@@ -111,13 +128,13 @@ void Gpu3D::runCycle()
         case 0x31: speEmiCmd(entry.param);        break; // SPE_EMI
         case 0x32: lightVectorCmd(entry.param);   break; // LIGHT_VECTOR
         case 0x33: lightColorCmd(entry.param);    break; // LIGHT_COLOR
-        case 0x34: shininessCmd(entry.param);     break; // SHININESS
+        case 0x34: shininessCmd(&params);         break; // SHININESS
         case 0x40: beginVtxsCmd(entry.param);     break; // BEGIN_VTXS
         case 0x41:                                break; // END_VTXS
         case 0x50: swapBuffersCmd(entry.param);   break; // SWAP_BUFFERS
         case 0x60: viewportCmd(entry.param);      break; // VIEWPORT
-        case 0x70: boxTestCmd(entry.param);       break; // BOX_TEST
-        case 0x71: posTestCmd(entry.param);       break; // POS_TEST
+        case 0x70: boxTestCmd(&params);           break; // BOX_TEST
+        case 0x71: posTestCmd(&params);           break; // POS_TEST
         case 0x72: vecTestCmd(entry.param);       break; // VEC_TEST
 
         default:
@@ -127,31 +144,33 @@ void Gpu3D::runCycle()
         }
     }
 
-    // Keep track of how many parameters have been sent
-    paramCount++;
-    if (paramCount >= paramCounts[entry.command])
-        paramCount = 0;
+    // On hardware, FIFO entries are moved into a pipe before being executed
+    // The pipe can hold 4 entries, and is refilled when it runs half empty (2 entries)
+    // As long as there are enough entries, set the pipe size to 3 or 4 depending on when it would refill
+    pipeSize = 4 - ((pipeSize + count) & 1);
+    if (pipeSize > fifo.size()) pipeSize = fifo.size();
 
-    // Move 2 FIFO entries into the PIPE if it runs half empty
-    if (pipe.size() < 3)
+    // Update how many parameters are needed before the next command can run
+    if (fifo.empty())
     {
-        for (int i = 0; i < ((fifo.size() > 2) ? 2 : fifo.size()); i++)
-        {
-            pipe.push(fifo.front());
-            fifo.pop();
-        }
+        paramsNeeded = -1;
+    }
+    else
+    {
+        paramsNeeded = paramCounts[fifo.front().command] - fifo.size();
+        if (paramsNeeded < 0) paramsNeeded = 0;
     }
 
     // Update the FIFO status
-    gxStat = (gxStat & ~0x00001F00) | (coordinatePtr <<  8); // Coordinate stack pointer
-    gxStat = (gxStat & ~0x00002000) | (projectionPtr << 13); // Projection stack pointer
-    gxStat = (gxStat & ~0x01FF0000) | (fifo.size()   << 16); // FIFO entries
-    if (fifo.size() == 0) gxStat |=  BIT(26); // Empty
-    if (pipe.size() == 0) gxStat &= ~BIT(27); // Commands not executing
+    gxStat = (gxStat & ~0x00001F00) | (coordinatePtr            <<  8); // Coordinate stack pointer
+    gxStat = (gxStat & ~0x00002000) | (projectionPtr            << 13); // Projection stack pointer
+    gxStat = (gxStat & ~0x01FF0000) | ((fifo.size() - pipeSize) << 16); // FIFO entries
+    if (fifo.size() - pipeSize == 0) gxStat |=  BIT(26); // FIFO empty
+    if (fifo.size() == 0)            gxStat &= ~BIT(27); // Commands not executing
 
     // If the FIFO becomes less than half full, trigger GXFIFO DMA transfers
     // If the FIFO is already less than half full when a DMA starts, it will automatically activate
-    if (fifo.size() < 128 && !(gxStat & BIT(25)))
+    if (fifo.size() - pipeSize < 128 && !(gxStat & BIT(25)))
     {
         gxStat |= BIT(25);
         core->dma[0].trigger(7);
@@ -806,12 +825,11 @@ void Gpu3D::mtxIdentityCmd()
     }
 }
 
-void Gpu3D::mtxLoad44Cmd(uint32_t param)
+void Gpu3D::mtxLoad44Cmd(std::vector<uint32_t> *params)
 {
     // Store the paramaters to the temporary matrix
-    temp.data[paramCount] = (int32_t)param;
-
-    if (paramCount < 15) return;
+    for (int i = 0; i < 16; i++)
+        temp.data[i] = (int32_t)(*params)[i];
 
     // Set a 4x4 matrix
     switch (matrixMode)
@@ -846,13 +864,12 @@ void Gpu3D::mtxLoad44Cmd(uint32_t param)
     }
 }
 
-void Gpu3D::mtxLoad43Cmd(uint32_t param)
+void Gpu3D::mtxLoad43Cmd(std::vector<uint32_t> *params)
 {
     // Store the paramaters to the temporary matrix
-    if (paramCount == 0) temp = Matrix();
-    temp.data[(paramCount / 3) * 4 + paramCount % 3] = (int32_t)param;
-
-    if (paramCount < 11) return;
+    temp = Matrix();
+    for (int i = 0; i < 12; i++)
+        temp.data[(i / 3) * 4 + i % 3] = (int32_t)(*params)[i];
 
     // Set a 4x3 matrix
     switch (matrixMode)
@@ -887,12 +904,11 @@ void Gpu3D::mtxLoad43Cmd(uint32_t param)
     }
 }
 
-void Gpu3D::mtxMult44Cmd(uint32_t param)
+void Gpu3D::mtxMult44Cmd(std::vector<uint32_t> *params)
 {
     // Store the paramaters to the temporary matrix
-    temp.data[paramCount] = (int32_t)param;
-
-    if (paramCount < 15) return;
+    for (int i = 0; i < 16; i++)
+        temp.data[i] = (int32_t)(*params)[i];
 
     // Multiply a matrix by a 4x4 matrix
     switch (matrixMode)
@@ -927,13 +943,12 @@ void Gpu3D::mtxMult44Cmd(uint32_t param)
     }
 }
 
-void Gpu3D::mtxMult43Cmd(uint32_t param)
+void Gpu3D::mtxMult43Cmd(std::vector<uint32_t> *params)
 {
     // Store the paramaters to the temporary matrix
-    if (paramCount == 0) temp = Matrix();
-    temp.data[(paramCount / 3) * 4 + paramCount % 3] = (int32_t)param;
-
-    if (paramCount < 11) return;
+    temp = Matrix();
+    for (int i = 0; i < 12; i++)
+        temp.data[(i / 3) * 4 + i % 3] = (int32_t)(*params)[i];
 
     // Multiply a matrix by a 4x3 matrix
     switch (matrixMode)
@@ -968,13 +983,12 @@ void Gpu3D::mtxMult43Cmd(uint32_t param)
     }
 }
 
-void Gpu3D::mtxMult33Cmd(uint32_t param)
+void Gpu3D::mtxMult33Cmd(std::vector<uint32_t> *params)
 {
     // Store the paramaters to the temporary matrix
-    if (paramCount == 0) temp = Matrix();
-    temp.data[(paramCount / 3) * 4 + paramCount % 3] = (int32_t)param;
-
-    if (paramCount < 8) return;
+    temp = Matrix();
+    for (int i = 0; i < 9; i++)
+        temp.data[(i / 3) * 4 + i % 3] = (int32_t)(*params)[i];
 
     // Multiply a matrix by a 3x3 matrix
     switch (matrixMode)
@@ -1009,13 +1023,12 @@ void Gpu3D::mtxMult33Cmd(uint32_t param)
     }
 }
 
-void Gpu3D::mtxScaleCmd(uint32_t param)
+void Gpu3D::mtxScaleCmd(std::vector<uint32_t> *params)
 {
     // Store the paramaters to the temporary matrix
-    if (paramCount == 0) temp = Matrix();
-    temp.data[paramCount * 5] = (int32_t)param;
-
-    if (paramCount < 2) return;
+    temp = Matrix();
+    for (int i = 0; i < 3; i++)
+        temp.data[i * 5] = (int32_t)(*params)[i];
 
     // Multiply a matrix by a scale matrix
     switch (matrixMode)
@@ -1042,13 +1055,12 @@ void Gpu3D::mtxScaleCmd(uint32_t param)
     }
 }
 
-void Gpu3D::mtxTransCmd(uint32_t param)
+void Gpu3D::mtxTransCmd(std::vector<uint32_t> *params)
 {
     // Store the paramaters to the temporary matrix
-    if (paramCount == 0) temp = Matrix();
-    temp.data[12 + paramCount] = (int32_t)param;
-
-    if (paramCount < 2) return;
+    temp = Matrix();
+    for (int i = 0; i < 3; i++)
+        temp.data[12 + i] = (int32_t)(*params)[i];
 
     // Multiply a matrix by a translation matrix
     switch (matrixMode)
@@ -1195,21 +1207,14 @@ void Gpu3D::texCoordCmd(uint32_t param)
     }
 }
 
-void Gpu3D::vtx16Cmd(uint32_t param)
+void Gpu3D::vtx16Cmd(std::vector<uint32_t> *params)
 {
-    if (paramCount == 0)
-    {
-        // Set the X and Y coordinates
-        savedVertex.x = (int16_t)(param >>  0);
-        savedVertex.y = (int16_t)(param >> 16);
-    }
-    else
-    {
-        // Set the Z coordinate
-        savedVertex.z = (int16_t)param;
+    // Set the X, Y, and Z coordinates
+    savedVertex.x = (int16_t)((*params)[0] >>  0);
+    savedVertex.y = (int16_t)((*params)[0] >> 16);
+    savedVertex.z = (int16_t)((*params)[1]);
 
-        addVertex();
-    }
+    addVertex();
 }
 
 void Gpu3D::vtx10Cmd(uint32_t param)
@@ -1332,13 +1337,16 @@ void Gpu3D::lightColorCmd(uint32_t param)
     lightColor[param >> 30] = rgb5ToRgb6(param);
 }
 
-void Gpu3D::shininessCmd(uint32_t param)
+void Gpu3D::shininessCmd(std::vector<uint32_t> *params)
 {
     // Set the values of the specular reflection shininess table
-    shininess[paramCount * 4 + 0] = param >>  0;
-    shininess[paramCount * 4 + 1] = param >>  8;
-    shininess[paramCount * 4 + 2] = param >> 16;
-    shininess[paramCount * 4 + 3] = param >> 24;
+    for (int i = 0; i < 32; i++)
+    {
+        shininess[i * 4 + 0] = (*params)[i] >>  0;
+        shininess[i * 4 + 1] = (*params)[i] >>  8;
+        shininess[i * 4 + 2] = (*params)[i] >> 16;
+        shininess[i * 4 + 3] = (*params)[i] >> 24;
+    }
 }
 
 void Gpu3D::beginVtxsCmd(uint32_t param)
@@ -1385,13 +1393,14 @@ void Gpu3D::viewportCmd(uint32_t param)
     viewportHeight = ((191 - ((param & 0x0000FF00) >>  8)) - viewportY + 1) &  0xFF;
 }
 
-void Gpu3D::boxTestCmd(uint32_t param)
+void Gpu3D::boxTestCmd(std::vector<uint32_t> *params)
 {
     // Store the parameters (X-pos, Y-pos, Z-pos, width, height, depth)
-    boxTestCoords[paramCount * 2 + 0] = param >>  0;
-    boxTestCoords[paramCount * 2 + 1] = param >> 16;
-
-    if (paramCount < 2) return;
+    for (int i = 0; i < 3; i++)
+    {
+        boxTestCoords[i * 2 + 0] = (*params)[i] >>  0;
+        boxTestCoords[i * 2 + 1] = (*params)[i] >> 16;
+    }
 
     // Get the vertices of the box
     Vertex vertices[8];
@@ -1464,35 +1473,27 @@ void Gpu3D::boxTestCmd(uint32_t param)
     gxStat &= ~BIT(1);
 }
 
-void Gpu3D::posTestCmd(uint32_t param)
+void Gpu3D::posTestCmd(std::vector<uint32_t> *params)
 {
-    if (paramCount == 0)
-    {
-        // Set the X and Y coordinates
-        // Yes, it is supposed to overwrite the saved vertex
-        savedVertex.x = (int16_t)(param >>  0);
-        savedVertex.y = (int16_t)(param >> 16);
-    }
-    else
-    {
-        // Set the Z and W coordinates
-        savedVertex.z = (int16_t)param;
-        savedVertex.w = 1 << 12;
+    // Set the X, Y, and Z coordinates, overwriting the saved vertex
+    savedVertex.x = (int16_t)((*params)[0] >>  0);
+    savedVertex.y = (int16_t)((*params)[0] >> 16);
+    savedVertex.z = (int16_t)((*params)[1]);
+    savedVertex.w = 1 << 12;
 
-        // Update the clip matrix if necessary
-        if (clipDirty)
-        {
-            clip = multiply(&coordinate, &projection);
-            clipDirty = false;
-        }
-
-        // Multiply the vertex with the clip matrix and set the result
-        Vertex vertex = multiply(&savedVertex, &clip);
-        posResult[0] = vertex.x;
-        posResult[1] = vertex.y;
-        posResult[2] = vertex.z;
-        posResult[3] = vertex.w;
+    // Update the clip matrix if necessary
+    if (clipDirty)
+    {
+        clip = multiply(&coordinate, &projection);
+        clipDirty = false;
     }
+
+    // Multiply the vertex with the clip matrix and set the result
+    Vertex vertex = multiply(&savedVertex, &clip);
+    posResult[0] = vertex.x;
+    posResult[1] = vertex.y;
+    posResult[2] = vertex.z;
+    posResult[3] = vertex.w;
 }
 
 void Gpu3D::vecTestCmd(uint32_t param)
@@ -1513,34 +1514,46 @@ void Gpu3D::vecTestCmd(uint32_t param)
 
 void Gpu3D::addEntry(Entry entry)
 {
-    if (fifo.empty() && pipe.size() < 4)
+    if (fifo.size() - pipeSize == 0 && pipeSize < 4)
     {
-        // Move data directly into the PIPE if the FIFO is empty and the PIPE isn't full
-        pipe.push(entry);
+        // Move data directly into the pipe if the FIFO is empty and the pipe isn't full
+        fifo.push(entry);
+        pipeSize++;
 
         // Update the FIFO status
         gxStat |= BIT(27); // Commands executing
     }
     else
     {
-        // If the FIFO is full, free space by running cycles
+        // If the FIFO is full, free space by running commands
         // On real hardware, a GXFIFO overflow would halt the CPU until space is free
-        while (fifo.size() >= 256)
-            runCycle();
+        while (fifo.size() - pipeSize >= 256)
+            runCommand();
 
         // Move data into the FIFO
         fifo.push(entry);
 
         // Update the FIFO status
-        gxStat = (gxStat & ~0x01FF0000) | (fifo.size() << 16); // Count
-        gxStat &= ~BIT(26); // Not empty
+        gxStat = (gxStat & ~0x01FF0000) | ((fifo.size() - pipeSize) << 16); // FIFO entries
+        gxStat &= ~BIT(26); // FIFO not empty
 
         // If the FIFO is half full or more, disable GXFIFO DMA transfers
-        if (fifo.size() >= 128 && (gxStat & BIT(25)))
+        if (fifo.size() - pipeSize >= 128 && (gxStat & BIT(25)))
         {
             gxStat &= ~BIT(25);
             core->dma[0].disable(7);
         }
+    }
+
+    // Update how many parameters are needed before the next command can run
+    if (paramsNeeded == -1)
+    {
+        paramsNeeded = paramCounts[fifo.front().command] - 1;
+        if (paramsNeeded < 0) paramsNeeded = 0;
+    }
+    else if (paramsNeeded > 0)
+    {
+        paramsNeeded--;
     }
 }
 

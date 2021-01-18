@@ -69,7 +69,7 @@ void Interpreter::enterGbaMode()
     postFlg = 0;
 }
 
-void Interpreter::runCycle()
+void Interpreter::runOpcode()
 {
     // Trigger an interrupt if one was requested and enabled
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
