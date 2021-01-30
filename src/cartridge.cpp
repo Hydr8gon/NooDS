@@ -48,6 +48,36 @@ void Cartridge::loadNdsRom(std::string path)
     fread(ndsRom, sizeof(uint8_t), ndsRomSize, ndsRomFile);
     fclose(ndsRomFile);
 
+    if (ndsRomSize > 0x8000) // ROM has secure area
+    {
+        // Decrypt the 'encryObj' string
+        uint64_t data = ((uint64_t)U8TO32(ndsRom, 0x4000 + 4) << 32) | (uint32_t)U8TO32(ndsRom, 0x4000);
+        initKeycode(2);
+        data = decrypt64(data);
+        initKeycode(3);
+        data = decrypt64(data);
+
+        // If decryption was successful, the ROM is encrypted
+        if (data == 0x6A624F7972636E65) // encryObj
+        {
+            printf("Detected an encrypted ROM. Decrypting...\n");
+
+            // Overwrite the 'encryObj' string
+            data = 0xE7FFDEFFE7FFDEFF;
+            for (int i = 0; i < 8; i++)
+                ndsRom[0x4000 + i] = data >> (i * 8);
+
+            // Decrypt the first 2KB of the secure area
+            for (int i = 8; i < 0x800; i += 8)
+            {
+                data = ((uint64_t)U8TO32(ndsRom, 0x4000 + i + 4) << 32) | (uint32_t)U8TO32(ndsRom, 0x4000 + i);
+                data = decrypt64(data);
+                for (int j = 0; j < 8; j++)
+                    ndsRom[0x4000 + i + j] = data >> (j * 8);
+            }
+        }
+    }
+
     // Attempt to load the ROM's save file
     ndsSaveName = path.substr(0, path.rfind(".")) + ".sav";
     FILE *ndsSaveFile = fopen(ndsSaveName.c_str(), "rb");
