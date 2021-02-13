@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: Install wxWidgets and PortAudio
-      run: sudo apt update && sudo apt install libwxgtk3.0-dev portaudio19-dev -y
+      run: sudo apt update && sudo apt install libwxgtk3.0-gtk3-dev portaudio19-dev -y
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
