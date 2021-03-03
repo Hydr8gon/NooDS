@@ -24,7 +24,7 @@
 #include "settings.h"
 
 Core::Core(std::string ndsPath, std::string gbaPath):
-    cartridge(this), cp15(this), divSqrt(this), dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0),
+    cartridge(this), cp15(this), divSqrt(this), dldi(this), dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0),
     Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this), input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) },
     ipc(this), memory(this), rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
 {

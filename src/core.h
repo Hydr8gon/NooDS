@@ -28,6 +28,7 @@
 #include "cp15.h"
 #include "defines.h"
 #include "div_sqrt.h"
+#include "dldi.h"
 #include "dma.h"
 #include "gpu.h"
 #include "gpu_2d.h"
@@ -58,6 +59,7 @@ class Core
         Cartridge cartridge;
         Cp15 cp15;
         DivSqrt divSqrt;
+        Dldi dldi;
         Dma dma[2];
         Gpu gpu;
         Gpu2D gpu2D[2];

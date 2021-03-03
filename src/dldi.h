@@ -17,31 +17,45 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef PATH_DIALOG_H
-#define PATH_DIALOG_H
+#ifndef DLDI_H
+#define DLDI_H
 
-#include <wx/wx.h>
+#include <cstdint>
+#include <cstdio>
 
-class PathDialog: public wxDialog
+class Core;
+
+enum DldiFunc
 {
-    public:
-        PathDialog();
-
-    private:
-        wxTextCtrl *bios9Path;
-        wxTextCtrl *bios7Path;
-        wxTextCtrl *firmwarePath;
-        wxTextCtrl *gbaBiosPath;
-        wxTextCtrl *sdImagePath;
-
-        void bios9Browse(wxCommandEvent &event);
-        void bios7Browse(wxCommandEvent &event);
-        void firmwareBrowse(wxCommandEvent &event);
-        void gbaBiosBrowse(wxCommandEvent &event);
-        void sdImageBrowse(wxCommandEvent &event);
-        void confirm(wxCommandEvent &event);
-
-        wxDECLARE_EVENT_TABLE();
+    DLDI_START = 0xF0000000,
+    DLDI_INSERT,
+    DLDI_READ,
+    DLDI_WRITE,
+    DLDI_CLEAR,
+    DLDI_STOP
 };
 
-#endif // PATH_DIALOG_H
+class Dldi
+{
+    public:
+        Dldi(Core *core): core(core) {}
+        ~Dldi();
+
+        void patchDriver(uint32_t address);
+        bool isFunction(uint32_t address);
+
+        int startup();
+        int isInserted();
+        int readSectors(int sector, int numSectors, uint32_t buf);
+        int writeSectors(int sector, int numSectors, uint32_t buf);
+        int clearStatus();
+        int shutdown();
+
+    private:
+        Core *core;
+        FILE *sdImage;
+
+        uint32_t funcAddress = 0;
+};
+
+#endif // DLDI_H

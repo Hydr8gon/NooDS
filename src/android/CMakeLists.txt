@@ -11,6 +11,7 @@ add_library(noods-core SHARED
             ../core.cpp
             ../cp15.cpp
             ../div_sqrt.cpp
+            ../dldi.cpp
             ../dma.cpp
             ../gpu.cpp
             ../gpu_2d.cpp

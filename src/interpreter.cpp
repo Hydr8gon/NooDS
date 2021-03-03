@@ -2478,6 +2478,23 @@ bool Interpreter::condition(uint32_t opcode)
             if ((opcode & 0x0E000000) == 0x0A000000)
                 return true;
 
+            // If a DLDI function was jumped to, HLE it and return
+            if (core->dldi.isFunction(*registers[15] - 8))
+            {
+                switch (opcode)
+                {
+                    case DLDI_START:  *registers[0] = core->dldi.startup();                                                 break;
+                    case DLDI_INSERT: *registers[0] = core->dldi.isInserted();                                              break;
+                    case DLDI_READ:   *registers[0] = core->dldi.readSectors(*registers[0], *registers[1], *registers[2]);  break;
+                    case DLDI_WRITE:  *registers[0] = core->dldi.writeSectors(*registers[0], *registers[1], *registers[2]); break;
+                    case DLDI_CLEAR:  *registers[0] = core->dldi.clearStatus();                                             break;
+                    case DLDI_STOP:   *registers[0] = core->dldi.shutdown();                                                break;
+                }
+
+                bx(14);
+                return false;
+            }
+
             printf("Unknown ARM%d ARM opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
             return false;
         }

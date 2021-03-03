@@ -30,6 +30,7 @@ std::string Settings::bios9Path = "bios9.bin";
 std::string Settings::bios7Path = "bios7.bin";
 std::string Settings::firmwarePath = "firmware.bin";
 std::string Settings::gbaBiosPath = "gba_bios.bin";
+std::string Settings::sdImagePath = "sd.img";
 
 std::vector<Setting> Settings::settings =
 {
@@ -40,7 +41,8 @@ std::vector<Setting> Settings::settings =
     Setting("bios9Path",    &bios9Path,    true),
     Setting("bios7Path",    &bios7Path,    true),
     Setting("firmwarePath", &firmwarePath, true),
-    Setting("gbaBiosPath",  &gbaBiosPath,  true)
+    Setting("gbaBiosPath",  &gbaBiosPath,  true),
+    Setting("sdImagePath",  &sdImagePath,  true)
 };
 
 bool Settings::add(std::vector<Setting> platformSettings)

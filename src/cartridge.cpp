@@ -222,6 +222,16 @@ void Cartridge::directBoot()
     // Load the initial ARM7 code into memory
     for (uint32_t i = 0; i < size7; i++)
         core->memory.write<uint8_t>(1, ramAddr7 + i, ndsRom[offset7 + i]);
+
+    // Scan the initial ARM9 binary for a DLDI header and patch the driver if found
+    for (int i = ramAddr9; i < ramAddr9 + size9; i += 0x40)
+    {
+        if (core->memory.read<uint32_t>(0, i) == 0xBF8DA5ED)
+        {
+            core->dldi.patchDriver(i);
+            break;
+        }
+    }
 }
 
 void Cartridge::writeSave()
