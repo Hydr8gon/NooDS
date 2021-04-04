@@ -936,9 +936,6 @@ void Cartridge::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
         romCtrl[cpu] &= ~BIT(23); // Word not ready
         romCtrl[cpu] &= ~BIT(31); // Block ready
 
-        // Disable DS cartridge DMA transfers
-        core->dma[cpu].disable((cpu == 0) ? 5 : 2);
-
         // Trigger a block ready IRQ if enabled
         if (auxSpiCnt[cpu] & BIT(14))
             core->interpreter[cpu].sendInterrupt(19);
@@ -1041,9 +1038,6 @@ uint32_t Cartridge::readRomDataIn(bool cpu)
         // End the transfer when the block size has been reached
         romCtrl[cpu] &= ~BIT(23); // Word not ready
         romCtrl[cpu] &= ~BIT(31); // Block ready
-
-        // Disable DS cartridge DMA transfers
-        core->dma[cpu].disable((cpu == 0) ? 5 : 2);
 
         // Trigger a block ready IRQ if enabled
         if (auxSpiCnt[cpu] & BIT(14))

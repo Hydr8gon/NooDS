@@ -23,6 +23,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
+#include <functional>
 #include <queue>
 #include <mutex>
 
@@ -34,10 +35,10 @@ class Spu
         Spu(Core *core);
         ~Spu();
 
-        uint32_t *getSamples(int count);
+        void scheduleInit();
+        void gbaScheduleInit();
 
-        void runGbaSample();
-        void runSample();
+        uint32_t *getSamples(int count);
 
         void gbaFifoTimer(int timer);
 
@@ -134,6 +135,12 @@ class Spu
         uint8_t sndCapCnt[2] = {};
         uint32_t sndCapDad[2] = {};
         uint16_t sndCapLen[2] = {};
+
+        std::function<void()> runGbaSampleTask;
+        std::function<void()> runSampleTask;
+
+        void runGbaSample();
+        void runSample();
 
         void swapBuffers();
         void startChannel(int channel);

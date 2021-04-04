@@ -1539,10 +1539,7 @@ void Gpu3D::addEntry(Entry entry)
 
         // If the FIFO is half full or more, disable GXFIFO DMA transfers
         if (fifo.size() - pipeSize >= 128 && (gxStat & BIT(25)))
-        {
             gxStat &= ~BIT(25);
-            core->dma[0].disable(7);
-        }
     }
 
     // Update how many parameters are needed before the next command can run

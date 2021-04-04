@@ -27,6 +27,12 @@ Gpu::Gpu(Core *core): core(core)
 {
     // Mark the thread as not drawing to start
     drawing.store(false);
+
+    // Prepare tasks to be used with the scheduler
+    gbaScanline240Task = std::bind(&Gpu::gbaScanline240, this);
+    gbaScanline308Task = std::bind(&Gpu::gbaScanline308, this);
+    scanline256Task = std::bind(&Gpu::scanline256, this);
+    scanline355Task = std::bind(&Gpu::scanline355, this);
 }
 
 Gpu::~Gpu()
@@ -38,6 +44,20 @@ Gpu::~Gpu()
         thread->join();
         delete thread;
     }
+}
+
+void Gpu::scheduleInit()
+{
+    // Schedule initial NDS GPU tasks (these will reschedule themselves indefinitely)
+    core->schedule(Task(&scanline256Task, 256 * 3));
+    core->schedule(Task(&scanline355Task, 355 * 3));
+}
+
+void Gpu::gbaScheduleInit()
+{
+    // Schedule initial GBA GPU tasks (these will reschedule themselves indefinitely)
+    core->schedule(Task(&gbaScanline240Task, 240 * 2));
+    core->schedule(Task(&gbaScanline308Task, 308 * 2));
 }
 
 uint32_t Gpu::rgb6ToRgb8(uint32_t color)
@@ -114,6 +134,9 @@ void Gpu::gbaScanline240()
     // Trigger an H-blank IRQ if enabled
     if (dispStat[1] & BIT(4))
         core->interpreter[1].sendInterrupt(1);
+
+    // Reschedule the task for the next scanline
+    core->schedule(Task(&gbaScanline240Task, 308 * 2));
 }
 
 void Gpu::gbaScanline308()
@@ -206,6 +229,9 @@ void Gpu::gbaScanline308()
         // Clear the V-counter flag on the next line
         dispStat[1] &= ~BIT(2);
     }
+
+    // Reschedule the task for the next scanline
+    core->schedule(Task(&gbaScanline308Task, 308 * 2));
 }
 
 void Gpu::scanline256()
@@ -350,6 +376,9 @@ void Gpu::scanline256()
         if (dispStat[i] & BIT(4))
             core->interpreter[i].sendInterrupt(1);
     }
+
+    // Reschedule the task for the next scanline
+    core->schedule(Task(&scanline256Task, 355 * 3));
 }
 
 void Gpu::scanline355()
@@ -460,6 +489,9 @@ void Gpu::scanline355()
         // Clear the H-blank flag
         dispStat[i] &= ~BIT(1);
     }
+
+    // Reschedule the task for the next scanline
+    core->schedule(Task(&scanline355Task, 355 * 3));
 }
 
 void Gpu::drawGbaThreaded()

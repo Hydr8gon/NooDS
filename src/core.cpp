@@ -17,6 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
 #include <cstring>
 #include <thread>
 
@@ -28,6 +29,10 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this), input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) },
     ipc(this), memory(this), rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
 {
+    // Schedule initial tasks for NDS mode
+    gpu.scheduleInit();
+    spu.scheduleInit();
+
     // Load the NDS BIOS and firmware unless directly booting a GBA ROM
     if (ndsPath != "" || gbaPath == "" || !Settings::getDirectBoot())
     {
@@ -92,28 +97,27 @@ Core::Core(std::string ndsPath, std::string gbaPath):
 void Core::runGbaFrame()
 {
     // Run a frame in GBA mode
-    for (int i = 0; i < 228; i++) // 228 scanlines
+    for (int i = 0; i < 228 * 308 * 2; i++) // 228 scanlines, 308 dots, 2 (half) ARM7 cycles
     {
-        for (int j = 0; j < 308 * 2; j++) // 308 dots per scanline
+        // Run the ARM7
+        if (interpreter[1].shouldRun()) interpreter[1].runOpcode();
+        if (timers[1].shouldTick())     timers[1].tick(2);
+
+        // Run the scheduler
+        if (++taskCycles >= tasks[0].cycles)
         {
-            // Run the ARM7
-            if (interpreter[1].shouldRun()) interpreter[1].runOpcode();
-            if (dma[1].shouldTransfer())    dma[1].transfer();
-            if (timers[1].shouldTick())     timers[1].tick(2);
+            // Update task cycles and reset the counter
+            for (unsigned int j = 0; j < tasks.size(); j++)
+                tasks[j].cycles -= taskCycles;
+            taskCycles = 0;
 
-            // Run the SPU every 512 cycles
-            if (++spuTimer >= 512 / 2)
+            // Execute tasks that are no longer waiting
+            while (tasks[0].cycles <= 0)
             {
-                spu.runGbaSample();
-                spuTimer = 0;
+                (*tasks[0].task)();
+                tasks.erase(tasks.begin());
             }
-
-            // The end of the visible scanline
-            if (j == 240 * 2) gpu.gbaScanline240();
         }
-
-        // The end of the scanline
-        gpu.gbaScanline308();
     }
 
     // Count the FPS
@@ -132,39 +136,37 @@ void Core::runGbaFrame()
 void Core::runNdsFrame()
 {
     // Run a frame in NDS mode
-    for (int i = 0; i < 263; i++) // 263 scanlines
+    for (int i = 0; i < 263 * 355 * 3; i++) // 263 scanlines, 355 dots, 3 ARM7 cycles
     {
-        for (int j = 0; j < 355 * 3; j++) // 355 dots per scanline
+        // Run the ARM9 at twice the speed of the ARM7
+        for (int j = 0; j < 2; j++)
         {
-            // Run the ARM9 at twice the speed of the ARM7
-            for (int k = 0; k < 2; k++)
-            {
-                if (interpreter[0].shouldRun()) interpreter[0].runOpcode();
-                if (dma[0].shouldTransfer())    dma[0].transfer();
-                if (timers[0].shouldTick())     timers[0].tick(1);
-            }
-
-            // Run the ARM7
-            if (interpreter[1].shouldRun()) interpreter[1].runOpcode();
-            if (dma[1].shouldTransfer())    dma[1].transfer();
-            if (timers[1].shouldTick())     timers[1].tick(2);
-
-            // Run the 3D engine
-            if (gpu3D.shouldRun()) gpu3D.runCommand();
-
-            // Run the SPU every 512 cycles
-            if (++spuTimer >= 512)
-            {
-                spu.runSample();
-                spuTimer = 0;
-            }
-
-            // The end of the visible scanline
-            if (j == 256 * 3) gpu.scanline256();
+            if (interpreter[0].shouldRun()) interpreter[0].runOpcode();
+            if (timers[0].shouldTick())     timers[0].tick(1);
         }
 
-        // The end of the scanline
-        gpu.scanline355();
+        // Run the ARM7
+        if (interpreter[1].shouldRun()) interpreter[1].runOpcode();
+        if (timers[1].shouldTick())     timers[1].tick(2);
+
+        // Run the 3D engine
+        if (gpu3D.shouldRun()) gpu3D.runCommand();
+
+        // Run the scheduler
+        if (++taskCycles >= tasks[0].cycles)
+        {
+            // Update task cycles and reset the counter
+            for (unsigned int j = 0; j < tasks.size(); j++)
+                tasks[j].cycles -= taskCycles;
+            taskCycles = 0;
+
+            // Execute tasks that are no longer waiting
+            while (tasks[0].cycles <= 0)
+            {
+                (*tasks[0].task)();
+                tasks.erase(tasks.begin());
+            }
+        }
     }
 
     // Count the FPS
@@ -180,12 +182,26 @@ void Core::runNdsFrame()
     }
 }
 
+void Core::schedule(Task task)
+{
+    // Add a task to the scheduler, sorted by least to most cycles until execution
+    task.cycles += taskCycles;
+    auto it = std::upper_bound(tasks.cbegin(), tasks.cend(), task);
+    tasks.insert(it, task);
+}
+
 void Core::enterGbaMode()
 {
     // Switch to GBA mode
     interpreter[1].enterGbaMode();
     runFunc = &Core::runGbaFrame;
     gbaMode = true;
+
+    // Reset the scheduler and schedule initial tasks for GBA mode
+    taskCycles = 0;
+    tasks.clear();
+    gpu.gbaScheduleInit();
+    spu.gbaScheduleInit();
 
     // Set VRAM blocks A and B to plain access mode
     // This is used by the GPU to access the VRAM borders

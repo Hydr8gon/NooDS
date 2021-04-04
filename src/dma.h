@@ -21,19 +21,16 @@
 #define DMA_H
 
 #include <cstdint>
+#include <functional>
 
 class Core;
 
 class Dma
 {
     public:
-        Dma(Core *core, bool cpu): core(core), cpu(cpu) {}
+        Dma(Core *core, bool cpu);
 
-        void transfer();
         void trigger(int mode, uint8_t channels = 0x0F);
-        void disable(int mode, uint8_t channels = 0x0F);
-
-        bool shouldTransfer() { return active; }
 
         uint32_t readDmaSad(int channel) { return dmaSad[channel]; }
         uint32_t readDmaDad(int channel) { return dmaDad[channel]; }
@@ -47,8 +44,6 @@ class Dma
         Core *core;
         bool cpu;
 
-        uint8_t active = 0;
-
         uint32_t srcAddrs[4] = {};
         uint32_t dstAddrs[4] = {};
         uint32_t wordCounts[4] = {};
@@ -56,6 +51,10 @@ class Dma
         uint32_t dmaSad[4] = {};
         uint32_t dmaDad[4] = {};
         uint32_t dmaCnt[4] = {};
+
+        std::function<void()> transferTask[4];
+
+        void transfer(int channel);
 };
 
 #endif // DMA_H

@@ -22,7 +22,9 @@
 
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <string>
+#include <vector>
 
 #include "cartridge.h"
 #include "cp15.h"
@@ -44,6 +46,16 @@
 #include "timers.h"
 #include "wifi.h"
 
+struct Task
+{
+    Task(std::function<void()> *task, uint32_t cycles): task(task), cycles(cycles) {}
+
+    std::function<void()> *task;
+    int cycles;
+
+    bool operator<(const Task &task) const { return cycles < task.cycles; }
+};
+
 class Core
 {
     public:
@@ -54,6 +66,7 @@ class Core
         bool isGbaMode() { return gbaMode; }
         int  getFps()    { return fps;     }
 
+        void schedule(Task task);
         void enterGbaMode();
 
         Cartridge cartridge;
@@ -79,9 +92,11 @@ class Core
         bool gbaMode = false;
         void (Core::*runFunc)() = &Core::runNdsFrame;
 
+        std::vector<Task> tasks;
+        int taskCycles = 0;
+
         int fps = 0, fpsCount = 0;
         std::chrono::steady_clock::time_point lastFpsTime;
-        int spuTimer = 0;
 
         void runNdsFrame();
         void runGbaFrame();
