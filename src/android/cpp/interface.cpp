@@ -64,6 +64,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(
         Settings::setBios9Path(path + "/noods/bios9.bin");
         Settings::setFirmwarePath(path + "/noods/firmware.bin");
         Settings::setGbaBiosPath(path + "/noods/gba_bios.bin");
+        Settings::setSdImagePath(path + "/noods/sd.img");
         Settings::save(settingsPath);
     }
 }

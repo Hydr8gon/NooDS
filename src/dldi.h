@@ -53,9 +53,9 @@ class Dldi
 
     private:
         Core *core;
-        FILE *sdImage;
 
         uint32_t funcAddress = 0;
+        FILE *sdImage = nullptr;
 };
 
 #endif // DLDI_H
