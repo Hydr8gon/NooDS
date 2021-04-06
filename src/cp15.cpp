@@ -66,7 +66,7 @@ void Cp15::write(int cn, int cm, int cp, uint32_t value)
 
         case 0x070004: case 0x070802: // Wait for interrupt
         {
-            core->interpreter[0].halt();
+            core->interpreter[0].halt(0);
             return;
         }
 

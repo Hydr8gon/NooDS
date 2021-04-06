@@ -62,6 +62,9 @@ Gpu3D::Gpu3D(Core *core): core(core)
     paramCounts[0x70] = 3;
     paramCounts[0x71] = 2;
     paramCounts[0x72] = 1;
+
+    // Prepare tasks to be used with the scheduler
+    runCommandTask = std::bind(&Gpu3D::runCommand, this);
 }
 
 uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
@@ -71,6 +74,129 @@ uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
     uint8_t g = ((color >>  5) & 0x1F) * 2; if (g > 0) g++;
     uint8_t b = ((color >> 10) & 0x1F) * 2; if (b > 0) b++;
     return (b << 12) | (g << 6) | r;
+}
+
+Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)
+{
+    Matrix matrix;
+
+    // Multiply 2 matrices
+    for (int y = 0; y < 4; y++)
+    {
+        for (int x = 0; x < 4; x++)
+        {
+            int64_t value = 0;
+            for (int i = 0; i < 4; i++) value += (int64_t)mtx1->data[y * 4 + i] * mtx2->data[i * 4 + x];
+            matrix.data[y * 4 + x] = value >> 12;
+        }
+    }
+
+    return matrix;
+}
+
+Vertex Gpu3D::multiply(Vertex *vtx, Matrix *mtx)
+{
+    Vertex vertex = *vtx;
+
+    // Multiply a vertex with a matrix
+    vertex.x = ((int64_t)vtx->x * mtx->data[0] + (int64_t)vtx->y * mtx->data[4] + (int64_t)vtx->z * mtx->data[8]  + (int64_t)vtx->w * mtx->data[12]) >> 12;
+    vertex.y = ((int64_t)vtx->x * mtx->data[1] + (int64_t)vtx->y * mtx->data[5] + (int64_t)vtx->z * mtx->data[9]  + (int64_t)vtx->w * mtx->data[13]) >> 12;
+    vertex.z = ((int64_t)vtx->x * mtx->data[2] + (int64_t)vtx->y * mtx->data[6] + (int64_t)vtx->z * mtx->data[10] + (int64_t)vtx->w * mtx->data[14]) >> 12;
+    vertex.w = ((int64_t)vtx->x * mtx->data[3] + (int64_t)vtx->y * mtx->data[7] + (int64_t)vtx->z * mtx->data[11] + (int64_t)vtx->w * mtx->data[15]) >> 12;
+
+    return vertex;
+}
+
+int32_t Gpu3D::multiply(Vertex *vec1, Vertex *vec2)
+{
+    // Multiply 2 vectors
+    return ((int64_t)vec1->x * vec2->x + (int64_t)vec1->y * vec2->y + (int64_t)vec1->z * vec2->z) >> 12;
+}
+
+Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2)
+{
+    Vertex vertex;
+
+    // Calculate the interpolation coefficients
+    int64_t d1 = val1 + vtx1->w;
+    int64_t d2 = val2 + vtx2->w;
+    if (d2 == d1) return *vtx1;
+
+    // Interpolate the vertex coordinates
+    vertex.x = ((d2 * vtx1->x) - (d1 * vtx2->x)) / (d2 - d1);
+    vertex.y = ((d2 * vtx1->y) - (d1 * vtx2->y)) / (d2 - d1);
+    vertex.z = ((d2 * vtx1->z) - (d1 * vtx2->z)) / (d2 - d1);
+    vertex.w = ((d2 * vtx1->w) - (d1 * vtx2->w)) / (d2 - d1);
+    vertex.s = ((d2 * vtx1->s) - (d1 * vtx2->s)) / (d2 - d1);
+    vertex.t = ((d2 * vtx1->t) - (d1 * vtx2->t)) / (d2 - d1);
+
+    // Interpolate the vertex color
+    uint8_t r = ((d2 * ((vtx1->color >>  0) & 0x3F)) - (d1 * ((vtx2->color >>  0) & 0x3F))) / (d2 - d1);
+    uint8_t g = ((d2 * ((vtx1->color >>  6) & 0x3F)) - (d1 * ((vtx2->color >>  6) & 0x3F))) / (d2 - d1);
+    uint8_t b = ((d2 * ((vtx1->color >> 12) & 0x3F)) - (d1 * ((vtx2->color >> 12) & 0x3F))) / (d2 - d1);
+    vertex.color = (vtx1->color & 0xFC0000) | (b << 12) | (g << 6) | r;
+
+    return vertex;
+}
+
+bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int *size)
+{
+    bool clip = false;
+
+    // Save a copy of the original unclipped vertices
+    Vertex original[4];
+    memcpy(original, unclipped, 4 * sizeof(Vertex));
+
+    // Clip a polygon using the Sutherland-Hodgman algorithm
+    for (int i = 0; i < 6; i++)
+    {
+        int oldSize = *size;
+        *size = 0;
+
+        for (int j = 0; j < oldSize; j++)
+        {
+            // Get the unclipped vertices 
+            Vertex *current = &unclipped[j];
+            Vertex *previous = &unclipped[(j - 1 + oldSize) % oldSize];
+
+            // Choose which coordinates to check based on the current side being clipped against
+            int32_t currentVal, previousVal;
+            switch (i)
+            {
+                case 0: currentVal =  current->x; previousVal =  previous->x; break;
+                case 1: currentVal = -current->x; previousVal = -previous->x; break;
+                case 2: currentVal =  current->y; previousVal =  previous->y; break;
+                case 3: currentVal = -current->y; previousVal = -previous->y; break;
+                case 4: currentVal =  current->z; previousVal =  previous->z; break;
+                case 5: currentVal = -current->z; previousVal = -previous->z; break;
+            }
+
+            // Add the clipped vertices
+            if (currentVal >= -current->w) // Current vertex in bounds
+            {
+                if (previousVal < -previous->w) // Previous vertex not in bounds
+                {
+                    clipped[(*size)++] = intersection(current, previous, currentVal, previousVal);
+                    clip = true;
+                }
+
+                clipped[(*size)++] = *current;
+            }
+            else if (previousVal >= -previous->w) // Previous vertex in bounds
+            {
+                clipped[(*size)++] = intersection(current, previous, currentVal, previousVal);
+                clip = true;
+            }
+        }
+
+        // Copy the new vertices to unclipped so they'll be used in the next iteration
+        if (i < 5) memcpy(unclipped, clipped, *size * sizeof(Vertex));
+    }
+
+    // Restore the original unclipped vertices
+    memcpy(unclipped, original, 4 * sizeof(Vertex));
+
+    return clip;
 }
 
 void Gpu3D::runCommand()
@@ -150,17 +276,6 @@ void Gpu3D::runCommand()
     pipeSize = 4 - ((pipeSize + count) & 1);
     if (pipeSize > fifo.size()) pipeSize = fifo.size();
 
-    // Update how many parameters are needed before the next command can run
-    if (fifo.empty())
-    {
-        paramsNeeded = -1;
-    }
-    else
-    {
-        paramsNeeded = paramCounts[fifo.front().command] - fifo.size();
-        if (paramsNeeded < 0) paramsNeeded = 0;
-    }
-
     // Update the FIFO status
     gxStat = (gxStat & ~0x00001F00) | (coordinatePtr            <<  8); // Coordinate stack pointer
     gxStat = (gxStat & ~0x00002000) | (projectionPtr            << 13); // Projection stack pointer
@@ -181,6 +296,19 @@ void Gpu3D::runCommand()
     {
         case 1: if (gxStat & BIT(25)) core->interpreter[0].sendInterrupt(21); break;
         case 2: if (gxStat & BIT(26)) core->interpreter[0].sendInterrupt(21); break;
+    }
+
+    // Unhalt the CPU if the FIFO was full but now has space free
+    if (fifo.size() - pipeSize <= 256)
+        core->interpreter[0].unhalt(1);
+
+    // Keep executing commands as long as they're ready
+    if (state != GX_HALTED)
+    {
+        if (!fifo.empty() && fifo.size() >= paramCounts[fifo.front().command])
+            core->schedule(Task(&runCommandTask, 1));
+        else
+            state = GX_IDLE;
     }
 }
 
@@ -246,46 +374,19 @@ void Gpu3D::swapBuffers()
     polygonCountOut = polygonCountIn;
     polygonCountIn = 0;
 
-    // Unhalt the geometry engine
-    halted = false;
+    // Invalidate the 3D so a new frame is drawn
     core->gpu.invalidate3D();
-}
 
-Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)
-{
-    Matrix matrix;
-
-    // Multiply 2 matrices
-    for (int y = 0; y < 4; y++)
+    // Unhalt the GXFIFO, and start executing commands if one is ready
+    if (!fifo.empty() && fifo.size() >= paramCounts[fifo.front().command])
     {
-        for (int x = 0; x < 4; x++)
-        {
-            int64_t value = 0;
-            for (int i = 0; i < 4; i++) value += (int64_t)mtx1->data[y * 4 + i] * mtx2->data[i * 4 + x];
-            matrix.data[y * 4 + x] = value >> 12;
-        }
+        core->schedule(Task(&runCommandTask, 1));
+        state = GX_RUNNING;
     }
-
-    return matrix;
-}
-
-Vertex Gpu3D::multiply(Vertex *vtx, Matrix *mtx)
-{
-    Vertex vertex = *vtx;
-
-    // Multiply a vertex with a matrix
-    vertex.x = ((int64_t)vtx->x * mtx->data[0] + (int64_t)vtx->y * mtx->data[4] + (int64_t)vtx->z * mtx->data[8]  + (int64_t)vtx->w * mtx->data[12]) >> 12;
-    vertex.y = ((int64_t)vtx->x * mtx->data[1] + (int64_t)vtx->y * mtx->data[5] + (int64_t)vtx->z * mtx->data[9]  + (int64_t)vtx->w * mtx->data[13]) >> 12;
-    vertex.z = ((int64_t)vtx->x * mtx->data[2] + (int64_t)vtx->y * mtx->data[6] + (int64_t)vtx->z * mtx->data[10] + (int64_t)vtx->w * mtx->data[14]) >> 12;
-    vertex.w = ((int64_t)vtx->x * mtx->data[3] + (int64_t)vtx->y * mtx->data[7] + (int64_t)vtx->z * mtx->data[11] + (int64_t)vtx->w * mtx->data[15]) >> 12;
-
-    return vertex;
-}
-
-int32_t Gpu3D::multiply(Vertex *vec1, Vertex *vec2)
-{
-    // Multiply 2 vectors
-    return ((int64_t)vec1->x * vec2->x + (int64_t)vec1->y * vec2->y + (int64_t)vec1->z * vec2->z) >> 12;
+    else
+    {
+        state = GX_IDLE;
+    }
 }
 
 void Gpu3D::addVertex()
@@ -525,92 +626,6 @@ void Gpu3D::addPolygon()
 
     // Move to the next polygon
     polygonCountIn++;
-}
-
-Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2)
-{
-    Vertex vertex;
-
-    // Calculate the interpolation coefficients
-    int64_t d1 = val1 + vtx1->w;
-    int64_t d2 = val2 + vtx2->w;
-    if (d2 == d1) return *vtx1;
-
-    // Interpolate the vertex coordinates
-    vertex.x = ((d2 * vtx1->x) - (d1 * vtx2->x)) / (d2 - d1);
-    vertex.y = ((d2 * vtx1->y) - (d1 * vtx2->y)) / (d2 - d1);
-    vertex.z = ((d2 * vtx1->z) - (d1 * vtx2->z)) / (d2 - d1);
-    vertex.w = ((d2 * vtx1->w) - (d1 * vtx2->w)) / (d2 - d1);
-    vertex.s = ((d2 * vtx1->s) - (d1 * vtx2->s)) / (d2 - d1);
-    vertex.t = ((d2 * vtx1->t) - (d1 * vtx2->t)) / (d2 - d1);
-
-    // Interpolate the vertex color
-    uint8_t r = ((d2 * ((vtx1->color >>  0) & 0x3F)) - (d1 * ((vtx2->color >>  0) & 0x3F))) / (d2 - d1);
-    uint8_t g = ((d2 * ((vtx1->color >>  6) & 0x3F)) - (d1 * ((vtx2->color >>  6) & 0x3F))) / (d2 - d1);
-    uint8_t b = ((d2 * ((vtx1->color >> 12) & 0x3F)) - (d1 * ((vtx2->color >> 12) & 0x3F))) / (d2 - d1);
-    vertex.color = (vtx1->color & 0xFC0000) | (b << 12) | (g << 6) | r;
-
-    return vertex;
-}
-
-bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int *size)
-{
-    bool clip = false;
-
-    // Save a copy of the original unclipped vertices
-    Vertex original[4];
-    memcpy(original, unclipped, 4 * sizeof(Vertex));
-
-    // Clip a polygon using the Sutherland-Hodgman algorithm
-    for (int i = 0; i < 6; i++)
-    {
-        int oldSize = *size;
-        *size = 0;
-
-        for (int j = 0; j < oldSize; j++)
-        {
-            // Get the unclipped vertices 
-            Vertex *current = &unclipped[j];
-            Vertex *previous = &unclipped[(j - 1 + oldSize) % oldSize];
-
-            // Choose which coordinates to check based on the current side being clipped against
-            int32_t currentVal, previousVal;
-            switch (i)
-            {
-                case 0: currentVal =  current->x; previousVal =  previous->x; break;
-                case 1: currentVal = -current->x; previousVal = -previous->x; break;
-                case 2: currentVal =  current->y; previousVal =  previous->y; break;
-                case 3: currentVal = -current->y; previousVal = -previous->y; break;
-                case 4: currentVal =  current->z; previousVal =  previous->z; break;
-                case 5: currentVal = -current->z; previousVal = -previous->z; break;
-            }
-
-            // Add the clipped vertices
-            if (currentVal >= -current->w) // Current vertex in bounds
-            {
-                if (previousVal < -previous->w) // Previous vertex not in bounds
-                {
-                    clipped[(*size)++] = intersection(current, previous, currentVal, previousVal);
-                    clip = true;
-                }
-
-                clipped[(*size)++] = *current;
-            }
-            else if (previousVal >= -previous->w) // Previous vertex in bounds
-            {
-                clipped[(*size)++] = intersection(current, previous, currentVal, previousVal);
-                clip = true;
-            }
-        }
-
-        // Copy the new vertices to unclipped so they'll be used in the next iteration
-        if (i < 5) memcpy(unclipped, clipped, *size * sizeof(Vertex));
-    }
-
-    // Restore the original unclipped vertices
-    memcpy(unclipped, original, 4 * sizeof(Vertex));
-
-    return clip;
 }
 
 void Gpu3D::mtxModeCmd(uint32_t param)
@@ -1381,7 +1396,7 @@ void Gpu3D::swapBuffersCmd(uint32_t param)
 
     // Halt the geometry engine
     // The buffers will be swapped and the engine unhalted on next V-blank
-    halted = true;
+    state = GX_HALTED;
 }
 
 void Gpu3D::viewportCmd(uint32_t param)
@@ -1525,10 +1540,9 @@ void Gpu3D::addEntry(Entry entry)
     }
     else
     {
-        // If the FIFO is full, free space by running commands
-        // On real hardware, a GXFIFO overflow would halt the CPU until space is free
-        while (fifo.size() - pipeSize >= 256)
-            runCommand();
+        // If the FIFO is full, halt the CPU until space is free
+        if (fifo.size() - pipeSize >= 256)
+            core->interpreter[0].halt(1);
 
         // Move data into the FIFO
         fifo.push(entry);
@@ -1542,15 +1556,11 @@ void Gpu3D::addEntry(Entry entry)
             gxStat &= ~BIT(25);
     }
 
-    // Update how many parameters are needed before the next command can run
-    if (paramsNeeded == -1)
+    // Start executing commands if one is ready
+    if (state == GX_IDLE && fifo.size() >= paramCounts[fifo.front().command])
     {
-        paramsNeeded = paramCounts[fifo.front().command] - 1;
-        if (paramsNeeded < 0) paramsNeeded = 0;
-    }
-    else if (paramsNeeded > 0)
-    {
-        paramsNeeded--;
+        core->schedule(Task(&runCommandTask, 1));
+        state = GX_RUNNING;
     }
 }
 

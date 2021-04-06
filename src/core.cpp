@@ -149,9 +149,6 @@ void Core::runNdsFrame()
         if (interpreter[1].shouldRun()) interpreter[1].runOpcode();
         if (timers[1].shouldTick())     timers[1].tick(2);
 
-        // Run the 3D engine
-        if (gpu3D.shouldRun()) gpu3D.runCommand();
-
         // Run the scheduler
         if (++taskCycles >= tasks[0].cycles)
         {

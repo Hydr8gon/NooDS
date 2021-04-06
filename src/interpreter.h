@@ -36,10 +36,11 @@ class Interpreter
 
         void runOpcode();
 
-        void halt();
+        void halt(int bit)   { halted |=  BIT(bit); }
+        void unhalt(int bit) { halted &= ~BIT(bit); }
         void sendInterrupt(int bit);
 
-        bool shouldRun() { return !halted;  }
+        bool shouldRun() { return !halted; }
 
         uint8_t  readIme()     { return ime;     }
         uint32_t readIe()      { return ie;      }
@@ -66,7 +67,7 @@ class Interpreter
         uint32_t cpsr = 0, *spsr = nullptr;
         uint32_t spsrFiq = 0, spsrSvc = 0, spsrAbt = 0, spsrIrq = 0, spsrUnd = 0;
 
-        bool halted = false;
+        uint8_t halted = 0;
 
         uint8_t ime = 0;
         uint32_t ie = 0, irf = 0;

@@ -2430,25 +2430,15 @@ void Interpreter::runOpcode()
     }
 }
 
-void Interpreter::halt()
-{
-    // Halt the CPU
-    halted = true;
-
-    // The ARM9 needs the IME to be set when halting, or else it locks up
-    // It makes more sense to check this when unhalting, but doing so causes mysterious slowdown
-    if (cpu == 0 && !ime)
-        ie = 0;
-}
-
 void Interpreter::sendInterrupt(int bit)
 {
     // Set the interrupt's request bit
     irf |= BIT(bit);
 
     // Unhalt the CPU if the requested interrupt is enabled
-    if (ie & irf)
-        halted = false;
+    // The ARM9 also needs IME to be set, but the ARM7 doesn't care
+    if ((ie & irf) && (ime || cpu == 1))
+        halted &= ~BIT(0);
 }
 
 bool Interpreter::condition(uint32_t opcode)

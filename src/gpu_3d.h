@@ -21,12 +21,20 @@
 #define GPU_3D_H
 
 #include <cstdint>
+#include <functional>
 #include <queue>
 #include <vector>
 
 #include "defines.h"
 
 class Core;
+
+enum GXState
+{
+    GX_IDLE = 0,
+    GX_RUNNING,
+    GX_HALTED
+};
 
 struct Entry
 {
@@ -85,11 +93,9 @@ class Gpu3D
     public:
         Gpu3D(Core *core);
 
-        void runCommand();
         void swapBuffers();
 
-        bool shouldRun()  { return !halted && paramsNeeded == 0; }
-        bool shouldSwap() { return  halted;                      }
+        bool shouldSwap() { return state == GX_HALTED; }
 
         _Polygon *getPolygons()     { return polygonsOut;     }
         int       getPolygonCount() { return polygonCountOut; }
@@ -144,13 +150,12 @@ class Gpu3D
     private:
         Core *core;
 
-        bool halted = false;
+        GXState state = GX_IDLE;
 
         std::queue<Entry> fifo;
         int pipeSize = 0;
 
         int paramCounts[0x100] = {};
-        int paramsNeeded = -1;
 
         int matrixMode = 0;
         int projectionPtr = 0, coordinatePtr = 0;
@@ -203,17 +208,21 @@ class Gpu3D
 
         int gxFifoCount = 0;
 
+        std::function<void()> runCommandTask;
+
+        static uint32_t rgb5ToRgb6(uint16_t color);
+
         static Matrix multiply(Matrix *mtx1, Matrix *mtx2);
         static Vertex multiply(Vertex *vtx, Matrix *mtx);
         static int32_t multiply(Vertex *vec1, Vertex *vec2);
 
-        static uint32_t rgb5ToRgb6(uint16_t color);
+        static Vertex intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2);
+        static bool clipPolygon(Vertex *unclipped, Vertex *clipped, int *size);
+
+        void runCommand();
 
         void addVertex();
         void addPolygon();
-
-        static Vertex intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2);
-        static bool clipPolygon(Vertex *unclipped, Vertex *clipped, int *size);
 
         void mtxModeCmd(uint32_t param);
         void mtxPushCmd();

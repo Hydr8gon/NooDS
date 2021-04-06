@@ -3010,7 +3010,7 @@ void Memory::writeHaltCnt(uint8_t value)
 
         case 2: // Halt
         {
-            core->interpreter[1].halt();
+            core->interpreter[1].halt(0);
             break;
         }
 
@@ -3025,7 +3025,7 @@ void Memory::writeHaltCnt(uint8_t value)
 void Memory::writeGbaHaltCnt(uint8_t value)
 {
     // Halt the CPU
-    core->interpreter[1].halt();
+    core->interpreter[1].halt(0);
 
     if (value & BIT(7)) // Stop
         printf("Unhandled request for stop mode\n");
