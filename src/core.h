@@ -51,7 +51,7 @@ struct Task
     Task(std::function<void()> *task, uint32_t cycles): task(task), cycles(cycles) {}
 
     std::function<void()> *task;
-    int cycles;
+    uint32_t cycles;
 
     bool operator<(const Task &task) const { return cycles < task.cycles; }
 };
@@ -65,6 +65,8 @@ class Core
 
         bool isGbaMode() { return gbaMode; }
         int  getFps()    { return fps;     }
+
+        uint32_t getGlobalCycles() { return globalCycles; }
 
         void schedule(Task task);
         void enterGbaMode();
@@ -93,10 +95,14 @@ class Core
         void (Core::*runFunc)() = &Core::runNdsFrame;
 
         std::vector<Task> tasks;
-        int taskCycles = 0;
+        uint32_t globalCycles = 0;
 
         int fps = 0, fpsCount = 0;
         std::chrono::steady_clock::time_point lastFpsTime;
+
+        std::function<void()> resetCyclesTask;
+
+        void resetCycles();
 
         void runNdsFrame();
         void runGbaFrame();

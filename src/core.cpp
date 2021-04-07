@@ -30,6 +30,8 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     ipc(this), memory(this), rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
 {
     // Schedule initial tasks for NDS mode
+    resetCyclesTask = std::bind(&Core::resetCycles, this);
+    schedule(Task(&resetCyclesTask, 0x7FFFFFFF));
     gpu.scheduleInit();
     spu.scheduleInit();
 
@@ -94,29 +96,32 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     }
 }
 
+void Core::resetCycles()
+{
+    // Reset the global cycle count periodically to prevent overflow
+    for (unsigned int i = 0; i < tasks.size(); i++)
+        tasks[i].cycles -= globalCycles;
+    timers[0].resetCycles();
+    timers[1].resetCycles();
+    globalCycles -= globalCycles;
+    schedule(Task(&resetCyclesTask, 0x7FFFFFFF));
+}
+
 void Core::runGbaFrame()
 {
     // Run a frame in GBA mode
-    for (int i = 0; i < 228 * 308 * 2; i++) // 228 scanlines, 308 dots, 2 (half) ARM7 cycles
+    for (int i = 0; i < 228 * 308 * 4; i++) // 228 scanlines, 308 dots, 4 ARM7 cycles
     {
         // Run the ARM7
-        if (interpreter[1].shouldRun()) interpreter[1].runOpcode();
-        if (timers[1].shouldTick())     timers[1].tick(2);
+        if ((i & 1) && interpreter[1].shouldRun())
+            interpreter[1].runOpcode();
 
         // Run the scheduler
-        if (++taskCycles >= tasks[0].cycles)
+        globalCycles++;
+        while (tasks[0].cycles <= globalCycles)
         {
-            // Update task cycles and reset the counter
-            for (unsigned int j = 0; j < tasks.size(); j++)
-                tasks[j].cycles -= taskCycles;
-            taskCycles = 0;
-
-            // Execute tasks that are no longer waiting
-            while (tasks[0].cycles <= 0)
-            {
-                (*tasks[0].task)();
-                tasks.erase(tasks.begin());
-            }
+            (*tasks[0].task)();
+            tasks.erase(tasks.begin());
         }
     }
 
@@ -136,33 +141,22 @@ void Core::runGbaFrame()
 void Core::runNdsFrame()
 {
     // Run a frame in NDS mode
-    for (int i = 0; i < 263 * 355 * 3; i++) // 263 scanlines, 355 dots, 3 ARM7 cycles
+    for (int i = 0; i < 263 * 355 * 6; i++) // 263 scanlines, 355 dots, 6 ARM9 cycles
     {
-        // Run the ARM9 at twice the speed of the ARM7
-        for (int j = 0; j < 2; j++)
-        {
-            if (interpreter[0].shouldRun()) interpreter[0].runOpcode();
-            if (timers[0].shouldTick())     timers[0].tick(1);
-        }
+        // Run the ARM9
+        if (interpreter[0].shouldRun())
+            interpreter[0].runOpcode();
 
-        // Run the ARM7
-        if (interpreter[1].shouldRun()) interpreter[1].runOpcode();
-        if (timers[1].shouldTick())     timers[1].tick(2);
+        // Run the ARM7 at half the speed of the ARM9
+        if ((i & 1) && interpreter[1].shouldRun())
+            interpreter[1].runOpcode();
 
         // Run the scheduler
-        if (++taskCycles >= tasks[0].cycles)
+        globalCycles++;
+        while (tasks[0].cycles <= globalCycles)
         {
-            // Update task cycles and reset the counter
-            for (unsigned int j = 0; j < tasks.size(); j++)
-                tasks[j].cycles -= taskCycles;
-            taskCycles = 0;
-
-            // Execute tasks that are no longer waiting
-            while (tasks[0].cycles <= 0)
-            {
-                (*tasks[0].task)();
-                tasks.erase(tasks.begin());
-            }
+            (*tasks[0].task)();
+            tasks.erase(tasks.begin());
         }
     }
 
@@ -182,7 +176,7 @@ void Core::runNdsFrame()
 void Core::schedule(Task task)
 {
     // Add a task to the scheduler, sorted by least to most cycles until execution
-    task.cycles += taskCycles;
+    task.cycles += globalCycles;
     auto it = std::upper_bound(tasks.cbegin(), tasks.cend(), task);
     tasks.insert(it, task);
 }
@@ -195,8 +189,9 @@ void Core::enterGbaMode()
     gbaMode = true;
 
     // Reset the scheduler and schedule initial tasks for GBA mode
-    taskCycles = 0;
+    globalCycles = 0;
     tasks.clear();
+    schedule(Task(&resetCyclesTask, 0x7FFFFFFF));
     gpu.gbaScheduleInit();
     spu.gbaScheduleInit();
 

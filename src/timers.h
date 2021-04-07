@@ -21,17 +21,16 @@
 #define TIMERS_H
 
 #include <cstdint>
+#include <functional>
 
 class Core;
 
 class Timers
 {
     public:
-        Timers(Core *core, bool cpu): core(core), cpu(cpu) {}
+        Timers(Core *core, bool cpu);
 
-        void tick(int cycles);
-
-        bool shouldTick() { return enabled; }
+        void resetCycles();
 
         uint16_t readTmCntH(int timer) { return tmCntH[timer]; }
         uint16_t readTmCntL(int timer);
@@ -43,14 +42,16 @@ class Timers
         Core *core;
         bool cpu;
 
-        uint8_t enabled = 0;
-
-        uint32_t timers[4] = {};
-        uint32_t masks[4] = {};
-        int shifts[4] = {};
+        uint16_t timers[4] = {};
+        uint8_t shifts[4] = {};
+        uint32_t endCycles[4] = {};
 
         uint16_t tmCntL[4] = {};
         uint16_t tmCntH[4] = {};
+
+        std::function<void()> overflowTask[4];
+
+        void overflow(int timer);
 };
 
 #endif // TIMERS_H

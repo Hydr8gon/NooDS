@@ -61,13 +61,13 @@ Spu::~Spu()
 void Spu::scheduleInit()
 {
     // Schedule the initial NDS SPU task (this will reschedule itself indefinitely)
-    core->schedule(Task(&runSampleTask, 512));
+    core->schedule(Task(&runSampleTask, 512 * 2));
 }
 
 void Spu::gbaScheduleInit()
 {
     // Schedule the initial GBA SPU task (this will reschedule itself indefinitely)
-    core->schedule(Task(&runGbaSampleTask, 512 / 2));
+    core->schedule(Task(&runGbaSampleTask, 512));
 }
 
 uint32_t *Spu::getSamples(int count)
@@ -405,7 +405,7 @@ void Spu::runGbaSample()
     }
 
     // Reschedule the task for the next sample
-    core->schedule(Task(&runGbaSampleTask, 512 / 2));
+    core->schedule(Task(&runGbaSampleTask, 512));
 }
 
 void Spu::runSample()
@@ -703,7 +703,7 @@ void Spu::runSample()
     }
 
     // Reschedule the task for the next sample
-    core->schedule(Task(&runSampleTask, 512));
+    core->schedule(Task(&runSampleTask, 512 * 2));
 }
 
 void Spu::swapBuffers()
