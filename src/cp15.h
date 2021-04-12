@@ -38,6 +38,8 @@ class Cp15
         uint32_t getDtcmAddr()      { return dtcmAddr;      }
         uint32_t getDtcmSize()      { return dtcmSize;      }
         uint32_t getItcmSize()      { return itcmSize;      }
+        bool getDtcmLoadMode()      { return ctrlReg & (1 << 17); }
+        bool getItcmLoadMode()      { return ctrlReg & (1 << 19); }
 
     private:
         Core *core;
