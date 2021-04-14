@@ -331,7 +331,8 @@ void SwitchUI::clear(Color color)
 
 void SwitchUI::update()
 {
-    // Redraw the display
+    // Display a new frame
+    glFinish();
     eglSwapBuffers(display, surface);
 }
 
