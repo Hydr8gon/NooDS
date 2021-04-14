@@ -485,6 +485,13 @@ void Spu::runSample()
 
                 case 2: // ADPCM
                 {
+                    // Save the ADPCM values at the loop position
+                    if (soundCurrent[i] == soundSad[i] + soundPnt[i] * 4 && !adpcmToggle[i])
+                    {
+                        adpcmLoopValue[i] = adpcmValue[i];
+                        adpcmLoopIndex[i] = adpcmIndex[i];
+                    }
+
                     // Get the 4-bit ADPCM data
                     uint8_t adpcmData = core->memory.read<uint8_t>(1, soundCurrent[i]);
                     adpcmData = adpcmToggle[i] ? ((adpcmData & 0xF0) >> 4) : (adpcmData & 0x0F);
@@ -516,12 +523,6 @@ void Spu::runSample()
                     adpcmToggle[i] = !adpcmToggle[i];
                     if (!adpcmToggle[i]) soundCurrent[i]++;
 
-                    // Save the ADPCM values at the loop position
-                    if (soundCurrent[i] == soundSad[i] + soundPnt[i] * 4 && !adpcmToggle[i])
-                    {
-                        adpcmLoopValue[i] = adpcmValue[i];
-                        adpcmLoopIndex[i] = adpcmIndex[i];
-                    }
                     break;
                 }
 
