@@ -212,22 +212,27 @@ uint32_t *SwitchUI::bmpToTexture(std::string filename)
     int width = *(int*)&header[18];
     int height = *(int*)&header[22];
 
-    uint32_t *texture = new uint32_t[width * height];
+    // Read the bitmap data
+    uint32_t *data = new uint32_t[width * height];
+    fread(data, sizeof(uint32_t), width * height, bmp);
+    fclose(bmp);
 
     // Convert the bitmap data to RGBA8 format
-    for (int y = 1; y <= height; y++)
+    uint32_t *texture = new uint32_t[width * height];
+    for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
         {
-            uint8_t b; fread(&b, sizeof(u8), 1, bmp);
-            uint8_t g; fread(&g, sizeof(u8), 1, bmp);
-            uint8_t r; fread(&r, sizeof(u8), 1, bmp);
-            uint8_t a; fread(&a, sizeof(u8), 1, bmp);
-            texture[(height - y) * width + x] = (a << 24) | (b << 16) | (g << 8) | r;
+            uint32_t color = data[(height - y - 1) * width + x];
+            uint8_t b = (color >>  0) & 0xFF;
+            uint8_t g = (color >>  8) & 0xFF;
+            uint8_t r = (color >> 16) & 0xFF;
+            uint8_t a = (color >> 24) & 0xFF;
+            texture[y * width + x] = (a << 24) | (b << 16) | (g << 8) | r;
         }
     }
 
-    fclose(bmp);
+    delete[] data;
     return texture;
 }
 
