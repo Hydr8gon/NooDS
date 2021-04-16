@@ -110,23 +110,16 @@ void Core::resetCycles()
 void Core::runGbaFrame()
 {
     // Run a frame in GBA mode
-    while (++frameCycles < 228 * 308 * 4) // 228 scanlines, 308 dots, 4 ARM7 cycles
+    while (frameCycles < 228 * 308 * 4) // 228 scanlines, 308 dots, 4 ARM7 cycles
     {
         // Run the ARM7
         if ((frameCycles & 1) && interpreter[1].shouldRun())
             interpreter[1].runOpcode();
 
-        if (interpreter[1].shouldRun())
-        {
-            // Count cycles normally
-            globalCycles++;
-        }
-        else
-        {
-            // Jump to the next scheduled task
-            frameCycles += tasks[0].cycles - globalCycles - 1;
-            globalCycles = tasks[0].cycles;
-        }
+        // Count a cycle if a CPU is running, otherwise jump to the next task
+        uint32_t i = interpreter[1].shouldRun() ? 1 : (tasks[0].cycles - globalCycles);
+        frameCycles += i;
+        globalCycles += i;
 
         // Run any tasks that are scheduled now
         while (tasks[0].cycles <= globalCycles)
@@ -153,7 +146,7 @@ void Core::runGbaFrame()
 void Core::runNdsFrame()
 {
     // Run a frame in NDS mode
-    while (++frameCycles < 263 * 355 * 6) // 263 scanlines, 355 dots, 6 ARM9 cycles
+    while (frameCycles < 263 * 355 * 6) // 263 scanlines, 355 dots, 6 ARM9 cycles
     {
         // Run the ARM9
         if (interpreter[0].shouldRun())
@@ -163,17 +156,10 @@ void Core::runNdsFrame()
         if ((frameCycles & 1) && interpreter[1].shouldRun())
             interpreter[1].runOpcode();
 
-        if (interpreter[0].shouldRun() || interpreter[1].shouldRun())
-        {
-            // Count cycles normally
-            globalCycles++;
-        }
-        else
-        {
-            // Jump to the next scheduled task
-            frameCycles += tasks[0].cycles - globalCycles - 1;
-            globalCycles = tasks[0].cycles;
-        }
+        // Count a cycle if a CPU is running, otherwise jump to the next task
+        uint32_t i = (interpreter[0].shouldRun() || interpreter[1].shouldRun()) ? 1 : (tasks[0].cycles - globalCycles);
+        frameCycles += i;
+        globalCycles += i;
 
         // Run any tasks that are scheduled now
         while (tasks[0].cycles <= globalCycles)
