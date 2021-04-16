@@ -110,14 +110,25 @@ void Core::resetCycles()
 void Core::runGbaFrame()
 {
     // Run a frame in GBA mode
-    for (int i = 0; i < 228 * 308 * 4; i++) // 228 scanlines, 308 dots, 4 ARM7 cycles
+    while (++frameCycles < 228 * 308 * 4) // 228 scanlines, 308 dots, 4 ARM7 cycles
     {
         // Run the ARM7
-        if ((i & 1) && interpreter[1].shouldRun())
+        if ((frameCycles & 1) && interpreter[1].shouldRun())
             interpreter[1].runOpcode();
 
-        // Run the scheduler
-        globalCycles++;
+        if (interpreter[1].shouldRun())
+        {
+            // Count cycles normally
+            globalCycles++;
+        }
+        else
+        {
+            // Jump to the next scheduled task
+            frameCycles += tasks[0].cycles - globalCycles - 1;
+            globalCycles = tasks[0].cycles;
+        }
+
+        // Run any tasks that are scheduled now
         while (tasks[0].cycles <= globalCycles)
         {
             (*tasks[0].task)();
@@ -125,7 +136,8 @@ void Core::runGbaFrame()
         }
     }
 
-    // Count the FPS
+    // Count a frame
+    frameCycles -= 228 * 308 * 4;
     fpsCount++;
 
     // Update the FPS and reset the counter every second
@@ -141,18 +153,29 @@ void Core::runGbaFrame()
 void Core::runNdsFrame()
 {
     // Run a frame in NDS mode
-    for (int i = 0; i < 263 * 355 * 6; i++) // 263 scanlines, 355 dots, 6 ARM9 cycles
+    while (++frameCycles < 263 * 355 * 6) // 263 scanlines, 355 dots, 6 ARM9 cycles
     {
         // Run the ARM9
         if (interpreter[0].shouldRun())
             interpreter[0].runOpcode();
 
         // Run the ARM7 at half the speed of the ARM9
-        if ((i & 1) && interpreter[1].shouldRun())
+        if ((frameCycles & 1) && interpreter[1].shouldRun())
             interpreter[1].runOpcode();
 
-        // Run the scheduler
-        globalCycles++;
+        if (interpreter[0].shouldRun() || interpreter[1].shouldRun())
+        {
+            // Count cycles normally
+            globalCycles++;
+        }
+        else
+        {
+            // Jump to the next scheduled task
+            frameCycles += tasks[0].cycles - globalCycles - 1;
+            globalCycles = tasks[0].cycles;
+        }
+
+        // Run any tasks that are scheduled now
         while (tasks[0].cycles <= globalCycles)
         {
             (*tasks[0].task)();
@@ -160,7 +183,8 @@ void Core::runNdsFrame()
         }
     }
 
-    // Count the FPS
+    // Count a frame
+    frameCycles -= 263 * 355 * 6;
     fpsCount++;
 
     // Update the FPS and reset the counter every second
@@ -189,7 +213,7 @@ void Core::enterGbaMode()
     gbaMode = true;
 
     // Reset the scheduler and schedule initial tasks for GBA mode
-    globalCycles = 0;
+    frameCycles = globalCycles = 0;
     tasks.clear();
     schedule(Task(&resetCyclesTask, 0x7FFFFFFF));
     gpu.gbaScheduleInit();

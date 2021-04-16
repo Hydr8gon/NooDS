@@ -95,7 +95,7 @@ class Core
         void (Core::*runFunc)() = &Core::runNdsFrame;
 
         std::vector<Task> tasks;
-        uint32_t globalCycles = 0;
+        uint32_t frameCycles = 0, globalCycles = 0;
 
         int fps = 0, fpsCount = 0;
         std::chrono::steady_clock::time_point lastFpsTime;
