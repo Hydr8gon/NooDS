@@ -81,12 +81,17 @@ class SwitchUI
         static EGLDisplay display;
         static EGLContext context;
         static EGLSurface surface;
-        static GLuint program, vbo, texture;
+
+        static GLuint program;
+        static GLuint vbo;
+        static GLuint textures[3];
 
         static const char *vertexShader;
         static const char *fragmentShader;
 
         static const uint32_t *font;
+        static const uint32_t empty;
+
         static const int charWidths[];
 
         static bool darkTheme;

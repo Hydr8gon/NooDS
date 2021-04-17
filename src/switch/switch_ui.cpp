@@ -24,9 +24,12 @@
 
 struct VertexData
 {
-    VertexData(float x, float y, float s, float t): x(x), y(y), s(s), t(t) {}
+    VertexData(float x, float y, float s, float t, float r, float g, float b):
+        x(x), y(y), s(s), t(t), r(r), g(g), b(b) {}
 
-    float x, y, s, t;
+    float x, y;
+    float s, t;
+    float r, g, b;
 };
 
 bool SwitchUI::shouldExit = false;
@@ -34,7 +37,10 @@ bool SwitchUI::shouldExit = false;
 EGLDisplay SwitchUI::display;
 EGLContext SwitchUI::context;
 EGLSurface SwitchUI::surface;
-GLuint SwitchUI::program, SwitchUI::vbo, SwitchUI::texture;
+
+GLuint SwitchUI::program;
+GLuint SwitchUI::vbo;
+GLuint SwitchUI::textures[3];
 
 const char *SwitchUI::vertexShader =
 R"(
@@ -43,12 +49,15 @@ R"(
 
     layout (location = 0) in vec2 inPos;
     layout (location = 1) in vec2 inTexCoord;
+    layout (location = 2) in vec3 inColor;
     out vec2 vtxTexCoord;
+    out vec3 vtxColor;
 
     void main()
     {
         gl_Position = vec4(-1.0 + inPos.x / 640, 1.0 - inPos.y / 360, 0.0, 1.0);
         vtxTexCoord = inTexCoord;
+        vtxColor = inColor;
     }
 )";
 
@@ -58,16 +67,18 @@ R"(
     precision mediump float;
 
     in vec2 vtxTexCoord;
+    in vec3 vtxColor;
     out vec4 fragColor;
     uniform sampler2D texDiffuse;
 
     void main()
     {
-        fragColor = texture(texDiffuse, vtxTexCoord);
+        fragColor = texture(texDiffuse, vtxTexCoord) * vec4(vtxColor.x / 255, vtxColor.y / 255, vtxColor.z / 255, 1.0);
     }
 )";
 
 const uint32_t *SwitchUI::font;
+const uint32_t SwitchUI::empty = 0xFFFFFFFF;
 
 const int SwitchUI::charWidths[] =
 {
@@ -141,28 +152,40 @@ void SwitchUI::initialize()
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, s));
     glEnableVertexAttribArray(1);
-
-    // Set up texturing
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    // Enable alpha blending
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, r));
+    glEnableVertexAttribArray(2);
 
     // Load the font bitmap
     romfsInit();
     font = bmpToTexture("romfs:/font.bmp");
     romfsExit();
 
+    glGenTextures(3, textures);
+
+    // Prepare a texture for image drawing
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Prepare the font texture
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512, 512, 0, GL_RGBA, GL_UNSIGNED_BYTE, font);
+
+    // Prepare an empty texture for drawing only the vertex color
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &empty);
+
+    // Enable alpha blending
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     // Determine the system theme
     setsysInitialize();
     ColorSetId theme;
     setsysGetColorSetId(&theme);
-    if (theme == ColorSetId_Dark) darkTheme = true;
+    darkTheme = (theme == ColorSetId_Dark);
     setsysExit();
 
     // Set the theme palette
@@ -190,8 +213,9 @@ void SwitchUI::deinitialize()
 {
     // Clean up
     glDeleteProgram(program);
-    glDeleteTextures(1, &texture);
     glDeleteBuffers(1, &vbo);
+    glDeleteTextures(3, textures);
+    delete[] font;
 
     // Deinitialize EGL
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
@@ -238,9 +262,8 @@ uint32_t *SwitchUI::bmpToTexture(std::string filename)
 
 void SwitchUI::drawImage(uint32_t *image, int width, int height, int x, int y, int scaleWidth, int scaleHeight, bool filter, int rotation)
 {
-    uint8_t texCoords;
-
     // Rotate the texture coordinates
+    uint8_t texCoords;
     switch (rotation)
     {
         case 0:  texCoords = 0x4B; break; // None
@@ -251,74 +274,70 @@ void SwitchUI::drawImage(uint32_t *image, int width, int height, int x, int y, i
 
     VertexData vertices[] =
     {
-        VertexData(x + scaleWidth, y + scaleHeight, (texCoords >> 0) & 1, (texCoords >> 1) & 1),
-        VertexData(x,              y + scaleHeight, (texCoords >> 2) & 1, (texCoords >> 3) & 1),
-        VertexData(x,              y,               (texCoords >> 4) & 1, (texCoords >> 5) & 1),
-        VertexData(x + scaleWidth, y,               (texCoords >> 6) & 1, (texCoords >> 7) & 1)
+        VertexData(x + scaleWidth, y + scaleHeight, (texCoords >> 0) & 1, (texCoords >> 1) & 1, 255, 255, 255),
+        VertexData(x,              y + scaleHeight, (texCoords >> 2) & 1, (texCoords >> 3) & 1, 255, 255, 255),
+        VertexData(x,              y,               (texCoords >> 4) & 1, (texCoords >> 5) & 1, 255, 255, 255),
+        VertexData(x + scaleWidth, y,               (texCoords >> 6) & 1, (texCoords >> 7) & 1, 255, 255, 255)
     };
 
-    // Set texture filtering
+    // Load the image as a texture and set filtering
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter ? GL_LINEAR : GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter ? GL_LINEAR : GL_NEAREST);
-
-    // Load the vertex and texture data and draw it
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+
+    // Load the vertex data and draw the image
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
 void SwitchUI::drawString(std::string string, int x, int y, int size, Color color, bool alignRight)
 {
-    int width = stringWidth(string);
-    uint32_t *texture = new uint32_t[width * 48];
-    int curWidth = 0;
+    float curWidth = 0;
 
-    // Copy the string characters from the font bitmap to the string texture
+    // Align the string to the right if enabled
+    if (alignRight)
+        curWidth -= stringWidth(string);
+
+    // Draw each character of the string
     for (unsigned int i = 0; i < string.size(); i++)
     {
-        int row = (string[i] - 32) / 10;
-        int col = (string[i] - 32) % 10;
+        float x1 = x + curWidth * size / 48;
+        float x2 = x + (curWidth + 48) * size / 48;
+        float s = 48.0f * ((string[i] - 32) % 10) / 512;
+        float t = 48.0f * ((string[i] - 32) / 10) / 512;
 
-        for (int j = 0; j < 48; j++)
+        VertexData vertices[] =
         {
-            for (int k = 0; k < charWidths[string[i] - 32]; k++)
-            {
-                texture[j * width + curWidth + k] = (font[(row * 512 + col) * 48 + j * 512 + k] & 0xFF000000) |
-                                                    (color.b << 16) | (color.g << 8) | color.r;
-            }
-        }
+            VertexData(x1, y + size, s,                 t + (47.0f / 512), color.r, color.g, color.b),
+            VertexData(x2, y + size, s + (47.0f / 512), t + (47.0f / 512), color.r, color.g, color.b),
+            VertexData(x2, y,        s + (47.0f / 512), t,                 color.r, color.g, color.b),
+            VertexData(x1, y,        s,                 t,                 color.r, color.g, color.b)
+        };
 
+        // Load the vertex and texture data and draw a character
+        glBindTexture(GL_TEXTURE_2D, textures[1]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+        // Adjust position for the next character
         curWidth += charWidths[string[i] - 32];
     }
-
-    // Align the string to the right
-    if (alignRight) x -= width * size / 48;
-
-    // Draw the string
-    drawImage(texture, width, 48, x, y, width * size / 48, size);
-    delete[] texture;
 }
 
 void SwitchUI::drawRectangle(int x, int y, int width, int height, Color color)
 {
     VertexData vertices[] =
     {
-        VertexData(x + width, y + height, 1.0f, 1.0f),
-        VertexData(x,         y + height, 0.0f, 1.0f),
-        VertexData(x,         y,          0.0f, 0.0f),
-        VertexData(x + width, y,          1.0f, 0.0f)
+        VertexData(x + width, y + height, 1.0f, 1.0f, color.r, color.g, color.b),
+        VertexData(x,         y + height, 0.0f, 1.0f, color.r, color.g, color.b),
+        VertexData(x,         y,          0.0f, 0.0f, color.r, color.g, color.b),
+        VertexData(x + width, y,          1.0f, 0.0f, color.r, color.g, color.b)
     };
 
-    // Convert the color to a 1x1 texture
-    uint32_t texture = (0xFF << 24) | (color.b << 16) | (color.g << 8) | color.r;
-
-    // Disable texture filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    // Load the vertex and texture data and draw it
+    // Load the vertex and texture data and draw the rectangle
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &texture);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
