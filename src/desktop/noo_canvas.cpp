@@ -40,7 +40,7 @@ NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator): wxGLCanvas(frame, wxI
 {
     // Prepare the OpenGL context
     context = new wxGLContext(this);
-    wxGLCanvas::SetCurrent(*context);
+    SetCurrent(*context);
 
     // Prepare a texture for the framebuffer
     GLuint texture;
@@ -66,6 +66,8 @@ void NooCanvas::draw(wxPaintEvent &event)
 {
     // Continuous rendering can prevent the canvas from closing, so only render when needed
     if (!emulator->core && !display) return;
+
+    SetCurrent(*context);
 
     // Clear the window
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
