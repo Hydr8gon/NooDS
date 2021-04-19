@@ -459,6 +459,7 @@ void InputDialog::confirm(wxCommandEvent &event)
     // Save the key mappings
     for (int i = 0; i < 14; i++)
         NooApp::setKeyBind(i, keyBinds[i]);
+    Settings::save();
 
     event.Skip(true);
 }

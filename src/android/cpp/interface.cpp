@@ -29,9 +29,7 @@
 int screenFilter = 1;
 int showFpsCounter = 0;
 
-std::string settingsPath;
 std::string ndsPath, gbaPath;
-
 Core *core = nullptr;
 ScreenLayout layout;
 
@@ -41,9 +39,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(
     const char *str = env->GetStringUTFChars(rootPath, nullptr);
     std::string path = str;
     env->ReleaseStringUTFChars(rootPath, str);
-
-    // Set the path to the settings file
-    settingsPath = path + "/noods/noods.ini";
 
     // Define the platform settings
     std::vector<Setting> platformSettings =
@@ -58,14 +53,14 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(
 
     // Load the settings
     // If this is the first time, set the path settings based on the root storage path
-    if (!Settings::load(settingsPath))
+    if (!Settings::load(path + "/noods/noods.ini"))
     {
         Settings::setBios7Path(path + "/noods/bios7.bin");
         Settings::setBios9Path(path + "/noods/bios9.bin");
         Settings::setFirmwarePath(path + "/noods/firmware.bin");
         Settings::setGbaBiosPath(path + "/noods/gba_bios.bin");
         Settings::setSdImagePath(path + "/noods/sd.img");
-        Settings::save(settingsPath);
+        Settings::save();
     }
 }
 
@@ -280,8 +275,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowFpsCo
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_saveSettings(JNIEnv* env, jobject obj)
 {
-    if (settingsPath != "")
-        Settings::save(settingsPath);
+    Settings::save();
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooActivity_getShowFpsCounter(JNIEnv* env, jobject obj)

@@ -486,54 +486,63 @@ void NooFrame::directBootToggle(wxCommandEvent &event)
 {
     // Toggle the direct boot setting
     Settings::setDirectBoot(!Settings::getDirectBoot());
+    Settings::save();
 }
 
 void NooFrame::fpsDisabled(wxCommandEvent &event)
 {
     // Set the FPS limiter setting to disabled
     Settings::setFpsLimiter(0);
+    Settings::save();
 }
 
 void NooFrame::fpsLight(wxCommandEvent &event)
 {
     // Set the FPS limiter setting to light
     Settings::setFpsLimiter(1);
+    Settings::save();
 }
 
 void NooFrame::fpsAccurate(wxCommandEvent &event)
 {
     // Set the FPS limiter setting to accurate
     Settings::setFpsLimiter(2);
+    Settings::save();
 }
 
 void NooFrame::threaded2D(wxCommandEvent &event)
 {
     // Toggle the threaded 2D setting
     Settings::setThreaded2D(!Settings::getThreaded2D());
+    Settings::save();
 }
 
 void NooFrame::threaded3D0(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to disabled
     Settings::setThreaded3D(0);
+    Settings::save();
 }
 
 void NooFrame::threaded3D1(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to 1 thread
     Settings::setThreaded3D(1);
+    Settings::save();
 }
 
 void NooFrame::threaded3D2(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to 2 threads
     Settings::setThreaded3D(2);
+    Settings::save();
 }
 
 void NooFrame::threaded3D3(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to 3 threads
     Settings::setThreaded3D(3);
+    Settings::save();
 }
 
 void NooFrame::dropFiles(wxDropFilesEvent &event)
@@ -585,7 +594,6 @@ void NooFrame::close(wxCloseEvent &event)
 
     // Properly shut down the emulator
     stopCore(true);
-    Settings::save();
 
     event.Skip(true);
 }

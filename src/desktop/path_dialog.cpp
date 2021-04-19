@@ -186,5 +186,7 @@ void PathDialog::confirm(wxCommandEvent &event)
     path = (const char*)sdImagePath->GetValue().mb_str(wxConvUTF8);
     Settings::setSdImagePath(path);
 
+    Settings::save();
+
     event.Skip(true);
 }

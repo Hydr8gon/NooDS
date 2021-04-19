@@ -17,6 +17,9 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <wx/filename.h>
+#include <wx/stdpaths.h>
+
 #include "noo_app.h"
 #include "../common/screen_layout.h"
 #include "../settings.h"
@@ -35,6 +38,8 @@ int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O'
 
 bool NooApp::OnInit()
 {
+    SetAppName("NooDS");
+
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
@@ -55,10 +60,32 @@ bool NooApp::OnInit()
         Setting("keyFullScreen",  &keyBinds[13], false)
     };
 
-    // Load the settings
+    // Add the platform settings
     ScreenLayout::addSettings();
     Settings::add(platformSettings);
-    Settings::load();
+
+    // Try to load the settings from the current directory first
+    if (!Settings::load())
+    {
+        // Get the system-specific application settings directory
+        std::string settingsDir;
+        wxStandardPaths &paths = wxStandardPaths::Get();
+#if defined(WINDOWS) || defined(MACOS)
+        settingsDir = paths.GetUserDataDir().mb_str(wxConvUTF8);
+#else
+        paths.SetFileLayout(wxStandardPaths::FileLayout_XDG);
+        settingsDir = paths.GetUserConfigDir().mb_str(wxConvUTF8);
+        settingsDir += "/noods";
+#endif
+
+        // Try to load the settings from the system directory, creating it if it doesn't exist
+        if (!Settings::load(settingsDir + "/noods.ini"))
+        {
+            wxFileName dir = wxFileName::DirName(settingsDir);
+            if (!dir.DirExists()) dir.Mkdir();
+            Settings::save();
+        }
+    }
 
     // Prepare a joystick if one is connected
     joystick = new wxJoystick();

@@ -20,7 +20,7 @@
 #include "settings.h"
 #include "defines.h"
 
-bool Settings::loaded = false;
+std::string Settings::filename = "noods.ini";
 
 int Settings::directBoot = 1;
 int Settings::fpsLimiter = 1;
@@ -45,20 +45,17 @@ std::vector<Setting> Settings::settings =
     Setting("sdImagePath",  &sdImagePath,  true)
 };
 
-bool Settings::add(std::vector<Setting> platformSettings)
+void Settings::add(std::vector<Setting> platformSettings)
 {
-    // Add additional platform settings if the settings haven't been loaded yet
-    if (!loaded)
-        settings.insert(settings.end(), platformSettings.begin(), platformSettings.end());
-    return !loaded;
+    // Add additional platform settings to be loaded from the settings file
+    settings.insert(settings.end(), platformSettings.begin(), platformSettings.end());
 }
 
 bool Settings::load(std::string filename)
 {
-    if (loaded) return false;
-
     // Attempt to open the settings file
     // If the file can't be opened, the default values will be used
+    Settings::filename = filename;
     FILE *settingsFile = fopen(filename.c_str(), "r");
     if (!settingsFile) return false;
 
@@ -86,11 +83,10 @@ bool Settings::load(std::string filename)
     }
 
     fclose(settingsFile);
-    loaded = true;
     return true;
 }
 
-bool Settings::save(std::string filename)
+bool Settings::save()
 {
     // Attempt to open the settings file
     FILE *settingsFile = fopen(filename.c_str(), "w");

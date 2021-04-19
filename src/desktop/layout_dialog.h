@@ -51,6 +51,7 @@ class LayoutDialog: public wxDialog
         void gbaCrop(wxCommandEvent &event);
         void filter(wxCommandEvent &event);
         void cancel(wxCommandEvent &event);
+        void confirm(wxCommandEvent &event);
 
         wxDECLARE_EVENT_TABLE();
 };

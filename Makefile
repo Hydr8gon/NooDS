@@ -5,14 +5,16 @@ ARGS    := -Ofast -flto -std=c++11 #-DDEBUG
 LIBS    := -lportaudio
 
 ifeq ($(OS),Windows_NT)
-ARGS += -static
-LIBS += `wx-config-static --cxxflags --libs --gl-libs` -lole32 -lsetupapi -lwinmm
+  ARGS += -static -DWINDOWS
+  LIBS += `wx-config-static --cxxflags --libs --gl-libs` -lole32 -lsetupapi -lwinmm
 else
-ARGS += -no-pie
-LIBS += `wx-config --cxxflags --libs --gl-libs`
-ifneq ($(shell uname -s),Darwin)
-LIBS += -lGL
-endif
+  LIBS += `wx-config --cxxflags --libs --gl-libs`
+  ifeq ($(shell uname -s),Darwin)
+    ARGS += -DMACOS
+  else
+    ARGS += -no-pie
+    LIBS += -lGL
+  endif
 endif
 
 CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
@@ -20,7 +22,7 @@ HFILES   := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.h))
 OFILES   := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
 
 ifeq ($(OS),Windows_NT)
-OFILES += $(BUILD)/icon.o
+  OFILES += $(BUILD)/icon.o
 endif
 
 $(NAME): $(OFILES)

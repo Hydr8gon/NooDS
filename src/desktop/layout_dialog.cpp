@@ -20,6 +20,7 @@
 #include "layout_dialog.h"
 #include "noo_app.h"
 #include "../common/screen_layout.h"
+#include "../settings.h"
 
 enum Event
 {
@@ -59,6 +60,7 @@ EVT_CHECKBOX(INT_SCALE,       LayoutDialog::intScale)
 EVT_CHECKBOX(GBA_CROP,        LayoutDialog::gbaCrop)
 EVT_CHECKBOX(FILTER,          LayoutDialog::filter)
 EVT_BUTTON(wxID_CANCEL,       LayoutDialog::cancel)
+EVT_BUTTON(wxID_OK,           LayoutDialog::confirm)
 wxEND_EVENT_TABLE()
 
 LayoutDialog::LayoutDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Screen Layout"), frame(frame)
@@ -324,6 +326,14 @@ void LayoutDialog::cancel(wxCommandEvent &event)
 
     // Trigger a resize to update the screen layout
     frame->SendSizeEvent();
+
+    event.Skip(true);
+}
+
+void LayoutDialog::confirm(wxCommandEvent &event)
+{
+    // Save the layout settings
+    Settings::save();
 
     event.Skip(true);
 }

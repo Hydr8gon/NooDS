@@ -211,6 +211,7 @@ void settingsMenu()
         {
             // Close the settings menu
             layout.update(1280, 720, gbaMode);
+            Settings::save();
             return;
         }
     }
@@ -555,7 +556,7 @@ int main()
     // Load the settings
     ScreenLayout::addSettings();
     Settings::add(platformSettings);
-    Settings::load();
+    if (!Settings::load()) Settings::save();
 
     layout.update(1280, 720, gbaMode);
 
@@ -648,7 +649,6 @@ int main()
     // Clean up
     stopCore();
     delete core;
-    Settings::save();
     SwitchUI::deinitialize();
     appletUnlockExit();
     return 0;
