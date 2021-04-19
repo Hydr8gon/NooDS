@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: Install wxWidgets and PortAudio
-      run: sudo apt update && sudo apt install libwxgtk3.0-gtk3-dev portaudio19-dev -y
+      run: sudo apt-key adv --fetch-keys https://repos.codelite.org/CodeLite.asc && sudo apt-add-repository 'deb https://repos.codelite.org/wx3.1.4/ubuntu/ focal universe' && sudo apt update && sudo apt install libwxgtk3.1-dev portaudio19-dev -y
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
