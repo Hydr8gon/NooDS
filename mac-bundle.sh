@@ -25,7 +25,7 @@ for lib in "${libs[@]}"; do
 	install_name_tool -change "$lib" "@rpath/$base" $contents/MacOS/NooDS
 done
 
-mkdir -p NoODS.iconset
+mkdir -p NooDS.iconset
 cp src/android/res/drawable-v26/icon_foreground.png NooDS.iconset/icon_512x512.png
 iconutil --convert icns NooDS.iconset --output NooDS.app/Contents/Resources/NooDS.icns
 rm -r NooDS.iconset
