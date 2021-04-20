@@ -16,14 +16,32 @@ install -dm755 "${contents}"/{MacOS,Resources,Frameworks}
 install -sm755 noods "${contents}/MacOS/NooDS"
 install -m644 Info.plist "$contents/Info.plist"
 
+# Recursively copy dependent libraries to the Frameworks directory
+# and fix their load paths
+fixup_libs() {
+	local libs=($(otool -L "$1" | grep -vE "/System|/usr/lib|:$" | sed -E 's/\t(.*) \(.*$/\1/' | sort -d))
+	
+	for lib in "${libs[@]}"; do
+		local base="$(basename "$lib")"
+		local libname="$(echo "$base" | cut -d- -f1)"
+
+		install_name_tool -change "$lib" "@rpath/$base" "$1"
+
+		if [[ $(find "$contents/Frameworks" -name "${libname}*" | wc -l) -gt 0 ]]; then
+			continue
+		fi
+
+		if [[ ! -f "$contents/Frameworks/$base" ]]; then
+			install -m644 "$lib" "$contents/Frameworks/$base"
+			strip -S "$contents/Frameworks/$base"
+			fixup_libs "$contents/Frameworks/$base"
+		fi
+	done
+}
+
 install_name_tool -add_rpath "@executable_path/../Frameworks" $contents/MacOS/NooDS
 
-for lib in "${libs[@]}"; do
-	base=$(basename "$lib")
-	libname=$(echo $base | cut -d. -f1)
-	install -m644 "$lib" "$contents/Frameworks/$base"
-	install_name_tool -change "$lib" "@rpath/$base" $contents/MacOS/NooDS
-done
+fixup_libs $contents/MacOS/NooDS
 
 mkdir -p NooDS.iconset
 cp src/android/res/drawable-v26/icon_foreground.png NooDS.iconset/icon_512x512.png
