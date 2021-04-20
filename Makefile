@@ -50,10 +50,10 @@ install: $(NAME)
 	install -Dm644 pkg/$(ORGANIZATION).$(APPNAME).desktop "$(DESTDIR)/share/applications/$(ORGANIZATION).$(APPNAME).desktop"
 
 uninstall: 
-	-rm "$(DESTDIR)/bin/$(NAME)"
-	-rm "$(DESTDIR)/share/metainfo/$(ORGANIZATION).$(APPNAME).appdata.xml"
-	-rm "$(DESTDIR)/share/applications/$(ORGANIZATION).$(APPNAME).desktop"
-	-rm "$(DESTDIR)/share/icons/hicolor/64x64/apps/$(ORGANIZATION).$(APPNAME).xpm"
+	rm -f "$(DESTDIR)/bin/$(NAME)"
+	rm -f "$(DESTDIR)/share/metainfo/$(ORGANIZATION).$(APPNAME).appdata.xml"
+	rm -f "$(DESTDIR)/share/applications/$(ORGANIZATION).$(APPNAME).desktop"
+	rm -f "$(DESTDIR)/share/icons/hicolor/64x64/apps/$(ORGANIZATION).$(APPNAME).xpm"
 
 endif
 endif
