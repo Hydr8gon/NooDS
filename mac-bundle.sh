@@ -10,8 +10,6 @@ if [[ -d "$app" ]]; then
 	rm -rf "$app"
 fi
 
-libs=($(otool -L noods | grep -vE "/System|/usr/lib|:$" | sed -E 's/\t(.*) \(.*$/\1/'))
-
 install -dm755 "${contents}"/{MacOS,Resources,Frameworks}
 install -sm755 noods "${contents}/MacOS/NooDS"
 install -m644 Info.plist "$contents/Info.plist"
