@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=NooDS
+Comment=A speedy Nintendo DS emulator.
+GenericName=Nintendo DS Emulator
+Icon=com.github.hydr8gon.NooDS
+Exec=noods %U
+StartupNotify=true
+Terminal=false
+MimeType=application/x-nintendo-ds-rom
+Categories=Game;Emulator;
+Keywords=emulator;nintendo;ds;nds
