@@ -25,10 +25,12 @@ fixup_libs() {
 		local base="$(basename "$lib")"
 		local libname="$(echo "$base" | cut -d- -f1)"
 
-		install_name_tool -change "$lib" "@rpath/$base" "$1"
-
-		if [[ $(find "$contents/Frameworks" -name "${libname}*" | wc -l) -gt 0 ]]; then
+		existing=$(find "$contents/Frameworks" -name "${libname}*")
+		if [[ ! -z "$existing" ]]; then
+			install_name_tool -change "$lib" "@rpath/$(basename "$existing")" "$1"
 			continue
+		else
+			install_name_tool -change "$lib" "@rpath/$base" "$1"
 		fi
 
 		if [[ ! -f "$contents/Frameworks/$base" ]]; then
