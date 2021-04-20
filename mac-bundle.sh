@@ -35,7 +35,7 @@ fixup_libs() {
 
 		if [[ ! -f "$contents/Frameworks/$base" ]]; then
 			install -m644 "$lib" "$contents/Frameworks/$base"
-			strip -S "$contents/Frameworks/$base"
+			strip -SNTx "$contents/Frameworks/$base"
 			fixup_libs "$contents/Frameworks/$base"
 		fi
 	done
