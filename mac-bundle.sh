@@ -14,27 +14,29 @@ install -dm755 "${contents}"/{MacOS,Resources,Frameworks}
 install -sm755 noods "${contents}/MacOS/NooDS"
 install -m644 Info.plist "$contents/Info.plist"
 
+# macOS does not have the -f flag for readlink
+abspath() {
+	perl -MCwd -le 'print Cwd::abs_path shift' "$1"
+}
+
 # Recursively copy dependent libraries to the Frameworks directory
 # and fix their load paths
 fixup_libs() {
-	local libs=($(otool -L "$1" | grep -vE "/System|/usr/lib|:$" | sed -E 's/\t(.*) \(.*$/\1/' | sort -d))
+	local libs=($(otool -L "$1" | grep -vE "/System|/usr/lib|:$" | sed -E 's/\t(.*) \(.*$/\1/'))
 	
 	for lib in "${libs[@]}"; do
-		local base="$(basename "$lib")"
-		local libname="$(echo "$base" | cut -d- -f1)"
+		# Dereference symlinks to get the actual .dylib as binaries' load
+		# commands can contain paths to symlinked libraries.
+		local abslib="$(abspath "$lib")"
+		local base="$(basename "$abslib")"
+		local install_path="$contents/Frameworks/$base"
 
-		existing=$(find "$contents/Frameworks" -name "${libname}*")
-		if [[ ! -z "$existing" ]]; then
-			install_name_tool -change "$lib" "@rpath/$(basename "$existing")" "$1"
-			continue
-		else
-			install_name_tool -change "$lib" "@rpath/$base" "$1"
-		fi
+		install_name_tool -change "$lib" "@rpath/$base" "$1"
 
-		if [[ ! -f "$contents/Frameworks/$base" ]]; then
-			install -m644 "$lib" "$contents/Frameworks/$base"
-			strip -SNTx "$contents/Frameworks/$base"
-			fixup_libs "$contents/Frameworks/$base"
+		if [[ ! -f "$install_path" ]]; then
+			install -m644 "$abslib" "$install_path"
+			strip -SNTx "$install_path"
+			fixup_libs "$install_path"
 		fi
 	done
 }
