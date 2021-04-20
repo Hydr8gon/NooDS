@@ -32,11 +32,12 @@ jobs:
       uses: actions/checkout@v1
     - name: Compile
       run: make -j$(sysctl -n hw.logicalcpu)
+      run: ./mac-bundle.sh
     - name: Upload
       uses: actions/upload-artifact@master
       with:
         name: noods-mac
-        path: noods
+        path: NooDS.app
 
   build-windows:
     runs-on: windows-latest
