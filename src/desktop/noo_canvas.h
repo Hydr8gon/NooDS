@@ -30,7 +30,6 @@ class NooCanvas: public wxGLCanvas
 {
     public:
         NooCanvas(NooFrame *frame, Emulator *emulator);
-        ~NooCanvas();
 
     private:
         NooFrame *frame;
@@ -38,7 +37,7 @@ class NooCanvas: public wxGLCanvas
         wxGLContext *context;
 
         ScreenLayout layout;
-        uint32_t *framebuffer = nullptr;
+        uint32_t framebuffer[256 * 192 * 2] = {};
         bool gbaMode = false;
         bool display = true;
 

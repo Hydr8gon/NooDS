@@ -59,6 +59,7 @@ Core *core;
 std::thread *coreThread, *audioThread;
 
 ScreenLayout layout;
+uint32_t framebuffer[256 * 192 * 2] = {};
 bool gbaMode = false;
 
 void runCore()
@@ -600,20 +601,17 @@ int main()
             core->spi.clearTouch();
         }
 
-        // Request a new frame
+        // Draw a new frame if one is ready
         bool gba = (core->isGbaMode() && ScreenLayout::getGbaCrop());
-        uint32_t *framebuffer = core->gpu.getFrame(gba);
-
-        // Update GBA mode status to match the new frame
-        if (gbaMode != gba)
+        if (core->gpu.getFrame(framebuffer, gba))
         {
-            gbaMode = gba;
-            layout.update(1280, 720, gbaMode);
-        }
+            // Update the layout if GBA mode changed
+            if (gbaMode != gba)
+            {
+                gbaMode = gba;
+                layout.update(1280, 720, gbaMode);
+            }
 
-        // Draw the frame if it's ready
-        if (framebuffer)
-        {
             SwitchUI::clear(Color(0, 0, 0));
 
             if (gbaMode)
@@ -638,7 +636,6 @@ int main()
                 SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
 
             SwitchUI::update();
-            delete[] framebuffer;
         }
 
         // Open the pause menu if requested

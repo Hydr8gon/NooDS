@@ -138,8 +138,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_fillAudioBuff
 extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooRenderer_copyFramebuffer(JNIEnv *env, jobject obj, jobject bitmap, jboolean gbaCrop)
 {
     // Get a new frame if one is ready
-    uint32_t *framebuffer = core->gpu.getFrame(gbaCrop);
-    if (!framebuffer) return false;
+    uint32_t framebuffer[256 * 192 * 2];
+    if (!core->gpu.getFrame(framebuffer, gbaCrop)) return false;
 
     // Copy the frame to the bitmap
     uint32_t *data;
@@ -147,7 +147,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooRenderer_copyFrame
     memcpy(data, framebuffer, (gbaCrop ? (240 * 160) : (256 * 192 * 2)) * sizeof(uint32_t));
     AndroidBitmap_unlockPixels(env, bitmap);
 
-    delete[] framebuffer;
     return true;
 }
 

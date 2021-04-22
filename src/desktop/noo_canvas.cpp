@@ -56,12 +56,6 @@ NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator): wxGLCanvas(frame, wxI
     frame->SendSizeEvent();
 }
 
-NooCanvas::~NooCanvas()
-{
-    // Free the framebuffer
-    if (framebuffer) delete[] framebuffer;
-}
-
 void NooCanvas::draw(wxPaintEvent &event)
 {
     // Continuous rendering can prevent the canvas from closing, so only render when needed
@@ -75,23 +69,12 @@ void NooCanvas::draw(wxPaintEvent &event)
 
     if (emulator->core)
     {
-        // Request a new frame
+        // Update the frame if a new one is ready
         bool gba = (emulator->core->isGbaMode() && ScreenLayout::getGbaCrop());
-        uint32_t *fb = emulator->core->gpu.getFrame(gba);
-
-        if (fb)
+        if (emulator->core->gpu.getFrame(framebuffer, gba) && gbaMode != gba)
         {
-            // Update the frame if a new one was ready
-            // If not, the old frame will be drawn so the screen layout can still update
-            if (framebuffer) delete[] framebuffer;
-            framebuffer = fb;
-
-            // Update GBA mode status to match the new frame
-            if (gbaMode != gba)
-            {
-                gbaMode = gba;
-                frame->SendSizeEvent();
-            }
+            gbaMode = gba;
+            frame->SendSizeEvent();
         }
 
         // Rotate the texture coordinates
@@ -156,7 +139,7 @@ void NooCanvas::draw(wxPaintEvent &event)
         display = false;
     }
 
-    glFlush();
+    glFinish();
     SwapBuffers();
 }
 

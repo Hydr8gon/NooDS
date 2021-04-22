@@ -39,7 +39,7 @@ class Gpu
         void scheduleInit();
         void gbaScheduleInit();
 
-        uint32_t *getFrame(bool gbaCrop);
+        bool getFrame(uint32_t *out, bool gbaCrop);
 
         void invalidate3D() { dirty3D |= BIT(0); }
 
@@ -56,7 +56,7 @@ class Gpu
         Core *core;
 
         uint32_t framebuffer[256 * 192 * 2] = {};
-        bool ready = true;
+        std::atomic<bool> ready;
         std::mutex mutex;
 
         bool running = false;

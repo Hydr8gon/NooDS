@@ -26,6 +26,7 @@
 Gpu::Gpu(Core *core): core(core)
 {
     // Mark the thread as not drawing to start
+    ready.store(true);
     drawing.store(false);
 
     // Prepare tasks to be used with the scheduler
@@ -78,35 +79,29 @@ uint16_t Gpu::rgb6ToRgb5(uint32_t color)
     return BIT(15) | (b << 10) | (g << 5) | r;
 }
 
-uint32_t *Gpu::getFrame(bool gbaCrop)
+bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
 {
+    // Check if a new frame is ready
+    if (!ready.load()) return false;
     mutex.lock();
-    uint32_t *out = nullptr;
 
-    // If a new frame is ready, get it, convert it to RGB8 format, and crop it if needed
-    // If a new frame isn't ready yet, nothing will be returned
-    // In that case, frontends should reuse the previous frame (or skip redrawing) to avoid repeated conversion
-    if (ready)
+    // Output the frame in RGB8 format, optionally cropped for GBA
+    if (gbaCrop)
     {
-        if (gbaCrop)
-        {
-            int offset = (powCnt1 & BIT(15)) ? 0 : (256 * 192); // Display swap
-            out = new uint32_t[240 * 160];
-            for (int y = 0; y < 160; y++)
-                for (int x = 0; x < 240; x++)
-                    out[y * 240 + x] = rgb6ToRgb8(framebuffer[offset + (y + 16) * 256 + (x + 8)]);
-        }
-        else
-        {
-            out = new uint32_t[256 * 192 * 2];
-            for (int i = 0; i < 256 * 192 * 2; i++)
-                out[i] = rgb6ToRgb8(framebuffer[i]);
-        }
+        int offset = (powCnt1 & BIT(15)) ? 0 : (256 * 192); // Display swap
+        for (int y = 0; y < 160; y++)
+            for (int x = 0; x < 240; x++)
+                out[y * 240 + x] = rgb6ToRgb8(framebuffer[offset + (y + 16) * 256 + (x + 8)]);
+    }
+    else
+    {
+        for (int i = 0; i < 256 * 192 * 2; i++)
+            out[i] = rgb6ToRgb8(framebuffer[i]);
     }
 
-    ready = false;
     mutex.unlock();
-    return out;
+    ready.store(false);
+    return true;
 }
 
 void Gpu::gbaScanline240()
@@ -182,8 +177,9 @@ void Gpu::gbaScanline308()
                 memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
             }
 
-            ready = true;
             mutex.unlock();
+            ready.store(true);
+
             break;
         }
 
@@ -435,8 +431,9 @@ void Gpu::scanline355()
                 memset(framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
             }
 
-            ready = true;
             mutex.unlock();
+            ready.store(true);
+
             break;
         }
 
