@@ -32,12 +32,14 @@ class Cp15
         uint32_t read(int cn, int cm, int cp);
         void write(int cn, int cm, int cp, uint32_t value);
 
-        uint32_t getExceptionAddr() { return exceptionAddr; }
-        bool getDtcmEnabled()       { return dtcmEnabled;   }
-        bool getItcmEnabled()       { return itcmEnabled;   }
-        uint32_t getDtcmAddr()      { return dtcmAddr;      }
-        uint32_t getDtcmSize()      { return dtcmSize;      }
-        uint32_t getItcmSize()      { return itcmSize;      }
+        uint32_t getExceptionAddr() { return exceptionAddr;    }
+        bool getDtcmReadEnabled()   { return dtcmReadEnabled;  }
+        bool getDtcmWriteEnabled()  { return dtcmWriteEnabled; }
+        bool getItcmReadEnabled()   { return itcmReadEnabled;  }
+        bool getItcmWriteEnabled()  { return itcmWriteEnabled; }
+        uint32_t getDtcmAddr()      { return dtcmAddr;         }
+        uint32_t getDtcmSize()      { return dtcmSize;         }
+        uint32_t getItcmSize()      { return itcmSize;         }
 
     private:
         Core *core;
@@ -47,8 +49,8 @@ class Cp15
         uint32_t itcmReg = 0x00000000;
 
         uint32_t exceptionAddr = 0;
-        bool dtcmEnabled = false;
-        bool itcmEnabled = false;
+        bool dtcmReadEnabled = false, dtcmWriteEnabled = false;
+        bool itcmReadEnabled = false, itcmWriteEnabled = false;
         uint32_t dtcmAddr = 0, dtcmSize = 0;
         uint32_t itcmSize = 0;
 };

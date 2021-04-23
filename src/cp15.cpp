@@ -49,8 +49,10 @@ void Cp15::write(int cn, int cm, int cp, uint32_t value)
             // Some control bits are read only, so only set the writeable ones
             ctrlReg = (ctrlReg & ~0x000FF085) | (value & 0x000FF085);
             exceptionAddr = (ctrlReg & BIT(13)) ? 0xFFFF0000 : 0x00000000;
-            dtcmEnabled = (ctrlReg & BIT(16));
-            itcmEnabled = (ctrlReg & BIT(18));
+            dtcmReadEnabled = (ctrlReg & BIT(16)) && !(ctrlReg & BIT(17));
+            dtcmWriteEnabled = (ctrlReg & BIT(16));
+            itcmReadEnabled = (ctrlReg & BIT(18)) && !(ctrlReg & BIT(19));
+            itcmWriteEnabled = (ctrlReg & BIT(18));
             return;
         }
 

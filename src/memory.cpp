@@ -62,11 +62,11 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
     if (cpu == 0) // ARM9
     {
         // Get a pointer to the ARM9 memory mapped to the given address
-        if (core->cp15.getItcmEnabled() && address < core->cp15.getItcmSize()) // Instruction TCM
+        if (core->cp15.getItcmReadEnabled() && address < core->cp15.getItcmSize()) // Instruction TCM
         {
             data = &instrTcm[address & 0x7FFF];
         }
-        else if (core->cp15.getDtcmEnabled() && address >= core->cp15.getDtcmAddr() &&
+        else if (core->cp15.getDtcmReadEnabled() && address >= core->cp15.getDtcmAddr() &&
             address < core->cp15.getDtcmAddr() + core->cp15.getDtcmSize()) // Data TCM
         {
             data = &dataTcm[(address - core->cp15.getDtcmAddr()) & 0x3FFF];
@@ -325,11 +325,11 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
     if (cpu == 0) // ARM9
     {
         // Get a pointer to the ARM9 memory mapped to the given address
-        if (core->cp15.getItcmEnabled() && address < core->cp15.getItcmSize()) // Instruction TCM
+        if (core->cp15.getItcmWriteEnabled() && address < core->cp15.getItcmSize()) // Instruction TCM
         {
             data = &instrTcm[address & 0x7FFF];
         }
-        else if (core->cp15.getDtcmEnabled() && address >= core->cp15.getDtcmAddr() &&
+        else if (core->cp15.getDtcmWriteEnabled() && address >= core->cp15.getDtcmAddr() &&
             address < core->cp15.getDtcmAddr() + core->cp15.getDtcmSize()) // Data TCM
         {
             data = &dataTcm[(address - core->cp15.getDtcmAddr()) & 0x3FFF];
