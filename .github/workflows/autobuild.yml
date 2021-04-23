@@ -31,8 +31,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: make -j$(sysctl -n hw.logicalcpu)
-      run: ./mac-bundle.sh
+      run: |
+        make -j$(sysctl -n hw.logicalcpu)
+        ./mac-bundle.sh
     - name: Upload
       uses: actions/upload-artifact@master
       with:
