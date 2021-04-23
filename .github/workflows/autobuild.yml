@@ -37,12 +37,12 @@ jobs:
     - name: Compile
       run: |
         make -j$(sysctl -n hw.logicalcpu)
-        ./mac-bundle.sh
+        ./mac-bundle.sh --dmg
     - name: Upload
       uses: actions/upload-artifact@master
       with:
         name: noods-mac
-        path: NooDS.app
+        path: NooDS.dmg
 
   build-windows:
     runs-on: windows-latest
@@ -51,17 +51,17 @@ jobs:
     - uses: actions/checkout@v1
     - uses: msys2/setup-msys2@v2
       with:
-          msystem: MINGW64
-          update: true
-
+        msystem: MINGW64
+        update: true
     - name: Install build tools, wxWidgets, and PortAudio
-      run: |
-        pacman -S mingw-w64-x86_64-{gcc,wxWidgets,portaudio,jbigkit] make --noconfirm
+      run: pacman -S mingw-w64-x86_64-{gcc,wxWidgets,portaudio,jbigkit} make --noconfirm
+      shell: msys2 {0}
     - name: Compile
       run: |
         make -j$(nproc)
         strip noods.exe
-      working-directory: ${{runner.workspace}}
+      shell: msys2 {0}
+      working-directory: ${{github.workspace}}
     - name: Upload
       uses: actions/upload-artifact@master
       with:
@@ -99,7 +99,7 @@ jobs:
     - name: Sign
       run: $ANDROID_SDK_ROOT/build-tools/29.0.3/apksigner sign --ks keystore.jks --ks-pass pass:$KEYSTORE_PASS noods.apk
       env:
-        KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+        KEYSTORE_PASS: ${{secrets.KEYSTORE_PASS}}
     - name: Upload
       uses: actions/upload-artifact@master
       with:
