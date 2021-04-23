@@ -59,6 +59,6 @@ if [[ $1 == '--dmg' ]]; then
 	mkdir build/dmg
 	cp -r NooDS.app build/dmg/
 	ln -s /Applications build/dmg/Applications
-	hdiutil create -volname NooDS -srcfolder build/dmg -ov -format UDZO NooDS.dmg
+	hdiutil create -volname NooDS -srcfolder build/dmg -ov -format UDBZ NooDS.dmg
 	rm -r build/dmg
 fi
