@@ -6,6 +6,12 @@ set -o pipefail
 app=NooDS.app
 contents=$app/Contents
 
+if [[ ! -f noods ]]; then
+	echo 'Error: NooDS binary was not found.'
+	echo 'Please run `gmake` to compile NooDS before bundling.'
+	exit 1
+fi
+
 if [[ -d "$app" ]]; then
 	rm -rf "$app"
 fi
