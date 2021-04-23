@@ -11,7 +11,11 @@ jobs:
 
     steps:
     - name: Install wxWidgets and PortAudio
-      run: sudo apt-key adv --fetch-keys https://repos.codelite.org/CodeLite.asc && sudo apt-add-repository 'deb https://repos.codelite.org/wx3.1.4/ubuntu/ focal universe' && sudo apt update && sudo apt install libwxgtk3.1-dev portaudio19-dev -y
+      run: |
+        sudo apt-key adv --fetch-keys https://repos.codelite.org/CodeLite.asc 
+        sudo apt-add-repository 'deb https://repos.codelite.org/wx3.1.4/ubuntu/ focal universe' 
+        sudo apt update 
+        sudo apt install libwxgtk3.1-dev portaudio19-dev -y
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
@@ -31,28 +35,33 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: make -j$(sysctl -n hw.logicalcpu)
+      run: |
+        make -j$(sysctl -n hw.logicalcpu)
+        ./mac-bundle.sh
     - name: Upload
       uses: actions/upload-artifact@master
       with:
         name: noods-mac
-        path: noods
+        path: NooDS.app
 
   build-windows:
     runs-on: windows-latest
 
     steps:
-    - name: Install MSYS2
-      run: choco install msys2
-      shell: cmd
+    - uses: actions/checkout@v1
+    - uses: msys2/setup-msys2@v2
+      with:
+          msystem: MINGW64
+          update: true
+
     - name: Install build tools, wxWidgets, and PortAudio
-      run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-wxWidgets mingw-w64-x86_64-portaudio mingw-w64-x86_64-jbigkit make --noconfirm"
-      shell: cmd
-    - name: Checkout
-      uses: actions/checkout@v1
+      run: |
+        pacman -S mingw-w64-x86_64-{gcc,wxWidgets,portaudio,jbigkit] make --noconfirm
     - name: Compile
-      run: C:\tools\msys64\usr\bin\bash -lc "cd /d/a/NooDS/NooDS && export PATH=$PATH:/mingw64/bin && make -j$(nproc) && strip noods.exe"
-      shell: cmd
+      run: |
+        make -j$(nproc)
+        strip noods.exe
+      working-directory: ${{runner.workspace}}
     - name: Upload
       uses: actions/upload-artifact@master
       with:
@@ -64,10 +73,12 @@ jobs:
     container: devkitpro/devkita64:latest
 
     steps:
+    - uses: actions/checkout@v1
     - name: Downgrade devkitA64 to r14
-      run: sudo dkp-pacman -Rs devkitA64 devkitA64-gdb devkita64-rules --noconfirm && wget "https://wii.leseratte10.de/devkitPro/devkitA64/r14 (2019-12)/devkitA64-r14-3-linux.pkg.tar.xz" && sudo dkp-pacman -U devkitA64-r14-3-linux.pkg.tar.xz --noconfirm
-    - name: Checkout
-      uses: actions/checkout@v1
+      run: |
+        sudo dkp-pacman -Rs devkitA64 devkitA64-gdb devkita64-rules --noconfirm
+        wget "https://wii.leseratte10.de/devkitPro/devkitA64/r14 (2019-12)/devkitA64-r14-3-linux.pkg.tar.xz"
+        sudo dkp-pacman -U devkitA64-r14-3-linux.pkg.tar.xz --noconfirm
     - name: Compile
       run: make -f Makefile.switch -j$(nproc)
     - name: Upload
@@ -80,10 +91,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v1
+    - uses: actions/checkout@v1
     - name: Compile
-      run: ./gradlew assembleRelease && mv build-android/outputs/apk/release/android-release-unsigned.apk noods.apk
+      run: |
+        ./gradlew assembleRelease
+        mv build-android/outputs/apk/release/android-release-unsigned.apk noods.apk
     - name: Sign
       run: $ANDROID_SDK_ROOT/build-tools/29.0.3/apksigner sign --ks keystore.jks --ks-pass pass:$KEYSTORE_PASS noods.apk
       env:

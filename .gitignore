@@ -4,6 +4,8 @@
 /.gradle
 /src/android/.cxx
 /noods
+/NooDS.app
+/NooDS.dmg
 /noods.elf
 /noods.nacp
 /noods.nro
