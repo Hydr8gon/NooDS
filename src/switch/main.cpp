@@ -88,6 +88,7 @@ void outputAudio()
             buffer[i * 2 + 1] = sample >> 16;
         }
 
+        delete[] original;
         audoutAppendAudioOutBuffer(audioReleasedBuffer);
     }
 }
