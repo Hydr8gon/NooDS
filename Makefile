@@ -4,6 +4,9 @@ SOURCES := src src/common src/desktop
 ARGS    := -Ofast -flto -std=c++11 #-DDEBUG
 LIBS    := -lportaudio
 
+APPNAME := NooDS
+DESTDIR ?= /usr
+
 ifeq ($(OS),Windows_NT)
   ARGS += -static -DWINDOWS
   LIBS += `wx-config-static --cxxflags --libs --gl-libs` -lole32 -lsetupapi -lwinmm
@@ -23,6 +26,33 @@ OFILES   := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
 
 ifeq ($(OS),Windows_NT)
   OFILES += $(BUILD)/icon.o
+endif
+
+all: $(NAME)
+
+ifneq ($(OS),Windows_NT)
+ifeq ($(uname -s),Darwin)
+
+install: $(NAME)
+	./mac-bundle.sh
+	cp -r $(APPNAME).app /Applications/
+
+uninstall:
+	rm -rf /Applications/$(APPNAME).app
+
+else
+
+install: $(NAME)
+	install -Dm755 $(NAME) "$(DESTDIR)/bin/$(NAME)"
+	install -Dm644 icon/icon.xpm "$(DESTDIR)/share/icons/hicolor/64x64/apps/$(NAME).xpm"
+	install -Dm644 $(NAME).desktop "$(DESTDIR)/share/applications/$(NAME).desktop"
+
+uninstall: 
+	rm -f "$(DESTDIR)/bin/$(NAME)"
+	rm -f "$(DESTDIR)/share/applications/$(NAME).desktop"
+	rm -f "$(DESTDIR)/share/icons/hicolor/64x64/apps/$(NAME).xpm"
+
+endif
 endif
 
 $(NAME): $(OFILES)
