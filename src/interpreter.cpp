@@ -346,7 +346,7 @@ void Interpreter::runOpcode()
                 return blOffT(opcode); // BL label
 
             default:
-                printf("Unknown ARM%d THUMB opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
+                LOG("Unknown ARM%d THUMB opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
                 return;
         }
     }
@@ -2421,7 +2421,7 @@ void Interpreter::runOpcode()
                     return swi(); // SWI #i
 
                 default:
-                    printf("Unknown ARM%d ARM opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
+                    LOG("Unknown ARM%d ARM opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
                     return;
             }
         }
@@ -2485,7 +2485,7 @@ bool Interpreter::condition(uint32_t opcode)
                 return false;
             }
 
-            printf("Unknown ARM%d ARM opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
+            LOG("Unknown ARM%d ARM opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
             return false;
         }
     }
@@ -2564,7 +2564,7 @@ void Interpreter::setMode(uint8_t mode)
             break;
 
         default:
-            printf("Unknown ARM%d CPU mode: 0x%X\n", ((cpu == 0) ? 9 : 7), mode & 0x1F);
+            LOG("Unknown ARM%d CPU mode: 0x%X\n", ((cpu == 0) ? 9 : 7), mode & 0x1F);
             return;
     }
 

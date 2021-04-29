@@ -119,7 +119,7 @@ void Spi::writeSpiData(uint8_t value)
 
                     default:
                     {
-                        printf("Write to SPI with unknown firmware command: 0x%X\n", command);
+                        LOG("Write to SPI with unknown firmware command: 0x%X\n", command);
                         spiData = 0;
                         break;
                     }
@@ -147,7 +147,7 @@ void Spi::writeSpiData(uint8_t value)
 
                     default:
                     {
-                        printf("Write to SPI with unknown touchscreen channel: %d\n", (command & 0x70) >> 4);
+                        LOG("Write to SPI with unknown touchscreen channel: %d\n", (command & 0x70) >> 4);
                         spiData = 0;
                         break;
                     }
@@ -157,7 +157,7 @@ void Spi::writeSpiData(uint8_t value)
 
             default:
             {
-                printf("Write to SPI with unknown device: %d\n", (spiCnt & 0x0300) >> 8);
+                LOG("Write to SPI with unknown device: %d\n", (spiCnt & 0x0300) >> 8);
                 spiData = 0;
                 break;
             }

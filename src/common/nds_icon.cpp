@@ -20,6 +20,7 @@
 #include <cstring>
 
 #include "nds_icon.h"
+#include "../defines.h"
 
 NdsIcon::NdsIcon(std::string romPath)
 {
@@ -29,7 +30,7 @@ NdsIcon::NdsIcon(std::string romPath)
     // Create an empty icon if ROM loading failed
     if (!rom)
     {
-        printf("Failed to open ROM for icon decoding!\n");
+        LOG("Failed to open ROM for icon decoding!\n");
         memset(icon, 0, 32 * 32 * sizeof(uint32_t));
         return;
     }

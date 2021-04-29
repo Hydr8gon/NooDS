@@ -128,7 +128,7 @@ void Rtc::writeRtc(uint8_t value)
 
                         default:
                         {
-                            printf("Read from unknown RTC registers: %d\n", (command & 0x0E) >> 1);
+                            LOG("Read from unknown RTC registers: %d\n", (command & 0x0E) >> 1);
                             break;
                         }
                     }
@@ -148,7 +148,7 @@ void Rtc::writeRtc(uint8_t value)
 
                         default:
                         {
-                            printf("Write to unknown RTC registers: %d\n", (command & 0x0E) >> 1);
+                            LOG("Write to unknown RTC registers: %d\n", (command & 0x0E) >> 1);
                             break;
                         }
                     }

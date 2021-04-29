@@ -302,11 +302,11 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
     }
     else if (core->isGbaMode())
     {
-        printf("Unmapped GBA memory read: 0x%X\n", address);
+        LOG("Unmapped GBA memory read: 0x%X\n", address);
     }
     else
     {
-        printf("Unmapped ARM%d memory read: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
+        LOG("Unmapped ARM%d memory read: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
     }
 
     return value;
@@ -523,11 +523,11 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
     }
     else if (core->isGbaMode())
     {
-        printf("Unmapped GBA memory write: 0x%X\n", address);
+        LOG("Unmapped GBA memory write: 0x%X\n", address);
     }
     else
     {
-        printf("Unmapped ARM%d memory write: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
+        LOG("Unmapped ARM%d memory write: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
     }
 }
 
@@ -906,7 +906,7 @@ template <typename T> T Memory::ioRead9(uint32_t address)
                 // Handle unknown reads by returning 0
                 if (i == 0)
                 {
-                    printf("Unknown ARM9 I/O register read: 0x%X\n", address);
+                    LOG("Unknown ARM9 I/O register read: 0x%X\n", address);
                     return 0;
                 }
 
@@ -1214,7 +1214,7 @@ template <typename T> T Memory::ioRead7(uint32_t address)
                 // Handle unknown reads by returning 0
                 if (i == 0)
                 {
-                    printf("Unknown ARM7 I/O register read: 0x%X\n", address);
+                    LOG("Unknown ARM7 I/O register read: 0x%X\n", address);
                     return 0;
                 }
 
@@ -1390,7 +1390,7 @@ template <typename T> T Memory::ioReadGba(uint32_t address)
                 // Handle unknown reads by returning 0
                 if (i == 0)
                 {
-                    printf("Unknown GBA I/O register read: 0x%X\n", address);
+                    LOG("Unknown GBA I/O register read: 0x%X\n", address);
                     return 0;
                 }
 
@@ -2087,7 +2087,7 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
                 // Catch unknown writes
                 if (i == 0)
                 {
-                    printf("Unknown ARM9 I/O register write: 0x%X\n", address);
+                    LOG("Unknown ARM9 I/O register write: 0x%X\n", address);
                     return;
                 }
 
@@ -2588,7 +2588,7 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
                 // Catch unknown writes
                 if (i == 0)
                 {
-                    printf("Unknown ARM7 I/O register write: 0x%X\n", address);
+                    LOG("Unknown ARM7 I/O register write: 0x%X\n", address);
                     return;
                 }
 
@@ -2823,7 +2823,7 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value)
                 // Catch unknown writes
                 if (i == 0)
                 {
-                    printf("Unknown GBA I/O register write: 0x%X\n", address);
+                    LOG("Unknown GBA I/O register write: 0x%X\n", address);
                     return;
                 }
 
@@ -3016,7 +3016,7 @@ void Memory::writeHaltCnt(uint8_t value)
 
         case 3: // Sleep
         {
-            printf("Unhandled request for sleep mode\n");
+            LOG("Unhandled request for sleep mode\n");
             break;
         }
     }
@@ -3028,5 +3028,5 @@ void Memory::writeGbaHaltCnt(uint8_t value)
     core->interpreter[1].halt(0);
 
     if (value & BIT(7)) // Stop
-        printf("Unhandled request for stop mode\n");
+        LOG("Unhandled request for stop mode\n");
 }

@@ -107,7 +107,7 @@ void Gpu2D::drawGbaScanline(int line)
 
         default:
         {
-            printf("Unknown GBA BG mode: %d\n", dispCnt & 0x0007);
+            LOG("Unknown GBA BG mode: %d\n", dispCnt & 0x0007);
             break;
         }
     }
@@ -312,7 +312,7 @@ void Gpu2D::drawScanline(int line)
 
         default:
         {
-            printf("Unknown engine %c BG mode: %d\n", ((engine == 0) ? 'A' : 'B'), dispCnt & 0x00000007);
+            LOG("Unknown engine %c BG mode: %d\n", ((engine == 0) ? 'A' : 'B'), dispCnt & 0x00000007);
             break;
         }
     }
@@ -458,7 +458,7 @@ void Gpu2D::drawScanline(int line)
 
         case 3: // Main memory display
         {
-            printf("Unimplemented engine %c display mode: display FIFO\n", ((engine == 0) ? 'A' : 'B'));
+            LOG("Unimplemented engine %c display mode: display FIFO\n", ((engine == 0) ? 'A' : 'B'));
             break;
         }
     }

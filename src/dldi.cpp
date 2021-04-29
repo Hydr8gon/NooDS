@@ -48,7 +48,7 @@ void Dldi::patchDriver(uint32_t address)
     core->memory.write<uint32_t>(0, address + 0x94, DLDI_STOP);      // shutdown()
     funcAddress = address + 0x80;
 
-    printf("Patched DLDI driver at 0x%X\n", address);
+    LOG("Patched DLDI driver at 0x%X\n", address);
 }
 
 bool Dldi::isFunction(uint32_t address)

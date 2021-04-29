@@ -265,7 +265,7 @@ void Gpu3D::runCommand()
 
         default:
         {
-            printf("Unknown GXFIFO command: 0x%X\n", entry.command);
+            LOG("Unknown GXFIFO command: 0x%X\n", entry.command);
             break;
         }
     }

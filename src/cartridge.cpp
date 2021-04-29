@@ -89,7 +89,7 @@ void Cartridge::loadNdsRom(std::string path)
         // If decryption was successful, the ROM is encrypted
         if (data == 0x6A624F7972636E65) // encryObj
         {
-            printf("Detected an encrypted ROM!\n");
+            LOG("Detected an encrypted ROM!\n");
             ndsRomEncrypted = true;
         }
     }
@@ -180,21 +180,21 @@ void Cartridge::loadGbaRom(std::string path)
                 case 1: // SRAM 32KB
                 {
                     gbaSaveSize = 0x8000;
-                    printf("Detected SRAM 32KB save type\n");
+                    LOG("Detected SRAM 32KB save type\n");
                     break;
                 }
 
                 case 2: case 3: // FLASH 64KB
                 {
                     gbaSaveSize = 0x10000;
-                    printf("Detected FLASH 64KB save type\n");
+                    LOG("Detected FLASH 64KB save type\n");
                     break;
                 }
 
                 case 4: // FLASH 128KB
                 {
                     gbaSaveSize = 0x20000;
-                    printf("Detected FLASH 128KB save type\n");
+                    LOG("Detected FLASH 128KB save type\n");
                     break;
                 }
             }
@@ -216,20 +216,20 @@ void Cartridge::directBoot()
     uint32_t entryAddr9 = U8TO32(ndsRom, 0x24);
     uint32_t ramAddr9   = U8TO32(ndsRom, 0x28);
     uint32_t size9      = U8TO32(ndsRom, 0x2C);
-    printf("ARM9 code ROM offset:    0x%X\n", offset9);
-    printf("ARM9 code entry address: 0x%X\n", entryAddr9);
-    printf("ARM9 RAM address:        0x%X\n", ramAddr9);
-    printf("ARM9 code size:          0x%X\n", size9);
+    LOG("ARM9 code ROM offset:    0x%X\n", offset9);
+    LOG("ARM9 code entry address: 0x%X\n", entryAddr9);
+    LOG("ARM9 RAM address:        0x%X\n", ramAddr9);
+    LOG("ARM9 code size:          0x%X\n", size9);
 
     // Extract some information about the initial ARM7 code from the header
     uint32_t offset7    = U8TO32(ndsRom, 0x30);
     uint32_t entryAddr7 = U8TO32(ndsRom, 0x34);
     uint32_t ramAddr7   = U8TO32(ndsRom, 0x38);
     uint32_t size7      = U8TO32(ndsRom, 0x3C);
-    printf("ARM7 code ROM offset:    0x%X\n", offset7);
-    printf("ARM7 code entry address: 0x%X\n", entryAddr7);
-    printf("ARM7 RAM address:        0x%X\n", ramAddr7);
-    printf("ARM7 code size:          0x%X\n", size7);
+    LOG("ARM7 code ROM offset:    0x%X\n", offset7);
+    LOG("ARM7 code entry address: 0x%X\n", entryAddr7);
+    LOG("ARM7 RAM address:        0x%X\n", ramAddr7);
+    LOG("ARM7 code size:          0x%X\n", size7);
 
     // Load the ROM header into memory
     for (uint32_t i = 0; i < 0x170; i += 4)
@@ -413,12 +413,12 @@ uint8_t Cartridge::gbaEepromRead()
         if (gbaEepromCount == 9)
         {
             gbaSaveSize = 0x200;
-            printf("Detected EEPROM 0.5KB save type\n");
+            LOG("Detected EEPROM 0.5KB save type\n");
         }
         else
         {
             gbaSaveSize = 0x2000;
-            printf("Detected EEPROM 8KB save type\n");
+            LOG("Detected EEPROM 8KB save type\n");
         }
 
         // Create a new save
@@ -490,7 +490,7 @@ void Cartridge::gbaEepromWrite(uint8_t value)
             if (gbaSaveSize == -1)
             {
                 gbaSaveSize = 0x2000;
-                printf("Detected EEPROM 8KB save type\n");
+                LOG("Detected EEPROM 8KB save type\n");
                 gbaSave = new uint8_t[gbaSaveSize];
                 memset(gbaSave, 0xFF, gbaSaveSize * sizeof(uint8_t));
             }
@@ -816,7 +816,7 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
 
                     default:
                     {
-                        printf("Write to AUX SPI with unknown EEPROM 0.5KB command: 0x%X\n", auxCommand[cpu]);
+                        LOG("Write to AUX SPI with unknown EEPROM 0.5KB command: 0x%X\n", auxCommand[cpu]);
                         auxSpiData[cpu] = 0;
                         break;
                     }
@@ -872,7 +872,7 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
 
                     default:
                     {
-                        printf("Write to AUX SPI with unknown EEPROM/FRAM command: 0x%X\n", auxCommand[cpu]);
+                        LOG("Write to AUX SPI with unknown EEPROM/FRAM command: 0x%X\n", auxCommand[cpu]);
                         auxSpiData[cpu] = 0;
                         break;
                     }
@@ -935,7 +935,7 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
 
                     default:
                     {
-                        printf("Write to AUX SPI with unknown FLASH command: 0x%X\n", auxCommand[cpu]);
+                        LOG("Write to AUX SPI with unknown FLASH command: 0x%X\n", auxCommand[cpu]);
                         auxSpiData[cpu] = 0;
                         break;
                     }
@@ -945,7 +945,7 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
 
             default:
             {
-                printf("Write to AUX SPI with unknown save size: 0x%X\n", ndsSaveSize);
+                LOG("Write to AUX SPI with unknown save size: 0x%X\n", ndsSaveSize);
                 break;
             }
         }
@@ -1067,7 +1067,7 @@ void Cartridge::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
         }
         else if (command != 0x9F00000000000000) // Unknown (not dummy)
         {
-            printf("ROM transfer with unknown command: 0x%llX\n", command);
+            LOG("ROM transfer with unknown command: 0x%llX\n", command);
         }
     }
 

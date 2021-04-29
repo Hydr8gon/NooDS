@@ -22,9 +22,11 @@
 
 #include <cstdio>
 
-// Disable print statements for non-debug builds
-#ifndef DEBUG
-#define printf(fmt, ...) (0)
+// Enable or disable debug log printing
+#ifdef DEBUG
+#define LOG(...) printf(__VA_ARGS__)
+#else
+#define LOG(...) (0)
 #endif
 
 // Macro to force inlining

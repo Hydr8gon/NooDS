@@ -33,7 +33,7 @@ uint32_t Cp15::read(int cn, int cm, int cp)
 
         default:
         {
-            printf("Unknown CP15 register read: C%d,C%d,%d\n", cn, cm, cp);
+            LOG("Unknown CP15 register read: C%d,C%d,%d\n", cn, cm, cp);
             return 0;
         }
     }
@@ -84,7 +84,7 @@ void Cp15::write(int cn, int cm, int cp, uint32_t value)
 
         default:
         {
-            printf("Unknown CP15 register write: C%d,C%d,%d\n", cn, cm, cp);
+            LOG("Unknown CP15 register write: C%d,C%d,%d\n", cn, cm, cp);
             return;
         }
     }
