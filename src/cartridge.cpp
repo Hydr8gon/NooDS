@@ -29,29 +29,58 @@ Cartridge::~Cartridge()
     writeSave();
 
     // Free the ROM and save memory
+    if (ndsRomFile) fclose(ndsRomFile);
     if (ndsRom)  delete[] ndsRom;
     if (ndsSave) delete[] ndsSave;
     if (gbaRom)  delete[] gbaRom;
     if (gbaSave) delete[] gbaSave;
 }
 
+void Cartridge::loadRomSection(uint32_t offset, uint32_t size)
+{
+    // Load a section of the current NDS ROM file into memory
+    if (ndsRom) delete[] ndsRom;
+    ndsRom = new uint8_t[size];
+    fseek(ndsRomFile, offset, SEEK_SET);
+    fread(ndsRom, sizeof(uint8_t), size, ndsRomFile);
+}
+
 void Cartridge::loadNdsRom(std::string path)
 {
     // Attempt to load an NDS ROM
     ndsRomName = path;
-    FILE *ndsRomFile = fopen(ndsRomName.c_str(), "rb");
+    ndsRomFile = fopen(ndsRomName.c_str(), "rb");
     if (!ndsRomFile) throw 2;
     fseek(ndsRomFile, 0, SEEK_END);
     ndsRomSize = ftell(ndsRomFile);
-    fseek(ndsRomFile, 0, SEEK_SET);
-    ndsRom = new uint8_t[ndsRomSize];
-    fread(ndsRom, sizeof(uint8_t), ndsRomSize, ndsRomFile);
-    fclose(ndsRomFile);
 
-    if (ndsRomSize > 0x8000) // ROM has secure area
+    // If the ROM is 512MB or smaller, try to load it all into memory; otherwise fall back to file-based loading
+    if (ndsRomSize <= 0x20000000) // 512MB
+    {
+        try
+        {
+            loadRomSection(0, ndsRomSize);
+            fclose(ndsRomFile);
+            ndsRomFile = nullptr;
+        }
+        catch (std::bad_alloc &ba)
+        {
+            loadRomSection(0, 0x5000);
+        }
+    }
+    else
+    {
+        loadRomSection(0, 0x5000);
+    }
+
+    // Save the ROM code, which is mainly used for encryption
+    ndsRomCode = U8TO32(ndsRom, 0x0C);
+
+    // Check if the ROM is encrypted
+    if (ndsRomSize >= 0x8000) // ROM has secure area
     {
         // Decrypt the 'encryObj' string
-        uint64_t data = ((uint64_t)U8TO32(ndsRom, 0x4000 + 4) << 32) | (uint32_t)U8TO32(ndsRom, 0x4000);
+        uint64_t data = U8TO64(ndsRom, 0x4000);
         initKeycode(2);
         data = decrypt64(data);
         initKeycode(3);
@@ -60,21 +89,8 @@ void Cartridge::loadNdsRom(std::string path)
         // If decryption was successful, the ROM is encrypted
         if (data == 0x6A624F7972636E65) // encryObj
         {
-            printf("Detected an encrypted ROM. Decrypting...\n");
-
-            // Overwrite the 'encryObj' string
-            data = 0xE7FFDEFFE7FFDEFF;
-            for (int i = 0; i < 8; i++)
-                ndsRom[0x4000 + i] = data >> (i * 8);
-
-            // Decrypt the first 2KB of the secure area
-            for (int i = 8; i < 0x800; i += 8)
-            {
-                data = ((uint64_t)U8TO32(ndsRom, 0x4000 + i + 4) << 32) | (uint32_t)U8TO32(ndsRom, 0x4000 + i);
-                data = decrypt64(data);
-                for (int j = 0; j < 8; j++)
-                    ndsRom[0x4000 + i + j] = data >> (j * 8);
-            }
+            printf("Detected an encrypted ROM!\n");
+            ndsRomEncrypted = true;
         }
     }
 
@@ -191,6 +207,10 @@ void Cartridge::loadGbaRom(std::string path)
 
 void Cartridge::directBoot()
 {
+    // Load the ROM header from file if needed
+    if (ndsRomFile)
+        loadRomSection(0, 0x170);
+
     // Extract some information about the initial ARM9 code from the header
     uint32_t offset9    = U8TO32(ndsRom, 0x20);
     uint32_t entryAddr9 = U8TO32(ndsRom, 0x24);
@@ -212,16 +232,80 @@ void Cartridge::directBoot()
     printf("ARM7 code size:          0x%X\n", size7);
 
     // Load the ROM header into memory
-    for (uint32_t i = 0; i < 0x170; i++)
-        core->memory.write<uint8_t>(0, 0x27FFE00 + i, ndsRom[i]);
+    for (uint32_t i = 0; i < 0x170; i += 4)
+        core->memory.write<uint32_t>(0, 0x27FFE00 + i, U8TO32(ndsRom, i));
+
+    uint32_t offset;
+
+    // Load the initial ARM9 code from file if needed
+    if (ndsRomFile)
+    {
+        loadRomSection(offset9, size9);
+        offset = 0;
+    }
+    else
+    {
+        offset = offset9;
+    }
 
     // Load the initial ARM9 code into memory
-    for (uint32_t i = 0; i < size9; i++)
-        core->memory.write<uint8_t>(0, ramAddr9 + i, ndsRom[offset9 + i]);
+    for (uint32_t i = 0; i < size9; i += 4)
+    {
+        if (ndsRomEncrypted && offset9 + i >= 0x4000 && offset9 + i < 0x4800)
+        {
+            if (offset9 + i < 0x4008)
+            {
+                // Overwrite the 'encryObj' string
+                core->memory.write<uint32_t>(0, ramAddr9 + i, 0xE7FFDEFF);
+            }
+            else
+            {
+                // Decrypt the first 2KB of the secure area
+                initKeycode(3);
+                uint64_t data = decrypt64(U8TO64(ndsRom, (offset + i) & ~7));
+                core->memory.write<uint32_t>(0, ramAddr9 + i, data >> (((offset + i) & 4) ? 32 : 0));
+            }
+        }
+        else
+        {
+            core->memory.write<uint32_t>(0, ramAddr9 + i, U8TO32(ndsRom, offset + i));
+        }
+    }
+
+    // Load the initial ARM7 code from file if needed
+    if (ndsRomFile)
+    {
+        loadRomSection(offset7, size7);
+        offset = 0;
+    }
+    else
+    {
+        offset = offset7;
+    }
 
     // Load the initial ARM7 code into memory
-    for (uint32_t i = 0; i < size7; i++)
-        core->memory.write<uint8_t>(1, ramAddr7 + i, ndsRom[offset7 + i]);
+    for (uint32_t i = 0; i < size7; i += 4)
+    {
+        if (ndsRomEncrypted && offset7 + i >= 0x4000 && offset7 + i < 0x4800)
+        {
+            if (offset7 + i < 0x4008)
+            {
+                // Overwrite the 'encryObj' string
+                core->memory.write<uint32_t>(1, ramAddr7 + i, 0xE7FFDEFF);
+            }
+            else
+            {
+                // Decrypt the first 2KB of the secure area
+                initKeycode(3);
+                uint64_t data = decrypt64(U8TO64(ndsRom, (offset + i) & ~7));
+                core->memory.write<uint32_t>(1, ramAddr7 + i, data >> (((offset + i) & 4) ? 32 : 0));
+            }
+        }
+        else
+        {
+            core->memory.write<uint32_t>(1, ramAddr7 + i, U8TO32(ndsRom, offset + i));
+        }
+    }
 
     // Scan the initial ARM9 binary for a DLDI header and patch the driver if found
     for (int i = ramAddr9; i < ramAddr9 + size9; i += 0x40)
@@ -565,11 +649,9 @@ void Cartridge::initKeycode(int level)
     for (int i = 0; i < 0x412; i++)
         encTable[i] = core->memory.read<uint32_t>(1, 0x30 + i * 4);
 
-    uint32_t code = U8TO32(ndsRom, 0x0C);
-
-    encCode[0] = code;
-    encCode[1] = code / 2;
-    encCode[2] = code * 2;
+    encCode[0] = ndsRomCode;
+    encCode[1] = ndsRomCode / 2;
+    encCode[2] = ndsRomCode * 2;
 
     if (level >= 1) applyKeycode();
     if (level >= 2) applyKeycode();
@@ -847,7 +929,7 @@ void Cartridge::writeAuxSpiData(bool cpu, uint8_t value)
                         // If a gamecode starts with 'I', the game has an infrared port in its cartridge
                         // This shares the same SPI as FLASH memory
                         // Some games check this command as an anti-piracy measure
-                        auxSpiData[cpu] = (ndsRom[0xC] == 'I') ? 0xAA : 0;
+                        auxSpiData[cpu] = ((ndsRomCode & 0xFF) == 'I') ? 0xAA : 0;
                         break;
                     }
 
@@ -903,30 +985,89 @@ void Cartridge::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
     }
 
     // Reverse the byte order of the ROM command
-    command[cpu] = 0;
+    uint64_t command = 0;
     for (int i = 0; i < 8; i++)
-        command[cpu] |= ((romCmdOut[cpu] >> (i * 8)) & 0xFF) << ((7 - i) * 8);
+        command |= ((romCmdOut[cpu] >> (i * 8)) & 0xFF) << ((7 - i) * 8);
 
     // Decrypt the ROM command if encryption is enabled
     if (encrypted[cpu])
     {
         initKeycode(2);
-        command[cpu] = decrypt64(command[cpu]);
+        command = decrypt64(command);
     }
 
-    // Handle encryption commands
+    ndsCmdMode = CMD_NONE;
+
+    // Interpret the ROM command
     if (ndsRom)
     {
-        if ((command[cpu] >> 56) == 0x3C) // Activate KEY1 encryption mode
+        if (command == 0x0000000000000000) // Get header
+        {
+            ndsCmdMode = CMD_HEADER;
+
+            // Load the header from file if needed
+            if (ndsRomFile)
+                loadRomSection(0, blockSize[cpu]);
+        }
+        else if (command == 0x9000000000000000 || (command >> 60) == 0x1 || command == 0xB800000000000000) // Get chip ID
+        {
+            ndsCmdMode = CMD_CHIP;
+        }
+        else if ((command >> 56) == 0x3C) // Activate KEY1 encryption mode
         {
             // Initialize KEY1 encryption
             encrypted[cpu] = true;
         }
-        else if (((command[cpu] >> 56) & 0xF0) == 0xA0) // Enter main data mode
+        else if ((command >> 60) == 0x2) // Get secure area
+        {
+            ndsCmdMode = CMD_SECURE;
+            romAddrReal[cpu] = ((command & 0x0FFFF00000000000) >> 44) * 0x1000;
+
+            // Load the secure area block from file if needed
+            if (ndsRomFile)
+            {
+                loadRomSection(romAddrReal[cpu], blockSize[cpu]);
+                romAddrVirt[cpu] = 0;
+            }
+            else
+            {
+                romAddrVirt[cpu] = romAddrReal[cpu];
+            }
+        }
+        else if (((command >> 56) & 0xF0) == 0xA0) // Enter main data mode
         {
             // Disable KEY1 encryption
             // On hardware, this is where KEY2 encryption would start
             encrypted[cpu] = false;
+        }
+        else if ((command & 0xFF00000000FFFFFF) == 0xB700000000000000) // Get data
+        {
+            ndsCmdMode = CMD_DATA;
+            romAddrReal[cpu] = (command & 0x00FFFFFFFF000000) >> 24;
+
+            // Load the ROM data from file if needed
+            if (ndsRomFile)
+            {
+                if (romAddrReal[cpu] < 0x8000)
+                {
+                    // Workaround for address redirection when loading from file
+                    loadRomSection(0, 0x8200 + blockSize[cpu]);
+                    romAddrVirt[cpu] = romAddrReal[cpu];
+                }
+                else
+                {
+                    loadRomSection(romAddrReal[cpu], blockSize[cpu]);
+                    romAddrVirt[cpu] = 0;
+                }
+            }
+            else
+            {
+                romAddrVirt[cpu] = romAddrReal[cpu];
+            }
+        }
+        else if (command != 0x9F00000000000000) // Unknown (not dummy)
+        {
+            printf("ROM transfer with unknown command: 0x%llX\n", command);
         }
     }
 
@@ -958,82 +1099,8 @@ uint32_t Cartridge::readRomDataIn(bool cpu)
     if (!(romCtrl[cpu] & BIT(23)))
         return 0;
 
-    // Endless 0xFFs are returned on a dummy command or when no cart is inserted
-    uint32_t value = 0xFFFFFFFF;
-
-    if (ndsRom)
-    {
-        // Interpret the current ROM command
-        if (command[cpu] == 0x0000000000000000) // Get header
-        {
-            // Return the ROM header, repeated every 0x1000 bytes
-            value = U8TO32(ndsRom, readCount[cpu] % 0x1000);
-        }
-        else if (command[cpu] == 0x9000000000000000 || ((command[cpu] >> 56) & 0xF0) == 0x10 ||
-                 command[cpu] == 0xB800000000000000) // Get chip ID
-        {
-            // Return the chip ID, repeated every 4 bytes
-            // ROM dumps don't provide a chip ID, so use a fake one
-            value = 0x00001FC2;
-        }
-        else if (((command[cpu] >> 56) & 0xF0) == 0x20) // Get secure area
-        {
-            uint32_t address = ((command[cpu] & 0x0FFFF00000000000) >> 44) * 0x1000;
-
-            // Return data from the selected secure area block
-            if (address == 0x4000 && readCount[cpu] < 0x800)
-            {
-                // Encrypt the first 2KB of the first block
-                // The first 8 bytes of this block should contain the double-encrypted string 'encryObj'
-                // This string isn't included in ROM dumps, so manually supply it
-                uint64_t data;
-                if (readCount[cpu] < 8)
-                {
-                    data = 0x6A624F7972636E65; // encryObj
-                }
-                else
-                {
-                    data = (uint64_t)U8TO32(ndsRom, ((address + readCount[cpu]) & ~7) + 4) << 32;
-                    data |= (uint32_t)U8TO32(ndsRom, (address + readCount[cpu]) & ~7);
-                }
-
-                // Encrypt the data
-                initKeycode(3);
-                data = encrypt64(data);
-
-                // Double-encrypt the 'encryObj' string
-                if (readCount[cpu] < 8)
-                {
-                    initKeycode(2);
-                    data = encrypt64(data);
-                }
-
-                value = data >> (((address + readCount[cpu]) & 4) ? 32 : 0);
-            }
-            else
-            {
-                value = U8TO32(ndsRom, address + readCount[cpu]);
-            }
-        }
-        else if ((command[cpu] & 0xFF00000000FFFFFF) == 0xB700000000000000) // Get data
-        {
-            // Return ROM data from the given address
-            // This command can't read the first 32KB of a ROM, so it redirects the address
-            // Some games verify that the first 32KB are unreadable as an anti-piracy measure
-            uint32_t address = (command[cpu] & 0x00FFFFFFFF000000) >> 24;
-            if (address < 0x8000) address = 0x8000 + (address & 0x1FF);
-            if (address + readCount[cpu] < ndsRomSize) value = U8TO32(ndsRom, address + readCount[cpu]);
-        }
-        else if (command[cpu] != 0x9F00000000000000) // Unknown (not dummy)
-        {
-            printf("ROM transfer with unknown command: 0x%llX\n", command[cpu]);
-            value = 0;
-        }
-    }
-
-    readCount[cpu] += 4;
-
-    if (readCount[cpu] == blockSize[cpu])
+    // Increment the read counter
+    if ((readCount[cpu] += 4) == blockSize[cpu])
     {
         // End the transfer when the block size has been reached
         romCtrl[cpu] &= ~BIT(23); // Word not ready
@@ -1049,5 +1116,60 @@ uint32_t Cartridge::readRomDataIn(bool cpu)
         core->dma[cpu].trigger((cpu == 0) ? 5 : 2);
     }
 
-    return value;
+    // Return a value from the cart depending on the current command
+    switch (ndsCmdMode)
+    {
+        case CMD_HEADER:
+        {
+            // Read the ROM header, repeated every 0x1000 bytes
+            return U8TO32(ndsRom, (readCount[cpu] - 4) & 0xFFF);
+        }
+
+        case CMD_CHIP:
+        {
+            // Read the chip ID, repeated every 4 bytes
+            // ROM dumps don't provide a chip ID, so use a fake one
+            return 0x00001FC2;
+        }
+
+        case CMD_SECURE:
+        {
+            // Encrypt the first 2KB of the secure area
+            if (!ndsRomEncrypted && romAddrReal[cpu] == 0x4000 && readCount[cpu] <= 0x800)
+            {
+                // Supply the 'encryObj' string for the first 8 bytes (overwritten during decryption)
+                uint64_t data = (readCount[cpu] <= 8) ? 0x6A624F7972636E65 :
+                    U8TO64(ndsRom, (romAddrVirt[cpu] + readCount[cpu] - 4) & ~7);
+
+                // Encrypt the data
+                initKeycode(3);
+                data = encrypt64(data);
+
+                // Double-encrypt the 'encryObj' string
+                if (readCount[cpu] <= 8)
+                {
+                    initKeycode(2);
+                    data = encrypt64(data);
+                }
+
+                return data >> (((romAddrReal[cpu] + readCount[cpu]) & 4) ? 0 : 32);
+            }
+
+            // Read data from the selected secure area block
+            return U8TO32(ndsRom, romAddrVirt[cpu] + readCount[cpu] - 4);
+        }
+
+        case CMD_DATA:
+        {
+            // Read ROM data from the given address
+            // This command can't read the first 32KB of a ROM, so it redirects the address
+            // Some games verify that the first 32KB are unreadable as an anti-piracy measure
+            uint32_t address = romAddrVirt[cpu] + readCount[cpu] - 4;
+            if (romAddrReal[cpu] + readCount[cpu] <= 0x8000) address = 0x8000 + (address & 0x1FF);
+            if (address < ndsRomSize) return U8TO32(ndsRom, address);
+        }
+    }
+
+    // Default to endless 0xFFs if there's no actual data to read
+    return 0xFFFFFFFF;
 }

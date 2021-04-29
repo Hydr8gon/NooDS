@@ -25,6 +25,15 @@
 
 class Core;
 
+enum NdsCmdMode
+{
+    CMD_NONE = 0,
+    CMD_HEADER,
+    CMD_CHIP,
+    CMD_SECURE,
+    CMD_DATA
+};
+
 class Cartridge
 {
     public:
@@ -84,6 +93,11 @@ class Cartridge
         int ndsRomSize = 0, ndsSaveSize = 0;
         bool ndsSaveDirty = false;
 
+        FILE *ndsRomFile = nullptr;
+        uint32_t ndsRomCode = 0;
+        bool ndsRomEncrypted = false;
+        NdsCmdMode ndsCmdMode = CMD_NONE;
+
         int gbaEepromCount = 0;
         uint16_t gbaEepromCmd = 0;
         uint64_t gbaEepromData = 0;
@@ -96,8 +110,8 @@ class Cartridge
         uint32_t encTable[0x412] = {};
         uint32_t encCode[3] = {};
 
-        uint64_t command[2] = {};
-        int blockSize[2] = {}, readCount[2] = {};
+        uint32_t romAddrReal[2] = {}, romAddrVirt[2] = {};
+        uint16_t blockSize[2] = {}, readCount[2] = {};
         bool encrypted[2] = {};
 
         uint8_t auxCommand[2] = {};
@@ -111,6 +125,8 @@ class Cartridge
 
         static void trimRom(uint8_t **rom, int *romSize, std::string *romName);
         static void resizeSave(int newSize, uint8_t **save, int *saveSize, bool *saveDirty);
+
+        void loadRomSection(uint32_t offset, uint32_t size);
 
         uint64_t encrypt64(uint64_t value);
         uint64_t decrypt64(uint64_t value);

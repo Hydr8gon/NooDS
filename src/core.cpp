@@ -42,6 +42,23 @@ Core::Core(std::string ndsPath, std::string gbaPath):
         spi.loadFirmware();
     }
 
+    if (gbaPath != "")
+    {
+        // Load the GBA BIOS unless directly booting an NDS ROM
+        if (ndsPath == "" || !Settings::getDirectBoot())
+            memory.loadGbaBios();
+
+        // Load a GBA ROM
+        cartridge.loadGbaRom(gbaPath);
+
+        // Enable GBA mode right away if direct boot is enabled
+        if (ndsPath == "" && Settings::getDirectBoot())
+        {
+            memory.write<uint16_t>(0, 0x4000304, 0x8003); // POWCNT1
+            enterGbaMode();
+        }
+    }
+
     if (ndsPath != "")
     {
         // Load an NDS ROM
@@ -75,23 +92,6 @@ Core::Core(std::string ndsPath, std::string gbaPath):
             interpreter[0].directBoot();
             interpreter[1].directBoot();
             spi.directBoot();
-        }
-    }
-
-    if (gbaPath != "")
-    {
-        // Load the GBA BIOS unless directly booting an NDS ROM
-        if (ndsPath == "" || !Settings::getDirectBoot())
-            memory.loadGbaBios();
-
-        // Load a GBA ROM
-        cartridge.loadGbaRom(gbaPath);
-
-        // Enable GBA mode right away if direct boot is enabled
-        if (ndsPath == "" && Settings::getDirectBoot())
-        {
-            memory.write<uint16_t>(0, 0x4000304, 0x8003); // POWCNT1
-            enterGbaMode();
         }
     }
 }
