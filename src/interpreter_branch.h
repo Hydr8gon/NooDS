@@ -94,10 +94,7 @@ FORCE_INLINE void Interpreter::blx(uint32_t opcode) // BLX label
 FORCE_INLINE void Interpreter::swi() // SWI #i
 {
     // Software interrupt
-    uint32_t cpsrOld = cpsr;
-    setMode(0x13); // Supervisor
-    *spsr = cpsrOld;
-    cpsr |= BIT(7);
+    setCpsr((cpsr & ~0x1F) | 0x93, true); // Supervisor, interrupts off
     *registers[14] = *registers[15] - 4;
     *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x08 + 4;
 }
@@ -325,11 +322,7 @@ FORCE_INLINE void Interpreter::blxOffT(uint16_t opcode) // BLX label
 FORCE_INLINE void Interpreter::swiT() // SWI #i
 {
     // Software interrupt
-    uint32_t cpsrOld = cpsr;
-    setMode(0x13); // Supervisor
-    *spsr = cpsrOld;
-    cpsr &= ~BIT(5);
-    cpsr |= BIT(7);
+    setCpsr((cpsr & ~0x3F) | 0x93, true); // ARM, supervisor, interrupts off
     *registers[14] = *registers[15] - 2;
     *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x08 + 4;
 }

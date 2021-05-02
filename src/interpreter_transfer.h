@@ -1178,10 +1178,7 @@ FORCE_INLINE void Interpreter::ldmdaU(uint32_t opcode) // LDMDA Rn, <Rlist>^
 
         // Restore the SPSR
         if (spsr)
-        {
-            cpsr = *spsr;
-            setMode(cpsr);
-        }
+            setCpsr(*spsr);
 
         // Handle pipelining and THUMB switching
         if (cpu == 0 && (*registers[15] & BIT(0)))
@@ -1250,10 +1247,7 @@ FORCE_INLINE void Interpreter::ldmiaU(uint32_t opcode) // LDMIA Rn, <Rlist>^
 
         // Restore the SPSR
         if (spsr)
-        {
-            cpsr = *spsr;
-            setMode(cpsr);
-        }
+            setCpsr(*spsr);
 
         // Handle pipelining and THUMB switching
         if (cpu == 0 && (*registers[15] & BIT(0)))
@@ -1322,10 +1316,7 @@ FORCE_INLINE void Interpreter::ldmdbU(uint32_t opcode) // LDMDB Rn, <Rlist>^
 
         // Restore the SPSR
         if (spsr)
-        {
-            cpsr = *spsr;
-            setMode(cpsr);
-        }
+            setCpsr(*spsr);
 
         // Handle pipelining and THUMB switching
         if (cpu == 0 && (*registers[15] & BIT(0)))
@@ -1394,10 +1385,7 @@ FORCE_INLINE void Interpreter::ldmibU(uint32_t opcode) // LDMIB Rn, <Rlist>^
 
         // Restore the SPSR
         if (spsr)
-        {
-            cpsr = *spsr;
-            setMode(cpsr);
-        }
+            setCpsr(*spsr);
 
         // Handle pipelining and THUMB switching
         if (cpu == 0 && (*registers[15] & BIT(0)))
@@ -1469,10 +1457,7 @@ FORCE_INLINE void Interpreter::ldmdaUW(uint32_t opcode) // LDMDA Rn!, <Rlist>^
 
         // Restore the SPSR
         if (spsr)
-        {
-            cpsr = *spsr;
-            setMode(cpsr);
-        }
+            setCpsr(*spsr);
 
         // Handle pipelining and THUMB switching
         if (cpu == 0 && (*registers[15] & BIT(0)))
@@ -1559,10 +1544,7 @@ FORCE_INLINE void Interpreter::ldmiaUW(uint32_t opcode) // LDMIA Rn!, <Rlist>^
 
         // Restore the SPSR
         if (spsr)
-        {
-            cpsr = *spsr;
-            setMode(cpsr);
-        }
+            setCpsr(*spsr);
 
         // Handle pipelining and THUMB switching
         if (cpu == 0 && (*registers[15] & BIT(0)))
@@ -1657,10 +1639,7 @@ FORCE_INLINE void Interpreter::ldmdbUW(uint32_t opcode) // LDMDB Rn!, <Rlist>^
 
         // Restore the SPSR
         if (spsr)
-        {
-            cpsr = *spsr;
-            setMode(cpsr);
-        }
+            setCpsr(*spsr);
 
         // Handle pipelining and THUMB switching
         if (cpu == 0 && (*registers[15] & BIT(0)))
@@ -1747,10 +1726,7 @@ FORCE_INLINE void Interpreter::ldmibUW(uint32_t opcode) // LDMIB Rn!, <Rlist>^
 
         // Restore the SPSR
         if (spsr)
-        {
-            cpsr = *spsr;
-            setMode(cpsr);
-        }
+            setCpsr(*spsr);
 
         // Handle pipelining and THUMB switching
         if (cpu == 0 && (*registers[15] & BIT(0)))
@@ -1824,9 +1800,8 @@ FORCE_INLINE void Interpreter::msrRc(uint32_t opcode) // MSR CPSR,Rm
     // Write the first 8 bits of the status flags, but only allow changing the CPU mode when not in user mode
     if (opcode & BIT(16))
     {
-        cpsr = (cpsr & ~0x000000E0) | (op1 & 0x000000E0);
-        if ((cpsr & 0x0000001F) != 0x10)
-            setMode(op1);
+        uint8_t mask = ((cpsr & 0x1F) == 0x10) ? 0xE0 : 0xFF;
+        setCpsr((cpsr & ~mask) | (op1 & mask));
     }
 
     // Write the remaining 8-bit blocks of the status flags
@@ -1864,9 +1839,8 @@ FORCE_INLINE void Interpreter::msrIc(uint32_t opcode) // MSR CPSR,#i
     // Write the first 8 bits of the status flags, but only allow changing the CPU mode when not in user mode
     if (opcode & BIT(16))
     {
-        cpsr = (cpsr & ~0x000000E0) | (op1 & 0x000000E0);
-        if ((cpsr & 0x0000001F) != 0x10)
-            setMode(op1);
+        uint8_t mask = ((cpsr & 0x1F) == 0x10) ? 0xE0 : 0xFF;
+        setCpsr((cpsr & ~mask) | (op1 & mask));
     }
 
     // Write the remaining 8-bit blocks of the status flags

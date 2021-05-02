@@ -29,8 +29,10 @@ Interpreter::Interpreter(Core *core, bool cpu): core(core), cpu(cpu)
 
     // Prepare to boot the BIOS
     registersUsr[15] = ((cpu == 0) ? 0xFFFF0000 : 0x00000000) + 4;
-    cpsr = 0x000000C0;
-    setMode(0x13); // Supervisor
+    setCpsr(0x000000D3); // Supervisor, interrupts off
+
+    // Prepare tasks to be used with the scheduler
+    interruptTask = std::bind(&Interpreter::interrupt, this);
 }
 
 void Interpreter::directBoot()
@@ -56,38 +58,19 @@ void Interpreter::directBoot()
     registersUsr[12] = entryAddr;
     registersUsr[14] = entryAddr;
     registersUsr[15] = entryAddr + 4;
-    cpsr = 0x000000C0;
-    setMode(0x1F); // System
+    setCpsr(0x000000DF); // System, interrupts off
 }
 
 void Interpreter::enterGbaMode()
 {
     // Prepare to boot the GBA BIOS (and rely on it to initialize everything else)
     registersUsr[15] = 0x00000000 + 4;
-    cpsr = 0x000000C0;
-    setMode(0x13); // Supervisor
+    setCpsr(0x000000D3); // Supervisor, interrupts off
     postFlg = 0;
 }
 
 void Interpreter::runOpcode()
 {
-    // Trigger an interrupt if one was requested and enabled
-    if (ime && (ie & irf) && !(cpsr & BIT(7)))
-    {
-        // Switch the CPU to interrupt mode
-        uint32_t cpsrOld = cpsr;
-        setMode(0x12);
-        *spsr = cpsrOld;
-
-        // Switch to ARM mode and block other interrupts
-        cpsr &= ~BIT(5);
-        cpsr |= BIT(7);
-
-        // Save the return address and jump to the interrupt handler
-        *registers[14] = *registers[15] + ((cpsrOld & BIT(5)) ? 2 : 0);
-        *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x18 + 4;
-    }
-
     // Execute an instruction
     if (cpsr & BIT(5)) // THUMB mode
     {
@@ -2435,10 +2418,30 @@ void Interpreter::sendInterrupt(int bit)
     // Set the interrupt's request bit
     irf |= BIT(bit);
 
-    // Unhalt the CPU if the requested interrupt is enabled
-    // The ARM9 also needs IME to be set, but the ARM7 doesn't care
-    if ((ie & irf) && (ime || cpu == 1))
+    // Trigger an interrupt if the conditions are met, or unhalt the CPU even if interrupts are disabled
+    // The ARM9 additionally needs IME to be set for it to unhalt, but the ARM7 doesn't care
+    if (ie & irf)
+    {
+        if (ime && !(cpsr & BIT(7)))
+            core->schedule(Task(&interruptTask, 1 + cpu));
+        else if (ime || cpu == 1)
+            halted &= ~BIT(0);
+    }
+}
+
+void Interpreter::interrupt()
+{
+    // Perform an interrupt if the conditions still hold
+    if (ime && (ie & irf) && !(cpsr & BIT(7)))
+    {
+        // Switch to interrupt mode, save the return address, and jump to the interrupt handler
+        setCpsr((cpsr & ~0x3F) | 0x92, true); // ARM, IRQ, interrupts off
+        *registers[14] = *registers[15] + ((*spsr & BIT(5)) ? 2 : 0);
+        *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x18 + 4;
+
+        // Unhalt the CPU
         halted &= ~BIT(0);
+    }
 }
 
 bool Interpreter::condition(uint32_t opcode)
@@ -2491,91 +2494,103 @@ bool Interpreter::condition(uint32_t opcode)
     }
 }
 
-void Interpreter::setMode(uint8_t mode)
+void Interpreter::setCpsr(uint32_t value, bool save)
 {
-    // Point the registers to the correct ones for the new mode
-    switch (mode & 0x1F)
+    // Swap banked registers if the CPU mode changed
+    if ((value & 0x1F) != (cpsr & 0x1F))
     {
-        case 0x10: // User
-        case 0x1F: // System
-            registers[8]  = &registersUsr[8];
-            registers[9]  = &registersUsr[9];
-            registers[10] = &registersUsr[10];
-            registers[11] = &registersUsr[11];
-            registers[12] = &registersUsr[12];
-            registers[13] = &registersUsr[13];
-            registers[14] = &registersUsr[14];
-            spsr = nullptr;
-            break;
+        switch (value & 0x1F)
+        {
+            case 0x10: // User
+            case 0x1F: // System
+                registers[8]  = &registersUsr[8];
+                registers[9]  = &registersUsr[9];
+                registers[10] = &registersUsr[10];
+                registers[11] = &registersUsr[11];
+                registers[12] = &registersUsr[12];
+                registers[13] = &registersUsr[13];
+                registers[14] = &registersUsr[14];
+                spsr = nullptr;
+                break;
 
-        case 0x11: // FIQ
-            registers[8]  = &registersFiq[0];
-            registers[9]  = &registersFiq[1];
-            registers[10] = &registersFiq[2];
-            registers[11] = &registersFiq[3];
-            registers[12] = &registersFiq[4];
-            registers[13] = &registersFiq[5];
-            registers[14] = &registersFiq[6];
-            spsr = &spsrFiq;
-            break;
+            case 0x11: // FIQ
+                registers[8]  = &registersFiq[0];
+                registers[9]  = &registersFiq[1];
+                registers[10] = &registersFiq[2];
+                registers[11] = &registersFiq[3];
+                registers[12] = &registersFiq[4];
+                registers[13] = &registersFiq[5];
+                registers[14] = &registersFiq[6];
+                spsr = &spsrFiq;
+                break;
 
-        case 0x12: // IRQ
-            registers[8]  = &registersUsr[8];
-            registers[9]  = &registersUsr[9];
-            registers[10] = &registersUsr[10];
-            registers[11] = &registersUsr[11];
-            registers[12] = &registersUsr[12];
-            registers[13] = &registersIrq[0];
-            registers[14] = &registersIrq[1];
-            spsr = &spsrIrq;
-            break;
+            case 0x12: // IRQ
+                registers[8]  = &registersUsr[8];
+                registers[9]  = &registersUsr[9];
+                registers[10] = &registersUsr[10];
+                registers[11] = &registersUsr[11];
+                registers[12] = &registersUsr[12];
+                registers[13] = &registersIrq[0];
+                registers[14] = &registersIrq[1];
+                spsr = &spsrIrq;
+                break;
 
-        case 0x13: // Supervisor
-            registers[8]  = &registersUsr[8];
-            registers[9]  = &registersUsr[9];
-            registers[10] = &registersUsr[10];
-            registers[11] = &registersUsr[11];
-            registers[12] = &registersUsr[12];
-            registers[13] = &registersSvc[0];
-            registers[14] = &registersSvc[1];
-            spsr = &spsrSvc;
-            break;
+            case 0x13: // Supervisor
+                registers[8]  = &registersUsr[8];
+                registers[9]  = &registersUsr[9];
+                registers[10] = &registersUsr[10];
+                registers[11] = &registersUsr[11];
+                registers[12] = &registersUsr[12];
+                registers[13] = &registersSvc[0];
+                registers[14] = &registersSvc[1];
+                spsr = &spsrSvc;
+                break;
 
-        case 0x17: // Abort
-            registers[8]  = &registersUsr[8];
-            registers[9]  = &registersUsr[9];
-            registers[10] = &registersUsr[10];
-            registers[11] = &registersUsr[11];
-            registers[12] = &registersUsr[12];
-            registers[13] = &registersAbt[0];
-            registers[14] = &registersAbt[1];
-            spsr = &spsrAbt;
-            break;
+            case 0x17: // Abort
+                registers[8]  = &registersUsr[8];
+                registers[9]  = &registersUsr[9];
+                registers[10] = &registersUsr[10];
+                registers[11] = &registersUsr[11];
+                registers[12] = &registersUsr[12];
+                registers[13] = &registersAbt[0];
+                registers[14] = &registersAbt[1];
+                spsr = &spsrAbt;
+                break;
 
-        case 0x1B: // Undefined
-            registers[8]  = &registersUsr[8];
-            registers[9]  = &registersUsr[9];
-            registers[10] = &registersUsr[10];
-            registers[11] = &registersUsr[11];
-            registers[12] = &registersUsr[12];
-            registers[13] = &registersUnd[0];
-            registers[14] = &registersUnd[1];
-            spsr = &spsrUnd;
-            break;
+            case 0x1B: // Undefined
+                registers[8]  = &registersUsr[8];
+                registers[9]  = &registersUsr[9];
+                registers[10] = &registersUsr[10];
+                registers[11] = &registersUsr[11];
+                registers[12] = &registersUsr[12];
+                registers[13] = &registersUnd[0];
+                registers[14] = &registersUnd[1];
+                spsr = &spsrUnd;
+                break;
 
-        default:
-            LOG("Unknown ARM%d CPU mode: 0x%X\n", ((cpu == 0) ? 9 : 7), mode & 0x1F);
-            return;
+            default:
+                LOG("Unknown ARM%d CPU mode: 0x%X\n", ((cpu == 0) ? 9 : 7), value & 0x1F);
+                break;
+        }
     }
 
-    // Set the new mode
-    cpsr = (cpsr & ~0x1F) | (mode & 0x1F);
+    // Set the CPSR, saving the old value if requested
+    if (save && spsr) *spsr = cpsr;
+    cpsr = value;
+
+    // Trigger an interrupt if the conditions are met
+    if (ime && (ie & irf) && !(cpsr & BIT(7)))
+        core->schedule(Task(&interruptTask, 1 + cpu));
 }
 
 void Interpreter::writeIme(uint8_t value)
 {
     // Write to the IME register
     ime = value & 0x01;
+
+    // Trigger an interrupt if the conditions are met
+    if (ime && (ie & irf) && !(cpsr & BIT(7)))
+        core->schedule(Task(&interruptTask, 1 + cpu));
 }
 
 void Interpreter::writeIe(uint32_t mask, uint32_t value)
@@ -2583,6 +2598,10 @@ void Interpreter::writeIe(uint32_t mask, uint32_t value)
     // Write to the IE register
     mask &= ((cpu == 0) ? 0x003F3F7F : 0x01FF3FFF);
     ie = (ie & ~mask) | (value & mask);
+
+    // Trigger an interrupt if the conditions are met
+    if (ime && (ie & irf) && !(cpsr & BIT(7)))
+        core->schedule(Task(&interruptTask, 1 + cpu));
 }
 
 void Interpreter::writeIrf(uint32_t mask, uint32_t value)

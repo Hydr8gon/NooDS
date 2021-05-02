@@ -21,6 +21,7 @@
 #define INTERPRETER_H
 
 #include <cstdint>
+#include <functional>
 
 #include "defines.h"
 
@@ -73,8 +74,11 @@ class Interpreter
         uint32_t ie = 0, irf = 0;
         uint8_t postFlg = 0;
 
+        std::function<void()> interruptTask;
+
+        void interrupt();
         bool condition(uint32_t opcode);
-        void setMode(uint8_t mode);
+        void setCpsr(uint32_t value, bool save = false);
 
         uint32_t lli(uint32_t opcode);
         uint32_t llr(uint32_t opcode);
