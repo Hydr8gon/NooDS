@@ -96,6 +96,7 @@ class Core
 
         std::vector<Task> tasks;
         uint32_t frameCycles = 0, globalCycles = 0;
+        uint32_t arm9Cycles = 0, arm7Cycles = 0;
 
         int fps = 0, fpsCount = 0;
         std::chrono::steady_clock::time_point lastFpsTime;

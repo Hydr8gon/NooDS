@@ -274,7 +274,7 @@ FORCE_INLINE uint32_t Interpreter::immS(uint32_t opcode) // #i (S)
     return (value << (32 - shift)) | (value >> shift);
 }
 
-FORCE_INLINE void Interpreter::_and(uint32_t opcode, uint32_t op2) // AND Rd,Rn,op2
+FORCE_INLINE int Interpreter::_and(uint32_t opcode, uint32_t op2) // AND Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -285,11 +285,12 @@ FORCE_INLINE void Interpreter::_and(uint32_t opcode, uint32_t op2) // AND Rd,Rn,
     *op0 = op1 & op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::eor(uint32_t opcode, uint32_t op2) // EOR Rd,Rn,op2
+FORCE_INLINE int Interpreter::eor(uint32_t opcode, uint32_t op2) // EOR Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -300,11 +301,12 @@ FORCE_INLINE void Interpreter::eor(uint32_t opcode, uint32_t op2) // EOR Rd,Rn,o
     *op0 = op1 ^ op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::sub(uint32_t opcode, uint32_t op2) // SUB Rd,Rn,op2
+FORCE_INLINE int Interpreter::sub(uint32_t opcode, uint32_t op2) // SUB Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -315,11 +317,12 @@ FORCE_INLINE void Interpreter::sub(uint32_t opcode, uint32_t op2) // SUB Rd,Rn,o
     *op0 = op1 - op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::rsb(uint32_t opcode, uint32_t op2) // RSB Rd,Rn,op2
+FORCE_INLINE int Interpreter::rsb(uint32_t opcode, uint32_t op2) // RSB Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -330,11 +333,12 @@ FORCE_INLINE void Interpreter::rsb(uint32_t opcode, uint32_t op2) // RSB Rd,Rn,o
     *op0 = op2 - op1;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::add(uint32_t opcode, uint32_t op2) // ADD Rd,Rn,op2
+FORCE_INLINE int Interpreter::add(uint32_t opcode, uint32_t op2) // ADD Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -345,11 +349,12 @@ FORCE_INLINE void Interpreter::add(uint32_t opcode, uint32_t op2) // ADD Rd,Rn,o
     *op0 = op1 + op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::adc(uint32_t opcode, uint32_t op2) // ADC Rd,Rn,op2
+FORCE_INLINE int Interpreter::adc(uint32_t opcode, uint32_t op2) // ADC Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -360,11 +365,12 @@ FORCE_INLINE void Interpreter::adc(uint32_t opcode, uint32_t op2) // ADC Rd,Rn,o
     *op0 = op1 + op2 + ((cpsr & BIT(29)) >> 29);
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::sbc(uint32_t opcode, uint32_t op2) // SBC Rd,Rn,op2
+FORCE_INLINE int Interpreter::sbc(uint32_t opcode, uint32_t op2) // SBC Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -375,11 +381,12 @@ FORCE_INLINE void Interpreter::sbc(uint32_t opcode, uint32_t op2) // SBC Rd,Rn,o
     *op0 = op1 - op2 - 1 + ((cpsr & BIT(29)) >> 29);
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::rsc(uint32_t opcode, uint32_t op2) // RSC Rd,Rn,op2
+FORCE_INLINE int Interpreter::rsc(uint32_t opcode, uint32_t op2) // RSC Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -390,11 +397,12 @@ FORCE_INLINE void Interpreter::rsc(uint32_t opcode, uint32_t op2) // RSC Rd,Rn,o
     *op0 = op2 - op1 - 1 + ((cpsr & BIT(29)) >> 29);
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::tst(uint32_t opcode, uint32_t op2) // TST Rn,op2
+FORCE_INLINE int Interpreter::tst(uint32_t opcode, uint32_t op2) // TST Rn,op2
 {
     // Decode the other operand
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -406,9 +414,11 @@ FORCE_INLINE void Interpreter::tst(uint32_t opcode, uint32_t op2) // TST Rn,op2
     // Set the flags
     if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::teq(uint32_t opcode, uint32_t op2) // TEQ Rn,op2
+FORCE_INLINE int Interpreter::teq(uint32_t opcode, uint32_t op2) // TEQ Rn,op2
 {
     // Decode the other operand
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -420,9 +430,11 @@ FORCE_INLINE void Interpreter::teq(uint32_t opcode, uint32_t op2) // TEQ Rn,op2
     // Set the flags
     if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::cmp(uint32_t opcode, uint32_t op2) // CMP Rn,op2
+FORCE_INLINE int Interpreter::cmp(uint32_t opcode, uint32_t op2) // CMP Rn,op2
 {
     // Decode the other operand
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -437,9 +449,11 @@ FORCE_INLINE void Interpreter::cmp(uint32_t opcode, uint32_t op2) // CMP Rn,op2
     if (op1 >= res)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::cmn(uint32_t opcode, uint32_t op2) // CMN Rn,op2
+FORCE_INLINE int Interpreter::cmn(uint32_t opcode, uint32_t op2) // CMN Rn,op2
 {
     // Decode the other operand
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -454,9 +468,11 @@ FORCE_INLINE void Interpreter::cmn(uint32_t opcode, uint32_t op2) // CMN Rn,op2
     if (op1 > res)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) == (op1 & BIT(31)) && (res & BIT(31)) != (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::orr(uint32_t opcode, uint32_t op2) // ORR Rd,Rn,op2
+FORCE_INLINE int Interpreter::orr(uint32_t opcode, uint32_t op2) // ORR Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -467,11 +483,12 @@ FORCE_INLINE void Interpreter::orr(uint32_t opcode, uint32_t op2) // ORR Rd,Rn,o
     *op0 = op1 | op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::mov(uint32_t opcode, uint32_t op2) // MOV Rd,op2
+FORCE_INLINE int Interpreter::mov(uint32_t opcode, uint32_t op2) // MOV Rd,op2
 {
     // Decode the other operand
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -480,11 +497,12 @@ FORCE_INLINE void Interpreter::mov(uint32_t opcode, uint32_t op2) // MOV Rd,op2
     *op0 = op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::bic(uint32_t opcode, uint32_t op2) // BIC Rd,Rn,op2
+FORCE_INLINE int Interpreter::bic(uint32_t opcode, uint32_t op2) // BIC Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -495,11 +513,12 @@ FORCE_INLINE void Interpreter::bic(uint32_t opcode, uint32_t op2) // BIC Rd,Rn,o
     *op0 = op1 & ~op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::mvn(uint32_t opcode, uint32_t op2) // MVN Rd,op2
+FORCE_INLINE int Interpreter::mvn(uint32_t opcode, uint32_t op2) // MVN Rd,op2
 {
     // Decode the other operand
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -508,11 +527,12 @@ FORCE_INLINE void Interpreter::mvn(uint32_t opcode, uint32_t op2) // MVN Rd,op2
     *op0 = ~op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn,op2
+FORCE_INLINE int Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -522,25 +542,25 @@ FORCE_INLINE void Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn
     // Bitwise and
     *op0 = op1 & op2;
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn,op2
+FORCE_INLINE int Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -550,25 +570,25 @@ FORCE_INLINE void Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn
     // Bitwise exclusive or
     *op0 = op1 ^ op2;
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn,op2
+FORCE_INLINE int Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -578,17 +598,12 @@ FORCE_INLINE void Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn
     // Subtraction
     *op0 = op1 - op2;
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
@@ -597,9 +612,14 @@ FORCE_INLINE void Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn
     if (op1 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn,op2
+FORCE_INLINE int Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -609,17 +629,12 @@ FORCE_INLINE void Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn
     // Reverse subtraction
     *op0 = op2 - op1;
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
@@ -628,9 +643,14 @@ FORCE_INLINE void Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn
     if (op2 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op1 & BIT(31)) != (op2 & BIT(31)) && (*op0 & BIT(31)) == (op1 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn,op2
+FORCE_INLINE int Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -640,17 +660,12 @@ FORCE_INLINE void Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn
     // Addition
     *op0 = op1 + op2;
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
@@ -659,9 +674,14 @@ FORCE_INLINE void Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn
     if (op1 > *op0)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn,op2
+FORCE_INLINE int Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -671,17 +691,12 @@ FORCE_INLINE void Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn
     // Addition with carry
     *op0 = op1 + op2 + ((cpsr & BIT(29)) >> 29);
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
@@ -690,9 +705,14 @@ FORCE_INLINE void Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn
     if (op1 > *op0 || (op2 == 0xFFFFFFFF && (cpsr & BIT(29)))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn,op2
+FORCE_INLINE int Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -702,17 +722,12 @@ FORCE_INLINE void Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn
     // Subtraction with carry
     *op0 = op1 - op2 - 1 + ((cpsr & BIT(29)) >> 29);
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
@@ -721,9 +736,14 @@ FORCE_INLINE void Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn
     if (op1 >= *op0 && (op2 != 0xFFFFFFFF || (cpsr & BIT(29)))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn,op2
+FORCE_INLINE int Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -733,17 +753,12 @@ FORCE_INLINE void Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn
     // Reverse subtraction with carry
     *op0 = op2 - op1 - 1 + ((cpsr & BIT(29)) >> 29);
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
@@ -752,9 +767,14 @@ FORCE_INLINE void Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn
     if (op2 >= *op0 && (op1 != 0xFFFFFFFF || (cpsr & BIT(29)))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op1 & BIT(31)) != (op2 & BIT(31)) && (*op0 & BIT(31)) == (op1 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::orrs(uint32_t opcode, uint32_t op2) // ORRS Rd,Rn,op2
+FORCE_INLINE int Interpreter::orrs(uint32_t opcode, uint32_t op2) // ORRS Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -764,25 +784,25 @@ FORCE_INLINE void Interpreter::orrs(uint32_t opcode, uint32_t op2) // ORRS Rd,Rn
     // Bitwise or
     *op0 = op1 | op2;
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::movs(uint32_t opcode, uint32_t op2) // MOVS Rd,op2
+FORCE_INLINE int Interpreter::movs(uint32_t opcode, uint32_t op2) // MOVS Rd,op2
 {
     // Decode the other operand
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -790,25 +810,25 @@ FORCE_INLINE void Interpreter::movs(uint32_t opcode, uint32_t op2) // MOVS Rd,op
     // Move
     *op0 = op2;
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::bics(uint32_t opcode, uint32_t op2) // BICS Rd,Rn,op2
+FORCE_INLINE int Interpreter::bics(uint32_t opcode, uint32_t op2) // BICS Rd,Rn,op2
 {
     // Decode the other operands
     // When used as Rn when shifting by register, the program counter is read with +4
@@ -818,25 +838,25 @@ FORCE_INLINE void Interpreter::bics(uint32_t opcode, uint32_t op2) // BICS Rd,Rn
     // Bit clear
     *op0 = op1 & ~op2;
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::mvns(uint32_t opcode, uint32_t op2) // MVNS Rd,op2
+FORCE_INLINE int Interpreter::mvns(uint32_t opcode, uint32_t op2) // MVNS Rd,op2
 {
     // Decode the other operand
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -844,113 +864,141 @@ FORCE_INLINE void Interpreter::mvns(uint32_t opcode, uint32_t op2) // MVNS Rd,op
     // Move negative
     *op0 = ~op2;
 
-    // Handle pipelining and mode switching
-    if (op0 == registers[15])
+    // Handle mode switching
+    if (op0 == registers[15] && spsr)
     {
-        if (spsr)
-        {
-            setCpsr(*spsr);
-            *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
-            return;
-        }
-
-        *registers[15] = (*registers[15] & ~3) + 4;
+        setCpsr(*spsr);
+        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        return 3;
     }
 
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    // Handle pipelining
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::mul(uint32_t opcode) // MUL Rd,Rm,Rs
+FORCE_INLINE int Interpreter::mul(uint32_t opcode) // MUL Rd,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
     uint32_t op1 = *registers[opcode & 0x0000000F];
-    uint32_t op2 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op2 = *registers[(opcode & 0x00000F00) >> 8];
 
     // Multiplication
     *op0 = op1 * op2;
+
+    // Calculate timing
+    if (cpu == 0) return 2;
+    int m; for (m = 1; (op2 < (-1 << (m * 8)) || op2 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 1;
 }
 
-FORCE_INLINE void Interpreter::mla(uint32_t opcode) // MLA Rd,Rm,Rs,Rn
+FORCE_INLINE int Interpreter::mla(uint32_t opcode) // MLA Rd,Rm,Rs,Rn
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
     uint32_t op1 = *registers[opcode & 0x0000000F];
-    uint32_t op2 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op2 = *registers[(opcode & 0x00000F00) >> 8];
     uint32_t op3 = *registers[(opcode & 0x0000F000) >> 12];
 
     // Multiplication and accumulate
     *op0 = op1 * op2 + op3;
+
+    // Calculate timing
+    if (cpu == 0) return 2;
+    int m; for (m = 1; (op2 < (-1 << (m * 8)) || op2 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 2;
 }
 
-FORCE_INLINE void Interpreter::umull(uint32_t opcode) // UMULL RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::umull(uint32_t opcode) // UMULL RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
     uint32_t op2 = *registers[opcode & 0x0000000F];
-    uint32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
 
     // Unsigned long multiplication
-    uint64_t res = (uint64_t)op2 * op3;
+    uint64_t res = (uint64_t)op2 * (uint32_t)op3;
     *op1 = res >> 32;
     *op0 = res;
+
+    // Calculate timing
+    if (cpu == 0) return 3;
+    int m; for (m = 1; (op3 < (-1 << (m * 8)) || op3 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 2;
 }
 
-FORCE_INLINE void Interpreter::umlal(uint32_t opcode) // UMLAL RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::umlal(uint32_t opcode) // UMLAL RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
     uint32_t op2 = *registers[opcode & 0x0000000F];
-    uint32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
 
     // Unsigned long multiplication and accumulate
-    uint64_t res = (uint64_t)op2 * op3;
+    uint64_t res = (uint64_t)op2 * (uint32_t)op3;
     res += ((uint64_t)*op1 << 32) | *op0;
     *op1 = res >> 32;
     *op0 = res;
+
+    // Calculate timing
+    if (cpu == 0) return 3;
+    int m; for (m = 1; (op3 < (-1 << (m * 8)) || op3 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 3;
 }
 
-FORCE_INLINE void Interpreter::smull(uint32_t opcode) // SMULL RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::smull(uint32_t opcode) // SMULL RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
-    uint32_t op2 = *registers[opcode & 0x0000000F];
-    uint32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op2 = *registers[opcode & 0x0000000F];
+    int32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
 
     // Signed long multiplication
-    int64_t res = (int32_t)op2;
-    res *= (int32_t)op3;
+    int64_t res = (int64_t)op2 * op3;
     *op1 = res >> 32;
     *op0 = res;
+
+    // Calculate timing
+    if (cpu == 0) return 3;
+    int m; for (m = 1; (op3 < (-1 << (m * 8)) || op3 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 2;
 }
 
-FORCE_INLINE void Interpreter::smlal(uint32_t opcode) // SMLAL RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::smlal(uint32_t opcode) // SMLAL RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
-    uint32_t op2 = *registers[opcode & 0x0000000F];
-    uint32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op2 = *registers[opcode & 0x0000000F];
+    int32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
 
     // Signed long multiplication and accumulate
-    int64_t res = (int32_t)op2;
-    res *= (int32_t)op3;
+    int64_t res = (int64_t)op2 * op3;
     res += ((int64_t)*op1 << 32) | *op0;
     *op1 = res >> 32;
     *op0 = res;
+
+    // Calculate timing
+    if (cpu == 0) return 3;
+    int m; for (m = 1; (op3 < (-1 << (m * 8)) || op3 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 3;
 }
 
-FORCE_INLINE void Interpreter::muls(uint32_t opcode) // MULS Rd,Rm,Rs
+FORCE_INLINE int Interpreter::muls(uint32_t opcode) // MULS Rd,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
     uint32_t op1 = *registers[opcode & 0x0000000F];
-    uint32_t op2 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op2 = *registers[(opcode & 0x00000F00) >> 8];
 
     // Multiplication
     *op0 = op1 * op2;
@@ -958,15 +1006,19 @@ FORCE_INLINE void Interpreter::muls(uint32_t opcode) // MULS Rd,Rm,Rs
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+
+    // Calculate timing
+    if (cpu == 0) return 4;
+    int m; for (m = 1; (op2 < (-1 << (m * 8)) || op2 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 1;
 }
 
-FORCE_INLINE void Interpreter::mlas(uint32_t opcode) // MLAS Rd,Rm,Rs,Rn
+FORCE_INLINE int Interpreter::mlas(uint32_t opcode) // MLAS Rd,Rm,Rs,Rn
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
     uint32_t op1 = *registers[opcode & 0x0000000F];
-    uint32_t op2 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op2 = *registers[(opcode & 0x00000F00) >> 8];
     uint32_t op3 = *registers[(opcode & 0x0000F000) >> 12];
 
     // Multiplication and accumulate
@@ -975,38 +1027,46 @@ FORCE_INLINE void Interpreter::mlas(uint32_t opcode) // MLAS Rd,Rm,Rs,Rn
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+
+    // Calculate timing
+    if (cpu == 0) return 4;
+    int m; for (m = 1; (op2 < (-1 << (m * 8)) || op2 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 2;
 }
 
-FORCE_INLINE void Interpreter::umulls(uint32_t opcode) // UMULLS RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::umulls(uint32_t opcode) // UMULLS RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
     uint32_t op2 = *registers[opcode & 0x0000000F];
-    uint32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
 
     // Unsigned long multiplication
-    uint64_t res = (uint64_t)op2 * op3;
+    uint64_t res = (uint64_t)op2 * (uint32_t)op3;
     *op1 = res >> 32;
     *op0 = res;
 
     // Set the flags
     if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+
+    // Calculate timing
+    if (cpu == 0) return 5;
+    int m; for (m = 1; (op3 < (-1 << (m * 8)) || op3 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 2;
 }
 
-FORCE_INLINE void Interpreter::umlals(uint32_t opcode) // UMLALS RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::umlals(uint32_t opcode) // UMLALS RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
     uint32_t op2 = *registers[opcode & 0x0000000F];
-    uint32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
 
     // Unsigned long multiplication and accumulate
-    uint64_t res = (uint64_t)op2 * op3;
+    uint64_t res = (uint64_t)op2 * (uint32_t)op3;
     res += ((uint64_t)*op1 << 32) | *op0;
     *op1 = res >> 32;
     *op0 = res;
@@ -1014,40 +1074,46 @@ FORCE_INLINE void Interpreter::umlals(uint32_t opcode) // UMLALS RdLo,RdHi,Rm,Rs
     // Set the flags
     if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+
+    // Calculate timing
+    if (cpu == 0) return 5;
+    int m; for (m = 1; (op3 < (-1 << (m * 8)) || op3 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 3;
 }
 
-FORCE_INLINE void Interpreter::smulls(uint32_t opcode) // SMULLS RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::smulls(uint32_t opcode) // SMULLS RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
-    uint32_t op2 = *registers[opcode & 0x0000000F];
-    uint32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op2 = *registers[opcode & 0x0000000F];
+    int32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
 
     // Signed long multiplication
-    int64_t res = (int32_t)op2;
-    res *= (int32_t)op3;
+    int64_t res = (int64_t)op2 * op3;
     *op1 = res >> 32;
     *op0 = res;
 
     // Set the flags
     if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+
+    // Calculate timing
+    if (cpu == 0) return 5;
+    int m; for (m = 1; (op3 < (-1 << (m * 8)) || op3 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 2;
 }
 
-FORCE_INLINE void Interpreter::smlals(uint32_t opcode) // SMLALS RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::smlals(uint32_t opcode) // SMLALS RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
-    uint32_t op2 = *registers[opcode & 0x0000000F];
-    uint32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
+    int32_t op2 = *registers[opcode & 0x0000000F];
+    int32_t op3 = *registers[(opcode & 0x00000F00) >> 8];
 
     // Signed long multiplication and accumulate
-    int64_t res = (int32_t)op2;
-    res *= (int32_t)op3;
+    int64_t res = (int64_t)op2 * op3;
     res += ((int64_t)*op1 << 32) | *op0;
     *op1 = res >> 32;
     *op0 = res;
@@ -1055,12 +1121,16 @@ FORCE_INLINE void Interpreter::smlals(uint32_t opcode) // SMLALS RdLo,RdHi,Rm,Rs
     // Set the flags
     if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+
+    // Calculate timing
+    if (cpu == 0) return 5;
+    int m; for (m = 1; (op3 < (-1 << (m * 8)) || op3 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 3;
 }
 
-FORCE_INLINE void Interpreter::smulbb(uint32_t opcode) // SMULBB Rd,Rm,Rs
+FORCE_INLINE int Interpreter::smulbb(uint32_t opcode) // SMULBB Rd,Rm,Rs
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1069,11 +1139,13 @@ FORCE_INLINE void Interpreter::smulbb(uint32_t opcode) // SMULBB Rd,Rm,Rs
 
     // Signed half-word multiplication
     *op0 = op1 * op2;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smulbt(uint32_t opcode) // SMULBT Rd,Rm,Rs
+FORCE_INLINE int Interpreter::smulbt(uint32_t opcode) // SMULBT Rd,Rm,Rs
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1082,11 +1154,13 @@ FORCE_INLINE void Interpreter::smulbt(uint32_t opcode) // SMULBT Rd,Rm,Rs
 
     // Signed half-word multiplication
     *op0 = op1 * op2;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smultb(uint32_t opcode) // SMULTB Rd,Rm,Rs
+FORCE_INLINE int Interpreter::smultb(uint32_t opcode) // SMULTB Rd,Rm,Rs
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1095,11 +1169,13 @@ FORCE_INLINE void Interpreter::smultb(uint32_t opcode) // SMULTB Rd,Rm,Rs
 
     // Signed half-word multiplication
     *op0 = op1 * op2;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smultt(uint32_t opcode) // SMULTT Rd,Rm,Rs
+FORCE_INLINE int Interpreter::smultt(uint32_t opcode) // SMULTT Rd,Rm,Rs
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1108,11 +1184,13 @@ FORCE_INLINE void Interpreter::smultt(uint32_t opcode) // SMULTT Rd,Rm,Rs
 
     // Signed half-word multiplication
     *op0 = op1 * op2;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smulwb(uint32_t opcode) // SMULWB Rd,Rm,Rs
+FORCE_INLINE int Interpreter::smulwb(uint32_t opcode) // SMULWB Rd,Rm,Rs
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1121,11 +1199,13 @@ FORCE_INLINE void Interpreter::smulwb(uint32_t opcode) // SMULWB Rd,Rm,Rs
 
     // Signed word by half-word multiplication
     *op0 = ((int64_t)op1 * op2) >> 16;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smulwt(uint32_t opcode) // SMULWT Rd,Rm,Rs
+FORCE_INLINE int Interpreter::smulwt(uint32_t opcode) // SMULWT Rd,Rm,Rs
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1134,11 +1214,13 @@ FORCE_INLINE void Interpreter::smulwt(uint32_t opcode) // SMULWT Rd,Rm,Rs
 
     // Signed word by half-word multiplication
     *op0 = ((int64_t)op1 * op2) >> 16;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smlabb(uint32_t opcode) // SMLABB Rd,Rm,Rs,Rn
+FORCE_INLINE int Interpreter::smlabb(uint32_t opcode) // SMLABB Rd,Rm,Rs,Rn
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1152,11 +1234,13 @@ FORCE_INLINE void Interpreter::smlabb(uint32_t opcode) // SMLABB Rd,Rm,Rs,Rn
 
     // Set the Q flag
     if ((*op0 & BIT(31)) != (res & BIT(31))) cpsr |= BIT(27);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smlabt(uint32_t opcode) // SMLABT Rd,Rm,Rs,Rn
+FORCE_INLINE int Interpreter::smlabt(uint32_t opcode) // SMLABT Rd,Rm,Rs,Rn
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1170,11 +1254,13 @@ FORCE_INLINE void Interpreter::smlabt(uint32_t opcode) // SMLABT Rd,Rm,Rs,Rn
 
     // Set the Q flag
     if ((*op0 & BIT(31)) != (res & BIT(31))) cpsr |= BIT(27);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smlatb(uint32_t opcode) // SMLATB Rd,Rm,Rs,Rn
+FORCE_INLINE int Interpreter::smlatb(uint32_t opcode) // SMLATB Rd,Rm,Rs,Rn
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1188,11 +1274,13 @@ FORCE_INLINE void Interpreter::smlatb(uint32_t opcode) // SMLATB Rd,Rm,Rs,Rn
 
     // Set the Q flag
     if ((*op0 & BIT(31)) != (res & BIT(31))) cpsr |= BIT(27);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smlatt(uint32_t opcode) // SMLATT Rd,Rm,Rs,Rn
+FORCE_INLINE int Interpreter::smlatt(uint32_t opcode) // SMLATT Rd,Rm,Rs,Rn
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1206,11 +1294,13 @@ FORCE_INLINE void Interpreter::smlatt(uint32_t opcode) // SMLATT Rd,Rm,Rs,Rn
 
     // Set the Q flag
     if ((*op0 & BIT(31)) != (res & BIT(31))) cpsr |= BIT(27);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smlawb(uint32_t opcode) // SMLAWB Rd,Rm,Rs,Rn
+FORCE_INLINE int Interpreter::smlawb(uint32_t opcode) // SMLAWB Rd,Rm,Rs,Rn
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1224,11 +1314,13 @@ FORCE_INLINE void Interpreter::smlawb(uint32_t opcode) // SMLAWB Rd,Rm,Rs,Rn
 
     // Set the Q flag
     if ((*op0 & BIT(31)) != (res & BIT(31))) cpsr |= BIT(27);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smlawt(uint32_t opcode) // SMLAWT Rd,Rm,Rs,Rn
+FORCE_INLINE int Interpreter::smlawt(uint32_t opcode) // SMLAWT Rd,Rm,Rs,Rn
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -1242,10 +1334,14 @@ FORCE_INLINE void Interpreter::smlawt(uint32_t opcode) // SMLAWT Rd,Rm,Rs,Rn
 
     // Set the Q flag
     if ((*op0 & BIT(31)) != (res & BIT(31))) cpsr |= BIT(27);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::smlalbb(uint32_t opcode) // SMLALBB RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::smlalbb(uint32_t opcode) // SMLALBB RdLo,RdHi,Rm,Rs
 {
+    if (cpu == 1) return 1; // ARM9 exclusive
+
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
@@ -1257,10 +1353,14 @@ FORCE_INLINE void Interpreter::smlalbb(uint32_t opcode) // SMLALBB RdLo,RdHi,Rm,
     res += op2 * op3;
     *op1 = res >> 32;
     *op0 = res;
+
+    return 2;
 }
 
-FORCE_INLINE void Interpreter::smlalbt(uint32_t opcode) // SMLALBT RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::smlalbt(uint32_t opcode) // SMLALBT RdLo,RdHi,Rm,Rs
 {
+    if (cpu == 1) return 1; // ARM9 exclusive
+
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
@@ -1272,10 +1372,14 @@ FORCE_INLINE void Interpreter::smlalbt(uint32_t opcode) // SMLALBT RdLo,RdHi,Rm,
     res += op2 * op3;
     *op1 = res >> 32;
     *op0 = res;
+
+    return 2;
 }
 
-FORCE_INLINE void Interpreter::smlaltb(uint32_t opcode) // SMLALTB RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::smlaltb(uint32_t opcode) // SMLALTB RdLo,RdHi,Rm,Rs
 {
+    if (cpu == 1) return 1; // ARM9 exclusive
+
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
@@ -1287,10 +1391,14 @@ FORCE_INLINE void Interpreter::smlaltb(uint32_t opcode) // SMLALTB RdLo,RdHi,Rm,
     res += op2 * op3;
     *op1 = res >> 32;
     *op0 = res;
+
+    return 2;
 }
 
-FORCE_INLINE void Interpreter::smlaltt(uint32_t opcode) // SMLALTT RdLo,RdHi,Rm,Rs
+FORCE_INLINE int Interpreter::smlaltt(uint32_t opcode) // SMLALTT RdLo,RdHi,Rm,Rs
 {
+    if (cpu == 1) return 1; // ARM9 exclusive
+
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
@@ -1302,10 +1410,14 @@ FORCE_INLINE void Interpreter::smlaltt(uint32_t opcode) // SMLALTT RdLo,RdHi,Rm,
     res += op2 * op3;
     *op1 = res >> 32;
     *op0 = res;
+
+    return 2;
 }
 
-FORCE_INLINE void Interpreter::qadd(uint32_t opcode) // QADD Rd,Rm,Rn
+FORCE_INLINE int Interpreter::qadd(uint32_t opcode) // QADD Rd,Rm,Rn
 {
+    if (cpu == 1) return 1; // ARM9 exclusive
+
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     int32_t op1 = *registers[opcode & 0x0000000F];
@@ -1325,10 +1437,14 @@ FORCE_INLINE void Interpreter::qadd(uint32_t opcode) // QADD Rd,Rm,Rn
     }
 
     *op0 = res;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::qsub(uint32_t opcode) // QSUB Rd,Rm,Rn
+FORCE_INLINE int Interpreter::qsub(uint32_t opcode) // QSUB Rd,Rm,Rn
 {
+    if (cpu == 1) return 1; // ARM9 exclusive
+
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     int32_t op1 = *registers[opcode & 0x0000000F];
@@ -1348,10 +1464,14 @@ FORCE_INLINE void Interpreter::qsub(uint32_t opcode) // QSUB Rd,Rm,Rn
     }
 
     *op0 = res;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::qdadd(uint32_t opcode) // QDADD Rd,Rm,Rn
+FORCE_INLINE int Interpreter::qdadd(uint32_t opcode) // QDADD Rd,Rm,Rn
 {
+    if (cpu == 1) return 1; // ARM9 exclusive
+
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     int32_t op1 = *registers[opcode & 0x0000000F];
@@ -1383,10 +1503,14 @@ FORCE_INLINE void Interpreter::qdadd(uint32_t opcode) // QDADD Rd,Rm,Rn
     }
 
     *op0 = res;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::qdsub(uint32_t opcode) // QDSUB Rd,Rm,Rn
+FORCE_INLINE int Interpreter::qdsub(uint32_t opcode) // QDSUB Rd,Rm,Rn
 {
+    if (cpu == 1) return 1; // ARM9 exclusive
+
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
     int32_t op1 = *registers[opcode & 0x0000000F];
@@ -1418,11 +1542,13 @@ FORCE_INLINE void Interpreter::qdsub(uint32_t opcode) // QDSUB Rd,Rm,Rn
     }
 
     *op0 = res;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::clz(uint32_t opcode) // CLZ Rd,Rm
+FORCE_INLINE int Interpreter::clz(uint32_t opcode) // CLZ Rd,Rm
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -1436,9 +1562,11 @@ FORCE_INLINE void Interpreter::clz(uint32_t opcode) // CLZ Rd,Rm
         count++;
     }
     *op0 = 32 - count;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::addRegT(uint16_t opcode) // ADD Rd,Rs,Rn
+FORCE_INLINE int Interpreter::addRegT(uint16_t opcode) // ADD Rd,Rs,Rn
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1454,9 +1582,11 @@ FORCE_INLINE void Interpreter::addRegT(uint16_t opcode) // ADD Rd,Rs,Rn
     if (op1 > *op0)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::subRegT(uint16_t opcode) // SUB Rd,Rs,Rn
+FORCE_INLINE int Interpreter::subRegT(uint16_t opcode) // SUB Rd,Rs,Rn
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1472,9 +1602,11 @@ FORCE_INLINE void Interpreter::subRegT(uint16_t opcode) // SUB Rd,Rs,Rn
     if (op1 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::addHT(uint16_t opcode) // ADD Rd,Rs
+FORCE_INLINE int Interpreter::addHT(uint16_t opcode) // ADD Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[((opcode & 0x0080) >> 4) | (opcode & 0x0007)];
@@ -1484,11 +1616,12 @@ FORCE_INLINE void Interpreter::addHT(uint16_t opcode) // ADD Rd,Rs
     *op0 += op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~1) + 2;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~1) + 2;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::cmpHT(uint16_t opcode) // CMP Rd,Rs
+FORCE_INLINE int Interpreter::cmpHT(uint16_t opcode) // CMP Rd,Rs
 {
     // Decode the operands
     uint32_t op1 = *registers[((opcode & 0x0080) >> 4) | (opcode & 0x0007)];
@@ -1503,9 +1636,11 @@ FORCE_INLINE void Interpreter::cmpHT(uint16_t opcode) // CMP Rd,Rs
     if (op1 >= res)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::movHT(uint16_t opcode) // MOV Rd,Rs
+FORCE_INLINE int Interpreter::movHT(uint16_t opcode) // MOV Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[((opcode & 0x0080) >> 4) | (opcode & 0x0007)];
@@ -1515,11 +1650,12 @@ FORCE_INLINE void Interpreter::movHT(uint16_t opcode) // MOV Rd,Rs
     *op0 = op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~1) + 2;
+    if (op0 != registers[15]) return 1;
+    *registers[15] = (*registers[15] & ~1) + 2;
+    return 3;
 }
 
-FORCE_INLINE void Interpreter::addPcT(uint16_t opcode) // ADD Rd,PC,#i
+FORCE_INLINE int Interpreter::addPcT(uint16_t opcode) // ADD Rd,PC,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -1528,9 +1664,11 @@ FORCE_INLINE void Interpreter::addPcT(uint16_t opcode) // ADD Rd,PC,#i
 
     // Addition
     *op0 = op1 + op2;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::addSpT(uint16_t opcode) // ADD Rd,SP,#i
+FORCE_INLINE int Interpreter::addSpT(uint16_t opcode) // ADD Rd,SP,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -1539,9 +1677,11 @@ FORCE_INLINE void Interpreter::addSpT(uint16_t opcode) // ADD Rd,SP,#i
 
     // Addition
     *op0 = op1 + op2;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::addSpImmT(uint16_t opcode) // ADD SP,#i
+FORCE_INLINE int Interpreter::addSpImmT(uint16_t opcode) // ADD SP,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[13];
@@ -1549,9 +1689,11 @@ FORCE_INLINE void Interpreter::addSpImmT(uint16_t opcode) // ADD SP,#i
 
     // Addition
     *op0 += op2;
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::lslImmT(uint16_t opcode) // LSL Rd,Rs,#i
+FORCE_INLINE int Interpreter::lslImmT(uint16_t opcode) // LSL Rd,Rs,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1568,9 +1710,11 @@ FORCE_INLINE void Interpreter::lslImmT(uint16_t opcode) // LSL Rd,Rs,#i
     {
         if (op1 & BIT(32 - op2)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
     }
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::lsrImmT(uint16_t opcode) // LSR Rd,Rs,#i
+FORCE_INLINE int Interpreter::lsrImmT(uint16_t opcode) // LSR Rd,Rs,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1585,9 +1729,11 @@ FORCE_INLINE void Interpreter::lsrImmT(uint16_t opcode) // LSR Rd,Rs,#i
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
     if (op1 & BIT(op2 ? (op2 - 1) : 31)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::asrImmT(uint16_t opcode) // ASR Rd,Rs,#i
+FORCE_INLINE int Interpreter::asrImmT(uint16_t opcode) // ASR Rd,Rs,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1603,9 +1749,11 @@ FORCE_INLINE void Interpreter::asrImmT(uint16_t opcode) // ASR Rd,Rs,#i
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
     if ((op2 == 0 && (op1 & BIT(31))) || (op2 > 0 && (op1 & BIT(op2 - 1))))
         cpsr |= BIT(29); else cpsr &= ~BIT(29);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::addImm3T(uint16_t opcode) // ADD Rd,Rs,#i
+FORCE_INLINE int Interpreter::addImm3T(uint16_t opcode) // ADD Rd,Rs,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1621,9 +1769,11 @@ FORCE_INLINE void Interpreter::addImm3T(uint16_t opcode) // ADD Rd,Rs,#i
     if (op1 > *op0)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::subImm3T(uint16_t opcode) // SUB Rd,Rs,#i
+FORCE_INLINE int Interpreter::subImm3T(uint16_t opcode) // SUB Rd,Rs,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1639,9 +1789,11 @@ FORCE_INLINE void Interpreter::subImm3T(uint16_t opcode) // SUB Rd,Rs,#i
     if (op1 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::addImm8T(uint16_t opcode) // ADD Rd,#i
+FORCE_INLINE int Interpreter::addImm8T(uint16_t opcode) // ADD Rd,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -1657,9 +1809,11 @@ FORCE_INLINE void Interpreter::addImm8T(uint16_t opcode) // ADD Rd,#i
     if (op1 > *op0)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::subImm8T(uint16_t opcode) // SUB Rd,#i
+FORCE_INLINE int Interpreter::subImm8T(uint16_t opcode) // SUB Rd,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -1675,10 +1829,12 @@ FORCE_INLINE void Interpreter::subImm8T(uint16_t opcode) // SUB Rd,#i
     if (op1 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
 
-FORCE_INLINE void Interpreter::cmpImm8T(uint16_t opcode) // CMP Rd,#i
+FORCE_INLINE int Interpreter::cmpImm8T(uint16_t opcode) // CMP Rd,#i
 {
     // Decode the operands
     uint32_t op1 = *registers[(opcode & 0x0700) >> 8];
@@ -1693,9 +1849,11 @@ FORCE_INLINE void Interpreter::cmpImm8T(uint16_t opcode) // CMP Rd,#i
     if (op1 >= res)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::movImm8T(uint16_t opcode) // MOV Rd,#i
+FORCE_INLINE int Interpreter::movImm8T(uint16_t opcode) // MOV Rd,#i
 {
     // Decode the other operand
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -1707,9 +1865,11 @@ FORCE_INLINE void Interpreter::movImm8T(uint16_t opcode) // MOV Rd,#i
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::lslDpT(uint16_t opcode) // LSL Rd,Rs
+FORCE_INLINE int Interpreter::lslDpT(uint16_t opcode) // LSL Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1727,9 +1887,11 @@ FORCE_INLINE void Interpreter::lslDpT(uint16_t opcode) // LSL Rd,Rs
     {
         if (op2 <= 32 && (op1 & BIT(32 - op2))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
     }
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::lsrDpT(uint16_t opcode) // LSR Rd,Rs
+FORCE_INLINE int Interpreter::lsrDpT(uint16_t opcode) // LSR Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1747,9 +1909,11 @@ FORCE_INLINE void Interpreter::lsrDpT(uint16_t opcode) // LSR Rd,Rs
     {
         if (op2 <= 32 && (op1 & BIT(op2 - 1))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
     }
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::asrDpT(uint16_t opcode) // ASR Rd,Rs
+FORCE_INLINE int Interpreter::asrDpT(uint16_t opcode) // ASR Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1768,9 +1932,11 @@ FORCE_INLINE void Interpreter::asrDpT(uint16_t opcode) // ASR Rd,Rs
         if ((op2 > 32 && (op1 & BIT(31))) || (op2 <= 32 && (op1 & BIT(op2 - 1))))
             cpsr |= BIT(29); else cpsr &= ~BIT(29);
     }
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::rorDpT(uint16_t opcode) // ROR Rd,Rs
+FORCE_INLINE int Interpreter::rorDpT(uint16_t opcode) // ROR Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1787,9 +1953,11 @@ FORCE_INLINE void Interpreter::rorDpT(uint16_t opcode) // ROR Rd,Rs
     {
         if (op1 & BIT((op2 - 1) % 32)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
     }
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::andDpT(uint16_t opcode) // AND Rd,Rs
+FORCE_INLINE int Interpreter::andDpT(uint16_t opcode) // AND Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1801,9 +1969,11 @@ FORCE_INLINE void Interpreter::andDpT(uint16_t opcode) // AND Rd,Rs
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::eorDpT(uint16_t opcode) // EOR Rd,Rs
+FORCE_INLINE int Interpreter::eorDpT(uint16_t opcode) // EOR Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1815,9 +1985,11 @@ FORCE_INLINE void Interpreter::eorDpT(uint16_t opcode) // EOR Rd,Rs
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::adcDpT(uint16_t opcode) // ADC Rd,Rs
+FORCE_INLINE int Interpreter::adcDpT(uint16_t opcode) // ADC Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1833,9 +2005,11 @@ FORCE_INLINE void Interpreter::adcDpT(uint16_t opcode) // ADC Rd,Rs
     if (op1 > *op0 || (op2 == 0xFFFFFFFF && (cpsr & BIT(29)))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::sbcDpT(uint16_t opcode) // SBC Rd,Rs
+FORCE_INLINE int Interpreter::sbcDpT(uint16_t opcode) // SBC Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1851,9 +2025,11 @@ FORCE_INLINE void Interpreter::sbcDpT(uint16_t opcode) // SBC Rd,Rs
     if (op1 >= *op0 && (op2 != 0xFFFFFFFF || (cpsr & BIT(29)))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::tstDpT(uint16_t opcode) // TST Rd,Rs
+FORCE_INLINE int Interpreter::tstDpT(uint16_t opcode) // TST Rd,Rs
 {
     // Decode the operands
     uint32_t op1 = *registers[opcode & 0x0007];
@@ -1865,9 +2041,11 @@ FORCE_INLINE void Interpreter::tstDpT(uint16_t opcode) // TST Rd,Rs
     // Set the flags
     if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::cmpDpT(uint16_t opcode) // CMP Rd,Rs
+FORCE_INLINE int Interpreter::cmpDpT(uint16_t opcode) // CMP Rd,Rs
 {
     // Decode the operands
     uint32_t op1 = *registers[opcode & 0x0007];
@@ -1882,9 +2060,11 @@ FORCE_INLINE void Interpreter::cmpDpT(uint16_t opcode) // CMP Rd,Rs
     if (op1 >= res)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::cmnDpT(uint16_t opcode) // CMN Rd,Rs
+FORCE_INLINE int Interpreter::cmnDpT(uint16_t opcode) // CMN Rd,Rs
 {
     // Decode the operands
     uint32_t op1 = *registers[opcode & 0x0007];
@@ -1899,9 +2079,11 @@ FORCE_INLINE void Interpreter::cmnDpT(uint16_t opcode) // CMN Rd,Rs
     if (op1 > res)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) == (op1 & BIT(31)) && (res & BIT(31)) != (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::orrDpT(uint16_t opcode) // ORR Rd,Rs
+FORCE_INLINE int Interpreter::orrDpT(uint16_t opcode) // ORR Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1913,9 +2095,11 @@ FORCE_INLINE void Interpreter::orrDpT(uint16_t opcode) // ORR Rd,Rs
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::bicDpT(uint16_t opcode) // BIC Rd,Rs
+FORCE_INLINE int Interpreter::bicDpT(uint16_t opcode) // BIC Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1927,9 +2111,11 @@ FORCE_INLINE void Interpreter::bicDpT(uint16_t opcode) // BIC Rd,Rs
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::mvnDpT(uint16_t opcode) // MVN Rd,Rs
+FORCE_INLINE int Interpreter::mvnDpT(uint16_t opcode) // MVN Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1941,9 +2127,11 @@ FORCE_INLINE void Interpreter::mvnDpT(uint16_t opcode) // MVN Rd,Rs
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::negDpT(uint16_t opcode) // NEG Rd,Rs
+FORCE_INLINE int Interpreter::negDpT(uint16_t opcode) // NEG Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1959,21 +2147,28 @@ FORCE_INLINE void Interpreter::negDpT(uint16_t opcode) // NEG Rd,Rs
     if (op1 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
     if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
         cpsr |= BIT(28); else cpsr &= ~BIT(28);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::mulDpT(uint16_t opcode) // MUL Rd,Rs
+FORCE_INLINE int Interpreter::mulDpT(uint16_t opcode) // MUL Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
-    uint32_t op2 = *registers[(opcode & 0x0038) >> 3];
+    uint32_t op1 = *registers[(opcode & 0x0038) >> 3];
+    int32_t op2 = *registers[opcode & 0x0007];
 
     // Multiplication
-    *op0 *= op2;
+    *op0 = op1 * op2;
 
     // Set the flags
     if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
     if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (cpu == 1) cpsr &= ~BIT(29); // The carry flag is destroyed on ARM7
+
+    // Calculate timing
+    if (cpu == 0) return 4;
+    int m; for (m = 1; (op2 < (-1 << (m * 8)) || op2 >= (1 << (m * 8))) && m < 4; m++);
+    return m + 1;
 }
 
 #endif // INTERPRETER_ALU

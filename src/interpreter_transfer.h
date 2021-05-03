@@ -83,7 +83,7 @@ FORCE_INLINE uint32_t Interpreter::rprr(uint32_t opcode) // Rm,ROR #i
     return shift ? ((value << (32 - shift)) | (value >> shift)) : (((cpsr & BIT(29)) << 2) | (value >> 1));
 }
 
-FORCE_INLINE void Interpreter::ldrsbOf(uint32_t opcode, uint32_t op2) // LDRSB Rd,[Rn,op2]
+FORCE_INLINE int Interpreter::ldrsbOf(uint32_t opcode, uint32_t op2) // LDRSB Rd,[Rn,op2]
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -93,11 +93,12 @@ FORCE_INLINE void Interpreter::ldrsbOf(uint32_t opcode, uint32_t op2) // LDRSB R
     *op0 = core->memory.read<int8_t>(cpu, op1 + op2);
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::ldrshOf(uint32_t opcode, uint32_t op2) // LDRSH Rd,[Rn,op2]
+FORCE_INLINE int Interpreter::ldrshOf(uint32_t opcode, uint32_t op2) // LDRSH Rd,[Rn,op2]
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -111,11 +112,12 @@ FORCE_INLINE void Interpreter::ldrshOf(uint32_t opcode, uint32_t op2) // LDRSH R
         *op0 = (int16_t)*op0 >> 8;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::ldrbOf(uint32_t opcode, uint32_t op2) // LDRB Rd,[Rn,op2]
+FORCE_INLINE int Interpreter::ldrbOf(uint32_t opcode, uint32_t op2) // LDRB Rd,[Rn,op2]
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -124,22 +126,24 @@ FORCE_INLINE void Interpreter::ldrbOf(uint32_t opcode, uint32_t op2) // LDRB Rd,
     // Byte load, pre-adjust without writeback
     *op0 = core->memory.read<uint8_t>(cpu, op1 + op2);
 
+    if (op0 != registers[15])
+        return ((cpu == 0) ? 1 : 3);
+
     // Handle pipelining and THUMB switching
-    if (op0 == registers[15])
+    if (cpu == 0 && (*op0 & BIT(0)))
     {
-        if (cpu == 0 && (*op0 & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::strbOf(uint32_t opcode, uint32_t op2) // STRB Rd,[Rn,op2]
+FORCE_INLINE int Interpreter::strbOf(uint32_t opcode, uint32_t op2) // STRB Rd,[Rn,op2]
 {
     // Decode the other operands
     // When used as Rd, the program counter is read with +4
@@ -148,9 +152,11 @@ FORCE_INLINE void Interpreter::strbOf(uint32_t opcode, uint32_t op2) // STRB Rd,
 
     // Byte store, pre-adjust without writeback
     core->memory.write<uint8_t>(cpu, op1 + op2, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrhOf(uint32_t opcode, uint32_t op2) // LDRH Rd,[Rn,op2]
+FORCE_INLINE int Interpreter::ldrhOf(uint32_t opcode, uint32_t op2) // LDRH Rd,[Rn,op2]
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -164,11 +170,12 @@ FORCE_INLINE void Interpreter::ldrhOf(uint32_t opcode, uint32_t op2) // LDRH Rd,
         *op0 = (*op0 << 24) | (*op0 >> 8);
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::strhOf(uint32_t opcode, uint32_t op2) // STRH Rd,[Rn,op2]
+FORCE_INLINE int Interpreter::strhOf(uint32_t opcode, uint32_t op2) // STRH Rd,[Rn,op2]
 {
     // Decode the other operands
     // When used as Rd, the program counter is read with +4
@@ -177,9 +184,11 @@ FORCE_INLINE void Interpreter::strhOf(uint32_t opcode, uint32_t op2) // STRH Rd,
 
     // Half-word store, pre-adjust without writeback
     core->memory.write<uint16_t>(cpu, op1 + op2, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrOf(uint32_t opcode, uint32_t op2) // LDR Rd,[Rn,op2]
+FORCE_INLINE int Interpreter::ldrOf(uint32_t opcode, uint32_t op2) // LDR Rd,[Rn,op2]
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -195,22 +204,24 @@ FORCE_INLINE void Interpreter::ldrOf(uint32_t opcode, uint32_t op2) // LDR Rd,[R
         *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
     }
 
+    if (op0 != registers[15])
+        return ((cpu == 0) ? 1 : 3);
+
     // Handle pipelining and THUMB switching
-    if (op0 == registers[15])
+    if (cpu == 0 && (*op0 & BIT(0)))
     {
-        if (cpu == 0 && (*op0 & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::strOf(uint32_t opcode, uint32_t op2) // STR Rd,[Rn,op2]
+FORCE_INLINE int Interpreter::strOf(uint32_t opcode, uint32_t op2) // STR Rd,[Rn,op2]
 {
     // Decode the other operands
     // When used as Rd, the program counter is read with +4
@@ -219,37 +230,43 @@ FORCE_INLINE void Interpreter::strOf(uint32_t opcode, uint32_t op2) // STR Rd,[R
 
     // Word store, pre-adjust without writeback
     core->memory.write<uint32_t>(cpu, op1 + op2, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrdOf(uint32_t opcode, uint32_t op2) // LDRD Rd,[Rn,op2]
+FORCE_INLINE int Interpreter::ldrdOf(uint32_t opcode, uint32_t op2) // LDRD Rd,[Rn,op2]
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the other operands
     uint8_t op0 = (opcode & 0x0000F000) >> 12;
-    if (op0 == 15) return;
+    if (op0 == 15) return 1;
     uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
 
     // Double word load, pre-adjust without writeback
     *registers[op0]     = core->memory.read<uint32_t>(cpu, op1 + op2);
     *registers[op0 + 1] = core->memory.read<uint32_t>(cpu, op1 + op2 + 4);
+
+    return 2;
 }
 
-FORCE_INLINE void Interpreter::strdOf(uint32_t opcode, uint32_t op2) // STRD Rd,[Rn,op2]
+FORCE_INLINE int Interpreter::strdOf(uint32_t opcode, uint32_t op2) // STRD Rd,[Rn,op2]
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the other operands
     uint8_t op0 = (opcode & 0x0000F000) >> 12;
-    if (op0 == 15) return;
+    if (op0 == 15) return 1;
     uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
 
     // Double word store, pre-adjust without writeback
     core->memory.write<uint32_t>(cpu, op1 + op2,     *registers[op0]);
     core->memory.write<uint32_t>(cpu, op1 + op2 + 4, *registers[op0 + 1]);
+
+    return 2;
 }
 
-FORCE_INLINE void Interpreter::ldrsbPr(uint32_t opcode, uint32_t op2) // LDRSB Rd,[Rn,op2]!
+FORCE_INLINE int Interpreter::ldrsbPr(uint32_t opcode, uint32_t op2) // LDRSB Rd,[Rn,op2]!
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -260,11 +277,12 @@ FORCE_INLINE void Interpreter::ldrsbPr(uint32_t opcode, uint32_t op2) // LDRSB R
     *op0 = core->memory.read<int8_t>(cpu, *op1);
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::ldrshPr(uint32_t opcode, uint32_t op2) // LDRSH Rd,[Rn,op2]!
+FORCE_INLINE int Interpreter::ldrshPr(uint32_t opcode, uint32_t op2) // LDRSH Rd,[Rn,op2]!
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -280,11 +298,12 @@ FORCE_INLINE void Interpreter::ldrshPr(uint32_t opcode, uint32_t op2) // LDRSH R
         *op0 = (int16_t)*op0 >> 8;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::ldrbPr(uint32_t opcode, uint32_t op2) // LDRB Rd,[Rn,op2]!
+FORCE_INLINE int Interpreter::ldrbPr(uint32_t opcode, uint32_t op2) // LDRB Rd,[Rn,op2]!
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -294,22 +313,24 @@ FORCE_INLINE void Interpreter::ldrbPr(uint32_t opcode, uint32_t op2) // LDRB Rd,
     *op1 += op2;
     *op0 = core->memory.read<uint8_t>(cpu, *op1);
 
+    if (op0 != registers[15])
+        return ((cpu == 0) ? 1 : 3);
+
     // Handle pipelining and THUMB switching
-    if (op0 == registers[15])
+    if (cpu == 0 && (*op0 & BIT(0)))
     {
-        if (cpu == 0 && (*op0 & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::strbPr(uint32_t opcode, uint32_t op2) // STRB Rd,[Rn,op2]!
+FORCE_INLINE int Interpreter::strbPr(uint32_t opcode, uint32_t op2) // STRB Rd,[Rn,op2]!
 {
     // Decode the other operands
     // When used as Rd, the program counter is read with +4
@@ -319,9 +340,11 @@ FORCE_INLINE void Interpreter::strbPr(uint32_t opcode, uint32_t op2) // STRB Rd,
     // Byte store, pre-adjust with writeback
     *op1 += op2;
     core->memory.write<uint8_t>(cpu, *op1, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrhPr(uint32_t opcode, uint32_t op2) // LDRH Rd,[Rn,op2]!
+FORCE_INLINE int Interpreter::ldrhPr(uint32_t opcode, uint32_t op2) // LDRH Rd,[Rn,op2]!
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -337,11 +360,12 @@ FORCE_INLINE void Interpreter::ldrhPr(uint32_t opcode, uint32_t op2) // LDRH Rd,
         *op0 = (*op0 << 24) | (*op0 >> 8);
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::strhPr(uint32_t opcode, uint32_t op2) // STRH Rd,[Rn,op2]!
+FORCE_INLINE int Interpreter::strhPr(uint32_t opcode, uint32_t op2) // STRH Rd,[Rn,op2]!
 {
     // Decode the other operands
     // When used as Rd, the program counter is read with +4
@@ -351,9 +375,11 @@ FORCE_INLINE void Interpreter::strhPr(uint32_t opcode, uint32_t op2) // STRH Rd,
     // Half-word store, pre-adjust with writeback
     *op1 += op2;
     core->memory.write<uint16_t>(cpu, *op1, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrPr(uint32_t opcode, uint32_t op2) // LDR Rd,[Rn,op2]!
+FORCE_INLINE int Interpreter::ldrPr(uint32_t opcode, uint32_t op2) // LDR Rd,[Rn,op2]!
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -371,22 +397,24 @@ FORCE_INLINE void Interpreter::ldrPr(uint32_t opcode, uint32_t op2) // LDR Rd,[R
         *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
     }
 
+    if (op0 != registers[15])
+        return ((cpu == 0) ? 1 : 3);
+
     // Handle pipelining and THUMB switching
-    if (op0 == registers[15])
+    if (cpu == 0 && (*op0 & BIT(0)))
     {
-        if (cpu == 0 && (*op0 & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::strPr(uint32_t opcode, uint32_t op2) // STR Rd,[Rn,op2]!
+FORCE_INLINE int Interpreter::strPr(uint32_t opcode, uint32_t op2) // STR Rd,[Rn,op2]!
 {
     // Decode the other operands
     // When used as Rd, the program counter is read with +4
@@ -396,39 +424,45 @@ FORCE_INLINE void Interpreter::strPr(uint32_t opcode, uint32_t op2) // STR Rd,[R
     // Word store, pre-adjust with writeback
     *op1 += op2;
     core->memory.write<uint32_t>(cpu, *op1, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrdPr(uint32_t opcode, uint32_t op2) // LDRD Rd,[Rn,op2]!
+FORCE_INLINE int Interpreter::ldrdPr(uint32_t opcode, uint32_t op2) // LDRD Rd,[Rn,op2]!
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the other operands
     uint8_t op0 = (opcode & 0x0000F000) >> 12;
-    if (op0 == 15) return;
+    if (op0 == 15) return 1;
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
 
     // Double word load, pre-adjust with writeback
     *op1 += op2;
     *registers[op0]     = core->memory.read<uint32_t>(cpu, *op1);
     *registers[op0 + 1] = core->memory.read<uint32_t>(cpu, *op1 + 4);
+
+    return 2;
 }
 
-FORCE_INLINE void Interpreter::strdPr(uint32_t opcode, uint32_t op2) // STRD Rd,[Rn,op2]!
+FORCE_INLINE int Interpreter::strdPr(uint32_t opcode, uint32_t op2) // STRD Rd,[Rn,op2]!
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the other operands
     uint8_t op0 = (opcode & 0x0000F000) >> 12;
-    if (op0 == 15) return;
+    if (op0 == 15) return 1;
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
 
     // Double word store, pre-adjust with writeback
     *op1 += op2;
     core->memory.write<uint32_t>(cpu, *op1,     *registers[op0]);
     core->memory.write<uint32_t>(cpu, *op1 + 4, *registers[op0 + 1]);
+
+    return 2;
 }
 
-FORCE_INLINE void Interpreter::ldrsbPt(uint32_t opcode, uint32_t op2) // LDRSB Rd,[Rn],op2
+FORCE_INLINE int Interpreter::ldrsbPt(uint32_t opcode, uint32_t op2) // LDRSB Rd,[Rn],op2
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -439,11 +473,12 @@ FORCE_INLINE void Interpreter::ldrsbPt(uint32_t opcode, uint32_t op2) // LDRSB R
     if (op0 != op1) *op1 += op2;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::ldrshPt(uint32_t opcode, uint32_t op2) // LDRSH Rd,[Rn],op2
+FORCE_INLINE int Interpreter::ldrshPt(uint32_t opcode, uint32_t op2) // LDRSH Rd,[Rn],op2
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -459,11 +494,12 @@ FORCE_INLINE void Interpreter::ldrshPt(uint32_t opcode, uint32_t op2) // LDRSH R
         *op0 = (int16_t)*op0 >> 8;
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::ldrbPt(uint32_t opcode, uint32_t op2) // LDRB Rd,[Rn],op2
+FORCE_INLINE int Interpreter::ldrbPt(uint32_t opcode, uint32_t op2) // LDRB Rd,[Rn],op2
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -473,22 +509,24 @@ FORCE_INLINE void Interpreter::ldrbPt(uint32_t opcode, uint32_t op2) // LDRB Rd,
     *op0 = core->memory.read<uint8_t>(cpu, *op1);
     if (op0 != op1) *op1 += op2;
 
+    if (op0 != registers[15])
+        return ((cpu == 0) ? 1 : 3);
+
     // Handle pipelining and THUMB switching
-    if (op0 == registers[15])
+    if (cpu == 0 && (*op0 & BIT(0)))
     {
-        if (cpu == 0 && (*op0 & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::strbPt(uint32_t opcode, uint32_t op2) // STRB Rd,[Rn],op2
+FORCE_INLINE int Interpreter::strbPt(uint32_t opcode, uint32_t op2) // STRB Rd,[Rn],op2
 {
     // Decode the other operands
     // When used as Rd, the program counter is read with +4
@@ -498,9 +536,11 @@ FORCE_INLINE void Interpreter::strbPt(uint32_t opcode, uint32_t op2) // STRB Rd,
     // Byte store, post-adjust
     core->memory.write<uint8_t>(cpu, *op1, op0);
     *op1 += op2;
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrhPt(uint32_t opcode, uint32_t op2) // LDRH Rd,[Rn],op2
+FORCE_INLINE int Interpreter::ldrhPt(uint32_t opcode, uint32_t op2) // LDRH Rd,[Rn],op2
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -516,11 +556,12 @@ FORCE_INLINE void Interpreter::ldrhPt(uint32_t opcode, uint32_t op2) // LDRH Rd,
         *op0 = (*op0 << 24) | (*op0 >> 8);
 
     // Handle pipelining
-    if (op0 == registers[15])
-        *registers[15] = (*registers[15] & ~3) + 4;
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    *registers[15] = (*registers[15] & ~3) + 4;
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::strhPt(uint32_t opcode, uint32_t op2) // STRH Rd,[Rn],op2
+FORCE_INLINE int Interpreter::strhPt(uint32_t opcode, uint32_t op2) // STRH Rd,[Rn],op2
 {
     // Decode the other operands
     // When used as Rd, the program counter is read with +4
@@ -530,9 +571,11 @@ FORCE_INLINE void Interpreter::strhPt(uint32_t opcode, uint32_t op2) // STRH Rd,
     // Half-word store, post-adjust
     core->memory.write<uint16_t>(cpu, *op1, op0);
     *op1 += op2;
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrPt(uint32_t opcode, uint32_t op2) // LDR Rd,[Rn],op2
+FORCE_INLINE int Interpreter::ldrPt(uint32_t opcode, uint32_t op2) // LDR Rd,[Rn],op2
 {
     // Decode the other operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -552,22 +595,24 @@ FORCE_INLINE void Interpreter::ldrPt(uint32_t opcode, uint32_t op2) // LDR Rd,[R
     // Post-adjust
     if (op0 != op1) *op1 += op2;
 
+    if (op0 != registers[15])
+        return ((cpu == 0) ? 1 : 3);
+
     // Handle pipelining and THUMB switching
-    if (op0 == registers[15])
+    if (cpu == 0 && (*op0 & BIT(0)))
     {
-        if (cpu == 0 && (*op0 & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return 5;
 }
 
-FORCE_INLINE void Interpreter::strPt(uint32_t opcode, uint32_t op2) // STR Rd,[Rn],op2
+FORCE_INLINE int Interpreter::strPt(uint32_t opcode, uint32_t op2) // STR Rd,[Rn],op2
 {
     // Decode the other operands
     // When used as Rd, the program counter is read with +4
@@ -577,39 +622,45 @@ FORCE_INLINE void Interpreter::strPt(uint32_t opcode, uint32_t op2) // STR Rd,[R
     // Word store, post-adjust
     core->memory.write<uint32_t>(cpu, *op1, op0);
     *op1 += op2;
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrdPt(uint32_t opcode, uint32_t op2) // LDRD Rd,[Rn],op2
+FORCE_INLINE int Interpreter::ldrdPt(uint32_t opcode, uint32_t op2) // LDRD Rd,[Rn],op2
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the other operands
     uint8_t op0 = (opcode & 0x0000F000) >> 12;
-    if (op0 == 15) return;
+    if (op0 == 15) return 1;
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
 
     // Double word load, post-adjust
     *registers[op0]     = core->memory.read<uint32_t>(cpu, *op1);
     *registers[op0 + 1] = core->memory.read<uint32_t>(cpu, *op1 + 4);
     *op1 += op2;
+
+    return 2;
 }
 
-FORCE_INLINE void Interpreter::strdPt(uint32_t opcode, uint32_t op2) // STRD Rd,[Rn],op2
+FORCE_INLINE int Interpreter::strdPt(uint32_t opcode, uint32_t op2) // STRD Rd,[Rn],op2
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the other operands
     uint8_t op0 = (opcode & 0x0000F000) >> 12;
-    if (op0 == 15) return;
+    if (op0 == 15) return 1;
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
 
     // Double word store, post-adjust
     core->memory.write<uint32_t>(cpu, *op1,     *registers[op0]);
     core->memory.write<uint32_t>(cpu, *op1 + 4, *registers[op0 + 1]);
     *op1 += op2;
+
+    return 2;
 }
 
-FORCE_INLINE void Interpreter::swpb(uint32_t opcode) // SWPB Rd,Rm,[Rn]
+FORCE_INLINE int Interpreter::swpb(uint32_t opcode) // SWPB Rd,Rm,[Rn]
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -619,9 +670,11 @@ FORCE_INLINE void Interpreter::swpb(uint32_t opcode) // SWPB Rd,Rm,[Rn]
     // Swap
     *op0 = core->memory.read<uint8_t>(cpu, op2);
     core->memory.write<uint8_t>(cpu, op2, op1);
+
+    return (cpu == 0) ? 2 : 4;
 }
 
-FORCE_INLINE void Interpreter::swp(uint32_t opcode) // SWP Rd,Rm,[Rn]
+FORCE_INLINE int Interpreter::swp(uint32_t opcode) // SWP Rd,Rm,[Rn]
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -638,18 +691,24 @@ FORCE_INLINE void Interpreter::swp(uint32_t opcode) // SWP Rd,Rm,[Rn]
         int shift = (op2 & 3) * 8;
         *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
     }
+
+    return (cpu == 0) ? 2 : 4;
 }
 
-FORCE_INLINE void Interpreter::ldmda(uint32_t opcode) // LDMDA Rn, <Rlist>
+FORCE_INLINE int Interpreter::ldmda(uint32_t opcode) // LDMDA Rn, <Rlist>
 {
     // Decode the operand
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     // Block load, post-decrement
@@ -662,31 +721,37 @@ FORCE_INLINE void Interpreter::ldmda(uint32_t opcode) // LDMDA Rn, <Rlist>
         }
     }
 
+    if (!(opcode & BIT(15))) // PC not in Rlist
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+
     // Handle pipelining and THUMB switching
-    if (opcode & BIT(15))
+    if (cpu == 0 && (*registers[15] & BIT(0)))
     {
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmda(uint32_t opcode) // STMDA Rn, <Rlist>
+FORCE_INLINE int Interpreter::stmda(uint32_t opcode) // STMDA Rn, <Rlist>
 {
     // Decode the operand
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     // Block store, post-decrement
@@ -698,12 +763,15 @@ FORCE_INLINE void Interpreter::stmda(uint32_t opcode) // STMDA Rn, <Rlist>
             core->memory.write<uint32_t>(cpu, op0, *registers[i]);
         }
     }
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::ldmia(uint32_t opcode) // LDMIA Rn, <Rlist>
+FORCE_INLINE int Interpreter::ldmia(uint32_t opcode) // LDMIA Rn, <Rlist>
 {
     // Decode the operand
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
 
     // Block load, post-increment
     for (int i = 0; i < 16; i++)
@@ -712,28 +780,32 @@ FORCE_INLINE void Interpreter::ldmia(uint32_t opcode) // LDMIA Rn, <Rlist>
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
+            n++;
         }
     }
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
 
     // Handle pipelining and THUMB switching
-    if (opcode & BIT(15))
+    if (cpu == 0 && (*registers[15] & BIT(0)))
     {
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmia(uint32_t opcode) // STMIA Rn, <Rlist>
+FORCE_INLINE int Interpreter::stmia(uint32_t opcode) // STMIA Rn, <Rlist>
 {
     // Decode the operand
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
 
     // Block store, post-increment
     for (int i = 0; i < 16; i++)
@@ -742,20 +814,27 @@ FORCE_INLINE void Interpreter::stmia(uint32_t opcode) // STMIA Rn, <Rlist>
         {
             core->memory.write<uint32_t>(cpu, op0, *registers[i]);
             op0 += 4;
+            n++;
         }
     }
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::ldmdb(uint32_t opcode) // LDMDB Rn, <Rlist>
+FORCE_INLINE int Interpreter::ldmdb(uint32_t opcode) // LDMDB Rn, <Rlist>
 {
     // Decode the operand
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     // Block load, pre-decrement
@@ -768,31 +847,37 @@ FORCE_INLINE void Interpreter::ldmdb(uint32_t opcode) // LDMDB Rn, <Rlist>
         }
     }
 
+    if (!(opcode & BIT(15))) // PC not in Rlist
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+
     // Handle pipelining and THUMB switching
-    if (opcode & BIT(15))
+    if (cpu == 0 && (*registers[15] & BIT(0)))
     {
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmdb(uint32_t opcode) // STMDB Rn, <Rlist>
+FORCE_INLINE int Interpreter::stmdb(uint32_t opcode) // STMDB Rn, <Rlist>
 {
     // Decode the operand
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     // Block store, pre-decrement
@@ -804,12 +889,15 @@ FORCE_INLINE void Interpreter::stmdb(uint32_t opcode) // STMDB Rn, <Rlist>
             op0 += 4;
         }
     }
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::ldmib(uint32_t opcode) // LDMIB Rn, <Rlist>
+FORCE_INLINE int Interpreter::ldmib(uint32_t opcode) // LDMIB Rn, <Rlist>
 {
     // Decode the operand
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
 
     // Block load, pre-increment
     for (int i = 0; i < 16; i++)
@@ -818,28 +906,32 @@ FORCE_INLINE void Interpreter::ldmib(uint32_t opcode) // LDMIB Rn, <Rlist>
         {
             op0 += 4;
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
+            n++;
         }
     }
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
 
     // Handle pipelining and THUMB switching
-    if (opcode & BIT(15))
+    if (cpu == 0 && (*registers[15] & BIT(0)))
     {
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmib(uint32_t opcode) // STMIB Rn, <Rlist>
+FORCE_INLINE int Interpreter::stmib(uint32_t opcode) // STMIB Rn, <Rlist>
 {
     // Decode the operand
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
 
     // Block store, pre-increment
     for (int i = 0; i < 16; i++)
@@ -848,21 +940,28 @@ FORCE_INLINE void Interpreter::stmib(uint32_t opcode) // STMIB Rn, <Rlist>
         {
             op0 += 4;
             core->memory.write<uint32_t>(cpu, op0, *registers[i]);
+            n++;
         }
     }
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::ldmdaW(uint32_t opcode) // LDMDA Rn!, <Rlist>
+FORCE_INLINE int Interpreter::ldmdaW(uint32_t opcode) // LDMDA Rn!, <Rlist>
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     uint32_t writeback = op0;
@@ -880,43 +979,49 @@ FORCE_INLINE void Interpreter::ldmdaW(uint32_t opcode) // LDMDA Rn!, <Rlist>
     // Writeback
     // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
     // On ARM7, if Rn is in Rlist, writeback never happens
-    if (!(opcode & BIT(n)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(n) || (opcode & 0x0000FFFF & ~(BIT(n + 1) - 1)))))
-        *registers[n] = writeback;
+    if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+        *registers[m] = writeback;
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
 
     // Handle pipelining and THUMB switching
-    if (opcode & BIT(15))
+    if (cpu == 0 && (*registers[15] & BIT(0)))
     {
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmdaW(uint32_t opcode) // STMDA Rn!, <Rlist>
+FORCE_INLINE int Interpreter::stmdaW(uint32_t opcode) // STMDA Rn!, <Rlist>
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     uint32_t writeback = op0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
-    if (cpu == 1 && (opcode & BIT(n)) && (opcode & (BIT(n) - 1)))
-        *registers[n] = writeback;
+    if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
+        *registers[m] = writeback;
 
     // Block store, post-decrement
     for (int i = 0; i < 16; i++)
@@ -929,14 +1034,17 @@ FORCE_INLINE void Interpreter::stmdaW(uint32_t opcode) // STMDA Rn!, <Rlist>
     }
 
     // Writeback
-    *registers[n] = writeback;
+    *registers[m] = writeback;
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::ldmiaW(uint32_t opcode) // LDMIA Rn!, <Rlist>
+FORCE_INLINE int Interpreter::ldmiaW(uint32_t opcode) // LDMIA Rn!, <Rlist>
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // Block load, post-increment
     for (int i = 0; i < 16; i++)
@@ -945,39 +1053,43 @@ FORCE_INLINE void Interpreter::ldmiaW(uint32_t opcode) // LDMIA Rn!, <Rlist>
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
+            n++;
         }
     }
 
     // Writeback
     // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
     // On ARM7, if Rn is in Rlist, writeback never happens
-    if (!(opcode & BIT(n)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(n) || (opcode & 0x0000FFFF & ~(BIT(n + 1) - 1)))))
-        *registers[n] = op0;
+    if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+        *registers[m] = op0;
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
 
     // Handle pipelining and THUMB switching
-    if (opcode & BIT(15))
+    if (cpu == 0 && (*registers[15] & BIT(0)))
     {
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmiaW(uint32_t opcode) // STMIA Rn!, <Rlist>
+FORCE_INLINE int Interpreter::stmiaW(uint32_t opcode) // STMIA Rn!, <Rlist>
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
-    if (cpu == 1 && (opcode & BIT(n)) && (opcode & (BIT(n) - 1)))
+    if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
     {
         uint32_t writeback = op0;
         for (int i = 0; i < 16; i++)
@@ -985,7 +1097,7 @@ FORCE_INLINE void Interpreter::stmiaW(uint32_t opcode) // STMIA Rn!, <Rlist>
             if (opcode & BIT(i))
                 writeback += 4;
         }
-        *registers[n] = writeback;
+        *registers[m] = writeback;
     }
 
     // Block store, post-increment
@@ -995,24 +1107,31 @@ FORCE_INLINE void Interpreter::stmiaW(uint32_t opcode) // STMIA Rn!, <Rlist>
         {
             core->memory.write<uint32_t>(cpu, op0, *registers[i]);
             op0 += 4;
+            n++;
         }
     }
 
     // Writeback
-    *registers[n] = op0;
+    *registers[m] = op0;
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::ldmdbW(uint32_t opcode) // LDMDB Rn!, <Rlist>
+FORCE_INLINE int Interpreter::ldmdbW(uint32_t opcode) // LDMDB Rn!, <Rlist>
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     uint32_t writeback = op0;
@@ -1030,43 +1149,49 @@ FORCE_INLINE void Interpreter::ldmdbW(uint32_t opcode) // LDMDB Rn!, <Rlist>
     // Writeback
     // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
     // On ARM7, if Rn is in Rlist, writeback never happens
-    if (!(opcode & BIT(n)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(n) || (opcode & 0x0000FFFF & ~(BIT(n + 1) - 1)))))
-        *registers[n] = writeback;
+    if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+        *registers[m] = writeback;
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
 
     // Handle pipelining and THUMB switching
-    if (opcode & BIT(15))
+    if (cpu == 0 && (*registers[15] & BIT(0)))
     {
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmdbW(uint32_t opcode) // STMDB Rn!, <Rlist>
+FORCE_INLINE int Interpreter::stmdbW(uint32_t opcode) // STMDB Rn!, <Rlist>
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     uint32_t writeback = op0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
-    if (cpu == 1 && (opcode & BIT(n)) && (opcode & (BIT(n) - 1)))
-        *registers[n] = writeback;
+    if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
+        *registers[m] = writeback;
 
     // Block store, pre-decrement
     for (int i = 0; i < 16; i++)
@@ -1079,16 +1204,448 @@ FORCE_INLINE void Interpreter::stmdbW(uint32_t opcode) // STMDB Rn!, <Rlist>
     }
 
     // Writeback
-    *registers[n] = writeback;
+    *registers[m] = writeback;
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::ldmibW(uint32_t opcode) // LDMIB Rn!, <Rlist>
+FORCE_INLINE int Interpreter::ldmibW(uint32_t opcode) // LDMIB Rn!, <Rlist>
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // Block load, pre-increment
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 += 4;
+            *registers[i] = core->memory.read<uint32_t>(cpu, op0);
+            n++;
+        }
+    }
+
+    // Writeback
+    // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
+    // On ARM7, if Rn is in Rlist, writeback never happens
+    if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+        *registers[m] = op0;
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+
+    // Handle pipelining and THUMB switching
+    if (cpu == 0 && (*registers[15] & BIT(0)))
+    {
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
+    }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
+}
+
+FORCE_INLINE int Interpreter::stmibW(uint32_t opcode) // STMIB Rn!, <Rlist>
+{
+    // Decode the operand
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
+
+    // On ARM9, if Rn is in Rlist, the writeback value is never stored
+    // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
+    if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
+    {
+        uint32_t writeback = op0;
+        for (int i = 0; i < 16; i++)
+        {
+            if (opcode & BIT(i))
+                writeback += 4;
+        }
+        *registers[m] = writeback;
+    }
+
+    // Block store, pre-increment
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 += 4;
+            core->memory.write<uint32_t>(cpu, op0, *registers[i]);
+            n++;
+        }
+    }
+
+    // Writeback
+    *registers[m] = op0;
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
+}
+
+FORCE_INLINE int Interpreter::ldmdaU(uint32_t opcode) // LDMDA Rn, <Rlist>^
+{
+    // Decode the operand
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
+
+    // Decrement the address beforehand because transfers are always done in increasing order
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 -= 4;
+            n++;
+        }
+    }
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+    {
+        // Block load, post-decrement (user registers)
+        for (int i = 0; i < 16; i++)
+        {
+            if (opcode & BIT(i))
+            {
+                op0 += 4;
+                registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
+            }
+        }
+
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    }
+
+    // Block load, post-decrement
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 += 4;
+            *registers[i] = core->memory.read<uint32_t>(cpu, op0);
+        }
+    }
+
+    // Restore the SPSR
+    if (spsr)
+        setCpsr(*spsr);
+
+    // Handle pipelining and THUMB switching
+    if (cpu == 0 && (*registers[15] & BIT(0)))
+    {
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
+    }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
+}
+
+FORCE_INLINE int Interpreter::stmdaU(uint32_t opcode) // STMDA Rn, <Rlist>^
+{
+    // Decode the operand
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
+
+    // Decrement the address beforehand because transfers are always done in increasing order
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 -= 4;
+            n++;
+        }
+    }
+
+    // Block store, post-decrement (user registers)
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 += 4;
+            core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
+        }
+    }
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
+}
+
+FORCE_INLINE int Interpreter::ldmiaU(uint32_t opcode) // LDMIA Rn, <Rlist>^
+{
+    // Decode the operand
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+    {
+        // Block load, post-increment (user registers)
+        for (int i = 0; i < 16; i++)
+        {
+            if (opcode & BIT(i))
+            {
+                registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
+                op0 += 4;
+                n++;
+            }
+        }
+
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    }
+
+    // Block load, post-increment
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            *registers[i] = core->memory.read<uint32_t>(cpu, op0);
+            op0 += 4;
+            n++;
+        }
+    }
+
+    // Restore the SPSR
+    if (spsr)
+        setCpsr(*spsr);
+
+    // Handle pipelining and THUMB switching
+    if (cpu == 0 && (*registers[15] & BIT(0)))
+    {
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
+    }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
+}
+
+FORCE_INLINE int Interpreter::stmiaU(uint32_t opcode) // STMIA Rn, <Rlist>^
+{
+    // Decode the operand
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
+
+    // Block store, post-increment (user registers)
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
+            op0 += 4;
+            n++;
+        }
+    }
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
+}
+
+FORCE_INLINE int Interpreter::ldmdbU(uint32_t opcode) // LDMDB Rn, <Rlist>^
+{
+    // Decode the operand
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
+
+    // Decrement the address beforehand because transfers are always done in increasing order
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 -= 4;
+            n++;
+        }
+    }
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+    {
+        // Block load, pre-decrement (user registers)
+        for (int i = 0; i < 16; i++)
+        {
+            if (opcode & BIT(i))
+            {
+                registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
+                op0 += 4;
+            }
+        }
+
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    }
+
+    // Block load, pre-decrement
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            *registers[i] = core->memory.read<uint32_t>(cpu, op0);
+            op0 += 4;
+        }
+    }
+
+    // Restore the SPSR
+    if (spsr)
+        setCpsr(*spsr);
+
+    // Handle pipelining and THUMB switching
+    if (cpu == 0 && (*registers[15] & BIT(0)))
+    {
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
+    }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
+}
+
+FORCE_INLINE int Interpreter::stmdbU(uint32_t opcode) // STMDB Rn, <Rlist>^
+{
+    // Decode the operand
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
+
+    // Decrement the address beforehand because transfers are always done in increasing order
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 -= 4;
+            n++;
+        }
+    }
+
+    // Block store, pre-decrement (user registers)
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
+            op0 += 4;
+        }
+    }
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
+}
+
+FORCE_INLINE int Interpreter::ldmibU(uint32_t opcode) // LDMIB Rn, <Rlist>^
+{
+    // Decode the operand
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+    {
+        // Block load, pre-increment (user registers)
+        for (int i = 0; i < 16; i++)
+        {
+            if (opcode & BIT(i))
+            {
+                op0 += 4;
+                registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
+                n++;
+            }
+        }
+
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    }
+
+    // Block load, pre-increment
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 += 4;
+            *registers[i] = core->memory.read<uint32_t>(cpu, op0);
+            n++;
+        }
+    }
+
+    // Restore the SPSR
+    if (spsr)
+        setCpsr(*spsr);
+
+    // Handle pipelining and THUMB switching
+    if (cpu == 0 && (*registers[15] & BIT(0)))
+    {
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
+    }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
+}
+
+FORCE_INLINE int Interpreter::stmibU(uint32_t opcode) // STMIB Rn, <Rlist>^
+{
+    // Decode the operand
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int n = 0;
+
+    // Block store, pre-increment (user registers)
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 += 4;
+            core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
+            n++;
+        }
+    }
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
+}
+
+FORCE_INLINE int Interpreter::ldmdaUW(uint32_t opcode) // LDMDA Rn!, <Rlist>^
+{
+    // Decode the operand
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
+
+    // Decrement the address beforehand because transfers are always done in increasing order
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 -= 4;
+            n++;
+        }
+    }
+
+    uint32_t writeback = op0;
+
+    if (!(opcode & BIT(15))) // PC not in Rlist
+    {
+        // Block load, post-decrement (user registers)
+        for (int i = 0; i < 16; i++)
+        {
+            if (opcode & BIT(i))
+            {
+                op0 += 4;
+                registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
+            }
+        }
+
+        // Writeback
+        // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
+        // On ARM7, if Rn is in Rlist, writeback never happens
+        if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+            *registers[m] = writeback;
+
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    }
+
+    // Block load, post-decrement
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
@@ -1101,414 +1658,50 @@ FORCE_INLINE void Interpreter::ldmibW(uint32_t opcode) // LDMIB Rn!, <Rlist>
     // Writeback
     // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
     // On ARM7, if Rn is in Rlist, writeback never happens
-    if (!(opcode & BIT(n)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(n) || (opcode & 0x0000FFFF & ~(BIT(n + 1) - 1)))))
-        *registers[n] = op0;
+    if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+        *registers[m] = writeback;
+
+    // Restore the SPSR
+    if (spsr)
+        setCpsr(*spsr);
 
     // Handle pipelining and THUMB switching
-    if (opcode & BIT(15))
+    if (cpu == 0 && (*registers[15] & BIT(0)))
     {
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
-    }
-}
-
-FORCE_INLINE void Interpreter::stmibW(uint32_t opcode) // STMIB Rn!, <Rlist>
-{
-    // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
-
-    // On ARM9, if Rn is in Rlist, the writeback value is never stored
-    // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
-    if (cpu == 1 && (opcode & BIT(n)) && (opcode & (BIT(n) - 1)))
-    {
-        uint32_t writeback = op0;
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-                writeback += 4;
-        }
-        *registers[n] = writeback;
-    }
-
-    // Block store, pre-increment
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 += 4;
-            core->memory.write<uint32_t>(cpu, op0, *registers[i]);
-        }
-    }
-
-    // Writeback
-    *registers[n] = op0;
-}
-
-FORCE_INLINE void Interpreter::ldmdaU(uint32_t opcode) // LDMDA Rn, <Rlist>^
-{
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-            op0 -= 4;
-    }
-
-    if (opcode & BIT(15)) // PC in Rlist
-    {
-        // Block load, post-decrement
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                op0 += 4;
-                *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-            }
-        }
-
-        // Restore the SPSR
-        if (spsr)
-            setCpsr(*spsr);
-
-        // Handle pipelining and THUMB switching
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
     }
     else
     {
-        // Block load, post-decrement (user registers)
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                op0 += 4;
-                registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
-            }
-        }
+        *registers[15] = (*registers[15] & ~3) + 4;
     }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmdaU(uint32_t opcode) // STMDA Rn, <Rlist>^
+FORCE_INLINE int Interpreter::stmdaUW(uint32_t opcode) // STMDA Rn!, <Rlist>^
 {
     // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
-    }
-
-    // Block store, post-decrement (user registers)
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 += 4;
-            core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
+            n++;
         }
-    }
-}
-
-FORCE_INLINE void Interpreter::ldmiaU(uint32_t opcode) // LDMIA Rn, <Rlist>^
-{
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-
-    if (opcode & BIT(15)) // PC in Rlist
-    {
-        // Block load, post-increment
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-                op0 += 4;
-            }
-        }
-
-        // Restore the SPSR
-        if (spsr)
-            setCpsr(*spsr);
-
-        // Handle pipelining and THUMB switching
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
-    }
-    else
-    {
-        // Block load, post-increment (user registers)
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
-                op0 += 4;
-            }
-        }
-    }
-}
-
-FORCE_INLINE void Interpreter::stmiaU(uint32_t opcode) // STMIA Rn, <Rlist>^
-{
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-
-    // Block store, post-increment (user registers)
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
-            op0 += 4;
-        }
-    }
-}
-
-FORCE_INLINE void Interpreter::ldmdbU(uint32_t opcode) // LDMDB Rn, <Rlist>^
-{
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-            op0 -= 4;
-    }
-
-    if (opcode & BIT(15)) // PC in Rlist
-    {
-        // Block load, pre-decrement
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-                op0 += 4;
-            }
-        }
-
-        // Restore the SPSR
-        if (spsr)
-            setCpsr(*spsr);
-
-        // Handle pipelining and THUMB switching
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
-    }
-    else
-    {
-        // Block load, pre-decrement (user registers)
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
-                op0 += 4;
-            }
-        }
-    }
-}
-
-FORCE_INLINE void Interpreter::stmdbU(uint32_t opcode) // STMDB Rn, <Rlist>^
-{
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-            op0 -= 4;
-    }
-
-    // Block store, pre-decrement (user registers)
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
-            op0 += 4;
-        }
-    }
-}
-
-FORCE_INLINE void Interpreter::ldmibU(uint32_t opcode) // LDMIB Rn, <Rlist>^
-{
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-
-    if (opcode & BIT(15)) // PC in Rlist
-    {
-        // Block load, pre-increment
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                op0 += 4;
-                *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-            }
-        }
-
-        // Restore the SPSR
-        if (spsr)
-            setCpsr(*spsr);
-
-        // Handle pipelining and THUMB switching
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
-    }
-    else
-    {
-        // Block load, pre-increment (user registers)
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                op0 += 4;
-                registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
-            }
-        }
-    }
-}
-
-FORCE_INLINE void Interpreter::stmibU(uint32_t opcode) // STMIB Rn, <Rlist>^
-{
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-
-    // Block store, pre-increment (user registers)
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 += 4;
-            core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
-        }
-    }
-}
-
-FORCE_INLINE void Interpreter::ldmdaUW(uint32_t opcode) // LDMDA Rn!, <Rlist>^
-{
-    // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-            op0 -= 4;
-    }
-
-    uint32_t writeback = op0;
-
-    if (opcode & BIT(15)) // PC in Rlist
-    {
-        // Block load, post-decrement
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                op0 += 4;
-                *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-            }
-        }
-
-        // Restore the SPSR
-        if (spsr)
-            setCpsr(*spsr);
-
-        // Handle pipelining and THUMB switching
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
-    }
-    else
-    {
-        // Block load, post-decrement (user registers)
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                op0 += 4;
-                registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
-            }
-        }
-    }
-
-    // Writeback
-    // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
-    // On ARM7, if Rn is in Rlist, writeback never happens
-    if (!(opcode & BIT(n)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(n) || (opcode & 0x0000FFFF & ~(BIT(n + 1) - 1)))))
-        *registers[n] = writeback;
-}
-
-FORCE_INLINE void Interpreter::stmdaUW(uint32_t opcode) // STMDA Rn!, <Rlist>^
-{
-    // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-            op0 -= 4;
     }
 
     uint32_t writeback = op0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
-    if (cpu == 1 && (opcode & BIT(n)) && (opcode & (BIT(n) - 1)))
-        *registers[n] = writeback;
+    if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
+        *registers[m] = writeback;
 
     // Block store, post-decrement (user registers)
     for (int i = 0; i < 16; i++)
@@ -1521,43 +1714,19 @@ FORCE_INLINE void Interpreter::stmdaUW(uint32_t opcode) // STMDA Rn!, <Rlist>^
     }
 
     // Writeback
-    *registers[n] = writeback;
+    *registers[m] = writeback;
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::ldmiaUW(uint32_t opcode) // LDMIA Rn!, <Rlist>^
+FORCE_INLINE int Interpreter::ldmiaUW(uint32_t opcode) // LDMIA Rn!, <Rlist>^
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
-    if (opcode & BIT(15)) // PC in Rlist
-    {
-        // Block load, post-increment
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-                op0 += 4;
-            }
-        }
-
-        // Restore the SPSR
-        if (spsr)
-            setCpsr(*spsr);
-
-        // Handle pipelining and THUMB switching
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
-    }
-    else
+    if (!(opcode & BIT(15))) // PC not in Rlist
     {
         // Block load, post-increment (user registers)
         for (int i = 0; i < 16; i++)
@@ -1566,26 +1735,64 @@ FORCE_INLINE void Interpreter::ldmiaUW(uint32_t opcode) // LDMIA Rn!, <Rlist>^
             {
                 registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
                 op0 += 4;
+                n++;
             }
+        }
+
+        // Writeback
+        // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
+        // On ARM7, if Rn is in Rlist, writeback never happens
+        if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+            *registers[m] = op0;
+
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    }
+
+    // Block load, post-increment
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            *registers[i] = core->memory.read<uint32_t>(cpu, op0);
+            op0 += 4;
+            n++;
         }
     }
 
     // Writeback
     // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
     // On ARM7, if Rn is in Rlist, writeback never happens
-    if (!(opcode & BIT(n)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(n) || (opcode & 0x0000FFFF & ~(BIT(n + 1) - 1)))))
-        *registers[n] = op0;
+    if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+        *registers[m] = op0;
+
+    // Restore the SPSR
+    if (spsr)
+        setCpsr(*spsr);
+
+    // Handle pipelining and THUMB switching
+    if (cpu == 0 && (*registers[15] & BIT(0)))
+    {
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
+    }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmiaUW(uint32_t opcode) // STMIA Rn!, <Rlist>^
+FORCE_INLINE int Interpreter::stmiaUW(uint32_t opcode) // STMIA Rn!, <Rlist>^
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
-    if (cpu == 1 && (opcode & BIT(n)) && (opcode & (BIT(n) - 1)))
+    if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
     {
         uint32_t writeback = op0;
         for (int i = 0; i < 16; i++)
@@ -1593,7 +1800,7 @@ FORCE_INLINE void Interpreter::stmiaUW(uint32_t opcode) // STMIA Rn!, <Rlist>^
             if (opcode & BIT(i))
                 writeback += 4;
         }
-        *registers[n] = writeback;
+        *registers[m] = writeback;
     }
 
     // Block store, post-increment (user registers)
@@ -1603,56 +1810,36 @@ FORCE_INLINE void Interpreter::stmiaUW(uint32_t opcode) // STMIA Rn!, <Rlist>^
         {
             core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
             op0 += 4;
+            n++;
         }
     }
 
     // Writeback
-    *registers[n] = op0;
+    *registers[m] = op0;
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::ldmdbUW(uint32_t opcode) // LDMDB Rn!, <Rlist>^
+FORCE_INLINE int Interpreter::ldmdbUW(uint32_t opcode) // LDMDB Rn!, <Rlist>^
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     uint32_t writeback = op0;
 
-    if (opcode & BIT(15)) // PC in Rlist
-    {
-        // Block load, pre-decrement
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-                op0 += 4;
-            }
-        }
-
-        // Restore the SPSR
-        if (spsr)
-            setCpsr(*spsr);
-
-        // Handle pipelining and THUMB switching
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
-    }
-    else
+    if (!(opcode & BIT(15))) // PC not in Rlist
     {
         // Block load, pre-decrement (user registers)
         for (int i = 0; i < 16; i++)
@@ -1663,34 +1850,73 @@ FORCE_INLINE void Interpreter::ldmdbUW(uint32_t opcode) // LDMDB Rn!, <Rlist>^
                 op0 += 4;
             }
         }
+
+        // Writeback
+        // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
+        // On ARM7, if Rn is in Rlist, writeback never happens
+        if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+            *registers[m] = writeback;
+
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    }
+
+    // Block load, pre-decrement
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            *registers[i] = core->memory.read<uint32_t>(cpu, op0);
+            op0 += 4;
+        }
     }
 
     // Writeback
     // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
     // On ARM7, if Rn is in Rlist, writeback never happens
-    if (!(opcode & BIT(n)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(n) || (opcode & 0x0000FFFF & ~(BIT(n + 1) - 1)))))
-        *registers[n] = writeback;
+    if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+        *registers[m] = writeback;
+
+    // Restore the SPSR
+    if (spsr)
+        setCpsr(*spsr);
+
+    // Handle pipelining and THUMB switching
+    if (cpu == 0 && (*registers[15] & BIT(0)))
+    {
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
+    }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmdbUW(uint32_t opcode) // STMDB Rn!, <Rlist>^
+FORCE_INLINE int Interpreter::stmdbUW(uint32_t opcode) // STMDB Rn!, <Rlist>^
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 16; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     uint32_t writeback = op0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
-    if (cpu == 1 && (opcode & BIT(n)) && (opcode & (BIT(n) - 1)))
-        *registers[n] = writeback;
+    if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
+        *registers[m] = writeback;
 
     // Block store, pre-decrement (user registers)
     for (int i = 0; i < 16; i++)
@@ -1703,43 +1929,19 @@ FORCE_INLINE void Interpreter::stmdbUW(uint32_t opcode) // STMDB Rn!, <Rlist>^
     }
 
     // Writeback
-    *registers[n] = writeback;
+    *registers[m] = writeback;
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::ldmibUW(uint32_t opcode) // LDMIB Rn!, <Rlist>^
+FORCE_INLINE int Interpreter::ldmibUW(uint32_t opcode) // LDMIB Rn!, <Rlist>^
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
-    if (opcode & BIT(15)) // PC in Rlist
-    {
-        // Block load, pre-increment
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-            {
-                op0 += 4;
-                *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-            }
-        }
-
-        // Restore the SPSR
-        if (spsr)
-            setCpsr(*spsr);
-
-        // Handle pipelining and THUMB switching
-        if (cpu == 0 && (*registers[15] & BIT(0)))
-        {
-            cpsr |= BIT(5);
-            *registers[15] = (*registers[15] & ~1) + 2;
-        }
-        else
-        {
-            *registers[15] = (*registers[15] & ~3) + 4;
-        }
-    }
-    else
+    if (!(opcode & BIT(15))) // PC not in Rlist
     {
         // Block load, pre-increment (user registers)
         for (int i = 0; i < 16; i++)
@@ -1748,26 +1950,64 @@ FORCE_INLINE void Interpreter::ldmibUW(uint32_t opcode) // LDMIB Rn!, <Rlist>^
             {
                 op0 += 4;
                 registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
+                n++;
             }
+        }
+
+        // Writeback
+        // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
+        // On ARM7, if Rn is in Rlist, writeback never happens
+        if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+            *registers[m] = op0;
+
+        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    }
+
+    // Block load, pre-increment
+    for (int i = 0; i < 16; i++)
+    {
+        if (opcode & BIT(i))
+        {
+            op0 += 4;
+            *registers[i] = core->memory.read<uint32_t>(cpu, op0);
+            n++;
         }
     }
 
     // Writeback
     // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
     // On ARM7, if Rn is in Rlist, writeback never happens
-    if (!(opcode & BIT(n)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(n) || (opcode & 0x0000FFFF & ~(BIT(n + 1) - 1)))))
-        *registers[n] = op0;
+    if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
+        *registers[m] = op0;
+
+    // Restore the SPSR
+    if (spsr)
+        setCpsr(*spsr);
+
+    // Handle pipelining and THUMB switching
+    if (cpu == 0 && (*registers[15] & BIT(0)))
+    {
+        cpsr |= BIT(5);
+        *registers[15] = (*registers[15] & ~1) + 2;
+    }
+    else
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+    }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::stmibUW(uint32_t opcode) // STMIB Rn!, <Rlist>^
+FORCE_INLINE int Interpreter::stmibUW(uint32_t opcode) // STMIB Rn!, <Rlist>^
 {
     // Decode the operand
-    int n = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x000F0000) >> 16;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
-    if (cpu == 1 && (opcode & BIT(n)) && (opcode & (BIT(n) - 1)))
+    if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
     {
         uint32_t writeback = op0;
         for (int i = 0; i < 16; i++)
@@ -1775,7 +2015,7 @@ FORCE_INLINE void Interpreter::stmibUW(uint32_t opcode) // STMIB Rn!, <Rlist>^
             if (opcode & BIT(i))
                 writeback += 4;
         }
-        *registers[n] = writeback;
+        *registers[m] = writeback;
     }
 
     // Block store, pre-increment (user registers)
@@ -1785,14 +2025,17 @@ FORCE_INLINE void Interpreter::stmibUW(uint32_t opcode) // STMIB Rn!, <Rlist>^
         {
             op0 += 4;
             core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
+            n++;
         }
     }
 
     // Writeback
-    *registers[n] = op0;
+    *registers[m] = op0;
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::msrRc(uint32_t opcode) // MSR CPSR,Rm
+FORCE_INLINE int Interpreter::msrRc(uint32_t opcode) // MSR CPSR,Rm
 {
     // Decode the operand
     uint32_t op1 = *registers[opcode & 0x0000000F];
@@ -1810,9 +2053,11 @@ FORCE_INLINE void Interpreter::msrRc(uint32_t opcode) // MSR CPSR,Rm
         if (opcode & BIT(17 + i))
             cpsr = (cpsr & ~(0x0000FF00 << (i * 8))) | (op1 & (0x0000FF00 << (i * 8)));
     }
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::msrRs(uint32_t opcode) // MSR SPSR,Rm
+FORCE_INLINE int Interpreter::msrRs(uint32_t opcode) // MSR SPSR,Rm
 {
     // Decode the operand
     uint32_t op1 = *registers[opcode & 0x0000000F];
@@ -1826,9 +2071,11 @@ FORCE_INLINE void Interpreter::msrRs(uint32_t opcode) // MSR SPSR,Rm
                 *spsr = (*spsr & ~(0x000000FF << (i * 8))) | (op1 & (0x000000FF << (i * 8)));
         }
     }
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::msrIc(uint32_t opcode) // MSR CPSR,#i
+FORCE_INLINE int Interpreter::msrIc(uint32_t opcode) // MSR CPSR,#i
 {
     // Decode the operand
     // Can be any 8 bits rotated right by a multiple of 2
@@ -1849,9 +2096,11 @@ FORCE_INLINE void Interpreter::msrIc(uint32_t opcode) // MSR CPSR,#i
         if (opcode & BIT(17 + i))
             cpsr = (cpsr & ~(0x0000FF00 << (i * 8))) | (op1 & (0x0000FF00 << (i * 8)));
     }
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::msrIs(uint32_t opcode) // MSR SPSR,#i
+FORCE_INLINE int Interpreter::msrIs(uint32_t opcode) // MSR SPSR,#i
 {
     // Decode the operand
     // Can be any 8 bits rotated right by a multiple of 2
@@ -1868,29 +2117,35 @@ FORCE_INLINE void Interpreter::msrIs(uint32_t opcode) // MSR SPSR,#i
                 *spsr = (*spsr & ~(0x000000FF << (i * 8))) | (op1 & (0x000000FF << (i * 8)));
         }
     }
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::mrsRc(uint32_t opcode) // MRS Rd,CPSR
+FORCE_INLINE int Interpreter::mrsRc(uint32_t opcode) // MRS Rd,CPSR
 {
     // Decode the operand
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
 
     // Copy the status flags to a register
     *op0 = cpsr;
+
+    return (cpu == 0 ? 2 : 1);
 }
 
-FORCE_INLINE void Interpreter::mrsRs(uint32_t opcode) // MRS Rd,SPSR
+FORCE_INLINE int Interpreter::mrsRs(uint32_t opcode) // MRS Rd,SPSR
 {
     // Decode the operand
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
 
     // Copy the saved status flags to a register
     if (spsr) *op0 = *spsr;
+
+    return (cpu == 0 ? 2 : 1);
 }
 
-FORCE_INLINE void Interpreter::mrc(uint32_t opcode) // MRC Pn,<cpopc>,Rd,Cn,Cm,<cp>
+FORCE_INLINE int Interpreter::mrc(uint32_t opcode) // MRC Pn,<cpopc>,Rd,Cn,Cm,<cp>
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t *op2 = registers[(opcode & 0x0000F000) >> 12];
@@ -1900,11 +2155,13 @@ FORCE_INLINE void Interpreter::mrc(uint32_t opcode) // MRC Pn,<cpopc>,Rd,Cn,Cm,<
 
     // Read from a CP15 register
     *op2 = core->cp15.read(op3, op4, op5);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::mcr(uint32_t opcode) // MCR Pn,<cpopc>,Rd,Cn,Cm,<cp>
+FORCE_INLINE int Interpreter::mcr(uint32_t opcode) // MCR Pn,<cpopc>,Rd,Cn,Cm,<cp>
 {
-    if (cpu == 1) return; // ARM9 exclusive
+    if (cpu == 1) return 1; // ARM9 exclusive
 
     // Decode the operands
     uint32_t op2 = *registers[(opcode & 0x0000F000) >> 12];
@@ -1914,9 +2171,11 @@ FORCE_INLINE void Interpreter::mcr(uint32_t opcode) // MCR Pn,<cpopc>,Rd,Cn,Cm,<
 
     // Write to a CP15 register
     core->cp15.write(op3, op4, op5, op2);
+
+    return 1;
 }
 
-FORCE_INLINE void Interpreter::ldrsbRegT(uint16_t opcode) // LDRSB Rd,[Rb,Ro]
+FORCE_INLINE int Interpreter::ldrsbRegT(uint16_t opcode) // LDRSB Rd,[Rb,Ro]
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1925,9 +2184,11 @@ FORCE_INLINE void Interpreter::ldrsbRegT(uint16_t opcode) // LDRSB Rd,[Rb,Ro]
 
     // Signed byte load, pre-adjust without writeback
     *op0 = core->memory.read<int8_t>(cpu, op1 + op2);
+
+    return ((cpu == 0) ? 1 : 3);
 }
 
-FORCE_INLINE void Interpreter::ldrshRegT(uint16_t opcode) // LDRSH Rd,[Rb,Ro]
+FORCE_INLINE int Interpreter::ldrshRegT(uint16_t opcode) // LDRSH Rd,[Rb,Ro]
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1940,9 +2201,11 @@ FORCE_INLINE void Interpreter::ldrshRegT(uint16_t opcode) // LDRSH Rd,[Rb,Ro]
     // Shift misaligned reads on ARM7
     if (cpu == 1 && (op1 & 1))
         *op0 = (int16_t)*op0 >> 8;
+
+    return ((cpu == 0) ? 1 : 3);
 }
 
-FORCE_INLINE void Interpreter::ldrbRegT(uint16_t opcode) // LDRB Rd,[Rb,Ro]
+FORCE_INLINE int Interpreter::ldrbRegT(uint16_t opcode) // LDRB Rd,[Rb,Ro]
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1951,9 +2214,11 @@ FORCE_INLINE void Interpreter::ldrbRegT(uint16_t opcode) // LDRB Rd,[Rb,Ro]
 
     // Byte load, pre-adjust without writeback
     *op0 = core->memory.read<uint8_t>(cpu, op1 + op2);
+
+    return ((cpu == 0) ? 1 : 3);
 }
 
-FORCE_INLINE void Interpreter::strbRegT(uint16_t opcode) // STRB Rd,[Rb,Ro]
+FORCE_INLINE int Interpreter::strbRegT(uint16_t opcode) // STRB Rd,[Rb,Ro]
 {
     // Decode the operands
     uint32_t op0 = *registers[opcode & 0x0007];
@@ -1962,9 +2227,11 @@ FORCE_INLINE void Interpreter::strbRegT(uint16_t opcode) // STRB Rd,[Rb,Ro]
 
     // Byte write, pre-adjust without writeback
     core->memory.write<uint8_t>(cpu, op1 + op2, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrhRegT(uint16_t opcode) // LDRH Rd,[Rb,Ro]
+FORCE_INLINE int Interpreter::ldrhRegT(uint16_t opcode) // LDRH Rd,[Rb,Ro]
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1977,9 +2244,11 @@ FORCE_INLINE void Interpreter::ldrhRegT(uint16_t opcode) // LDRH Rd,[Rb,Ro]
     // Rotate misaligned reads on ARM7
     if (cpu == 1 && (op1 & 1))
         *op0 = (*op0 << 24) | (*op0 >> 8);
+
+    return ((cpu == 0) ? 1 : 3);
 }
 
-FORCE_INLINE void Interpreter::strhRegT(uint16_t opcode) // STRH Rd,[Rb,Ro]
+FORCE_INLINE int Interpreter::strhRegT(uint16_t opcode) // STRH Rd,[Rb,Ro]
 {
     // Decode the operands
     uint32_t op0 = *registers[opcode & 0x0007];
@@ -1988,9 +2257,11 @@ FORCE_INLINE void Interpreter::strhRegT(uint16_t opcode) // STRH Rd,[Rb,Ro]
 
     // Half-word write, pre-adjust without writeback
     core->memory.write<uint16_t>(cpu, op1 + op2, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrRegT(uint16_t opcode) // LDR Rd,[Rb,Ro]
+FORCE_INLINE int Interpreter::ldrRegT(uint16_t opcode) // LDR Rd,[Rb,Ro]
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -2006,9 +2277,11 @@ FORCE_INLINE void Interpreter::ldrRegT(uint16_t opcode) // LDR Rd,[Rb,Ro]
         int shift = (op1 & 3) * 8;
         *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
     }
+
+    return ((cpu == 0) ? 1 : 3);
 }
 
-FORCE_INLINE void Interpreter::strRegT(uint16_t opcode) // STR Rd,[Rb,Ro]
+FORCE_INLINE int Interpreter::strRegT(uint16_t opcode) // STR Rd,[Rb,Ro]
 {
     // Decode the operands
     uint32_t op0 = *registers[opcode & 0x0007];
@@ -2017,9 +2290,11 @@ FORCE_INLINE void Interpreter::strRegT(uint16_t opcode) // STR Rd,[Rb,Ro]
 
     // Word write, pre-adjust without writeback
     core->memory.write<uint32_t>(cpu, op1 + op2, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrbImm5T(uint16_t opcode) // LDRB Rd,[Rb,#i]
+FORCE_INLINE int Interpreter::ldrbImm5T(uint16_t opcode) // LDRB Rd,[Rb,#i]
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -2028,9 +2303,11 @@ FORCE_INLINE void Interpreter::ldrbImm5T(uint16_t opcode) // LDRB Rd,[Rb,#i]
 
     // Byte load, pre-adjust without writeback
     *op0 = core->memory.read<uint8_t>(cpu, op1 + op2);
+
+    return ((cpu == 0) ? 1 : 3);
 }
 
-FORCE_INLINE void Interpreter::strbImm5T(uint16_t opcode) // STRB Rd,[Rb,#i]
+FORCE_INLINE int Interpreter::strbImm5T(uint16_t opcode) // STRB Rd,[Rb,#i]
 {
     // Decode the operands
     uint32_t op0 = *registers[opcode & 0x0007];
@@ -2039,9 +2316,11 @@ FORCE_INLINE void Interpreter::strbImm5T(uint16_t opcode) // STRB Rd,[Rb,#i]
 
     // Byte store, pre-adjust without writeback
     core->memory.write<uint8_t>(cpu, op1 + op2, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrhImm5T(uint16_t opcode) // LDRH Rd,[Rb,#i]
+FORCE_INLINE int Interpreter::ldrhImm5T(uint16_t opcode) // LDRH Rd,[Rb,#i]
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -2054,9 +2333,11 @@ FORCE_INLINE void Interpreter::ldrhImm5T(uint16_t opcode) // LDRH Rd,[Rb,#i]
     // Rotate misaligned reads on ARM7
     if (cpu == 1 && (op1 & 1))
         *op0 = (*op0 << 24) | (*op0 >> 8);
+
+    return ((cpu == 0) ? 1 : 3);
 }
 
-FORCE_INLINE void Interpreter::strhImm5T(uint16_t opcode) // STRH Rd,[Rb,#i]
+FORCE_INLINE int Interpreter::strhImm5T(uint16_t opcode) // STRH Rd,[Rb,#i]
 {
     // Decode the operands
     uint32_t op0 = *registers[opcode & 0x0007];
@@ -2065,9 +2346,11 @@ FORCE_INLINE void Interpreter::strhImm5T(uint16_t opcode) // STRH Rd,[Rb,#i]
 
     // Half-word store, pre-adjust without writeback
     core->memory.write<uint16_t>(cpu, op1 + op2, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrImm5T(uint16_t opcode) // LDR Rd,[Rb,#i]
+FORCE_INLINE int Interpreter::ldrImm5T(uint16_t opcode) // LDR Rd,[Rb,#i]
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -2083,9 +2366,11 @@ FORCE_INLINE void Interpreter::ldrImm5T(uint16_t opcode) // LDR Rd,[Rb,#i]
         int shift = (op1 & 3) * 8;
         *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
     }
+
+    return ((cpu == 0) ? 1 : 3);
 }
 
-FORCE_INLINE void Interpreter::strImm5T(uint16_t opcode) // STR Rd,[Rb,#i]
+FORCE_INLINE int Interpreter::strImm5T(uint16_t opcode) // STR Rd,[Rb,#i]
 {
     // Decode the operands
     uint32_t op0 = *registers[opcode & 0x0007];
@@ -2094,9 +2379,11 @@ FORCE_INLINE void Interpreter::strImm5T(uint16_t opcode) // STR Rd,[Rb,#i]
 
     // Word store, pre-adjust without writeback
     core->memory.write<uint32_t>(cpu, op1 + op2, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldrPcT(uint16_t opcode) // LDR Rd,[PC,#i]
+FORCE_INLINE int Interpreter::ldrPcT(uint16_t opcode) // LDR Rd,[PC,#i]
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -2112,9 +2399,11 @@ FORCE_INLINE void Interpreter::ldrPcT(uint16_t opcode) // LDR Rd,[PC,#i]
         int shift = (op1 & 3) * 8;
         *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
     }
+
+    return ((cpu == 0) ? 1 : 3);
 }
 
-FORCE_INLINE void Interpreter::ldrSpT(uint16_t opcode) // LDR Rd,[SP,#i]
+FORCE_INLINE int Interpreter::ldrSpT(uint16_t opcode) // LDR Rd,[SP,#i]
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -2130,9 +2419,11 @@ FORCE_INLINE void Interpreter::ldrSpT(uint16_t opcode) // LDR Rd,[SP,#i]
         int shift = (op1 & 3) * 8;
         *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
     }
+
+    return ((cpu == 0) ? 1 : 3);
 }
 
-FORCE_INLINE void Interpreter::strSpT(uint16_t opcode) // STR Rd,[SP,#i]
+FORCE_INLINE int Interpreter::strSpT(uint16_t opcode) // STR Rd,[SP,#i]
 {
     // Decode the operands
     uint32_t op0 = *registers[(opcode & 0x0700) >> 8];
@@ -2141,13 +2432,16 @@ FORCE_INLINE void Interpreter::strSpT(uint16_t opcode) // STR Rd,[SP,#i]
 
     // Word store, pre-adjust without writeback
     core->memory.write<uint32_t>(cpu, op1 + op2, op0);
+
+    return ((cpu == 0) ? 1 : 2);
 }
 
-FORCE_INLINE void Interpreter::ldmiaT(uint16_t opcode) // LDMIA Rb!,<Rlist>
+FORCE_INLINE int Interpreter::ldmiaT(uint16_t opcode) // LDMIA Rb!,<Rlist>
 {
     // Decode the operand
-    int n = (opcode & 0x0700) >> 8;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x0700) >> 8;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // Block load, post-increment
     for (int i = 0; i < 8; i++)
@@ -2156,25 +2450,29 @@ FORCE_INLINE void Interpreter::ldmiaT(uint16_t opcode) // LDMIA Rb!,<Rlist>
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
+            n++;
         }
     }
 
     // Writeback
     // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
     // On ARM7, if Rn is in Rlist, writeback never happens
-    if (!(opcode & BIT(n)) || (cpu == 0 && ((opcode & 0x00FF) == BIT(n) || (opcode & 0x00FF & ~(BIT(n + 1) - 1)))))
-        *registers[n] = op0;
+    if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x00FF) == BIT(m) || (opcode & 0x00FF & ~(BIT(m + 1) - 1)))))
+        *registers[m] = op0;
+
+    return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
 }
 
-FORCE_INLINE void Interpreter::stmiaT(uint16_t opcode) // STMIA Rb!,<Rlist>
+FORCE_INLINE int Interpreter::stmiaT(uint16_t opcode) // STMIA Rb!,<Rlist>
 {
     // Decode the operand
-    int n = (opcode & 0x0700) >> 8;
-    uint32_t op0 = *registers[n];
+    int m = (opcode & 0x0700) >> 8;
+    uint32_t op0 = *registers[m];
+    int n = 0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
-    if (cpu == 1 && (opcode & BIT(n)) && (opcode & (BIT(n) - 1)))
+    if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
     {
         uint32_t writeback = op0;
         for (int i = 0; i < 8; i++)
@@ -2182,7 +2480,7 @@ FORCE_INLINE void Interpreter::stmiaT(uint16_t opcode) // STMIA Rb!,<Rlist>
             if (opcode & BIT(i))
                 writeback += 4;
         }
-        *registers[n] = writeback;
+        *registers[m] = writeback;
     }
 
     // Block store, post-increment
@@ -2192,17 +2490,21 @@ FORCE_INLINE void Interpreter::stmiaT(uint16_t opcode) // STMIA Rb!,<Rlist>
         {
             core->memory.write<uint32_t>(cpu, op0, *registers[i]);
             op0 += 4;
+            n++;
         }
     }
 
     // Writeback
-    *registers[n] = op0;
+    *registers[m] = op0;
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::popT(uint16_t opcode) // POP <Rlist>
+FORCE_INLINE int Interpreter::popT(uint16_t opcode) // POP <Rlist>
 {
     // Decode the operand
     uint32_t op0 = *registers[13];
+    int n = 0;
 
     // Block load, post-increment
     for (int i = 0; i < 8; i++)
@@ -2211,23 +2513,30 @@ FORCE_INLINE void Interpreter::popT(uint16_t opcode) // POP <Rlist>
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
+            n++;
         }
     }
 
     // Writeback
     *registers[13] = op0;
+
+    return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
 }
 
-FORCE_INLINE void Interpreter::pushT(uint16_t opcode) // PUSH <Rlist>
+FORCE_INLINE int Interpreter::pushT(uint16_t opcode) // PUSH <Rlist>
 {
     // Decode the operand
     uint32_t op0 = *registers[13];
+    int n = 0;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 8; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
 
     // Writeback
@@ -2242,12 +2551,15 @@ FORCE_INLINE void Interpreter::pushT(uint16_t opcode) // PUSH <Rlist>
             op0 += 4;
         }
     }
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
-FORCE_INLINE void Interpreter::popPcT(uint16_t opcode) // POP <Rlist>,PC
+FORCE_INLINE int Interpreter::popPcT(uint16_t opcode) // POP <Rlist>,PC
 {
     // Decode the operand
     uint32_t op0 = *registers[13];
+    int n = 1;
 
     // Block load, post-increment
     for (int i = 0; i < 8; i++)
@@ -2256,13 +2568,13 @@ FORCE_INLINE void Interpreter::popPcT(uint16_t opcode) // POP <Rlist>,PC
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
+            n++;
         }
     }
     *registers[15] = core->memory.read<uint32_t>(cpu, op0);
-    op0 += 4;
 
     // Writeback
-    *registers[13] = op0;
+    *registers[13] = op0 + 4;
 
     // Handle pipelining
     if (cpu == 1 || (*registers[15] & BIT(0)))
@@ -2274,20 +2586,25 @@ FORCE_INLINE void Interpreter::popPcT(uint16_t opcode) // POP <Rlist>,PC
         cpsr &= ~BIT(5);
         *registers[15] = (*registers[15] & ~3) + 4;
     }
+
+    return n + 4;
 }
 
-FORCE_INLINE void Interpreter::pushLrT(uint16_t opcode) // PUSH <Rlist>,LR
+FORCE_INLINE int Interpreter::pushLrT(uint16_t opcode) // PUSH <Rlist>,LR
 {
     // Decode the operand
-    uint32_t op0 = *registers[13];
+    uint32_t op0 = *registers[13] - 4;
+    int n = 1;
 
     // Decrement the address beforehand because transfers are always done in increasing order
     for (int i = 0; i < 8; i++)
     {
         if (opcode & BIT(i))
+        {
             op0 -= 4;
+            n++;
+        }
     }
-    op0 -= 4;
 
     // Writeback
     *registers[13] = op0;
@@ -2302,7 +2619,8 @@ FORCE_INLINE void Interpreter::pushLrT(uint16_t opcode) // PUSH <Rlist>,LR
         }
     }
     core->memory.write<uint32_t>(cpu, op0, *registers[14]);
-    op0 += 4;
+
+    return n + ((cpu == 0 && n > 1) ? 0 : 1);
 }
 
 #endif // INTERPRETER_TRANSFER

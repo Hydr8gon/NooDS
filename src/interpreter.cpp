@@ -69,7 +69,7 @@ void Interpreter::enterGbaMode()
     postFlg = 0;
 }
 
-void Interpreter::runOpcode()
+int Interpreter::runOpcode()
 {
     // Execute an instruction
     if (cpsr & BIT(5)) // THUMB mode
@@ -330,7 +330,7 @@ void Interpreter::runOpcode()
 
             default:
                 LOG("Unknown ARM%d THUMB opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
-                return;
+                return 1;
         }
     }
     else // ARM mode
@@ -352,25 +352,25 @@ void Interpreter::runOpcode()
                     return _and(opcode, lli(opcode)); // AND Rd,Rn,Rm,LSL #i
 
                 case 0x001:
-                    return _and(opcode, llr(opcode)); // AND Rd,Rn,Rm,LSL Rs
+                    return _and(opcode, llr(opcode)) + 1; // AND Rd,Rn,Rm,LSL Rs
 
                 case 0x002: case 0x00A:
                     return _and(opcode, lri(opcode)); // AND Rd,Rn,Rm,LSR #i
 
                 case 0x003:
-                    return _and(opcode, lrr(opcode)); // AND Rd,Rn,Rm,LSR Rs
+                    return _and(opcode, lrr(opcode)) + 1; // AND Rd,Rn,Rm,LSR Rs
 
                 case 0x004: case 0x00C:
                     return _and(opcode, ari(opcode)); // AND Rd,Rn,Rm,ASR #i
 
                 case 0x005:
-                    return _and(opcode, arr(opcode)); // AND Rd,Rn,Rm,ASR Rs
+                    return _and(opcode, arr(opcode)) + 1; // AND Rd,Rn,Rm,ASR Rs
 
                 case 0x006: case 0x00E:
                     return _and(opcode, rri(opcode)); // AND Rd,Rn,Rm,ROR #i
 
                 case 0x007:
-                    return _and(opcode, rrr(opcode)); // AND Rd,Rn,Rm,ROR Rs
+                    return _and(opcode, rrr(opcode)) + 1; // AND Rd,Rn,Rm,ROR Rs
 
                 case 0x009:
                     return mul(opcode); // MUL Rd,Rm,Rs
@@ -388,25 +388,25 @@ void Interpreter::runOpcode()
                     return ands(opcode, lliS(opcode)); // ANDS Rd,Rn,Rm,LSL #i
 
                 case 0x011:
-                    return ands(opcode, llrS(opcode)); // ANDS Rd,Rn,Rm,LSL Rs
+                    return ands(opcode, llrS(opcode)) + 1; // ANDS Rd,Rn,Rm,LSL Rs
 
                 case 0x012: case 0x01A:
                     return ands(opcode, lriS(opcode)); // ANDS Rd,Rn,Rm,LSR #i
 
                 case 0x013:
-                    return ands(opcode, lrrS(opcode)); // ANDS Rd,Rn,Rm,LSR Rs
+                    return ands(opcode, lrrS(opcode)) + 1; // ANDS Rd,Rn,Rm,LSR Rs
 
                 case 0x014: case 0x01C:
                     return ands(opcode, ariS(opcode)); // ANDS Rd,Rn,Rm,ASR #i
 
                 case 0x015:
-                    return ands(opcode, arrS(opcode)); // ANDS Rd,Rn,Rm,ASR Rs
+                    return ands(opcode, arrS(opcode)) + 1; // ANDS Rd,Rn,Rm,ASR Rs
 
                 case 0x016: case 0x01E:
                     return ands(opcode, rriS(opcode)); // ANDS Rd,Rn,Rm,ROR #i
 
                 case 0x017:
-                    return ands(opcode, rrrS(opcode)); // ANDS Rd,Rn,Rm,ROR Rs
+                    return ands(opcode, rrrS(opcode)) + 1; // ANDS Rd,Rn,Rm,ROR Rs
 
                 case 0x019:
                     return muls(opcode); // MULS Rd,Rm,Rs
@@ -424,25 +424,25 @@ void Interpreter::runOpcode()
                     return eor(opcode, lli(opcode)); // EOR Rd,Rn,Rm,LSL #i
 
                 case 0x021:
-                    return eor(opcode, llr(opcode)); // EOR Rd,Rn,Rm,LSL Rs
+                    return eor(opcode, llr(opcode)) + 1; // EOR Rd,Rn,Rm,LSL Rs
 
                 case 0x022: case 0x02A:
                     return eor(opcode, lri(opcode)); // EOR Rd,Rn,Rm,LSR #i
 
                 case 0x023:
-                    return eor(opcode, lrr(opcode)); // EOR Rd,Rn,Rm,LSR Rs
+                    return eor(opcode, lrr(opcode)) + 1; // EOR Rd,Rn,Rm,LSR Rs
 
                 case 0x024: case 0x02C:
                     return eor(opcode, ari(opcode)); // EOR Rd,Rn,Rm,ASR #i
 
                 case 0x025:
-                    return eor(opcode, arr(opcode)); // EOR Rd,Rn,Rm,ASR Rs
+                    return eor(opcode, arr(opcode)) + 1; // EOR Rd,Rn,Rm,ASR Rs
 
                 case 0x026: case 0x02E:
                     return eor(opcode, rri(opcode)); // EOR Rd,Rn,Rm,ROR #i
 
                 case 0x027:
-                    return eor(opcode, rrr(opcode)); // EOR Rd,Rn,Rm,ROR Rs
+                    return eor(opcode, rrr(opcode)) + 1; // EOR Rd,Rn,Rm,ROR Rs
 
                 case 0x029:
                     return mla(opcode); // MLA Rd,Rm,Rs,Rn
@@ -451,25 +451,25 @@ void Interpreter::runOpcode()
                     return eors(opcode, lliS(opcode)); // EORS Rd,Rn,Rm,LSL #i
 
                 case 0x031:
-                    return eors(opcode, llrS(opcode)); // EORS Rd,Rn,Rm,LSL Rs
+                    return eors(opcode, llrS(opcode)) + 1; // EORS Rd,Rn,Rm,LSL Rs
 
                 case 0x032: case 0x03A:
                     return eors(opcode, lriS(opcode)); // EORS Rd,Rn,Rm,LSR #i
 
                 case 0x033:
-                    return eors(opcode, lrrS(opcode)); // EORS Rd,Rn,Rm,LSR Rs
+                    return eors(opcode, lrrS(opcode)) + 1; // EORS Rd,Rn,Rm,LSR Rs
 
                 case 0x034: case 0x03C:
                     return eors(opcode, ariS(opcode)); // EORS Rd,Rn,Rm,ASR #i
 
                 case 0x035:
-                    return eors(opcode, arrS(opcode)); // EORS Rd,Rn,Rm,ASR Rs
+                    return eors(opcode, arrS(opcode)) + 1; // EORS Rd,Rn,Rm,ASR Rs
 
                 case 0x036: case 0x03E:
                     return eors(opcode, rriS(opcode)); // EORS Rd,Rn,Rm,ROR #i
 
                 case 0x037:
-                    return eors(opcode, rrrS(opcode)); // EORS Rd,Rn,Rm,ROR Rs
+                    return eors(opcode, rrrS(opcode)) + 1; // EORS Rd,Rn,Rm,ROR Rs
 
                 case 0x039:
                     return mlas(opcode); // MLAS Rd,Rm,Rs,Rn
@@ -478,25 +478,25 @@ void Interpreter::runOpcode()
                     return sub(opcode, lli(opcode)); // SUB Rd,Rn,Rm,LSL #i
 
                 case 0x041:
-                    return sub(opcode, llr(opcode)); // SUB Rd,Rn,Rm,LSL Rs
+                    return sub(opcode, llr(opcode)) + 1; // SUB Rd,Rn,Rm,LSL Rs
 
                 case 0x042: case 0x04A:
                     return sub(opcode, lri(opcode)); // SUB Rd,Rn,Rm,LSR #i
 
                 case 0x043:
-                    return sub(opcode, lrr(opcode)); // SUB Rd,Rn,Rm,LSR Rs
+                    return sub(opcode, lrr(opcode)) + 1; // SUB Rd,Rn,Rm,LSR Rs
 
                 case 0x044: case 0x04C:
                     return sub(opcode, ari(opcode)); // SUB Rd,Rn,Rm,ASR #i
 
                 case 0x045:
-                    return sub(opcode, arr(opcode)); // SUB Rd,Rn,Rm,ASR Rs
+                    return sub(opcode, arr(opcode)) + 1; // SUB Rd,Rn,Rm,ASR Rs
 
                 case 0x046: case 0x04E:
                     return sub(opcode, rri(opcode)); // SUB Rd,Rn,Rm,ROR #i
 
                 case 0x047:
-                    return sub(opcode, rrr(opcode)); // SUB Rd,Rn,Rm,ROR Rs
+                    return sub(opcode, rrr(opcode)) + 1; // SUB Rd,Rn,Rm,ROR Rs
 
                 case 0x04B: case 0x06B:
                     return strhPt(opcode, -ipH(opcode)); // STRH Rd,[Rn],-#i
@@ -511,25 +511,25 @@ void Interpreter::runOpcode()
                     return subs(opcode, lli(opcode)); // SUBS Rd,Rn,Rm,LSL #i
 
                 case 0x051:
-                    return subs(opcode, llr(opcode)); // SUBS Rd,Rn,Rm,LSL Rs
+                    return subs(opcode, llr(opcode)) + 1; // SUBS Rd,Rn,Rm,LSL Rs
 
                 case 0x052: case 0x05A:
                     return subs(opcode, lri(opcode)); // SUBS Rd,Rn,Rm,LSR #i
 
                 case 0x053:
-                    return subs(opcode, lrr(opcode)); // SUBS Rd,Rn,Rm,LSR Rs
+                    return subs(opcode, lrr(opcode)) + 1; // SUBS Rd,Rn,Rm,LSR Rs
 
                 case 0x054: case 0x05C:
                     return subs(opcode, ari(opcode)); // SUBS Rd,Rn,Rm,ASR #i
 
                 case 0x055:
-                    return subs(opcode, arr(opcode)); // SUBS Rd,Rn,Rm,ASR Rs
+                    return subs(opcode, arr(opcode)) + 1; // SUBS Rd,Rn,Rm,ASR Rs
 
                 case 0x056: case 0x05E:
                     return subs(opcode, rri(opcode)); // SUBS Rd,Rn,Rm,ROR #i
 
                 case 0x057:
-                    return subs(opcode, rrr(opcode)); // SUBS Rd,Rn,Rm,ROR Rs
+                    return subs(opcode, rrr(opcode)) + 1; // SUBS Rd,Rn,Rm,ROR Rs
 
                 case 0x05B: case 0x07B:
                     return ldrhPt(opcode, -ipH(opcode)); // LDRH Rd,[Rn],-#i
@@ -544,73 +544,73 @@ void Interpreter::runOpcode()
                     return rsb(opcode, lli(opcode)); // RSB Rd,Rn,Rm,LSL #i
 
                 case 0x061:
-                    return rsb(opcode, llr(opcode)); // RSB Rd,Rn,Rm,LSL Rs
+                    return rsb(opcode, llr(opcode)) + 1; // RSB Rd,Rn,Rm,LSL Rs
 
                 case 0x062: case 0x06A:
                     return rsb(opcode, lri(opcode)); // RSB Rd,Rn,Rm,LSR #i
 
                 case 0x063:
-                    return rsb(opcode, lrr(opcode)); // RSB Rd,Rn,Rm,LSR Rs
+                    return rsb(opcode, lrr(opcode)) + 1; // RSB Rd,Rn,Rm,LSR Rs
 
                 case 0x064: case 0x06C:
                     return rsb(opcode, ari(opcode)); // RSB Rd,Rn,Rm,ASR #i
 
                 case 0x065:
-                    return rsb(opcode, arr(opcode)); // RSB Rd,Rn,Rm,ASR Rs
+                    return rsb(opcode, arr(opcode)) + 1; // RSB Rd,Rn,Rm,ASR Rs
 
                 case 0x066: case 0x06E:
                     return rsb(opcode, rri(opcode)); // RSB Rd,Rn,Rm,ROR #i
 
                 case 0x067:
-                    return rsb(opcode, rrr(opcode)); // RSB Rd,Rn,Rm,ROR Rs
+                    return rsb(opcode, rrr(opcode)) + 1; // RSB Rd,Rn,Rm,ROR Rs
 
                 case 0x070: case 0x078:
                     return rsbs(opcode, lli(opcode)); // RSBS Rd,Rn,Rm,LSL #i
 
                 case 0x071:
-                    return rsbs(opcode, llr(opcode)); // RSBS Rd,Rn,Rm,LSL Rs
+                    return rsbs(opcode, llr(opcode)) + 1; // RSBS Rd,Rn,Rm,LSL Rs
 
                 case 0x072: case 0x07A:
                     return rsbs(opcode, lri(opcode)); // RSBS Rd,Rn,Rm,LSR #i
 
                 case 0x073:
-                    return rsbs(opcode, lrr(opcode)); // RSBS Rd,Rn,Rm,LSR Rs
+                    return rsbs(opcode, lrr(opcode)) + 1; // RSBS Rd,Rn,Rm,LSR Rs
 
                 case 0x074: case 0x07C:
                     return rsbs(opcode, ari(opcode)); // RSBS Rd,Rn,Rm,ASR #i
 
                 case 0x075:
-                    return rsbs(opcode, arr(opcode)); // RSBS Rd,Rn,Rm,ASR Rs
+                    return rsbs(opcode, arr(opcode)) + 1; // RSBS Rd,Rn,Rm,ASR Rs
 
                 case 0x076: case 0x07E:
                     return rsbs(opcode, rri(opcode)); // RSBS Rd,Rn,Rm,ROR #i
 
                 case 0x077:
-                    return rsbs(opcode, rrr(opcode)); // RSBS Rd,Rn,Rm,ROR Rs
+                    return rsbs(opcode, rrr(opcode)) + 1; // RSBS Rd,Rn,Rm,ROR Rs
 
                 case 0x080: case 0x088:
                     return add(opcode, lli(opcode)); // ADD Rd,Rn,Rm,LSL #i
 
                 case 0x081:
-                    return add(opcode, llr(opcode)); // ADD Rd,Rn,Rm,LSL Rs
+                    return add(opcode, llr(opcode)) + 1; // ADD Rd,Rn,Rm,LSL Rs
 
                 case 0x082: case 0x08A:
                     return add(opcode, lri(opcode)); // ADD Rd,Rn,Rm,LSR #i
 
                 case 0x083:
-                    return add(opcode, lrr(opcode)); // ADD Rd,Rn,Rm,LSR Rs
+                    return add(opcode, lrr(opcode)) + 1; // ADD Rd,Rn,Rm,LSR Rs
 
                 case 0x084: case 0x08C:
                     return add(opcode, ari(opcode)); // ADD Rd,Rn,Rm,ASR #i
 
                 case 0x085:
-                    return add(opcode, arr(opcode)); // ADD Rd,Rn,Rm,ASR Rs
+                    return add(opcode, arr(opcode)) + 1; // ADD Rd,Rn,Rm,ASR Rs
 
                 case 0x086: case 0x08E:
                     return add(opcode, rri(opcode)); // ADD Rd,Rn,Rm,ROR #i
 
                 case 0x087:
-                    return add(opcode, rrr(opcode)); // ADD Rd,Rn,Rm,ROR Rs
+                    return add(opcode, rrr(opcode)) + 1; // ADD Rd,Rn,Rm,ROR Rs
 
                 case 0x089:
                     return umull(opcode); // UMULL RdLo,RdHi,Rm,Rs
@@ -628,25 +628,25 @@ void Interpreter::runOpcode()
                     return adds(opcode, lli(opcode)); // ADDS Rd,Rn,Rm,LSL #i
 
                 case 0x091:
-                    return adds(opcode, llr(opcode)); // ADDS Rd,Rn,Rm,LSL Rs
+                    return adds(opcode, llr(opcode)) + 1; // ADDS Rd,Rn,Rm,LSL Rs
 
                 case 0x092: case 0x09A:
                     return adds(opcode, lri(opcode)); // ADDS Rd,Rn,Rm,LSR #i
 
                 case 0x093:
-                    return adds(opcode, lrr(opcode)); // ADDS Rd,Rn,Rm,LSR Rs
+                    return adds(opcode, lrr(opcode)) + 1; // ADDS Rd,Rn,Rm,LSR Rs
 
                 case 0x094: case 0x09C:
                     return adds(opcode, ari(opcode)); // ADDS Rd,Rn,Rm,ASR #i
 
                 case 0x095:
-                    return adds(opcode, arr(opcode)); // ADDS Rd,Rn,Rm,ASR Rs
+                    return adds(opcode, arr(opcode)) + 1; // ADDS Rd,Rn,Rm,ASR Rs
 
                 case 0x096: case 0x09E:
                     return adds(opcode, rri(opcode)); // ADDS Rd,Rn,Rm,ROR #i
 
                 case 0x097:
-                    return adds(opcode, rrr(opcode)); // ADDS Rd,Rn,Rm,ROR Rs
+                    return adds(opcode, rrr(opcode)) + 1; // ADDS Rd,Rn,Rm,ROR Rs
 
                 case 0x099:
                     return umulls(opcode); // UMULLS RdLo,RdHi,Rm,Rs
@@ -664,25 +664,25 @@ void Interpreter::runOpcode()
                     return adc(opcode, lli(opcode)); // ADC Rd,Rn,Rm,LSL #i
 
                 case 0x0A1:
-                    return adc(opcode, llr(opcode)); // ADC Rd,Rn,Rm,LSL Rs
+                    return adc(opcode, llr(opcode)) + 1; // ADC Rd,Rn,Rm,LSL Rs
 
                 case 0x0A2: case 0x0AA:
                     return adc(opcode, lri(opcode)); // ADC Rd,Rn,Rm,LSR #i
 
                 case 0x0A3:
-                    return adc(opcode, lrr(opcode)); // ADC Rd,Rn,Rm,LSR Rs
+                    return adc(opcode, lrr(opcode)) + 1; // ADC Rd,Rn,Rm,LSR Rs
 
                 case 0x0A4: case 0x0AC:
                     return adc(opcode, ari(opcode)); // ADC Rd,Rn,Rm,ASR #i
 
                 case 0x0A5:
-                    return adc(opcode, arr(opcode)); // ADC Rd,Rn,Rm,ASR Rs
+                    return adc(opcode, arr(opcode)) + 1; // ADC Rd,Rn,Rm,ASR Rs
 
                 case 0x0A6: case 0x0AE:
                     return adc(opcode, rri(opcode)); // ADC Rd,Rn,Rm,ROR #i
 
                 case 0x0A7:
-                    return adc(opcode, rrr(opcode)); // ADC Rd,Rn,Rm,ROR Rs
+                    return adc(opcode, rrr(opcode)) + 1; // ADC Rd,Rn,Rm,ROR Rs
 
                 case 0x0A9:
                     return umlal(opcode); // UMLAL RdLo,RdHi,Rm,Rs
@@ -691,25 +691,25 @@ void Interpreter::runOpcode()
                     return adcs(opcode, lli(opcode)); // ADCS Rd,Rn,Rm,LSL #i
 
                 case 0x0B1:
-                    return adcs(opcode, llr(opcode)); // ADCS Rd,Rn,Rm,LSL Rs
+                    return adcs(opcode, llr(opcode)) + 1; // ADCS Rd,Rn,Rm,LSL Rs
 
                 case 0x0B2: case 0x0BA:
                     return adcs(opcode, lri(opcode)); // ADCS Rd,Rn,Rm,LSR #i
 
                 case 0x0B3:
-                    return adcs(opcode, lrr(opcode)); // ADCS Rd,Rn,Rm,LSR Rs
+                    return adcs(opcode, lrr(opcode)) + 1; // ADCS Rd,Rn,Rm,LSR Rs
 
                 case 0x0B4: case 0x0BC:
                     return adcs(opcode, ari(opcode)); // ADCS Rd,Rn,Rm,ASR #i
 
                 case 0x0B5:
-                    return adcs(opcode, arr(opcode)); // ADCS Rd,Rn,Rm,ASR Rs
+                    return adcs(opcode, arr(opcode)) + 1; // ADCS Rd,Rn,Rm,ASR Rs
 
                 case 0x0B6: case 0x0BE:
                     return adcs(opcode, rri(opcode)); // ADCS Rd,Rn,Rm,ROR #i
 
                 case 0x0B7:
-                    return adcs(opcode, rrr(opcode)); // ADCS Rd,Rn,Rm,ROR Rs
+                    return adcs(opcode, rrr(opcode)) + 1; // ADCS Rd,Rn,Rm,ROR Rs
 
                 case 0x0B9:
                     return umlals(opcode); // UMLALS RdLo,RdHi,Rm,Rs
@@ -718,25 +718,25 @@ void Interpreter::runOpcode()
                     return sbc(opcode, lli(opcode)); // SBC Rd,Rn,Rm,LSL #i
 
                 case 0x0C1:
-                    return sbc(opcode, llr(opcode)); // SBC Rd,Rn,Rm,LSL Rs
+                    return sbc(opcode, llr(opcode)) + 1; // SBC Rd,Rn,Rm,LSL Rs
 
                 case 0x0C2: case 0x0CA:
                     return sbc(opcode, lri(opcode)); // SBC Rd,Rn,Rm,LSR #i
 
                 case 0x0C3:
-                    return sbc(opcode, lrr(opcode)); // SBC Rd,Rn,Rm,LSR Rs
+                    return sbc(opcode, lrr(opcode)) + 1; // SBC Rd,Rn,Rm,LSR Rs
 
                 case 0x0C4: case 0x0CC:
                     return sbc(opcode, ari(opcode)); // SBC Rd,Rn,Rm,ASR #i
 
                 case 0x0C5:
-                    return sbc(opcode, arr(opcode)); // SBC Rd,Rn,Rm,ASR Rs
+                    return sbc(opcode, arr(opcode)) + 1; // SBC Rd,Rn,Rm,ASR Rs
 
                 case 0x0C6: case 0x0CE:
                     return sbc(opcode, rri(opcode)); // SBC Rd,Rn,Rm,ROR #i
 
                 case 0x0C7:
-                    return sbc(opcode, rrr(opcode)); // SBC Rd,Rn,Rm,ROR Rs
+                    return sbc(opcode, rrr(opcode)) + 1; // SBC Rd,Rn,Rm,ROR Rs
 
                 case 0x0C9:
                     return smull(opcode); // SMULL RdLo,RdHi,Rm,Rs
@@ -754,25 +754,25 @@ void Interpreter::runOpcode()
                     return sbcs(opcode, lli(opcode)); // SBCS Rd,Rn,Rm,LSL #i
 
                 case 0x0D1:
-                    return sbcs(opcode, llr(opcode)); // SBCS Rd,Rn,Rm,LSL Rs
+                    return sbcs(opcode, llr(opcode)) + 1; // SBCS Rd,Rn,Rm,LSL Rs
 
                 case 0x0D2: case 0x0DA:
                     return sbcs(opcode, lri(opcode)); // SBCS Rd,Rn,Rm,LSR #i
 
                 case 0x0D3:
-                    return sbcs(opcode, lrr(opcode)); // SBCS Rd,Rn,Rm,LSR Rs
+                    return sbcs(opcode, lrr(opcode)) + 1; // SBCS Rd,Rn,Rm,LSR Rs
 
                 case 0x0D4: case 0x0DC:
                     return sbcs(opcode, ari(opcode)); // SBCS Rd,Rn,Rm,ASR #i
 
                 case 0x0D5:
-                    return sbcs(opcode, arr(opcode)); // SBCS Rd,Rn,Rm,ASR Rs
+                    return sbcs(opcode, arr(opcode)) + 1; // SBCS Rd,Rn,Rm,ASR Rs
 
                 case 0x0D6: case 0x0DE:
                     return sbcs(opcode, rri(opcode)); // SBCS Rd,Rn,Rm,ROR #i
 
                 case 0x0D7:
-                    return sbcs(opcode, rrr(opcode)); // SBCS Rd,Rn,Rm,ROR Rs
+                    return sbcs(opcode, rrr(opcode)) + 1; // SBCS Rd,Rn,Rm,ROR Rs
 
                 case 0x0D9:
                     return smulls(opcode); // SMULLS RdLo,RdHi,Rm,Rs
@@ -790,25 +790,25 @@ void Interpreter::runOpcode()
                     return rsc(opcode, lli(opcode)); // RSC Rd,Rn,Rm,LSL #i
 
                 case 0x0E1:
-                    return rsc(opcode, llr(opcode)); // RSC Rd,Rn,Rm,LSL Rs
+                    return rsc(opcode, llr(opcode)) + 1; // RSC Rd,Rn,Rm,LSL Rs
 
                 case 0x0E2: case 0x0EA:
                     return rsc(opcode, lri(opcode)); // RSC Rd,Rn,Rm,LSR #i
 
                 case 0x0E3:
-                    return rsc(opcode, lrr(opcode)); // RSC Rd,Rn,Rm,LSR Rs
+                    return rsc(opcode, lrr(opcode)) + 1; // RSC Rd,Rn,Rm,LSR Rs
 
                 case 0x0E4: case 0x0EC:
                     return rsc(opcode, ari(opcode)); // RSC Rd,Rn,Rm,ASR #i
 
                 case 0x0E5:
-                    return rsc(opcode, arr(opcode)); // RSC Rd,Rn,Rm,ASR Rs
+                    return rsc(opcode, arr(opcode)) + 1; // RSC Rd,Rn,Rm,ASR Rs
 
                 case 0x0E6: case 0x0EE:
                     return rsc(opcode, rri(opcode)); // RSC Rd,Rn,Rm,ROR #i
 
                 case 0x0E7:
-                    return rsc(opcode, rrr(opcode)); // RSC Rd,Rn,Rm,ROR Rs
+                    return rsc(opcode, rrr(opcode)) + 1; // RSC Rd,Rn,Rm,ROR Rs
 
                 case 0x0E9:
                     return smlal(opcode); // SMLAL RdLo,RdHi,Rm,Rs
@@ -817,25 +817,25 @@ void Interpreter::runOpcode()
                     return rscs(opcode, lli(opcode)); // RSCS Rd,Rn,Rm,LSL #i
 
                 case 0x0F1:
-                    return rscs(opcode, llr(opcode)); // RSCS Rd,Rn,Rm,LSL Rs
+                    return rscs(opcode, llr(opcode)) + 1; // RSCS Rd,Rn,Rm,LSL Rs
 
                 case 0x0F2: case 0x0FA:
                     return rscs(opcode, lri(opcode)); // RSCS Rd,Rn,Rm,LSR #i
 
                 case 0x0F3:
-                    return rscs(opcode, lrr(opcode)); // RSCS Rd,Rn,Rm,LSR Rs
+                    return rscs(opcode, lrr(opcode)) + 1; // RSCS Rd,Rn,Rm,LSR Rs
 
                 case 0x0F4: case 0x0FC:
                     return rscs(opcode, ari(opcode)); // RSCS Rd,Rn,Rm,ASR #i
 
                 case 0x0F5:
-                    return rscs(opcode, arr(opcode)); // RSCS Rd,Rn,Rm,ASR Rs
+                    return rscs(opcode, arr(opcode)) + 1; // RSCS Rd,Rn,Rm,ASR Rs
 
                 case 0x0F6: case 0x0FE:
                     return rscs(opcode, rri(opcode)); // RSCS Rd,Rn,Rm,ROR #i
 
                 case 0x0F7:
-                    return rscs(opcode, rrr(opcode)); // RSCS Rd,Rn,Rm,ROR Rs
+                    return rscs(opcode, rrr(opcode)) + 1; // RSCS Rd,Rn,Rm,ROR Rs
 
                 case 0x0F9:
                     return smlals(opcode); // SMLALS RdLo,RdHi,Rm,Rs
@@ -874,25 +874,25 @@ void Interpreter::runOpcode()
                     return tst(opcode, lliS(opcode)); // TST Rn,Rm,LSL #i
 
                 case 0x111:
-                    return tst(opcode, llrS(opcode)); // TST Rn,Rm,LSL Rs
+                    return tst(opcode, llrS(opcode)) + 1; // TST Rn,Rm,LSL Rs
 
                 case 0x112: case 0x11A:
                     return tst(opcode, lriS(opcode)); // TST Rn,Rm,LSR #i
 
                 case 0x113:
-                    return tst(opcode, lrrS(opcode)); // TST Rn,Rm,LSR Rs
+                    return tst(opcode, lrrS(opcode)) + 1; // TST Rn,Rm,LSR Rs
 
                 case 0x114: case 0x11C:
                     return tst(opcode, ariS(opcode)); // TST Rn,Rm,ASR #i
 
                 case 0x115:
-                    return tst(opcode, arrS(opcode)); // TST Rn,Rm,ASR Rs
+                    return tst(opcode, arrS(opcode)) + 1; // TST Rn,Rm,ASR Rs
 
                 case 0x116: case 0x11E:
                     return tst(opcode, rriS(opcode)); // TST Rn,Rm,ROR #i
 
                 case 0x117:
-                    return tst(opcode, rrrS(opcode)); // TST Rn,Rm,ROR Rs
+                    return tst(opcode, rrrS(opcode)) + 1; // TST Rn,Rm,ROR Rs
 
                 case 0x11B:
                     return ldrhOf(opcode, -rp(opcode)); // LDRH Rd,[Rn,-Rm]
@@ -940,25 +940,25 @@ void Interpreter::runOpcode()
                     return teq(opcode, lliS(opcode)); // TEQ Rn,Rm,LSL #i
 
                 case 0x131:
-                    return teq(opcode, llrS(opcode)); // TEQ Rn,Rm,LSL Rs
+                    return teq(opcode, llrS(opcode)) + 1; // TEQ Rn,Rm,LSL Rs
 
                 case 0x132: case 0x13A:
                     return teq(opcode, lriS(opcode)); // TEQ Rn,Rm,LSR #i
 
                 case 0x133:
-                    return teq(opcode, lrrS(opcode)); // TEQ Rn,Rm,LSR Rs
+                    return teq(opcode, lrrS(opcode)) + 1; // TEQ Rn,Rm,LSR Rs
 
                 case 0x134: case 0x13C:
                     return teq(opcode, ariS(opcode)); // TEQ Rn,Rm,ASR #i
 
                 case 0x135:
-                    return teq(opcode, arrS(opcode)); // TEQ Rn,Rm,ASR Rs
+                    return teq(opcode, arrS(opcode)) + 1; // TEQ Rn,Rm,ASR Rs
 
                 case 0x136: case 0x13E:
                     return teq(opcode, rriS(opcode)); // TEQ Rn,Rm,ROR #i
 
                 case 0x137:
-                    return teq(opcode, rrrS(opcode)); // TEQ Rn,Rm,ROR Rs
+                    return teq(opcode, rrrS(opcode)) + 1; // TEQ Rn,Rm,ROR Rs
 
                 case 0x13B:
                     return ldrhPr(opcode, -rp(opcode)); // LDRH Rd,[Rn,-Rm]!
@@ -1003,25 +1003,25 @@ void Interpreter::runOpcode()
                     return cmp(opcode, lli(opcode)); // CMP Rn,Rm,LSL #i
 
                 case 0x151:
-                    return cmp(opcode, llr(opcode)); // CMP Rn,Rm,LSL Rs
+                    return cmp(opcode, llr(opcode)) + 1; // CMP Rn,Rm,LSL Rs
 
                 case 0x152: case 0x15A:
                     return cmp(opcode, lri(opcode)); // CMP Rn,Rm,LSR #i
 
                 case 0x153:
-                    return cmp(opcode, lrr(opcode)); // CMP Rn,Rm,LSR Rs
+                    return cmp(opcode, lrr(opcode)) + 1; // CMP Rn,Rm,LSR Rs
 
                 case 0x154: case 0x15C:
                     return cmp(opcode, ari(opcode)); // CMP Rn,Rm,ASR #i
 
                 case 0x155:
-                    return cmp(opcode, arr(opcode)); // CMP Rn,Rm,ASR Rs
+                    return cmp(opcode, arr(opcode)) + 1; // CMP Rn,Rm,ASR Rs
 
                 case 0x156: case 0x15E:
                     return cmp(opcode, rri(opcode)); // CMP Rn,Rm,ROR #i
 
                 case 0x157:
-                    return cmp(opcode, rrr(opcode)); // CMP Rn,Rm,ROR Rs
+                    return cmp(opcode, rrr(opcode)) + 1; // CMP Rn,Rm,ROR Rs
 
                 case 0x15B:
                     return ldrhOf(opcode, -ipH(opcode)); // LDRH Rd,[Rn,-#i]
@@ -1066,25 +1066,25 @@ void Interpreter::runOpcode()
                     return cmn(opcode, lli(opcode)); // CMN Rn,Rm,LSL #i
 
                 case 0x171:
-                    return cmn(opcode, llr(opcode)); // CMN Rn,Rm,LSL Rs
+                    return cmn(opcode, llr(opcode)) + 1; // CMN Rn,Rm,LSL Rs
 
                 case 0x172: case 0x17A:
                     return cmn(opcode, lri(opcode)); // CMN Rn,Rm,LSR #i
 
                 case 0x173:
-                    return cmn(opcode, lrr(opcode)); // CMN Rn,Rm,LSR Rs
+                    return cmn(opcode, lrr(opcode)) + 1; // CMN Rn,Rm,LSR Rs
 
                 case 0x174: case 0x17C:
                     return cmn(opcode, ari(opcode)); // CMN Rn,Rm,ASR #i
 
                 case 0x175:
-                    return cmn(opcode, arr(opcode)); // CMN Rn,Rm,ASR Rs
+                    return cmn(opcode, arr(opcode)) + 1; // CMN Rn,Rm,ASR Rs
 
                 case 0x176: case 0x17E:
                     return cmn(opcode, rri(opcode)); // CMN Rn,Rm,ROR #i
 
                 case 0x177:
-                    return cmn(opcode, rrr(opcode)); // CMN Rn,Rm,ROR Rs
+                    return cmn(opcode, rrr(opcode)) + 1; // CMN Rn,Rm,ROR Rs
 
                 case 0x17B:
                     return ldrhPr(opcode, -ipH(opcode)); // LDRH Rd,[Rn,-#i]!
@@ -1099,25 +1099,25 @@ void Interpreter::runOpcode()
                     return orr(opcode, lli(opcode)); // ORR Rd,Rn,Rm,LSL #i
 
                 case 0x181:
-                    return orr(opcode, llr(opcode)); // ORR Rd,Rn,Rm,LSL Rs
+                    return orr(opcode, llr(opcode)) + 1; // ORR Rd,Rn,Rm,LSL Rs
 
                 case 0x182: case 0x18A:
                     return orr(opcode, lri(opcode)); // ORR Rd,Rn,Rm,LSR #i
 
                 case 0x183:
-                    return orr(opcode, lrr(opcode)); // ORR Rd,Rn,Rm,LSR Rs
+                    return orr(opcode, lrr(opcode)) + 1; // ORR Rd,Rn,Rm,LSR Rs
 
                 case 0x184: case 0x18C:
                     return orr(opcode, ari(opcode)); // ORR Rd,Rn,Rm,ASR #i
 
                 case 0x185:
-                    return orr(opcode, arr(opcode)); // ORR Rd,Rn,Rm,ASR Rs
+                    return orr(opcode, arr(opcode)) + 1; // ORR Rd,Rn,Rm,ASR Rs
 
                 case 0x186: case 0x18E:
                     return orr(opcode, rri(opcode)); // ORR Rd,Rn,Rm,ROR #i
 
                 case 0x187:
-                    return orr(opcode, rrr(opcode)); // ORR Rd,Rn,Rm,ROR Rs
+                    return orr(opcode, rrr(opcode)) + 1; // ORR Rd,Rn,Rm,ROR Rs
 
                 case 0x18B:
                     return strhOf(opcode, rp(opcode)); // STRH Rd,[Rn,Rm]
@@ -1132,25 +1132,25 @@ void Interpreter::runOpcode()
                     return orrs(opcode, lliS(opcode)); // ORRS Rd,Rn,Rm,LSL #i
 
                 case 0x191:
-                    return orrs(opcode, llrS(opcode)); // ORRS Rd,Rn,Rm,LSL Rs
+                    return orrs(opcode, llrS(opcode)) + 1; // ORRS Rd,Rn,Rm,LSL Rs
 
                 case 0x192: case 0x19A:
                     return orrs(opcode, lriS(opcode)); // ORRS Rd,Rn,Rm,LSR #i
 
                 case 0x193:
-                    return orrs(opcode, lrrS(opcode)); // ORRS Rd,Rn,Rm,LSR Rs
+                    return orrs(opcode, lrrS(opcode)) + 1; // ORRS Rd,Rn,Rm,LSR Rs
 
                 case 0x194: case 0x19C:
                     return orrs(opcode, ariS(opcode)); // ORRS Rd,Rn,Rm,ASR #i
 
                 case 0x195:
-                    return orrs(opcode, arrS(opcode)); // ORRS Rd,Rn,Rm,ASR Rs
+                    return orrs(opcode, arrS(opcode)) + 1; // ORRS Rd,Rn,Rm,ASR Rs
 
                 case 0x196: case 0x19E:
                     return orrs(opcode, rriS(opcode)); // ORRS Rd,Rn,Rm,ROR #i
 
                 case 0x197:
-                    return orrs(opcode, rrrS(opcode)); // ORRS Rd,Rn,Rm,ROR Rs
+                    return orrs(opcode, rrrS(opcode)) + 1; // ORRS Rd,Rn,Rm,ROR Rs
 
                 case 0x19B:
                     return ldrhOf(opcode, rp(opcode)); // LDRH Rd,[Rn,Rm]
@@ -1165,25 +1165,25 @@ void Interpreter::runOpcode()
                     return mov(opcode, lli(opcode)); // MOV Rd,Rm,LSL #i
 
                 case 0x1A1:
-                    return mov(opcode, llr(opcode)); // MOV Rd,Rm,LSL Rs
+                    return mov(opcode, llr(opcode)) + 1; // MOV Rd,Rm,LSL Rs
 
                 case 0x1A2: case 0x1AA:
                     return mov(opcode, lri(opcode)); // MOV Rd,Rm,LSR #i
 
                 case 0x1A3:
-                    return mov(opcode, lrr(opcode)); // MOV Rd,Rm,LSR Rs
+                    return mov(opcode, lrr(opcode)) + 1; // MOV Rd,Rm,LSR Rs
 
                 case 0x1A4: case 0x1AC:
                     return mov(opcode, ari(opcode)); // MOV Rd,Rm,ASR #i
 
                 case 0x1A5:
-                    return mov(opcode, arr(opcode)); // MOV Rd,Rm,ASR Rs
+                    return mov(opcode, arr(opcode)) + 1; // MOV Rd,Rm,ASR Rs
 
                 case 0x1A6: case 0x1AE:
                     return mov(opcode, rri(opcode)); // MOV Rd,Rm,ROR #i
 
                 case 0x1A7:
-                    return mov(opcode, rrr(opcode)); // MOV Rd,Rm,ROR Rs
+                    return mov(opcode, rrr(opcode)) + 1; // MOV Rd,Rm,ROR Rs
 
                 case 0x1AB:
                     return strhPr(opcode, rp(opcode)); // STRH Rd,[Rn,Rm]!
@@ -1198,25 +1198,25 @@ void Interpreter::runOpcode()
                     return movs(opcode, lliS(opcode)); // MOVS Rd,Rm,LSL #i
 
                 case 0x1B1:
-                    return movs(opcode, llrS(opcode)); // MOVS Rd,Rm,LSL Rs
+                    return movs(opcode, llrS(opcode)) + 1; // MOVS Rd,Rm,LSL Rs
 
                 case 0x1B2: case 0x1BA:
                     return movs(opcode, lriS(opcode)); // MOVS Rd,Rm,LSR #i
 
                 case 0x1B3:
-                    return movs(opcode, lrrS(opcode)); // MOVS Rd,Rm,LSR Rs
+                    return movs(opcode, lrrS(opcode)) + 1; // MOVS Rd,Rm,LSR Rs
 
                 case 0x1B4: case 0x1BC:
                     return movs(opcode, ariS(opcode)); // MOVS Rd,Rm,ASR #i
 
                 case 0x1B5:
-                    return movs(opcode, arrS(opcode)); // MOVS Rd,Rm,ASR Rs
+                    return movs(opcode, arrS(opcode)) + 1; // MOVS Rd,Rm,ASR Rs
 
                 case 0x1B6: case 0x1BE:
                     return movs(opcode, rriS(opcode)); // MOVS Rd,Rm,ROR #i
 
                 case 0x1B7:
-                    return movs(opcode, rrrS(opcode)); // MOVS Rd,Rm,ROR Rs
+                    return movs(opcode, rrrS(opcode)) + 1; // MOVS Rd,Rm,ROR Rs
 
                 case 0x1BB:
                     return ldrhPr(opcode, rp(opcode)); // LDRH Rd,[Rn,Rm]!
@@ -1231,25 +1231,25 @@ void Interpreter::runOpcode()
                     return bic(opcode, lli(opcode)); // BIC Rd,Rn,Rm,LSL #i
 
                 case 0x1C1:
-                    return bic(opcode, llr(opcode)); // BIC Rd,Rn,Rm,LSL Rs
+                    return bic(opcode, llr(opcode)) + 1; // BIC Rd,Rn,Rm,LSL Rs
 
                 case 0x1C2: case 0x1CA:
                     return bic(opcode, lri(opcode)); // BIC Rd,Rn,Rm,LSR #i
 
                 case 0x1C3:
-                    return bic(opcode, lrr(opcode)); // BIC Rd,Rn,Rm,LSR Rs
+                    return bic(opcode, lrr(opcode)) + 1; // BIC Rd,Rn,Rm,LSR Rs
 
                 case 0x1C4: case 0x1CC:
                     return bic(opcode, ari(opcode)); // BIC Rd,Rn,Rm,ASR #i
 
                 case 0x1C5:
-                    return bic(opcode, arr(opcode)); // BIC Rd,Rn,Rm,ASR Rs
+                    return bic(opcode, arr(opcode)) + 1; // BIC Rd,Rn,Rm,ASR Rs
 
                 case 0x1C6: case 0x1CE:
                     return bic(opcode, rri(opcode)); // BIC Rd,Rn,Rm,ROR #i
 
                 case 0x1C7:
-                    return bic(opcode, rrr(opcode)); // BIC Rd,Rn,Rm,ROR Rs
+                    return bic(opcode, rrr(opcode)) + 1; // BIC Rd,Rn,Rm,ROR Rs
 
                 case 0x1CB:
                     return strhOf(opcode, ipH(opcode)); // STRH Rd,[Rn,#i]
@@ -1264,25 +1264,25 @@ void Interpreter::runOpcode()
                     return bics(opcode, lliS(opcode)); // BICS Rd,Rn,Rm,LSL #i
 
                 case 0x1D1:
-                    return bics(opcode, llrS(opcode)); // BICS Rd,Rn,Rm,LSL Rs
+                    return bics(opcode, llrS(opcode)) + 1; // BICS Rd,Rn,Rm,LSL Rs
 
                 case 0x1D2: case 0x1DA:
                     return bics(opcode, lriS(opcode)); // BICS Rd,Rn,Rm,LSR #i
 
                 case 0x1D3:
-                    return bics(opcode, lrrS(opcode)); // BICS Rd,Rn,Rm,LSR Rs
+                    return bics(opcode, lrrS(opcode)) + 1; // BICS Rd,Rn,Rm,LSR Rs
 
                 case 0x1D4: case 0x1DC:
                     return bics(opcode, ariS(opcode)); // BICS Rd,Rn,Rm,ASR #i
 
                 case 0x1D5:
-                    return bics(opcode, arrS(opcode)); // BICS Rd,Rn,Rm,ASR Rs
+                    return bics(opcode, arrS(opcode)) + 1; // BICS Rd,Rn,Rm,ASR Rs
 
                 case 0x1D6: case 0x1DE:
                     return bics(opcode, rriS(opcode)); // BICS Rd,Rn,Rm,ROR #i
 
                 case 0x1D7:
-                    return bics(opcode, rrrS(opcode)); // BICS Rd,Rn,Rm,ROR Rs
+                    return bics(opcode, rrrS(opcode)) + 1; // BICS Rd,Rn,Rm,ROR Rs
 
                 case 0x1DB:
                     return ldrhOf(opcode, ipH(opcode)); // LDRH Rd,[Rn,#i]
@@ -1297,25 +1297,25 @@ void Interpreter::runOpcode()
                     return mvn(opcode, lli(opcode)); // MVN Rd,Rm,LSL #i
 
                 case 0x1E1:
-                    return mvn(opcode, llr(opcode)); // MVN Rd,Rm,LSL Rs
+                    return mvn(opcode, llr(opcode)) + 1; // MVN Rd,Rm,LSL Rs
 
                 case 0x1E2: case 0x1EA:
                     return mvn(opcode, lri(opcode)); // MVN Rd,Rm,LSR #i
 
                 case 0x1E3:
-                    return mvn(opcode, lrr(opcode)); // MVN Rd,Rm,LSR Rs
+                    return mvn(opcode, lrr(opcode)) + 1; // MVN Rd,Rm,LSR Rs
 
                 case 0x1E4: case 0x1EC:
                     return mvn(opcode, ari(opcode)); // MVN Rd,Rm,ASR #i
 
                 case 0x1E5:
-                    return mvn(opcode, arr(opcode)); // MVN Rd,Rm,ASR Rs
+                    return mvn(opcode, arr(opcode)) + 1; // MVN Rd,Rm,ASR Rs
 
                 case 0x1E6: case 0x1EE:
                     return mvn(opcode, rri(opcode)); // MVN Rd,Rm,ROR #i
 
                 case 0x1E7:
-                    return mvn(opcode, rrr(opcode)); // MVN Rd,Rm,ROR Rs
+                    return mvn(opcode, rrr(opcode)) + 1; // MVN Rd,Rm,ROR Rs
 
                 case 0x1EB:
                     return strhPr(opcode, ipH(opcode)); // STRH Rd,[Rn,#i]!
@@ -1330,25 +1330,25 @@ void Interpreter::runOpcode()
                     return mvns(opcode, lliS(opcode)); // MVNS Rd,Rm,LSL #i
 
                 case 0x1F1:
-                    return mvns(opcode, llrS(opcode)); // MVNS Rd,Rm,LSL Rs
+                    return mvns(opcode, llrS(opcode)) + 1; // MVNS Rd,Rm,LSL Rs
 
                 case 0x1F2: case 0x1FA:
                     return mvns(opcode, lriS(opcode)); // MVNS Rd,Rm,LSR #i
 
                 case 0x1F3:
-                    return mvns(opcode, lrrS(opcode)); // MVNS Rd,Rm,LSR Rs
+                    return mvns(opcode, lrrS(opcode)) + 1; // MVNS Rd,Rm,LSR Rs
 
                 case 0x1F4: case 0x1FC:
                     return mvns(opcode, ariS(opcode)); // MVNS Rd,Rm,ASR #i
 
                 case 0x1F5:
-                    return mvns(opcode, arrS(opcode)); // MVNS Rd,Rm,ASR Rs
+                    return mvns(opcode, arrS(opcode)) + 1; // MVNS Rd,Rm,ASR Rs
 
                 case 0x1F6: case 0x1FE:
                     return mvns(opcode, rriS(opcode)); // MVNS Rd,Rm,ROR #i
 
                 case 0x1F7:
-                    return mvns(opcode, rrrS(opcode)); // MVNS Rd,Rm,ROR Rs
+                    return mvns(opcode, rrrS(opcode)) + 1; // MVNS Rd,Rm,ROR Rs
 
                 case 0x1FB:
                     return ldrhPr(opcode, ipH(opcode)); // LDRH Rd,[Rn,#i]!
@@ -2405,11 +2405,11 @@ void Interpreter::runOpcode()
 
                 default:
                     LOG("Unknown ARM%d ARM opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
-                    return;
+                    return 1;
             }
         }
 
-        return;
+        return 1;
     }
 }
 
@@ -2423,7 +2423,7 @@ void Interpreter::sendInterrupt(int bit)
     if (ie & irf)
     {
         if (ime && !(cpsr & BIT(7)))
-            core->schedule(Task(&interruptTask, 1 + cpu));
+            core->schedule(Task(&interruptTask, (cpu == 1 && !core->isGbaMode()) ? 2 : 1));
         else if (ime || cpu == 1)
             halted &= ~BIT(0);
     }
@@ -2580,7 +2580,7 @@ void Interpreter::setCpsr(uint32_t value, bool save)
 
     // Trigger an interrupt if the conditions are met
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
-        core->schedule(Task(&interruptTask, 1 + cpu));
+        core->schedule(Task(&interruptTask, (cpu == 1 && !core->isGbaMode()) ? 2 : 1));
 }
 
 void Interpreter::writeIme(uint8_t value)
@@ -2590,7 +2590,7 @@ void Interpreter::writeIme(uint8_t value)
 
     // Trigger an interrupt if the conditions are met
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
-        core->schedule(Task(&interruptTask, 1 + cpu));
+        core->schedule(Task(&interruptTask, (cpu == 1 && !core->isGbaMode()) ? 2 : 1));
 }
 
 void Interpreter::writeIe(uint32_t mask, uint32_t value)
@@ -2601,7 +2601,7 @@ void Interpreter::writeIe(uint32_t mask, uint32_t value)
 
     // Trigger an interrupt if the conditions are met
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
-        core->schedule(Task(&interruptTask, 1 + cpu));
+        core->schedule(Task(&interruptTask, (cpu == 1 && !core->isGbaMode()) ? 2 : 1));
 }
 
 void Interpreter::writeIrf(uint32_t mask, uint32_t value)

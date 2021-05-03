@@ -101,6 +101,8 @@ void Core::resetCycles()
     // Reset the global cycle count periodically to prevent overflow
     for (unsigned int i = 0; i < tasks.size(); i++)
         tasks[i].cycles -= globalCycles;
+    arm9Cycles -= std::min(globalCycles, arm9Cycles);
+    arm7Cycles -= std::min(globalCycles, arm7Cycles);
     timers[0].resetCycles();
     timers[1].resetCycles();
     globalCycles -= globalCycles;
@@ -113,11 +115,11 @@ void Core::runGbaFrame()
     while (frameCycles < 228 * 308 * 4) // 228 scanlines, 308 dots, 4 ARM7 cycles
     {
         // Run the ARM7
-        if ((frameCycles & 1) && interpreter[1].shouldRun())
-            interpreter[1].runOpcode();
+        if (interpreter[1].shouldRun() && globalCycles >= arm7Cycles)
+            arm7Cycles = globalCycles + interpreter[1].runOpcode();
 
-        // Count a cycle if a CPU is running, otherwise jump to the next task
-        uint32_t i = interpreter[1].shouldRun() ? 1 : (tasks[0].cycles - globalCycles);
+        // Count cycles up to the next soonest event
+        uint32_t i = std::min((interpreter[1].shouldRun() ? arm7Cycles : tasks[0].cycles), tasks[0].cycles) - globalCycles;
         frameCycles += i;
         globalCycles += i;
 
@@ -149,15 +151,16 @@ void Core::runNdsFrame()
     while (frameCycles < 263 * 355 * 6) // 263 scanlines, 355 dots, 6 ARM9 cycles
     {
         // Run the ARM9
-        if (interpreter[0].shouldRun())
-            interpreter[0].runOpcode();
+        if (interpreter[0].shouldRun() && globalCycles >= arm9Cycles)
+            arm9Cycles = globalCycles + interpreter[0].runOpcode();
 
         // Run the ARM7 at half the speed of the ARM9
-        if ((frameCycles & 1) && interpreter[1].shouldRun())
-            interpreter[1].runOpcode();
+        if (interpreter[1].shouldRun() && globalCycles >= arm7Cycles)
+            arm7Cycles = globalCycles + (interpreter[1].runOpcode() << 1);
 
-        // Count a cycle if a CPU is running, otherwise jump to the next task
-        uint32_t i = (interpreter[0].shouldRun() || interpreter[1].shouldRun()) ? 1 : (tasks[0].cycles - globalCycles);
+        // Count cycles up to the next soonest event
+        uint32_t i = std::min(std::min((interpreter[0].shouldRun() ? arm9Cycles : tasks[0].cycles),
+            (interpreter[1].shouldRun() ? arm7Cycles : tasks[0].cycles)), tasks[0].cycles) - globalCycles;
         frameCycles += i;
         globalCycles += i;
 
@@ -199,9 +202,8 @@ void Core::enterGbaMode()
     gbaMode = true;
 
     // Reset the scheduler and schedule initial tasks for GBA mode
-    frameCycles = globalCycles = 0;
     tasks.clear();
-    schedule(Task(&resetCyclesTask, 0x7FFFFFFF));
+    schedule(Task(&resetCyclesTask, 1));
     gpu.gbaScheduleInit();
     spu.gbaScheduleInit();
 
