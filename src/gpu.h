@@ -60,7 +60,7 @@ class Gpu
         std::mutex mutex;
 
         bool running = false;
-        std::atomic<bool> drawing;
+        std::atomic<int> drawing;
         std::thread *thread = nullptr;
 
         bool displayCapture = false;

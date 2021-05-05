@@ -27,7 +27,7 @@ Gpu::Gpu(Core *core): core(core)
 {
     // Mark the thread as not drawing to start
     ready.store(true);
-    drawing.store(false);
+    drawing.store(0);
 
     // Prepare tasks to be used with the scheduler
     gbaScanline240Task = std::bind(&Gpu::gbaScanline240, this);
@@ -110,12 +110,13 @@ void Gpu::gbaScanline240()
     {
         if (thread)
         {
-            // Wait for the scanline to finish drawing
-            while (drawing.load()) std::this_thread::yield();
+            // Wait for the thread to finish the scanline
+            while (drawing.load() != 0)
+                std::this_thread::yield();
         }
         else
         {
-            // Draw visible scanlines
+            // Draw the current scanline
             core->gpu2D[0].drawGbaScanline(vCount);
         }
 
@@ -206,9 +207,9 @@ void Gpu::gbaScanline308()
         }
     }
 
-    // Signal that the next scanline has started
+    // Signal that the next scanline should start drawing
     if (vCount < 160 && thread)
-        drawing.store(true);
+        drawing.store(1);
 
     // Check if the current scanline matches the V-counter
     if (vCount == (dispStat[1] >> 8))
@@ -236,12 +237,26 @@ void Gpu::scanline256()
     {
         if (thread)
         {
-            // Wait for the scanlines to finish drawing
-            while (drawing.load()) std::this_thread::yield();
+            // Make sure the thread has started before changing the state
+            while (drawing.load() == 1)
+                std::this_thread::yield();
+
+            switch (drawing.exchange(3))
+            {
+                case 2:
+                    // Draw engine B's scanline if it hasn't started yet (and purposely fall through)
+                    core->gpu2D[1].drawScanline(vCount);
+
+                case 3:
+                    // Wait for the thread to finish the scanlines
+                    while (drawing.load() != 0)
+                        std::this_thread::yield();
+                    break;
+            }
         }
         else
         {
-            // Draw visible scanlines
+            // Draw the current scanlines
             core->gpu2D[0].drawScanline(vCount);
             core->gpu2D[1].drawScanline(vCount);
         }
@@ -461,9 +476,9 @@ void Gpu::scanline355()
         }
     }
 
-    // Signal that the next scanline has started
+    // Signal that the next scanline should start drawing
     if (vCount < 192 && thread)
-        drawing.store(true);
+        drawing.store(1);
 
     for (int i = 0; i < 2; i++)
     {
@@ -495,18 +510,18 @@ void Gpu::drawGbaThreaded()
 {
     while (running)
     {
-        // Wait until the next scanline starts
-        while (!drawing.load())
+        // Wait until the next scanline should start
+        while (drawing.load() != 1)
         {
             if (!running) return;
             std::this_thread::yield();
         }
 
-        // Draw the scanline
+        // Draw the current scanline
         core->gpu2D[0].drawGbaScanline(vCount);
 
         // Signal that the scanline is finished
-        drawing.store(false);
+        drawing.store(0);
     }
 }
 
@@ -514,19 +529,23 @@ void Gpu::drawThreaded()
 {
     while (running)
     {
-        // Wait until the next scanline starts
-        while (!drawing.load())
+        // Wait until the next scanline should start
+        while (drawing.load() != 1)
         {
             if (!running) return;
             std::this_thread::yield();
         }
 
-        // Draw the scanlines
+        // Draw engine A's scanline
+        drawing.store(2);
         core->gpu2D[0].drawScanline(vCount);
-        core->gpu2D[1].drawScanline(vCount);
 
-        // Signal that the scanline is finished
-        drawing.store(false);
+        // Draw engine B's scanline if it hasn't started yet
+        if (drawing.exchange(3) == 2)
+            core->gpu2D[1].drawScanline(vCount);
+
+        // Signal that the scanlines are finished
+        drawing.store(0);
     }
 }
 
