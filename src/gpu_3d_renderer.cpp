@@ -160,7 +160,7 @@ void Gpu3DRenderer::drawScanline1(int line)
     // Convert the clear values
     // The attribute buffer contains the polygon IDs (0-5, 6-11), transparency bit (12), fog bit (13), edge bit (14), and edge alpha (15-20)
     uint32_t color = BIT(26) | rgba5ToRgba6(((clearColor & 0x001F0000) >> 1) | (clearColor & 0x00007FFF));
-    uint32_t depth = (clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9);
+    int32_t depth = (clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9);
     uint32_t attrib = ((clearColor & BIT(15)) >> 2) | ((clearColor & 0x3F000000) >> 18) | ((clearColor & 0x3F000000) >> 24) |
         (0x3F << 15) | (((clearColor & 0x001F0000) && ((clearColor & 0x001F0000) >> 16) < 31) << 12);
 
@@ -215,7 +215,7 @@ void Gpu3DRenderer::finishScanline(int line)
                 };
 
                 // Get the depth values of the surrounding pixels
-                uint32_t depth[4] =
+                int32_t depth[4] =
                 {
                     ((i % 256 >   0) ? depthBuffer[0][i -   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Left
                     ((i % 256 < 255) ? depthBuffer[0][i +   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Right
@@ -972,7 +972,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
         int i = line * 256 + x;
 
         // Calculate the depth value of the current pixel
-        uint32_t depth;
+        int32_t depth;
         if (polygon->wBuffer)
         {
             depth = interpolateFill(w1, w2, x1, x, x4, w1, w2);
@@ -980,7 +980,6 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
                 depth <<= polygon->wShift;
             else if (polygon->wShift < 0)
                 depth >>= -polygon->wShift;
-            depth &= 0xFFFFFF;
         }
         else
         {

@@ -324,7 +324,7 @@ void Gpu3D::swapBuffers()
             // Z coordinates (and depth values in general) are 24-bit
             verticesIn[i].x = (( (int64_t)verticesIn[i].x + verticesIn[i].w) * viewportWidth  / (verticesIn[i].w * 2) + viewportX) & 0x1FF;
             verticesIn[i].y = ((-(int64_t)verticesIn[i].y + verticesIn[i].w) * viewportHeight / (verticesIn[i].w * 2) + viewportY) &  0xFF;
-            verticesIn[i].z = (((((int64_t)verticesIn[i].z << 14) / verticesIn[i].w) + 0x3FFF) << 9) & 0xFFFFFF;
+            verticesIn[i].z = (((((int64_t)verticesIn[i].z << 14) / verticesIn[i].w) + 0x3FFF) << 9);
         }
         else
         {
