@@ -21,7 +21,7 @@ jobs:
     - name: Compile
       run: make -j$(nproc)
     - name: Upload
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@v2
       with:
         name: noods-linux
         path: noods
@@ -39,7 +39,7 @@ jobs:
         make -j$(sysctl -n hw.logicalcpu)
         ./mac-bundle.sh --dmg
     - name: Upload
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@v2
       with:
         name: noods-mac
         path: NooDS.dmg
@@ -48,8 +48,10 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v1
-    - uses: msys2/setup-msys2@v2
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Install MSYS2
+      uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
         update: true
@@ -61,9 +63,9 @@ jobs:
         make -j$(nproc)
         strip noods.exe
       shell: msys2 {0}
-      working-directory: ${{github.workspace}}
+      working-directory: ${{ github.workspace }}
     - name: Upload
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@v2
       with:
         name: noods-windows
         path: noods.exe
@@ -73,7 +75,8 @@ jobs:
     container: devkitpro/devkita64:latest
 
     steps:
-    - uses: actions/checkout@v1
+    - name: Checkout
+      uses: actions/checkout@v1
     - name: Downgrade devkitA64 to r14
       run: |
         sudo dkp-pacman -Rs devkitA64 devkitA64-gdb devkita64-rules --noconfirm
@@ -82,7 +85,7 @@ jobs:
     - name: Compile
       run: make -f Makefile.switch -j$(nproc)
     - name: Upload
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@v2
       with:
         name: noods-switch
         path: noods.nro
@@ -91,7 +94,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - name: Checkout
+      uses: actions/checkout@v1
     - name: Compile
       run: |
         ./gradlew assembleRelease
@@ -99,9 +103,34 @@ jobs:
     - name: Sign
       run: $ANDROID_SDK_ROOT/build-tools/29.0.3/apksigner sign --ks keystore.jks --ks-pass pass:$KEYSTORE_PASS noods.apk
       env:
-        KEYSTORE_PASS: ${{secrets.KEYSTORE_PASS}}
+        KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
     - name: Upload
-      uses: actions/upload-artifact@master
+      uses: actions/upload-artifact@v2
       with:
         name: noods-android
         path: noods.apk
+
+  update-release:
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-mac, build-windows, build-switch, build-android]
+
+    steps:
+    - name: Delete old release
+      uses: dev-drprasad/delete-tag-and-release@v0.2.0
+      with:
+        delete_release: true
+        tag_name: release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Get artifacts
+      uses: actions/download-artifact@v2
+    - name: Package artifacts
+      run: for i in ./*; do zip -r -j ${i}.zip $i; done
+    - name: Create new release
+      uses: ncipollo/release-action@v1
+      with:
+        name: Rolling Release
+        body: These are automatically updated builds of the latest commit.
+        artifacts: "*.zip"
+        tag: release
+        token: ${{ secrets.GITHUB_TOKEN }}
