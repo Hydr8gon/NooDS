@@ -114,16 +114,17 @@ void Core::runGbaFrame()
     // Run a frame in GBA mode
     while (frameCycles < 228 * 308 * 4) // 228 scanlines, 308 dots, 4 ARM7 cycles
     {
-        // Run the ARM7
-        if (interpreter[1].shouldRun() && globalCycles >= arm7Cycles)
-            arm7Cycles = globalCycles + interpreter[1].runOpcode();
+        uint32_t i = globalCycles;
 
-        // Count cycles up to the next soonest event
-        uint32_t i = std::min((interpreter[1].shouldRun() ? arm7Cycles : tasks[0].cycles), tasks[0].cycles) - globalCycles;
-        frameCycles += i;
-        globalCycles += i;
+        // Run the ARM7 until the next scheduled task
+        while (interpreter[1].shouldRun() && tasks[0].cycles > arm7Cycles)
+            arm7Cycles = (globalCycles += interpreter[1].runOpcode());
 
-        // Run any tasks that are scheduled now
+        // Jump to the next scheduled task
+        globalCycles = tasks[0].cycles;
+        frameCycles += globalCycles - i;
+
+        // Run all tasks that are scheduled now
         while (tasks[0].cycles <= globalCycles)
         {
             (*tasks[0].task)();
@@ -150,21 +151,29 @@ void Core::runNdsFrame()
     // Run a frame in NDS mode
     while (frameCycles < 263 * 355 * 6) // 263 scanlines, 355 dots, 6 ARM9 cycles
     {
-        // Run the ARM9
-        if (interpreter[0].shouldRun() && globalCycles >= arm9Cycles)
-            arm9Cycles = globalCycles + interpreter[0].runOpcode();
+        uint32_t i = globalCycles;
 
-        // Run the ARM7 at half the speed of the ARM9
-        if (interpreter[1].shouldRun() && globalCycles >= arm7Cycles)
-            arm7Cycles = globalCycles + (interpreter[1].runOpcode() << 1);
+        // Run the CPUs until the next scheduled task
+        while (tasks[0].cycles > globalCycles)
+        {
+            // Run the ARM9
+            if (interpreter[0].shouldRun() && globalCycles >= arm9Cycles)
+                arm9Cycles = globalCycles + interpreter[0].runOpcode();
 
-        // Count cycles up to the next soonest event
-        uint32_t i = std::min(std::min((interpreter[0].shouldRun() ? arm9Cycles : tasks[0].cycles),
-            (interpreter[1].shouldRun() ? arm7Cycles : tasks[0].cycles)), tasks[0].cycles) - globalCycles;
-        frameCycles += i;
-        globalCycles += i;
+            // Run the ARM7 at half the speed of the ARM9
+            if (interpreter[1].shouldRun() && globalCycles >= arm7Cycles)
+                arm7Cycles = globalCycles + (interpreter[1].runOpcode() << 1);
 
-        // Run any tasks that are scheduled now
+            // Count cycles up to the next soonest event
+            globalCycles = std::min((interpreter[0].shouldRun() ? arm9Cycles : tasks[0].cycles),
+                (interpreter[1].shouldRun() ? arm7Cycles : tasks[0].cycles));
+        }
+
+        // Jump to the next scheduled task
+        globalCycles = tasks[0].cycles;
+        frameCycles += globalCycles - i;
+
+        // Run all tasks that are scheduled now
         while (tasks[0].cycles <= globalCycles)
         {
             (*tasks[0].task)();
