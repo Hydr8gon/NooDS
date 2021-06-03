@@ -147,12 +147,12 @@ void fileBrowser()
             if ((pressed & confirmButton) && files.size() > 0)
             {
                 // Handle the current selection
-                if (files[selection].find(".nds", path.length() - 4) != std::string::npos)
+                if (files[selection].find(".nds", files[selection].length() - 4) != std::string::npos)
                 {
                     // Set an NDS ROM to load
                     ndsPath = path + "/" + files[selection];
                 }
-                else if (files[selection].find(".gba", path.length() - 4) != std::string::npos)
+                else if (files[selection].find(".gba", files[selection].length() - 4) != std::string::npos)
                 {
                     // Set a GBA ROM to load
                     gbaPath = path + "/" + files[selection];
