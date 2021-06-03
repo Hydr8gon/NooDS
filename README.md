@@ -5,7 +5,7 @@ A (hopefully!) speedy NDS emulator.
 The goal of NooDS is to be a fast and portable Nintendo DS emulator. It's not quite there speed-wise, but it does offer most other features that you might expect from a DS emulator. It even supports GBA backwards compatability! I'm doing this for fun and as a learning experience, and also because I'm a huge fan of the DS. It may not be a worthy competitor for the other DS emulators just yet, but I believe that I can get it there someday. If not, that's fine too; like I said, I'm just having fun!
 
 ### Downloads
-NooDS is available for Linux, macOS, Windows, Switch, and Android. Automatic builds are provided via GitHub Actions; you can download them from the [releases page](https://github.com/Hydr8gon/NooDS/releases).
+NooDS is available for Linux, macOS, Windows, Switch, Vita, and Android. Automatic builds are provided via GitHub Actions; you can download them from the [releases page](https://github.com/Hydr8gon/NooDS/releases).
 
 ### Usage
 NooDS doesn't provide high-level emulation of the BIOS yet, so you'll need to provide BIOS and firmware files dumped from your physical DS. The file paths can be configured in the settings. It also currently lacks automatic save type detection for DS games. If you load a new game and saving doesn't work, you'll have to manually change the save type. This information can be difficult to find, so it's easier if you have working save files already present.
@@ -18,6 +18,9 @@ To compile on Windows, you'll need to install [MSYS2](https://www.msys2.org). On
 
 ### Compiling for Switch
 To compile for the Switch, you'll need to install [devkitPro](https://devkitpro.org/wiki/Getting_Started) and the `switch-dev` package. You can then run `make -f Makefile.switch` in the project root directory to compile.
+
+### Compiling for Vita
+To compile for the Vita, you'll need to install [Vita SDK](https://vitasdk.org/). You can then run `make -f Makefile.vita` in the project root directory to compile.
 
 ### Compiling for Android
 To compile for Android, the easiest way would be to use [Android Studio](https://developer.android.com/studio). You'll also need to install the [Android NDK](https://developer.android.com/studio/projects/install-ndk) for compiling native code. Alternatively, you can use the [command line tools](https://developer.android.com/studio#command-tools); use `sdkmanager` to install `build-tools`, `cmake`, `ndk-bundle`, `platform-tools`, and `platforms;android-29`, and set an `ANDROID_SDK_ROOT` environment variable to the folder containing `cmdline-tools`. You should then be able to compile by running `./gradlew assembleRelease` in the project root directory.

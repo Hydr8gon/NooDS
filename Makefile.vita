@@ -1,0 +1,55 @@
+NAME    := noods
+BUILD   := build-vita
+SOURCES := src src/common src/vita
+ARGS    := -Ofast -flto -std=c++11 #-DDEBUG
+LIBS    := -Wl,-q -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -lvita2d -lSceAppMgr_stub -lSceAudio_stub -lSceCommonDialog_stub \
+           -lSceCtrl_stub -lSceDisplay_stub -lSceGxm_stub -lSceRegistryMgr_stub -lSceSysmodule_stub -lScePgf_stub -lSceTouch_stub
+
+APPNAME := NooDS
+TITLEID := NOODSVITA
+
+CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
+HFILES   := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.h))
+OFILES   := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
+
+ifeq ($(strip $(VITASDK)),)
+$(error "Please define VITASDK to point to your SDK path!")
+endif
+
+CXX       := $(VITASDK)/bin/arm-vita-eabi-g++
+PACKVPK   := $(VITASDK)/bin/vita-pack-vpk
+MAKEFSELF := $(VITASDK)/bin/vita-make-fself 
+MKSFOEX   := $(VITASDK)/bin/vita-mksfoex
+ELFCREATE := $(VITASDK)/bin/vita-elf-create
+
+all: $(NAME).vpk
+
+$(NAME).vpk: eboot.bin param.sfo
+	$(PACKVPK) -b eboot.bin -s param.sfo \
+		--add icon/icon.png=sce_sys/icon0.png \
+		$@
+
+eboot.bin: $(NAME).velf
+	$(MAKEFSELF) -c $< $@
+
+param.sfo:
+	$(MKSFOEX) -s TITLE_ID="$(TITLEID)" "$(APPNAME)" $@
+
+$(NAME).velf: $(NAME).elf
+	$(ELFCREATE) -s $< $@
+
+$(NAME).elf: $(OFILES)
+	$(CXX) $^ $(LIBS) -o $@
+
+$(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
+	$(CXX) -c -o $@ $(ARGS) $<
+
+$(BUILD):
+	for dir in $(SOURCES); \
+	do \
+	mkdir -p $(BUILD)/$$dir; \
+	done
+
+clean:
+	rm -f $(NAME).velf $(NAME).elf $(NAME).vpk param.sfo eboot.bin
+	rm -rf $(BUILD)
