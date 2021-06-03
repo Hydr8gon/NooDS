@@ -61,6 +61,15 @@ void Gpu::gbaScheduleInit()
     core->schedule(Task(&gbaScanline308Task, 308 * 4));
 }
 
+uint32_t Gpu::rgb5ToRgb8(uint32_t color)
+{
+    // Convert an RGB5 value to an RGB8 value, with RGB6 as an intermediate
+    uint8_t r = (((color >>  0) & 0x1F) << 1) * 255 / 63;
+    uint8_t g = (((color >>  5) & 0x1F) << 1) * 255 / 63;
+    uint8_t b = (((color >> 10) & 0x1F) << 1) * 255 / 63;
+    return (0xFF << 24) | (b << 16) | (g << 8) | r;
+}
+
 uint32_t Gpu::rgb6ToRgb8(uint32_t color)
 {
     // Convert an RGB6 value to an RGB8 value
@@ -85,16 +94,38 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     if (!ready.load()) return false;
     mutex.lock();
 
-    // Output the frame in RGB8 format, optionally cropped for GBA
     if (gbaCrop)
     {
-        int offset = (powCnt1 & BIT(15)) ? 0 : (256 * 192); // Display swap
+        // Output the frame in RGB8 format, cropped for GBA
         for (int y = 0; y < 160; y++)
             for (int x = 0; x < 240; x++)
-                out[y * 240 + x] = rgb6ToRgb8(framebuffer[offset + (y + 16) * 256 + (x + 8)]);
+                out[y * 240 + x] = rgb5ToRgb8(framebuffer[y * 256 + x]);
+    }
+    else if (core->isGbaMode())
+    {
+        int offset = (powCnt1 & BIT(15)) ? 0 : (256 * 192); // Display swap
+        uint32_t base = 0x6800000 + gbaBlock * 0x20000;
+
+        // The DS draws the GBA screen by capturing it to alternating VRAM blocks and then displaying that
+        // While not used officially, it's possible to copy images into VRAM before entering GBA mode to use as a border
+        // Output the GBA frame, centered, with the current VRAM border around it
+        for (int y = 0; y < 192; y++)
+        {
+            for (int x = 0; x < 256; x++)
+            {
+                if (x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16)
+                    out[offset + y * 256 + x] = rgb5ToRgb8(framebuffer[(y - 16) * 256 + (x - 8)]);
+                else
+                    out[offset + y * 256 + x] = rgb5ToRgb8(core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
+            }
+        }
+
+        // Clear the secondary display
+        memset(&out[256 * 192 - offset], 0, 256 * 192 * sizeof(uint32_t));
     }
     else
     {
+        // Output the full frame in RGB8 format
         for (int i = 0; i < 256 * 192 * 2; i++)
             out[i] = rgb6ToRgb8(framebuffer[i]);
     }
@@ -166,17 +197,9 @@ void Gpu::gbaScanline308()
 
             mutex.lock();
 
-            // Copy the completed sub-framebuffers to the main framebuffer
-            if (powCnt1 & BIT(15)) // Display swap
-            {
-                memcpy(&framebuffer[0],         core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-                memset(&framebuffer[256 * 192], 0,                               256 * 192 * sizeof(uint32_t));
-            }
-            else
-            {
-                memset(&framebuffer[0],         0,                               256 * 192 * sizeof(uint32_t));
-                memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-            }
+            // Copy the completed sub-framebuffer to the main framebuffer
+            memcpy(&framebuffer[0], core->gpu2D[0].getFramebuffer(), 256 * 160 * sizeof(uint32_t));
+            gbaBlock = !gbaBlock;
 
             mutex.unlock();
             ready.store(true);

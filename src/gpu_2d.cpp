@@ -119,6 +119,7 @@ void Gpu2D::drawGbaScanline(int line)
     for (int i = 0; i < 240; i++)
     {
         uint8_t enabled = BIT(5) | (dispCnt >> 8);
+        uint32_t *pixel = &framebuffer[line * 256 + i];
 
         // If the current pixel is in the bounds of a window, disable layers that are disabled in that window
         if (dispCnt & 0xE000) // Windows enabled
@@ -127,14 +128,14 @@ void Gpu2D::drawGbaScanline(int line)
                 enabled &= winIn >> 0; // Window 0
             else if ((dispCnt & BIT(14)) && i >= winX1[1] && i < winX2[1] && line >= winY1[1] && line < winY2[1])
                 enabled &= winIn >> 8; // Window 1
-            else if ((dispCnt & BIT(15)) && (framebuffer[line * 256 + i] & BIT(24)))
+            else if ((dispCnt & BIT(15)) && (*pixel & BIT(24)))
                 enabled &= winOut >> 8; // Object window
             else
                 enabled &= winOut >> 0; // Outside of windows
         }
 
         // Set the topmost two pixels to the backdrop color (first palette index)
-        uint32_t pixel = U8TO16(palette, 0), pixel2 = pixel;
+        uint32_t pixel2 = *pixel = U8TO16(palette, 0);
         int blendBit = 5, blendBit2 = 5;
         int priority = 4, priority2 = 4;
 
@@ -142,7 +143,7 @@ void Gpu2D::drawGbaScanline(int line)
         // Objects are higher priority than background layers, so the priority is given a little boost
         if ((enabled & BIT(4)) && (layers[4][i] & BIT(15)))
         {
-            pixel = layers[4][i];
+            *pixel = layers[4][i];
             blendBit = 4;
             priority = objPrio[i] - 1;
         }
@@ -156,12 +157,12 @@ void Gpu2D::drawGbaScanline(int line)
                 if ((bgCnt[j] & 0x0003) <= priority) // Higher than topmost
                 {
                     // Move the topmost pixel to the second topmost
-                    pixel2 = pixel;
+                    pixel2 = *pixel;
                     blendBit2 = blendBit;
                     priority2 = priority;
 
                     // Update the topmost pixel
-                    pixel = layers[j][i];
+                    *pixel = layers[j][i];
                     blendBit = j;
                     priority = (bgCnt[j] & 0x0003);
                 }
@@ -182,50 +183,28 @@ void Gpu2D::drawGbaScanline(int line)
         // Semi-transparent objects are special cases that force alpha blending (marked by bit 25)
         // If special cases don't have a second target to blend with, they can fall back to brightness effects
         // Blending is done with 15-bit colors on the GBA
-        if (((blend && mode == 1) || (pixel & BIT(25))) && (bldCnt & BIT(8 + blendBit2))) // Alpha blending
+        if (((blend && mode == 1) || (*pixel & BIT(25))) && (bldCnt & BIT(8 + blendBit2))) // Alpha blending
         {
             int eva = (bldAlpha & 0x001F) >> 0; if (eva > 16) eva = 16;
             int evb = (bldAlpha & 0x1F00) >> 8; if (evb > 16) evb = 16;
-            int r = ((pixel >>  0) & 0x1F) * eva / 16 + ((pixel2 >>  0) & 0x1F) * evb / 16; if (r > 31) r = 31;
-            int g = ((pixel >>  5) & 0x1F) * eva / 16 + ((pixel2 >>  5) & 0x1F) * evb / 16; if (g > 31) g = 31;
-            int b = ((pixel >> 10) & 0x1F) * eva / 16 + ((pixel2 >> 10) & 0x1F) * evb / 16; if (b > 31) b = 31;
-            pixel = (b << 10) | (g << 5) | r;
+            int r = ((*pixel >>  0) & 0x1F) * eva / 16 + ((pixel2 >>  0) & 0x1F) * evb / 16; if (r > 31) r = 31;
+            int g = ((*pixel >>  5) & 0x1F) * eva / 16 + ((pixel2 >>  5) & 0x1F) * evb / 16; if (g > 31) g = 31;
+            int b = ((*pixel >> 10) & 0x1F) * eva / 16 + ((pixel2 >> 10) & 0x1F) * evb / 16; if (b > 31) b = 31;
+            *pixel = (b << 10) | (g << 5) | r;
         }
         else if (blend && mode == 2) // Brightness increase
         {
-            int r = (pixel >>  0) & 0x1F; r += (31 - r) * bldY / 16;
-            int g = (pixel >>  5) & 0x1F; g += (31 - g) * bldY / 16;
-            int b = (pixel >> 10) & 0x1F; b += (31 - b) * bldY / 16;
-            pixel = (b << 10) | (g << 5) | r;
+            int r = (*pixel >>  0) & 0x1F; r += (31 - r) * bldY / 16;
+            int g = (*pixel >>  5) & 0x1F; g += (31 - g) * bldY / 16;
+            int b = (*pixel >> 10) & 0x1F; b += (31 - b) * bldY / 16;
+            *pixel = (b << 10) | (g << 5) | r;
         }
         else if (blend && mode == 3) // Brightness decrease
         {
-            int r = (pixel >>  0) & 0x1F; r -= r * bldY / 16;
-            int g = (pixel >>  5) & 0x1F; g -= g * bldY / 16;
-            int b = (pixel >> 10) & 0x1F; b -= b * bldY / 16;
-            pixel = (b << 10) | (g << 5) | r;
-        }
-
-        // Write the pixel to the framebuffer, centered on the screen
-        framebuffer[(line + 16) * 256 + 8 + i] = rgb5ToRgb6(pixel);
-    }
-
-    // At the end of the frame, copy the VRAM border to the framebuffer around the GBA display
-    // The DS draws the GBA screen by capturing it to VRAM and then displaying that
-    // The current frame is captured to one VRAM block and the previous is displayed from another
-    // This introduces a frame of latency on hardware, but is avoided here by simply drawing directly to the framebuffer
-    if (line == 159)
-    {
-        uint32_t base = 0x6800000 + gbaBlock * 0x20000;
-        gbaBlock = !gbaBlock;
-
-        for (int y = 0; y < 192; y++)
-        {
-            for (int x = 0; x < 256; x++)
-            {
-                if (x == 8 && y >= 16 && y < 192 - 16) x += 240;
-                framebuffer[y * 256 + x] = rgb5ToRgb6(core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
-            }
+            int r = (*pixel >>  0) & 0x1F; r -= r * bldY / 16;
+            int g = (*pixel >>  5) & 0x1F; g -= g * bldY / 16;
+            int b = (*pixel >> 10) & 0x1F; b -= b * bldY / 16;
+            *pixel = (b << 10) | (g << 5) | r;
         }
     }
 }

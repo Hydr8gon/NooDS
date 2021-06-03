@@ -63,6 +63,7 @@ class Gpu
         std::atomic<int> drawing;
         std::thread *thread = nullptr;
 
+        bool gbaBlock = true;
         bool displayCapture = false;
         uint8_t dirty3D = 0;
 
@@ -76,6 +77,7 @@ class Gpu
         std::function<void()> scanline256Task;
         std::function<void()> scanline355Task;
 
+        static uint32_t rgb5ToRgb8(uint32_t color);
         static uint32_t rgb6ToRgb8(uint32_t color);
         static uint16_t rgb6ToRgb5(uint32_t color);
 

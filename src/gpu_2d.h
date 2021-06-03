@@ -74,8 +74,6 @@ class Gpu2D
         uint32_t layers[6][256] = {};
         uint8_t objPrio[256] = {};
 
-        int gbaBlock = 0;
-
         int internalX[2] = {};
         int internalY[2] = {};
 
