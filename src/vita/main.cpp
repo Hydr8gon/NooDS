@@ -260,7 +260,7 @@ void drawScreen(vita2d_texture *texture, uint32_t *data, int width, int height, 
 int main()
 {
     // Create the noods folder if it doesn't exist
-    sceIoMkdir("ux0:/data/noods", 0644);
+    sceIoMkdir("ux0:/data/noods", 0777);
 
     // Define the platform settings
     std::vector<Setting> platformSettings =
