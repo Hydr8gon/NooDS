@@ -53,16 +53,29 @@ void Cp15::write(int cn, int cm, int cp, uint32_t value)
             dtcmWriteEnabled = (ctrlReg & BIT(16));
             itcmReadEnabled = (ctrlReg & BIT(18)) && !(ctrlReg & BIT(19));
             itcmWriteEnabled = (ctrlReg & BIT(18));
+
+            // Update the memory map at the current TCM locations
+            core->memory.updateMap9(dtcmAddr, dtcmAddr + dtcmSize);
+            core->memory.updateMap9(0x00000000, itcmSize);
+
             return;
         }
 
         case 0x090100: // Data TCM base/size
         {
+            uint32_t dtcmAddrOld = dtcmAddr;
+            uint32_t dtcmSizeOld = dtcmSize;
+
             // DTCM size is calculated as 512 shifted left N bits, with a minimum of 4KB
             dtcmReg = value;
             dtcmAddr = dtcmReg & 0xFFFFF000;
             dtcmSize = 0x200 << ((dtcmReg & 0x0000003E) >> 1);
             if (dtcmSize < 0x1000) dtcmSize = 0x1000;
+
+            // Update the memory map at the old and new DTCM locations
+            core->memory.updateMap9(dtcmAddrOld, dtcmAddrOld + dtcmSizeOld);
+            core->memory.updateMap9(dtcmAddr,    dtcmAddr    + dtcmSize);
+
             return;
         }
 
@@ -74,11 +87,17 @@ void Cp15::write(int cn, int cm, int cp, uint32_t value)
 
         case 0x090101: // Instruction TCM size
         {
+            uint32_t itcmSizeOld = itcmSize;
+
             // ITCM base is fixed, so that part of the value is unused
             // ITCM size is calculated as 512 shifted left N bits, with a minimum of 4KB
             itcmReg = value;
             itcmSize = 0x200 << ((itcmReg & 0x0000003E) >> 1);
             if (itcmSize < 0x1000) itcmSize = 0x1000;
+
+            // Update the memory map at the old and new ITCM locations
+            core->memory.updateMap9(0x00000000, std::max(itcmSizeOld, itcmSize));
+
             return;
         }
 

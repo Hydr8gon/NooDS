@@ -128,6 +128,10 @@ void Cartridge::loadGbaRom(std::string path)
     fread(gbaRom, sizeof(uint8_t), gbaRomSize, gbaRomFile);
     fclose(gbaRomFile);
 
+    // Update the memory maps at the GBA ROM locations
+    core->memory.updateMap9(0x08000000, 0x0A000000);
+    core->memory.updateMap7(0x08000000, 0x0D000000);
+
     // Attempt to load the ROM's save file
     gbaSaveName = path.substr(0, path.rfind(".")) + ".sav";
     FILE *gbaSaveFile = fopen(gbaSaveName.c_str(), "rb");

@@ -32,6 +32,9 @@ class Memory
         void loadBios();
         void loadGbaBios();
 
+        void updateMap7(uint32_t start, uint32_t end);
+        void updateMap9(uint32_t start, uint32_t end);
+
         template <typename T> T read(bool cpu, uint32_t address);
         template <typename T> void write(bool cpu, uint32_t address, T value);
 
@@ -44,6 +47,12 @@ class Memory
 
     private:
         Core *core;
+
+        // 32-bit address space, split into 4KB blocks
+        uint8_t *readMap9[0x100000]  = {};
+        uint8_t *readMap7[0x100000]  = {};
+        uint8_t *writeMap9[0x100000] = {};
+        uint8_t *writeMap7[0x100000] = {};
 
         uint8_t bios9[0x8000]   = {}; // 32KB ARM9 BIOS
         uint8_t bios7[0x4000]   = {}; // 16KB ARM7 BIOS

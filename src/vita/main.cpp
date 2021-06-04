@@ -41,6 +41,9 @@
 #define COLOR_TEXT2 RGBA8(200, 200, 200, 255)
 #define COLOR_TEXT3 RGBA8(200, 200, 255, 255)
 
+// Reserve 128MB of allocatable memory (can do more, but loading larger ROMs into RAM is slow)
+int _newlib_heap_size_user = 128 * 1024 * 1024;
+
 const uint32_t keyMap[] =
 {
     SCE_CTRL_CIRCLE,   SCE_CTRL_CROSS,    SCE_CTRL_SELECT,   SCE_CTRL_START,
