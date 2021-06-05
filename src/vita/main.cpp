@@ -66,6 +66,50 @@ bool gbaMode = false;
 uint32_t audioBuffer[1024];
 int audioPort = 0;
 
+int nds_save_size_values[10] = {
+	0,
+    0x200,
+    0x2000,
+    0x10000,
+    0x20000,
+    0x8000,
+    0x40000,
+    0x80000,
+    0x100000,
+    0x800000
+};
+
+std::string nds_save_size_labels[10] {
+	"None",
+	"EEPROM 0.5KB",
+	"EEPROM 8KB",
+	"EEPROM 64KB",
+	"EEPROM 128KB",
+	"FRAM 32KB",
+	"FLASH 256KB",
+	"FLASH 512KB",
+	"FLASH 1024KB",
+	"FLASH 8192KB"
+};
+
+std::string gba_save_size_labels[6] {
+	"None",
+	"EEPROM 0.5KB",
+	"EEPROM 8KB",
+	"SRAM 32KB",
+	"FLASH 64KB",
+	"FLASH 128KB"
+};
+
+int gba_save_size_values[6] {
+	0,
+	0x200,
+	0x2000,
+	0x8000,
+	0x10000,
+	0x20000
+};
+
 void runCore()
 {
     // Run the emulator
@@ -99,6 +143,7 @@ void checkSave()
         core->cartridge.writeSave();
     }
 }
+
 
 void fileBrowser()
 {
@@ -201,7 +246,14 @@ void fileBrowser()
             {
                 // Prepare the core and close the file browser
                 core = new Core(ndsPath, gbaPath);
-                break;
+				/*
+				// Skip save selector if gba rom
+				if (gbaPath != ""); break;
+				// Check for existing NDS save file, skip if present
+				std::string ndsSaveName = ndsPath.substr(0, ndsPath.rfind(".")) + ".sav";
+   				FILE *ndsSaveFile = fopen(ndsSaveName.c_str(), "rb");
+				if (ndsSaveFile) {fclose(ndsSaveFile); break;}
+				*/
             }
             catch (int e)
             {
@@ -233,7 +285,64 @@ void fileBrowser()
 
                 ndsPath = gbaPath = "";
             }
-        }
+
+			std::string* save_size_labels = nds_save_size_labels;
+			int* save_size_values = nds_save_size_values;
+			int save_type_count = 10;
+
+			if ( core->isGbaMode() ) {
+				save_size_labels = gba_save_size_labels;
+				save_size_values = gba_save_size_values;
+				save_type_count = 6;
+			}
+			selection = 0;
+			while (true) {
+				
+				vita2d_start_drawing();
+				vita2d_clear_screen();
+
+				vita2d_pgf_draw_text(pgf, 5, 20, COLOR_TEXT1, 1.0f, "Select a save type for the game");
+        		vita2d_pgf_draw_text(pgf, 5, 40, COLOR_TEXT2, 1.0f, "If not sure, select FLASH 512KB");
+				
+				vita2d_pgf_draw_text(pgf, 5, 80, (selection == 0 ? COLOR_TEXT3 : COLOR_TEXT1), 1.0f, "Skip");
+				// List all posible save types
+				for (size_t i = 0; i < save_type_count; i++)
+					vita2d_pgf_draw_text(pgf, 5, 100 + i * 20, (selection == i+1 ? COLOR_TEXT3 : COLOR_TEXT1), 1.0f, save_size_labels[i].c_str());
+
+				
+				vita2d_end_drawing();
+				vita2d_swap_buffers();
+				while (true) {
+					SceCtrlData held;
+					sceCtrlPeekBufferPositive(0, &held, 1);
+					uint32_t pressed = held.buttons & ~buttons;
+					buttons = held.buttons;
+	
+					if ((pressed & SCE_CTRL_UP) && selection > 0)
+					{
+						// Move the current selection up
+						selection--;
+						break;
+					}
+
+					if ((pressed & SCE_CTRL_DOWN) && selection < save_type_count - 1)
+					{
+						// Move the current selection down
+						selection++;
+						break;
+					}
+
+					if (pressed & confirmButton) {
+						if (selection == 0) return;
+						core->cartridge.resizeNdsSave(save_size_values[selection]);
+						return;
+					}
+				}
+
+				sceDisplayWaitVblankStart();
+				
+			}
+		}
     }
 }
 

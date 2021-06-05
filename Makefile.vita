@@ -35,8 +35,9 @@ eboot.bin: $(NAME).velf
 param.sfo:
 	$(MKSFOEX) -s TITLE_ID="$(TITLEID)" "$(APPNAME)" $@
 
+# Removed -s because it gives error
 $(NAME).velf: $(NAME).elf
-	$(ELFCREATE) -s $< $@
+	$(ELFCREATE) $< $@
 
 $(NAME).elf: $(OFILES)
 	$(CXX) $^ $(LIBS) -o $@
