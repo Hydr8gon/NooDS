@@ -61,6 +61,7 @@ std::string ndsPath, gbaPath;
 Core *core;
 
 bool running = false;
+SceUID eventFlag;
 std::thread *coreThread, *audioThread, *saveThread;
 
 ScreenLayout layout;
@@ -99,7 +100,8 @@ void checkSave()
     while (running)
     {
         // Check save files every second and update them if changed
-        sceKernelDelayThread(1000000);
+        SceUInt timeout = 1000000;
+        sceKernelWaitEventFlag(eventFlag, 1, SCE_EVENT_WAITOR | SCE_EVENT_WAITCLEAR_PAT, nullptr, &timeout);
         core->cartridge.writeSave();
     }
 }
@@ -117,6 +119,7 @@ void startCore()
 void stopCore()
 {
     running = false;
+    sceKernelSetEventFlag(eventFlag, 1);
 
     // Wait for the threads to stop
     coreThread->join();
@@ -127,7 +130,8 @@ void stopCore()
     delete saveThread;
 }
 
-uint32_t menu(std::string title, std::string subtitle, std::vector<std::string> *items, unsigned int *selection, uint32_t buttonMask)
+uint32_t menu(std::string title, std::string subtitle, std::vector<std::string> *items,
+    std::vector<std::string> *subitems, unsigned int *selection, uint32_t buttonMask)
 {
     // Ignore any buttons that were already pressed
     uint32_t buttons = 0xFFFFFFFF;
@@ -151,6 +155,16 @@ uint32_t menu(std::string title, std::string subtitle, std::vector<std::string> 
         // Draw the menu items, highlighting the current selection
         for (size_t i = 0; i < items->size(); i++)
             vita2d_pgf_draw_text(pgf, 5, y + i * 20, (*selection == i ? COLOR_TEXT3 : COLOR_TEXT1), 1.0f, (*items)[i].c_str());
+
+        // If there are subitems, draw them right-aligned across from the main items
+        if (subitems)
+        {
+            for (size_t i = 0; i < subitems->size(); i++)
+            {
+                int width = vita2d_pgf_text_width(pgf, 1.0f, (*subitems)[i].c_str());
+                vita2d_pgf_draw_text(pgf, 955 - width, y + i * 20, (*selection == i ? COLOR_TEXT3 : COLOR_TEXT1), 1.0f, (*subitems)[i].c_str());
+            }
+        }
 
         vita2d_end_drawing();
         vita2d_swap_buffers();
@@ -221,6 +235,86 @@ uint32_t message(std::string text, uint32_t buttonMask)
     }
 }
 
+void settingsMenu()
+{
+    unsigned int selection = 0;
+
+    std::vector<std::string> items =
+    {
+        "Direct Boot",
+        "FPS Limiter",
+        "Threaded 2D",
+        "Threaded 3D",
+        "Screen Rotation",
+        "Screen Arrangement",
+        "Screen Sizing",
+        "Screen Gap",
+        "Integer Scale",
+        "GBA Crop",
+        "Screen Filter",
+        "Show FPS Counter"
+    };
+
+    std::vector<std::string> toggle      = { "Off", "On"                              };
+    std::vector<std::string> rotation    = { "None", "Clockwise", "Counter-Clockwise" };
+    std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal"    };
+    std::vector<std::string> sizing      = { "Even", "Enlarge Top", "Enlarge Bottom"  };
+    std::vector<std::string> gap         = { "None", "Quarter", "Half", "Full"        };
+
+    while (true)
+    {
+        // Make a list of strings for the current setting values
+        std::vector<std::string> subitems =
+        {
+            toggle[Settings::getDirectBoot()],
+            toggle[Settings::getFpsLimiter()],
+            toggle[Settings::getThreaded2D()],
+            toggle[(bool)Settings::getThreaded3D()],
+            rotation[ScreenLayout::getScreenRotation()],
+            arrangement[ScreenLayout::getScreenArrangement()],
+            sizing[ScreenLayout::getScreenSizing()],
+            gap[ScreenLayout::getScreenGap()],
+            toggle[ScreenLayout::getIntegerScale()],
+            toggle[ScreenLayout::getGbaCrop()],
+            toggle[screenFilter],
+            toggle[showFpsCounter]
+        };
+
+        // Show the settings menu
+        uint32_t pressed = menu("Settings", "", &items, &subitems, &selection, confirmButton | cancelButton);
+
+        // Handle special menu input
+        if (pressed & confirmButton)
+        {
+            // Change the chosen setting to its next value
+            // Light FPS limiter doesn't seem to have issues, so there's no need for advanced selection
+            // 1 thread for 3D seems to work best, so there's no need for advanced selection
+            switch (selection)
+            {
+                case  0: Settings::setDirectBoot(!Settings::getDirectBoot());                                break;
+                case  1: Settings::setFpsLimiter(!Settings::getFpsLimiter());                                break;
+                case  2: Settings::setThreaded2D(!Settings::getThreaded2D());                                break;
+                case  3: Settings::setThreaded3D(!Settings::getThreaded3D());                                break;
+                case  4: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
+                case  5: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
+                case  6: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
+                case  7: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
+                case  8: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
+                case  9: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
+                case 10: screenFilter   = !screenFilter;                                                     break;
+                case 11: showFpsCounter = !showFpsCounter;                                                   break;
+            }
+        }
+        else if (pressed & cancelButton)
+        {
+            // Apply settings and close the menu
+            layout.update(960, 544, gbaMode);
+            Settings::save();
+            return;
+        }
+    }
+}
+
 void fileBrowser()
 {
     ndsPath = gbaPath = "";
@@ -247,7 +341,7 @@ void fileBrowser()
         sort(files.begin(), files.end());
 
         // Show the file browser
-        uint32_t pressed = menu("NooDS", path.c_str(), &files, &selection, confirmButton | cancelButton);
+        uint32_t pressed = menu("NooDS", path.c_str(), &files, nullptr, &selection, confirmButton | cancelButton | SCE_CTRL_TRIANGLE);
 
         // Handle special menu input
         if ((pressed & confirmButton) && files.size() > 0)
@@ -274,6 +368,11 @@ void fileBrowser()
             // Navigate to the previous directory
             path = path.substr(0, path.rfind("/"));
             selection = 0;
+        }
+        else if (pressed & SCE_CTRL_TRIANGLE)
+        {
+            // Open the settings menu
+            settingsMenu();
         }
 
         // Try to load a ROM if one was set
@@ -334,7 +433,7 @@ void saveTypeMenu()
     while (true)
     {
         // Show the save type menu
-        uint32_t pressed = menu("Change Save Type", "", &items, &selection, confirmButton | cancelButton);
+        uint32_t pressed = menu("Change Save Type", "", &items, nullptr, &selection, confirmButton | cancelButton);
 
         // Handle special menu input
         if (pressed & confirmButton)
@@ -397,13 +496,14 @@ void pauseMenu()
         "Resume",
         "Restart",
         "Change Save Type",
+        "Settings",
         "File Browser"
     };
 
     while (true)
     {
         // Show the pause menu
-        uint32_t pressed = menu("NooDS", "", &items, &selection, confirmButton | cancelButton);
+        uint32_t pressed = menu("NooDS", "", &items, nullptr, &selection, confirmButton | cancelButton);
 
         // Handle special menu input
         if (pressed & confirmButton)
@@ -424,7 +524,11 @@ void pauseMenu()
                     saveTypeMenu();
                     break;
 
-                case 3: // File Browser
+                case 3: // Settings
+                    settingsMenu();
+                    break;
+
+                case 4: // File Browser
                     fileBrowser();
                     startCore();
                     return;
@@ -441,6 +545,10 @@ void pauseMenu()
 
 void drawScreen(vita2d_texture *texture, uint32_t *data, int width, int height, int scrX, int scrY, int scrWidth, int scrHeight)
 {
+    // Set texture filtering
+    SceGxmTextureFilter filter = screenFilter ? SCE_GXM_TEXTURE_FILTER_LINEAR : SCE_GXM_TEXTURE_FILTER_POINT;
+    vita2d_texture_set_filters(texture, filter, filter);
+
     unsigned int stride = vita2d_texture_get_stride(texture) / 4;
     uint32_t *texData = (uint32_t*)vita2d_texture_get_datap(texture);
 
@@ -500,17 +608,15 @@ int main()
     sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG);
     sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
 
+    // Set up an event flag for the save thread
+    eventFlag = sceKernelCreateEventFlag("noods_eventflag", 0, 0, nullptr);
+
     // Initialize graphics and textures
     vita2d_init();
     vita2d_set_clear_color(COLOR_CLEAR);
     pgf = vita2d_load_default_pgf();
     vita2d_texture *top = vita2d_create_empty_texture(256, 192);
     vita2d_texture *bot = vita2d_create_empty_texture(256, 192);
-
-    // Set texture filtering
-    SceGxmTextureFilter filter = screenFilter ? SCE_GXM_TEXTURE_FILTER_LINEAR : SCE_GXM_TEXTURE_FILTER_POINT;
-    vita2d_texture_set_filters(top, filter, filter);
-    vita2d_texture_set_filters(bot, filter, filter);
 
     // Initialize audio output
     audioPort = sceAudioOutOpenPort(SCE_AUDIO_OUT_PORT_TYPE_BGM, 1024, 48000, SCE_AUDIO_OUT_MODE_STEREO);
