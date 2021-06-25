@@ -2596,7 +2596,7 @@ void Interpreter::writeIme(uint8_t value)
 void Interpreter::writeIe(uint32_t mask, uint32_t value)
 {
     // Write to the IE register
-    mask &= ((cpu == 0) ? 0x003F3F7F : 0x01FF3FFF);
+    mask &= ((cpu == 0) ? 0x003F3F7F : (core->isGbaMode() ? 0x3FFF : 0x01FF3FFF));
     ie = (ie & ~mask) | (value & mask);
 
     // Trigger an interrupt if the conditions are met
