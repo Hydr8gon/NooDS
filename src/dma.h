@@ -34,7 +34,7 @@ class Dma
 
         uint32_t readDmaSad(int channel) { return dmaSad[channel]; }
         uint32_t readDmaDad(int channel) { return dmaDad[channel]; }
-        uint32_t readDmaCnt(int channel) { return dmaCnt[channel]; }
+        uint32_t readDmaCnt(int channel);
 
         void writeDmaSad(int channel, uint32_t mask, uint32_t value);
         void writeDmaDad(int channel, uint32_t mask, uint32_t value);

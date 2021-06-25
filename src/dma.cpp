@@ -190,3 +190,10 @@ void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value)
     if (((dmaCnt[channel] & 0x38000000) >> 27) == 0)
         core->schedule(Task(&transferTask[channel], 1));
 }
+
+uint32_t Dma::readDmaCnt(int channel)
+{
+    // Read from one of the DMACNT registers
+    // The lower half-word isn't readable in GBA mode
+    return dmaCnt[channel] & ~(core->isGbaMode() ? 0x0000FFFF : 0x00000000);
+}

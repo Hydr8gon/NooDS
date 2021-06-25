@@ -1265,6 +1265,7 @@ void Gpu2D::writeDispCnt(uint32_t mask, uint32_t value)
 void Gpu2D::writeBgCnt(int bg, uint16_t mask, uint16_t value)
 {
     // Write to one of the BGCNT registers
+    if (core->isGbaMode() && bg < 2) mask &= 0xDFFF;
     bgCnt[bg] = (bgCnt[bg] & ~mask) | (value & mask);
 }
 

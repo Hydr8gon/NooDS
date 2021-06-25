@@ -1281,7 +1281,7 @@ template <typename T> T Memory::ioReadGba(uint32_t address)
             case 0x4000064:
             case 0x4000065: base -= 0x4000064; size = 2; data = core->spu.readGbaSoundCntX(0);      break; // SOUND0CNT_X
             case 0x4000068:
-            case 0x4000069: base -= 0x4000068; size = 2; data = core->spu.readGbaSoundCntL(1);      break; // SOUND1CNT_L
+            case 0x4000069: base -= 0x4000068; size = 2; data = core->spu.readGbaSoundCntH(1);      break; // SOUND1CNT_H
             case 0x400006C:
             case 0x400006D: base -= 0x400006C; size = 2; data = core->spu.readGbaSoundCntX(1);      break; // SOUND1CNT_X
             case 0x4000070:
@@ -1291,7 +1291,7 @@ template <typename T> T Memory::ioReadGba(uint32_t address)
             case 0x4000074:
             case 0x4000075: base -= 0x4000074; size = 2; data = core->spu.readGbaSoundCntX(2);      break; // SOUND2CNT_X
             case 0x4000078:
-            case 0x4000079: base -= 0x4000078; size = 2; data = core->spu.readGbaSoundCntL(3);      break; // SOUND3CNT_L
+            case 0x4000079: base -= 0x4000078; size = 2; data = core->spu.readGbaSoundCntH(3);      break; // SOUND3CNT_H
             case 0x400007C:
             case 0x400007D: base -= 0x400007C; size = 2; data = core->spu.readGbaSoundCntX(3);      break; // SOUND3CNT_X
             case 0x4000080:
@@ -1318,50 +1318,18 @@ template <typename T> T Memory::ioReadGba(uint32_t address)
             case 0x400009D: base -= 0x400009D; size = 1; data = core->spu.readGbaWaveRam(13);       break; // WAVE_RAM
             case 0x400009E: base -= 0x400009E; size = 1; data = core->spu.readGbaWaveRam(14);       break; // WAVE_RAM
             case 0x400009F: base -= 0x400009F; size = 1; data = core->spu.readGbaWaveRam(15);       break; // WAVE_RAM
-            case 0x40000B0:
-            case 0x40000B1:
-            case 0x40000B2:
-            case 0x40000B3: base -= 0x40000B0; size = 4; data = core->dma[1].readDmaSad(0);         break; // DMA0SAD
-            case 0x40000B4:
-            case 0x40000B5:
-            case 0x40000B6:
-            case 0x40000B7: base -= 0x40000B4; size = 4; data = core->dma[1].readDmaDad(0);         break; // DMA0DAD
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
             case 0x40000BB: base -= 0x40000B8; size = 4; data = core->dma[1].readDmaCnt(0);         break; // DMA0CNT
-            case 0x40000BC:
-            case 0x40000BD:
-            case 0x40000BE:
-            case 0x40000BF: base -= 0x40000BC; size = 4; data = core->dma[1].readDmaSad(1);         break; // DMA1SAD
-            case 0x40000C0:
-            case 0x40000C1:
-            case 0x40000C2:
-            case 0x40000C3: base -= 0x40000C0; size = 4; data = core->dma[1].readDmaDad(1);         break; // DMA1DAD
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
             case 0x40000C7: base -= 0x40000C4; size = 4; data = core->dma[1].readDmaCnt(1);         break; // DMA1CNT
-            case 0x40000C8:
-            case 0x40000C9:
-            case 0x40000CA:
-            case 0x40000CB: base -= 0x40000C8; size = 4; data = core->dma[1].readDmaSad(2);         break; // DMA2SAD
-            case 0x40000CC:
-            case 0x40000CD:
-            case 0x40000CE:
-            case 0x40000CF: base -= 0x40000CC; size = 4; data = core->dma[1].readDmaDad(2);         break; // DMA2DAD
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
             case 0x40000D3: base -= 0x40000D0; size = 4; data = core->dma[1].readDmaCnt(2);         break; // DMA2CNT
-            case 0x40000D4:
-            case 0x40000D5:
-            case 0x40000D6:
-            case 0x40000D7: base -= 0x40000D4; size = 4; data = core->dma[1].readDmaSad(3);         break; // DMA3SAD
-            case 0x40000D8:
-            case 0x40000D9:
-            case 0x40000DA:
-            case 0x40000DB: base -= 0x40000D8; size = 4; data = core->dma[1].readDmaDad(3);         break; // DMA3DAD
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
