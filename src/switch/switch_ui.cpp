@@ -97,6 +97,7 @@ const int SwitchUI::charWidths[] =
 bool SwitchUI::darkTheme = false;
 Color SwitchUI::palette[6];
 
+PadState SwitchUI::pad;
 bool SwitchUI::touchMode = false;
 
 int SwitchUI::stringWidth(std::string string)
@@ -207,6 +208,11 @@ void SwitchUI::initialize()
         palette[4] = Color( 50, 215, 210);
         palette[5] = Color( 50,  80, 240);
     }
+
+    // Initialize input
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+    padInitializeDefault(&pad);
+    hidInitializeTouchScreen();
 }
 
 void SwitchUI::deinitialize()
@@ -377,7 +383,7 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
     unsigned int touchIndex = 0;
     bool touchStarted = false;
     bool touchScroll = false;
-    touchPosition touch, touchMove;
+    HidTouchScreenState touchStart = {};
 
     while (appletMainLoop() && !shouldExit)
     {
@@ -390,12 +396,12 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
         drawString(actionPlus + actionX + actionB + actionA, 1218, 667, 34, palette[1], true);
 
         // Scan for key input
-        hidScanInput();
-        u32 pressed = hidKeysDown(CONTROLLER_P1_AUTO);
-        u32 released = hidKeysUp(CONTROLLER_P1_AUTO);
+        padUpdate(&pad);
+        u32 pressed = padGetButtonsDown(&pad);
+        u32 released = padGetButtonsUp(&pad);
 
         // Handle up input presses
-        if ((pressed & KEY_UP) && !(pressed & KEY_DOWN))
+        if ((pressed & HidNpadButton_AnyUp) && !(pressed & HidNpadButton_AnyDown))
         {
             // If touch mode is active, disable it to make the selection box visible
             // If the selection box is visible, move it up one item
@@ -410,7 +416,7 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
         }
 
         // Handle down input presses
-        if ((pressed & KEY_DOWN) && !(pressed & KEY_UP))
+        if ((pressed & HidNpadButton_AnyDown) && !(pressed & HidNpadButton_AnyUp))
         {
             // If touch mode is active, disable it to make the selection box visible
             // If the selection box is visible, move it down one item
@@ -425,26 +431,26 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
         }
 
         // Return button presses so they can be handled externally
-        if (((pressed & KEY_A) && !touchMode) || (pressed & KEY_B) ||
-            (actionX != "" && (pressed & KEY_X)) || (actionPlus != "" && (pressed & KEY_PLUS)))
+        if (((pressed & HidNpadButton_A) && !touchMode) || (pressed & HidNpadButton_B) ||
+            (actionX != "" && (pressed & HidNpadButton_X)) || (actionPlus != "" && (pressed & HidNpadButton_Plus)))
         {
             touchMode = false;
             return Selection(pressed, index);
         }
 
         // Disable touch mode before allowing A presses so that the selector can be seen
-        if ((pressed & KEY_A) && touchMode)
+        if ((pressed & HidNpadButton_A) && touchMode)
             touchMode = false;
 
         // Cancel up input if it was released
-        if (released & KEY_UP)
+        if (released & HidNpadButton_AnyUp)
         {
             upHeld = false;
             scroll = false;
         }
 
         // Cancel down input if it was released
-        if (released & KEY_DOWN)
+        if (released & HidNpadButton_AnyDown)
         {
             downHeld = false;
             scroll = false;
@@ -466,25 +472,25 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
             }
         }
 
-        // Handle touch input
-        if (hidTouchCount() > 0) // Pressed
+        // Scan for touch input
+        HidTouchScreenState touch;
+        hidGetTouchScreenStates(&touch, 1);
+
+        if (touch.count > 0) // Pressed
         {
             // Track the beginning of a touch input
             if (!touchStarted)
             {
-                hidTouchRead(&touch, 0);
+                touchStart = touch;
                 touchStarted = true;
                 touchScroll = false;
                 touchMode = true;
             }
 
-            // Track the current state of a touch input
-            hidTouchRead(&touchMove, 0);
-
             if (touchScroll)
             {
                 // Calculate how far the drag has gone
-                int newIndex = touchIndex + (int)(touch.py - touchMove.py) / 70;
+                int newIndex = touchIndex + (int)(touchStart.touches[0].y - touch.touches[0].y) / 70;
 
                 // Scroll the list by adjusting the index
                 // At the edges of the list, adjust the index to stay centered
@@ -498,8 +504,8 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
                         index = newIndex;
                 }
             }
-            else if (touchMove.px > touch.px + 25 || touchMove.px < touch.px - 25 ||
-                     touchMove.py > touch.py + 25 || touchMove.py < touch.py - 25)
+            else if (touch.touches[0].x > touchStart.touches[0].x + 25 || touch.touches[0].x < touchStart.touches[0].x - 25 ||
+                     touch.touches[0].y > touchStart.touches[0].y + 25 || touch.touches[0].y < touchStart.touches[0].y - 25)
             {
                 // Activate touch scrolling if a touch starts dragging
                 touchScroll = true;
@@ -518,14 +524,14 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
         {
             // Simulate a button press if its action text was touched
             // If the touch is dragged instead of just pressed, this won't register
-            if (!touchScroll && touch.py >= 650)
+            if (!touchScroll && touchStart.touches[0].y >= 650)
             {
-                if (touch.px >= boundsBX && touch.px < boundsAB)
-                    return Selection(KEY_B | KEY_TOUCH, index);
-                else if (touch.px >= boundsXPlus && touch.px < boundsBX)
-                    return Selection(KEY_X | KEY_TOUCH, index);
-                else if (touch.px >= boundsPlus && touch.px < boundsXPlus)
-                    return Selection(KEY_PLUS | KEY_TOUCH, index);
+                if (touchStart.touches[0].x >= boundsBX && touchStart.touches[0].x < boundsAB)
+                    return Selection(HidNpadButton_B, index);
+                else if (touchStart.touches[0].x >= boundsXPlus && touchStart.touches[0].x < boundsBX)
+                    return Selection(HidNpadButton_X, index);
+                else if (touchStart.touches[0].x >= boundsPlus && touchStart.touches[0].x < boundsXPlus)
+                    return Selection(HidNpadButton_Plus, index);
             }
 
             touchStarted = false;
@@ -551,8 +557,9 @@ Selection SwitchUI::menu(std::string title, std::vector<ListItem> *items, unsign
 
                 // Simulate an A press on a selection if it was touched
                 // If the touch is dragged instead of just pressed, this won't register
-                if (!touchStarted && !touchScroll && touch.px >= 90 && touch.px < 1190 && touch.py >= 124 + i * 70 && touch.py < 194 + i * 70)
-                    return Selection(KEY_A | KEY_TOUCH, offset);
+                if (!touchStarted && !touchScroll && touchStart.touches[0].x >= 90 && touchStart.touches[0].x < 1190 &&
+                    touchStart.touches[0].y >= 124 + i * 70 && touchStart.touches[0].y < 194 + i * 70)
+                    return Selection(HidNpadButton_A, offset);
 
                 if (!touchMode && offset == index)
                 {
@@ -622,49 +629,49 @@ bool SwitchUI::message(std::string title, std::vector<std::string> text, bool ca
 
     bool touchStarted = false;
     bool touchScroll = false;
-    touchPosition touch, touchMove;
+    HidTouchScreenState touchStart = {};
 
     while (appletMainLoop() && !shouldExit)
     {
         // Scan for key input
-        hidScanInput();
-        u32 pressed = hidKeysDown(CONTROLLER_P1_AUTO);
+        padUpdate(&pad);
+        u32 pressed = padGetButtonsDown(&pad);
 
         // Dismiss the message and return the result if an action is pressed
-        if (pressed & KEY_A)
+        if (pressed & HidNpadButton_A)
             return true;
-        else if ((pressed & KEY_B) && cancel)
+        else if ((pressed & HidNpadButton_B) && cancel)
             return false;
 
-        // Handle touch input
-        if (hidTouchCount() > 0) // Pressed
+        // Scan for touch input
+        HidTouchScreenState touch;
+        hidGetTouchScreenStates(&touch, 1);
+
+        if (touch.count > 0) // Pressed
         {
             // Track the beginning of a touch input
             if (!touchStarted)
             {
-                hidTouchRead(&touch, 0);
+                touchStart = touch;
                 touchStarted = true;
                 touchScroll = false;
                 touchMode = true;
             }
 
-            // Track the current state of a touch input
-            hidTouchRead(&touchMove, 0);
-
             // Activate touch scrolling if a touch starts dragging
-            if (touchMove.px > touch.px + 25 || touchMove.px < touch.px - 25 ||
-                touchMove.py > touch.py + 25 || touchMove.py < touch.py - 25)
+            if (touch.touches[0].x > touchStart.touches[0].x + 25 || touch.touches[0].x < touchStart.touches[0].x - 25 ||
+                touch.touches[0].y > touchStart.touches[0].y + 25 || touch.touches[0].y < touchStart.touches[0].y - 25)
                 touchScroll = true;
         }
         else // Released
         {
             // Simulate a button press if its action text was touched
             // If the touch is dragged instead of just pressed, this won't register
-            if (!touchScroll && touch.py >= 650)
+            if (!touchScroll && touchStart.touches[0].y >= 650)
             {
-                if (touch.px >= boundsAB && touch.px < boundsA)
+                if (touchStart.touches[0].x >= boundsAB && touchStart.touches[0].x < boundsA)
                     return true;
-                else if (touch.px >= boundsB && touch.px < boundsAB && cancel)
+                else if (touchStart.touches[0].x >= boundsB && touchStart.touches[0].x < boundsAB && cancel)
                     return false;
             }
 

@@ -97,6 +97,7 @@ class SwitchUI
         static bool darkTheme;
         static Color palette[6];
 
+        static PadState pad;
         static bool touchMode;
 
         static int stringWidth(std::string string);

@@ -32,10 +32,10 @@
 
 const uint32_t keyMap[] =
 {
-    KEY_A,     KEY_B,    KEY_MINUS, KEY_PLUS,
-    KEY_RIGHT, KEY_LEFT, KEY_UP,    KEY_DOWN,
-    KEY_ZR,    KEY_ZL,   KEY_X,     KEY_Y,
-    (KEY_L | KEY_R)
+    HidNpadButton_A,        HidNpadButton_B,       HidNpadButton_Minus,    HidNpadButton_Plus,
+    HidNpadButton_AnyRight, HidNpadButton_AnyLeft, HidNpadButton_AnyUp,    HidNpadButton_AnyDown,
+    HidNpadButton_ZR,       HidNpadButton_ZL,      HidNpadButton_X,        HidNpadButton_Y,
+    (HidNpadButton_L | HidNpadButton_R)
 };
 
 const int clockSpeeds[] = { 1020000000, 1224000000, 1581000000, 1785000000 };
@@ -187,7 +187,7 @@ void settingsMenu()
         index = menu.index;
 
         // Handle menu input
-        if (menu.pressed & KEY_A)
+        if (menu.pressed & HidNpadButton_A)
         {
             // Change the chosen setting to its next value
             // Light FPS limiter doesn't seem to have issues, so there's no need for advanced selection
@@ -272,7 +272,7 @@ void fileBrowser()
             delete[] icons[i];
 
         // Handle menu input
-        if (menu.pressed & KEY_A)
+        if (menu.pressed & HidNpadButton_A)
         {
             // Do nothing if there are no files to select
             if (files.empty()) continue;
@@ -356,7 +356,7 @@ void fileBrowser()
             startCore();
             return;
         }
-        else if (menu.pressed & KEY_B)
+        else if (menu.pressed & HidNpadButton_B)
         {
             // Navigate to the previous directory
             if (path != "sdmc:/")
@@ -365,7 +365,7 @@ void fileBrowser()
                 index = 0;
             }
         }
-        else if (menu.pressed & KEY_X)
+        else if (menu.pressed & HidNpadButton_X)
         {
             // Open the settings menu   
             settingsMenu();
@@ -415,7 +415,7 @@ void saveTypeMenu()
         index = menu.index;
 
         // Handle menu input
-        if (menu.pressed & KEY_A)
+        if (menu.pressed & HidNpadButton_A)
         {
             // Confirm the change because accidentally resizing a working save file could be bad!
             if (!SwitchUI::message("Changing Save Type", std::vector<std::string>{"Are you sure? This may result in data loss!"}, true))
@@ -485,7 +485,7 @@ void pauseMenu()
         index = menu.index;
 
         // Handle menu input
-        if (menu.pressed & KEY_A)
+        if (menu.pressed & HidNpadButton_A)
         {
             // Handle the selected item
             switch (index)
@@ -528,7 +528,7 @@ void pauseMenu()
                 }
             }
         }
-        else if (menu.pressed & KEY_B)
+        else if (menu.pressed & HidNpadButton_B)
         {
             // Return to the emulator
             startCore();
@@ -565,12 +565,15 @@ int main()
     // Open the file browser
     fileBrowser();
 
+    PadState pad;
+    padInitializeDefault(&pad);
+
     while (appletMainLoop() && running)
     {
         // Scan for key input
-        hidScanInput();
-        uint32_t pressed = hidKeysDown(CONTROLLER_P1_AUTO);
-        uint32_t released = hidKeysUp(CONTROLLER_P1_AUTO);
+        padUpdate(&pad);
+        uint32_t pressed = padGetButtonsDown(&pad);
+        uint32_t released = padGetButtonsUp(&pad);
 
         // Send input to the core
         for (int i = 0; i < 12; i++)
@@ -582,20 +585,20 @@ int main()
         }
 
         // Scan for touch input
-        if (hidTouchCount() > 0)
-        {
-            touchPosition touch;
-            hidTouchRead(&touch, 0);
+        HidTouchScreenState touch;
+        hidGetTouchScreenStates(&touch, 1);
 
+        if (touch.count > 0) // Pressed
+        {
             // Determine the touch position relative to the emulated touch screen
-            int touchX = layout.getTouchX(touch.px, touch.py);
-            int touchY = layout.getTouchY(touch.px, touch.py);
+            int touchX = layout.getTouchX(touch.touches[0].x, touch.touches[0].y);
+            int touchY = layout.getTouchY(touch.touches[0].x, touch.touches[0].y);
 
             // Send the touch coordinates to the core
             core->input.pressScreen();
             core->spi.setTouch(touchX, touchY);
         }
-        else
+        else // Released
         {
             // If the screen isn't being touched, release the touch screen press
             core->input.releaseScreen();
