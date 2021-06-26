@@ -121,6 +121,7 @@ void Core::runGbaFrame()
         uint32_t i = globalCycles;
 
         // Run the ARM7 until the next scheduled task
+        if (arm7Cycles > globalCycles) globalCycles = arm7Cycles;
         while (interpreter[1].shouldRun() && tasks[0].cycles > arm7Cycles)
             arm7Cycles = (globalCycles += interpreter[1].runOpcode());
 
