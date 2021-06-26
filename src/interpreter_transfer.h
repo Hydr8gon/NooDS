@@ -22,6 +22,27 @@
 
 #include "core.h"
 
+// Precomputed bit counts corresponding to index
+const uint8_t Interpreter::bitCount[] =
+{
+    0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 
+    4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8
+};
+
 FORCE_INLINE uint32_t Interpreter::ip(uint32_t opcode) // #i (B/_)
 {
     // Immediate offset for byte and word transfers
@@ -697,19 +718,9 @@ FORCE_INLINE int Interpreter::swp(uint32_t opcode) // SWP Rd,Rm,[Rn]
 
 FORCE_INLINE int Interpreter::ldmda(uint32_t opcode) // LDMDA Rn, <Rlist>
 {
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16] - n * 4;
 
     // Block load, post-decrement
     for (int i = 0; i < 16; i++)
@@ -740,19 +751,9 @@ FORCE_INLINE int Interpreter::ldmda(uint32_t opcode) // LDMDA Rn, <Rlist>
 
 FORCE_INLINE int Interpreter::stmda(uint32_t opcode) // STMDA Rn, <Rlist>
 {
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16] - n * 4;
 
     // Block store, post-decrement
     for (int i = 0; i < 16; i++)
@@ -770,8 +771,8 @@ FORCE_INLINE int Interpreter::stmda(uint32_t opcode) // STMDA Rn, <Rlist>
 FORCE_INLINE int Interpreter::ldmia(uint32_t opcode) // LDMIA Rn, <Rlist>
 {
     // Decode the operand
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
 
     // Block load, post-increment
     for (int i = 0; i < 16; i++)
@@ -780,7 +781,6 @@ FORCE_INLINE int Interpreter::ldmia(uint32_t opcode) // LDMIA Rn, <Rlist>
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
-            n++;
         }
     }
 
@@ -804,8 +804,8 @@ FORCE_INLINE int Interpreter::ldmia(uint32_t opcode) // LDMIA Rn, <Rlist>
 FORCE_INLINE int Interpreter::stmia(uint32_t opcode) // STMIA Rn, <Rlist>
 {
     // Decode the operand
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
 
     // Block store, post-increment
     for (int i = 0; i < 16; i++)
@@ -814,7 +814,6 @@ FORCE_INLINE int Interpreter::stmia(uint32_t opcode) // STMIA Rn, <Rlist>
         {
             core->memory.write<uint32_t>(cpu, op0, *registers[i]);
             op0 += 4;
-            n++;
         }
     }
 
@@ -823,19 +822,9 @@ FORCE_INLINE int Interpreter::stmia(uint32_t opcode) // STMIA Rn, <Rlist>
 
 FORCE_INLINE int Interpreter::ldmdb(uint32_t opcode) // LDMDB Rn, <Rlist>
 {
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16] - n * 4;
 
     // Block load, pre-decrement
     for (int i = 0; i < 16; i++)
@@ -866,19 +855,9 @@ FORCE_INLINE int Interpreter::ldmdb(uint32_t opcode) // LDMDB Rn, <Rlist>
 
 FORCE_INLINE int Interpreter::stmdb(uint32_t opcode) // STMDB Rn, <Rlist>
 {
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16] - n * 4;
 
     // Block store, pre-decrement
     for (int i = 0; i < 16; i++)
@@ -896,8 +875,8 @@ FORCE_INLINE int Interpreter::stmdb(uint32_t opcode) // STMDB Rn, <Rlist>
 FORCE_INLINE int Interpreter::ldmib(uint32_t opcode) // LDMIB Rn, <Rlist>
 {
     // Decode the operand
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
 
     // Block load, pre-increment
     for (int i = 0; i < 16; i++)
@@ -906,7 +885,6 @@ FORCE_INLINE int Interpreter::ldmib(uint32_t opcode) // LDMIB Rn, <Rlist>
         {
             op0 += 4;
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-            n++;
         }
     }
 
@@ -930,8 +908,8 @@ FORCE_INLINE int Interpreter::ldmib(uint32_t opcode) // LDMIB Rn, <Rlist>
 FORCE_INLINE int Interpreter::stmib(uint32_t opcode) // STMIB Rn, <Rlist>
 {
     // Decode the operand
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
 
     // Block store, pre-increment
     for (int i = 0; i < 16; i++)
@@ -940,7 +918,6 @@ FORCE_INLINE int Interpreter::stmib(uint32_t opcode) // STMIB Rn, <Rlist>
         {
             op0 += 4;
             core->memory.write<uint32_t>(cpu, op0, *registers[i]);
-            n++;
         }
     }
 
@@ -949,20 +926,10 @@ FORCE_INLINE int Interpreter::stmib(uint32_t opcode) // STMIB Rn, <Rlist>
 
 FORCE_INLINE int Interpreter::ldmdaW(uint32_t opcode) // LDMDA Rn!, <Rlist>
 {
-    // Decode the operand
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
     int m = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[m];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[m] - n * 4;
 
     uint32_t writeback = op0;
 
@@ -1001,20 +968,10 @@ FORCE_INLINE int Interpreter::ldmdaW(uint32_t opcode) // LDMDA Rn!, <Rlist>
 
 FORCE_INLINE int Interpreter::stmdaW(uint32_t opcode) // STMDA Rn!, <Rlist>
 {
-    // Decode the operand
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
     int m = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[m];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[m] - n * 4;
 
     uint32_t writeback = op0;
 
@@ -1043,8 +1000,8 @@ FORCE_INLINE int Interpreter::ldmiaW(uint32_t opcode) // LDMIA Rn!, <Rlist>
 {
     // Decode the operand
     int m = (opcode & 0x000F0000) >> 16;
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[m];
-    int n = 0;
 
     // Block load, post-increment
     for (int i = 0; i < 16; i++)
@@ -1053,7 +1010,6 @@ FORCE_INLINE int Interpreter::ldmiaW(uint32_t opcode) // LDMIA Rn!, <Rlist>
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
-            n++;
         }
     }
 
@@ -1084,21 +1040,13 @@ FORCE_INLINE int Interpreter::stmiaW(uint32_t opcode) // STMIA Rn!, <Rlist>
 {
     // Decode the operand
     int m = (opcode & 0x000F0000) >> 16;
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[m];
-    int n = 0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
     if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
-    {
-        uint32_t writeback = op0;
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-                writeback += 4;
-        }
-        *registers[m] = writeback;
-    }
+        *registers[m] = op0 + n * 4;
 
     // Block store, post-increment
     for (int i = 0; i < 16; i++)
@@ -1107,7 +1055,6 @@ FORCE_INLINE int Interpreter::stmiaW(uint32_t opcode) // STMIA Rn!, <Rlist>
         {
             core->memory.write<uint32_t>(cpu, op0, *registers[i]);
             op0 += 4;
-            n++;
         }
     }
 
@@ -1119,20 +1066,10 @@ FORCE_INLINE int Interpreter::stmiaW(uint32_t opcode) // STMIA Rn!, <Rlist>
 
 FORCE_INLINE int Interpreter::ldmdbW(uint32_t opcode) // LDMDB Rn!, <Rlist>
 {
-    // Decode the operand
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
     int m = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[m];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[m] - n * 4;
 
     uint32_t writeback = op0;
 
@@ -1171,20 +1108,10 @@ FORCE_INLINE int Interpreter::ldmdbW(uint32_t opcode) // LDMDB Rn!, <Rlist>
 
 FORCE_INLINE int Interpreter::stmdbW(uint32_t opcode) // STMDB Rn!, <Rlist>
 {
-    // Decode the operand
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
     int m = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[m];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[m] - n * 4;
 
     uint32_t writeback = op0;
 
@@ -1213,8 +1140,8 @@ FORCE_INLINE int Interpreter::ldmibW(uint32_t opcode) // LDMIB Rn!, <Rlist>
 {
     // Decode the operand
     int m = (opcode & 0x000F0000) >> 16;
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[m];
-    int n = 0;
 
     // Block load, pre-increment
     for (int i = 0; i < 16; i++)
@@ -1223,7 +1150,6 @@ FORCE_INLINE int Interpreter::ldmibW(uint32_t opcode) // LDMIB Rn!, <Rlist>
         {
             op0 += 4;
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-            n++;
         }
     }
 
@@ -1254,21 +1180,13 @@ FORCE_INLINE int Interpreter::stmibW(uint32_t opcode) // STMIB Rn!, <Rlist>
 {
     // Decode the operand
     int m = (opcode & 0x000F0000) >> 16;
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[m];
-    int n = 0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
     if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
-    {
-        uint32_t writeback = op0;
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-                writeback += 4;
-        }
-        *registers[m] = writeback;
-    }
+        *registers[m] = op0 + n * 4;
 
     // Block store, pre-increment
     for (int i = 0; i < 16; i++)
@@ -1277,7 +1195,6 @@ FORCE_INLINE int Interpreter::stmibW(uint32_t opcode) // STMIB Rn!, <Rlist>
         {
             op0 += 4;
             core->memory.write<uint32_t>(cpu, op0, *registers[i]);
-            n++;
         }
     }
 
@@ -1289,19 +1206,9 @@ FORCE_INLINE int Interpreter::stmibW(uint32_t opcode) // STMIB Rn!, <Rlist>
 
 FORCE_INLINE int Interpreter::ldmdaU(uint32_t opcode) // LDMDA Rn, <Rlist>^
 {
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16] - n * 4;
 
     if (!(opcode & BIT(15))) // PC not in Rlist
     {
@@ -1348,19 +1255,9 @@ FORCE_INLINE int Interpreter::ldmdaU(uint32_t opcode) // LDMDA Rn, <Rlist>^
 
 FORCE_INLINE int Interpreter::stmdaU(uint32_t opcode) // STMDA Rn, <Rlist>^
 {
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16] - n * 4;
 
     // Block store, post-decrement (user registers)
     for (int i = 0; i < 16; i++)
@@ -1378,8 +1275,8 @@ FORCE_INLINE int Interpreter::stmdaU(uint32_t opcode) // STMDA Rn, <Rlist>^
 FORCE_INLINE int Interpreter::ldmiaU(uint32_t opcode) // LDMIA Rn, <Rlist>^
 {
     // Decode the operand
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
 
     if (!(opcode & BIT(15))) // PC not in Rlist
     {
@@ -1390,7 +1287,6 @@ FORCE_INLINE int Interpreter::ldmiaU(uint32_t opcode) // LDMIA Rn, <Rlist>^
             {
                 registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
                 op0 += 4;
-                n++;
             }
         }
 
@@ -1404,7 +1300,6 @@ FORCE_INLINE int Interpreter::ldmiaU(uint32_t opcode) // LDMIA Rn, <Rlist>^
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
-            n++;
         }
     }
 
@@ -1429,8 +1324,8 @@ FORCE_INLINE int Interpreter::ldmiaU(uint32_t opcode) // LDMIA Rn, <Rlist>^
 FORCE_INLINE int Interpreter::stmiaU(uint32_t opcode) // STMIA Rn, <Rlist>^
 {
     // Decode the operand
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
 
     // Block store, post-increment (user registers)
     for (int i = 0; i < 16; i++)
@@ -1439,7 +1334,6 @@ FORCE_INLINE int Interpreter::stmiaU(uint32_t opcode) // STMIA Rn, <Rlist>^
         {
             core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
             op0 += 4;
-            n++;
         }
     }
 
@@ -1448,19 +1342,9 @@ FORCE_INLINE int Interpreter::stmiaU(uint32_t opcode) // STMIA Rn, <Rlist>^
 
 FORCE_INLINE int Interpreter::ldmdbU(uint32_t opcode) // LDMDB Rn, <Rlist>^
 {
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16] - n * 4;
 
     if (!(opcode & BIT(15))) // PC not in Rlist
     {
@@ -1507,19 +1391,9 @@ FORCE_INLINE int Interpreter::ldmdbU(uint32_t opcode) // LDMDB Rn, <Rlist>^
 
 FORCE_INLINE int Interpreter::stmdbU(uint32_t opcode) // STMDB Rn, <Rlist>^
 {
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16] - n * 4;
 
     // Block store, pre-decrement (user registers)
     for (int i = 0; i < 16; i++)
@@ -1537,8 +1411,8 @@ FORCE_INLINE int Interpreter::stmdbU(uint32_t opcode) // STMDB Rn, <Rlist>^
 FORCE_INLINE int Interpreter::ldmibU(uint32_t opcode) // LDMIB Rn, <Rlist>^
 {
     // Decode the operand
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
 
     if (!(opcode & BIT(15))) // PC not in Rlist
     {
@@ -1549,7 +1423,6 @@ FORCE_INLINE int Interpreter::ldmibU(uint32_t opcode) // LDMIB Rn, <Rlist>^
             {
                 op0 += 4;
                 registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
-                n++;
             }
         }
 
@@ -1563,7 +1436,6 @@ FORCE_INLINE int Interpreter::ldmibU(uint32_t opcode) // LDMIB Rn, <Rlist>^
         {
             op0 += 4;
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-            n++;
         }
     }
 
@@ -1588,8 +1460,8 @@ FORCE_INLINE int Interpreter::ldmibU(uint32_t opcode) // LDMIB Rn, <Rlist>^
 FORCE_INLINE int Interpreter::stmibU(uint32_t opcode) // STMIB Rn, <Rlist>^
 {
     // Decode the operand
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[(opcode & 0x000F0000) >> 16];
-    int n = 0;
 
     // Block store, pre-increment (user registers)
     for (int i = 0; i < 16; i++)
@@ -1598,7 +1470,6 @@ FORCE_INLINE int Interpreter::stmibU(uint32_t opcode) // STMIB Rn, <Rlist>^
         {
             op0 += 4;
             core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
-            n++;
         }
     }
 
@@ -1607,20 +1478,10 @@ FORCE_INLINE int Interpreter::stmibU(uint32_t opcode) // STMIB Rn, <Rlist>^
 
 FORCE_INLINE int Interpreter::ldmdaUW(uint32_t opcode) // LDMDA Rn!, <Rlist>^
 {
-    // Decode the operand
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
     int m = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[m];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[m] - n * 4;
 
     uint32_t writeback = op0;
 
@@ -1681,20 +1542,10 @@ FORCE_INLINE int Interpreter::ldmdaUW(uint32_t opcode) // LDMDA Rn!, <Rlist>^
 
 FORCE_INLINE int Interpreter::stmdaUW(uint32_t opcode) // STMDA Rn!, <Rlist>^
 {
-    // Decode the operand
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
     int m = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[m];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[m] - n * 4;
 
     uint32_t writeback = op0;
 
@@ -1723,8 +1574,8 @@ FORCE_INLINE int Interpreter::ldmiaUW(uint32_t opcode) // LDMIA Rn!, <Rlist>^
 {
     // Decode the operand
     int m = (opcode & 0x000F0000) >> 16;
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[m];
-    int n = 0;
 
     if (!(opcode & BIT(15))) // PC not in Rlist
     {
@@ -1735,7 +1586,6 @@ FORCE_INLINE int Interpreter::ldmiaUW(uint32_t opcode) // LDMIA Rn!, <Rlist>^
             {
                 registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
                 op0 += 4;
-                n++;
             }
         }
 
@@ -1755,7 +1605,6 @@ FORCE_INLINE int Interpreter::ldmiaUW(uint32_t opcode) // LDMIA Rn!, <Rlist>^
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
-            n++;
         }
     }
 
@@ -1787,21 +1636,13 @@ FORCE_INLINE int Interpreter::stmiaUW(uint32_t opcode) // STMIA Rn!, <Rlist>^
 {
     // Decode the operand
     int m = (opcode & 0x000F0000) >> 16;
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[m];
-    int n = 0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
     if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
-    {
-        uint32_t writeback = op0;
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-                writeback += 4;
-        }
-        *registers[m] = writeback;
-    }
+        *registers[m] = op0 + n * 4;
 
     // Block store, post-increment (user registers)
     for (int i = 0; i < 16; i++)
@@ -1810,7 +1651,6 @@ FORCE_INLINE int Interpreter::stmiaUW(uint32_t opcode) // STMIA Rn!, <Rlist>^
         {
             core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
             op0 += 4;
-            n++;
         }
     }
 
@@ -1822,20 +1662,10 @@ FORCE_INLINE int Interpreter::stmiaUW(uint32_t opcode) // STMIA Rn!, <Rlist>^
 
 FORCE_INLINE int Interpreter::ldmdbUW(uint32_t opcode) // LDMDB Rn!, <Rlist>^
 {
-    // Decode the operand
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
     int m = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[m];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[m] - n * 4;
 
     uint32_t writeback = op0;
 
@@ -1896,20 +1726,10 @@ FORCE_INLINE int Interpreter::ldmdbUW(uint32_t opcode) // LDMDB Rn!, <Rlist>^
 
 FORCE_INLINE int Interpreter::stmdbUW(uint32_t opcode) // STMDB Rn!, <Rlist>^
 {
-    // Decode the operand
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
     int m = (opcode & 0x000F0000) >> 16;
-    uint32_t op0 = *registers[m];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 16; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
+    uint32_t op0 = *registers[m] - n * 4;
 
     uint32_t writeback = op0;
 
@@ -1938,8 +1758,8 @@ FORCE_INLINE int Interpreter::ldmibUW(uint32_t opcode) // LDMIB Rn!, <Rlist>^
 {
     // Decode the operand
     int m = (opcode & 0x000F0000) >> 16;
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[m];
-    int n = 0;
 
     if (!(opcode & BIT(15))) // PC not in Rlist
     {
@@ -1950,7 +1770,6 @@ FORCE_INLINE int Interpreter::ldmibUW(uint32_t opcode) // LDMIB Rn!, <Rlist>^
             {
                 op0 += 4;
                 registersUsr[i] = core->memory.read<uint32_t>(cpu, op0);
-                n++;
             }
         }
 
@@ -1970,7 +1789,6 @@ FORCE_INLINE int Interpreter::ldmibUW(uint32_t opcode) // LDMIB Rn!, <Rlist>^
         {
             op0 += 4;
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
-            n++;
         }
     }
 
@@ -2002,21 +1820,13 @@ FORCE_INLINE int Interpreter::stmibUW(uint32_t opcode) // STMIB Rn!, <Rlist>^
 {
     // Decode the operand
     int m = (opcode & 0x000F0000) >> 16;
+    int n = bitCount[opcode & 0xFF] + bitCount[(opcode >> 8) & 0xFF];
     uint32_t op0 = *registers[m];
-    int n = 0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
     if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
-    {
-        uint32_t writeback = op0;
-        for (int i = 0; i < 16; i++)
-        {
-            if (opcode & BIT(i))
-                writeback += 4;
-        }
-        *registers[m] = writeback;
-    }
+        *registers[m] = op0 + n * 4;
 
     // Block store, pre-increment (user registers)
     for (int i = 0; i < 16; i++)
@@ -2025,7 +1835,6 @@ FORCE_INLINE int Interpreter::stmibUW(uint32_t opcode) // STMIB Rn!, <Rlist>^
         {
             op0 += 4;
             core->memory.write<uint32_t>(cpu, op0, registersUsr[i]);
-            n++;
         }
     }
 
@@ -2440,8 +2249,8 @@ FORCE_INLINE int Interpreter::ldmiaT(uint16_t opcode) // LDMIA Rb!,<Rlist>
 {
     // Decode the operand
     int m = (opcode & 0x0700) >> 8;
+    int n = bitCount[opcode & 0xFF];
     uint32_t op0 = *registers[m];
-    int n = 0;
 
     // Block load, post-increment
     for (int i = 0; i < 8; i++)
@@ -2450,7 +2259,6 @@ FORCE_INLINE int Interpreter::ldmiaT(uint16_t opcode) // LDMIA Rb!,<Rlist>
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
-            n++;
         }
     }
 
@@ -2467,21 +2275,13 @@ FORCE_INLINE int Interpreter::stmiaT(uint16_t opcode) // STMIA Rb!,<Rlist>
 {
     // Decode the operand
     int m = (opcode & 0x0700) >> 8;
+    int n = bitCount[opcode & 0xFF];
     uint32_t op0 = *registers[m];
-    int n = 0;
 
     // On ARM9, if Rn is in Rlist, the writeback value is never stored
     // On ARM7, if Rn is in Rlist, the writeback value is stored if Rn is not the first register
     if (cpu == 1 && (opcode & BIT(m)) && (opcode & (BIT(m) - 1)))
-    {
-        uint32_t writeback = op0;
-        for (int i = 0; i < 8; i++)
-        {
-            if (opcode & BIT(i))
-                writeback += 4;
-        }
-        *registers[m] = writeback;
-    }
+        *registers[m] = op0 + n * 4;
 
     // Block store, post-increment
     for (int i = 0; i < 8; i++)
@@ -2490,7 +2290,6 @@ FORCE_INLINE int Interpreter::stmiaT(uint16_t opcode) // STMIA Rb!,<Rlist>
         {
             core->memory.write<uint32_t>(cpu, op0, *registers[i]);
             op0 += 4;
-            n++;
         }
     }
 
@@ -2503,8 +2302,8 @@ FORCE_INLINE int Interpreter::stmiaT(uint16_t opcode) // STMIA Rb!,<Rlist>
 FORCE_INLINE int Interpreter::popT(uint16_t opcode) // POP <Rlist>
 {
     // Decode the operand
+    int n = bitCount[opcode & 0xFF];
     uint32_t op0 = *registers[13];
-    int n = 0;
 
     // Block load, post-increment
     for (int i = 0; i < 8; i++)
@@ -2513,7 +2312,6 @@ FORCE_INLINE int Interpreter::popT(uint16_t opcode) // POP <Rlist>
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
-            n++;
         }
     }
 
@@ -2525,19 +2323,9 @@ FORCE_INLINE int Interpreter::popT(uint16_t opcode) // POP <Rlist>
 
 FORCE_INLINE int Interpreter::pushT(uint16_t opcode) // PUSH <Rlist>
 {
-    // Decode the operand
-    uint32_t op0 = *registers[13];
-    int n = 0;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 8; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
+    int n = bitCount[opcode & 0xFF];
+    uint32_t op0 = *registers[13] - n * 4;
 
     // Writeback
     *registers[13] = op0;
@@ -2558,8 +2346,8 @@ FORCE_INLINE int Interpreter::pushT(uint16_t opcode) // PUSH <Rlist>
 FORCE_INLINE int Interpreter::popPcT(uint16_t opcode) // POP <Rlist>,PC
 {
     // Decode the operand
+    int n = bitCount[opcode & 0xFF] + 1;
     uint32_t op0 = *registers[13];
-    int n = 1;
 
     // Block load, post-increment
     for (int i = 0; i < 8; i++)
@@ -2568,7 +2356,6 @@ FORCE_INLINE int Interpreter::popPcT(uint16_t opcode) // POP <Rlist>,PC
         {
             *registers[i] = core->memory.read<uint32_t>(cpu, op0);
             op0 += 4;
-            n++;
         }
     }
     *registers[15] = core->memory.read<uint32_t>(cpu, op0);
@@ -2592,19 +2379,9 @@ FORCE_INLINE int Interpreter::popPcT(uint16_t opcode) // POP <Rlist>,PC
 
 FORCE_INLINE int Interpreter::pushLrT(uint16_t opcode) // PUSH <Rlist>,LR
 {
-    // Decode the operand
-    uint32_t op0 = *registers[13] - 4;
-    int n = 1;
-
-    // Decrement the address beforehand because transfers are always done in increasing order
-    for (int i = 0; i < 8; i++)
-    {
-        if (opcode & BIT(i))
-        {
-            op0 -= 4;
-            n++;
-        }
-    }
+    // Decode the operand, decrementing the address beforehand so the transfer can be incrementing
+    int n = bitCount[opcode & 0xFF] + 1;
+    uint32_t op0 = *registers[13] - n * 4;
 
     // Writeback
     *registers[13] = op0;

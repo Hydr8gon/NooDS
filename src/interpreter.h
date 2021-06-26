@@ -74,6 +74,8 @@ class Interpreter
         uint32_t ie = 0, irf = 0;
         uint8_t postFlg = 0;
 
+        static const uint8_t bitCount[0x100];
+
         std::function<void()> interruptTask;
 
         void interrupt();
