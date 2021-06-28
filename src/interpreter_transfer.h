@@ -115,7 +115,7 @@ FORCE_INLINE int Interpreter::ldrsbOf(uint32_t opcode, uint32_t op2) // LDRSB Rd
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 5;
 }
 
@@ -134,7 +134,7 @@ FORCE_INLINE int Interpreter::ldrshOf(uint32_t opcode, uint32_t op2) // LDRSH Rd
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 5;
 }
 
@@ -147,20 +147,10 @@ FORCE_INLINE int Interpreter::ldrbOf(uint32_t opcode, uint32_t op2) // LDRB Rd,[
     // Byte load, pre-adjust without writeback
     *op0 = core->memory.read<uint8_t>(cpu, op1 + op2);
 
-    if (op0 != registers[15])
-        return ((cpu == 0) ? 1 : 3);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*op0 & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    if (cpu == 0 && (*op0 & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return 5;
 }
 
@@ -192,7 +182,7 @@ FORCE_INLINE int Interpreter::ldrhOf(uint32_t opcode, uint32_t op2) // LDRH Rd,[
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 5;
 }
 
@@ -225,20 +215,10 @@ FORCE_INLINE int Interpreter::ldrOf(uint32_t opcode, uint32_t op2) // LDR Rd,[Rn
         *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
     }
 
-    if (op0 != registers[15])
-        return ((cpu == 0) ? 1 : 3);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*op0 & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    if (cpu == 0 && (*op0 & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return 5;
 }
 
@@ -299,7 +279,7 @@ FORCE_INLINE int Interpreter::ldrsbPr(uint32_t opcode, uint32_t op2) // LDRSB Rd
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 5;
 }
 
@@ -320,7 +300,7 @@ FORCE_INLINE int Interpreter::ldrshPr(uint32_t opcode, uint32_t op2) // LDRSH Rd
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 5;
 }
 
@@ -334,20 +314,10 @@ FORCE_INLINE int Interpreter::ldrbPr(uint32_t opcode, uint32_t op2) // LDRB Rd,[
     *op1 += op2;
     *op0 = core->memory.read<uint8_t>(cpu, *op1);
 
-    if (op0 != registers[15])
-        return ((cpu == 0) ? 1 : 3);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*op0 & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    if (cpu == 0 && (*op0 & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return 5;
 }
 
@@ -382,7 +352,7 @@ FORCE_INLINE int Interpreter::ldrhPr(uint32_t opcode, uint32_t op2) // LDRH Rd,[
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 5;
 }
 
@@ -418,20 +388,10 @@ FORCE_INLINE int Interpreter::ldrPr(uint32_t opcode, uint32_t op2) // LDR Rd,[Rn
         *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
     }
 
-    if (op0 != registers[15])
-        return ((cpu == 0) ? 1 : 3);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*op0 & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    if (cpu == 0 && (*op0 & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return 5;
 }
 
@@ -495,7 +455,7 @@ FORCE_INLINE int Interpreter::ldrsbPt(uint32_t opcode, uint32_t op2) // LDRSB Rd
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 5;
 }
 
@@ -516,7 +476,7 @@ FORCE_INLINE int Interpreter::ldrshPt(uint32_t opcode, uint32_t op2) // LDRSH Rd
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 5;
 }
 
@@ -530,20 +490,10 @@ FORCE_INLINE int Interpreter::ldrbPt(uint32_t opcode, uint32_t op2) // LDRB Rd,[
     *op0 = core->memory.read<uint8_t>(cpu, *op1);
     if (op0 != op1) *op1 += op2;
 
-    if (op0 != registers[15])
-        return ((cpu == 0) ? 1 : 3);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*op0 & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    if (cpu == 0 && (*op0 & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return 5;
 }
 
@@ -578,7 +528,7 @@ FORCE_INLINE int Interpreter::ldrhPt(uint32_t opcode, uint32_t op2) // LDRH Rd,[
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 5;
 }
 
@@ -616,20 +566,10 @@ FORCE_INLINE int Interpreter::ldrPt(uint32_t opcode, uint32_t op2) // LDR Rd,[Rn
     // Post-adjust
     if (op0 != op1) *op1 += op2;
 
-    if (op0 != registers[15])
-        return ((cpu == 0) ? 1 : 3);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*op0 & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
+    if (cpu == 0 && (*op0 & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return 5;
 }
 
@@ -732,20 +672,10 @@ FORCE_INLINE int Interpreter::ldmda(uint32_t opcode) // LDMDA Rn, <Rlist>
         }
     }
 
-    if (!(opcode & BIT(15))) // PC not in Rlist
-        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (!(opcode & BIT(15))) return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -784,20 +714,10 @@ FORCE_INLINE int Interpreter::ldmia(uint32_t opcode) // LDMIA Rn, <Rlist>
         }
     }
 
-    if (!(opcode & BIT(15))) // PC not in Rlist
-        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (!(opcode & BIT(15))) return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -836,20 +756,10 @@ FORCE_INLINE int Interpreter::ldmdb(uint32_t opcode) // LDMDB Rn, <Rlist>
         }
     }
 
-    if (!(opcode & BIT(15))) // PC not in Rlist
-        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (!(opcode & BIT(15))) return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -888,20 +798,10 @@ FORCE_INLINE int Interpreter::ldmib(uint32_t opcode) // LDMIB Rn, <Rlist>
         }
     }
 
-    if (!(opcode & BIT(15))) // PC not in Rlist
-        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (!(opcode & BIT(15))) return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -949,20 +849,10 @@ FORCE_INLINE int Interpreter::ldmdaW(uint32_t opcode) // LDMDA Rn!, <Rlist>
     if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
         *registers[m] = writeback;
 
-    if (!(opcode & BIT(15))) // PC not in Rlist
-        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (!(opcode & BIT(15))) return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1019,20 +909,10 @@ FORCE_INLINE int Interpreter::ldmiaW(uint32_t opcode) // LDMIA Rn!, <Rlist>
     if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
         *registers[m] = op0;
 
-    if (!(opcode & BIT(15))) // PC not in Rlist
-        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (!(opcode & BIT(15))) return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1089,20 +969,10 @@ FORCE_INLINE int Interpreter::ldmdbW(uint32_t opcode) // LDMDB Rn!, <Rlist>
     if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
         *registers[m] = writeback;
 
-    if (!(opcode & BIT(15))) // PC not in Rlist
-        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (!(opcode & BIT(15))) return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1159,20 +1029,10 @@ FORCE_INLINE int Interpreter::ldmibW(uint32_t opcode) // LDMIB Rn!, <Rlist>
     if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x0000FFFF) == BIT(m) || (opcode & 0x0000FFFF & ~(BIT(m + 1) - 1)))))
         *registers[m] = op0;
 
-    if (!(opcode & BIT(15))) // PC not in Rlist
-        return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
-
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (!(opcode & BIT(15))) return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1240,16 +1100,8 @@ FORCE_INLINE int Interpreter::ldmdaU(uint32_t opcode) // LDMDA Rn, <Rlist>^
         setCpsr(*spsr);
 
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1308,16 +1160,8 @@ FORCE_INLINE int Interpreter::ldmiaU(uint32_t opcode) // LDMIA Rn, <Rlist>^
         setCpsr(*spsr);
 
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1376,16 +1220,8 @@ FORCE_INLINE int Interpreter::ldmdbU(uint32_t opcode) // LDMDB Rn, <Rlist>^
         setCpsr(*spsr);
 
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1444,16 +1280,8 @@ FORCE_INLINE int Interpreter::ldmibU(uint32_t opcode) // LDMIB Rn, <Rlist>^
         setCpsr(*spsr);
 
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1527,16 +1355,8 @@ FORCE_INLINE int Interpreter::ldmdaUW(uint32_t opcode) // LDMDA Rn!, <Rlist>^
         setCpsr(*spsr);
 
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1619,16 +1439,8 @@ FORCE_INLINE int Interpreter::ldmiaUW(uint32_t opcode) // LDMIA Rn!, <Rlist>^
         setCpsr(*spsr);
 
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1711,16 +1523,8 @@ FORCE_INLINE int Interpreter::ldmdbUW(uint32_t opcode) // LDMDB Rn!, <Rlist>^
         setCpsr(*spsr);
 
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -1803,16 +1607,8 @@ FORCE_INLINE int Interpreter::ldmibUW(uint32_t opcode) // LDMIB Rn!, <Rlist>^
         setCpsr(*spsr);
 
     // Handle pipelining and THUMB switching
-    if (cpu == 0 && (*registers[15] & BIT(0)))
-    {
-        cpsr |= BIT(5);
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (cpu == 0 && (*registers[15] & BIT(0))) cpsr |= BIT(5);
+    flushPipeline();
     return n + 4;
 }
 
@@ -2364,16 +2160,8 @@ FORCE_INLINE int Interpreter::popPcT(uint16_t opcode) // POP <Rlist>,PC
     *registers[13] = op0 + 4;
 
     // Handle pipelining
-    if (cpu == 1 || (*registers[15] & BIT(0)))
-    {
-        *registers[15] = (*registers[15] & ~1) + 2;
-    }
-    else
-    {
-        cpsr &= ~BIT(5);
-        *registers[15] = (*registers[15] & ~3) + 4;
-    }
-
+    if (cpu == 0 && !(*registers[15] & BIT(0))) cpsr &= ~BIT(5);
+    flushPipeline();
     return n + 4;
 }
 

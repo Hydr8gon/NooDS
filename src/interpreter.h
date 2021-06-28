@@ -32,8 +32,8 @@ class Interpreter
     public:
         Interpreter(Core *core, bool cpu);
 
+        void init();
         void directBoot();
-        void enterGbaMode();
 
         int runOpcode();
 
@@ -57,6 +57,8 @@ class Interpreter
         Core *core;
         bool cpu;
 
+        uint32_t pipeline[2] = {};
+
         uint32_t *registers[16]   = {};
         uint32_t registersUsr[16] = {};
         uint32_t registersFiq[7]  = {};
@@ -79,6 +81,7 @@ class Interpreter
         std::function<void()> interruptTask;
 
         void interrupt();
+        void flushPipeline();
         bool condition(uint32_t opcode);
         void setCpsr(uint32_t value, bool save = false);
 

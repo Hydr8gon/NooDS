@@ -27,12 +27,17 @@ Interpreter::Interpreter(Core *core, bool cpu): core(core), cpu(cpu)
     for (int i = 0; i < 16; i++)
         registers[i] = &registersUsr[i];
 
-    // Prepare to boot the BIOS
-    registersUsr[15] = ((cpu == 0) ? 0xFFFF0000 : 0x00000000) + 4;
-    setCpsr(0x000000D3); // Supervisor, interrupts off
-
     // Prepare tasks to be used with the scheduler
     interruptTask = std::bind(&Interpreter::interrupt, this);
+}
+
+void Interpreter::init()
+{
+    // Prepare to boot the BIOS
+    setCpsr(0x000000D3); // Supervisor, interrupts off
+    registersUsr[15] = (cpu == 0) ? 0xFFFF0000 : 0x00000000;
+    flushPipeline();
+    postFlg = 0;
 }
 
 void Interpreter::directBoot()
@@ -55,18 +60,11 @@ void Interpreter::directBoot()
         registersSvc[0]  = 0x0380FFC0;
     }
 
+    setCpsr(0x000000DF); // System, interrupts off
     registersUsr[12] = entryAddr;
     registersUsr[14] = entryAddr;
-    registersUsr[15] = entryAddr + 4;
-    setCpsr(0x000000DF); // System, interrupts off
-}
-
-void Interpreter::enterGbaMode()
-{
-    // Prepare to boot the GBA BIOS (and rely on it to initialize everything else)
-    registersUsr[15] = 0x00000000 + 4;
-    setCpsr(0x000000D3); // Supervisor, interrupts off
-    postFlg = 0;
+    registersUsr[15] = entryAddr;
+    flushPipeline();
 }
 
 int Interpreter::runOpcode()
@@ -77,9 +75,10 @@ int Interpreter::runOpcode()
         // Increment the program counter
         *registers[15] += 2;
 
-        // Execute 2 opcodes behind the program counter because of pipelining
-        // In THUMB mode, this is 4 bytes behind
-        uint16_t opcode = core->memory.read<uint16_t>(cpu, *registers[15] - 4);
+        // Push the next opcode through the pipeline
+        uint16_t opcode = pipeline[0];
+        pipeline[0] = pipeline[1];
+        pipeline[1] = core->memory.read<uint16_t>(cpu, *registers[15]);
 
         // THUMB lookup table, based on the map found at http://imrannazar.com/ARM-Opcode-Map
         // Uses bits 15-8 of an opcode to find the appropriate instruction
@@ -338,9 +337,10 @@ int Interpreter::runOpcode()
         // Increment the program counter
         *registers[15] += 4;
 
-        // Execute 2 opcodes behind the program counter because of pipelining
-        // In ARM mode, this is 8 bytes behind
-        uint32_t opcode = core->memory.read<uint32_t>(cpu, *registers[15] - 8);
+        // Push the next opcode through the pipeline
+        uint32_t opcode = pipeline[0];
+        pipeline[0] = pipeline[1];
+        pipeline[1] = core->memory.read<uint32_t>(cpu, *registers[15]);
 
         if (condition(opcode))
         {
@@ -2437,10 +2437,28 @@ void Interpreter::interrupt()
         // Switch to interrupt mode, save the return address, and jump to the interrupt handler
         setCpsr((cpsr & ~0x3F) | 0x92, true); // ARM, IRQ, interrupts off
         *registers[14] = *registers[15] + ((*spsr & BIT(5)) ? 2 : 0);
-        *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x18 + 4;
+        *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x18;
+        flushPipeline();
 
         // Unhalt the CPU
         halted &= ~BIT(0);
+    }
+}
+
+void Interpreter::flushPipeline()
+{
+    // Adjust the program counter and refill the pipeline after a jump
+    if (cpsr & BIT(5)) // THUMB mode
+    {
+        *registers[15] = (*registers[15] & ~1) + 2;
+        pipeline[0] = core->memory.read<uint16_t>(cpu, *registers[15] - 2);
+        pipeline[1] = core->memory.read<uint16_t>(cpu, *registers[15]);
+    }
+    else // ARM mode
+    {
+        *registers[15] = (*registers[15] & ~3) + 4;
+        pipeline[0] = core->memory.read<uint32_t>(cpu, *registers[15] - 4);
+        pipeline[1] = core->memory.read<uint32_t>(cpu, *registers[15]);
     }
 }
 

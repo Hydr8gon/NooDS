@@ -35,16 +35,18 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     gpu.scheduleInit();
     spu.scheduleInit();
 
-    // Generate the initial memory maps
-    memory.updateMap9(0x00000000, 0xFFFFFFFF);
-    memory.updateMap7(0x00000000, 0xFFFFFFFF);
-
     // Load the NDS BIOS and firmware unless directly booting a GBA ROM
     if (ndsPath != "" || gbaPath == "" || !Settings::getDirectBoot())
     {
         memory.loadBios();
         spi.loadFirmware();
     }
+
+    // Initialize the memory and CPUs
+    memory.updateMap9(0x00000000, 0xFFFFFFFF);
+    memory.updateMap7(0x00000000, 0xFFFFFFFF);
+    interpreter[0].init();
+    interpreter[1].init();
 
     if (gbaPath != "")
     {
@@ -211,9 +213,8 @@ void Core::schedule(Task task)
 void Core::enterGbaMode()
 {
     // Switch to GBA mode
-    interpreter[1].enterGbaMode();
-    runFunc = &Core::runGbaFrame;
     gbaMode = true;
+    runFunc = &Core::runGbaFrame;
 
     // Reset the scheduler and schedule initial tasks for GBA mode
     tasks.clear();
@@ -221,8 +222,9 @@ void Core::enterGbaMode()
     gpu.gbaScheduleInit();
     spu.gbaScheduleInit();
 
-    // Generate the initial GBA memory map
+    // Reset the ARM7 for GBA mode
     memory.updateMap7(0x00000000, 0xFFFFFFFF);
+    interpreter[1].init();
 
     // Set VRAM blocks A and B to plain access mode
     // This is used by the GPU to access the VRAM borders

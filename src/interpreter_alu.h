@@ -286,7 +286,7 @@ FORCE_INLINE int Interpreter::_and(uint32_t opcode, uint32_t op2) // AND Rd,Rn,o
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -302,7 +302,7 @@ FORCE_INLINE int Interpreter::eor(uint32_t opcode, uint32_t op2) // EOR Rd,Rn,op
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -318,7 +318,7 @@ FORCE_INLINE int Interpreter::sub(uint32_t opcode, uint32_t op2) // SUB Rd,Rn,op
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -334,7 +334,7 @@ FORCE_INLINE int Interpreter::rsb(uint32_t opcode, uint32_t op2) // RSB Rd,Rn,op
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -350,7 +350,7 @@ FORCE_INLINE int Interpreter::add(uint32_t opcode, uint32_t op2) // ADD Rd,Rn,op
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -366,7 +366,7 @@ FORCE_INLINE int Interpreter::adc(uint32_t opcode, uint32_t op2) // ADC Rd,Rn,op
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -382,7 +382,7 @@ FORCE_INLINE int Interpreter::sbc(uint32_t opcode, uint32_t op2) // SBC Rd,Rn,op
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -398,7 +398,7 @@ FORCE_INLINE int Interpreter::rsc(uint32_t opcode, uint32_t op2) // RSC Rd,Rn,op
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -484,7 +484,7 @@ FORCE_INLINE int Interpreter::orr(uint32_t opcode, uint32_t op2) // ORR Rd,Rn,op
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -498,7 +498,7 @@ FORCE_INLINE int Interpreter::mov(uint32_t opcode, uint32_t op2) // MOV Rd,op2
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -514,7 +514,7 @@ FORCE_INLINE int Interpreter::bic(uint32_t opcode, uint32_t op2) // BIC Rd,Rn,op
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -528,7 +528,7 @@ FORCE_INLINE int Interpreter::mvn(uint32_t opcode, uint32_t op2) // MVN Rd,op2
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -546,7 +546,7 @@ FORCE_INLINE int Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn,
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -556,7 +556,7 @@ FORCE_INLINE int Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn,
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -574,7 +574,7 @@ FORCE_INLINE int Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn,
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -584,7 +584,7 @@ FORCE_INLINE int Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn,
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -602,7 +602,7 @@ FORCE_INLINE int Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn,
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -615,7 +615,7 @@ FORCE_INLINE int Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn,
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -633,7 +633,7 @@ FORCE_INLINE int Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn,
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -646,7 +646,7 @@ FORCE_INLINE int Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn,
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -664,7 +664,7 @@ FORCE_INLINE int Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn,
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -677,7 +677,7 @@ FORCE_INLINE int Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn,
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -695,7 +695,7 @@ FORCE_INLINE int Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn,
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -708,7 +708,7 @@ FORCE_INLINE int Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn,
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -726,7 +726,7 @@ FORCE_INLINE int Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn,
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -739,7 +739,7 @@ FORCE_INLINE int Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn,
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -757,7 +757,7 @@ FORCE_INLINE int Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn,
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -770,7 +770,7 @@ FORCE_INLINE int Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn,
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -788,7 +788,7 @@ FORCE_INLINE int Interpreter::orrs(uint32_t opcode, uint32_t op2) // ORRS Rd,Rn,
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -798,7 +798,7 @@ FORCE_INLINE int Interpreter::orrs(uint32_t opcode, uint32_t op2) // ORRS Rd,Rn,
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -814,7 +814,7 @@ FORCE_INLINE int Interpreter::movs(uint32_t opcode, uint32_t op2) // MOVS Rd,op2
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -824,7 +824,7 @@ FORCE_INLINE int Interpreter::movs(uint32_t opcode, uint32_t op2) // MOVS Rd,op2
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -842,7 +842,7 @@ FORCE_INLINE int Interpreter::bics(uint32_t opcode, uint32_t op2) // BICS Rd,Rn,
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -852,7 +852,7 @@ FORCE_INLINE int Interpreter::bics(uint32_t opcode, uint32_t op2) // BICS Rd,Rn,
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -868,7 +868,7 @@ FORCE_INLINE int Interpreter::mvns(uint32_t opcode, uint32_t op2) // MVNS Rd,op2
     if (op0 == registers[15] && spsr)
     {
         setCpsr(*spsr);
-        *registers[15] = (cpsr & BIT(5)) ? ((*registers[15] & ~1) + 2) : ((*registers[15] & ~3) + 4);
+        flushPipeline();
         return 3;
     }
 
@@ -878,7 +878,7 @@ FORCE_INLINE int Interpreter::mvns(uint32_t opcode, uint32_t op2) // MVNS Rd,op2
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~3) + 4;
+    flushPipeline();
     return 3;
 }
 
@@ -1617,7 +1617,7 @@ FORCE_INLINE int Interpreter::addHT(uint16_t opcode) // ADD Rd,Rs
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~1) + 2;
+    flushPipeline();
     return 3;
 }
 
@@ -1651,7 +1651,7 @@ FORCE_INLINE int Interpreter::movHT(uint16_t opcode) // MOV Rd,Rs
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
-    *registers[15] = (*registers[15] & ~1) + 2;
+    flushPipeline();
     return 3;
 }
 
