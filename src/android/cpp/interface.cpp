@@ -299,7 +299,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_runFrame(JNIE
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_writeSave(JNIEnv *env, jobject obj)
 {
-    core->cartridge.writeSave();
+    core->cartridgeNds.writeSave();
+    core->cartridgeGba.writeSave();
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_restartCore(JNIEnv *env, jobject obj)
@@ -322,12 +323,12 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_releaseScreen
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_resizeGbaSave(JNIEnv *env, jobject obj, jint size)
 {
-    core->cartridge.resizeGbaSave(size);
+    core->cartridgeGba.resizeSave(size);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_resizeNdsSave(JNIEnv *env, jobject obj, jint size)
 {
-    core->cartridge.resizeNdsSave(size);
+    core->cartridgeNds.resizeSave(size);
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenRotation(JNIEnv* env, jobject obj)

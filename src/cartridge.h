@@ -40,34 +40,36 @@ class Cartridge
         Cartridge(Core *core): core(core) {}
         ~Cartridge();
 
-        void loadNdsRom(std::string path);
-        void loadGbaRom(std::string path);
-        void directBoot();
+        virtual void loadRom(std::string path);
         void writeSave();
 
-        void trimNdsRom() { trimRom(&ndsRom, &ndsRomSize, &ndsRomName); }
-        void trimGbaRom() { trimRom(&gbaRom, &gbaRomSize, &gbaRomName); }
+        void trimRom();
+        void resizeSave(int newSize);
 
-        void resizeNdsSave(int newSize) { resizeSave(newSize, &ndsSave, &ndsSaveSize, &ndsSaveDirty); }
-        void resizeGbaSave(int newSize) { resizeSave(newSize, &gbaSave, &gbaSaveSize, &gbaSaveDirty); }
+        int getRomSize()  { return romSize;  }
+        int getSaveSize() { return saveSize; }
 
-        int getNdsRomSize()  { return ndsRomSize;  }
-        int getNdsSaveSize() { return ndsSaveSize; }
+    protected:
+        Core *core;
 
-        int getGbaRomSize()  { return gbaRomSize;  }
-        int getGbaSaveSize() { return gbaSaveSize; }
-        uint8_t *getGbaRom() { return gbaRom;      }
+        FILE *romFile = nullptr;
+        uint8_t *rom = nullptr, *save = nullptr;
+        int romSize = 0, saveSize = 0;
+        bool saveDirty = false;
 
-        bool isGbaEeprom(uint32_t address)
-        {
-            return (gbaSaveSize == -1 || gbaSaveSize == 0x200 || gbaSaveSize == 0x2000) &&
-                (gbaRomSize <= 0x1000000 || address >= 0x0DFFFF00);
-        }
-        uint8_t gbaEepromRead();
-        void gbaEepromWrite(uint8_t value);
+        void loadRomSection(uint32_t offset, uint32_t size);
 
-        uint8_t gbaSramRead(uint32_t address);
-        void gbaSramWrite(uint32_t address, uint8_t value);
+    private:
+        std::string romName, saveName;
+};
+
+class CartridgeNds: public Cartridge
+{
+    public:
+        CartridgeNds(Core *core): Cartridge(core) {}
+
+        void loadRom(std::string path);
+        void directBoot();
 
         uint16_t readAuxSpiCnt(bool cpu)  { return auxSpiCnt[cpu];  }
         uint8_t  readAuxSpiData(bool cpu) { return auxSpiData[cpu]; }
@@ -81,31 +83,9 @@ class Cartridge
         void writeRomCmdOutH(bool cpu, uint32_t mask, uint32_t value);
 
     private:
-        Core *core;
-
-        std::string gbaRomName, gbaSaveName;
-        uint8_t *gbaRom = nullptr, *gbaSave = nullptr;
-        int gbaRomSize = 0, gbaSaveSize = 0;
-        bool gbaSaveDirty = false;
-
-        std::string ndsRomName, ndsSaveName;
-        uint8_t *ndsRom = nullptr, *ndsSave = nullptr;
-        int ndsRomSize = 0, ndsSaveSize = 0;
-        bool ndsSaveDirty = false;
-
-        FILE *ndsRomFile = nullptr;
-        uint32_t ndsRomCode = 0;
-        bool ndsRomEncrypted = false;
-        NdsCmdMode ndsCmdMode = CMD_NONE;
-
-        int gbaEepromCount = 0;
-        uint16_t gbaEepromCmd = 0;
-        uint64_t gbaEepromData = 0;
-        bool gbaEepromDone = false;
-
-        uint8_t gbaFlashCmd = 0;
-        bool gbaBankSwap = false;
-        bool gbaFlashErase = false;
+        uint32_t romCode = 0;
+        bool romEncrypted = false;
+        NdsCmdMode cmdMode = CMD_NONE;
 
         uint32_t encTable[0x412] = {};
         uint32_t encCode[3] = {};
@@ -123,15 +103,41 @@ class Cartridge
         uint32_t romCtrl[2] = {};
         uint64_t romCmdOut[2] = {};
 
-        static void trimRom(uint8_t **rom, int *romSize, std::string *romName);
-        static void resizeSave(int newSize, uint8_t **save, int *saveSize, bool *saveDirty);
-
-        void loadRomSection(uint32_t offset, uint32_t size);
-
         uint64_t encrypt64(uint64_t value);
         uint64_t decrypt64(uint64_t value);
         void initKeycode(int level);
         void applyKeycode();
+};
+
+class CartridgeGba: public Cartridge
+{
+    public:
+        CartridgeGba(Core *core): Cartridge(core) {}
+
+        void loadRom(std::string path);
+
+        uint8_t *getRom() { return rom; }
+
+        bool isEeprom(uint32_t address)
+        {
+            return (saveSize == -1 || saveSize == 0x200 || saveSize == 0x2000) && (romSize <= 0x1000000 || address >= 0x0DFFFF00);
+        }
+
+        uint8_t eepromRead();
+        void eepromWrite(uint8_t value);
+
+        uint8_t sramRead(uint32_t address);
+        void sramWrite(uint32_t address, uint8_t value);
+
+    private:
+        int eepromCount = 0;
+        uint16_t eepromCmd = 0;
+        uint64_t eepromData = 0;
+        bool eepromDone = false;
+
+        uint8_t flashCmd = 0;
+        bool bankSwap = false;
+        bool flashErase = false;
 };
 
 #endif // CARTRIDGE_H

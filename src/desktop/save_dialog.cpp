@@ -82,15 +82,18 @@ int SaveDialog::sizeToSelection(int size)
     }
 }
 
-SaveDialog::SaveDialog(NooFrame *frame, Emulator *emulator): wxDialog(nullptr, wxID_ANY, "Change Save Type"), frame(frame), emulator(emulator)
+SaveDialog::SaveDialog(NooFrame *frame, Emulator *emulator): wxDialog(nullptr, wxID_ANY, "Change Save Type"), frame(frame)
 {
+    // Check the current emulation mode and get the corresponding cartridge
+    gba = emulator->core->isGbaMode();
+    cartridge = gba ? (Cartridge*)&emulator->core->cartridgeGba : (Cartridge*)&emulator->core->cartridgeNds;
+
     // Determine the height of a button
     // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
     wxButton *dummy = new wxButton(this, wxID_ANY, "");
     int size = dummy->GetSize().y;
     delete dummy;
 
-    gba = emulator->core->isGbaMode();
     wxBoxSizer *leftRadio = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer *rightRadio = new wxBoxSizer(wxVERTICAL);
     wxRadioButton *buttons[10];
@@ -121,7 +124,7 @@ SaveDialog::SaveDialog(NooFrame *frame, Emulator *emulator): wxDialog(nullptr, w
     }
 
     // Select the current save type by default
-    selection = sizeToSelection(gba ? emulator->core->cartridge.getGbaSaveSize() : emulator->core->cartridge.getNdsSaveSize());
+    selection = sizeToSelection(cartridge->getSaveSize());
     buttons[selection]->SetValue(true);
 
     // Combine all of the radio buttons
@@ -219,10 +222,7 @@ void SaveDialog::confirm(wxCommandEvent &event)
     if (dialog.ShowModal() == wxID_YES)
     {
         frame->stopCore(false);
-        if (gba)
-            emulator->core->cartridge.resizeGbaSave(selectionToSize(selection));
-        else
-            emulator->core->cartridge.resizeNdsSave(selectionToSize(selection));
+        cartridge->resizeSave(selectionToSize(selection));
         frame->startCore(true);
         event.Skip(true);
     }

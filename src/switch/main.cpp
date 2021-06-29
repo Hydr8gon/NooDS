@@ -426,28 +426,28 @@ void saveTypeMenu()
             {
                 switch (index)
                 {
-                    case 0: core->cartridge.resizeGbaSave(0);       break; // None
-                    case 1: core->cartridge.resizeGbaSave(0x200);   break; // EEPROM 0.5KB
-                    case 2: core->cartridge.resizeGbaSave(0x2000);  break; // EEPROM 8KB
-                    case 3: core->cartridge.resizeGbaSave(0x8000);  break; // SRAM 32KB
-                    case 4: core->cartridge.resizeGbaSave(0x10000); break; // FLASH 64KB
-                    case 5: core->cartridge.resizeGbaSave(0x20000); break; // FLASH 128KB
+                    case 0: core->cartridgeGba.resizeSave(0);       break; // None
+                    case 1: core->cartridgeGba.resizeSave(0x200);   break; // EEPROM 0.5KB
+                    case 2: core->cartridgeGba.resizeSave(0x2000);  break; // EEPROM 8KB
+                    case 3: core->cartridgeGba.resizeSave(0x8000);  break; // SRAM 32KB
+                    case 4: core->cartridgeGba.resizeSave(0x10000); break; // FLASH 64KB
+                    case 5: core->cartridgeGba.resizeSave(0x20000); break; // FLASH 128KB
                 }
             }
             else
             {
                 switch (index)
                 {
-                    case 0: core->cartridge.resizeNdsSave(0);        break; // None
-                    case 1: core->cartridge.resizeNdsSave(0x200);    break; // EEPROM 0.5KB
-                    case 2: core->cartridge.resizeNdsSave(0x2000);   break; // EEPROM 8KB
-                    case 3: core->cartridge.resizeNdsSave(0x10000);  break; // EEPROM 64KB
-                    case 4: core->cartridge.resizeNdsSave(0x20000);  break; // EEPROM 128KB
-                    case 5: core->cartridge.resizeNdsSave(0x8000);   break; // FRAM 32KB
-                    case 6: core->cartridge.resizeNdsSave(0x40000);  break; // FLASH 256KB
-                    case 7: core->cartridge.resizeNdsSave(0x80000);  break; // FLASH 512KB
-                    case 8: core->cartridge.resizeNdsSave(0x100000); break; // FLASH 1024KB
-                    case 9: core->cartridge.resizeNdsSave(0x800000); break; // FLASH 8192KB
+                    case 0: core->cartridgeNds.resizeSave(0);        break; // None
+                    case 1: core->cartridgeNds.resizeSave(0x200);    break; // EEPROM 0.5KB
+                    case 2: core->cartridgeNds.resizeSave(0x2000);   break; // EEPROM 8KB
+                    case 3: core->cartridgeNds.resizeSave(0x10000);  break; // EEPROM 64KB
+                    case 4: core->cartridgeNds.resizeSave(0x20000);  break; // EEPROM 128KB
+                    case 5: core->cartridgeNds.resizeSave(0x8000);   break; // FRAM 32KB
+                    case 6: core->cartridgeNds.resizeSave(0x40000);  break; // FLASH 256KB
+                    case 7: core->cartridgeNds.resizeSave(0x80000);  break; // FLASH 512KB
+                    case 8: core->cartridgeNds.resizeSave(0x100000); break; // FLASH 1024KB
+                    case 9: core->cartridgeNds.resizeSave(0x800000); break; // FLASH 8192KB
                 }
             }
 
@@ -465,7 +465,8 @@ void pauseMenu()
 {
     // Stop the core and write the save as an extra precaution
     stopCore();
-    core->cartridge.writeSave();
+    core->cartridgeNds.writeSave();
+    core->cartridgeGba.writeSave();
 
     unsigned int index = 0;
 

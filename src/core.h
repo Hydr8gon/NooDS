@@ -71,7 +71,8 @@ class Core
         void schedule(Task task);
         void enterGbaMode();
 
-        Cartridge cartridge;
+        CartridgeNds cartridgeNds;
+        CartridgeGba cartridgeGba;
         Cp15 cp15;
         DivSqrt divSqrt;
         Dldi dldi;

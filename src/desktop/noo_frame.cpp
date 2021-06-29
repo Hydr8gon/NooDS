@@ -279,7 +279,8 @@ void NooFrame::stopCore(bool full)
     else if (emulator->core)
     {
         // Update the save file since the core isn't running
-        emulator->core->cartridge.writeSave();
+        emulator->core->cartridgeNds.writeSave();
+        emulator->core->cartridgeGba.writeSave();
     }
 }
 
@@ -402,18 +403,10 @@ void NooFrame::trimRom(wxCommandEvent &event)
 
         // Pause the core for safety and trim the ROM
         stopCore(false);
-        if (gba)
-        {
-            oldSize = emulator->core->cartridge.getGbaRomSize();
-            emulator->core->cartridge.trimGbaRom();
-            newSize = emulator->core->cartridge.getGbaRomSize();
-        }
-        else
-        {
-            oldSize = emulator->core->cartridge.getNdsRomSize();
-            emulator->core->cartridge.trimNdsRom();
-            newSize = emulator->core->cartridge.getNdsRomSize();
-        }
+        Cartridge *cartridge = gba ? (Cartridge*)&emulator->core->cartridgeGba : (Cartridge*)&emulator->core->cartridgeNds;
+        oldSize = cartridge->getRomSize();
+        cartridge->trimRom();
+        newSize = cartridge->getRomSize();
         startCore(false);
 
         // Show the results

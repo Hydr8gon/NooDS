@@ -31,7 +31,7 @@ class SaveDialog: public wxDialog
 
     private:
         NooFrame *frame;
-        Emulator *emulator;
+        Cartridge *cartridge;
 
         bool gba = false;
         int selection = 0;

@@ -94,8 +94,8 @@ void Memory::updateMap9(uint32_t start, uint32_t end)
                     break;
 
                 case 0x08000000: case 0x09000000: // GBA ROM
-                    if ((address & 0x01FFFFFF) < core->cartridge.getGbaRomSize())
-                        data = &core->cartridge.getGbaRom()[address & 0x01FFFFFF];
+                    if ((address & 0x01FFFFFF) < core->cartridgeGba.getRomSize())
+                        data = &core->cartridgeGba.getRom()[address & 0x01FFFFFF];
                     break;
 
                 case 0xFF000000: // ARM9 BIOS
@@ -189,8 +189,8 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
 
                 case 0x08000000: case 0x09000000: case 0x0A000000:
                 case 0x0B000000: case 0x0C000000: // ROM
-                    if ((address & 0x01FFFFFF) < core->cartridge.getGbaRomSize())
-                        data = &core->cartridge.getGbaRom()[address & 0x01FFFFFF];
+                    if ((address & 0x01FFFFFF) < core->cartridgeGba.getRomSize())
+                        data = &core->cartridgeGba.getRom()[address & 0x01FFFFFF];
                     break;
             }
         }
@@ -236,8 +236,8 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                     break;
 
                 case 0x08000000: case 0x09000000: // GBA ROM
-                    if ((address & 0x01FFFFFF) < core->cartridge.getGbaRomSize())
-                        data = &core->cartridge.getGbaRom()[address & 0x01FFFFFF];
+                    if ((address & 0x01FFFFFF) < core->cartridgeGba.getRomSize())
+                        data = &core->cartridgeGba.getRom()[address & 0x01FFFFFF];
                     break;
             }
         }
@@ -357,7 +357,7 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
                     return (T)0xFFFFFFFF;
 
                 case 0x0A000000: // GBA SRAM
-                    return core->cartridge.gbaSramRead(address + 0x4000000);
+                    return core->cartridgeGba.sramRead(address + 0x4000000);
             }
         }
     }
@@ -383,15 +383,15 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
                 break;
 
             case 0x0D000000: // EEPROM/ROM
-                if (core->cartridge.isGbaEeprom(address))
-                    return core->cartridge.gbaEepromRead();
+                if (core->cartridgeGba.isEeprom(address))
+                    return core->cartridgeGba.eepromRead();
 
             case 0x08000000: case 0x09000000: case 0x0A000000:
             case 0x0B000000: case 0x0C000000: // ROM (empty)
                 return (T)0xFFFFFFFF;
 
             case 0x0E000000: // SRAM
-                return core->cartridge.gbaSramRead(address);
+                return core->cartridgeGba.sramRead(address);
         }
     }
     else // ARM7
@@ -406,7 +406,7 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
                 return (T)0xFFFFFFFF;
 
             case 0x0A000000: // GBA SRAM
-                return core->cartridge.gbaSramRead(address + 0x4000000);
+                return core->cartridgeGba.sramRead(address + 0x4000000);
         }
     }
 
@@ -465,7 +465,7 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
                     break;
 
                 case 0x0A000000: // GBA SRAM
-                    core->cartridge.gbaSramWrite(address + 0x4000000, value);
+                    core->cartridgeGba.sramWrite(address + 0x4000000, value);
                     return;
             }
         }
@@ -493,12 +493,12 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
                 break;
 
             case 0x0D000000: // EEPROM
-                if (core->cartridge.isGbaEeprom(address))
-                    core->cartridge.gbaEepromWrite(value);
+                if (core->cartridgeGba.isEeprom(address))
+                    core->cartridgeGba.eepromWrite(value);
                 return;
 
             case 0x0E000000: // SRAM
-                core->cartridge.gbaSramWrite(address, value);
+                core->cartridgeGba.sramWrite(address, value);
                 return;
         }
     }
@@ -512,7 +512,7 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
                 return;
 
             case 0x0A000000: // GBA SRAM
-                core->cartridge.gbaSramWrite(address + 0x4000000, value);
+                core->cartridgeGba.sramWrite(address + 0x4000000, value);
                 return;
         }
     }
@@ -550,358 +550,358 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             case 0x4000000:
             case 0x4000001:
             case 0x4000002:
-            case 0x4000003: base -= 0x4000000; size = 4; data = core->gpu2D[0].readDispCnt();        break; // DISPCNT (engine A)
+            case 0x4000003: base -= 0x4000000; size = 4; data = core->gpu2D[0].readDispCnt();         break; // DISPCNT (engine A)
             case 0x4000004:
-            case 0x4000005: base -= 0x4000004; size = 2; data = core->gpu.readDispStat(0);           break; // DISPSTAT (ARM9)
+            case 0x4000005: base -= 0x4000004; size = 2; data = core->gpu.readDispStat(0);            break; // DISPSTAT (ARM9)
             case 0x4000006:
-            case 0x4000007: base -= 0x4000006; size = 2; data = core->gpu.readVCount();              break; // VCOUNT
+            case 0x4000007: base -= 0x4000006; size = 2; data = core->gpu.readVCount();               break; // VCOUNT
             case 0x4000008:
-            case 0x4000009: base -= 0x4000008; size = 2; data = core->gpu2D[0].readBgCnt(0);         break; // BG0CNT (engine A)
+            case 0x4000009: base -= 0x4000008; size = 2; data = core->gpu2D[0].readBgCnt(0);          break; // BG0CNT (engine A)
             case 0x400000A:
-            case 0x400000B: base -= 0x400000A; size = 2; data = core->gpu2D[0].readBgCnt(1);         break; // BG1CNT (engine A)
+            case 0x400000B: base -= 0x400000A; size = 2; data = core->gpu2D[0].readBgCnt(1);          break; // BG1CNT (engine A)
             case 0x400000C:
-            case 0x400000D: base -= 0x400000C; size = 2; data = core->gpu2D[0].readBgCnt(2);         break; // BG2CNT (engine A)
+            case 0x400000D: base -= 0x400000C; size = 2; data = core->gpu2D[0].readBgCnt(2);          break; // BG2CNT (engine A)
             case 0x400000E:
-            case 0x400000F: base -= 0x400000E; size = 2; data = core->gpu2D[0].readBgCnt(3);         break; // BG3CNT (engine A)
+            case 0x400000F: base -= 0x400000E; size = 2; data = core->gpu2D[0].readBgCnt(3);          break; // BG3CNT (engine A)
             case 0x4000048:
-            case 0x4000049: base -= 0x4000048; size = 2; data = core->gpu2D[0].readWinIn();          break; // WININ (engine A)
+            case 0x4000049: base -= 0x4000048; size = 2; data = core->gpu2D[0].readWinIn();           break; // WININ (engine A)
             case 0x400004A:
-            case 0x400004B: base -= 0x400004A; size = 2; data = core->gpu2D[0].readWinOut();         break; // WINOUT (engine A)
+            case 0x400004B: base -= 0x400004A; size = 2; data = core->gpu2D[0].readWinOut();          break; // WINOUT (engine A)
             case 0x4000050:
-            case 0x4000051: base -= 0x4000050; size = 2; data = core->gpu2D[0].readBldCnt();         break; // BLDCNT (engine A)
+            case 0x4000051: base -= 0x4000050; size = 2; data = core->gpu2D[0].readBldCnt();          break; // BLDCNT (engine A)
             case 0x4000052:
-            case 0x4000053: base -= 0x4000052; size = 2; data = core->gpu2D[0].readBldAlpha();       break; // BLDALPHA (engine A)
+            case 0x4000053: base -= 0x4000052; size = 2; data = core->gpu2D[0].readBldAlpha();        break; // BLDALPHA (engine A)
             case 0x4000060:
-            case 0x4000061: base -= 0x4000060; size = 2; data = core->gpu3DRenderer.readDisp3DCnt(); break; // DISP3DCNT
+            case 0x4000061: base -= 0x4000060; size = 2; data = core->gpu3DRenderer.readDisp3DCnt();  break; // DISP3DCNT
             case 0x4000064:
             case 0x4000065:
             case 0x4000066:
-            case 0x4000067: base -= 0x4000064; size = 4; data = core->gpu.readDispCapCnt();          break; // DISPCAPCNT
+            case 0x4000067: base -= 0x4000064; size = 4; data = core->gpu.readDispCapCnt();           break; // DISPCAPCNT
             case 0x400006C:
-            case 0x400006D: base -= 0x400006C; size = 2; data = core->gpu2D[0].readMasterBright();   break; // MASTER_BRIGHT (engine A)
+            case 0x400006D: base -= 0x400006C; size = 2; data = core->gpu2D[0].readMasterBright();    break; // MASTER_BRIGHT (engine A)
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
-            case 0x40000B3: base -= 0x40000B0; size = 4; data = core->dma[0].readDmaSad(0);          break; // DMA0SAD (ARM9)
+            case 0x40000B3: base -= 0x40000B0; size = 4; data = core->dma[0].readDmaSad(0);           break; // DMA0SAD (ARM9)
             case 0x40000B4:
             case 0x40000B5:
             case 0x40000B6:
-            case 0x40000B7: base -= 0x40000B4; size = 4; data = core->dma[0].readDmaDad(0);          break; // DMA0DAD (ARM9)
+            case 0x40000B7: base -= 0x40000B4; size = 4; data = core->dma[0].readDmaDad(0);           break; // DMA0DAD (ARM9)
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
-            case 0x40000BB: base -= 0x40000B8; size = 4; data = core->dma[0].readDmaCnt(0);          break; // DMA0CNT (ARM9)
+            case 0x40000BB: base -= 0x40000B8; size = 4; data = core->dma[0].readDmaCnt(0);           break; // DMA0CNT (ARM9)
             case 0x40000BC:
             case 0x40000BD:
             case 0x40000BE:
-            case 0x40000BF: base -= 0x40000BC; size = 4; data = core->dma[0].readDmaSad(1);          break; // DMA1SAD (ARM9)
+            case 0x40000BF: base -= 0x40000BC; size = 4; data = core->dma[0].readDmaSad(1);           break; // DMA1SAD (ARM9)
             case 0x40000C0:
             case 0x40000C1:
             case 0x40000C2:
-            case 0x40000C3: base -= 0x40000C0; size = 4; data = core->dma[0].readDmaDad(1);          break; // DMA1DAD (ARM9)
+            case 0x40000C3: base -= 0x40000C0; size = 4; data = core->dma[0].readDmaDad(1);           break; // DMA1DAD (ARM9)
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
-            case 0x40000C7: base -= 0x40000C4; size = 4; data = core->dma[0].readDmaCnt(1);          break; // DMA1CNT (ARM9)
+            case 0x40000C7: base -= 0x40000C4; size = 4; data = core->dma[0].readDmaCnt(1);           break; // DMA1CNT (ARM9)
             case 0x40000C8:
             case 0x40000C9:
             case 0x40000CA:
-            case 0x40000CB: base -= 0x40000C8; size = 4; data = core->dma[0].readDmaSad(2);          break; // DMA2SAD (ARM9)
+            case 0x40000CB: base -= 0x40000C8; size = 4; data = core->dma[0].readDmaSad(2);           break; // DMA2SAD (ARM9)
             case 0x40000CC:
             case 0x40000CD:
             case 0x40000CE:
-            case 0x40000CF: base -= 0x40000CC; size = 4; data = core->dma[0].readDmaDad(2);          break; // DMA2DAD (ARM9)
+            case 0x40000CF: base -= 0x40000CC; size = 4; data = core->dma[0].readDmaDad(2);           break; // DMA2DAD (ARM9)
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
-            case 0x40000D3: base -= 0x40000D0; size = 4; data = core->dma[0].readDmaCnt(2);          break; // DMA2CNT (ARM9)
+            case 0x40000D3: base -= 0x40000D0; size = 4; data = core->dma[0].readDmaCnt(2);           break; // DMA2CNT (ARM9)
             case 0x40000D4:
             case 0x40000D5:
             case 0x40000D6:
-            case 0x40000D7: base -= 0x40000D4; size = 4; data = core->dma[0].readDmaSad(3);          break; // DMA3SAD (ARM9)
+            case 0x40000D7: base -= 0x40000D4; size = 4; data = core->dma[0].readDmaSad(3);           break; // DMA3SAD (ARM9)
             case 0x40000D8:
             case 0x40000D9:
             case 0x40000DA:
-            case 0x40000DB: base -= 0x40000D8; size = 4; data = core->dma[0].readDmaDad(3);          break; // DMA3DAD (ARM9)
+            case 0x40000DB: base -= 0x40000D8; size = 4; data = core->dma[0].readDmaDad(3);           break; // DMA3DAD (ARM9)
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
-            case 0x40000DF: base -= 0x40000DC; size = 4; data = core->dma[0].readDmaCnt(3);          break; // DMA3CNT (ARM9)
+            case 0x40000DF: base -= 0x40000DC; size = 4; data = core->dma[0].readDmaCnt(3);           break; // DMA3CNT (ARM9)
             case 0x40000E0:
             case 0x40000E1:
             case 0x40000E2:
-            case 0x40000E3: base -= 0x40000E0; size = 4; data = readDmaFill(0);                      break; // DMA0FILL
+            case 0x40000E3: base -= 0x40000E0; size = 4; data = readDmaFill(0);                       break; // DMA0FILL
             case 0x40000E4:
             case 0x40000E5:
             case 0x40000E6:
-            case 0x40000E7: base -= 0x40000E4; size = 4; data = readDmaFill(1);                      break; // DMA1FILL
+            case 0x40000E7: base -= 0x40000E4; size = 4; data = readDmaFill(1);                       break; // DMA1FILL
             case 0x40000E8:
             case 0x40000E9:
             case 0x40000EA:
-            case 0x40000EB: base -= 0x40000E8; size = 4; data = readDmaFill(2);                      break; // DMA2FILL
+            case 0x40000EB: base -= 0x40000E8; size = 4; data = readDmaFill(2);                       break; // DMA2FILL
             case 0x40000EC:
             case 0x40000ED:
             case 0x40000EE:
-            case 0x40000EF: base -= 0x40000EC; size = 4; data = readDmaFill(3);                      break; // DMA3FILL
+            case 0x40000EF: base -= 0x40000EC; size = 4; data = readDmaFill(3);                       break; // DMA3FILL
             case 0x4000100:
-            case 0x4000101: base -= 0x4000100; size = 2; data = core->timers[0].readTmCntL(0);       break; // TM0CNT_L (ARM9)
+            case 0x4000101: base -= 0x4000100; size = 2; data = core->timers[0].readTmCntL(0);        break; // TM0CNT_L (ARM9)
             case 0x4000102:
-            case 0x4000103: base -= 0x4000102; size = 2; data = core->timers[0].readTmCntH(0);       break; // TM0CNT_H (ARM9)
+            case 0x4000103: base -= 0x4000102; size = 2; data = core->timers[0].readTmCntH(0);        break; // TM0CNT_H (ARM9)
             case 0x4000104:
-            case 0x4000105: base -= 0x4000104; size = 2; data = core->timers[0].readTmCntL(1);       break; // TM1CNT_L (ARM9)
+            case 0x4000105: base -= 0x4000104; size = 2; data = core->timers[0].readTmCntL(1);        break; // TM1CNT_L (ARM9)
             case 0x4000106:
-            case 0x4000107: base -= 0x4000106; size = 2; data = core->timers[0].readTmCntH(1);       break; // TM1CNT_H (ARM9)
+            case 0x4000107: base -= 0x4000106; size = 2; data = core->timers[0].readTmCntH(1);        break; // TM1CNT_H (ARM9)
             case 0x4000108:
-            case 0x4000109: base -= 0x4000108; size = 2; data = core->timers[0].readTmCntL(2);       break; // TM2CNT_L (ARM9)
+            case 0x4000109: base -= 0x4000108; size = 2; data = core->timers[0].readTmCntL(2);        break; // TM2CNT_L (ARM9)
             case 0x400010A:
-            case 0x400010B: base -= 0x400010A; size = 2; data = core->timers[0].readTmCntH(2);       break; // TM2CNT_H (ARM9)
+            case 0x400010B: base -= 0x400010A; size = 2; data = core->timers[0].readTmCntH(2);        break; // TM2CNT_H (ARM9)
             case 0x400010C:
-            case 0x400010D: base -= 0x400010C; size = 2; data = core->timers[0].readTmCntL(3);       break; // TM3CNT_L (ARM9)
+            case 0x400010D: base -= 0x400010C; size = 2; data = core->timers[0].readTmCntL(3);        break; // TM3CNT_L (ARM9)
             case 0x400010E:
-            case 0x400010F: base -= 0x400010E; size = 2; data = core->timers[0].readTmCntH(3);       break; // TM3CNT_H (ARM9)
+            case 0x400010F: base -= 0x400010E; size = 2; data = core->timers[0].readTmCntH(3);        break; // TM3CNT_H (ARM9)
             case 0x4000130:
-            case 0x4000131: base -= 0x4000130; size = 2; data = core->input.readKeyInput();          break; // KEYINPUT
+            case 0x4000131: base -= 0x4000130; size = 2; data = core->input.readKeyInput();           break; // KEYINPUT
             case 0x4000180:
-            case 0x4000181: base -= 0x4000180; size = 2; data = core->ipc.readIpcSync(0);            break; // IPCSYNC (ARM9)
+            case 0x4000181: base -= 0x4000180; size = 2; data = core->ipc.readIpcSync(0);             break; // IPCSYNC (ARM9)
             case 0x4000184:
-            case 0x4000185: base -= 0x4000184; size = 2; data = core->ipc.readIpcFifoCnt(0);         break; // IPCFIFOCNT (ARM9)
+            case 0x4000185: base -= 0x4000184; size = 2; data = core->ipc.readIpcFifoCnt(0);          break; // IPCFIFOCNT (ARM9)
             case 0x40001A0:
-            case 0x40001A1: base -= 0x40001A0; size = 2; data = core->cartridge.readAuxSpiCnt(0);    break; // AUXSPICNT (ARM9)
-            case 0x40001A2: base -= 0x40001A2; size = 1; data = core->cartridge.readAuxSpiData(0);   break; // AUXSPIDATA (ARM9)
+            case 0x40001A1: base -= 0x40001A0; size = 2; data = core->cartridgeNds.readAuxSpiCnt(0);  break; // AUXSPICNT (ARM9)
+            case 0x40001A2: base -= 0x40001A2; size = 1; data = core->cartridgeNds.readAuxSpiData(0); break; // AUXSPIDATA (ARM9)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: base -= 0x40001A4; size = 4; data = core->cartridge.readRomCtrl(0);      break; // ROMCTRL (ARM9)
-            case 0x4000208: base -= 0x4000208; size = 1; data = core->interpreter[0].readIme();      break; // IME (ARM9)
+            case 0x40001A7: base -= 0x40001A4; size = 4; data = core->cartridgeNds.readRomCtrl(0);    break; // ROMCTRL (ARM9)
+            case 0x4000208: base -= 0x4000208; size = 1; data = core->interpreter[0].readIme();       break; // IME (ARM9)
             case 0x4000210:
             case 0x4000211:
             case 0x4000212:
-            case 0x4000213: base -= 0x4000210; size = 4; data = core->interpreter[0].readIe();       break; // IE (ARM9)
+            case 0x4000213: base -= 0x4000210; size = 4; data = core->interpreter[0].readIe();        break; // IE (ARM9)
             case 0x4000214:
             case 0x4000215:
             case 0x4000216:
-            case 0x4000217: base -= 0x4000214; size = 4; data = core->interpreter[0].readIrf();      break; // IF (ARM9)
-            case 0x4000240: base -= 0x4000240; size = 1; data = readVramCnt(0);                      break; // VRAMCNT_A
-            case 0x4000241: base -= 0x4000241; size = 1; data = readVramCnt(1);                      break; // VRAMCNT_B
-            case 0x4000242: base -= 0x4000242; size = 1; data = readVramCnt(2);                      break; // VRAMCNT_C
-            case 0x4000243: base -= 0x4000243; size = 1; data = readVramCnt(3);                      break; // VRAMCNT_D
-            case 0x4000244: base -= 0x4000244; size = 1; data = readVramCnt(4);                      break; // VRAMCNT_E
-            case 0x4000245: base -= 0x4000245; size = 1; data = readVramCnt(5);                      break; // VRAMCNT_F
-            case 0x4000246: base -= 0x4000246; size = 1; data = readVramCnt(6);                      break; // VRAMCNT_G
-            case 0x4000247: base -= 0x4000247; size = 1; data = readWramCnt();                       break; // WRAMCNT
-            case 0x4000248: base -= 0x4000248; size = 1; data = readVramCnt(7);                      break; // VRAMCNT_H
-            case 0x4000249: base -= 0x4000249; size = 1; data = readVramCnt(8);                      break; // VRAMCNT_I
+            case 0x4000217: base -= 0x4000214; size = 4; data = core->interpreter[0].readIrf();       break; // IF (ARM9)
+            case 0x4000240: base -= 0x4000240; size = 1; data = readVramCnt(0);                       break; // VRAMCNT_A
+            case 0x4000241: base -= 0x4000241; size = 1; data = readVramCnt(1);                       break; // VRAMCNT_B
+            case 0x4000242: base -= 0x4000242; size = 1; data = readVramCnt(2);                       break; // VRAMCNT_C
+            case 0x4000243: base -= 0x4000243; size = 1; data = readVramCnt(3);                       break; // VRAMCNT_D
+            case 0x4000244: base -= 0x4000244; size = 1; data = readVramCnt(4);                       break; // VRAMCNT_E
+            case 0x4000245: base -= 0x4000245; size = 1; data = readVramCnt(5);                       break; // VRAMCNT_F
+            case 0x4000246: base -= 0x4000246; size = 1; data = readVramCnt(6);                       break; // VRAMCNT_G
+            case 0x4000247: base -= 0x4000247; size = 1; data = readWramCnt();                        break; // WRAMCNT
+            case 0x4000248: base -= 0x4000248; size = 1; data = readVramCnt(7);                       break; // VRAMCNT_H
+            case 0x4000249: base -= 0x4000249; size = 1; data = readVramCnt(8);                       break; // VRAMCNT_I
             case 0x4000280:
-            case 0x4000281: base -= 0x4000280; size = 2; data = core->divSqrt.readDivCnt();          break; // DIVCNT
+            case 0x4000281: base -= 0x4000280; size = 2; data = core->divSqrt.readDivCnt();           break; // DIVCNT
             case 0x4000290:
             case 0x4000291:
             case 0x4000292:
-            case 0x4000293: base -= 0x4000290; size = 4; data = core->divSqrt.readDivNumerL();       break; // DIVNUMER_L
+            case 0x4000293: base -= 0x4000290; size = 4; data = core->divSqrt.readDivNumerL();        break; // DIVNUMER_L
             case 0x4000294:
             case 0x4000295:
             case 0x4000296:
-            case 0x4000297: base -= 0x4000294; size = 4; data = core->divSqrt.readDivNumerH();       break; // DIVNUMER_H
+            case 0x4000297: base -= 0x4000294; size = 4; data = core->divSqrt.readDivNumerH();        break; // DIVNUMER_H
             case 0x4000298:
             case 0x4000299:
             case 0x400029A:
-            case 0x400029B: base -= 0x4000298; size = 4; data = core->divSqrt.readDivDenomL();       break; // DIVDENOM_L
+            case 0x400029B: base -= 0x4000298; size = 4; data = core->divSqrt.readDivDenomL();        break; // DIVDENOM_L
             case 0x400029C:
             case 0x400029D:
             case 0x400029E:
-            case 0x400029F: base -= 0x400029C; size = 4; data = core->divSqrt.readDivDenomH();       break; // DIVDENOM_H
+            case 0x400029F: base -= 0x400029C; size = 4; data = core->divSqrt.readDivDenomH();        break; // DIVDENOM_H
             case 0x40002A0:
             case 0x40002A1:
             case 0x40002A2:
-            case 0x40002A3: base -= 0x40002A0; size = 4; data = core->divSqrt.readDivResultL();      break; // DIVRESULT_L
+            case 0x40002A3: base -= 0x40002A0; size = 4; data = core->divSqrt.readDivResultL();       break; // DIVRESULT_L
             case 0x40002A4:
             case 0x40002A5:
             case 0x40002A6:
-            case 0x40002A7: base -= 0x40002A4; size = 4; data = core->divSqrt.readDivResultH();      break; // DIVRESULT_H
+            case 0x40002A7: base -= 0x40002A4; size = 4; data = core->divSqrt.readDivResultH();       break; // DIVRESULT_H
             case 0x40002A8:
             case 0x40002A9:
             case 0x40002AA:
-            case 0x40002AB: base -= 0x40002A8; size = 4; data = core->divSqrt.readDivRemResultL();   break; // DIVREMRESULT_L
+            case 0x40002AB: base -= 0x40002A8; size = 4; data = core->divSqrt.readDivRemResultL();    break; // DIVREMRESULT_L
             case 0x40002AC:
             case 0x40002AD:
             case 0x40002AE:
-            case 0x40002AF: base -= 0x40002AC; size = 4; data = core->divSqrt.readDivRemResultH();   break; // DIVREMRESULT_H
+            case 0x40002AF: base -= 0x40002AC; size = 4; data = core->divSqrt.readDivRemResultH();    break; // DIVREMRESULT_H
             case 0x40002B0:
-            case 0x40002B1: base -= 0x40002B0; size = 2; data = core->divSqrt.readSqrtCnt();         break; // SQRTCNT
+            case 0x40002B1: base -= 0x40002B0; size = 2; data = core->divSqrt.readSqrtCnt();          break; // SQRTCNT
             case 0x40002B4:
             case 0x40002B5:
             case 0x40002B6:
-            case 0x40002B7: base -= 0x40002B4; size = 4; data = core->divSqrt.readSqrtResult();      break; // SQRTRESULT
+            case 0x40002B7: base -= 0x40002B4; size = 4; data = core->divSqrt.readSqrtResult();       break; // SQRTRESULT
             case 0x40002B8:
             case 0x40002B9:
             case 0x40002BA:
-            case 0x40002BB: base -= 0x40002B8; size = 4; data = core->divSqrt.readSqrtParamL();      break; // SQRTPARAM_L
+            case 0x40002BB: base -= 0x40002B8; size = 4; data = core->divSqrt.readSqrtParamL();       break; // SQRTPARAM_L
             case 0x40002BC:
             case 0x40002BD:
             case 0x40002BE:
-            case 0x40002BF: base -= 0x40002BC; size = 4; data = core->divSqrt.readSqrtParamH();      break; // SQRTPARAM_H
-            case 0x4000300: base -= 0x4000300; size = 1; data = core->interpreter[0].readPostFlg();  break; // POSTFLG (ARM9)
+            case 0x40002BF: base -= 0x40002BC; size = 4; data = core->divSqrt.readSqrtParamH();       break; // SQRTPARAM_H
+            case 0x4000300: base -= 0x4000300; size = 1; data = core->interpreter[0].readPostFlg();   break; // POSTFLG (ARM9)
             case 0x4000304:
-            case 0x4000305: base -= 0x4000304; size = 2; data = core->gpu.readPowCnt1();             break; // POWCNT1
+            case 0x4000305: base -= 0x4000304; size = 2; data = core->gpu.readPowCnt1();              break; // POWCNT1
             case 0x4000600:
             case 0x4000601:
             case 0x4000602:
-            case 0x4000603: base -= 0x4000600; size = 4; data = core->gpu3D.readGxStat();            break; // GXSTAT
+            case 0x4000603: base -= 0x4000600; size = 4; data = core->gpu3D.readGxStat();             break; // GXSTAT
             case 0x4000604:
             case 0x4000605:
             case 0x4000606:
-            case 0x4000607: base -= 0x4000604; size = 4; data = core->gpu3D.readRamCount();          break; // RAM_COUNT
+            case 0x4000607: base -= 0x4000604; size = 4; data = core->gpu3D.readRamCount();           break; // RAM_COUNT
             case 0x4000620:
             case 0x4000621:
             case 0x4000622:
-            case 0x4000623: base -= 0x4000620; size = 4; data = core->gpu3D.readPosResult(0);        break; // POS_RESULT
+            case 0x4000623: base -= 0x4000620; size = 4; data = core->gpu3D.readPosResult(0);         break; // POS_RESULT
             case 0x4000624:
             case 0x4000625:
             case 0x4000626:
-            case 0x4000627: base -= 0x4000624; size = 4; data = core->gpu3D.readPosResult(1);        break; // POS_RESULT
+            case 0x4000627: base -= 0x4000624; size = 4; data = core->gpu3D.readPosResult(1);         break; // POS_RESULT
             case 0x4000628:
             case 0x4000629:
             case 0x400062A:
-            case 0x400062B: base -= 0x4000628; size = 4; data = core->gpu3D.readPosResult(2);        break; // POS_RESULT
+            case 0x400062B: base -= 0x4000628; size = 4; data = core->gpu3D.readPosResult(2);         break; // POS_RESULT
             case 0x400062C:
             case 0x400062D:
             case 0x400062E:
-            case 0x400062F: base -= 0x400062C; size = 4; data = core->gpu3D.readPosResult(3);        break; // POS_RESULT
+            case 0x400062F: base -= 0x400062C; size = 4; data = core->gpu3D.readPosResult(3);         break; // POS_RESULT
             case 0x4000630:
-            case 0x4000631: base -= 0x4000630; size = 2; data = core->gpu3D.readVecResult(0);        break; // VEC_RESULT
+            case 0x4000631: base -= 0x4000630; size = 2; data = core->gpu3D.readVecResult(0);         break; // VEC_RESULT
             case 0x4000632:
-            case 0x4000633: base -= 0x4000632; size = 2; data = core->gpu3D.readVecResult(1);        break; // VEC_RESULT
+            case 0x4000633: base -= 0x4000632; size = 2; data = core->gpu3D.readVecResult(1);         break; // VEC_RESULT
             case 0x4000634:
-            case 0x4000635: base -= 0x4000634; size = 2; data = core->gpu3D.readVecResult(2);        break; // VEC_RESULT
+            case 0x4000635: base -= 0x4000634; size = 2; data = core->gpu3D.readVecResult(2);         break; // VEC_RESULT
             case 0x4000640:
             case 0x4000641:
             case 0x4000642:
-            case 0x4000643: base -= 0x4000640; size = 4; data = core->gpu3D.readClipMtxResult(0);    break; // CLIPMTX_RESULT
+            case 0x4000643: base -= 0x4000640; size = 4; data = core->gpu3D.readClipMtxResult(0);     break; // CLIPMTX_RESULT
             case 0x4000644:
             case 0x4000645:
             case 0x4000646:
-            case 0x4000647: base -= 0x4000644; size = 4; data = core->gpu3D.readClipMtxResult(1);    break; // CLIPMTX_RESULT
+            case 0x4000647: base -= 0x4000644; size = 4; data = core->gpu3D.readClipMtxResult(1);     break; // CLIPMTX_RESULT
             case 0x4000648:
             case 0x4000649:
             case 0x400064A:
-            case 0x400064B: base -= 0x4000648; size = 4; data = core->gpu3D.readClipMtxResult(2);    break; // CLIPMTX_RESULT
+            case 0x400064B: base -= 0x4000648; size = 4; data = core->gpu3D.readClipMtxResult(2);     break; // CLIPMTX_RESULT
             case 0x400064C:
             case 0x400064D:
             case 0x400064E:
-            case 0x400064F: base -= 0x400064C; size = 4; data = core->gpu3D.readClipMtxResult(3);    break; // CLIPMTX_RESULT
+            case 0x400064F: base -= 0x400064C; size = 4; data = core->gpu3D.readClipMtxResult(3);     break; // CLIPMTX_RESULT
             case 0x4000650:
             case 0x4000651:
             case 0x4000652:
-            case 0x4000653: base -= 0x4000650; size = 4; data = core->gpu3D.readClipMtxResult(4);    break; // CLIPMTX_RESULT
+            case 0x4000653: base -= 0x4000650; size = 4; data = core->gpu3D.readClipMtxResult(4);     break; // CLIPMTX_RESULT
             case 0x4000654:
             case 0x4000655:
             case 0x4000656:
-            case 0x4000657: base -= 0x4000654; size = 4; data = core->gpu3D.readClipMtxResult(5);    break; // CLIPMTX_RESULT
+            case 0x4000657: base -= 0x4000654; size = 4; data = core->gpu3D.readClipMtxResult(5);     break; // CLIPMTX_RESULT
             case 0x4000658:
             case 0x4000659:
             case 0x400065A:
-            case 0x400065B: base -= 0x4000658; size = 4; data = core->gpu3D.readClipMtxResult(6);    break; // CLIPMTX_RESULT
+            case 0x400065B: base -= 0x4000658; size = 4; data = core->gpu3D.readClipMtxResult(6);     break; // CLIPMTX_RESULT
             case 0x400065C:
             case 0x400065D:
             case 0x400065E:
-            case 0x400065F: base -= 0x400065C; size = 4; data = core->gpu3D.readClipMtxResult(7);    break; // CLIPMTX_RESULT
+            case 0x400065F: base -= 0x400065C; size = 4; data = core->gpu3D.readClipMtxResult(7);     break; // CLIPMTX_RESULT
             case 0x4000660:
             case 0x4000661:
             case 0x4000662:
-            case 0x4000663: base -= 0x4000660; size = 4; data = core->gpu3D.readClipMtxResult(8);    break; // CLIPMTX_RESULT
+            case 0x4000663: base -= 0x4000660; size = 4; data = core->gpu3D.readClipMtxResult(8);     break; // CLIPMTX_RESULT
             case 0x4000664:
             case 0x4000665:
             case 0x4000666:
-            case 0x4000667: base -= 0x4000664; size = 4; data = core->gpu3D.readClipMtxResult(9);    break; // CLIPMTX_RESULT
+            case 0x4000667: base -= 0x4000664; size = 4; data = core->gpu3D.readClipMtxResult(9);     break; // CLIPMTX_RESULT
             case 0x4000668:
             case 0x4000669:
             case 0x400066A:
-            case 0x400066B: base -= 0x4000668; size = 4; data = core->gpu3D.readClipMtxResult(10);   break; // CLIPMTX_RESULT
+            case 0x400066B: base -= 0x4000668; size = 4; data = core->gpu3D.readClipMtxResult(10);    break; // CLIPMTX_RESULT
             case 0x400066C:
             case 0x400066D:
             case 0x400066E:
-            case 0x400066F: base -= 0x400066C; size = 4; data = core->gpu3D.readClipMtxResult(11);   break; // CLIPMTX_RESULT
+            case 0x400066F: base -= 0x400066C; size = 4; data = core->gpu3D.readClipMtxResult(11);    break; // CLIPMTX_RESULT
             case 0x4000670:
             case 0x4000671:
             case 0x4000672:
-            case 0x4000673: base -= 0x4000670; size = 4; data = core->gpu3D.readClipMtxResult(12);   break; // CLIPMTX_RESULT
+            case 0x4000673: base -= 0x4000670; size = 4; data = core->gpu3D.readClipMtxResult(12);    break; // CLIPMTX_RESULT
             case 0x4000674:
             case 0x4000675:
             case 0x4000676:
-            case 0x4000677: base -= 0x4000674; size = 4; data = core->gpu3D.readClipMtxResult(13);   break; // CLIPMTX_RESULT
+            case 0x4000677: base -= 0x4000674; size = 4; data = core->gpu3D.readClipMtxResult(13);    break; // CLIPMTX_RESULT
             case 0x4000678:
             case 0x4000679:
             case 0x400067A:
-            case 0x400067B: base -= 0x4000678; size = 4; data = core->gpu3D.readClipMtxResult(14);   break; // CLIPMTX_RESULT
+            case 0x400067B: base -= 0x4000678; size = 4; data = core->gpu3D.readClipMtxResult(14);    break; // CLIPMTX_RESULT
             case 0x400067C:
             case 0x400067D:
             case 0x400067E:
-            case 0x400067F: base -= 0x400067C; size = 4; data = core->gpu3D.readClipMtxResult(15);   break; // CLIPMTX_RESULT
+            case 0x400067F: base -= 0x400067C; size = 4; data = core->gpu3D.readClipMtxResult(15);    break; // CLIPMTX_RESULT
             case 0x4000680:
             case 0x4000681:
             case 0x4000682:
-            case 0x4000683: base -= 0x4000680; size = 4; data = core->gpu3D.readVecMtxResult(0);     break; // VECMTX_RESULT
+            case 0x4000683: base -= 0x4000680; size = 4; data = core->gpu3D.readVecMtxResult(0);      break; // VECMTX_RESULT
             case 0x4000684:
             case 0x4000685:
             case 0x4000686:
-            case 0x4000687: base -= 0x4000684; size = 4; data = core->gpu3D.readVecMtxResult(1);     break; // VECMTX_RESULT
+            case 0x4000687: base -= 0x4000684; size = 4; data = core->gpu3D.readVecMtxResult(1);      break; // VECMTX_RESULT
             case 0x4000688:
             case 0x4000689:
             case 0x400068A:
-            case 0x400068B: base -= 0x4000688; size = 4; data = core->gpu3D.readVecMtxResult(2);     break; // VECMTX_RESULT
+            case 0x400068B: base -= 0x4000688; size = 4; data = core->gpu3D.readVecMtxResult(2);      break; // VECMTX_RESULT
             case 0x400068C:
             case 0x400068D:
             case 0x400068E:
-            case 0x400068F: base -= 0x400068C; size = 4; data = core->gpu3D.readVecMtxResult(3);     break; // VECMTX_RESULT
+            case 0x400068F: base -= 0x400068C; size = 4; data = core->gpu3D.readVecMtxResult(3);      break; // VECMTX_RESULT
             case 0x4000690:
             case 0x4000691:
             case 0x4000692:
-            case 0x4000693: base -= 0x4000690; size = 4; data = core->gpu3D.readVecMtxResult(4);     break; // VECMTX_RESULT
+            case 0x4000693: base -= 0x4000690; size = 4; data = core->gpu3D.readVecMtxResult(4);      break; // VECMTX_RESULT
             case 0x4000694:
             case 0x4000695:
             case 0x4000696:
-            case 0x4000697: base -= 0x4000694; size = 4; data = core->gpu3D.readVecMtxResult(5);     break; // VECMTX_RESULT
+            case 0x4000697: base -= 0x4000694; size = 4; data = core->gpu3D.readVecMtxResult(5);      break; // VECMTX_RESULT
             case 0x4000698:
             case 0x4000699:
             case 0x400069A:
-            case 0x400069B: base -= 0x4000698; size = 4; data = core->gpu3D.readVecMtxResult(6);     break; // VECMTX_RESULT
+            case 0x400069B: base -= 0x4000698; size = 4; data = core->gpu3D.readVecMtxResult(6);      break; // VECMTX_RESULT
             case 0x400069C:
             case 0x400069D:
             case 0x400069E:
-            case 0x400069F: base -= 0x400069C; size = 4; data = core->gpu3D.readVecMtxResult(7);     break; // VECMTX_RESULT
+            case 0x400069F: base -= 0x400069C; size = 4; data = core->gpu3D.readVecMtxResult(7);      break; // VECMTX_RESULT
             case 0x40006A0:
             case 0x40006A1:
             case 0x40006A2:
-            case 0x40006A3: base -= 0x40006A0; size = 4; data = core->gpu3D.readVecMtxResult(8);     break; // VECMTX_RESULT
+            case 0x40006A3: base -= 0x40006A0; size = 4; data = core->gpu3D.readVecMtxResult(8);      break; // VECMTX_RESULT
             case 0x4001000:
             case 0x4001001:
             case 0x4001002:
-            case 0x4001003: base -= 0x4001000; size = 4; data = core->gpu2D[1].readDispCnt();        break; // DISPCNT (engine B)
+            case 0x4001003: base -= 0x4001000; size = 4; data = core->gpu2D[1].readDispCnt();         break; // DISPCNT (engine B)
             case 0x4001008:
-            case 0x4001009: base -= 0x4001008; size = 2; data = core->gpu2D[1].readBgCnt(0);         break; // BG0CNT (engine B)
+            case 0x4001009: base -= 0x4001008; size = 2; data = core->gpu2D[1].readBgCnt(0);          break; // BG0CNT (engine B)
             case 0x400100A:
-            case 0x400100B: base -= 0x400100A; size = 2; data = core->gpu2D[1].readBgCnt(1);         break; // BG1CNT (engine B)
+            case 0x400100B: base -= 0x400100A; size = 2; data = core->gpu2D[1].readBgCnt(1);          break; // BG1CNT (engine B)
             case 0x400100C:
-            case 0x400100D: base -= 0x400100C; size = 2; data = core->gpu2D[1].readBgCnt(2);         break; // BG2CNT (engine B)
+            case 0x400100D: base -= 0x400100C; size = 2; data = core->gpu2D[1].readBgCnt(2);          break; // BG2CNT (engine B)
             case 0x400100E:
-            case 0x400100F: base -= 0x400100E; size = 2; data = core->gpu2D[1].readBgCnt(3);         break; // BG3CNT (engine B)
+            case 0x400100F: base -= 0x400100E; size = 2; data = core->gpu2D[1].readBgCnt(3);          break; // BG3CNT (engine B)
             case 0x4001048:
-            case 0x4001049: base -= 0x4001048; size = 2; data = core->gpu2D[1].readWinIn();          break; // WININ (engine B)
+            case 0x4001049: base -= 0x4001048; size = 2; data = core->gpu2D[1].readWinIn();           break; // WININ (engine B)
             case 0x400104A:
-            case 0x400104B: base -= 0x400104A; size = 2; data = core->gpu2D[1].readWinOut();         break; // WINOUT (engine B)
+            case 0x400104B: base -= 0x400104A; size = 2; data = core->gpu2D[1].readWinOut();          break; // WINOUT (engine B)
             case 0x4001050:
-            case 0x4001051: base -= 0x4001050; size = 2; data = core->gpu2D[1].readBldCnt();         break; // BLDCNT (engine B)
+            case 0x4001051: base -= 0x4001050; size = 2; data = core->gpu2D[1].readBldCnt();          break; // BLDCNT (engine B)
             case 0x4001052:
-            case 0x4001053: base -= 0x4001052; size = 2; data = core->gpu2D[1].readBldAlpha();       break; // BLDALPHA (engine B)
+            case 0x4001053: base -= 0x4001052; size = 2; data = core->gpu2D[1].readBldAlpha();        break; // BLDALPHA (engine B)
             case 0x400106C:
-            case 0x400106D: base -= 0x400106C; size = 2; data = core->gpu2D[1].readMasterBright();   break; // MASTER_BRIGHT (engine B)
+            case 0x400106D: base -= 0x400106C; size = 2; data = core->gpu2D[1].readMasterBright();    break; // MASTER_BRIGHT (engine B)
             case 0x4100000:
             case 0x4100001:
             case 0x4100002:
-            case 0x4100003: base -= 0x4100000; size = 4; data = core->ipc.readIpcFifoRecv(0);        break; // IPCFIFORECV (ARM9)
+            case 0x4100003: base -= 0x4100000; size = 4; data = core->ipc.readIpcFifoRecv(0);         break; // IPCFIFORECV (ARM9)
             case 0x4100010:
             case 0x4100011:
             case 0x4100012:
-            case 0x4100013: base -= 0x4100010; size = 4; data = core->cartridge.readRomDataIn(0);    break; // ROMDATAIN (ARM9)
+            case 0x4100013: base -= 0x4100010; size = 4; data = core->cartridgeNds.readRomDataIn(0);  break; // ROMDATAIN (ARM9)
 
             default:
             {
@@ -945,275 +945,275 @@ template <typename T> T Memory::ioRead7(uint32_t address)
         switch (base)
         {
             case 0x4000004:
-            case 0x4000005: base -= 0x4000004; size = 2; data = core->gpu.readDispStat(1);          break; // DISPSTAT (ARM7)
+            case 0x4000005: base -= 0x4000004; size = 2; data = core->gpu.readDispStat(1);            break; // DISPSTAT (ARM7)
             case 0x4000006:
-            case 0x4000007: base -= 0x4000006; size = 2; data = core->gpu.readVCount();             break; // VCOUNT
+            case 0x4000007: base -= 0x4000006; size = 2; data = core->gpu.readVCount();               break; // VCOUNT
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
-            case 0x40000B3: base -= 0x40000B0; size = 4; data = core->dma[1].readDmaSad(0);         break; // DMA0SAD (ARM7)
+            case 0x40000B3: base -= 0x40000B0; size = 4; data = core->dma[1].readDmaSad(0);           break; // DMA0SAD (ARM7)
             case 0x40000B4:
             case 0x40000B5:
             case 0x40000B6:
-            case 0x40000B7: base -= 0x40000B4; size = 4; data = core->dma[1].readDmaDad(0);         break; // DMA0DAD (ARM7)
+            case 0x40000B7: base -= 0x40000B4; size = 4; data = core->dma[1].readDmaDad(0);           break; // DMA0DAD (ARM7)
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
-            case 0x40000BB: base -= 0x40000B8; size = 4; data = core->dma[1].readDmaCnt(0);         break; // DMA0CNT (ARM7)
+            case 0x40000BB: base -= 0x40000B8; size = 4; data = core->dma[1].readDmaCnt(0);           break; // DMA0CNT (ARM7)
             case 0x40000BC:
             case 0x40000BD:
             case 0x40000BE:
-            case 0x40000BF: base -= 0x40000BC; size = 4; data = core->dma[1].readDmaSad(1);         break; // DMA1SAD (ARM7)
+            case 0x40000BF: base -= 0x40000BC; size = 4; data = core->dma[1].readDmaSad(1);           break; // DMA1SAD (ARM7)
             case 0x40000C0:
             case 0x40000C1:
             case 0x40000C2:
-            case 0x40000C3: base -= 0x40000C0; size = 4; data = core->dma[1].readDmaDad(1);         break; // DMA1DAD (ARM7)
+            case 0x40000C3: base -= 0x40000C0; size = 4; data = core->dma[1].readDmaDad(1);           break; // DMA1DAD (ARM7)
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
-            case 0x40000C7: base -= 0x40000C4; size = 4; data = core->dma[1].readDmaCnt(1);         break; // DMA1CNT (ARM7)
+            case 0x40000C7: base -= 0x40000C4; size = 4; data = core->dma[1].readDmaCnt(1);           break; // DMA1CNT (ARM7)
             case 0x40000C8:
             case 0x40000C9:
             case 0x40000CA:
-            case 0x40000CB: base -= 0x40000C8; size = 4; data = core->dma[1].readDmaSad(2);         break; // DMA2SAD (ARM7)
+            case 0x40000CB: base -= 0x40000C8; size = 4; data = core->dma[1].readDmaSad(2);           break; // DMA2SAD (ARM7)
             case 0x40000CC:
             case 0x40000CD:
             case 0x40000CE:
-            case 0x40000CF: base -= 0x40000CC; size = 4; data = core->dma[1].readDmaDad(2);         break; // DMA2DAD (ARM7)
+            case 0x40000CF: base -= 0x40000CC; size = 4; data = core->dma[1].readDmaDad(2);           break; // DMA2DAD (ARM7)
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
-            case 0x40000D3: base -= 0x40000D0; size = 4; data = core->dma[1].readDmaCnt(2);         break; // DMA2CNT (ARM7)
+            case 0x40000D3: base -= 0x40000D0; size = 4; data = core->dma[1].readDmaCnt(2);           break; // DMA2CNT (ARM7)
             case 0x40000D4:
             case 0x40000D5:
             case 0x40000D6:
-            case 0x40000D7: base -= 0x40000D4; size = 4; data = core->dma[1].readDmaSad(3);         break; // DMA3SAD (ARM7)
+            case 0x40000D7: base -= 0x40000D4; size = 4; data = core->dma[1].readDmaSad(3);           break; // DMA3SAD (ARM7)
             case 0x40000D8:
             case 0x40000D9:
             case 0x40000DA:
-            case 0x40000DB: base -= 0x40000D8; size = 4; data = core->dma[1].readDmaDad(3);         break; // DMA3DAD (ARM7)
+            case 0x40000DB: base -= 0x40000D8; size = 4; data = core->dma[1].readDmaDad(3);           break; // DMA3DAD (ARM7)
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
-            case 0x40000DF: base -= 0x40000DC; size = 4; data = core->dma[1].readDmaCnt(3);         break; // DMA3CNT (ARM7)
+            case 0x40000DF: base -= 0x40000DC; size = 4; data = core->dma[1].readDmaCnt(3);           break; // DMA3CNT (ARM7)
             case 0x4000100:
-            case 0x4000101: base -= 0x4000100; size = 2; data = core->timers[1].readTmCntL(0);      break; // TM0CNT_L (ARM7)
+            case 0x4000101: base -= 0x4000100; size = 2; data = core->timers[1].readTmCntL(0);        break; // TM0CNT_L (ARM7)
             case 0x4000102:
-            case 0x4000103: base -= 0x4000102; size = 2; data = core->timers[1].readTmCntH(0);      break; // TM0CNT_H (ARM7)
+            case 0x4000103: base -= 0x4000102; size = 2; data = core->timers[1].readTmCntH(0);        break; // TM0CNT_H (ARM7)
             case 0x4000104:
-            case 0x4000105: base -= 0x4000104; size = 2; data = core->timers[1].readTmCntL(1);      break; // TM1CNT_L (ARM7)
+            case 0x4000105: base -= 0x4000104; size = 2; data = core->timers[1].readTmCntL(1);        break; // TM1CNT_L (ARM7)
             case 0x4000106:
-            case 0x4000107: base -= 0x4000106; size = 2; data = core->timers[1].readTmCntH(1);      break; // TM1CNT_H (ARM7)
+            case 0x4000107: base -= 0x4000106; size = 2; data = core->timers[1].readTmCntH(1);        break; // TM1CNT_H (ARM7)
             case 0x4000108:
-            case 0x4000109: base -= 0x4000108; size = 2; data = core->timers[1].readTmCntL(2);      break; // TM2CNT_L (ARM7)
+            case 0x4000109: base -= 0x4000108; size = 2; data = core->timers[1].readTmCntL(2);        break; // TM2CNT_L (ARM7)
             case 0x400010A:
-            case 0x400010B: base -= 0x400010A; size = 2; data = core->timers[1].readTmCntH(2);      break; // TM2CNT_H (ARM7)
+            case 0x400010B: base -= 0x400010A; size = 2; data = core->timers[1].readTmCntH(2);        break; // TM2CNT_H (ARM7)
             case 0x400010C:
-            case 0x400010D: base -= 0x400010C; size = 2; data = core->timers[1].readTmCntL(3);      break; // TM3CNT_L (ARM7)
+            case 0x400010D: base -= 0x400010C; size = 2; data = core->timers[1].readTmCntL(3);        break; // TM3CNT_L (ARM7)
             case 0x400010E:
-            case 0x400010F: base -= 0x400010E; size = 2; data = core->timers[1].readTmCntH(3);      break; // TM3CNT_H (ARM7)
+            case 0x400010F: base -= 0x400010E; size = 2; data = core->timers[1].readTmCntH(3);        break; // TM3CNT_H (ARM7)
             case 0x4000130:
-            case 0x4000131: base -= 0x4000130; size = 2; data = core->input.readKeyInput();         break; // KEYINPUT
+            case 0x4000131: base -= 0x4000130; size = 2; data = core->input.readKeyInput();           break; // KEYINPUT
             case 0x4000136:
-            case 0x4000137: base -= 0x4000136; size = 2; data = core->input.readExtKeyIn();         break; // EXTKEYIN
-            case 0x4000138: base -= 0x4000138; size = 1; data = core->rtc.readRtc();                break; // RTC
+            case 0x4000137: base -= 0x4000136; size = 2; data = core->input.readExtKeyIn();           break; // EXTKEYIN
+            case 0x4000138: base -= 0x4000138; size = 1; data = core->rtc.readRtc();                  break; // RTC
             case 0x4000180:
-            case 0x4000181: base -= 0x4000180; size = 2; data = core->ipc.readIpcSync(1);           break; // IPCSYNC (ARM7)
+            case 0x4000181: base -= 0x4000180; size = 2; data = core->ipc.readIpcSync(1);             break; // IPCSYNC (ARM7)
             case 0x4000184:
-            case 0x4000185: base -= 0x4000184; size = 2; data = core->ipc.readIpcFifoCnt(1);        break; // IPCFIFOCNT (ARM7)
+            case 0x4000185: base -= 0x4000184; size = 2; data = core->ipc.readIpcFifoCnt(1);          break; // IPCFIFOCNT (ARM7)
             case 0x40001A0:
-            case 0x40001A1: base -= 0x40001A0; size = 2; data = core->cartridge.readAuxSpiCnt(1);   break; // AUXSPICNT (ARM7)
-            case 0x40001A2: base -= 0x40001A2; size = 1; data = core->cartridge.readAuxSpiData(1);  break; // AUXSPIDATA (ARM7)
+            case 0x40001A1: base -= 0x40001A0; size = 2; data = core->cartridgeNds.readAuxSpiCnt(1);  break; // AUXSPICNT (ARM7)
+            case 0x40001A2: base -= 0x40001A2; size = 1; data = core->cartridgeNds.readAuxSpiData(1); break; // AUXSPIDATA (ARM7)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: base -= 0x40001A4; size = 4; data = core->cartridge.readRomCtrl(1);     break; // ROMCTRL (ARM7)
+            case 0x40001A7: base -= 0x40001A4; size = 4; data = core->cartridgeNds.readRomCtrl(1);    break; // ROMCTRL (ARM7)
             case 0x40001C0:
-            case 0x40001C1: base -= 0x40001C0; size = 2; data = core->spi.readSpiCnt();             break; // SPICNT
-            case 0x40001C2: base -= 0x40001C2; size = 1; data = core->spi.readSpiData();            break; // SPIDATA
-            case 0x4000208: base -= 0x4000208; size = 1; data = core->interpreter[1].readIme();     break; // IME (ARM7)
+            case 0x40001C1: base -= 0x40001C0; size = 2; data = core->spi.readSpiCnt();               break; // SPICNT
+            case 0x40001C2: base -= 0x40001C2; size = 1; data = core->spi.readSpiData();              break; // SPIDATA
+            case 0x4000208: base -= 0x4000208; size = 1; data = core->interpreter[1].readIme();       break; // IME (ARM7)
             case 0x4000210:
             case 0x4000211:
             case 0x4000212:
-            case 0x4000213: base -= 0x4000210; size = 4; data = core->interpreter[1].readIe();      break; // IE (ARM7)
+            case 0x4000213: base -= 0x4000210; size = 4; data = core->interpreter[1].readIe();        break; // IE (ARM7)
             case 0x4000214:
             case 0x4000215:
             case 0x4000216:
-            case 0x4000217: base -= 0x4000214; size = 4; data = core->interpreter[1].readIrf();     break; // IF (ARM7)
-            case 0x4000240: base -= 0x4000240; size = 1; data = readVramStat();                     break; // VRAMSTAT
-            case 0x4000241: base -= 0x4000241; size = 1; data = readWramCnt();                      break; // WRAMSTAT
-            case 0x4000300: base -= 0x4000300; size = 1; data = core->interpreter[1].readPostFlg(); break; // POSTFLG (ARM7)
-            case 0x4000301: base -= 0x4000301; size = 1; data = readHaltCnt();                      break; // HALTCNT
+            case 0x4000217: base -= 0x4000214; size = 4; data = core->interpreter[1].readIrf();       break; // IF (ARM7)
+            case 0x4000240: base -= 0x4000240; size = 1; data = readVramStat();                       break; // VRAMSTAT
+            case 0x4000241: base -= 0x4000241; size = 1; data = readWramCnt();                        break; // WRAMSTAT
+            case 0x4000300: base -= 0x4000300; size = 1; data = core->interpreter[1].readPostFlg();   break; // POSTFLG (ARM7)
+            case 0x4000301: base -= 0x4000301; size = 1; data = readHaltCnt();                        break; // HALTCNT
             case 0x4000400:
             case 0x4000401:
             case 0x4000402:
-            case 0x4000403: base -= 0x4000400; size = 4; data = core->spu.readSoundCnt(0);          break; // SOUND0CNT
+            case 0x4000403: base -= 0x4000400; size = 4; data = core->spu.readSoundCnt(0);            break; // SOUND0CNT
             case 0x4000410:
             case 0x4000411:
             case 0x4000412:
-            case 0x4000413: base -= 0x4000410; size = 4; data = core->spu.readSoundCnt(1);          break; // SOUND1CNT
+            case 0x4000413: base -= 0x4000410; size = 4; data = core->spu.readSoundCnt(1);            break; // SOUND1CNT
             case 0x4000420:
             case 0x4000421:
             case 0x4000422:
-            case 0x4000423: base -= 0x4000420; size = 4; data = core->spu.readSoundCnt(2);          break; // SOUND2CNT
+            case 0x4000423: base -= 0x4000420; size = 4; data = core->spu.readSoundCnt(2);            break; // SOUND2CNT
             case 0x4000430:
             case 0x4000431:
             case 0x4000432:
-            case 0x4000433: base -= 0x4000430; size = 4; data = core->spu.readSoundCnt(3);          break; // SOUND3CNT
+            case 0x4000433: base -= 0x4000430; size = 4; data = core->spu.readSoundCnt(3);            break; // SOUND3CNT
             case 0x4000440:
             case 0x4000441:
             case 0x4000442:
-            case 0x4000443: base -= 0x4000440; size = 4; data = core->spu.readSoundCnt(4);          break; // SOUND4CNT
+            case 0x4000443: base -= 0x4000440; size = 4; data = core->spu.readSoundCnt(4);            break; // SOUND4CNT
             case 0x4000450:
             case 0x4000451:
             case 0x4000452:
-            case 0x4000453: base -= 0x4000450; size = 4; data = core->spu.readSoundCnt(5);          break; // SOUND5CNT
+            case 0x4000453: base -= 0x4000450; size = 4; data = core->spu.readSoundCnt(5);            break; // SOUND5CNT
             case 0x4000460:
             case 0x4000461:
             case 0x4000462:
-            case 0x4000463: base -= 0x4000460; size = 4; data = core->spu.readSoundCnt(6);          break; // SOUND6CNT
+            case 0x4000463: base -= 0x4000460; size = 4; data = core->spu.readSoundCnt(6);            break; // SOUND6CNT
             case 0x4000470:
             case 0x4000471:
             case 0x4000472:
-            case 0x4000473: base -= 0x4000470; size = 4; data = core->spu.readSoundCnt(7);          break; // SOUND7CNT
+            case 0x4000473: base -= 0x4000470; size = 4; data = core->spu.readSoundCnt(7);            break; // SOUND7CNT
             case 0x4000480:
             case 0x4000481:
             case 0x4000482:
-            case 0x4000483: base -= 0x4000480; size = 4; data = core->spu.readSoundCnt(8);          break; // SOUND8CNT
+            case 0x4000483: base -= 0x4000480; size = 4; data = core->spu.readSoundCnt(8);            break; // SOUND8CNT
             case 0x4000490:
             case 0x4000491:
             case 0x4000492:
-            case 0x4000493: base -= 0x4000490; size = 4; data = core->spu.readSoundCnt(9);          break; // SOUND9CNT
+            case 0x4000493: base -= 0x4000490; size = 4; data = core->spu.readSoundCnt(9);            break; // SOUND9CNT
             case 0x40004A0:
             case 0x40004A1:
             case 0x40004A2:
-            case 0x40004A3: base -= 0x40004A0; size = 4; data = core->spu.readSoundCnt(10);         break; // SOUND10CNT
+            case 0x40004A3: base -= 0x40004A0; size = 4; data = core->spu.readSoundCnt(10);           break; // SOUND10CNT
             case 0x40004B0:
             case 0x40004B1:
             case 0x40004B2:
-            case 0x40004B3: base -= 0x40004B0; size = 4; data = core->spu.readSoundCnt(11);         break; // SOUND11CNT
+            case 0x40004B3: base -= 0x40004B0; size = 4; data = core->spu.readSoundCnt(11);           break; // SOUND11CNT
             case 0x40004C0:
             case 0x40004C1:
             case 0x40004C2:
-            case 0x40004C3: base -= 0x40004C0; size = 4; data = core->spu.readSoundCnt(12);         break; // SOUND12CNT
+            case 0x40004C3: base -= 0x40004C0; size = 4; data = core->spu.readSoundCnt(12);           break; // SOUND12CNT
             case 0x40004D0:
             case 0x40004D1:
             case 0x40004D2:
-            case 0x40004D3: base -= 0x40004D0; size = 4; data = core->spu.readSoundCnt(13);         break; // SOUND13CNT
+            case 0x40004D3: base -= 0x40004D0; size = 4; data = core->spu.readSoundCnt(13);           break; // SOUND13CNT
             case 0x40004E0:
             case 0x40004E1:
             case 0x40004E2:
-            case 0x40004E3: base -= 0x40004E0; size = 4; data = core->spu.readSoundCnt(14);         break; // SOUND14CNT
+            case 0x40004E3: base -= 0x40004E0; size = 4; data = core->spu.readSoundCnt(14);           break; // SOUND14CNT
             case 0x40004F0:
             case 0x40004F1:
             case 0x40004F2:
-            case 0x40004F3: base -= 0x40004F0; size = 4; data = core->spu.readSoundCnt(15);         break; // SOUND15CNT
+            case 0x40004F3: base -= 0x40004F0; size = 4; data = core->spu.readSoundCnt(15);           break; // SOUND15CNT
             case 0x4000500:
-            case 0x4000501: base -= 0x4000500; size = 2; data = core->spu.readMainSoundCnt();       break; // SOUNDCNT
+            case 0x4000501: base -= 0x4000500; size = 2; data = core->spu.readMainSoundCnt();         break; // SOUNDCNT
             case 0x4000504:
-            case 0x4000505: base -= 0x4000504; size = 2; data = core->spu.readSoundBias();          break; // SOUNDBIAS
-            case 0x4000508: base -= 0x4000508; size = 1; data = core->spu.readSndCapCnt(0);         break; // SNDCAP0CNT
-            case 0x4000509: base -= 0x4000509; size = 1; data = core->spu.readSndCapCnt(1);         break; // SNDCAP1CNT
+            case 0x4000505: base -= 0x4000504; size = 2; data = core->spu.readSoundBias();            break; // SOUNDBIAS
+            case 0x4000508: base -= 0x4000508; size = 1; data = core->spu.readSndCapCnt(0);           break; // SNDCAP0CNT
+            case 0x4000509: base -= 0x4000509; size = 1; data = core->spu.readSndCapCnt(1);           break; // SNDCAP1CNT
             case 0x4000510:
             case 0x4000511:
             case 0x4000512:
-            case 0x4000513: base -= 0x4000510; size = 4; data = core->spu.readSndCapDad(0);         break; // SNDCAP0DAD
+            case 0x4000513: base -= 0x4000510; size = 4; data = core->spu.readSndCapDad(0);           break; // SNDCAP0DAD
             case 0x4000518:
             case 0x4000519:
             case 0x400051A:
-            case 0x400051B: base -= 0x4000518; size = 4; data = core->spu.readSndCapDad(1);         break; // SNDCAP1DAD
+            case 0x400051B: base -= 0x4000518; size = 4; data = core->spu.readSndCapDad(1);           break; // SNDCAP1DAD
             case 0x4100000:
             case 0x4100001:
             case 0x4100002:
-            case 0x4100003: base -= 0x4100000; size = 4; data = core->ipc.readIpcFifoRecv(1);       break; // IPCFIFORECV (ARM7)
+            case 0x4100003: base -= 0x4100000; size = 4; data = core->ipc.readIpcFifoRecv(1);         break; // IPCFIFORECV (ARM7)
             case 0x4100010:
             case 0x4100011:
             case 0x4100012:
-            case 0x4100013: base -= 0x4100010; size = 4; data = core->cartridge.readRomDataIn(1);   break; // ROMDATAIN (ARM7)
+            case 0x4100013: base -= 0x4100010; size = 4; data = core->cartridgeNds.readRomDataIn(1);  break; // ROMDATAIN (ARM7)
             case 0x4800006:
-            case 0x4800007: base -= 0x4800006; size = 2; data = core->wifi.readWModeWep();          break; // W_MODE_WEP
+            case 0x4800007: base -= 0x4800006; size = 2; data = core->wifi.readWModeWep();            break; // W_MODE_WEP
             case 0x4800010:
-            case 0x4800011: base -= 0x4800010; size = 2; data = core->wifi.readWIrf();              break; // W_IF
+            case 0x4800011: base -= 0x4800010; size = 2; data = core->wifi.readWIrf();                break; // W_IF
             case 0x4800012:
-            case 0x4800013: base -= 0x4800012; size = 2; data = core->wifi.readWIe();               break; // W_IE
+            case 0x4800013: base -= 0x4800012; size = 2; data = core->wifi.readWIe();                 break; // W_IE
             case 0x4800018:
-            case 0x4800019: base -= 0x4800018; size = 2; data = core->wifi.readWMacaddr(0);         break; // W_MACADDR_0
+            case 0x4800019: base -= 0x4800018; size = 2; data = core->wifi.readWMacaddr(0);           break; // W_MACADDR_0
             case 0x480001A:
-            case 0x480001B: base -= 0x480001A; size = 2; data = core->wifi.readWMacaddr(1);         break; // W_MACADDR_1
+            case 0x480001B: base -= 0x480001A; size = 2; data = core->wifi.readWMacaddr(1);           break; // W_MACADDR_1
             case 0x480001C:
-            case 0x480001D: base -= 0x480001C; size = 2; data = core->wifi.readWMacaddr(2);         break; // W_MACADDR_2
+            case 0x480001D: base -= 0x480001C; size = 2; data = core->wifi.readWMacaddr(2);           break; // W_MACADDR_2
             case 0x4800020:
-            case 0x4800021: base -= 0x4800020; size = 2; data = core->wifi.readWBssid(0);           break; // W_BSSID_0
+            case 0x4800021: base -= 0x4800020; size = 2; data = core->wifi.readWBssid(0);             break; // W_BSSID_0
             case 0x4800022:
-            case 0x4800023: base -= 0x4800022; size = 2; data = core->wifi.readWBssid(1);           break; // W_BSSID_1
+            case 0x4800023: base -= 0x4800022; size = 2; data = core->wifi.readWBssid(1);             break; // W_BSSID_1
             case 0x4800024:
-            case 0x4800025: base -= 0x4800024; size = 2; data = core->wifi.readWBssid(2);           break; // W_BSSID_2
+            case 0x4800025: base -= 0x4800024; size = 2; data = core->wifi.readWBssid(2);             break; // W_BSSID_2
             case 0x480002A:
-            case 0x480002B: base -= 0x480002A; size = 2; data = core->wifi.readWAidFull();          break; // W_AID_FULL
+            case 0x480002B: base -= 0x480002A; size = 2; data = core->wifi.readWAidFull();            break; // W_AID_FULL
             case 0x480003C:
-            case 0x480003D: base -= 0x480003C; size = 2; data = core->wifi.readWPowerstate();       break; // W_POWERSTATE
+            case 0x480003D: base -= 0x480003C; size = 2; data = core->wifi.readWPowerstate();         break; // W_POWERSTATE
             case 0x4800040:
-            case 0x4800041: base -= 0x4800040; size = 2; data = core->wifi.readWPowerforce();       break; // W_POWERFORCE
+            case 0x4800041: base -= 0x4800040; size = 2; data = core->wifi.readWPowerforce();         break; // W_POWERFORCE
             case 0x4800050:
-            case 0x4800051: base -= 0x4800050; size = 2; data = core->wifi.readWRxbufBegin();       break; // W_RXBUF_BEGIN
+            case 0x4800051: base -= 0x4800050; size = 2; data = core->wifi.readWRxbufBegin();         break; // W_RXBUF_BEGIN
             case 0x4800052:
-            case 0x4800053: base -= 0x4800052; size = 2; data = core->wifi.readWRxbufEnd();         break; // W_RXBUF_END
+            case 0x4800053: base -= 0x4800052; size = 2; data = core->wifi.readWRxbufEnd();           break; // W_RXBUF_END
             case 0x4800056:
-            case 0x4800057: base -= 0x4800056; size = 2; data = core->wifi.readWRxbufWrAddr();      break; // W_RXBUF_WR_ADDR
+            case 0x4800057: base -= 0x4800056; size = 2; data = core->wifi.readWRxbufWrAddr();        break; // W_RXBUF_WR_ADDR
             case 0x4800058:
-            case 0x4800059: base -= 0x4800058; size = 2; data = core->wifi.readWRxbufRdAddr();      break; // W_RXBUF_RD_ADDR
+            case 0x4800059: base -= 0x4800058; size = 2; data = core->wifi.readWRxbufRdAddr();        break; // W_RXBUF_RD_ADDR
             case 0x480005A:
-            case 0x480005B: base -= 0x480005A; size = 2; data = core->wifi.readWRxbufReadcsr();     break; // W_RXBUF_READCSR
+            case 0x480005B: base -= 0x480005A; size = 2; data = core->wifi.readWRxbufReadcsr();       break; // W_RXBUF_READCSR
             case 0x480005C:
-            case 0x480005D: base -= 0x480005C; size = 2; data = core->wifi.readWRxbufCount();       break; // W_RXBUF_COUNT
+            case 0x480005D: base -= 0x480005C; size = 2; data = core->wifi.readWRxbufCount();         break; // W_RXBUF_COUNT
             case 0x4800060:
-            case 0x4800061: base -= 0x4800060; size = 2; data = core->wifi.readWRxbufRdData();      break; // W_RXBUF_RD_DATA
+            case 0x4800061: base -= 0x4800060; size = 2; data = core->wifi.readWRxbufRdData();        break; // W_RXBUF_RD_DATA
             case 0x4800062:
-            case 0x4800063: base -= 0x4800062; size = 2; data = core->wifi.readWRxbufGap();         break; // W_RXBUF_GAP
+            case 0x4800063: base -= 0x4800062; size = 2; data = core->wifi.readWRxbufGap();           break; // W_RXBUF_GAP
             case 0x4800064:
-            case 0x4800065: base -= 0x4800064; size = 2; data = core->wifi.readWRxbufGapdisp();     break; // W_RXBUF_GAPDISP
+            case 0x4800065: base -= 0x4800064; size = 2; data = core->wifi.readWRxbufGapdisp();       break; // W_RXBUF_GAPDISP
             case 0x4800068:
-            case 0x4800069: base -= 0x4800068; size = 2; data = core->wifi.readWTxbufWrAddr();      break; // W_TXBUF_WR_ADDR
+            case 0x4800069: base -= 0x4800068; size = 2; data = core->wifi.readWTxbufWrAddr();        break; // W_TXBUF_WR_ADDR
             case 0x480006C:
-            case 0x480006D: base -= 0x480006C; size = 2; data = core->wifi.readWTxbufCount();       break; // W_TXBUF_COUNT
+            case 0x480006D: base -= 0x480006C; size = 2; data = core->wifi.readWTxbufCount();         break; // W_TXBUF_COUNT
             case 0x4800074:
-            case 0x4800075: base -= 0x4800074; size = 2; data = core->wifi.readWTxbufGap();         break; // W_TXBUF_GAP
+            case 0x4800075: base -= 0x4800074; size = 2; data = core->wifi.readWTxbufGap();           break; // W_TXBUF_GAP
             case 0x4800076:
-            case 0x4800077: base -= 0x4800076; size = 2; data = core->wifi.readWTxbufGapdisp();     break; // W_TXBUF_GAPDISP
+            case 0x4800077: base -= 0x4800076; size = 2; data = core->wifi.readWTxbufGapdisp();       break; // W_TXBUF_GAPDISP
             case 0x4800120:
-            case 0x4800121: base -= 0x4800120; size = 2; data = core->wifi.readWConfig(0);          break; // W_CONFIG_120
+            case 0x4800121: base -= 0x4800120; size = 2; data = core->wifi.readWConfig(0);            break; // W_CONFIG_120
             case 0x4800122:
-            case 0x4800123: base -= 0x4800122; size = 2; data = core->wifi.readWConfig(1);          break; // W_CONFIG_122
+            case 0x4800123: base -= 0x4800122; size = 2; data = core->wifi.readWConfig(1);            break; // W_CONFIG_122
             case 0x4800124:
-            case 0x4800125: base -= 0x4800124; size = 2; data = core->wifi.readWConfig(2);          break; // W_CONFIG_124
+            case 0x4800125: base -= 0x4800124; size = 2; data = core->wifi.readWConfig(2);            break; // W_CONFIG_124
             case 0x4800128:
-            case 0x4800129: base -= 0x4800128; size = 2; data = core->wifi.readWConfig(3);          break; // W_CONFIG_128
+            case 0x4800129: base -= 0x4800128; size = 2; data = core->wifi.readWConfig(3);            break; // W_CONFIG_128
             case 0x4800130:
-            case 0x4800131: base -= 0x4800130; size = 2; data = core->wifi.readWConfig(4);          break; // W_CONFIG_130
+            case 0x4800131: base -= 0x4800130; size = 2; data = core->wifi.readWConfig(4);            break; // W_CONFIG_130
             case 0x4800132:
-            case 0x4800133: base -= 0x4800132; size = 2; data = core->wifi.readWConfig(5);          break; // W_CONFIG_132
+            case 0x4800133: base -= 0x4800132; size = 2; data = core->wifi.readWConfig(5);            break; // W_CONFIG_132
             case 0x4800134:
-            case 0x4800135: base -= 0x4800134; size = 2; data = core->wifi.readWBeaconcount2();     break; // W_BEACONCOUNT2
+            case 0x4800135: base -= 0x4800134; size = 2; data = core->wifi.readWBeaconcount2();       break; // W_BEACONCOUNT2
             case 0x4800140:
-            case 0x4800141: base -= 0x4800140; size = 2; data = core->wifi.readWConfig(6);          break; // W_CONFIG_140
+            case 0x4800141: base -= 0x4800140; size = 2; data = core->wifi.readWConfig(6);            break; // W_CONFIG_140
             case 0x4800142:
-            case 0x4800143: base -= 0x4800142; size = 2; data = core->wifi.readWConfig(7);          break; // W_CONFIG_142
+            case 0x4800143: base -= 0x4800142; size = 2; data = core->wifi.readWConfig(7);            break; // W_CONFIG_142
             case 0x4800144:
-            case 0x4800145: base -= 0x4800144; size = 2; data = core->wifi.readWConfig(8);          break; // W_CONFIG_144
+            case 0x4800145: base -= 0x4800144; size = 2; data = core->wifi.readWConfig(8);            break; // W_CONFIG_144
             case 0x4800146:
-            case 0x4800147: base -= 0x4800146; size = 2; data = core->wifi.readWConfig(9);          break; // W_CONFIG_146
+            case 0x4800147: base -= 0x4800146; size = 2; data = core->wifi.readWConfig(9);            break; // W_CONFIG_146
             case 0x4800148:
-            case 0x4800149: base -= 0x4800148; size = 2; data = core->wifi.readWConfig(10);         break; // W_CONFIG_148
+            case 0x4800149: base -= 0x4800148; size = 2; data = core->wifi.readWConfig(10);           break; // W_CONFIG_148
             case 0x480014A:
-            case 0x480014B: base -= 0x480014A; size = 2; data = core->wifi.readWConfig(11);         break; // W_CONFIG_14A
+            case 0x480014B: base -= 0x480014A; size = 2; data = core->wifi.readWConfig(11);           break; // W_CONFIG_14A
             case 0x480014C:
-            case 0x480014D: base -= 0x480014C; size = 2; data = core->wifi.readWConfig(12);         break; // W_CONFIG_14C
+            case 0x480014D: base -= 0x480014C; size = 2; data = core->wifi.readWConfig(12);           break; // W_CONFIG_14C
             case 0x4800150:
-            case 0x4800151: base -= 0x4800150; size = 2; data = core->wifi.readWConfig(13);         break; // W_CONFIG_150
+            case 0x4800151: base -= 0x4800150; size = 2; data = core->wifi.readWConfig(13);           break; // W_CONFIG_150
             case 0x4800154:
-            case 0x4800155: base -= 0x4800154; size = 2; data = core->wifi.readWConfig(14);         break; // W_CONFIG_154
+            case 0x4800155: base -= 0x4800154; size = 2; data = core->wifi.readWConfig(14);           break; // W_CONFIG_154
             case 0x480015C:
-            case 0x480015D: base -= 0x480015C; size = 2; data = core->wifi.readWBbRead();           break; // W_BB_READ
+            case 0x480015D: base -= 0x480015C; size = 2; data = core->wifi.readWBbRead();             break; // W_BB_READ
 
             default:
             {
@@ -1572,20 +1572,20 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             case 0x400018A:
             case 0x400018B: base -= 0x4000188; size = 4; core->ipc.writeIpcFifoSend(0, mask << (base * 8), data << (base * 8));          break; // IPCFIFOSEND (ARM9)
             case 0x40001A0:
-            case 0x40001A1: base -= 0x40001A0; size = 2; core->cartridge.writeAuxSpiCnt(0, mask << (base * 8), data << (base * 8));      break; // AUXSPICNT (ARM9)
-            case 0x40001A2: base -= 0x40001A2; size = 1; core->cartridge.writeAuxSpiData(0, data << (base * 8));                         break; // AUXSPIDATA (ARM9)
+            case 0x40001A1: base -= 0x40001A0; size = 2; core->cartridgeNds.writeAuxSpiCnt(0, mask << (base * 8), data << (base * 8));   break; // AUXSPICNT (ARM9)
+            case 0x40001A2: base -= 0x40001A2; size = 1; core->cartridgeNds.writeAuxSpiData(0, data << (base * 8));                      break; // AUXSPIDATA (ARM9)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: base -= 0x40001A4; size = 4; core->cartridge.writeRomCtrl(0, mask << (base * 8), data << (base * 8));        break; // ROMCTRL (ARM9)
+            case 0x40001A7: base -= 0x40001A4; size = 4; core->cartridgeNds.writeRomCtrl(0, mask << (base * 8), data << (base * 8));     break; // ROMCTRL (ARM9)
             case 0x40001A8:
             case 0x40001A9:
             case 0x40001AA:
-            case 0x40001AB: base -= 0x40001A8; size = 4; core->cartridge.writeRomCmdOutL(0, mask << (base * 8), data << (base * 8));     break; // ROMCMDOUT_L (ARM9)
+            case 0x40001AB: base -= 0x40001A8; size = 4; core->cartridgeNds.writeRomCmdOutL(0, mask << (base * 8), data << (base * 8));  break; // ROMCMDOUT_L (ARM9)
             case 0x40001AC:
             case 0x40001AD:
             case 0x40001AE:
-            case 0x40001AF: base -= 0x40001AC; size = 4; core->cartridge.writeRomCmdOutH(0, mask << (base * 8), data << (base * 8));     break; // ROMCMDOUT_H (ARM9)
+            case 0x40001AF: base -= 0x40001AC; size = 4; core->cartridgeNds.writeRomCmdOutH(0, mask << (base * 8), data << (base * 8));  break; // ROMCMDOUT_H (ARM9)
             case 0x4000208: base -= 0x4000208; size = 1; core->interpreter[0].writeIme(data << (base * 8));                              break; // IME (ARM9)
             case 0x4000210:
             case 0x4000211:
@@ -2095,471 +2095,471 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
         switch (base)
         {
             case 0x4000004:
-            case 0x4000005: base -= 0x4000004; size = 2; core->gpu.writeDispStat(1, mask << (base * 8), data << (base * 8));         break; // DISPSTAT (ARM7)
+            case 0x4000005: base -= 0x4000004; size = 2; core->gpu.writeDispStat(1, mask << (base * 8), data << (base * 8));            break; // DISPSTAT (ARM7)
             case 0x40000B0:
             case 0x40000B1:
             case 0x40000B2:
-            case 0x40000B3: base -= 0x40000B0; size = 4; core->dma[1].writeDmaSad(0, mask << (base * 8), data << (base * 8));        break; // DMA0SAD (ARM7)
+            case 0x40000B3: base -= 0x40000B0; size = 4; core->dma[1].writeDmaSad(0, mask << (base * 8), data << (base * 8));           break; // DMA0SAD (ARM7)
             case 0x40000B4:
             case 0x40000B5:
             case 0x40000B6:
-            case 0x40000B7: base -= 0x40000B4; size = 4; core->dma[1].writeDmaDad(0, mask << (base * 8), data << (base * 8));        break; // DMA0DAD (ARM7)
+            case 0x40000B7: base -= 0x40000B4; size = 4; core->dma[1].writeDmaDad(0, mask << (base * 8), data << (base * 8));           break; // DMA0DAD (ARM7)
             case 0x40000B8:
             case 0x40000B9:
             case 0x40000BA:
-            case 0x40000BB: base -= 0x40000B8; size = 4; core->dma[1].writeDmaCnt(0, mask << (base * 8), data << (base * 8));        break; // DMA0CNT (ARM7)
+            case 0x40000BB: base -= 0x40000B8; size = 4; core->dma[1].writeDmaCnt(0, mask << (base * 8), data << (base * 8));           break; // DMA0CNT (ARM7)
             case 0x40000BC:
             case 0x40000BD:
             case 0x40000BE:
-            case 0x40000BF: base -= 0x40000BC; size = 4; core->dma[1].writeDmaSad(1, mask << (base * 8), data << (base * 8));        break; // DMA1SAD (ARM7)
+            case 0x40000BF: base -= 0x40000BC; size = 4; core->dma[1].writeDmaSad(1, mask << (base * 8), data << (base * 8));           break; // DMA1SAD (ARM7)
             case 0x40000C0:
             case 0x40000C1:
             case 0x40000C2:
-            case 0x40000C3: base -= 0x40000C0; size = 4; core->dma[1].writeDmaDad(1, mask << (base * 8), data << (base * 8));        break; // DMA1DAD (ARM7)
+            case 0x40000C3: base -= 0x40000C0; size = 4; core->dma[1].writeDmaDad(1, mask << (base * 8), data << (base * 8));           break; // DMA1DAD (ARM7)
             case 0x40000C4:
             case 0x40000C5:
             case 0x40000C6:
-            case 0x40000C7: base -= 0x40000C4; size = 4; core->dma[1].writeDmaCnt(1, mask << (base * 8), data << (base * 8));        break; // DMA1CNT (ARM7)
+            case 0x40000C7: base -= 0x40000C4; size = 4; core->dma[1].writeDmaCnt(1, mask << (base * 8), data << (base * 8));           break; // DMA1CNT (ARM7)
             case 0x40000C8:
             case 0x40000C9:
             case 0x40000CA:
-            case 0x40000CB: base -= 0x40000C8; size = 4; core->dma[1].writeDmaSad(2, mask << (base * 8), data << (base * 8));        break; // DMA2SAD (ARM7)
+            case 0x40000CB: base -= 0x40000C8; size = 4; core->dma[1].writeDmaSad(2, mask << (base * 8), data << (base * 8));           break; // DMA2SAD (ARM7)
             case 0x40000CC:
             case 0x40000CD:
             case 0x40000CE:
-            case 0x40000CF: base -= 0x40000CC; size = 4; core->dma[1].writeDmaDad(2, mask << (base * 8), data << (base * 8));        break; // DMA2DAD (ARM7)
+            case 0x40000CF: base -= 0x40000CC; size = 4; core->dma[1].writeDmaDad(2, mask << (base * 8), data << (base * 8));           break; // DMA2DAD (ARM7)
             case 0x40000D0:
             case 0x40000D1:
             case 0x40000D2:
-            case 0x40000D3: base -= 0x40000D0; size = 4; core->dma[1].writeDmaCnt(2, mask << (base * 8), data << (base * 8));        break; // DMA2CNT (ARM7)
+            case 0x40000D3: base -= 0x40000D0; size = 4; core->dma[1].writeDmaCnt(2, mask << (base * 8), data << (base * 8));           break; // DMA2CNT (ARM7)
             case 0x40000D4:
             case 0x40000D5:
             case 0x40000D6:
-            case 0x40000D7: base -= 0x40000D4; size = 4; core->dma[1].writeDmaSad(3, mask << (base * 8), data << (base * 8));        break; // DMA3SAD (ARM7)
+            case 0x40000D7: base -= 0x40000D4; size = 4; core->dma[1].writeDmaSad(3, mask << (base * 8), data << (base * 8));           break; // DMA3SAD (ARM7)
             case 0x40000D8:
             case 0x40000D9:
             case 0x40000DA:
-            case 0x40000DB: base -= 0x40000D8; size = 4; core->dma[1].writeDmaDad(3, mask << (base * 8), data << (base * 8));        break; // DMA3DAD (ARM7)
+            case 0x40000DB: base -= 0x40000D8; size = 4; core->dma[1].writeDmaDad(3, mask << (base * 8), data << (base * 8));           break; // DMA3DAD (ARM7)
             case 0x40000DC:
             case 0x40000DD:
             case 0x40000DE:
-            case 0x40000DF: base -= 0x40000DC; size = 4; core->dma[1].writeDmaCnt(3, mask << (base * 8), data << (base * 8));        break; // DMA3CNT (ARM7)
+            case 0x40000DF: base -= 0x40000DC; size = 4; core->dma[1].writeDmaCnt(3, mask << (base * 8), data << (base * 8));           break; // DMA3CNT (ARM7)
             case 0x4000100:
-            case 0x4000101: base -= 0x4000100; size = 2; core->timers[1].writeTmCntL(0, mask << (base * 8), data << (base * 8));     break; // TM0CNT_L (ARM7)
+            case 0x4000101: base -= 0x4000100; size = 2; core->timers[1].writeTmCntL(0, mask << (base * 8), data << (base * 8));        break; // TM0CNT_L (ARM7)
             case 0x4000102:
-            case 0x4000103: base -= 0x4000102; size = 2; core->timers[1].writeTmCntH(0, mask << (base * 8), data << (base * 8));     break; // TM0CNT_H (ARM7)
+            case 0x4000103: base -= 0x4000102; size = 2; core->timers[1].writeTmCntH(0, mask << (base * 8), data << (base * 8));        break; // TM0CNT_H (ARM7)
             case 0x4000104:
-            case 0x4000105: base -= 0x4000104; size = 2; core->timers[1].writeTmCntL(1, mask << (base * 8), data << (base * 8));     break; // TM1CNT_L (ARM7)
+            case 0x4000105: base -= 0x4000104; size = 2; core->timers[1].writeTmCntL(1, mask << (base * 8), data << (base * 8));        break; // TM1CNT_L (ARM7)
             case 0x4000106:
-            case 0x4000107: base -= 0x4000106; size = 2; core->timers[1].writeTmCntH(1, mask << (base * 8), data << (base * 8));     break; // TM1CNT_H (ARM7)
+            case 0x4000107: base -= 0x4000106; size = 2; core->timers[1].writeTmCntH(1, mask << (base * 8), data << (base * 8));        break; // TM1CNT_H (ARM7)
             case 0x4000108:
-            case 0x4000109: base -= 0x4000108; size = 2; core->timers[1].writeTmCntL(2, mask << (base * 8), data << (base * 8));     break; // TM2CNT_L (ARM7)
+            case 0x4000109: base -= 0x4000108; size = 2; core->timers[1].writeTmCntL(2, mask << (base * 8), data << (base * 8));        break; // TM2CNT_L (ARM7)
             case 0x400010A:
-            case 0x400010B: base -= 0x400010A; size = 2; core->timers[1].writeTmCntH(2, mask << (base * 8), data << (base * 8));     break; // TM2CNT_H (ARM7)
+            case 0x400010B: base -= 0x400010A; size = 2; core->timers[1].writeTmCntH(2, mask << (base * 8), data << (base * 8));        break; // TM2CNT_H (ARM7)
             case 0x400010C:
-            case 0x400010D: base -= 0x400010C; size = 2; core->timers[1].writeTmCntL(3, mask << (base * 8), data << (base * 8));     break; // TM3CNT_L (ARM7)
+            case 0x400010D: base -= 0x400010C; size = 2; core->timers[1].writeTmCntL(3, mask << (base * 8), data << (base * 8));        break; // TM3CNT_L (ARM7)
             case 0x400010E:
-            case 0x400010F: base -= 0x400010E; size = 2; core->timers[1].writeTmCntH(3, mask << (base * 8), data << (base * 8));     break; // TM3CNT_H (ARM7)
-            case 0x4000138: base -= 0x4000138; size = 1; core->rtc.writeRtc(data << (base * 8));                                     break; // RTC
+            case 0x400010F: base -= 0x400010E; size = 2; core->timers[1].writeTmCntH(3, mask << (base * 8), data << (base * 8));        break; // TM3CNT_H (ARM7)
+            case 0x4000138: base -= 0x4000138; size = 1; core->rtc.writeRtc(data << (base * 8));                                        break; // RTC
             case 0x4000180:
-            case 0x4000181: base -= 0x4000180; size = 2; core->ipc.writeIpcSync(1, mask << (base * 8), data << (base * 8));          break; // IPCSYNC (ARM7)
+            case 0x4000181: base -= 0x4000180; size = 2; core->ipc.writeIpcSync(1, mask << (base * 8), data << (base * 8));             break; // IPCSYNC (ARM7)
             case 0x4000184:
-            case 0x4000185: base -= 0x4000184; size = 2; core->ipc.writeIpcFifoCnt(1, mask << (base * 8), data << (base * 8));       break; // IPCFIFOCNT (ARM7)
+            case 0x4000185: base -= 0x4000184; size = 2; core->ipc.writeIpcFifoCnt(1, mask << (base * 8), data << (base * 8));          break; // IPCFIFOCNT (ARM7)
             case 0x4000188:
             case 0x4000189:
             case 0x400018A:
-            case 0x400018B: base -= 0x4000188; size = 4; core->ipc.writeIpcFifoSend(1, mask << (base * 8), data << (base * 8));      break; // IPCFIFOSEND (ARM7)
+            case 0x400018B: base -= 0x4000188; size = 4; core->ipc.writeIpcFifoSend(1, mask << (base * 8), data << (base * 8));         break; // IPCFIFOSEND (ARM7)
             case 0x40001A0:
-            case 0x40001A1: base -= 0x40001A0; size = 2; core->cartridge.writeAuxSpiCnt(1, mask << (base * 8), data << (base * 8));  break; // AUXSPICNT (ARM7)
-            case 0x40001A2: base -= 0x40001A2; size = 1; core->cartridge.writeAuxSpiData(1, data << (base * 8));                     break; // AUXSPIDATA (ARM7)
+            case 0x40001A1: base -= 0x40001A0; size = 2; core->cartridgeNds.writeAuxSpiCnt(1, mask << (base * 8), data << (base * 8));  break; // AUXSPICNT (ARM7)
+            case 0x40001A2: base -= 0x40001A2; size = 1; core->cartridgeNds.writeAuxSpiData(1, data << (base * 8));                     break; // AUXSPIDATA (ARM7)
             case 0x40001A4:
             case 0x40001A5:
             case 0x40001A6:
-            case 0x40001A7: base -= 0x40001A4; size = 4; core->cartridge.writeRomCtrl(1, mask << (base * 8), data << (base * 8));    break; // ROMCTRL (ARM7)
+            case 0x40001A7: base -= 0x40001A4; size = 4; core->cartridgeNds.writeRomCtrl(1, mask << (base * 8), data << (base * 8));    break; // ROMCTRL (ARM7)
             case 0x40001A8:
             case 0x40001A9:
             case 0x40001AA:
-            case 0x40001AB: base -= 0x40001A8; size = 4; core->cartridge.writeRomCmdOutL(1, mask << (base * 8), data << (base * 8)); break; // ROMCMDOUT_L (ARM7)
+            case 0x40001AB: base -= 0x40001A8; size = 4; core->cartridgeNds.writeRomCmdOutL(1, mask << (base * 8), data << (base * 8)); break; // ROMCMDOUT_L (ARM7)
             case 0x40001AC:
             case 0x40001AD:
             case 0x40001AE:
-            case 0x40001AF: base -= 0x40001AC; size = 4; core->cartridge.writeRomCmdOutH(1, mask << (base * 8), data << (base * 8)); break; // ROMCMDOUT_H (ARM7)
+            case 0x40001AF: base -= 0x40001AC; size = 4; core->cartridgeNds.writeRomCmdOutH(1, mask << (base * 8), data << (base * 8)); break; // ROMCMDOUT_H (ARM7)
             case 0x40001C0:
-            case 0x40001C1: base -= 0x40001C0; size = 2; core->spi.writeSpiCnt(mask << (base * 8), data << (base * 8));              break; // SPICNT
-            case 0x40001C2: base -= 0x40001C2; size = 1; core->spi.writeSpiData(data << (base * 8));                                 break; // SPIDATA
-            case 0x4000208: base -= 0x4000208; size = 1; core->interpreter[1].writeIme(data << (base * 8));                          break; // IME (ARM7)
+            case 0x40001C1: base -= 0x40001C0; size = 2; core->spi.writeSpiCnt(mask << (base * 8), data << (base * 8));                 break; // SPICNT
+            case 0x40001C2: base -= 0x40001C2; size = 1; core->spi.writeSpiData(data << (base * 8));                                    break; // SPIDATA
+            case 0x4000208: base -= 0x4000208; size = 1; core->interpreter[1].writeIme(data << (base * 8));                             break; // IME (ARM7)
             case 0x4000210:
             case 0x4000211:
             case 0x4000212:
-            case 0x4000213: base -= 0x4000210; size = 4; core->interpreter[1].writeIe(mask << (base * 8), data << (base * 8));       break; // IE (ARM7)
+            case 0x4000213: base -= 0x4000210; size = 4; core->interpreter[1].writeIe(mask << (base * 8), data << (base * 8));          break; // IE (ARM7)
             case 0x4000214:
             case 0x4000215:
             case 0x4000216:
-            case 0x4000217: base -= 0x4000214; size = 4; core->interpreter[1].writeIrf(mask << (base * 8), data << (base * 8));      break; // IF (ARM7)
-            case 0x4000300: base -= 0x4000300; size = 1; core->interpreter[1].writePostFlg(data << (base * 8));                      break; // POSTFLG (ARM7)
-            case 0x4000301: base -= 0x4000301; size = 1; writeHaltCnt(data << (base * 8));                                           break; // HALTCNT
+            case 0x4000217: base -= 0x4000214; size = 4; core->interpreter[1].writeIrf(mask << (base * 8), data << (base * 8));         break; // IF (ARM7)
+            case 0x4000300: base -= 0x4000300; size = 1; core->interpreter[1].writePostFlg(data << (base * 8));                         break; // POSTFLG (ARM7)
+            case 0x4000301: base -= 0x4000301; size = 1; writeHaltCnt(data << (base * 8));                                              break; // HALTCNT
             case 0x4000400:
             case 0x4000401:
             case 0x4000402:
-            case 0x4000403: base -= 0x4000400; size = 4; core->spu.writeSoundCnt(0, mask << (base * 8), data << (base * 8));         break; // SOUND0CNT
+            case 0x4000403: base -= 0x4000400; size = 4; core->spu.writeSoundCnt(0, mask << (base * 8), data << (base * 8));            break; // SOUND0CNT
             case 0x4000404:
             case 0x4000405:
             case 0x4000406:
-            case 0x4000407: base -= 0x4000404; size = 4; core->spu.writeSoundSad(0, mask << (base * 8), data << (base * 8));         break; // SOUND0SAD
+            case 0x4000407: base -= 0x4000404; size = 4; core->spu.writeSoundSad(0, mask << (base * 8), data << (base * 8));            break; // SOUND0SAD
             case 0x4000408:
-            case 0x4000409: base -= 0x4000408; size = 2; core->spu.writeSoundTmr(0, mask << (base * 8), data << (base * 8));         break; // SOUND0TMR
+            case 0x4000409: base -= 0x4000408; size = 2; core->spu.writeSoundTmr(0, mask << (base * 8), data << (base * 8));            break; // SOUND0TMR
             case 0x400040A:
-            case 0x400040B: base -= 0x400040A; size = 2; core->spu.writeSoundPnt(0, mask << (base * 8), data << (base * 8));         break; // SOUND0PNT
+            case 0x400040B: base -= 0x400040A; size = 2; core->spu.writeSoundPnt(0, mask << (base * 8), data << (base * 8));            break; // SOUND0PNT
             case 0x400040C:
             case 0x400040D:
             case 0x400040E:
-            case 0x400040F: base -= 0x400040C; size = 4; core->spu.writeSoundLen(0, mask << (base * 8), data << (base * 8));         break; // SOUND0LEN
+            case 0x400040F: base -= 0x400040C; size = 4; core->spu.writeSoundLen(0, mask << (base * 8), data << (base * 8));            break; // SOUND0LEN
             case 0x4000410:
             case 0x4000411:
             case 0x4000412:
-            case 0x4000413: base -= 0x4000410; size = 4; core->spu.writeSoundCnt(1, mask << (base * 8), data << (base * 8));         break; // SOUND1CNT
+            case 0x4000413: base -= 0x4000410; size = 4; core->spu.writeSoundCnt(1, mask << (base * 8), data << (base * 8));            break; // SOUND1CNT
             case 0x4000414:
             case 0x4000415:
             case 0x4000416:
-            case 0x4000417: base -= 0x4000414; size = 4; core->spu.writeSoundSad(1, mask << (base * 8), data << (base * 8));         break; // SOUND1SAD
+            case 0x4000417: base -= 0x4000414; size = 4; core->spu.writeSoundSad(1, mask << (base * 8), data << (base * 8));            break; // SOUND1SAD
             case 0x4000418:
-            case 0x4000419: base -= 0x4000418; size = 2; core->spu.writeSoundTmr(1, mask << (base * 8), data << (base * 8));         break; // SOUND1TMR
+            case 0x4000419: base -= 0x4000418; size = 2; core->spu.writeSoundTmr(1, mask << (base * 8), data << (base * 8));            break; // SOUND1TMR
             case 0x400041A:
-            case 0x400041B: base -= 0x400041A; size = 2; core->spu.writeSoundPnt(1, mask << (base * 8), data << (base * 8));         break; // SOUND1PNT
+            case 0x400041B: base -= 0x400041A; size = 2; core->spu.writeSoundPnt(1, mask << (base * 8), data << (base * 8));            break; // SOUND1PNT
             case 0x400041C:
             case 0x400041D:
             case 0x400041E:
-            case 0x400041F: base -= 0x400041C; size = 4; core->spu.writeSoundLen(1, mask << (base * 8), data << (base * 8));         break; // SOUND1LEN
+            case 0x400041F: base -= 0x400041C; size = 4; core->spu.writeSoundLen(1, mask << (base * 8), data << (base * 8));            break; // SOUND1LEN
             case 0x4000420:
             case 0x4000421:
             case 0x4000422:
-            case 0x4000423: base -= 0x4000420; size = 4; core->spu.writeSoundCnt(2, mask << (base * 8), data << (base * 8));         break; // SOUND2CNT
+            case 0x4000423: base -= 0x4000420; size = 4; core->spu.writeSoundCnt(2, mask << (base * 8), data << (base * 8));            break; // SOUND2CNT
             case 0x4000424:
             case 0x4000425:
             case 0x4000426:
-            case 0x4000427: base -= 0x4000424; size = 4; core->spu.writeSoundSad(2, mask << (base * 8), data << (base * 8));         break; // SOUND2SAD
+            case 0x4000427: base -= 0x4000424; size = 4; core->spu.writeSoundSad(2, mask << (base * 8), data << (base * 8));            break; // SOUND2SAD
             case 0x4000428:
-            case 0x4000429: base -= 0x4000428; size = 2; core->spu.writeSoundTmr(2, mask << (base * 8), data << (base * 8));         break; // SOUND2TMR
+            case 0x4000429: base -= 0x4000428; size = 2; core->spu.writeSoundTmr(2, mask << (base * 8), data << (base * 8));            break; // SOUND2TMR
             case 0x400042A:
-            case 0x400042B: base -= 0x400042A; size = 2; core->spu.writeSoundPnt(2, mask << (base * 8), data << (base * 8));         break; // SOUND2PNT
+            case 0x400042B: base -= 0x400042A; size = 2; core->spu.writeSoundPnt(2, mask << (base * 8), data << (base * 8));            break; // SOUND2PNT
             case 0x400042C:
             case 0x400042D:
             case 0x400042E:
-            case 0x400042F: base -= 0x400042C; size = 4; core->spu.writeSoundLen(2, mask << (base * 8), data << (base * 8));         break; // SOUND2LEN
+            case 0x400042F: base -= 0x400042C; size = 4; core->spu.writeSoundLen(2, mask << (base * 8), data << (base * 8));            break; // SOUND2LEN
             case 0x4000430:
             case 0x4000431:
             case 0x4000432:
-            case 0x4000433: base -= 0x4000430; size = 4; core->spu.writeSoundCnt(3, mask << (base * 8), data << (base * 8));         break; // SOUND3CNT
+            case 0x4000433: base -= 0x4000430; size = 4; core->spu.writeSoundCnt(3, mask << (base * 8), data << (base * 8));            break; // SOUND3CNT
             case 0x4000434:
             case 0x4000435:
             case 0x4000436:
-            case 0x4000437: base -= 0x4000434; size = 4; core->spu.writeSoundSad(3, mask << (base * 8), data << (base * 8));         break; // SOUND3SAD
+            case 0x4000437: base -= 0x4000434; size = 4; core->spu.writeSoundSad(3, mask << (base * 8), data << (base * 8));            break; // SOUND3SAD
             case 0x4000438:
-            case 0x4000439: base -= 0x4000438; size = 2; core->spu.writeSoundTmr(3, mask << (base * 8), data << (base * 8));         break; // SOUND3TMR
+            case 0x4000439: base -= 0x4000438; size = 2; core->spu.writeSoundTmr(3, mask << (base * 8), data << (base * 8));            break; // SOUND3TMR
             case 0x400043A:
-            case 0x400043B: base -= 0x400043A; size = 2; core->spu.writeSoundPnt(3, mask << (base * 8), data << (base * 8));         break; // SOUND3PNT
+            case 0x400043B: base -= 0x400043A; size = 2; core->spu.writeSoundPnt(3, mask << (base * 8), data << (base * 8));            break; // SOUND3PNT
             case 0x400043C:
             case 0x400043D:
             case 0x400043E:
-            case 0x400043F: base -= 0x400043C; size = 4; core->spu.writeSoundLen(3, mask << (base * 8), data << (base * 8));         break; // SOUND3LEN
+            case 0x400043F: base -= 0x400043C; size = 4; core->spu.writeSoundLen(3, mask << (base * 8), data << (base * 8));            break; // SOUND3LEN
             case 0x4000440:
             case 0x4000441:
             case 0x4000442:
-            case 0x4000443: base -= 0x4000440; size = 4; core->spu.writeSoundCnt(4, mask << (base * 8), data << (base * 8));         break; // SOUND4CNT
+            case 0x4000443: base -= 0x4000440; size = 4; core->spu.writeSoundCnt(4, mask << (base * 8), data << (base * 8));            break; // SOUND4CNT
             case 0x4000444:
             case 0x4000445:
             case 0x4000446:
-            case 0x4000447: base -= 0x4000444; size = 4; core->spu.writeSoundSad(4, mask << (base * 8), data << (base * 8));         break; // SOUND4SAD
+            case 0x4000447: base -= 0x4000444; size = 4; core->spu.writeSoundSad(4, mask << (base * 8), data << (base * 8));            break; // SOUND4SAD
             case 0x4000448:
-            case 0x4000449: base -= 0x4000448; size = 2; core->spu.writeSoundTmr(4, mask << (base * 8), data << (base * 8));         break; // SOUND4TMR
+            case 0x4000449: base -= 0x4000448; size = 2; core->spu.writeSoundTmr(4, mask << (base * 8), data << (base * 8));            break; // SOUND4TMR
             case 0x400044A:
-            case 0x400044B: base -= 0x400044A; size = 2; core->spu.writeSoundPnt(4, mask << (base * 8), data << (base * 8));         break; // SOUND4PNT
+            case 0x400044B: base -= 0x400044A; size = 2; core->spu.writeSoundPnt(4, mask << (base * 8), data << (base * 8));            break; // SOUND4PNT
             case 0x400044C:
             case 0x400044D:
             case 0x400044E:
-            case 0x400044F: base -= 0x400044C; size = 4; core->spu.writeSoundLen(4, mask << (base * 8), data << (base * 8));         break; // SOUND4LEN
+            case 0x400044F: base -= 0x400044C; size = 4; core->spu.writeSoundLen(4, mask << (base * 8), data << (base * 8));            break; // SOUND4LEN
             case 0x4000450:
             case 0x4000451:
             case 0x4000452:
-            case 0x4000453: base -= 0x4000450; size = 4; core->spu.writeSoundCnt(5, mask << (base * 8), data << (base * 8));         break; // SOUND5CNT
+            case 0x4000453: base -= 0x4000450; size = 4; core->spu.writeSoundCnt(5, mask << (base * 8), data << (base * 8));            break; // SOUND5CNT
             case 0x4000454:
             case 0x4000455:
             case 0x4000456:
-            case 0x4000457: base -= 0x4000454; size = 4; core->spu.writeSoundSad(5, mask << (base * 8), data << (base * 8));         break; // SOUND5SAD
+            case 0x4000457: base -= 0x4000454; size = 4; core->spu.writeSoundSad(5, mask << (base * 8), data << (base * 8));            break; // SOUND5SAD
             case 0x4000458:
-            case 0x4000459: base -= 0x4000458; size = 2; core->spu.writeSoundTmr(5, mask << (base * 8), data << (base * 8));         break; // SOUND5TMR
+            case 0x4000459: base -= 0x4000458; size = 2; core->spu.writeSoundTmr(5, mask << (base * 8), data << (base * 8));            break; // SOUND5TMR
             case 0x400045A:
-            case 0x400045B: base -= 0x400045A; size = 2; core->spu.writeSoundPnt(5, mask << (base * 8), data << (base * 8));         break; // SOUND5PNT
+            case 0x400045B: base -= 0x400045A; size = 2; core->spu.writeSoundPnt(5, mask << (base * 8), data << (base * 8));            break; // SOUND5PNT
             case 0x400045C:
             case 0x400045D:
             case 0x400045E:
-            case 0x400045F: base -= 0x400045C; size = 4; core->spu.writeSoundLen(5, mask << (base * 8), data << (base * 8));         break; // SOUND5LEN
+            case 0x400045F: base -= 0x400045C; size = 4; core->spu.writeSoundLen(5, mask << (base * 8), data << (base * 8));            break; // SOUND5LEN
             case 0x4000460:
             case 0x4000461:
             case 0x4000462:
-            case 0x4000463: base -= 0x4000460; size = 4; core->spu.writeSoundCnt(6, mask << (base * 8), data << (base * 8));         break; // SOUND6CNT
+            case 0x4000463: base -= 0x4000460; size = 4; core->spu.writeSoundCnt(6, mask << (base * 8), data << (base * 8));            break; // SOUND6CNT
             case 0x4000464:
             case 0x4000465:
             case 0x4000466:
-            case 0x4000467: base -= 0x4000464; size = 4; core->spu.writeSoundSad(6, mask << (base * 8), data << (base * 8));         break; // SOUND6SAD
+            case 0x4000467: base -= 0x4000464; size = 4; core->spu.writeSoundSad(6, mask << (base * 8), data << (base * 8));            break; // SOUND6SAD
             case 0x4000468:
-            case 0x4000469: base -= 0x4000468; size = 2; core->spu.writeSoundTmr(6, mask << (base * 8), data << (base * 8));         break; // SOUND6TMR
+            case 0x4000469: base -= 0x4000468; size = 2; core->spu.writeSoundTmr(6, mask << (base * 8), data << (base * 8));            break; // SOUND6TMR
             case 0x400046A:
-            case 0x400046B: base -= 0x400046A; size = 2; core->spu.writeSoundPnt(6, mask << (base * 8), data << (base * 8));         break; // SOUND6PNT
+            case 0x400046B: base -= 0x400046A; size = 2; core->spu.writeSoundPnt(6, mask << (base * 8), data << (base * 8));            break; // SOUND6PNT
             case 0x400046C:
             case 0x400046D:
             case 0x400046E:
-            case 0x400046F: base -= 0x400046C; size = 4; core->spu.writeSoundLen(6, mask << (base * 8), data << (base * 8));         break; // SOUND6LEN
+            case 0x400046F: base -= 0x400046C; size = 4; core->spu.writeSoundLen(6, mask << (base * 8), data << (base * 8));            break; // SOUND6LEN
             case 0x4000470:
             case 0x4000471:
             case 0x4000472:
-            case 0x4000473: base -= 0x4000470; size = 4; core->spu.writeSoundCnt(7, mask << (base * 8), data << (base * 8));         break; // SOUND7CNT
+            case 0x4000473: base -= 0x4000470; size = 4; core->spu.writeSoundCnt(7, mask << (base * 8), data << (base * 8));            break; // SOUND7CNT
             case 0x4000474:
             case 0x4000475:
             case 0x4000476:
-            case 0x4000477: base -= 0x4000474; size = 4; core->spu.writeSoundSad(7, mask << (base * 8), data << (base * 8));         break; // SOUND7SAD
+            case 0x4000477: base -= 0x4000474; size = 4; core->spu.writeSoundSad(7, mask << (base * 8), data << (base * 8));            break; // SOUND7SAD
             case 0x4000478:
-            case 0x4000479: base -= 0x4000478; size = 2; core->spu.writeSoundTmr(7, mask << (base * 8), data << (base * 8));         break; // SOUND7TMR
+            case 0x4000479: base -= 0x4000478; size = 2; core->spu.writeSoundTmr(7, mask << (base * 8), data << (base * 8));            break; // SOUND7TMR
             case 0x400047A:
-            case 0x400047B: base -= 0x400047A; size = 2; core->spu.writeSoundPnt(7, mask << (base * 8), data << (base * 8));         break; // SOUND7PNT
+            case 0x400047B: base -= 0x400047A; size = 2; core->spu.writeSoundPnt(7, mask << (base * 8), data << (base * 8));            break; // SOUND7PNT
             case 0x400047C:
             case 0x400047D:
             case 0x400047E:
-            case 0x400047F: base -= 0x400047C; size = 4; core->spu.writeSoundLen(7, mask << (base * 8), data << (base * 8));         break; // SOUND7LEN
+            case 0x400047F: base -= 0x400047C; size = 4; core->spu.writeSoundLen(7, mask << (base * 8), data << (base * 8));            break; // SOUND7LEN
             case 0x4000480:
             case 0x4000481:
             case 0x4000482:
-            case 0x4000483: base -= 0x4000480; size = 4; core->spu.writeSoundCnt(8, mask << (base * 8), data << (base * 8));         break; // SOUND8CNT
+            case 0x4000483: base -= 0x4000480; size = 4; core->spu.writeSoundCnt(8, mask << (base * 8), data << (base * 8));            break; // SOUND8CNT
             case 0x4000484:
             case 0x4000485:
             case 0x4000486:
-            case 0x4000487: base -= 0x4000484; size = 4; core->spu.writeSoundSad(8, mask << (base * 8), data << (base * 8));         break; // SOUND8SAD
+            case 0x4000487: base -= 0x4000484; size = 4; core->spu.writeSoundSad(8, mask << (base * 8), data << (base * 8));            break; // SOUND8SAD
             case 0x4000488:
-            case 0x4000489: base -= 0x4000488; size = 2; core->spu.writeSoundTmr(8, mask << (base * 8), data << (base * 8));         break; // SOUND8TMR
+            case 0x4000489: base -= 0x4000488; size = 2; core->spu.writeSoundTmr(8, mask << (base * 8), data << (base * 8));            break; // SOUND8TMR
             case 0x400048A:
-            case 0x400048B: base -= 0x400048A; size = 2; core->spu.writeSoundPnt(8, mask << (base * 8), data << (base * 8));         break; // SOUND8PNT
+            case 0x400048B: base -= 0x400048A; size = 2; core->spu.writeSoundPnt(8, mask << (base * 8), data << (base * 8));            break; // SOUND8PNT
             case 0x400048C:
             case 0x400048D:
             case 0x400048E:
-            case 0x400048F: base -= 0x400048C; size = 4; core->spu.writeSoundLen(8, mask << (base * 8), data << (base * 8));         break; // SOUND8LEN
+            case 0x400048F: base -= 0x400048C; size = 4; core->spu.writeSoundLen(8, mask << (base * 8), data << (base * 8));            break; // SOUND8LEN
             case 0x4000490:
             case 0x4000491:
             case 0x4000492:
-            case 0x4000493: base -= 0x4000490; size = 4; core->spu.writeSoundCnt(9, mask << (base * 8), data << (base * 8));         break; // SOUND9CNT
+            case 0x4000493: base -= 0x4000490; size = 4; core->spu.writeSoundCnt(9, mask << (base * 8), data << (base * 8));            break; // SOUND9CNT
             case 0x4000494:
             case 0x4000495:
             case 0x4000496:
-            case 0x4000497: base -= 0x4000494; size = 4; core->spu.writeSoundSad(9, mask << (base * 8), data << (base * 8));         break; // SOUND9SAD
+            case 0x4000497: base -= 0x4000494; size = 4; core->spu.writeSoundSad(9, mask << (base * 8), data << (base * 8));            break; // SOUND9SAD
             case 0x4000498:
-            case 0x4000499: base -= 0x4000498; size = 2; core->spu.writeSoundTmr(9, mask << (base * 8), data << (base * 8));         break; // SOUND9TMR
+            case 0x4000499: base -= 0x4000498; size = 2; core->spu.writeSoundTmr(9, mask << (base * 8), data << (base * 8));            break; // SOUND9TMR
             case 0x400049A:
-            case 0x400049B: base -= 0x400049A; size = 2; core->spu.writeSoundPnt(9, mask << (base * 8), data << (base * 8));         break; // SOUND9PNT
+            case 0x400049B: base -= 0x400049A; size = 2; core->spu.writeSoundPnt(9, mask << (base * 8), data << (base * 8));            break; // SOUND9PNT
             case 0x400049C:
             case 0x400049D:
             case 0x400049E:
-            case 0x400049F: base -= 0x400049C; size = 4; core->spu.writeSoundLen(9, mask << (base * 8), data << (base * 8));         break; // SOUND9LEN
+            case 0x400049F: base -= 0x400049C; size = 4; core->spu.writeSoundLen(9, mask << (base * 8), data << (base * 8));            break; // SOUND9LEN
             case 0x40004A0:
             case 0x40004A1:
             case 0x40004A2:
-            case 0x40004A3: base -= 0x40004A0; size = 4; core->spu.writeSoundCnt(10, mask << (base * 8), data << (base * 8));        break; // SOUND10CNT
+            case 0x40004A3: base -= 0x40004A0; size = 4; core->spu.writeSoundCnt(10, mask << (base * 8), data << (base * 8));           break; // SOUND10CNT
             case 0x40004A4:
             case 0x40004A5:
             case 0x40004A6:
-            case 0x40004A7: base -= 0x40004A4; size = 4; core->spu.writeSoundSad(10, mask << (base * 8), data << (base * 8));        break; // SOUND10SAD
+            case 0x40004A7: base -= 0x40004A4; size = 4; core->spu.writeSoundSad(10, mask << (base * 8), data << (base * 8));           break; // SOUND10SAD
             case 0x40004A8:
-            case 0x40004A9: base -= 0x40004A8; size = 2; core->spu.writeSoundTmr(10, mask << (base * 8), data << (base * 8));        break; // SOUND10TMR
+            case 0x40004A9: base -= 0x40004A8; size = 2; core->spu.writeSoundTmr(10, mask << (base * 8), data << (base * 8));           break; // SOUND10TMR
             case 0x40004AA:
-            case 0x40004AB: base -= 0x40004AA; size = 2; core->spu.writeSoundPnt(10, mask << (base * 8), data << (base * 8));        break; // SOUND10PNT
+            case 0x40004AB: base -= 0x40004AA; size = 2; core->spu.writeSoundPnt(10, mask << (base * 8), data << (base * 8));           break; // SOUND10PNT
             case 0x40004AC:
             case 0x40004AD:
             case 0x40004AE:
-            case 0x40004AF: base -= 0x40004AC; size = 4; core->spu.writeSoundLen(10, mask << (base * 8), data << (base * 8));        break; // SOUND10LEN
+            case 0x40004AF: base -= 0x40004AC; size = 4; core->spu.writeSoundLen(10, mask << (base * 8), data << (base * 8));           break; // SOUND10LEN
             case 0x40004B0:
             case 0x40004B1:
             case 0x40004B2:
-            case 0x40004B3: base -= 0x40004B0; size = 4; core->spu.writeSoundCnt(11, mask << (base * 8), data << (base * 8));        break; // SOUND11CNT
+            case 0x40004B3: base -= 0x40004B0; size = 4; core->spu.writeSoundCnt(11, mask << (base * 8), data << (base * 8));           break; // SOUND11CNT
             case 0x40004B4:
             case 0x40004B5:
             case 0x40004B6:
-            case 0x40004B7: base -= 0x40004B4; size = 4; core->spu.writeSoundSad(11, mask << (base * 8), data << (base * 8));        break; // SOUND11SAD
+            case 0x40004B7: base -= 0x40004B4; size = 4; core->spu.writeSoundSad(11, mask << (base * 8), data << (base * 8));           break; // SOUND11SAD
             case 0x40004B8:
-            case 0x40004B9: base -= 0x40004B8; size = 2; core->spu.writeSoundTmr(11, mask << (base * 8), data << (base * 8));        break; // SOUND11TMR
+            case 0x40004B9: base -= 0x40004B8; size = 2; core->spu.writeSoundTmr(11, mask << (base * 8), data << (base * 8));           break; // SOUND11TMR
             case 0x40004BA:
-            case 0x40004BB: base -= 0x40004BA; size = 2; core->spu.writeSoundPnt(11, mask << (base * 8), data << (base * 8));        break; // SOUND11PNT
+            case 0x40004BB: base -= 0x40004BA; size = 2; core->spu.writeSoundPnt(11, mask << (base * 8), data << (base * 8));           break; // SOUND11PNT
             case 0x40004BC:
             case 0x40004BD:
             case 0x40004BE:
-            case 0x40004BF: base -= 0x40004BC; size = 4; core->spu.writeSoundLen(11, mask << (base * 8), data << (base * 8));        break; // SOUND11LEN
+            case 0x40004BF: base -= 0x40004BC; size = 4; core->spu.writeSoundLen(11, mask << (base * 8), data << (base * 8));           break; // SOUND11LEN
             case 0x40004C0:
             case 0x40004C1:
             case 0x40004C2:
-            case 0x40004C3: base -= 0x40004C0; size = 4; core->spu.writeSoundCnt(12, mask << (base * 8), data << (base * 8));        break; // SOUND12CNT
+            case 0x40004C3: base -= 0x40004C0; size = 4; core->spu.writeSoundCnt(12, mask << (base * 8), data << (base * 8));           break; // SOUND12CNT
             case 0x40004C4:
             case 0x40004C5:
             case 0x40004C6:
-            case 0x40004C7: base -= 0x40004C4; size = 4; core->spu.writeSoundSad(12, mask << (base * 8), data << (base * 8));        break; // SOUND12SAD
+            case 0x40004C7: base -= 0x40004C4; size = 4; core->spu.writeSoundSad(12, mask << (base * 8), data << (base * 8));           break; // SOUND12SAD
             case 0x40004C8:
-            case 0x40004C9: base -= 0x40004C8; size = 2; core->spu.writeSoundTmr(12, mask << (base * 8), data << (base * 8));        break; // SOUND12TMR
+            case 0x40004C9: base -= 0x40004C8; size = 2; core->spu.writeSoundTmr(12, mask << (base * 8), data << (base * 8));           break; // SOUND12TMR
             case 0x40004CA:
-            case 0x40004CB: base -= 0x40004CA; size = 2; core->spu.writeSoundPnt(12, mask << (base * 8), data << (base * 8));        break; // SOUND12PNT
+            case 0x40004CB: base -= 0x40004CA; size = 2; core->spu.writeSoundPnt(12, mask << (base * 8), data << (base * 8));           break; // SOUND12PNT
             case 0x40004CC:
             case 0x40004CD:
             case 0x40004CE:
-            case 0x40004CF: base -= 0x40004CC; size = 4; core->spu.writeSoundLen(12, mask << (base * 8), data << (base * 8));        break; // SOUND12LEN
+            case 0x40004CF: base -= 0x40004CC; size = 4; core->spu.writeSoundLen(12, mask << (base * 8), data << (base * 8));           break; // SOUND12LEN
             case 0x40004D0:
             case 0x40004D1:
             case 0x40004D2:
-            case 0x40004D3: base -= 0x40004D0; size = 4; core->spu.writeSoundCnt(13, mask << (base * 8), data << (base * 8));        break; // SOUND13CNT
+            case 0x40004D3: base -= 0x40004D0; size = 4; core->spu.writeSoundCnt(13, mask << (base * 8), data << (base * 8));           break; // SOUND13CNT
             case 0x40004D4:
             case 0x40004D5:
             case 0x40004D6:
-            case 0x40004D7: base -= 0x40004D4; size = 4; core->spu.writeSoundSad(13, mask << (base * 8), data << (base * 8));        break; // SOUND13SAD
+            case 0x40004D7: base -= 0x40004D4; size = 4; core->spu.writeSoundSad(13, mask << (base * 8), data << (base * 8));           break; // SOUND13SAD
             case 0x40004D8:
-            case 0x40004D9: base -= 0x40004D8; size = 2; core->spu.writeSoundTmr(13, mask << (base * 8), data << (base * 8));        break; // SOUND13TMR
+            case 0x40004D9: base -= 0x40004D8; size = 2; core->spu.writeSoundTmr(13, mask << (base * 8), data << (base * 8));           break; // SOUND13TMR
             case 0x40004DA:
-            case 0x40004DB: base -= 0x40004DA; size = 2; core->spu.writeSoundPnt(13, mask << (base * 8), data << (base * 8));        break; // SOUND13PNT
+            case 0x40004DB: base -= 0x40004DA; size = 2; core->spu.writeSoundPnt(13, mask << (base * 8), data << (base * 8));           break; // SOUND13PNT
             case 0x40004DC:
             case 0x40004DD:
             case 0x40004DE:
-            case 0x40004DF: base -= 0x40004DC; size = 4; core->spu.writeSoundLen(13, mask << (base * 8), data << (base * 8));        break; // SOUND13LEN
+            case 0x40004DF: base -= 0x40004DC; size = 4; core->spu.writeSoundLen(13, mask << (base * 8), data << (base * 8));           break; // SOUND13LEN
             case 0x40004E0:
             case 0x40004E1:
             case 0x40004E2:
-            case 0x40004E3: base -= 0x40004E0; size = 4; core->spu.writeSoundCnt(14, mask << (base * 8), data << (base * 8));        break; // SOUND14CNT
+            case 0x40004E3: base -= 0x40004E0; size = 4; core->spu.writeSoundCnt(14, mask << (base * 8), data << (base * 8));           break; // SOUND14CNT
             case 0x40004E4:
             case 0x40004E5:
             case 0x40004E6:
-            case 0x40004E7: base -= 0x40004E4; size = 4; core->spu.writeSoundSad(14, mask << (base * 8), data << (base * 8));        break; // SOUND14SAD
+            case 0x40004E7: base -= 0x40004E4; size = 4; core->spu.writeSoundSad(14, mask << (base * 8), data << (base * 8));           break; // SOUND14SAD
             case 0x40004E8:
-            case 0x40004E9: base -= 0x40004E8; size = 2; core->spu.writeSoundTmr(14, mask << (base * 8), data << (base * 8));        break; // SOUND14TMR
+            case 0x40004E9: base -= 0x40004E8; size = 2; core->spu.writeSoundTmr(14, mask << (base * 8), data << (base * 8));           break; // SOUND14TMR
             case 0x40004EA:
-            case 0x40004EB: base -= 0x40004EA; size = 2; core->spu.writeSoundPnt(14, mask << (base * 8), data << (base * 8));        break; // SOUND14PNT
+            case 0x40004EB: base -= 0x40004EA; size = 2; core->spu.writeSoundPnt(14, mask << (base * 8), data << (base * 8));           break; // SOUND14PNT
             case 0x40004EC:
             case 0x40004ED:
             case 0x40004EE:
-            case 0x40004EF: base -= 0x40004EC; size = 4; core->spu.writeSoundLen(14, mask << (base * 8), data << (base * 8));        break; // SOUND14LEN
+            case 0x40004EF: base -= 0x40004EC; size = 4; core->spu.writeSoundLen(14, mask << (base * 8), data << (base * 8));           break; // SOUND14LEN
             case 0x40004F0:
             case 0x40004F1:
             case 0x40004F2:
-            case 0x40004F3: base -= 0x40004F0; size = 4; core->spu.writeSoundCnt(15, mask << (base * 8), data << (base * 8));        break; // SOUND15CNT
+            case 0x40004F3: base -= 0x40004F0; size = 4; core->spu.writeSoundCnt(15, mask << (base * 8), data << (base * 8));           break; // SOUND15CNT
             case 0x40004F4:
             case 0x40004F5:
             case 0x40004F6:
-            case 0x40004F7: base -= 0x40004F4; size = 4; core->spu.writeSoundSad(15, mask << (base * 8), data << (base * 8));        break; // SOUND15SAD
+            case 0x40004F7: base -= 0x40004F4; size = 4; core->spu.writeSoundSad(15, mask << (base * 8), data << (base * 8));           break; // SOUND15SAD
             case 0x40004F8:
-            case 0x40004F9: base -= 0x40004F8; size = 2; core->spu.writeSoundTmr(15, mask << (base * 8), data << (base * 8));        break; // SOUND15TMR
+            case 0x40004F9: base -= 0x40004F8; size = 2; core->spu.writeSoundTmr(15, mask << (base * 8), data << (base * 8));           break; // SOUND15TMR
             case 0x40004FA:
-            case 0x40004FB: base -= 0x40004FA; size = 2; core->spu.writeSoundPnt(15, mask << (base * 8), data << (base * 8));        break; // SOUND15PNT
+            case 0x40004FB: base -= 0x40004FA; size = 2; core->spu.writeSoundPnt(15, mask << (base * 8), data << (base * 8));           break; // SOUND15PNT
             case 0x40004FC:
             case 0x40004FD:
             case 0x40004FE:
-            case 0x40004FF: base -= 0x40004FC; size = 4; core->spu.writeSoundLen(15, mask << (base * 8), data << (base * 8));        break; // SOUND15LEN
+            case 0x40004FF: base -= 0x40004FC; size = 4; core->spu.writeSoundLen(15, mask << (base * 8), data << (base * 8));           break; // SOUND15LEN
             case 0x4000500:
-            case 0x4000501: base -= 0x4000500; size = 2; core->spu.writeMainSoundCnt(mask << (base * 8), data << (base * 8));        break; // SOUNDCNT
+            case 0x4000501: base -= 0x4000500; size = 2; core->spu.writeMainSoundCnt(mask << (base * 8), data << (base * 8));           break; // SOUNDCNT
             case 0x4000504:
-            case 0x4000505: base -= 0x4000504; size = 2; core->spu.writeSoundBias(mask << (base * 8), data << (base * 8));           break; // SOUNDBIAS
-            case 0x4000508: base -= 0x4000508; size = 1; core->spu.writeSndCapCnt(0, data << (base * 8));                            break; // SNDCAP0CNT
-            case 0x4000509: base -= 0x4000509; size = 1; core->spu.writeSndCapCnt(1, data << (base * 8));                            break; // SNDCAP1CNT
+            case 0x4000505: base -= 0x4000504; size = 2; core->spu.writeSoundBias(mask << (base * 8), data << (base * 8));              break; // SOUNDBIAS
+            case 0x4000508: base -= 0x4000508; size = 1; core->spu.writeSndCapCnt(0, data << (base * 8));                               break; // SNDCAP0CNT
+            case 0x4000509: base -= 0x4000509; size = 1; core->spu.writeSndCapCnt(1, data << (base * 8));                               break; // SNDCAP1CNT
             case 0x4000510:
             case 0x4000511:
             case 0x4000512:
-            case 0x4000513: base -= 0x4000510; size = 4; core->spu.writeSndCapDad(0, mask << (base * 8), data << (base * 8));        break; // SNDCAP0DAD
+            case 0x4000513: base -= 0x4000510; size = 4; core->spu.writeSndCapDad(0, mask << (base * 8), data << (base * 8));           break; // SNDCAP0DAD
             case 0x4000514:
-            case 0x4000515: base -= 0x4000514; size = 2; core->spu.writeSndCapLen(0, mask << (base * 8), data << (base * 8));        break; // SNDCAP0LEN
+            case 0x4000515: base -= 0x4000514; size = 2; core->spu.writeSndCapLen(0, mask << (base * 8), data << (base * 8));           break; // SNDCAP0LEN
             case 0x4000518:
             case 0x4000519:
             case 0x400051A:
-            case 0x400051B: base -= 0x4000518; size = 4; core->spu.writeSndCapDad(1, mask << (base * 8), data << (base * 8));        break; // SNDCAP1DAD
+            case 0x400051B: base -= 0x4000518; size = 4; core->spu.writeSndCapDad(1, mask << (base * 8), data << (base * 8));           break; // SNDCAP1DAD
             case 0x400051C:
-            case 0x400051D: base -= 0x400051C; size = 2; core->spu.writeSndCapLen(1, mask << (base * 8), data << (base * 8));        break; // SNDCAP1LEN
+            case 0x400051D: base -= 0x400051C; size = 2; core->spu.writeSndCapLen(1, mask << (base * 8), data << (base * 8));           break; // SNDCAP1LEN
             case 0x4800006:
-            case 0x4800007: base -= 0x4800006; size = 2; core->wifi.writeWModeWep(mask << (base * 8), data << (base * 8));           break; // W_MODE_WEP
+            case 0x4800007: base -= 0x4800006; size = 2; core->wifi.writeWModeWep(mask << (base * 8), data << (base * 8));              break; // W_MODE_WEP
             case 0x4800010:
-            case 0x4800011: base -= 0x4800010; size = 2; core->wifi.writeWIrf(mask << (base * 8), data << (base * 8));               break; // W_IF
+            case 0x4800011: base -= 0x4800010; size = 2; core->wifi.writeWIrf(mask << (base * 8), data << (base * 8));                  break; // W_IF
             case 0x4800012:
-            case 0x4800013: base -= 0x4800012; size = 2; core->wifi.writeWIe(mask << (base * 8), data << (base * 8));                break; // W_IE
+            case 0x4800013: base -= 0x4800012; size = 2; core->wifi.writeWIe(mask << (base * 8), data << (base * 8));                   break; // W_IE
             case 0x4800018:
-            case 0x4800019: base -= 0x4800018; size = 2; core->wifi.writeWMacaddr(0, mask << (base * 8), data << (base * 8));        break; // W_MACADDR_0
+            case 0x4800019: base -= 0x4800018; size = 2; core->wifi.writeWMacaddr(0, mask << (base * 8), data << (base * 8));           break; // W_MACADDR_0
             case 0x480001A:
-            case 0x480001B: base -= 0x480001A; size = 2; core->wifi.writeWMacaddr(1, mask << (base * 8), data << (base * 8));        break; // W_MACADDR_1
+            case 0x480001B: base -= 0x480001A; size = 2; core->wifi.writeWMacaddr(1, mask << (base * 8), data << (base * 8));           break; // W_MACADDR_1
             case 0x480001C:
-            case 0x480001D: base -= 0x480001C; size = 2; core->wifi.writeWMacaddr(2, mask << (base * 8), data << (base * 8));        break; // W_MACADDR_2
+            case 0x480001D: base -= 0x480001C; size = 2; core->wifi.writeWMacaddr(2, mask << (base * 8), data << (base * 8));           break; // W_MACADDR_2
             case 0x4800020:
-            case 0x4800021: base -= 0x4800020; size = 2; core->wifi.writeWBssid(0, mask << (base * 8), data << (base * 8));          break; // W_BSSID_0
+            case 0x4800021: base -= 0x4800020; size = 2; core->wifi.writeWBssid(0, mask << (base * 8), data << (base * 8));             break; // W_BSSID_0
             case 0x4800022:
-            case 0x4800023: base -= 0x4800022; size = 2; core->wifi.writeWBssid(1, mask << (base * 8), data << (base * 8));          break; // W_BSSID_1
+            case 0x4800023: base -= 0x4800022; size = 2; core->wifi.writeWBssid(1, mask << (base * 8), data << (base * 8));             break; // W_BSSID_1
             case 0x4800024:
-            case 0x4800025: base -= 0x4800024; size = 2; core->wifi.writeWBssid(2, mask << (base * 8), data << (base * 8));          break; // W_BSSID_2
+            case 0x4800025: base -= 0x4800024; size = 2; core->wifi.writeWBssid(2, mask << (base * 8), data << (base * 8));             break; // W_BSSID_2
             case 0x480002A:
-            case 0x480002B: base -= 0x480002A; size = 2; core->wifi.writeWAidFull(mask << (base * 8), data << (base * 8));           break; // W_AID_FULL
+            case 0x480002B: base -= 0x480002A; size = 2; core->wifi.writeWAidFull(mask << (base * 8), data << (base * 8));              break; // W_AID_FULL
             case 0x480003C:
-            case 0x480003D: base -= 0x480003C; size = 2; core->wifi.writeWPowerstate(mask << (base * 8), data << (base * 8));        break; // W_POWERSTATE
+            case 0x480003D: base -= 0x480003C; size = 2; core->wifi.writeWPowerstate(mask << (base * 8), data << (base * 8));           break; // W_POWERSTATE
             case 0x4800040:
-            case 0x4800041: base -= 0x4800040; size = 2; core->wifi.writeWPowerforce(mask << (base * 8), data << (base * 8));        break; // W_POWERFORCE
+            case 0x4800041: base -= 0x4800040; size = 2; core->wifi.writeWPowerforce(mask << (base * 8), data << (base * 8));           break; // W_POWERFORCE
             case 0x4800050:
-            case 0x4800051: base -= 0x4800050; size = 2; core->wifi.writeWRxbufBegin(mask << (base * 8), data << (base * 8));        break; // W_RXBUF_BEGIN
+            case 0x4800051: base -= 0x4800050; size = 2; core->wifi.writeWRxbufBegin(mask << (base * 8), data << (base * 8));           break; // W_RXBUF_BEGIN
             case 0x4800052:
-            case 0x4800053: base -= 0x4800052; size = 2; core->wifi.writeWRxbufEnd(mask << (base * 8), data << (base * 8));          break; // W_RXBUF_END
+            case 0x4800053: base -= 0x4800052; size = 2; core->wifi.writeWRxbufEnd(mask << (base * 8), data << (base * 8));             break; // W_RXBUF_END
             case 0x4800056:
-            case 0x4800057: base -= 0x4800056; size = 2; core->wifi.writeWRxbufWrAddr(mask << (base * 8), data << (base * 8));       break; // W_RXBUF_WR_ADDR
+            case 0x4800057: base -= 0x4800056; size = 2; core->wifi.writeWRxbufWrAddr(mask << (base * 8), data << (base * 8));          break; // W_RXBUF_WR_ADDR
             case 0x4800058:
-            case 0x4800059: base -= 0x4800058; size = 2; core->wifi.writeWRxbufRdAddr(mask << (base * 8), data << (base * 8));       break; // W_RXBUF_RD_ADDR
+            case 0x4800059: base -= 0x4800058; size = 2; core->wifi.writeWRxbufRdAddr(mask << (base * 8), data << (base * 8));          break; // W_RXBUF_RD_ADDR
             case 0x480005A:
-            case 0x480005B: base -= 0x480005A; size = 2; core->wifi.writeWRxbufReadcsr(mask << (base * 8), data << (base * 8));      break; // W_RXBUF_READCSR
+            case 0x480005B: base -= 0x480005A; size = 2; core->wifi.writeWRxbufReadcsr(mask << (base * 8), data << (base * 8));         break; // W_RXBUF_READCSR
             case 0x480005C:
-            case 0x480005D: base -= 0x480005C; size = 2; core->wifi.writeWRxbufCount(mask << (base * 8), data << (base * 8));        break; // W_RXBUF_COUNT
+            case 0x480005D: base -= 0x480005C; size = 2; core->wifi.writeWRxbufCount(mask << (base * 8), data << (base * 8));           break; // W_RXBUF_COUNT
             case 0x4800062:
-            case 0x4800063: base -= 0x4800062; size = 2; core->wifi.writeWRxbufGap(mask << (base * 8), data << (base * 8));          break; // W_RXBUF_GAP
+            case 0x4800063: base -= 0x4800062; size = 2; core->wifi.writeWRxbufGap(mask << (base * 8), data << (base * 8));             break; // W_RXBUF_GAP
             case 0x4800064:
-            case 0x4800065: base -= 0x4800064; size = 2; core->wifi.writeWRxbufGapdisp(mask << (base * 8), data << (base * 8));      break; // W_RXBUF_GAPDISP
+            case 0x4800065: base -= 0x4800064; size = 2; core->wifi.writeWRxbufGapdisp(mask << (base * 8), data << (base * 8));         break; // W_RXBUF_GAPDISP
             case 0x4800068:
-            case 0x4800069: base -= 0x4800068; size = 2; core->wifi.writeWTxbufWrAddr(mask << (base * 8), data << (base * 8));       break; // W_TXBUF_WR_ADDR
+            case 0x4800069: base -= 0x4800068; size = 2; core->wifi.writeWTxbufWrAddr(mask << (base * 8), data << (base * 8));          break; // W_TXBUF_WR_ADDR
             case 0x480006C:
-            case 0x480006D: base -= 0x480006C; size = 2; core->wifi.writeWTxbufCount(mask << (base * 8), data << (base * 8));        break; // W_TXBUF_COUNT
+            case 0x480006D: base -= 0x480006C; size = 2; core->wifi.writeWTxbufCount(mask << (base * 8), data << (base * 8));           break; // W_TXBUF_COUNT
             case 0x4800070:
-            case 0x4800071: base -= 0x4800070; size = 2; core->wifi.writeWTxbufWrData(mask << (base * 8), data << (base * 8));       break; // W_TXBUF_WR_DATA
+            case 0x4800071: base -= 0x4800070; size = 2; core->wifi.writeWTxbufWrData(mask << (base * 8), data << (base * 8));          break; // W_TXBUF_WR_DATA
             case 0x4800074:
-            case 0x4800075: base -= 0x4800074; size = 2; core->wifi.writeWTxbufGap(mask << (base * 8), data << (base * 8));          break; // W_TXBUF_GAP
+            case 0x4800075: base -= 0x4800074; size = 2; core->wifi.writeWTxbufGap(mask << (base * 8), data << (base * 8));             break; // W_TXBUF_GAP
             case 0x4800076:
-            case 0x4800077: base -= 0x4800076; size = 2; core->wifi.writeWTxbufGapdisp(mask << (base * 8), data << (base * 8));      break; // W_TXBUF_GAPDISP
+            case 0x4800077: base -= 0x4800076; size = 2; core->wifi.writeWTxbufGapdisp(mask << (base * 8), data << (base * 8));         break; // W_TXBUF_GAPDISP
             case 0x4800120:
-            case 0x4800121: base -= 0x4800120; size = 2; core->wifi.writeWConfig(0,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_120
+            case 0x4800121: base -= 0x4800120; size = 2; core->wifi.writeWConfig(0,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_120
             case 0x4800122:
-            case 0x4800123: base -= 0x4800122; size = 2; core->wifi.writeWConfig(1,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_122
+            case 0x4800123: base -= 0x4800122; size = 2; core->wifi.writeWConfig(1,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_122
             case 0x4800124:
-            case 0x4800125: base -= 0x4800124; size = 2; core->wifi.writeWConfig(2,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_124
+            case 0x4800125: base -= 0x4800124; size = 2; core->wifi.writeWConfig(2,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_124
             case 0x4800128:
-            case 0x4800129: base -= 0x4800128; size = 2; core->wifi.writeWConfig(3,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_128
+            case 0x4800129: base -= 0x4800128; size = 2; core->wifi.writeWConfig(3,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_128
             case 0x4800130:
-            case 0x4800131: base -= 0x4800130; size = 2; core->wifi.writeWConfig(4,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_130
+            case 0x4800131: base -= 0x4800130; size = 2; core->wifi.writeWConfig(4,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_130
             case 0x4800132:
-            case 0x4800133: base -= 0x4800132; size = 2; core->wifi.writeWConfig(5,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_132
+            case 0x4800133: base -= 0x4800132; size = 2; core->wifi.writeWConfig(5,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_132
             case 0x4800134:
-            case 0x4800135: base -= 0x4800134; size = 2; core->wifi.writeWBeaconcount2(mask << (base * 8), data << (base * 8));      break; // W_BEACONCOUNT2
+            case 0x4800135: base -= 0x4800134; size = 2; core->wifi.writeWBeaconcount2(mask << (base * 8), data << (base * 8));         break; // W_BEACONCOUNT2
             case 0x4800140:
-            case 0x4800141: base -= 0x4800140; size = 2; core->wifi.writeWConfig(6,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_140
+            case 0x4800141: base -= 0x4800140; size = 2; core->wifi.writeWConfig(6,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_140
             case 0x4800142:
-            case 0x4800143: base -= 0x4800142; size = 2; core->wifi.writeWConfig(7,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_142
+            case 0x4800143: base -= 0x4800142; size = 2; core->wifi.writeWConfig(7,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_142
             case 0x4800144:
-            case 0x4800145: base -= 0x4800144; size = 2; core->wifi.writeWConfig(8,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_144
+            case 0x4800145: base -= 0x4800144; size = 2; core->wifi.writeWConfig(8,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_144
             case 0x4800146:
-            case 0x4800147: base -= 0x4800146; size = 2; core->wifi.writeWConfig(9,  mask << (base * 8), data << (base * 8));        break; // W_CONFIG_146
+            case 0x4800147: base -= 0x4800146; size = 2; core->wifi.writeWConfig(9,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_146
             case 0x4800148:
-            case 0x4800149: base -= 0x4800148; size = 2; core->wifi.writeWConfig(10, mask << (base * 8), data << (base * 8));        break; // W_CONFIG_148
+            case 0x4800149: base -= 0x4800148; size = 2; core->wifi.writeWConfig(10, mask << (base * 8), data << (base * 8));           break; // W_CONFIG_148
             case 0x480014A:
-            case 0x480014B: base -= 0x480014A; size = 2; core->wifi.writeWConfig(11, mask << (base * 8), data << (base * 8));        break; // W_CONFIG_14A
+            case 0x480014B: base -= 0x480014A; size = 2; core->wifi.writeWConfig(11, mask << (base * 8), data << (base * 8));           break; // W_CONFIG_14A
             case 0x480014C:
-            case 0x480014D: base -= 0x480014C; size = 2; core->wifi.writeWConfig(12, mask << (base * 8), data << (base * 8));        break; // W_CONFIG_14C
+            case 0x480014D: base -= 0x480014C; size = 2; core->wifi.writeWConfig(12, mask << (base * 8), data << (base * 8));           break; // W_CONFIG_14C
             case 0x4800150:
-            case 0x4800151: base -= 0x4800150; size = 2; core->wifi.writeWConfig(13, mask << (base * 8), data << (base * 8));        break; // W_CONFIG_150
+            case 0x4800151: base -= 0x4800150; size = 2; core->wifi.writeWConfig(13, mask << (base * 8), data << (base * 8));           break; // W_CONFIG_150
             case 0x4800154:
-            case 0x4800155: base -= 0x4800154; size = 2; core->wifi.writeWConfig(14, mask << (base * 8), data << (base * 8));        break; // W_CONFIG_154
+            case 0x4800155: base -= 0x4800154; size = 2; core->wifi.writeWConfig(14, mask << (base * 8), data << (base * 8));           break; // W_CONFIG_154
             case 0x4800158:
-            case 0x4800159: base -= 0x4800158; size = 2; core->wifi.writeWBbCnt(mask << (base * 8), data << (base * 8));             break; // W_BB_CNT
+            case 0x4800159: base -= 0x4800158; size = 2; core->wifi.writeWBbCnt(mask << (base * 8), data << (base * 8));                break; // W_BB_CNT
             case 0x480015A:
-            case 0x480015B: base -= 0x480015A; size = 2; core->wifi.writeWBbWrite(mask << (base * 8), data << (base * 8));           break; // W_BB_WRITE
+            case 0x480015B: base -= 0x480015A; size = 2; core->wifi.writeWBbWrite(mask << (base * 8), data << (base * 8));              break; // W_BB_WRITE
             case 0x480021C:
-            case 0x480021D: base -= 0x480021C; size = 2; core->wifi.writeWIrfSet(mask << (base * 8), data << (base * 8));            break; // W_IF_SET
+            case 0x480021D: base -= 0x480021C; size = 2; core->wifi.writeWIrfSet(mask << (base * 8), data << (base * 8));               break; // W_IF_SET
 
             default:
             {

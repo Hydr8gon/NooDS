@@ -25,9 +25,25 @@
 #include "settings.h"
 
 Core::Core(std::string ndsPath, std::string gbaPath):
-    cartridge(this), cp15(this), divSqrt(this), dldi(this), dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0),
-    Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this), input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) },
-    ipc(this), memory(this), rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
+    cartridgeNds(this),
+    cartridgeGba(this),
+    cp15(this),
+    divSqrt(this),
+    dldi(this),
+    dma { Dma(this, 0), Dma(this, 1) },
+    gpu(this),
+    gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) },
+    gpu3D(this),
+    gpu3DRenderer(this),
+    input(this),
+    interpreter { Interpreter(this, 0), Interpreter(this, 1) },
+    ipc(this),
+    memory(this),
+    rtc(this),
+    spi(this),
+    spu(this),
+    timers { Timers(this, 0), Timers(this, 1) },
+    wifi(this)
 {
     // Schedule initial tasks for NDS mode
     resetCyclesTask = std::bind(&Core::resetCycles, this);
@@ -55,7 +71,7 @@ Core::Core(std::string ndsPath, std::string gbaPath):
             memory.loadGbaBios();
 
         // Load a GBA ROM
-        cartridge.loadGbaRom(gbaPath);
+        cartridgeGba.loadRom(gbaPath);
 
         // Enable GBA mode right away if direct boot is enabled
         if (ndsPath == "" && Settings::getDirectBoot())
@@ -68,7 +84,7 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     if (ndsPath != "")
     {
         // Load an NDS ROM
-        cartridge.loadNdsRom(ndsPath);
+        cartridgeNds.loadRom(ndsPath);
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled
         if (Settings::getDirectBoot())
@@ -94,7 +110,7 @@ Core::Core(std::string ndsPath, std::string gbaPath):
             memory.write<uint16_t>(0, 0x27FFC10,     0x5835); // Copy of ARM7 BIOS CRC
             memory.write<uint16_t>(0, 0x27FFC40,     0x0001); // Boot indicator
 
-            cartridge.directBoot();
+            cartridgeNds.directBoot();
             interpreter[0].directBoot();
             interpreter[1].directBoot();
             spi.directBoot();
