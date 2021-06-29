@@ -24,6 +24,22 @@
 
 class Core;
 
+class VramMapping
+{
+    public:
+        void add(uint8_t *mapping);
+
+        template <typename T> T read(uint32_t address);
+        template <typename T> void write(uint32_t address, T value);
+
+        uint8_t *getBaseMapping() { return mappings[0]; }
+        int      getCount()       { return count;       }
+
+    private:
+        uint8_t *mappings[7];
+        int count = 0;
+};
+
 class Memory
 {
     public:
@@ -77,14 +93,15 @@ class Memory
         uint8_t vramI[0x4000]  = {}; //  16KB VRAM block I
         uint8_t oam[0x800]     = {}; //   2KB OAM
 
-        uint8_t *lcdc[64]      = {};
-        uint8_t *engABg[32]    = {};
-        uint8_t *engAObj[16]   = {};
+        VramMapping engABg[32];
+        VramMapping engBBg[8];
+        VramMapping engAObj[16];
+        VramMapping engBObj[8];
+        VramMapping lcdc[64];
+        VramMapping vram7[2];
+
         uint8_t *engAExtPal[5] = {};
-        uint8_t *engBBg[8]     = {};
-        uint8_t *engBObj[8]    = {};
         uint8_t *engBExtPal[5] = {};
-        uint8_t *vram7[2]      = {};
         uint8_t *tex3D[4]      = {};
         uint8_t *pal3D[6]      = {};
 

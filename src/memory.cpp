@@ -23,6 +23,36 @@
 #include "core.h"
 #include "settings.h"
 
+void VramMapping::add(uint8_t *mapping)
+{
+    // Add a VRAM mapping
+    mappings[count++] = mapping;
+}
+
+template <typename T> T VramMapping::read(uint32_t address)
+{
+    T value = 0;
+
+    // Read a value from all the VRAM mappings, ORed together
+    for (int m = 0; m < count; m++)
+    {
+        for (unsigned int i = 0; i < sizeof(T); i++)
+            value |= mappings[m][address + i] << (i * 8);
+    }
+
+    return value;
+}
+
+template <typename T> void VramMapping::write(uint32_t address, T value)
+{
+    // Write a value to all the VRAM mappings
+    for (int m = 0; m < count; m++)
+    {
+        for (unsigned int i = 0; i < sizeof(T); i++)
+            mappings[m][address + i] = value >> (i * 8);
+    }
+}
+
 void Memory::loadBios()
 {
     // Attempt to load the ARM9 BIOS
@@ -82,16 +112,20 @@ void Memory::updateMap9(uint32_t start, uint32_t end)
                     break;
 
                 case 0x06000000: // VRAM
+                {
+                    VramMapping *mapping;
                     switch (address & 0xFFE00000)
                     {
-                        case 0x06000000: data =  engABg[(address & 0x7FFFF) >> 14]; break;
-                        case 0x06200000: data =  engBBg[(address & 0x1FFFF) >> 14]; break;
-                        case 0x06400000: data = engAObj[(address & 0x3FFFF) >> 14]; break;
-                        case 0x06600000: data = engBObj[(address & 0x1FFFF) >> 14]; break;
-                        default:         data =    lcdc[(address & 0xFFFFF) >> 14]; break;
+                        case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
+                        case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
+                        case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
+                        case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
+                        default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
                     }
-                    if (data) data += (address & 0x3FFF);
+                    if (mapping->getCount() == 1)
+                        data = &mapping->getBaseMapping()[address & 0x3FFF];
                     break;
+                }
 
                 case 0x08000000: case 0x09000000: // GBA ROM
                     if ((address & 0x01FFFFFF) < core->cartridgeGba.getRomSize())
@@ -141,15 +175,17 @@ void Memory::updateMap9(uint32_t start, uint32_t end)
                     break;
 
                 case 0x06000000: // VRAM
+                    VramMapping *mapping;
                     switch (address & 0xFFE00000)
                     {
-                        case 0x06000000: data =  engABg[(address & 0x7FFFF) >> 14]; break;
-                        case 0x06200000: data =  engBBg[(address & 0x1FFFF) >> 14]; break;
-                        case 0x06400000: data = engAObj[(address & 0x3FFFF) >> 14]; break;
-                        case 0x06600000: data = engBObj[(address & 0x1FFFF) >> 14]; break;
-                        default:         data =    lcdc[(address & 0xFFFFF) >> 14]; break;
+                        case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
+                        case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
+                        case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
+                        case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
+                        default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
                     }
-                    if (data) data += (address & 0x3FFF);
+                    if (mapping->getCount() == 1)
+                        data = &mapping->getBaseMapping()[address & 0x3FFF];
                     break;
             }
         }
@@ -231,9 +267,12 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                     break;
 
                 case 0x06000000: // VRAM
-                    data = vram7[(address & 0x3FFFF) >> 17];
-                    if (data) data += (address & 0x1FFFF);
+                {
+                    VramMapping *mapping = &vram7[(address & 0x3FFFF) >> 17];
+                    if (mapping->getCount() == 1)
+                        data = &mapping->getBaseMapping()[address & 0x1FFFF];
                     break;
+                }
 
                 case 0x08000000: case 0x09000000: // GBA ROM
                     if ((address & 0x01FFFFFF) < core->cartridgeGba.getRomSize())
@@ -308,9 +347,12 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                     break;
 
                 case 0x06000000: // VRAM
-                    data = vram7[(address & 0x3FFFF) >> 17];
-                    if (data) data += (address & 0x1FFFF);
+                {
+                    VramMapping *mapping = &vram7[(address & 0x3FFFF) >> 17];
+                    if (mapping->getCount() == 1)
+                        data = &mapping->getBaseMapping()[address & 0x1FFFF];
                     break;
+                }
             }
         }
 
@@ -348,6 +390,21 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
                 case 0x05000000: // Palettes
                     data = &palette[address & 0x7FF];
                     break;
+
+                case 0x06000000: // VRAM
+                {
+                    VramMapping *mapping;
+                    switch (address & 0xFFE00000)
+                    {
+                        case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
+                        case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
+                        case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
+                        case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
+                        default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
+                    }
+                    if (mapping->getCount() == 0) break;
+                    return mapping->read<T>(address & 0x3FFF);
+                }
 
                 case 0x07000000: // OAM
                     data = &oam[address & 0x7FF];
@@ -401,6 +458,13 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
         {
             case 0x04000000: // I/O registers
                 return ioRead7<T>(address);
+
+            case 0x06000000: // VRAM
+            {
+                VramMapping *mapping = &vram7[(address & 0x3FFFF) >> 17];
+                if (mapping->getCount() == 0) break;
+                return mapping->read<T>(address & 0x1FFFF);
+            }
 
             case 0x08000000: case 0x09000000: // GBA ROM (empty)
                 return (T)0xFFFFFFFF;
@@ -460,6 +524,22 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
                     data = &palette[address & 0x7FF];
                     break;
 
+                case 0x06000000: // VRAM
+                {
+                    VramMapping *mapping;
+                    switch (address & 0xFFE00000)
+                    {
+                        case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
+                        case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
+                        case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
+                        case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
+                        default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
+                    }
+                    if (mapping->getCount() == 0) break;
+                    mapping->write<T>(address & 0x3FFF, value);
+                    return;
+                }
+
                 case 0x07000000: // OAM
                     data = &oam[address & 0x7FF];
                     break;
@@ -510,6 +590,14 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
             case 0x04000000: // I/O registers
                 ioWrite7<T>(address, value);
                 return;
+
+            case 0x06000000: // VRAM
+            {
+                VramMapping *mapping = &vram7[(address & 0x3FFFF) >> 17];
+                if (mapping->getCount() == 0) break;
+                mapping->write<T>(address & 0x1FFFF, value);
+                return;
+            }
 
             case 0x0A000000: // GBA SRAM
                 core->cartridgeGba.sramWrite(address + 0x4000000, value);
@@ -2824,118 +2912,48 @@ void Memory::writeDmaFill(int channel, uint32_t mask, uint32_t value)
 
 void Memory::writeVramCnt(int index, uint8_t value)
 {
-    // Write to one of the VRAMCNT registers and invalidate the 3D if a parameter changed
+    // Write to one of the VRAMCNT registers
     const uint8_t masks[] = { 0x9B, 0x9B, 0x9F, 0x9F, 0x87, 0x9F, 0x9F, 0x83, 0x83 };
-    if ((value & masks[index]) != (vramCnt[index] & masks[index]))
-    {
-        vramCnt[index] = value & masks[index];
-        core->gpu.invalidate3D();
-    }
+    if ((value & masks[index]) == (vramCnt[index] & masks[index])) return;
+    vramCnt[index] = value & masks[index];
 
     // Clear the previous mappings
-    memset(lcdc,       0, 64 * sizeof(uint8_t*));
-    memset(engABg,     0, 32 * sizeof(uint8_t*));
-    memset(engAObj,    0, 16 * sizeof(uint8_t*));
-    memset(engBBg,     0,  8 * sizeof(uint8_t*));
-    memset(engBObj,    0,  8 * sizeof(uint8_t*));
-    memset(vram7,      0,  2 * sizeof(uint8_t*));
-    memset(engAExtPal, 0,  5 * sizeof(uint8_t*));
-    memset(engBExtPal, 0,  5 * sizeof(uint8_t*));
-    memset(tex3D,      0,  4 * sizeof(uint8_t*));
-    memset(pal3D,      0,  6 * sizeof(uint8_t*));
+    memset(engABg,     0, sizeof(engABg));
+    memset(engBBg,     0, sizeof(engBBg));
+    memset(engAObj,    0, sizeof(engAObj));
+    memset(engBObj,    0, sizeof(engBObj));
+    memset(lcdc,       0, sizeof(lcdc));
+    memset(vram7,      0, sizeof(vram7));
+    memset(engAExtPal, 0, sizeof(engAExtPal));
+    memset(engBExtPal, 0, sizeof(engBExtPal));
+    memset(tex3D,      0, sizeof(tex3D));
+    memset(pal3D,      0, sizeof(pal3D));
     vramStat = 0;
 
-    // Remap VRAM block I
-    if (vramCnt[8] & BIT(7)) // Enabled
+    // Remap VRAM block A
+    if (vramCnt[0] & BIT(7)) // Enabled
     {
-        switch (vramCnt[8] & 0x07) // MST
+        uint8_t ofs = (vramCnt[0] & 0x18) >> 3;
+        switch (vramCnt[0] & 0x07) // MST
         {
-            case 0:                             lcdc[40]                      = &vramI[0]; break; // LCDC
-            case 1: for (int i = 0; i < 2; i++) engBBg[2 + i] = engBBg[6 + i] = &vramI[0]; break; // Engine B BG
-            case 2: for (int i = 0; i < 8; i++) engBObj[i]                    = &vramI[0]; break; // Engine B OBJ
-            case 3:                             engBExtPal[4]                 = &vramI[0]; break; // Engine B OBJ ext pal
-        }
-    }
+            case 0: // LCDC
+                for (int i = 0; i < 8; i++)
+                    lcdc[i].add(&vramA[i << 14]);
+                break;
 
-    // Remap VRAM block H
-    if (vramCnt[7] & BIT(7)) // Enabled
-    {
-        switch (vramCnt[7] & 0x07) // MST
-        {
-            case 0: for (int i = 0; i < 2; i++) lcdc[38 + i]              = &vramH[i << 14]; break; // LCDC
-            case 1: for (int i = 0; i < 2; i++) engBBg[i] = engBBg[4 + i] = &vramH[i << 14]; break; // Engine B BG
-            case 2: for (int i = 0; i < 4; i++) engBExtPal[i]             = &vramH[i << 13]; break; // Engine B BG ext pal
-        }
-    }
+            case 1: // Engine A BG
+                for (int i = 0; i < 8; i++)
+                    engABg[(ofs << 3) + i].add(&vramA[i << 14]);
+                break;
 
-    // Map VRAM block G
-    if (vramCnt[6] & BIT(7)) // Enabled
-    {
-        uint8_t ofs = (vramCnt[6] & 0x18) >> 3;
-        switch (vramCnt[6] & 0x07) // MST
-        {
-            case 0:                             lcdc[37]                                         = &vramG[0];       break; // LCDC
-            case 1: for (int i = 0; i < 2; i++) engABg[((ofs & 2) << 1) + (ofs & 1) + (i << 1)]  = &vramG[0];       break; // Engine A BG
-            case 2: for (int i = 0; i < 2; i++) engAObj[((ofs & 2) << 1) + (ofs & 1) + (i << 1)] = &vramG[0];       break; // Engine A OBJ
-            case 3:                             pal3D[((ofs & 2) << 1) + (ofs & 1)]              = &vramG[0];       break; // 3D palette
-            case 4: for (int i = 0; i < 2; i++) engAExtPal[((ofs & 1) << 1) + i]                 = &vramG[i << 13]; break; // Engine A BG ext pal
-            case 5:                             engAExtPal[4]                                    = &vramG[0];       break; // Engine A OBJ ext pal
-        }
-    }
+            case 2: // Engine A OBJ
+                for (int i = 0; i < 8; i++)
+                    engAObj[(ofs << 3) + i].add(&vramA[i << 14]);
+                break;
 
-    // Remap VRAM block F
-    if (vramCnt[5] & BIT(7)) // Enabled
-    {
-        uint8_t ofs = (vramCnt[5] & 0x18) >> 3;
-        switch (vramCnt[5] & 0x07) // MST
-        {
-            case 0:                             lcdc[36]                                         = &vramF[0];       break; // LCDC
-            case 1: for (int i = 0; i < 2; i++) engABg[((ofs & 2) << 1) + (ofs & 1) + (i << 1)]  = &vramF[0];       break; // Engine A BG
-            case 2: for (int i = 0; i < 2; i++) engAObj[((ofs & 2) << 1) + (ofs & 1) + (i << 1)] = &vramF[0];       break; // Engine A OBJ
-            case 3:                             pal3D[((ofs & 2) << 1) + (ofs & 1)]              = &vramF[0];       break; // 3D palette
-            case 4: for (int i = 0; i < 2; i++) engAExtPal[((ofs & 1) << 1) + i]                 = &vramF[i << 13]; break; // Engine A BG ext pal
-            case 5:                             engAExtPal[4]                                    = &vramF[0];       break; // Engine A OBJ ext pal
-        }
-    }
-
-    // Remap VRAM block E
-    if (vramCnt[4] & BIT(7)) // Enabled
-    {
-        switch (vramCnt[4] & 0x07) // MST
-        {
-            case 0: for (int i = 0; i < 4; i++) lcdc[32 + i]  = &vramE[i << 14]; break; // LCDC
-            case 1: for (int i = 0; i < 4; i++) engABg[i]     = &vramE[i << 14]; break; // Engine A BG
-            case 2: for (int i = 0; i < 4; i++) engAObj[i]    = &vramE[i << 14]; break; // Engine A OBJ
-            case 3: for (int i = 0; i < 4; i++) pal3D[i]      = &vramE[i << 14]; break; // 3D palette
-            case 4: for (int i = 0; i < 4; i++) engAExtPal[i] = &vramE[i << 13]; break; // Engine A BG ext pal
-        }
-    }
-
-    // Remap VRAM block D
-    if (vramCnt[3] & BIT(7)) // Enabled
-    {
-        uint8_t ofs = (vramCnt[3] & 0x18) >> 3;
-        switch (vramCnt[3] & 0x07) // MST
-        {
-            case 0: for (int i = 0; i < 8; i++) lcdc[24 + i]           = &vramD[i << 14]; break; // LCDC
-            case 1: for (int i = 0; i < 8; i++) engABg[(ofs << 3) + i] = &vramD[i << 14]; break; // Engine A BG
-            case 2: vramStat |= BIT(1);         vram7[ofs & BIT(0)]    = &vramD[0];       break; // ARM7
-            case 3:                             tex3D[ofs]             = &vramD[0];       break; // 3D texture
-            case 4: for (int i = 0; i < 8; i++) engBObj[i]             = &vramD[i << 14]; break; // Engine B OBJ
-        }
-    }
-
-    // Remap VRAM block C
-    if (vramCnt[2] & BIT(7)) // Enabled
-    {
-        uint8_t ofs = (vramCnt[2] & 0x18) >> 3;
-        switch (vramCnt[2] & 0x07) // MST
-        {
-            case 0: for (int i = 0; i < 8; i++) lcdc[16 + i]           = &vramC[i << 14]; break; // LCDC
-            case 1: for (int i = 0; i < 8; i++) engABg[(ofs << 3) + i] = &vramC[i << 14]; break; // Engine A BG
-            case 2: vramStat |= BIT(0);         vram7[ofs & BIT(0)]    = &vramC[0];       break; // ARM7
-            case 3:                             tex3D[ofs]             = &vramC[0];       break; // 3D texture
-            case 4: for (int i = 0; i < 8; i++) engBBg[i]              = &vramC[i << 14]; break; // Engine B BG
+            case 3: // 3D texture
+                tex3D[ofs] = &vramA[0];
+                break;
         }
     }
 
@@ -2945,29 +2963,250 @@ void Memory::writeVramCnt(int index, uint8_t value)
         uint8_t ofs = (vramCnt[1] & 0x18) >> 3;
         switch (vramCnt[1] & 0x07) // MST
         {
-            case 0: for (int i = 0; i < 8; i++) lcdc[8 + i]             = &vramB[i << 14]; break; // LCDC
-            case 1: for (int i = 0; i < 8; i++) engABg[(ofs << 3) + i]  = &vramB[i << 14]; break; // Engine A BG
-            case 2: for (int i = 0; i < 8; i++) engAObj[(ofs << 3) + i] = &vramB[i << 14]; break; // Engine A OBJ
-            case 3:                             tex3D[ofs]              = &vramB[0];       break; // 3D texture
+            case 0: // LCDC
+                for (int i = 0; i < 8; i++)
+                    lcdc[8 + i].add(&vramB[i << 14]);
+                break;
+
+            case 1: // Engine A BG
+                for (int i = 0; i < 8; i++)
+                    engABg[(ofs << 3) + i].add(&vramB[i << 14]);
+                break;
+
+            case 2: // Engine A OBJ
+                for (int i = 0; i < 8; i++)
+                    engAObj[(ofs << 3) + i].add(&vramB[i << 14]);
+                break;
+
+            case 3: // 3D texture
+                tex3D[ofs] = &vramB[0];
+                break;
         }
     }
 
-    // Remap VRAM block A
-    if (vramCnt[0] & BIT(7)) // Enabled
+    // Remap VRAM block C
+    if (vramCnt[2] & BIT(7)) // Enabled
     {
-        uint8_t ofs = (vramCnt[0] & 0x18) >> 3;
-        switch (vramCnt[0] & 0x07) // MST
+        uint8_t ofs = (vramCnt[2] & 0x18) >> 3;
+        switch (vramCnt[2] & 0x07) // MST
         {
-            case 0: for (int i = 0; i < 8; i++) lcdc[i]                 = &vramA[i << 14]; break; // LCDC
-            case 1: for (int i = 0; i < 8; i++) engABg[(ofs << 3) + i]  = &vramA[i << 14]; break; // Engine A BG
-            case 2: for (int i = 0; i < 8; i++) engAObj[(ofs << 3) + i] = &vramA[i << 14]; break; // Engine A OBJ
-            case 3:                             tex3D[ofs]              = &vramA[0];       break; // 3D texture
+            case 0: // LCDC
+                for (int i = 0; i < 8; i++)
+                    lcdc[16 + i].add(&vramC[i << 14]);
+                break;
+
+            case 1: // Engine A BG
+                for (int i = 0; i < 8; i++)
+                    engABg[(ofs << 3) + i].add(&vramC[i << 14]);
+                break;
+
+            case 2: // ARM7
+                vram7[ofs & BIT(0)].add(&vramC[0]);
+                vramStat |= BIT(0);
+                break;
+
+            case 3: // 3D texture
+                tex3D[ofs] = &vramC[0];
+                break;
+
+            case 4: // Engine B BG
+                for (int i = 0; i < 8; i++)
+                    engBBg[i].add(&vramC[i << 14]);
+                break;
+        }
+    }
+
+    // Remap VRAM block D
+    if (vramCnt[3] & BIT(7)) // Enabled
+    {
+        uint8_t ofs = (vramCnt[3] & 0x18) >> 3;
+        switch (vramCnt[3] & 0x07) // MST
+        {
+            case 0: // LCDC
+                for (int i = 0; i < 8; i++)
+                    lcdc[24 + i].add(&vramD[i << 14]);
+                break;
+
+            case 1: // Engine A BG
+                for (int i = 0; i < 8; i++)
+                    engABg[(ofs << 3) + i].add(&vramD[i << 14]);
+                break;
+
+            case 2: // ARM7
+                vram7[ofs & BIT(0)].add(&vramD[0]);
+                vramStat &= ~BIT(1);
+                break;
+
+            case 3: // 3D texture
+                tex3D[ofs] = &vramD[0];
+                break;
+
+            case 4: // Engine B OBJ
+                for (int i = 0; i < 8; i++)
+                    engBObj[i].add(&vramD[i << 14]);
+                break;
+        }
+    }
+
+    // Remap VRAM block E
+    if (vramCnt[4] & BIT(7)) // Enabled
+    {
+        switch (vramCnt[4] & 0x07) // MST
+        {
+            case 0: // LCDC
+                for (int i = 0; i < 4; i++)
+                    lcdc[32 + i].add(&vramE[i << 14]);
+                break;
+
+            case 1: // Engine A BG
+                for (int i = 0; i < 4; i++)
+                    engABg[i].add(&vramE[i << 14]);
+                break;
+
+            case 2: // Engine A OBJ
+                for (int i = 0; i < 4; i++)
+                    engAObj[i].add(&vramE[i << 14]);
+                break;
+
+            case 3: // 3D palette
+                for (int i = 0; i < 4; i++)
+                    pal3D[i] = &vramE[i << 14];
+                break;
+
+            case 4: // Engine A BG ext pal
+                for (int i = 0; i < 4; i++)
+                    engAExtPal[i] = &vramE[i << 13];
+                break;
+        }
+    }
+
+    // Remap VRAM block F
+    if (vramCnt[5] & BIT(7)) // Enabled
+    {
+        uint8_t ofs = (vramCnt[5] & 0x18) >> 3;
+        switch (vramCnt[5] & 0x07) // MST
+        {
+            case 0: // LCDC
+                lcdc[36].add(&vramF[0]);
+                break;
+
+            case 1: // Engine A BG
+                for (int i = 0; i < 2; i++)
+                    engABg[((ofs & 2) << 1) + (ofs & 1) + (i << 1)].add(&vramF[0]);
+                break;
+
+            case 2: // Engine A OBJ
+                for (int i = 0; i < 2; i++)
+                    engAObj[((ofs & 2) << 1) + (ofs & 1) + (i << 1)].add(&vramF[0]);
+                break;
+
+            case 3: // 3D palette
+                pal3D[((ofs & 2) << 1) + (ofs & 1)] = &vramF[0];
+                break;
+
+            case 4: // Engine A BG ext pal
+                for (int i = 0; i < 2; i++)
+                    engAExtPal[((ofs & 1) << 1) + i] = &vramF[i << 13];
+                break;
+
+            case 5: // Engine A OBJ ext pal
+                engAExtPal[4] = &vramF[0];
+                break;
+        }
+    }
+
+    // Remap VRAM block G
+    if (vramCnt[6] & BIT(7)) // Enabled
+    {
+        uint8_t ofs = (vramCnt[6] & 0x18) >> 3;
+        switch (vramCnt[6] & 0x07) // MST
+        {
+            case 0: // LCDC
+                lcdc[37].add(&vramG[0]);
+                break;
+
+            case 1: // Engine A BG
+                for (int i = 0; i < 2; i++)
+                    engABg[((ofs & 2) << 1) + (ofs & 1) + (i << 1)].add(&vramG[0]);
+                break;
+
+            case 2: // Engine A OBJ
+                for (int i = 0; i < 2; i++)
+                    engAObj[((ofs & 2) << 1) + (ofs & 1) + (i << 1)].add(&vramG[0]);
+                break;
+
+            case 3: // 3D palette
+                pal3D[((ofs & 2) << 1) + (ofs & 1)] = &vramG[0];
+                break;
+
+            case 4: // Engine A BG ext pal
+                for (int i = 0; i < 2; i++)
+                    engAExtPal[((ofs & 1) << 1) + i] = &vramG[i << 13];
+                break;
+
+            case 5: // Engine A OBJ ext pal
+                engAExtPal[4] = &vramG[0];
+                break;
+        }
+    }
+
+    // Remap VRAM block H
+    if (vramCnt[7] & BIT(7)) // Enabled
+    {
+        switch (vramCnt[7] & 0x07) // MST
+        {
+            case 0: // LCDC
+                for (int i = 0; i < 2; i++)
+                    lcdc[38 + i].add(&vramH[i << 14]);
+                break;
+
+            case 1: // Engine B BG
+                for (int i = 0; i < 2; i++)
+                {
+                    engBBg[0 + i].add(&vramH[i << 14]);
+                    engBBg[4 + i].add(&vramH[i << 14]);
+                }
+                break;
+
+            case 2: // Engine B BG ext pal
+                for (int i = 0; i < 4; i++)
+                    engBExtPal[i] = &vramH[i << 13];
+                break;
+        }
+    }
+
+    // Remap VRAM block I
+    if (vramCnt[8] & BIT(7)) // Enabled
+    {
+        switch (vramCnt[8] & 0x07) // MST
+        {
+            case 0: // LCDC
+                lcdc[40].add(&vramI[0]);
+                break;
+
+            case 1: // Engine B BG
+                for (int i = 0; i < 2; i++)
+                {
+                    engBBg[2 + i].add(&vramI[0]);
+                    engBBg[6 + i].add(&vramI[0]);
+                }
+                break;
+
+            case 2: // Engine B OBJ
+                for (int i = 0; i < 8; i++)
+                    engBObj[i].add(&vramI[0]);
+                break;
+
+            case 3: // Engine B OBJ ext pal
+                engBExtPal[4] = &vramI[0];
+                break;
         }
     }
 
     // Update the memory maps at the VRAM locations
     updateMap9(0x06000000, 0x07000000);
     updateMap7(0x06000000, 0x07000000);
+    core->gpu.invalidate3D();
 }
 
 void Memory::writeWramCnt(uint8_t value)
@@ -2989,22 +3228,16 @@ void Memory::writeHaltCnt(uint8_t value)
     switch (haltCnt >> 6)
     {
         case 1: // GBA
-        {
             core->enterGbaMode();
             break;
-        }
 
         case 2: // Halt
-        {
             core->interpreter[1].halt(0);
             break;
-        }
 
         case 3: // Sleep
-        {
             LOG("Unhandled request for sleep mode\n");
             break;
-        }
     }
 }
 
