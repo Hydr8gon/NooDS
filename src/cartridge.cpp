@@ -113,7 +113,7 @@ void Cartridge::trimRom()
     }
 }
 
-void Cartridge::resizeSave(int newSize)
+void Cartridge::resizeSave(int newSize, bool dirty)
 {
     // Resize the save
     if (newSize > 0)
@@ -138,7 +138,8 @@ void Cartridge::resizeSave(int newSize)
     }
 
     saveSize = newSize;
-    saveDirty = true;
+    if (dirty)
+        saveDirty = true;
 }
 
 void CartridgeNds::loadRom(std::string path)
@@ -187,7 +188,7 @@ void CartridgeNds::loadRom(std::string path)
 
     // If the save size is unknown, assume FLASH 512KB and hope the user will change it if it doesn't work
     if (!save)
-        resizeSave(0x80000);
+        resizeSave(0x80000, false);
 }
 
 void CartridgeNds::directBoot()
@@ -934,21 +935,21 @@ void CartridgeGba::loadRom(std::string path)
                 case 1: // SRAM 32KB
                 {
                     LOG("Detected SRAM 32KB save type\n");
-                    resizeSave(0x8000);
+                    resizeSave(0x8000, false);
                     return;
                 }
 
                 case 2: case 3: // FLASH 64KB
                 {
                     LOG("Detected FLASH 64KB save type\n");
-                    resizeSave(0x10000);
+                    resizeSave(0x10000, false);
                     return;
                 }
 
                 case 4: // FLASH 128KB
                 {
                     LOG("Detected FLASH 128KB save type\n");
-                    resizeSave(0x20000);
+                    resizeSave(0x20000, false);
                     return;
                 }
             }
@@ -964,12 +965,12 @@ uint8_t CartridgeGba::eepromRead()
         if (eepromCount == 9)
         {
             LOG("Detected EEPROM 0.5KB save type\n");
-            resizeSave(0x200);
+            resizeSave(0x200, false);
         }
         else
         {
             LOG("Detected EEPROM 8KB save type\n");
-            resizeSave(0x2000);
+            resizeSave(0x2000, false);
         }
     }
 
@@ -1037,7 +1038,7 @@ void CartridgeGba::eepromWrite(uint8_t value)
             if (saveSize == -1)
             {
                 LOG("Detected EEPROM 8KB save type\n");
-                resizeSave(0x2000);
+                resizeSave(0x2000, false);
             }
 
             // Write the data after all the bits have been received

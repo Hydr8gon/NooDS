@@ -44,7 +44,7 @@ class Cartridge
         void writeSave();
 
         void trimRom();
-        void resizeSave(int newSize);
+        void resizeSave(int newSize, bool dirty = true);
 
         int getRomSize()  { return romSize;  }
         int getSaveSize() { return saveSize; }

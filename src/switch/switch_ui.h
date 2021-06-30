@@ -72,6 +72,7 @@ class SwitchUI
         static bool message(std::string title, std::vector<std::string> text, bool cancel = false);
 
         static bool isDarkTheme() { return darkTheme; }
+        static PadState *getPad() { return &pad;      }
 
     private:
         SwitchUI() {} // Private to prevent instantiation

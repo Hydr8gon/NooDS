@@ -566,15 +566,12 @@ int main()
     // Open the file browser
     fileBrowser();
 
-    PadState pad;
-    padInitializeDefault(&pad);
-
     while (appletMainLoop() && running)
     {
         // Scan for key input
-        padUpdate(&pad);
-        uint32_t pressed = padGetButtonsDown(&pad);
-        uint32_t released = padGetButtonsUp(&pad);
+        padUpdate(SwitchUI::getPad());
+        uint32_t pressed = padGetButtonsDown(SwitchUI::getPad());
+        uint32_t released = padGetButtonsUp(SwitchUI::getPad());
 
         // Send input to the core
         for (int i = 0; i < 12; i++)
