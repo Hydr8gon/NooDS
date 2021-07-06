@@ -20,7 +20,7 @@
 #include "save_dialog.h"
 #include "../core.h"
 
-enum Event
+enum SaveEvent
 {
     SELECTION_0 = 1,
     SELECTION_1,

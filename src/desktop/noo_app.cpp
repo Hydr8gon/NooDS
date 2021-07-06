@@ -24,7 +24,7 @@
 #include "../common/screen_layout.h"
 #include "../settings.h"
 
-enum Event
+enum AppEvent
 {
     UPDATE = 1
 };

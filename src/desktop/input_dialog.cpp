@@ -21,7 +21,7 @@
 #include "noo_app.h"
 #include "../settings.h"
 
-enum Event
+enum InputEvent
 {
     REMAP_A = 1,
     REMAP_B,

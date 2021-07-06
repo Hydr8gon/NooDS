@@ -27,7 +27,7 @@
 #include "../settings.h"
 #include "../../icon/icon.xpm"
 
-enum Event
+enum FrameEvent
 {
     LOAD_ROM = 1,
     BOOT_FIRMWARE,

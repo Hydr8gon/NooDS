@@ -199,8 +199,6 @@ class Gpu3D
         uint16_t viewportX = 0, viewportY = 0;
         uint16_t viewportWidth = 256, viewportHeight = 192;
 
-        int16_t boxTestCoords[6] = {};
-
         uint32_t gxFifo = 0x00000000;
         uint32_t gxStat = 0x04000000;
         int32_t posResult[4] = {};

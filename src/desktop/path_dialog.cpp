@@ -20,7 +20,7 @@
 #include "path_dialog.h"
 #include "../settings.h"
 
-enum Event
+enum PathEvent
 {
     BIOS9_BROWSE = 1,
     BIOS7_BROWSE,

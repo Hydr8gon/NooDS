@@ -143,9 +143,9 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int *size)
 {
     bool clip = false;
 
-    // Save a copy of the original unclipped vertices
-    Vertex original[4];
-    memcpy(original, unclipped, 4 * sizeof(Vertex));
+    // Start with the original unclipped vertices
+    Vertex vertices[10];
+    memcpy(vertices, unclipped, *size * sizeof(Vertex));
 
     // Clip a polygon using the Sutherland-Hodgman algorithm
     for (int i = 0; i < 6; i++)
@@ -156,8 +156,8 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int *size)
         for (int j = 0; j < oldSize; j++)
         {
             // Get the unclipped vertices 
-            Vertex *current = &unclipped[j];
-            Vertex *previous = &unclipped[(j - 1 + oldSize) % oldSize];
+            Vertex *current = &vertices[j];
+            Vertex *previous = &vertices[(j - 1 + oldSize) % oldSize];
 
             // Choose which coordinates to check based on the current side being clipped against
             int32_t currentVal, previousVal;
@@ -189,12 +189,9 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int *size)
             }
         }
 
-        // Copy the new vertices to unclipped so they'll be used in the next iteration
-        if (i < 5) memcpy(unclipped, clipped, *size * sizeof(Vertex));
+        // Update the current vertices
+        memcpy(vertices, clipped, *size * sizeof(Vertex));
     }
-
-    // Restore the original unclipped vertices
-    memcpy(unclipped, original, 4 * sizeof(Vertex));
 
     return clip;
 }
@@ -340,26 +337,23 @@ void Gpu3D::swapBuffers()
     {
         _Polygon *p = &polygonsIn[i];
 
-        // Reduce precision in 4-bit increments until all W values fit in the 16-bit range
-        for (int j = 0; j < p->size; j++)
+        // Find the polygon's greatest W value
+        uint32_t value = p->vertices[0].w;
+        for (int j = 1; j < p->size; j++)
         {
-            while (((uint32_t)p->vertices[j].w >> p->wShift) > 0xFFFF)
-                p->wShift += 4;
+            if ((uint32_t)p->vertices[j].w > value)
+                value = p->vertices[j].w;
         }
 
-        // If precision wasn't reduced, increase it in 4-bit increments until a W value no longer fits in the 16-bit range
-        if (p->wShift == 0)
+        // Reduce precision in 4-bit increments until the value fits in a 16-bit range
+        while ((value >> p->wShift) > 0xFFFF)
+            p->wShift += 4;
+
+        // If precision wasn't reduced, increase it until the value doesn't fit in a 16-bit range
+        if (p->wShift == 0 && value != 0)
         {
-            while (true)
-            {
-                for (int j = 0; j < p->size; j++)
-                {
-                    if (p->vertices[j].w == 0 || ((uint32_t)p->vertices[j].w << -(p->wShift - 4)) > 0xFFFF)
-                        goto out;
-                }
+            while ((value << -(p->wShift - 4)) <= 0xFFFF)
                 p->wShift -= 4;
-            }
-            out:;
         }
     }
 
@@ -447,7 +441,7 @@ void Gpu3D::addPolygon()
     savedPolygon.vertices = &verticesIn[vertexCountIn - size];
 
     // Save a copy of the unclipped vertices
-    Vertex unclipped[10];
+    Vertex unclipped[4];
     memcpy(unclipped, savedPolygon.vertices, size * sizeof(Vertex));
 
     // Rearrange quad strip vertices to be counter-clockwise
@@ -1411,11 +1405,12 @@ void Gpu3D::viewportCmd(uint32_t param)
 void Gpu3D::boxTestCmd(std::vector<uint32_t> *params)
 {
     // Store the parameters (X-pos, Y-pos, Z-pos, width, height, depth)
-    for (int i = 0; i < 3; i++)
+    int16_t boxTestCoords[6] =
     {
-        boxTestCoords[i * 2 + 0] = (*params)[i] >>  0;
-        boxTestCoords[i * 2 + 1] = (*params)[i] >> 16;
-    }
+        (int16_t)(*params)[0], (int16_t)((*params)[0] >> 16),
+        (int16_t)(*params)[1], (int16_t)((*params)[1] >> 16),
+        (int16_t)(*params)[2], (int16_t)((*params)[2] >> 16)
+    };
 
     // Get the vertices of the box
     Vertex vertices[8];
@@ -1459,7 +1454,7 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> *params)
     }
 
     // Arrange the vertices to represent the faces of the box
-    Vertex faces[6][8] =
+    Vertex faces[6][4] =
     {
         { vertices[0], vertices[1], vertices[4], vertices[2] },
         { vertices[3], vertices[5], vertices[7], vertices[6] },

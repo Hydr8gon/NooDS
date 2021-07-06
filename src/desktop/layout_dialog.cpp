@@ -22,7 +22,7 @@
 #include "../common/screen_layout.h"
 #include "../settings.h"
 
-enum Event
+enum LayoutEvent
 {
     ROTATE_NONE = 1,
     ROTATE_CW,
