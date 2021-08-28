@@ -64,20 +64,20 @@ public class FileAdapter extends BaseAdapter
     @Override
     public View getView(int position, View convertView, ViewGroup parent)
     {
+        // Create a new file row
         if (convertView == null)
         {
-            // Create a new file row
             LayoutInflater inflater = LayoutInflater.from(context);
             convertView = inflater.inflate(R.layout.file_row, parent, false);
-
-            // Set the file title
-            TextView title = (TextView)convertView.findViewById(R.id.name);
-            title.setText(names.get(position));
-
-            // Set the file icon
-            ImageView icon = (ImageView)convertView.findViewById(R.id.icon);
-            icon.setImageBitmap(icons.get(position));
         }
+
+        // Set the file title
+        TextView title = (TextView)convertView.findViewById(R.id.name);
+        title.setText(names.get(position));
+
+        // Set the file icon
+        ImageView icon = (ImageView)convertView.findViewById(R.id.icon);
+        icon.setImageBitmap(icons.get(position));
 
         return convertView;
     }
