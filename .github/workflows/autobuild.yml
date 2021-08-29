@@ -56,7 +56,7 @@ jobs:
         msystem: MINGW64
         update: true
     - name: Install build tools, wxWidgets, and PortAudio
-      run: pacman -S mingw-w64-x86_64-{gcc,wxWidgets,portaudio,jbigkit} make --noconfirm
+      run: pacman -S mingw-w64-x86_64-{gcc,pkg-config,wxWidgets,portaudio,jbigkit} make --noconfirm
       shell: msys2 {0}
     - name: Compile
       run: |
