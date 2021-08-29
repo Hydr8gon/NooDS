@@ -1,17 +1,20 @@
-NAME    := noods
-BUILD   := build
-SOURCES := src src/common src/desktop
-ARGS    := -Ofast -flto -std=c++11 #-DDEBUG
-LIBS    := -lportaudio
+NAME     := noods
+BUILD    := build
+SOURCES  := src src/common src/desktop
+ARGS     := -Ofast -flto -std=c++11 #-DDEBUG
+LIBS     := $(shell pkg-config --libs portaudio-2.0)
+INCLUDES := $(shell pkg-config --cflags portaudio-2.0)
 
 APPNAME := NooDS
 DESTDIR ?= /usr
 
 ifeq ($(OS),Windows_NT)
   ARGS += -static -DWINDOWS
-  LIBS += `wx-config-static --cxxflags --libs --gl-libs` -lole32 -lsetupapi -lwinmm
+  LIBS += $(shell wx-config-static --libs --gl-libs) -lole32 -lsetupapi -lwinmm
+  INCLUDES += $(shell wx-config-static --cxxflags)
 else
-  LIBS += `wx-config --cxxflags --libs --gl-libs`
+  LIBS += $(shell wx-config --libs --gl-libs)
+  INCLUDES += $(shell wx-config --cxxflags)
   ifeq ($(shell uname -s),Darwin)
     ARGS += -DMACOS
   else
@@ -59,7 +62,7 @@ $(NAME): $(OFILES)
 	g++ -o $@ $(ARGS) $^ $(LIBS)
 
 $(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
-	g++ -c -o $@ $(ARGS) $< $(LIBS)
+	g++ -c -o $@ $(ARGS) $(INCLUDES) $<
 
 $(BUILD)/icon.o:
 	windres icon/icon.rc $@
