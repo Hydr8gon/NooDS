@@ -20,6 +20,7 @@
 #ifndef NOO_CANVAS_H
 #define NOO_CANVAS_H
 
+#include <chrono>
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 
@@ -40,6 +41,11 @@ class NooCanvas: public wxGLCanvas
         uint32_t framebuffer[256 * 192 * 2] = {};
         bool gbaMode = false;
         bool display = true;
+
+        int frameCount = 0;
+        int swapInterval = 0;
+        int refreshRate = 0;
+        std::chrono::steady_clock::time_point lastRateTime;
 
         void resize();
 

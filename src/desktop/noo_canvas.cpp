@@ -69,16 +69,19 @@ void NooCanvas::draw(wxPaintEvent &event)
 
     if (emulator->core)
     {
-        // Wait until a new frame is ready
-        bool gba = (emulator->core->isGbaMode() && ScreenLayout::getGbaCrop());
-        while (!emulator->core->gpu.getFrame(framebuffer, gba) && emulator->running);
-
         // Update the layout if GBA mode changed
+        bool gba = (emulator->core->isGbaMode() && ScreenLayout::getGbaCrop());
         if (gbaMode != gba)
         {
             gbaMode = gba;
             frame->SendSizeEvent();
         }
+
+        // Emulation is limited by audio, so frames aren't always generated at a consistent rate
+        // This can mess up frame pacing at higher refresh rates when frames are ready too soon
+        // To solve this, use a software-based swap interval to wait before getting the next frame
+        if (++frameCount >= swapInterval && emulator->core->gpu.getFrame(framebuffer, gba))
+            frameCount = 0;
 
         // Rotate the texture coordinates
         uint8_t texCoords;
@@ -140,6 +143,16 @@ void NooCanvas::draw(wxPaintEvent &event)
         // Stop rendering until the core is running again
         // The current frame will clear the window
         display = false;
+    }
+
+    // Track the refresh rate and update the swap interval every second
+    refreshRate++;
+    std::chrono::duration<double> rateTime = std::chrono::steady_clock::now() - lastRateTime;
+    if (rateTime.count() >= 1.0f)
+    {
+        swapInterval = (refreshRate + 5) / 60; // Margin of 5
+        refreshRate = 0;
+        lastRateTime = std::chrono::steady_clock::now();
     }
 
     glFinish();

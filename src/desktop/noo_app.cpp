@@ -105,7 +105,7 @@ bool NooApp::OnInit()
 
     // Set up the update timer
     wxTimer *timer = new wxTimer(this, UPDATE);
-    timer->Start(10);
+    timer->Start(6);
 
     // Start the audio service
     PaStream *stream;
