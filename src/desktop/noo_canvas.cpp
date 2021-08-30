@@ -69,9 +69,12 @@ void NooCanvas::draw(wxPaintEvent &event)
 
     if (emulator->core)
     {
-        // Update the frame if a new one is ready
+        // Wait until a new frame is ready
         bool gba = (emulator->core->isGbaMode() && ScreenLayout::getGbaCrop());
-        if (emulator->core->gpu.getFrame(framebuffer, gba) && gbaMode != gba)
+        while (!emulator->core->gpu.getFrame(framebuffer, gba) && emulator->running);
+
+        // Update the layout if GBA mode changed
+        if (gbaMode != gba)
         {
             gbaMode = gba;
             frame->SendSizeEvent();

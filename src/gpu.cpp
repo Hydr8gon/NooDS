@@ -26,7 +26,7 @@
 Gpu::Gpu(Core *core): core(core)
 {
     // Mark the thread as not drawing to start
-    ready.store(true);
+    ready.store(false);
     drawing.store(0);
 
     // Prepare tasks to be used with the scheduler
@@ -91,20 +91,21 @@ uint16_t Gpu::rgb6ToRgb5(uint32_t color)
 bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
 {
     // Check if a new frame is ready
-    if (!ready.load()) return false;
-    mutex.lock();
+    if (!ready.load())
+        return false;
 
     if (gbaCrop)
     {
         // Output the frame in RGB8 format, cropped for GBA
         for (int y = 0; y < 160; y++)
             for (int x = 0; x < 240; x++)
-                out[y * 240 + x] = rgb5ToRgb8(framebuffer[y * 256 + x]);
+                out[y * 240 + x] = rgb5ToRgb8(framebuffers.front()[y * 256 + x]);
     }
     else if (core->isGbaMode())
     {
         int offset = (powCnt1 & BIT(15)) ? 0 : (256 * 192); // Display swap
         uint32_t base = 0x6800000 + gbaBlock * 0x20000;
+        gbaBlock = !gbaBlock;
 
         // The DS draws the GBA screen by capturing it to alternating VRAM blocks and then displaying that
         // While not used officially, it's possible to copy images into VRAM before entering GBA mode to use as a border
@@ -114,7 +115,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
             for (int x = 0; x < 256; x++)
             {
                 if (x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16)
-                    out[offset + y * 256 + x] = rgb5ToRgb8(framebuffer[(y - 16) * 256 + (x - 8)]);
+                    out[offset + y * 256 + x] = rgb5ToRgb8(framebuffers.front()[(y - 16) * 256 + (x - 8)]);
                 else
                     out[offset + y * 256 + x] = rgb5ToRgb8(core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
             }
@@ -127,11 +128,18 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     {
         // Output the full frame in RGB8 format
         for (int i = 0; i < 256 * 192 * 2; i++)
-            out[i] = rgb6ToRgb8(framebuffer[i]);
+            out[i] = rgb6ToRgb8(framebuffers.front()[i]);
     }
 
+    // Free the used framebuffer
+    delete[] framebuffers.front();
+
+    // Remove the frame from the queue
+    mutex.lock();
+    framebuffers.pop();
+    ready.store(!framebuffers.empty());
     mutex.unlock();
-    ready.store(false);
+
     return true;
 }
 
@@ -195,14 +203,19 @@ void Gpu::gbaScanline308()
             // Trigger V-blank DMA transfers
             core->dma[1].trigger(1);
 
-            mutex.lock();
+            // Allow up to 2 framebuffers to be queued, to preserve frame pacing if emulation runs ahead
+            if (framebuffers.size() < 2)
+            {
+                // Copy the completed sub-framebuffer to a new framebuffer
+                uint32_t *framebuffer = new uint32_t[256 * 160];
+                memcpy(&framebuffer[0], core->gpu2D[0].getFramebuffer(), 256 * 160 * sizeof(uint32_t));
 
-            // Copy the completed sub-framebuffer to the main framebuffer
-            memcpy(&framebuffer[0], core->gpu2D[0].getFramebuffer(), 256 * 160 * sizeof(uint32_t));
-            gbaBlock = !gbaBlock;
-
-            mutex.unlock();
-            ready.store(true);
+                // Add the frame to the queue
+                mutex.lock();
+                framebuffers.push(framebuffer);
+                ready.store(true);
+                mutex.unlock();
+            }
 
             break;
         }
@@ -448,29 +461,35 @@ void Gpu::scanline355()
             if (core->gpu3D.shouldSwap())
                 core->gpu3D.swapBuffers();
 
-            mutex.lock();
-
-            // Copy the completed sub-framebuffers to the main framebuffer
-            if (powCnt1 & BIT(0)) // LCDs enabled
+            // Allow up to 2 framebuffers to be queued, to preserve frame pacing if emulation runs ahead
+            if (framebuffers.size() < 2)
             {
-                if (powCnt1 & BIT(15)) // Display swap
+                // Copy the completed sub-framebuffers to a new framebuffer
+                uint32_t *framebuffer = new uint32_t[256 * 192 * 2];
+                if (powCnt1 & BIT(0)) // LCDs enabled
                 {
-                    memcpy(&framebuffer[0],         core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-                    memcpy(&framebuffer[256 * 192], core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    if (powCnt1 & BIT(15)) // Display swap
+                    {
+                        memcpy(&framebuffer[0],         core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                        memcpy(&framebuffer[256 * 192], core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    }
+                    else
+                    {
+                        memcpy(&framebuffer[0],         core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                        memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    }
                 }
                 else
                 {
-                    memcpy(&framebuffer[0],         core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-                    memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                    memset(framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
                 }
-            }
-            else
-            {
-                memset(framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
-            }
 
-            mutex.unlock();
-            ready.store(true);
+                // Add the frame to the queue
+                mutex.lock();
+                framebuffers.push(framebuffer);
+                ready.store(true);
+                mutex.unlock();
+            }
 
             break;
         }

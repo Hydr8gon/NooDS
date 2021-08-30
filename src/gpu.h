@@ -25,6 +25,7 @@
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <queue>
 
 #include "defines.h"
 
@@ -55,7 +56,7 @@ class Gpu
     private:
         Core *core;
 
-        uint32_t framebuffer[256 * 192 * 2] = {};
+        std::queue<uint32_t*> framebuffers;
         std::atomic<bool> ready;
         std::mutex mutex;
 
