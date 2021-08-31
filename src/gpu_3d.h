@@ -53,6 +53,8 @@ struct Matrix
         0 << 12, 0 << 12, 1 << 12, 0 << 12,
         0 << 12, 0 << 12, 0 << 12, 1 << 12
     };
+
+    Matrix operator*(Matrix &mtx);
 };
 
 struct Vertex
@@ -60,6 +62,9 @@ struct Vertex
     int32_t x = 0, y = 0, z = 0, w = 0;
     int16_t s = 0, t = 0;
     uint32_t color = 0;
+
+    Vertex  operator*(Matrix &mtx);
+    int32_t operator*(Vertex &vtx);
 };
 
 struct _Polygon
@@ -209,10 +214,6 @@ class Gpu3D
         std::function<void()> runCommandTask;
 
         static uint32_t rgb5ToRgb6(uint16_t color);
-
-        static Matrix multiply(Matrix *mtx1, Matrix *mtx2);
-        static Vertex multiply(Vertex *vtx, Matrix *mtx);
-        static int32_t multiply(Vertex *vec1, Vertex *vec2);
 
         static Vertex intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2);
         static bool clipPolygon(Vertex *unclipped, Vertex *clipped, int *size);

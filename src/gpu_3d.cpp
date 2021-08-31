@@ -22,6 +22,43 @@
 #include "gpu_3d.h"
 #include "core.h"
 
+Matrix Matrix::operator*(Matrix &mtx)
+{
+    Matrix result;
+
+    // Multiply 2 matrices
+    for (int y = 0; y < 4; y++)
+    {
+        for (int x = 0; x < 4; x++)
+        {
+            int64_t value = 0;
+            for (int i = 0; i < 4; i++) value += (int64_t)data[y * 4 + i] * mtx.data[i * 4 + x];
+            result.data[y * 4 + x] = value >> 12;
+        }
+    }
+
+    return result;
+}
+
+Vertex Vertex::operator*(Matrix &mtx)
+{
+    Vertex result = *this;
+
+    // Multiply a vertex with a matrix
+    result.x = ((int64_t)x * mtx.data[0] + (int64_t)y * mtx.data[4] + (int64_t)z * mtx.data[8]  + (int64_t)w * mtx.data[12]) >> 12;
+    result.y = ((int64_t)x * mtx.data[1] + (int64_t)y * mtx.data[5] + (int64_t)z * mtx.data[9]  + (int64_t)w * mtx.data[13]) >> 12;
+    result.z = ((int64_t)x * mtx.data[2] + (int64_t)y * mtx.data[6] + (int64_t)z * mtx.data[10] + (int64_t)w * mtx.data[14]) >> 12;
+    result.w = ((int64_t)x * mtx.data[3] + (int64_t)y * mtx.data[7] + (int64_t)z * mtx.data[11] + (int64_t)w * mtx.data[15]) >> 12;
+
+    return result;
+}
+
+int32_t Vertex::operator*(Vertex &vtx)
+{
+    // Multiply 2 vectors
+    return ((int64_t)x * vtx.x + (int64_t)y * vtx.y + (int64_t)z * vtx.z) >> 12;
+}
+
 Gpu3D::Gpu3D(Core *core): core(core)
 {
     // Set the parameter counts
@@ -74,43 +111,6 @@ uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
     uint8_t g = ((color >>  5) & 0x1F) * 2; if (g > 0) g++;
     uint8_t b = ((color >> 10) & 0x1F) * 2; if (b > 0) b++;
     return (b << 12) | (g << 6) | r;
-}
-
-Matrix Gpu3D::multiply(Matrix *mtx1, Matrix *mtx2)
-{
-    Matrix matrix;
-
-    // Multiply 2 matrices
-    for (int y = 0; y < 4; y++)
-    {
-        for (int x = 0; x < 4; x++)
-        {
-            int64_t value = 0;
-            for (int i = 0; i < 4; i++) value += (int64_t)mtx1->data[y * 4 + i] * mtx2->data[i * 4 + x];
-            matrix.data[y * 4 + x] = value >> 12;
-        }
-    }
-
-    return matrix;
-}
-
-Vertex Gpu3D::multiply(Vertex *vtx, Matrix *mtx)
-{
-    Vertex vertex = *vtx;
-
-    // Multiply a vertex with a matrix
-    vertex.x = ((int64_t)vtx->x * mtx->data[0] + (int64_t)vtx->y * mtx->data[4] + (int64_t)vtx->z * mtx->data[8]  + (int64_t)vtx->w * mtx->data[12]) >> 12;
-    vertex.y = ((int64_t)vtx->x * mtx->data[1] + (int64_t)vtx->y * mtx->data[5] + (int64_t)vtx->z * mtx->data[9]  + (int64_t)vtx->w * mtx->data[13]) >> 12;
-    vertex.z = ((int64_t)vtx->x * mtx->data[2] + (int64_t)vtx->y * mtx->data[6] + (int64_t)vtx->z * mtx->data[10] + (int64_t)vtx->w * mtx->data[14]) >> 12;
-    vertex.w = ((int64_t)vtx->x * mtx->data[3] + (int64_t)vtx->y * mtx->data[7] + (int64_t)vtx->z * mtx->data[11] + (int64_t)vtx->w * mtx->data[15]) >> 12;
-
-    return vertex;
-}
-
-int32_t Gpu3D::multiply(Vertex *vec1, Vertex *vec2)
-{
-    // Multiply 2 vectors
-    return ((int64_t)vec1->x * vec2->x + (int64_t)vec1->y * vec2->y + (int64_t)vec1->z * vec2->z) >> 12;
 }
 
 Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2)
@@ -400,7 +400,7 @@ void Gpu3D::addVertex()
         matrix.data[13] = (int32_t)t << 12;
 
         // Multiply the vertex with the texture matrix
-        Vertex vertex = multiply(&verticesIn[vertexCountIn], &matrix);
+        Vertex vertex = verticesIn[vertexCountIn] * matrix;
 
         // Save the transformed coordinates
         verticesIn[vertexCountIn].s = vertex.x >> 12;
@@ -410,12 +410,12 @@ void Gpu3D::addVertex()
     // Update the clip matrix if necessary
     if (clipDirty)
     {
-        clip = multiply(&coordinate, &projection);
+        clip = coordinate * projection;
         clipDirty = false;
     }
 
     // Transform the vertex
-    verticesIn[vertexCountIn] = multiply(&verticesIn[vertexCountIn], &clip);
+    verticesIn[vertexCountIn] = verticesIn[vertexCountIn] * clip;
 
     // Move to the next vertex
     vertexCountIn++;
@@ -924,29 +924,29 @@ void Gpu3D::mtxMult44Cmd(std::vector<uint32_t> *params)
     {
         case 0: // Projection stack
         {
-            projection = multiply(&temp, &projection);
+            projection = temp * projection;
             clipDirty = true;
             break;
         }
 
         case 1: // Coordinate stack
         {
-            coordinate = multiply(&temp, &coordinate);
+            coordinate = temp * coordinate;
             clipDirty = true;
             break;
         }
 
         case 2: // Coordinate and directional stacks
         {
-            coordinate = multiply(&temp, &coordinate);
-            direction = multiply(&temp, &direction);
+            coordinate = temp * coordinate;
+            direction = temp * direction;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = multiply(&temp, &texture);
+            texture = temp * texture;
             break;
         }
     }
@@ -964,29 +964,29 @@ void Gpu3D::mtxMult43Cmd(std::vector<uint32_t> *params)
     {
         case 0: // Projection stack
         {
-            projection = multiply(&temp, &projection);
+            projection = temp * projection;
             clipDirty = true;
             break;
         }
 
         case 1: // Coordinate stack
         {
-            coordinate = multiply(&temp, &coordinate);
+            coordinate = temp * coordinate;
             clipDirty = true;
             break;
         }
 
         case 2: // Coordinate and directional stacks
         {
-            coordinate = multiply(&temp, &coordinate);
-            direction = multiply(&temp, &direction);
+            coordinate = temp * coordinate;
+            direction = temp * direction;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = multiply(&temp, &texture);
+            texture = temp * texture;
             break;
         }
     }
@@ -1004,29 +1004,29 @@ void Gpu3D::mtxMult33Cmd(std::vector<uint32_t> *params)
     {
         case 0: // Projection stack
         {
-            projection = multiply(&temp, &projection);
+            projection = temp * projection;
             clipDirty = true;
             break;
         }
 
         case 1: // Coordinate stack
         {
-            coordinate = multiply(&temp, &coordinate);
+            coordinate = temp * coordinate;
             clipDirty = true;
             break;
         }
 
         case 2: // Coordinate and directional stacks
         {
-            coordinate = multiply(&temp, &coordinate);
-            direction = multiply(&temp, &direction);
+            coordinate = temp * coordinate;
+            direction = temp * direction;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = multiply(&temp, &texture);
+            texture = temp * texture;
             break;
         }
     }
@@ -1044,21 +1044,21 @@ void Gpu3D::mtxScaleCmd(std::vector<uint32_t> *params)
     {
         case 0: // Projection stack
         {
-            projection = multiply(&temp, &projection);
+            projection = temp * projection;
             clipDirty = true;
             break;
         }
 
         case 1: case 2: // Coordinate stack
         {
-            coordinate = multiply(&temp, &coordinate);
+            coordinate = temp * coordinate;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = multiply(&temp, &texture);
+            texture = temp * texture;
             break;
         }
     }
@@ -1076,29 +1076,29 @@ void Gpu3D::mtxTransCmd(std::vector<uint32_t> *params)
     {
         case 0: // Projection stack
         {
-            projection = multiply(&temp, &projection);
+            projection = temp * projection;
             clipDirty = true;
             break;
         }
 
         case 1: // Coordinate stack
         {
-            coordinate = multiply(&temp, &coordinate);
+            coordinate = temp * coordinate;
             clipDirty = true;
             break;
         }
 
         case 2: // Coordinate and directional stacks
         {
-            coordinate = multiply(&temp, &coordinate);
-            direction = multiply(&temp, &direction);
+            coordinate = temp * coordinate;
+            direction = temp * direction;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = multiply(&temp, &texture);
+            texture = temp * texture;
             break;
         }
     }
@@ -1131,7 +1131,7 @@ void Gpu3D::normalCmd(uint32_t param)
         matrix.data[13] = t << 12;
 
         // Multiply the vertex with the matrix
-        vertex = multiply(&vertex, &matrix);
+        vertex = vertex * matrix;
 
         // Save the transformed coordinates
         savedVertex.s = vertex.x >> 12;
@@ -1139,7 +1139,7 @@ void Gpu3D::normalCmd(uint32_t param)
     }
 
     // Multiply the normal vector with the directional matrix
-    normalVector = multiply(&normalVector, &direction);
+    normalVector = normalVector * direction;
 
     // Set the base vertex color
     savedVertex.color = emissionColor;
@@ -1150,11 +1150,11 @@ void Gpu3D::normalCmd(uint32_t param)
     {
         if (enabledLights & BIT(i))
         {
-            int diffuseLevel = -multiply(&lightVector[i], &normalVector);
+            int diffuseLevel = -(lightVector[i] * normalVector);
             if (diffuseLevel < (0 << 12)) diffuseLevel = (0 << 12);
             if (diffuseLevel > (1 << 12)) diffuseLevel = (1 << 12);
 
-            int shininessLevel = -multiply(&halfVector[i], &normalVector);
+            int shininessLevel = -(halfVector[i] * normalVector);
             if (shininessLevel < (0 << 12)) shininessLevel = (0 << 12);
             if (shininessLevel > (1 << 12)) shininessLevel = (1 << 12);
             shininessLevel = (shininessLevel * shininessLevel) >> 12;
@@ -1203,7 +1203,7 @@ void Gpu3D::texCoordCmd(uint32_t param)
         vertex.w = 1 << 8;
 
         // Multiply the vertex with the texture matrix
-        vertex = multiply(&vertex, &texture);
+        vertex = vertex * texture;
 
         // Save the transformed coordinates
         savedVertex.s = vertex.x >> 8;
@@ -1331,7 +1331,7 @@ void Gpu3D::lightVectorCmd(uint32_t param)
     lightVector[param >> 30].w = 0;
 
     // Multiply the light vector by the directional matrix
-    lightVector[param >> 30] = multiply(&lightVector[param >> 30], &direction);
+    lightVector[param >> 30] = lightVector[param >> 30] * direction;
 
     // Set one of the half vectors
     halfVector[param >> 30].x = (lightVector[param >> 30].x)             / 2;
@@ -1442,7 +1442,7 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> *params)
     // Update the clip matrix if necessary
     if (clipDirty)
     {
-        clip = multiply(&coordinate, &projection);
+        clip = coordinate * projection;
         clipDirty = false;
     }
 
@@ -1450,7 +1450,7 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> *params)
     for (int i = 0; i < 8; i++)
     {
         vertices[i].w = 1 << 12;
-        vertices[i] = multiply(&vertices[i], &clip);
+        vertices[i] = vertices[i] * clip;
     }
 
     // Arrange the vertices to represent the faces of the box
@@ -1494,12 +1494,12 @@ void Gpu3D::posTestCmd(std::vector<uint32_t> *params)
     // Update the clip matrix if necessary
     if (clipDirty)
     {
-        clip = multiply(&coordinate, &projection);
+        clip = coordinate * projection;
         clipDirty = false;
     }
 
     // Multiply the vertex with the clip matrix and set the result
-    Vertex vertex = multiply(&savedVertex, &clip);
+    Vertex vertex = savedVertex * clip;
     posResult[0] = vertex.x;
     posResult[1] = vertex.y;
     posResult[2] = vertex.z;
@@ -1516,7 +1516,7 @@ void Gpu3D::vecTestCmd(uint32_t param)
 
     // Multiply the vector with the directional matrix and set the result
     // The result has 4-bit signs and 12-bit fractions
-    vector = multiply(&vector, &direction);
+    vector = vector * direction;
     vecResult[0] = ((int16_t)(vector.x << 3)) >> 3;
     vecResult[1] = ((int16_t)(vector.y << 3)) >> 3;
     vecResult[2] = ((int16_t)(vector.z << 3)) >> 3;
@@ -1874,7 +1874,7 @@ uint32_t Gpu3D::readClipMtxResult(int index)
     // Update the clip matrix if necessary
     if (clipDirty)
     {
-        clip = multiply(&coordinate, &projection);
+        clip = coordinate * projection;
         clipDirty = false;
     }
 
