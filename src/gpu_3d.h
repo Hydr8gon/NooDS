@@ -57,14 +57,21 @@ struct Matrix
     Matrix operator*(Matrix &mtx);
 };
 
-struct Vertex
+struct Vector
 {
-    int32_t x = 0, y = 0, z = 0, w = 0;
+    int32_t x = 0, y = 0, z = 0;
+
+    int32_t operator*(Vector &vtr);
+    Vector  operator*(Matrix &mtx);
+};
+
+struct Vertex: Vector
+{
+    int32_t w = 0;
     int16_t s = 0, t = 0;
     uint32_t color = 0;
 
-    Vertex  operator*(Matrix &mtx);
-    int32_t operator*(Vertex &vtx);
+    Vertex operator*(Matrix &mtx);
 };
 
 struct _Polygon
@@ -160,7 +167,7 @@ class Gpu3D
         std::queue<Entry> fifo;
         int pipeSize = 0;
 
-        int paramCounts[0x100] = {};
+        static const uint8_t paramCounts[0x100];
 
         int matrixMode = 0;
         int projectionPtr = 0, coordinatePtr = 0;
@@ -171,7 +178,6 @@ class Gpu3D
         Matrix direction, directionStack[32];
         Matrix texture, textureStack;
         Matrix clip;
-        Matrix temp;
 
         Vertex vertices1[6144], vertices2[6144];
         Vertex *verticesIn = vertices1, *verticesOut = vertices2;
@@ -197,7 +203,7 @@ class Gpu3D
         uint32_t diffuseColor = 0, ambientColor = 0;
         uint32_t specularColor = 0, emissionColor = 0;
         bool shininessEnabled = false;
-        Vertex lightVector[4], halfVector[4];
+        Vector lightVector[4], halfVector[4];
         uint32_t lightColor[4] = {};
         uint8_t shininess[128] = {};
 
@@ -229,17 +235,17 @@ class Gpu3D
         void mtxStoreCmd(uint32_t param);
         void mtxRestoreCmd(uint32_t param);
         void mtxIdentityCmd();
-        void mtxLoad44Cmd(std::vector<uint32_t> *params);
-        void mtxLoad43Cmd(std::vector<uint32_t> *params);
-        void mtxMult44Cmd(std::vector<uint32_t> *params);
-        void mtxMult43Cmd(std::vector<uint32_t> *params);
-        void mtxMult33Cmd(std::vector<uint32_t> *params);
-        void mtxScaleCmd(std::vector<uint32_t> *params);
-        void mtxTransCmd(std::vector<uint32_t> *params);
+        void mtxLoad44Cmd(std::vector<uint32_t> &params);
+        void mtxLoad43Cmd(std::vector<uint32_t> &params);
+        void mtxMult44Cmd(std::vector<uint32_t> &params);
+        void mtxMult43Cmd(std::vector<uint32_t> &params);
+        void mtxMult33Cmd(std::vector<uint32_t> &params);
+        void mtxScaleCmd(std::vector<uint32_t> &params);
+        void mtxTransCmd(std::vector<uint32_t> &params);
         void colorCmd(uint32_t param);
         void normalCmd(uint32_t param);
         void texCoordCmd(uint32_t param);
-        void vtx16Cmd(std::vector<uint32_t> *params);
+        void vtx16Cmd(std::vector<uint32_t> &params);
         void vtx10Cmd(uint32_t param);
         void vtxXYCmd(uint32_t param);
         void vtxXZCmd(uint32_t param);
@@ -252,12 +258,12 @@ class Gpu3D
         void speEmiCmd(uint32_t param);
         void lightVectorCmd(uint32_t param);
         void lightColorCmd(uint32_t param);
-        void shininessCmd(std::vector<uint32_t> *params);
+        void shininessCmd(std::vector<uint32_t> &params);
         void beginVtxsCmd(uint32_t param);
         void swapBuffersCmd(uint32_t param);
         void viewportCmd(uint32_t param);
-        void boxTestCmd(std::vector<uint32_t> *params);
-        void posTestCmd(std::vector<uint32_t> *params);
+        void boxTestCmd(std::vector<uint32_t> &params);
+        void posTestCmd(std::vector<uint32_t> &params);
         void vecTestCmd(uint32_t param);
 
         void addEntry(Entry entry);

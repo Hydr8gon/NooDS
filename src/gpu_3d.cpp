@@ -31,11 +31,28 @@ Matrix Matrix::operator*(Matrix &mtx)
     {
         for (int x = 0; x < 4; x++)
         {
-            int64_t value = 0;
-            for (int i = 0; i < 4; i++) value += (int64_t)data[y * 4 + i] * mtx.data[i * 4 + x];
-            result.data[y * 4 + x] = value >> 12;
+            result.data[y * 4 + x] = ((int64_t)data[y * 4 + 0] * mtx.data[0 + x] + (int64_t)data[y * 4 + 1] * mtx.data[4  + x] +
+                                      (int64_t)data[y * 4 + 2] * mtx.data[8 + x] + (int64_t)data[y * 4 + 3] * mtx.data[12 + x]) >> 12;
         }
     }
+
+    return result;
+}
+
+int32_t Vector::operator*(Vector &vtr)
+{
+    // Multiply 2 vectors
+    return ((int64_t)x * vtr.x + (int64_t)y * vtr.y + (int64_t)z * vtr.z) >> 12;
+}
+
+Vector Vector::operator*(Matrix &mtx)
+{
+    Vector result;
+
+    // Multiply a vector with a matrix
+    result.x = ((int64_t)x * mtx.data[0] + (int64_t)y * mtx.data[4] + (int64_t)z * mtx.data[8])  >> 12;
+    result.y = ((int64_t)x * mtx.data[1] + (int64_t)y * mtx.data[5] + (int64_t)z * mtx.data[9])  >> 12;
+    result.z = ((int64_t)x * mtx.data[2] + (int64_t)y * mtx.data[6] + (int64_t)z * mtx.data[10]) >> 12;
 
     return result;
 }
@@ -53,53 +70,20 @@ Vertex Vertex::operator*(Matrix &mtx)
     return result;
 }
 
-int32_t Vertex::operator*(Vertex &vtx)
+const uint8_t Gpu3D::paramCounts[] =
 {
-    // Multiply 2 vectors
-    return ((int64_t)x * vtx.x + (int64_t)y * vtx.y + (int64_t)z * vtx.z) >> 12;
-}
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x00-0x0F
+    1,  0,  1,  1,  1,  0, 16, 12, 16, 12,  9,  3,  3,  0,  0,  0, // 0x10-0x1F
+    1,  1,  1,  2,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0, // 0x20-0x2F
+    1,  1,  1,  1, 32,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x30-0x3F
+    1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x40-0x4F
+    1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x50-0x5F
+    1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x60-0x6F
+    3,  2,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x70-0x7F
+};
 
 Gpu3D::Gpu3D(Core *core): core(core)
 {
-    // Set the parameter counts
-    paramCounts[0x10] = 1;
-    paramCounts[0x11] = 0;
-    paramCounts[0x12] = 1;
-    paramCounts[0x13] = 1;
-    paramCounts[0x14] = 1;
-    paramCounts[0x15] = 0;
-    paramCounts[0x16] = 16;
-    paramCounts[0x17] = 12;
-    paramCounts[0x18] = 16;
-    paramCounts[0x19] = 12;
-    paramCounts[0x1A] = 9;
-    paramCounts[0x1B] = 3;
-    paramCounts[0x1C] = 3;
-    paramCounts[0x20] = 1;
-    paramCounts[0x21] = 1;
-    paramCounts[0x22] = 1;
-    paramCounts[0x23] = 2;
-    paramCounts[0x24] = 1;
-    paramCounts[0x25] = 1;
-    paramCounts[0x26] = 1;
-    paramCounts[0x27] = 1;
-    paramCounts[0x28] = 1;
-    paramCounts[0x29] = 1;
-    paramCounts[0x2A] = 1;
-    paramCounts[0x2B] = 1;
-    paramCounts[0x30] = 1;
-    paramCounts[0x31] = 1;
-    paramCounts[0x32] = 1;
-    paramCounts[0x33] = 1;
-    paramCounts[0x34] = 32;
-    paramCounts[0x40] = 1;
-    paramCounts[0x41] = 0;
-    paramCounts[0x50] = 1;
-    paramCounts[0x60] = 1;
-    paramCounts[0x70] = 3;
-    paramCounts[0x71] = 2;
-    paramCounts[0x72] = 1;
-
     // Prepare tasks to be used with the scheduler
     runCommandTask = std::bind(&Gpu3D::runCommand, this);
 }
@@ -228,17 +212,17 @@ void Gpu3D::runCommand()
         case 0x13: mtxStoreCmd(entry.param);      break; // MTX_STORE
         case 0x14: mtxRestoreCmd(entry.param);    break; // MTX_RESTORE
         case 0x15: mtxIdentityCmd();              break; // MTX_IDENTITY
-        case 0x16: mtxLoad44Cmd(&params);         break; // MTX_LOAD_4x4
-        case 0x17: mtxLoad43Cmd(&params);         break; // MTX_LOAD_4x3
-        case 0x18: mtxMult44Cmd(&params);         break; // MTX_MULT_4x4
-        case 0x19: mtxMult43Cmd(&params);         break; // MTX_MULT_4x3
-        case 0x1A: mtxMult33Cmd(&params);         break; // MTX_MULT_3x3
-        case 0x1B: mtxScaleCmd(&params);          break; // MTX_SCALE
-        case 0x1C: mtxTransCmd(&params);          break; // MTX_TRANS
+        case 0x16: mtxLoad44Cmd(params);          break; // MTX_LOAD_4x4
+        case 0x17: mtxLoad43Cmd(params);          break; // MTX_LOAD_4x3
+        case 0x18: mtxMult44Cmd(params);          break; // MTX_MULT_4x4
+        case 0x19: mtxMult43Cmd(params);          break; // MTX_MULT_4x3
+        case 0x1A: mtxMult33Cmd(params);          break; // MTX_MULT_3x3
+        case 0x1B: mtxScaleCmd(params);           break; // MTX_SCALE
+        case 0x1C: mtxTransCmd(params);           break; // MTX_TRANS
         case 0x20: colorCmd(entry.param);         break; // COLOR
         case 0x21: normalCmd(entry.param);        break; // NORMAL
         case 0x22: texCoordCmd(entry.param);      break; // TEXCOORD
-        case 0x23: vtx16Cmd(&params);             break; // VTX_16
+        case 0x23: vtx16Cmd(params);              break; // VTX_16
         case 0x24: vtx10Cmd(entry.param);         break; // VTX_10
         case 0x25: vtxXYCmd(entry.param);         break; // VTX_XY
         case 0x26: vtxXZCmd(entry.param);         break; // VTX_XZ
@@ -251,13 +235,13 @@ void Gpu3D::runCommand()
         case 0x31: speEmiCmd(entry.param);        break; // SPE_EMI
         case 0x32: lightVectorCmd(entry.param);   break; // LIGHT_VECTOR
         case 0x33: lightColorCmd(entry.param);    break; // LIGHT_COLOR
-        case 0x34: shininessCmd(&params);         break; // SHININESS
+        case 0x34: shininessCmd(params);          break; // SHININESS
         case 0x40: beginVtxsCmd(entry.param);     break; // BEGIN_VTXS
         case 0x41:                                break; // END_VTXS
         case 0x50: swapBuffersCmd(entry.param);   break; // SWAP_BUFFERS
         case 0x60: viewportCmd(entry.param);      break; // VIEWPORT
-        case 0x70: boxTestCmd(&params);           break; // BOX_TEST
-        case 0x71: posTestCmd(&params);           break; // POS_TEST
+        case 0x70: boxTestCmd(params);            break; // BOX_TEST
+        case 0x71: posTestCmd(params);            break; // POS_TEST
         case 0x72: vecTestCmd(entry.param);       break; // VEC_TEST
 
         default:
@@ -311,24 +295,16 @@ void Gpu3D::runCommand()
 
 void Gpu3D::swapBuffers()
 {
-    // Process the vertices
+    // Normalize and scale the vertices to the viewport
+    // X coordinates are 9-bit and Y coordinates are 8-bit; invalid viewports can cause wraparound
+    // Z coordinates (and depth values in general) are 24-bit
     for (int i = 0; i < vertexCountIn; i++)
     {
         if (verticesIn[i].w != 0)
         {
-            // Normalize and scale the vertices to the viewport
-            // X coordinates are 9-bit and Y coordinates are 8-bit; invalid viewports can cause wraparound
-            // Z coordinates (and depth values in general) are 24-bit
             verticesIn[i].x = (( (int64_t)verticesIn[i].x + verticesIn[i].w) * viewportWidth  / (verticesIn[i].w * 2) + viewportX) & 0x1FF;
             verticesIn[i].y = ((-(int64_t)verticesIn[i].y + verticesIn[i].w) * viewportHeight / (verticesIn[i].w * 2) + viewportY) &  0xFF;
             verticesIn[i].z = (((((int64_t)verticesIn[i].z << 14) / verticesIn[i].w) + 0x3FFF) << 9);
-        }
-        else
-        {
-            // The W coordinate is invalid, so not much can be done
-            verticesIn[i].x = 0;
-            verticesIn[i].y = 0;
-            verticesIn[i].z = 0;
         }
     }
 
@@ -834,271 +810,268 @@ void Gpu3D::mtxIdentityCmd()
     }
 }
 
-void Gpu3D::mtxLoad44Cmd(std::vector<uint32_t> *params)
+void Gpu3D::mtxLoad44Cmd(std::vector<uint32_t> &params)
 {
-    // Store the paramaters to the temporary matrix
-    for (int i = 0; i < 16; i++)
-        temp.data[i] = (int32_t)(*params)[i];
+    // Convert the parameters to a 4x4 matrix
+    Matrix matrix = *(Matrix*)&params[0];
 
-    // Set a 4x4 matrix
+    // Set a matrix to the 4x4 matrix
     switch (matrixMode)
     {
         case 0: // Projection stack
         {
-            projection = temp;
+            projection = matrix;
             clipDirty = true;
             break;
         }
 
         case 1: // Coordinate stack
         {
-            coordinate = temp;
+            coordinate = matrix;
             clipDirty = true;
             break;
         }
 
         case 2: // Coordinate and directional stacks
         {
-            coordinate = temp;
-            direction = temp;
+            coordinate = matrix;
+            direction = matrix;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = temp;
+            texture = matrix;
             break;
         }
     }
 }
 
-void Gpu3D::mtxLoad43Cmd(std::vector<uint32_t> *params)
+void Gpu3D::mtxLoad43Cmd(std::vector<uint32_t> &params)
 {
-    // Store the paramaters to the temporary matrix
-    temp = Matrix();
-    for (int i = 0; i < 12; i++)
-        temp.data[(i / 3) * 4 + i % 3] = (int32_t)(*params)[i];
+    // Convert the parameters to a 4x3 matrix
+    Matrix matrix;
+    for (int i = 0; i < 4; i++)
+        memcpy(&matrix.data[i * 4], &params[i * 3], 3 * sizeof(int32_t));
 
-    // Set a 4x3 matrix
+    // Set a matrix to the 4x3 matrix
     switch (matrixMode)
     {
         case 0: // Projection stack
         {
-            projection = temp;
+            projection = matrix;
             clipDirty = true;
             break;
         }
 
         case 1: // Coordinate stack
         {
-            coordinate = temp;
+            coordinate = matrix;
             clipDirty = true;
             break;
         }
 
         case 2: // Coordinate and directional stacks
         {
-            coordinate = temp;
-            direction = temp;
+            coordinate = matrix;
+            direction = matrix;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = temp;
+            texture = matrix;
             break;
         }
     }
 }
 
-void Gpu3D::mtxMult44Cmd(std::vector<uint32_t> *params)
+void Gpu3D::mtxMult44Cmd(std::vector<uint32_t> &params)
 {
-    // Store the paramaters to the temporary matrix
-    for (int i = 0; i < 16; i++)
-        temp.data[i] = (int32_t)(*params)[i];
+    // Convert the parameters to a 4x4 matrix
+    Matrix matrix = *(Matrix*)&params[0];
 
-    // Multiply a matrix by a 4x4 matrix
+    // Multiply a matrix by the 4x4 matrix
     switch (matrixMode)
     {
         case 0: // Projection stack
         {
-            projection = temp * projection;
+            projection = matrix * projection;
             clipDirty = true;
             break;
         }
 
         case 1: // Coordinate stack
         {
-            coordinate = temp * coordinate;
+            coordinate = matrix * coordinate;
             clipDirty = true;
             break;
         }
 
         case 2: // Coordinate and directional stacks
         {
-            coordinate = temp * coordinate;
-            direction = temp * direction;
+            coordinate = matrix * coordinate;
+            direction = matrix * direction;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = temp * texture;
+            texture = matrix * texture;
             break;
         }
     }
 }
 
-void Gpu3D::mtxMult43Cmd(std::vector<uint32_t> *params)
+void Gpu3D::mtxMult43Cmd(std::vector<uint32_t> &params)
 {
-    // Store the paramaters to the temporary matrix
-    temp = Matrix();
-    for (int i = 0; i < 12; i++)
-        temp.data[(i / 3) * 4 + i % 3] = (int32_t)(*params)[i];
+    // Convert the parameters to a 4x3 matrix
+    Matrix matrix;
+    for (int i = 0; i < 4; i++)
+        memcpy(&matrix.data[i * 4], &params[i * 3], 3 * sizeof(int32_t));
 
-    // Multiply a matrix by a 4x3 matrix
+    // Multiply a matrix by the 4x3 matrix
     switch (matrixMode)
     {
         case 0: // Projection stack
         {
-            projection = temp * projection;
+            projection = matrix * projection;
             clipDirty = true;
             break;
         }
 
         case 1: // Coordinate stack
         {
-            coordinate = temp * coordinate;
+            coordinate = matrix * coordinate;
             clipDirty = true;
             break;
         }
 
         case 2: // Coordinate and directional stacks
         {
-            coordinate = temp * coordinate;
-            direction = temp * direction;
+            coordinate = matrix * coordinate;
+            direction = matrix * direction;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = temp * texture;
+            texture = matrix * texture;
             break;
         }
     }
 }
 
-void Gpu3D::mtxMult33Cmd(std::vector<uint32_t> *params)
+void Gpu3D::mtxMult33Cmd(std::vector<uint32_t> &params)
 {
-    // Store the paramaters to the temporary matrix
-    temp = Matrix();
-    for (int i = 0; i < 9; i++)
-        temp.data[(i / 3) * 4 + i % 3] = (int32_t)(*params)[i];
-
-    // Multiply a matrix by a 3x3 matrix
-    switch (matrixMode)
-    {
-        case 0: // Projection stack
-        {
-            projection = temp * projection;
-            clipDirty = true;
-            break;
-        }
-
-        case 1: // Coordinate stack
-        {
-            coordinate = temp * coordinate;
-            clipDirty = true;
-            break;
-        }
-
-        case 2: // Coordinate and directional stacks
-        {
-            coordinate = temp * coordinate;
-            direction = temp * direction;
-            clipDirty = true;
-            break;
-        }
-
-        case 3: // Texture stack
-        {
-            texture = temp * texture;
-            break;
-        }
-    }
-}
-
-void Gpu3D::mtxScaleCmd(std::vector<uint32_t> *params)
-{
-    // Store the paramaters to the temporary matrix
-    temp = Matrix();
+    // Convert the parameters to a 3x3 matrix
+    Matrix matrix;
     for (int i = 0; i < 3; i++)
-        temp.data[i * 5] = (int32_t)(*params)[i];
+        memcpy(&matrix.data[i * 4], &params[i * 3], 3 * sizeof(int32_t));
 
-    // Multiply a matrix by a scale matrix
+    // Multiply a matrix by the 3x3 matrix
     switch (matrixMode)
     {
         case 0: // Projection stack
         {
-            projection = temp * projection;
+            projection = matrix * projection;
+            clipDirty = true;
+            break;
+        }
+
+        case 1: // Coordinate stack
+        {
+            coordinate = matrix * coordinate;
+            clipDirty = true;
+            break;
+        }
+
+        case 2: // Coordinate and directional stacks
+        {
+            coordinate = matrix * coordinate;
+            direction = matrix * direction;
+            clipDirty = true;
+            break;
+        }
+
+        case 3: // Texture stack
+        {
+            texture = matrix * texture;
+            break;
+        }
+    }
+}
+
+void Gpu3D::mtxScaleCmd(std::vector<uint32_t> &params)
+{
+    // Convert the parameters to a scale matrix
+    Matrix matrix;
+    for (int i = 0; i < 3; i++)
+        matrix.data[i * 5] = (int32_t)params[i];
+
+    // Multiply a matrix by the scale matrix
+    switch (matrixMode)
+    {
+        case 0: // Projection stack
+        {
+            projection = matrix * projection;
             clipDirty = true;
             break;
         }
 
         case 1: case 2: // Coordinate stack
         {
-            coordinate = temp * coordinate;
+            coordinate = matrix * coordinate;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = temp * texture;
+            texture = matrix * texture;
             break;
         }
     }
 }
 
-void Gpu3D::mtxTransCmd(std::vector<uint32_t> *params)
+void Gpu3D::mtxTransCmd(std::vector<uint32_t> &params)
 {
-    // Store the paramaters to the temporary matrix
-    temp = Matrix();
-    for (int i = 0; i < 3; i++)
-        temp.data[12 + i] = (int32_t)(*params)[i];
+    // Convert the parameters to a translation matrix
+    Matrix matrix;
+    memcpy(&matrix.data[12], &params[0], 3 * sizeof(int32_t));
 
-    // Multiply a matrix by a translation matrix
+    // Multiply a matrix by the translation matrix
     switch (matrixMode)
     {
         case 0: // Projection stack
         {
-            projection = temp * projection;
+            projection = matrix * projection;
             clipDirty = true;
             break;
         }
 
         case 1: // Coordinate stack
         {
-            coordinate = temp * coordinate;
+            coordinate = matrix * coordinate;
             clipDirty = true;
             break;
         }
 
         case 2: // Coordinate and directional stacks
         {
-            coordinate = temp * coordinate;
-            direction = temp * direction;
+            coordinate = matrix * coordinate;
+            direction = matrix * direction;
             clipDirty = true;
             break;
         }
 
         case 3: // Texture stack
         {
-            texture = temp * texture;
+            texture = matrix * texture;
             break;
         }
     }
@@ -1216,12 +1189,12 @@ void Gpu3D::texCoordCmd(uint32_t param)
     }
 }
 
-void Gpu3D::vtx16Cmd(std::vector<uint32_t> *params)
+void Gpu3D::vtx16Cmd(std::vector<uint32_t> &params)
 {
     // Set the X, Y, and Z coordinates
-    savedVertex.x = (int16_t)((*params)[0] >>  0);
-    savedVertex.y = (int16_t)((*params)[0] >> 16);
-    savedVertex.z = (int16_t)((*params)[1]);
+    savedVertex.x = (int16_t)(params[0] >>  0);
+    savedVertex.y = (int16_t)(params[0] >> 16);
+    savedVertex.z = (int16_t)(params[1]);
 
     addVertex();
 }
@@ -1328,7 +1301,6 @@ void Gpu3D::lightVectorCmd(uint32_t param)
     lightVector[param >> 30].x = ((int16_t)((param & 0x000003FF) <<  6)) >> 3;
     lightVector[param >> 30].y = ((int16_t)((param & 0x000FFC00) >>  4)) >> 3;
     lightVector[param >> 30].z = ((int16_t)((param & 0x3FF00000) >> 14)) >> 3;
-    lightVector[param >> 30].w = 0;
 
     // Multiply the light vector by the directional matrix
     lightVector[param >> 30] = lightVector[param >> 30] * direction;
@@ -1337,7 +1309,6 @@ void Gpu3D::lightVectorCmd(uint32_t param)
     halfVector[param >> 30].x = (lightVector[param >> 30].x)             / 2;
     halfVector[param >> 30].y = (lightVector[param >> 30].y)             / 2;
     halfVector[param >> 30].z = (lightVector[param >> 30].z - (1 << 12)) / 2;
-    halfVector[param >> 30].w = 0;
 }
 
 void Gpu3D::lightColorCmd(uint32_t param)
@@ -1346,15 +1317,15 @@ void Gpu3D::lightColorCmd(uint32_t param)
     lightColor[param >> 30] = rgb5ToRgb6(param);
 }
 
-void Gpu3D::shininessCmd(std::vector<uint32_t> *params)
+void Gpu3D::shininessCmd(std::vector<uint32_t> &params)
 {
     // Set the values of the specular reflection shininess table
     for (int i = 0; i < 32; i++)
     {
-        shininess[i * 4 + 0] = (*params)[i] >>  0;
-        shininess[i * 4 + 1] = (*params)[i] >>  8;
-        shininess[i * 4 + 2] = (*params)[i] >> 16;
-        shininess[i * 4 + 3] = (*params)[i] >> 24;
+        shininess[i * 4 + 0] = params[i] >>  0;
+        shininess[i * 4 + 1] = params[i] >>  8;
+        shininess[i * 4 + 2] = params[i] >> 16;
+        shininess[i * 4 + 3] = params[i] >> 24;
     }
 }
 
@@ -1402,14 +1373,14 @@ void Gpu3D::viewportCmd(uint32_t param)
     viewportHeight = ((191 - ((param & 0x0000FF00) >>  8)) - viewportY + 1) &  0xFF;
 }
 
-void Gpu3D::boxTestCmd(std::vector<uint32_t> *params)
+void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
 {
     // Store the parameters (X-pos, Y-pos, Z-pos, width, height, depth)
     int16_t boxTestCoords[6] =
     {
-        (int16_t)(*params)[0], (int16_t)((*params)[0] >> 16),
-        (int16_t)(*params)[1], (int16_t)((*params)[1] >> 16),
-        (int16_t)(*params)[2], (int16_t)((*params)[2] >> 16)
+        (int16_t)params[0], (int16_t)(params[0] >> 16),
+        (int16_t)params[1], (int16_t)(params[1] >> 16),
+        (int16_t)params[2], (int16_t)(params[2] >> 16)
     };
 
     // Get the vertices of the box
@@ -1483,12 +1454,12 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> *params)
     gxStat &= ~BIT(1);
 }
 
-void Gpu3D::posTestCmd(std::vector<uint32_t> *params)
+void Gpu3D::posTestCmd(std::vector<uint32_t> &params)
 {
     // Set the X, Y, and Z coordinates, overwriting the saved vertex
-    savedVertex.x = (int16_t)((*params)[0] >>  0);
-    savedVertex.y = (int16_t)((*params)[0] >> 16);
-    savedVertex.z = (int16_t)((*params)[1]);
+    savedVertex.x = (int16_t)(params[0] >>  0);
+    savedVertex.y = (int16_t)(params[0] >> 16);
+    savedVertex.z = (int16_t)(params[1]);
     savedVertex.w = 1 << 12;
 
     // Update the clip matrix if necessary
