@@ -401,14 +401,12 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
     // Handle S-coordinate overflows
     if (polygon->repeatS)
     {
-        // Wrap the S-coordinate
-        int count = 0;
-        while (s < 0)               { s += polygon->sizeS; count++; }
-        while (s >= polygon->sizeS) { s -= polygon->sizeS; count++; }
-
         // Flip the S-coordinate every second repeat
-        if (polygon->flipS && count % 2 != 0)
-            s = polygon->sizeS - 1 - s;
+        if (polygon->flipS && (s & polygon->sizeS))
+            s = -1 - s;
+
+        // Wrap the S-coordinate
+        s &= polygon->sizeS - 1;
     }
     else if (s < 0)
     {
@@ -424,14 +422,12 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
     // Handle T-coordinate overflows
     if (polygon->repeatT)
     {
-        // Wrap the T-coordinate
-        int count = 0;
-        while (t < 0)               { t += polygon->sizeT; count++; }
-        while (t >= polygon->sizeT) { t -= polygon->sizeT; count++; }
-
         // Flip the T-coordinate every second repeat
-        if (polygon->flipT && count % 2 != 0)
-            t = polygon->sizeT - 1 - t;
+        if (polygon->flipT && (t & polygon->sizeT))
+            t = -1 - t;
+
+        // Wrap the T-coordinate
+        t &= polygon->sizeT - 1;
     }
     else if (t < 0)
     {
