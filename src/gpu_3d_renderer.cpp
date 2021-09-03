@@ -29,7 +29,7 @@ Gpu3DRenderer::Gpu3DRenderer(Core *core): core(core)
     // Mark the scanlines as ready to start
     // This is mainly in case 3D is requested before the threads have a chance to start
     for (int i = 0; i < 192; i++)
-        ready[i].store(2);
+        ready[i].store(3);
 }
 
 Gpu3DRenderer::~Gpu3DRenderer()
@@ -57,8 +57,34 @@ uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 
 uint32_t *Gpu3DRenderer::getLine(int line)
 {
+    // If a thread is falling behind, see if this thread can help out instead of waiting around
+    // Threads go back for the final pass after drawing their next scanline, so check 2 scanlines ahead
+    if (ready[line].load() < 3 && line + activeThreads * 2 < 192)
+    {
+        int next = line + activeThreads * 2;
+        switch (ready[next].exchange(1))
+        {
+            case 0:
+                // Draw the scanline if it hasn't been started yet
+                drawScanline1(next);
+                ready[next].store(2);
+                break;
+
+            case 2:
+                // If the thread somehow caught up, restore the scanline's state
+                if (ready[next].exchange(2) == 3)
+                    ready[next].store(3);
+                break;
+
+            case 3:
+                // If the thread somehow caught up, restore the scanline's state
+                ready[next].store(3);
+                break;
+        }
+    }
+
     // Wait until a scanline is ready, and then return it
-    while (ready[line].load() < 2) std::this_thread::yield();
+    while (ready[line].load() < 3) std::this_thread::yield();
     return &framebuffer[0][256 * line];
 }
 
@@ -128,31 +154,41 @@ void Gpu3DRenderer::drawThreaded(int thread)
     int i;
     for (i = thread; i < 192; i += activeThreads)
     {
-        // Draw a scanline, save for the final pass
-        drawScanline1(i);
-        ready[i].store(1);
+        switch (ready[i].exchange(1))
+        {
+            case 0:
+                // Draw a scanline if it hasn't been started, save for the final pass
+                drawScanline1(i);
+                ready[i].store(2);
+                break;
+
+            case 2:
+                // Restore the scanline's state if it was already drawn
+                ready[i].store(2);
+                break;
+        }
 
         if (i < activeThreads) continue;
         int prev = i - activeThreads;
 
-        // Wait for the scanlines surrounding this thread's previous scanline to be drawn
-        while ((prev > 0 && ready[prev - 1].load() < 1) || ready[prev + 1].load() < 1)
+        // Wait for this thread's previous scanline and its surrounding scanlines to be drawn
+        while ((prev > 0 && ready[prev - 1].load() < 2) || ready[prev].load() < 2 || ready[prev + 1].load() < 2)
             std::this_thread::yield();
 
         // Finish this thread's previous scanline
         finishScanline(prev);
-        ready[prev].store(2);
+        ready[prev].store(3);
     }
 
     int prev = i - activeThreads;
 
-    // Wait for the scanlines surrounding this thread's final scanline to be drawn
-    while (ready[prev - 1].load() < 1 || (prev < 191 && ready[prev + 1].load() < 1))
+    // Wait for this thread's final scanline and its surrounding scanlines to be drawn
+    while (ready[prev - 1].load() < 2 || ready[prev].load() < 2 || (prev < 191 && ready[prev + 1].load() < 2))
         std::this_thread::yield();
 
     // Finish this thread's final scanline
     finishScanline(prev);
-    ready[prev].store(2);
+    ready[prev].store(3);
 }
 
 void Gpu3DRenderer::drawScanline1(int line)
