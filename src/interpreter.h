@@ -76,14 +76,15 @@ class Interpreter
         uint32_t ie = 0, irf = 0;
         uint8_t postFlg = 0;
 
+        static const uint8_t condition[0x100];
         static const uint8_t bitCount[0x100];
 
         std::function<void()> interruptTask;
 
         void interrupt();
         void flushPipeline();
-        bool condition(uint32_t opcode);
         void setCpsr(uint32_t value, bool save = false);
+        int handleReserved(uint32_t opcode);
 
         uint32_t lli(uint32_t opcode);
         uint32_t llr(uint32_t opcode);
