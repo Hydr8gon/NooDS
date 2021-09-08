@@ -45,6 +45,13 @@ Gpu::~Gpu()
         thread->join();
         delete thread;
     }
+
+    // Clean up any queued framebuffers
+    while (!framebuffers.empty())
+    {
+        delete[] framebuffers.front();
+        framebuffers.pop();
+    }
 }
 
 void Gpu::scheduleInit()

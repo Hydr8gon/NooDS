@@ -58,6 +58,10 @@ void Interpreter::init()
     setCpsr(0x000000D3); // Supervisor, interrupts off
     registersUsr[15] = (cpu == 0) ? 0xFFFF0000 : 0x00000000;
     flushPipeline();
+
+    // Reset the registers
+    ime = 0;
+    ie = irf = 0;
     postFlg = 0;
 }
 
