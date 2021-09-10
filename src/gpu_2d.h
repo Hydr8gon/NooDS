@@ -33,7 +33,7 @@ class Gpu2D
         void drawScanline(int line);
 
         uint32_t *getFramebuffer() { return framebuffer; }
-        uint32_t *getRawLine()     { return layers[5];   }
+        uint32_t *getRawLine()     { return layers[0];   }
 
         uint32_t readDispCnt()      { return dispCnt;      }
         uint16_t readBgCnt(int bg)  { return bgCnt[bg];    }
@@ -71,8 +71,9 @@ class Gpu2D
         uint8_t **extPalettes;
 
         uint32_t framebuffer[256 * 192] = {};
-        uint32_t layers[6][256] = {};
-        uint8_t objPrio[256] = {};
+        uint32_t layers[2][256] = {};
+        int8_t priorities[2][256] = {};
+        int8_t blendBits[2][256] = {};
 
         int internalX[2] = {};
         int internalY[2] = {};
@@ -100,11 +101,14 @@ class Gpu2D
 
         static uint32_t rgb5ToRgb6(uint32_t color);
 
+        void drawBgPixel(int bg, int line, int x, uint32_t pixel);
+        void drawObjPixel(int line, int x, uint32_t pixel, int8_t priority);
+
         void drawText(int bg, int line);
         void drawAffine(int bg, int line);
         void drawExtended(int bg, int line);
         void drawLarge(int bg, int line);
-        void drawObjects(int line);
+        void drawObjects(int line, bool window);
 };
 
 #endif // GPU_2D_H
