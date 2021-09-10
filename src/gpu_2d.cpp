@@ -870,77 +870,54 @@ void Gpu2D::drawObjects(int line, bool window)
     // Loop through and draw the 128 sprites in OAM
     for (int i = 0; i < 128; i++)
     {
-        // Get the current object
-        // Each object takes up 8 bytes in memory, but the last 2 bytes are reserved for rotscale
-        uint16_t object[3];
-        object[0] = U8TO16(oam, i * 8);
+        uint8_t byte = oam[i * 8 + 1];
+        uint8_t type = (byte >> 2) & 0x3;
 
-        // Skip sprites that are disabled or are/aren't object window type
-        if ((!(object[0] & BIT(8)) && (object[0] & BIT(9))) || (((object[0] >> 10) & 0x3) == 2) != window)
+        // Skip objects that are disabled or are/aren't window type
+        if ((byte & 0x3) == 2 || (type == 2) != window)
             continue;
 
-        object[1] = U8TO16(oam, i * 8 + 2);
-        object[2] = U8TO16(oam, i * 8 + 4);
+        // Get the current object
+        // Each object takes up 8 bytes in memory, but the last 2 bytes are reserved for rotscale
+        uint16_t object[3] =
+        {
+            (uint16_t)U8TO16(oam, i * 8 + 0),
+            (uint16_t)U8TO16(oam, i * 8 + 2),
+            (uint16_t)U8TO16(oam, i * 8 + 4)
+        };
 
         // Determine the dimensions of the object
-        int width = 0, height = 0;
-        switch ((object[1] & 0xC000) >> 14) // Size
+        int width, height;
+        switch (((object[0] >> 12) & 0xC) | ((object[1] >> 14) & 0x3)) // Shape, size
         {
-            case 0:
-            {
-                switch ((object[0] & 0xC000) >> 14) // Shape
-                {
-                    case 0: width =  8; height =  8; break; // Square
-                    case 1: width = 16; height =  8; break; // Horizontal
-                    case 2: width =  8; height = 16; break; // Vertical
-                }
-                break;
-            }
+            case 0x0: width =  8; height =  8; break; // Square, 0
+            case 0x1: width = 16; height = 16; break; // Square, 1
+            case 0x2: width = 32; height = 32; break; // Square, 2
+            case 0x3: width = 64; height = 64; break; // Square, 3
+            case 0x4: width = 16; height =  8; break; // Horizontal, 0
+            case 0x5: width = 32; height =  8; break; // Horizontal, 1
+            case 0x6: width = 32; height = 16; break; // Horizontal, 2
+            case 0x7: width = 64; height = 32; break; // Horizontal, 3
+            case 0x8: width =  8; height = 16; break; // Vertical, 0
+            case 0x9: width =  8; height = 32; break; // Vertical, 1
+            case 0xA: width = 16; height = 32; break; // Vertical, 2
+            case 0xB: width = 32; height = 64; break; // Vertical, 3
 
-            case 1:
-            {
-                switch ((object[0] & 0xC000) >> 14) // Shape
-                {
-                    case 0: width = 16; height = 16; break; // Square
-                    case 1: width = 32; height =  8; break; // Horizontal
-                    case 2: width =  8; height = 32; break; // Vertical
-                }
-                break;
-            }
-
-            case 2:
-            {
-                switch ((object[0] & 0xC000) >> 14) // Shape
-                {
-                    case 0: width = 32; height = 32; break; // Square
-                    case 1: width = 32; height = 16; break; // Horizontal
-                    case 2: width = 16; height = 32; break; // Vertical
-                }
-                break;
-            }
-
-            case 3:
-            {
-                switch ((object[0] & 0xC000) >> 14) // Shape
-                {
-                    case 0: width = 64; height = 64; break; // Square
-                    case 1: width = 64; height = 32; break; // Horizontal
-                    case 2: width = 32; height = 64; break; // Vertical
-                }
-                break;
-            }
+            default:
+                LOG("Unknown object dimensions: shape=%d, size=%d\n", (object[0] >> 14) & 0x3, (object[1] >> 14) & 0x3);
+                continue;
         }
 
         // Double the object bounds for rotscale objects with the double size bit set
         int width2 = width, height2 = height;
-        if ((object[0] & BIT(8)) && (object[0] & BIT(9)))
+        if ((object[0] & 0x0300) == 0x0300)
         {
-            width2 *= 2;
+            width2  *= 2;
             height2 *= 2;
         }
 
         // Get the Y coordinate and wrap it around if it exceeds the screen bounds
-        int y = (object[0] & 0x00FF);
+        int y = object[0] & 0xFF;
         if (y >= 192) y -= 256;
 
         // Don't draw anything if the current scanline lies outside of the object's bounds
@@ -949,12 +926,11 @@ void Gpu2D::drawObjects(int line, bool window)
             continue;
 
         // Get the X coordinate and wrap it around if it exceeds the screen bounds
-        int x = (object[1] & 0x01FF);
+        int x = object[1] & 0x1FF;
         if (x >= 256) x -= 512;
 
         // Objects are higher priority than background layers, so the priority is given a little boost
-        int type = (object[0] & 0x0C00) >> 10;
-        int8_t prio = ((object[2] & 0x0C00) >> 10) - 1;
+        int8_t priority = ((object[2] >> 10) & 0x3) - 1;
 
         // Draw bitmap objects
         if (!core->isGbaMode() && type == 3)
@@ -965,22 +941,26 @@ void Gpu2D::drawObjects(int line, bool window)
             // Determine the address and width of the bitmap
             if (dispCnt & BIT(6)) // 1D mapping
             {
-                dataBase = objVramAddr + (object[2] & 0x03FF) * ((dispCnt & BIT(22)) ? 256 : 128);
+                dataBase = objVramAddr + (object[2] & 0x3FF) * ((dispCnt & BIT(22)) ? 256 : 128);
                 bitmapWidth = width;
             }
             else // 2D mapping
             {
                 uint8_t xMask = (dispCnt & BIT(5)) ? 0x1F : 0x0F;
-                dataBase = objVramAddr + (object[2] & 0x03FF & xMask) * 0x10 + (object[2] & 0x03FF & ~xMask) * 0x80;
+                dataBase = objVramAddr + (object[2] & xMask) * 0x10 + (object[2] & 0x3FF & ~xMask) * 0x80;
                 bitmapWidth = (dispCnt & BIT(5)) ? 256 : 128;
             }
 
             if (object[0] & BIT(8)) // Rotscale
             {
                 // Get the rotscale parameters
-                int params[4];
-                for (int j = 0; j < 4; j++)
-                    params[j] = (int16_t)U8TO16(oam, ((object[1] & 0x3E00) >> 9) * 0x20 + j * 8 + 6);
+                int16_t params[4] =
+                {
+                    (int16_t)U8TO16(oam, ((object[1] >> 9) & 0x1F) * 0x20 + 0x06),
+                    (int16_t)U8TO16(oam, ((object[1] >> 9) & 0x1F) * 0x20 + 0x0E),
+                    (int16_t)U8TO16(oam, ((object[1] >> 9) & 0x1F) * 0x20 + 0x16),
+                    (int16_t)U8TO16(oam, ((object[1] >> 9) & 0x1F) * 0x20 + 0x1E)
+                };
 
                 // Draw a line of the object
                 for (int j = 0; j < width2; j++)
@@ -999,7 +979,7 @@ void Gpu2D::drawObjects(int line, bool window)
                     // Draw a pixel
                     uint16_t pixel = core->memory.read<uint16_t>(0, dataBase + (rotscaleY * bitmapWidth + rotscaleX) * 2);
                     if (pixel & BIT(15))
-                        drawObjPixel(line, offset, pixel, prio);
+                        drawObjPixel(line, offset, pixel, priority);
                 }
             }
             else
@@ -1013,7 +993,7 @@ void Gpu2D::drawObjects(int line, bool window)
                     // Draw a pixel
                     uint16_t pixel = core->memory.read<uint16_t>(0, dataBase + (spriteY * bitmapWidth + j) * 2);
                     if (pixel & BIT(15))
-                        drawObjPixel(line, offset, pixel, prio);
+                        drawObjPixel(line, offset, pixel, priority);
                 }
             }
 
@@ -1024,21 +1004,25 @@ void Gpu2D::drawObjects(int line, bool window)
         uint32_t tileBase;
         if (core->isGbaMode())
         {
-            tileBase = 0x6010000 + (object[2] & 0x03FF) * 32;
+            tileBase = 0x6010000 + (object[2] & 0x3FF) * 32;
         }
         else
         {
             // On the DS, the boundary between tiles can be 32, 64, 128, or 256 bytes for 1D tile mapping
-            uint16_t bound = (dispCnt & BIT(4)) ? (32 << ((dispCnt & 0x00300000) >> 20)) : 32;
-            tileBase = objVramAddr + (object[2] & 0x03FF) * bound;
+            uint16_t bound = (dispCnt & BIT(4)) ? (32 << ((dispCnt >> 20) & 0x3)) : 32;
+            tileBase = objVramAddr + (object[2] & 0x3FF) * bound;
         }
 
         if (object[0] & BIT(8)) // Rotscale
         {
             // Get the rotscale parameters
-            int params[4];
-            for (int j = 0; j < 4; j++)
-                params[j] = (int16_t)U8TO16(oam, ((object[1] & 0x3E00) >> 9) * 0x20 + j * 8 + 6);
+            int16_t params[4] =
+            {
+                (int16_t)U8TO16(oam, ((object[1] >> 9) & 0x1F) * 0x20 + 0x06),
+                (int16_t)U8TO16(oam, ((object[1] >> 9) & 0x1F) * 0x20 + 0x0E),
+                (int16_t)U8TO16(oam, ((object[1] >> 9) & 0x1F) * 0x20 + 0x16),
+                (int16_t)U8TO16(oam, ((object[1] >> 9) & 0x1F) * 0x20 + 0x1E)
+            };
 
             if (object[0] & BIT(13)) // 8-bit
             {
@@ -1084,12 +1068,12 @@ void Gpu2D::drawObjects(int line, bool window)
                     {
                         // Draw a pixel, marking semi-transparent pixels with an extra bit
                         if (index)
-                            drawObjPixel(line, offset, ((type == 1) << 25) | BIT(15) | U8TO16(pal, index * 2), prio);
+                            drawObjPixel(line, offset, ((type == 1) << 25) | BIT(15) | U8TO16(pal, index * 2), priority);
 
                         // Update the priority even if the pixel is transparent
                         // This is a quirky behavior of the GBA, but it seems to have been fixed on the DS
-                        if (core->isGbaMode() && prio < priorities[0][offset] && blendBits[0][offset] == 4)
-                            priorities[0][offset] = prio;
+                        if (core->isGbaMode() && priority < priorities[0][offset] && blendBits[0][offset] == 4)
+                            priorities[0][offset] = priority;
                     }
                 }
             }
@@ -1118,7 +1102,7 @@ void Gpu2D::drawObjects(int line, bool window)
                     // Get the palette index for the current pixel
                     uint8_t index = core->memory.read<uint8_t>(core->isGbaMode(), tileBase +
                         ((rotscaleY / 8) * mapWidth + rotscaleY % 8) * 4 + (rotscaleX / 8) * 32 + (rotscaleX % 8) / 2);
-                    index = (rotscaleX % 2 == 1) ? ((index & 0xF0) >> 4) : (index & 0x0F);
+                    index = (rotscaleX & 1) ? ((index & 0xF0) >> 4) : (index & 0x0F);
 
                     if (index && type == 2) // Object window
                     {
@@ -1129,12 +1113,12 @@ void Gpu2D::drawObjects(int line, bool window)
                     {
                         // Draw a pixel, marking semi-transparent pixels with an extra bit
                         if (index)
-                            drawObjPixel(line, offset, ((type == 1) << 25) | BIT(15) | U8TO16(pal, index * 2), prio);
+                            drawObjPixel(line, offset, ((type == 1) << 25) | BIT(15) | U8TO16(pal, index * 2), priority);
 
                         // Update the priority even if the pixel is transparent
                         // This is a quirky behavior of the GBA, but it seems to have been fixed on the DS
-                        if (core->isGbaMode() && prio < priorities[0][offset] && blendBits[0][offset] == 4)
-                            priorities[0][offset] = prio;
+                        if (core->isGbaMode() && priority < priorities[0][offset] && blendBits[0][offset] == 4)
+                            priorities[0][offset] = priority;
                     }
                 }
             }
@@ -1180,12 +1164,12 @@ void Gpu2D::drawObjects(int line, bool window)
                 {
                     // Draw a pixel, marking semi-transparent pixels with an extra bit
                     if (index)
-                        drawObjPixel(line, offset, ((type == 1) << 25) | BIT(15) | U8TO16(pal, index * 2), prio);
+                        drawObjPixel(line, offset, ((type == 1) << 25) | BIT(15) | U8TO16(pal, index * 2), priority);
 
                     // Update the priority even if the pixel is transparent
                     // This is a quirky behavior of the GBA, but it seems to have been fixed on the DS
-                    if (core->isGbaMode() && prio < priorities[0][offset] && blendBits[0][offset] == 4)
-                        priorities[0][offset] = prio;
+                    if (core->isGbaMode() && priority < priorities[0][offset] && blendBits[0][offset] == 4)
+                        priorities[0][offset] = priority;
                 }
             }
         }
@@ -1222,12 +1206,12 @@ void Gpu2D::drawObjects(int line, bool window)
                 {
                     // Draw a pixel, marking semi-transparent pixels with an extra bit
                     if (index)
-                        drawObjPixel(line, offset, ((type == 1) << 25) | BIT(15) | U8TO16(pal, index * 2), prio);
+                        drawObjPixel(line, offset, ((type == 1) << 25) | BIT(15) | U8TO16(pal, index * 2), priority);
 
                     // Update the priority even if the pixel is transparent
                     // This is a quirky behavior of the GBA, but it seems to have been fixed on the DS
-                    if (core->isGbaMode() && prio < priorities[0][offset] && blendBits[0][offset] == 4)
-                        priorities[0][offset] = prio;
+                    if (core->isGbaMode() && priority < priorities[0][offset] && blendBits[0][offset] == 4)
+                        priorities[0][offset] = priority;
                 }
             }
         }
