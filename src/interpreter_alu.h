@@ -131,9 +131,7 @@ FORCE_INLINE uint32_t Interpreter::lliS(uint32_t opcode) // Rm,LSL #i (S)
 
     // Set the carry flag
     if (shift > 0)
-    {
-        if (value & BIT(32 - shift)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((bool)(value & BIT(32 - shift)) << 29);
 
     // Logical shift left by immediate
     return value << shift;
@@ -149,9 +147,7 @@ FORCE_INLINE uint32_t Interpreter::llrS(uint32_t opcode) // Rm,LSL Rs (S)
 
     // Set the carry flag
     if (shift > 0)
-    {
-        if (shift <= 32 && (value & BIT(32 - shift))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((shift <= 32 && (value & BIT(32 - shift))) << 29);
 
     // Logical shift left by register
     // Shifts greater than 32 can be wonky on host systems, so they're handled explicitly
@@ -165,7 +161,7 @@ FORCE_INLINE uint32_t Interpreter::lriS(uint32_t opcode) // Rm,LSR #i (S)
     uint8_t shift = (opcode & 0x00000F80) >> 7;
 
     // Set the carry flag
-    if (value & BIT(shift ? (shift - 1) : 31)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
+    cpsr = (cpsr & ~BIT(29)) | ((bool)(value & BIT(shift ? (shift - 1) : 31)) << 29);
 
     // Logical shift right by immediate
     // A shift of 0 translates to a shift of 32
@@ -181,9 +177,7 @@ FORCE_INLINE uint32_t Interpreter::lrrS(uint32_t opcode) // Rm,LSR Rs (S)
 
     // Set the carry flag
     if (shift > 0)
-    {
-        if (shift <= 32 && (value & BIT(shift - 1))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((shift <= 32 && (value & BIT(shift - 1))) << 29);
 
     // Logical shift right by register
     // Shifts greater than 32 can be wonky on host systems, so they're handled explicitly
@@ -197,8 +191,7 @@ FORCE_INLINE uint32_t Interpreter::ariS(uint32_t opcode) // Rm,ASR #i (S)
     uint8_t shift = (opcode & 0x00000F80) >> 7;
 
     // Set the carry flag
-    if ((shift == 0 && (value & BIT(31))) || (shift > 0 && (value & BIT(shift - 1))))
-        cpsr |= BIT(29); else cpsr &= ~BIT(29);
+    cpsr = (cpsr & ~BIT(29)) | ((bool)(value & BIT(shift ? (shift - 1) : 31)) << 29);
 
     // Arithmetic shift right by immediate
     // A shift of 0 translates to a shift of 32
@@ -214,10 +207,7 @@ FORCE_INLINE uint32_t Interpreter::arrS(uint32_t opcode) // Rm,ASR Rs (S)
 
     // Set the carry flag
     if (shift > 0)
-    {
-        if ((shift > 32 && (value & BIT(31))) || (shift <= 32 && (value & BIT(shift - 1))))
-            cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((bool)(value & BIT((shift <= 32) ? (shift - 1) : 31)) << 29);
 
     // Arithmetic shift right by register
     // Shifts greater than 32 can be wonky on host systems, so they're handled explicitly
@@ -235,7 +225,7 @@ FORCE_INLINE uint32_t Interpreter::rriS(uint32_t opcode) // Rm,ROR #i (S)
     uint32_t res = shift ? ((value << (32 - shift)) | (value >> shift)) : (((cpsr & BIT(29)) << 2) | (value >> 1));
 
     // Set the carry flag
-    if (value & BIT(shift ? (shift - 1) : 0)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
+    cpsr = (cpsr & ~BIT(29)) | ((bool)(value & BIT(shift ? (shift - 1) : 0)) << 29);
 
     return res;
 }
@@ -249,9 +239,7 @@ FORCE_INLINE uint32_t Interpreter::rrrS(uint32_t opcode) // Rm,ROR Rs (S)
 
     // Set the carry flag
     if (shift > 0)
-    {
-        if (value & BIT((shift - 1) % 32)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((bool)(value & BIT((shift - 1) % 32)) << 29);
 
     // Rotate right by register
     return (value << (32 - shift % 32)) | (value >> (shift % 32));
@@ -265,9 +253,7 @@ FORCE_INLINE uint32_t Interpreter::immS(uint32_t opcode) // #i (S)
 
     // Set the carry flag
     if (shift > 0)
-    {
-        if (value & BIT(shift - 1)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((bool)(value & BIT(shift - 1)) << 29);
 
     // Immediate
     // Can be any 8 bits rotated right by a multiple of 2
@@ -412,8 +398,7 @@ FORCE_INLINE int Interpreter::tst(uint32_t opcode, uint32_t op2) // TST Rn,op2
     uint32_t res = op1 & op2;
 
     // Set the flags
-    if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (res & BIT(31)) | ((res == 0) << 30);
 
     return 1;
 }
@@ -428,8 +413,7 @@ FORCE_INLINE int Interpreter::teq(uint32_t opcode, uint32_t op2) // TEQ Rn,op2
     uint32_t res = op1 ^ op2;
 
     // Set the flags
-    if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (res & BIT(31)) | ((res == 0) << 30);
 
     return 1;
 }
@@ -444,11 +428,8 @@ FORCE_INLINE int Interpreter::cmp(uint32_t opcode, uint32_t op2) // CMP Rn,op2
     uint32_t res = op1 - op2;
 
     // Set the flags
-    if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= res)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (res & BIT(31)) | ((res == 0) << 30) | ((op1 >= res) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -463,11 +444,8 @@ FORCE_INLINE int Interpreter::cmn(uint32_t opcode, uint32_t op2) // CMN Rn,op2
     uint32_t res = op1 + op2;
 
     // Set the flags
-    if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 > res)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) == (op1 & BIT(31)) && (res & BIT(31)) != (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (res & BIT(31)) | ((res == 0) << 30) | ((op1 > res) << 29) |
+        (((op2 & BIT(31)) == (op1 & BIT(31)) && (res & BIT(31)) != (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -551,8 +529,7 @@ FORCE_INLINE int Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn,
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -579,8 +556,7 @@ FORCE_INLINE int Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn,
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -607,11 +583,8 @@ FORCE_INLINE int Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn,
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 >= *op0) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31))) << 28);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -638,11 +611,8 @@ FORCE_INLINE int Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn,
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op2 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op1 & BIT(31)) != (op2 & BIT(31)) && (*op0 & BIT(31)) == (op1 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op2 >= *op0) << 29) |
+        (((op1 & BIT(31)) != (op2 & BIT(31)) && (*op0 & BIT(31)) == (op1 & BIT(31))) << 28);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -669,11 +639,8 @@ FORCE_INLINE int Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn,
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 > *op0)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 > *op0) << 29) |
+        (((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31))) << 28);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -700,11 +667,9 @@ FORCE_INLINE int Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn,
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 > *op0 || (op2 == 0xFFFFFFFF && (cpsr & BIT(29)))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) |
+        ((op1 > *op0 || (op2 == 0xFFFFFFFF && (cpsr & BIT(29)))) << 29) |
+        (((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31))) << 28);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -731,11 +696,9 @@ FORCE_INLINE int Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn,
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= *op0 && (op2 != 0xFFFFFFFF || (cpsr & BIT(29)))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) |
+        ((op1 >= *op0 && (op2 != 0xFFFFFFFF || (cpsr & BIT(29)))) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31))) << 28);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -762,11 +725,9 @@ FORCE_INLINE int Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn,
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op2 >= *op0 && (op1 != 0xFFFFFFFF || (cpsr & BIT(29)))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op1 & BIT(31)) != (op2 & BIT(31)) && (*op0 & BIT(31)) == (op1 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) |
+        ((op2 >= *op0 && (op1 != 0xFFFFFFFF || (cpsr & BIT(29)))) << 29) |
+        (((op1 & BIT(31)) != (op2 & BIT(31)) && (*op0 & BIT(31)) == (op1 & BIT(31))) << 28);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -793,8 +754,7 @@ FORCE_INLINE int Interpreter::orrs(uint32_t opcode, uint32_t op2) // ORRS Rd,Rn,
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -819,8 +779,7 @@ FORCE_INLINE int Interpreter::movs(uint32_t opcode, uint32_t op2) // MOVS Rd,op2
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -847,8 +806,7 @@ FORCE_INLINE int Interpreter::bics(uint32_t opcode, uint32_t op2) // BICS Rd,Rn,
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -873,8 +831,7 @@ FORCE_INLINE int Interpreter::mvns(uint32_t opcode, uint32_t op2) // MVNS Rd,op2
     }
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     // Handle pipelining
     if (op0 != registers[15]) return 1;
@@ -1004,8 +961,7 @@ FORCE_INLINE int Interpreter::muls(uint32_t opcode) // MULS Rd,Rm,Rs
     *op0 = op1 * op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     // Calculate timing
     if (cpu == 0) return 4;
@@ -1025,8 +981,7 @@ FORCE_INLINE int Interpreter::mlas(uint32_t opcode) // MLAS Rd,Rm,Rs,Rn
     *op0 = op1 * op2 + op3;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     // Calculate timing
     if (cpu == 0) return 4;
@@ -1048,8 +1003,7 @@ FORCE_INLINE int Interpreter::umulls(uint32_t opcode) // UMULLS RdLo,RdHi,Rm,Rs
     *op0 = res;
 
     // Set the flags
-    if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((*op1 == 0) << 30);
 
     // Calculate timing
     if (cpu == 0) return 5;
@@ -1072,8 +1026,7 @@ FORCE_INLINE int Interpreter::umlals(uint32_t opcode) // UMLALS RdLo,RdHi,Rm,Rs
     *op0 = res;
 
     // Set the flags
-    if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((*op1 == 0) << 30);
 
     // Calculate timing
     if (cpu == 0) return 5;
@@ -1095,8 +1048,7 @@ FORCE_INLINE int Interpreter::smulls(uint32_t opcode) // SMULLS RdLo,RdHi,Rm,Rs
     *op0 = res;
 
     // Set the flags
-    if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((*op1 == 0) << 30);
 
     // Calculate timing
     if (cpu == 0) return 5;
@@ -1119,8 +1071,7 @@ FORCE_INLINE int Interpreter::smlals(uint32_t opcode) // SMLALS RdLo,RdHi,Rm,Rs
     *op0 = res;
 
     // Set the flags
-    if (*op1 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op1 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((*op1 == 0) << 30);
 
     // Calculate timing
     if (cpu == 0) return 5;
@@ -1577,11 +1528,8 @@ FORCE_INLINE int Interpreter::addRegT(uint16_t opcode) // ADD Rd,Rs,Rn
     *op0 = op1 + op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 > *op0)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 > *op0) << 29) |
+        (((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -1597,11 +1545,8 @@ FORCE_INLINE int Interpreter::subRegT(uint16_t opcode) // SUB Rd,Rs,Rn
     *op0 = op1 - op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 >= *op0) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -1631,11 +1576,8 @@ FORCE_INLINE int Interpreter::cmpHT(uint16_t opcode) // CMP Rd,Rs
     uint32_t res = op1 - op2;
 
     // Set the flags
-    if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= res)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (res & BIT(31)) | ((res == 0) << 30) | ((op1 >= res) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -1704,12 +1646,9 @@ FORCE_INLINE int Interpreter::lslImmT(uint16_t opcode) // LSL Rd,Rs,#i
     *op0 = op1 << op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
     if (op2 > 0)
-    {
-        if (op1 & BIT(32 - op2)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((bool)(op1 & BIT(32 - op2)) << 29);
 
     return 1;
 }
@@ -1726,9 +1665,8 @@ FORCE_INLINE int Interpreter::lsrImmT(uint16_t opcode) // LSR Rd,Rs,#i
     *op0 = op2 ? (op1 >> op2) : 0;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 & BIT(op2 ? (op2 - 1) : 31)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
+    cpsr = (cpsr & ~0xE0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) |
+        ((bool)(op1 & BIT(op2 ? (op2 - 1) : 31)) << 29);
 
     return 1;
 }
@@ -1745,10 +1683,8 @@ FORCE_INLINE int Interpreter::asrImmT(uint16_t opcode) // ASR Rd,Rs,#i
     *op0 = op2 ? ((int32_t)op1 >> op2) : ((op1 & BIT(31)) ? 0xFFFFFFFF : 0);
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if ((op2 == 0 && (op1 & BIT(31))) || (op2 > 0 && (op1 & BIT(op2 - 1))))
-        cpsr |= BIT(29); else cpsr &= ~BIT(29);
+    cpsr = (cpsr & ~0xE0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) |
+        ((bool)(op1 & BIT(op2 ? (op2 - 1) : 31)) << 29);
 
     return 1;
 }
@@ -1764,11 +1700,8 @@ FORCE_INLINE int Interpreter::addImm3T(uint16_t opcode) // ADD Rd,Rs,#i
     *op0 = op1 + op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 > *op0)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 > *op0) << 29) |
+        (((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -1784,11 +1717,8 @@ FORCE_INLINE int Interpreter::subImm3T(uint16_t opcode) // SUB Rd,Rs,#i
     *op0 = op1 - op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 >= *op0) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -1804,11 +1734,8 @@ FORCE_INLINE int Interpreter::addImm8T(uint16_t opcode) // ADD Rd,#i
     *op0 += op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 > *op0)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 > *op0) << 29) |
+        (((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -1824,11 +1751,8 @@ FORCE_INLINE int Interpreter::subImm8T(uint16_t opcode) // SUB Rd,#i
     *op0 -= op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 >= *op0) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -1844,11 +1768,8 @@ FORCE_INLINE int Interpreter::cmpImm8T(uint16_t opcode) // CMP Rd,#i
     uint32_t res = op1 - op2;
 
     // Set the flags
-    if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= res)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (res & BIT(31)) | ((res == 0) << 30) | ((op1 >= res) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -1863,8 +1784,7 @@ FORCE_INLINE int Interpreter::movImm8T(uint16_t opcode) // MOV Rd,#i
     *op0 = op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     return 1;
 }
@@ -1881,12 +1801,9 @@ FORCE_INLINE int Interpreter::lslDpT(uint16_t opcode) // LSL Rd,Rs
     *op0 = (op2 < 32) ? (*op0 << op2) : 0;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
     if (op2 > 0)
-    {
-        if (op2 <= 32 && (op1 & BIT(32 - op2))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((op2 <= 32 && (op1 & BIT(32 - op2))) << 29);
 
     return 1;
 }
@@ -1903,12 +1820,9 @@ FORCE_INLINE int Interpreter::lsrDpT(uint16_t opcode) // LSR Rd,Rs
     *op0 = (op2 < 32) ? (*op0 >> op2) : 0;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
     if (op2 > 0)
-    {
-        if (op2 <= 32 && (op1 & BIT(op2 - 1))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((op2 <= 32 && (op1 & BIT(op2 - 1))) << 29);
 
     return 1;
 }
@@ -1925,13 +1839,9 @@ FORCE_INLINE int Interpreter::asrDpT(uint16_t opcode) // ASR Rd,Rs
     *op0 = (op2 < 32) ? ((int32_t)(*op0) >> op2) : ((*op0 & BIT(31)) ? 0xFFFFFFFF : 0);
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
     if (op2 > 0)
-    {
-        if ((op2 > 32 && (op1 & BIT(31))) || (op2 <= 32 && (op1 & BIT(op2 - 1))))
-            cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((bool)(op1 & BIT((op2 <= 32) ? (op2 - 1) : 31)) << 29);
 
     return 1;
 }
@@ -1947,12 +1857,9 @@ FORCE_INLINE int Interpreter::rorDpT(uint16_t opcode) // ROR Rd,Rs
     *op0 = (*op0 << (32 - op2 % 32)) | (*op0 >> (op2 % 32));
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
     if (op2 > 0)
-    {
-        if (op1 & BIT((op2 - 1) % 32)) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    }
+        cpsr = (cpsr & ~BIT(29)) | ((bool)(op1 & BIT((op2 - 1) % 32)) << 29);
 
     return 1;
 }
@@ -1967,8 +1874,7 @@ FORCE_INLINE int Interpreter::andDpT(uint16_t opcode) // AND Rd,Rs
     *op0 &= op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     return 1;
 }
@@ -1983,8 +1889,7 @@ FORCE_INLINE int Interpreter::eorDpT(uint16_t opcode) // EOR Rd,Rs
     *op0 ^= op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     return 1;
 }
@@ -2000,11 +1905,9 @@ FORCE_INLINE int Interpreter::adcDpT(uint16_t opcode) // ADC Rd,Rs
     *op0 += op2 + ((cpsr & BIT(29)) >> 29);
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 > *op0 || (op2 == 0xFFFFFFFF && (cpsr & BIT(29)))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) |
+        ((op1 > *op0 || (op2 == 0xFFFFFFFF && (cpsr & BIT(29)))) << 29) |
+        (((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -2020,11 +1923,9 @@ FORCE_INLINE int Interpreter::sbcDpT(uint16_t opcode) // SBC Rd,Rs
     *op0 = op1 - op2 - 1 + ((cpsr & BIT(29)) >> 29);
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= *op0 && (op2 != 0xFFFFFFFF || (cpsr & BIT(29)))) cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) |
+        ((op1 >= *op0 && (op2 != 0xFFFFFFFF || (cpsr & BIT(29)))) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -2039,8 +1940,7 @@ FORCE_INLINE int Interpreter::tstDpT(uint16_t opcode) // TST Rd,Rs
     uint32_t res = op1 & op2;
 
     // Set the flags
-    if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (res & BIT(31)) | ((res == 0) << 30);
 
     return 1;
 }
@@ -2055,11 +1955,8 @@ FORCE_INLINE int Interpreter::cmpDpT(uint16_t opcode) // CMP Rd,Rs
     uint32_t res = op1 - op2;
 
     // Set the flags
-    if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= res)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (res & BIT(31)) | ((res == 0) << 30) | ((op1 >= res) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (res & BIT(31)) == (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -2074,11 +1971,8 @@ FORCE_INLINE int Interpreter::cmnDpT(uint16_t opcode) // CMN Rd,Rs
     uint32_t res = op1 + op2;
 
     // Set the flags
-    if (res & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (res == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 > res)     cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) == (op1 & BIT(31)) && (res & BIT(31)) != (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (res & BIT(31)) | ((res == 0) << 30) | ((op1 > res) << 29) |
+        (((op2 & BIT(31)) == (op1 & BIT(31)) && (res & BIT(31)) != (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -2093,8 +1987,7 @@ FORCE_INLINE int Interpreter::orrDpT(uint16_t opcode) // ORR Rd,Rs
     *op0 |= op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     return 1;
 }
@@ -2109,8 +2002,7 @@ FORCE_INLINE int Interpreter::bicDpT(uint16_t opcode) // BIC Rd,Rs
     *op0 &= ~op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     return 1;
 }
@@ -2125,8 +2017,7 @@ FORCE_INLINE int Interpreter::mvnDpT(uint16_t opcode) // MVN Rd,Rs
     *op0 = ~op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     return 1;
 }
@@ -2142,11 +2033,8 @@ FORCE_INLINE int Interpreter::negDpT(uint16_t opcode) // NEG Rd,Rs
     *op0 = op1 - op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
-    if (op1 >= *op0)    cpsr |= BIT(29); else cpsr &= ~BIT(29);
-    if ((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31)))
-        cpsr |= BIT(28); else cpsr &= ~BIT(28);
+    cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 >= *op0) << 29) |
+        (((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31))) << 28);
 
     return 1;
 }
@@ -2162,8 +2050,7 @@ FORCE_INLINE int Interpreter::mulDpT(uint16_t opcode) // MUL Rd,Rs
     *op0 = op1 * op2;
 
     // Set the flags
-    if (*op0 & BIT(31)) cpsr |= BIT(31); else cpsr &= ~BIT(31);
-    if (*op0 == 0)      cpsr |= BIT(30); else cpsr &= ~BIT(30);
+    cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
     // Calculate timing
     if (cpu == 0) return 4;
