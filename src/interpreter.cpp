@@ -94,16 +94,15 @@ void Interpreter::directBoot()
 
 int Interpreter::runOpcode()
 {
+    // Push the next opcode through the pipeline
+    uint32_t opcode = pipeline[0];
+    pipeline[0] = pipeline[1];
+
     // Execute an instruction
     if (cpsr & BIT(5)) // THUMB mode
     {
-        // Increment the program counter
-        *registers[15] += 2;
-
-        // Push the next opcode through the pipeline
-        uint16_t opcode = pipeline[0];
-        pipeline[0] = pipeline[1];
-        pipeline[1] = core->memory.read<uint16_t>(cpu, *registers[15]);
+        // Fill the pipeline, incrementing the program counter
+        pipeline[1] = core->memory.read<uint16_t>(cpu, *registers[15] += 2);
 
         // THUMB lookup table, based on the map found at http://imrannazar.com/ARM-Opcode-Map
         // Uses bits 15-8 of an opcode to find the appropriate instruction
@@ -359,13 +358,8 @@ int Interpreter::runOpcode()
     }
     else // ARM mode
     {
-        // Increment the program counter
-        *registers[15] += 4;
-
-        // Push the next opcode through the pipeline
-        uint32_t opcode = pipeline[0];
-        pipeline[0] = pipeline[1];
-        pipeline[1] = core->memory.read<uint32_t>(cpu, *registers[15]);
+        // Fill the pipeline, incrementing the program counter
+        pipeline[1] = core->memory.read<uint32_t>(cpu, *registers[15] += 4);
 
         // Evaluate the current opcode's condition
         switch (condition[((opcode >> 24) & 0xF0) | (cpsr >> 28)])
