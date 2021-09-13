@@ -45,22 +45,25 @@ int showFpsCounter = 0;
 int switchOverclock = 3;
 
 std::string ndsPath, gbaPath;
+Core *core;
 
 bool running = false;
-
+std::thread *coreThread, *audioThread;
 ClkrstSession cpuSession;
+
+ScreenLayout layout;
+uint32_t framebuffer[256 * 192 * 2] = {};
+bool gbaMode = false;
 
 AudioOutBuffer audioBuffers[2];
 AudioOutBuffer *audioReleasedBuffer;
 int16_t *audioData[2];
 uint32_t count;
 
-Core *core;
-std::thread *coreThread, *audioThread;
-
-ScreenLayout layout;
-uint32_t framebuffer[256 * 192 * 2] = {};
-bool gbaMode = false;
+int sensorMode = 0;
+bool initialAngleDirty = false;
+float initialAngleX = 0, initialAngleZ = 0;
+HidSixAxisSensorHandle sensorHandles[3];
 
 void runCore()
 {
@@ -548,6 +551,12 @@ int main()
     appletLockExit();
     SwitchUI::initialize();
 
+    // Initialize the motion sensors
+    hidGetSixAxisSensorHandles(&sensorHandles[0], 1, HidNpadIdType_No1, HidNpadStyleTag_NpadFullKey);
+    hidGetSixAxisSensorHandles(&sensorHandles[1], 2, HidNpadIdType_No1, HidNpadStyleTag_NpadJoyDual);
+    for (int i = 0; i < 3; i++)
+        hidStartSixAxisSensor(sensorHandles[i]);
+
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
@@ -568,10 +577,20 @@ int main()
 
     while (appletMainLoop() && running)
     {
+        SwitchUI::clear(Color(0, 0, 0));
+
         // Scan for key input
         padUpdate(SwitchUI::getPad());
+        uint32_t held = padGetButtons(SwitchUI::getPad());
         uint32_t pressed = padGetButtonsDown(SwitchUI::getPad());
         uint32_t released = padGetButtonsUp(SwitchUI::getPad());
+        uint32_t padStyle = padGetStyleSet(SwitchUI::getPad());
+
+        // Ignore stick movement while a stick is pressed
+        if (held & HidNpadButton_StickL)
+            pressed &= ~(HidNpadButton_StickLRight | HidNpadButton_StickLLeft | HidNpadButton_StickLUp | HidNpadButton_StickLDown);
+        if (held & HidNpadButton_StickR)
+            pressed &= ~(HidNpadButton_StickRRight | HidNpadButton_StickRLeft | HidNpadButton_StickRUp | HidNpadButton_StickRDown);
 
         // Send input to the core
         for (int i = 0; i < 12; i++)
@@ -582,72 +601,131 @@ int main()
                 core->input.releaseKey(i);
         }
 
-        // Scan for touch input
-        HidTouchScreenState touch;
-        hidGetTouchScreenStates(&touch, 1);
-
-        if (touch.count > 0) // Pressed
+        // Update the layout if GBA mode changed
+        if (gbaMode != (core->isGbaMode() && ScreenLayout::getGbaCrop()))
         {
-            // Determine the touch position relative to the emulated touch screen
-            int touchX = layout.getTouchX(touch.touches[0].x, touch.touches[0].y);
-            int touchY = layout.getTouchY(touch.touches[0].x, touch.touches[0].y);
-
-            // Send the touch coordinates to the core
-            core->input.pressScreen();
-            core->spi.setTouch(touchX, touchY);
-        }
-        else // Released
-        {
-            // If the screen isn't being touched, release the touch screen press
-            core->input.releaseScreen();
-            core->spi.clearTouch();
+            gbaMode = !gbaMode;
+            layout.update(1280, 720, gbaMode);
         }
 
-        // Draw a new frame if one is ready
-        bool gba = (core->isGbaMode() && ScreenLayout::getGbaCrop());
-        if (core->gpu.getFrame(framebuffer, gba))
+        // Get a new frame if one is ready
+        core->gpu.getFrame(framebuffer, gbaMode);
+
+        if (gbaMode)
         {
-            // Update the layout if GBA mode changed
-            if (gbaMode != gba)
-            {
-                gbaMode = gba;
-                layout.update(1280, 720, gbaMode);
-            }
-
-            SwitchUI::clear(Color(0, 0, 0));
-
-            if (gbaMode)
-            {
-                // Draw the GBA screen
-                SwitchUI::drawImage(&framebuffer[0], 240, 160, layout.getTopX(), layout.getTopY(),
-                    layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
-            }
-            else // NDS mode
-            {
-                // Draw the DS top screen
-                SwitchUI::drawImage(&framebuffer[0], 256, 192, layout.getTopX(), layout.getTopY(),
-                    layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
-
-                // Draw the DS bottom screen
-                SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, layout.getBotX(), layout.getBotY(),
-                    layout.getBotWidth(), layout.getBotHeight(), screenFilter, ScreenLayout::getScreenRotation());
-            }
-
-            // Draw the FPS counter if enabled
-            if (showFpsCounter)
-                SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
-
-            SwitchUI::update();
+            // Draw the GBA screen
+            SwitchUI::drawImage(&framebuffer[0], 240, 160, layout.getTopX(), layout.getTopY(),
+                layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
         }
+        else // NDS mode
+        {
+            // Draw the DS top screen
+            SwitchUI::drawImage(&framebuffer[0], 256, 192, layout.getTopX(), layout.getTopY(),
+                layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
+
+            // Draw the DS bottom screen
+            SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, layout.getBotX(), layout.getBotY(),
+                layout.getBotWidth(), layout.getBotHeight(), screenFilter, ScreenLayout::getScreenRotation());
+
+            // Handle touch input, depending on the current control type
+            if ((padStyle & (HidNpadStyleTag_NpadFullKey | HidNpadStyleTag_NpadJoyDual)) &&
+                (held & (HidNpadButton_StickL | HidNpadButton_StickR))) // Wireless controller, stick pressed
+            {
+                // Set the sensor mode depending on which stick is initially pressed
+                if (sensorMode == 0)
+                {
+                    sensorMode = (held & HidNpadButton_StickL) ? 1 : 2;
+                    initialAngleDirty = true;
+                }
+
+                // Read the sensor state of the appropriate controller
+                // For Joy-Cons, use the one that contains the initially pressed stick
+                HidSixAxisSensorState sensorState;
+                hidGetSixAxisSensorStates(sensorHandles[(padStyle & HidNpadStyleTag_NpadFullKey) ? 0 : sensorMode], &sensorState, 1);
+
+                // Save the initial motion angle; this position will be the middle of the touch screen
+                if (initialAngleDirty)
+                {
+                    initialAngleX = sensorState.angle.x;
+                    initialAngleZ = sensorState.angle.z;
+                    initialAngleDirty = false;
+                }
+
+                // Get the current motion angle, clamped, relative to the initial angle
+                float relativeX = -std::max(std::min(sensorState.angle.x - initialAngleX, 0.05f), -0.05f) + 0.05f;
+                float relativeZ = -std::max(std::min(sensorState.angle.z - initialAngleZ, 0.05f), -0.05f) + 0.05f;
+
+                // Scale the motion angle to a position on the touch screen
+                int screenX = layout.getBotX() + relativeZ * layout.getBotWidth()  / 0.10f;
+                int screenY = layout.getBotY() + relativeX * layout.getBotHeight() / 0.10f;
+
+                // Draw a pointer on the screen to show the current touch position
+                uint8_t c = (held & keyMap[12]) ? 0x7F : 0xFF;
+                SwitchUI::drawRectangle(screenX - 10, screenY - 10, 20, 20, Color(0, 0, 0));
+                SwitchUI::drawRectangle(screenX -  8, screenY -  8, 16, 16, Color(c, c, c));
+
+                // Override the menu mapping, and touch the screen while it's held
+                if (held & keyMap[12])
+                {
+                    // Determine the touch position relative to the emulated touch screen
+                    int touchX = layout.getTouchX(screenX, screenY);
+                    int touchY = layout.getTouchY(screenX, screenY);
+
+                    // Send the touch coordinates to the core
+                    core->input.pressScreen();
+                    core->spi.setTouch(touchX, touchY);
+                }
+                else
+                {
+                    // Release the touch screen press
+                    core->input.releaseScreen();
+                    core->spi.clearTouch();
+                }
+            }
+            else
+            {
+                // Reset the sensor mode, since it's not being used
+                sensorMode = 0;
+
+                // Scan for touch input
+                HidTouchScreenState touch;
+                hidGetTouchScreenStates(&touch, 1);
+
+                if (touch.count > 0) // Pressed
+                {
+                    // Determine the touch position relative to the emulated touch screen
+                    int touchX = layout.getTouchX(touch.touches[0].x, touch.touches[0].y);
+                    int touchY = layout.getTouchY(touch.touches[0].x, touch.touches[0].y);
+
+                    // Send the touch coordinates to the core
+                    core->input.pressScreen();
+                    core->spi.setTouch(touchX, touchY);
+                }
+                else // Released
+                {
+                    // Release the touch screen press
+                    core->input.releaseScreen();
+                    core->spi.clearTouch();
+                }
+            }
+        }
+
+        // Draw the FPS counter if enabled
+        if (showFpsCounter)
+            SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
+
+        SwitchUI::update();
 
         // Open the pause menu if requested
-        if (pressed & keyMap[12])
+        if (!sensorMode && (pressed & keyMap[12]))
             pauseMenu();
     }
 
     // Clean up
     stopCore();
     delete core;
+    for (int i = 0; i < 3; i++)
+        hidStopSixAxisSensor(sensorHandles[i]);
     SwitchUI::deinitialize();
     appletUnlockExit();
     return 0;
