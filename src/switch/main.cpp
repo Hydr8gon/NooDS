@@ -30,6 +30,9 @@
 #include "../core.h"
 #include "../settings.h"
 
+#define GYRO_TOUCH_RANGE  0.08f
+#define STICK_TOUCH_RANGE 0xB000
+
 const uint32_t keyMap[] =
 {
     HidNpadButton_A,        HidNpadButton_B,       HidNpadButton_Minus,    HidNpadButton_Plus,
@@ -42,6 +45,7 @@ const int clockSpeeds[] = { 1020000000, 1224000000, 1581000000, 1785000000 };
 
 int screenFilter = 1;
 int showFpsCounter = 0;
+int dockedTouchMode = 0;
 int switchOverclock = 3;
 
 std::string ndsPath, gbaPath;
@@ -60,7 +64,7 @@ AudioOutBuffer *audioReleasedBuffer;
 int16_t *audioData[2];
 uint32_t count;
 
-int sensorMode = 0;
+int pointerMode = 0;
 bool initialAngleDirty = false;
 float initialAngleX = 0, initialAngleZ = 0;
 HidSixAxisSensorHandle sensorHandles[3];
@@ -161,6 +165,7 @@ void settingsMenu()
     const std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal"          };
     const std::vector<std::string> sizing      = { "Even", "Enlarge Top", "Enlarge Bottom"        };
     const std::vector<std::string> gap         = { "None", "Quarter", "Half", "Full"              };
+    const std::vector<std::string> touchMode   = { "Gyroscope", "Joystick"                        };
     const std::vector<std::string> overclock   = { "1020 MHz", "1224 MHz", "1581 MHz", "1785 MHz" };
 
     unsigned int index = 0;
@@ -182,6 +187,7 @@ void settingsMenu()
             ListItem("GBA Crop",           toggle[ScreenLayout::getGbaCrop()]),
             ListItem("Screen Filter",      toggle[screenFilter]),
             ListItem("Show FPS Counter",   toggle[showFpsCounter]),
+            ListItem("Docked Touch Mode",  touchMode[dockedTouchMode]),
             ListItem("Switch Overclock",   overclock[switchOverclock])
         };
 
@@ -207,9 +213,10 @@ void settingsMenu()
                 case  7: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
                 case  8: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
                 case  9: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
-                case 10: screenFilter   = !screenFilter;                                                     break;
-                case 11: showFpsCounter = !showFpsCounter;                                                   break;
-                case 12: switchOverclock = (switchOverclock + 1) % 4;                                        break;
+                case 10: screenFilter    = !screenFilter;                                                    break;
+                case 11: showFpsCounter  = !showFpsCounter;                                                  break;
+                case 12: dockedTouchMode = !dockedTouchMode;                                                 break;
+                case 13: switchOverclock = (switchOverclock + 1) % 4;                                        break;
             }
         }
         else
@@ -562,6 +569,7 @@ int main()
     {
         Setting("screenFilter",    &screenFilter,    false),
         Setting("showFpsCounter",  &showFpsCounter,  false),
+        Setting("dockedTouchMode", &dockedTouchMode, false),
         Setting("switchOverclock", &switchOverclock, false)
     };
 
@@ -584,7 +592,6 @@ int main()
         uint32_t held = padGetButtons(SwitchUI::getPad());
         uint32_t pressed = padGetButtonsDown(SwitchUI::getPad());
         uint32_t released = padGetButtonsUp(SwitchUI::getPad());
-        uint32_t padStyle = padGetStyleSet(SwitchUI::getPad());
 
         // Ignore stick movement while a stick is pressed
         if (held & HidNpadButton_StickL)
@@ -627,37 +634,59 @@ int main()
             SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, layout.getBotX(), layout.getBotY(),
                 layout.getBotWidth(), layout.getBotHeight(), screenFilter, ScreenLayout::getScreenRotation());
 
-            // Handle touch input, depending on the current control type
-            if ((padStyle & (HidNpadStyleTag_NpadFullKey | HidNpadStyleTag_NpadJoyDual)) &&
-                (held & (HidNpadButton_StickL | HidNpadButton_StickR))) // Wireless controller, stick pressed
+            // Handle touch input, depending on the current operation mode
+            if (appletGetOperationMode() == AppletOperationMode_Console &&
+                (held & (HidNpadButton_StickL | HidNpadButton_StickR))) // Docked, stick pressed
             {
-                // Set the sensor mode depending on which stick is initially pressed
-                if (sensorMode == 0)
+                int screenX, screenY;
+
+                // Set the pointer mode depending on which stick is initially pressed
+                if (pointerMode == 0)
                 {
-                    sensorMode = (held & HidNpadButton_StickL) ? 1 : 2;
+                    pointerMode = (held & HidNpadButton_StickL) ? 1 : 2;
                     initialAngleDirty = true;
                 }
 
-                // Read the sensor state of the appropriate controller
-                // For Joy-Cons, use the one that contains the initially pressed stick
-                HidSixAxisSensorState sensorState;
-                hidGetSixAxisSensorStates(sensorHandles[(padStyle & HidNpadStyleTag_NpadFullKey) ? 0 : sensorMode], &sensorState, 1);
-
-                // Save the initial motion angle; this position will be the middle of the touch screen
-                if (initialAngleDirty)
+                if (dockedTouchMode == 0) // Gyroscope
                 {
-                    initialAngleX = sensorState.angle.x;
-                    initialAngleZ = sensorState.angle.z;
-                    initialAngleDirty = false;
+                    // Read the sensor state of the appropriate controller
+                    // For Joy-Cons, use the one that contains the initially pressed stick
+                    HidSixAxisSensorState sensorState;
+                    bool joycon = padGetStyleSet(SwitchUI::getPad()) & HidNpadStyleTag_NpadJoyDual;
+                    hidGetSixAxisSensorStates(sensorHandles[joycon ? pointerMode : 0], &sensorState, 1);
+
+                    // Save the initial motion angle; this position will be the middle of the touch screen
+                    if (initialAngleDirty)
+                    {
+                        initialAngleX = sensorState.angle.x;
+                        initialAngleZ = sensorState.angle.z;
+                        initialAngleDirty = false;
+                    }
+
+                    // Get the current motion angle, clamped, relative to the initial angle
+                    float relativeX = -std::max(std::min(sensorState.angle.z - initialAngleZ,
+                        GYRO_TOUCH_RANGE / 2), -(GYRO_TOUCH_RANGE / 2)) + GYRO_TOUCH_RANGE / 2;
+                    float relativeY = -std::max(std::min(sensorState.angle.x - initialAngleX,
+                        GYRO_TOUCH_RANGE / 2), -(GYRO_TOUCH_RANGE / 2)) + GYRO_TOUCH_RANGE / 2;
+
+                    // Scale the motion angle to a position on the touch screen
+                    screenX = layout.getBotX() + relativeX * layout.getBotWidth()  / GYRO_TOUCH_RANGE;
+                    screenY = layout.getBotY() + relativeY * layout.getBotHeight() / GYRO_TOUCH_RANGE;
                 }
+                else // Joystick
+                {
+                    HidAnalogStickState stick = padGetStickPos(SwitchUI::getPad(), pointerMode - 1);
 
-                // Get the current motion angle, clamped, relative to the initial angle
-                float relativeX = -std::max(std::min(sensorState.angle.x - initialAngleX, 0.05f), -0.05f) + 0.05f;
-                float relativeZ = -std::max(std::min(sensorState.angle.z - initialAngleZ, 0.05f), -0.05f) + 0.05f;
+                    // Get the current stick position, clamped, relative to the center
+                    int relativeX =  std::max(std::min(stick.x,
+                        STICK_TOUCH_RANGE / 2), -(STICK_TOUCH_RANGE / 2)) + STICK_TOUCH_RANGE / 2;
+                    int relativeY = -std::max(std::min(stick.y,
+                        STICK_TOUCH_RANGE / 2), -(STICK_TOUCH_RANGE / 2)) + STICK_TOUCH_RANGE / 2;
 
-                // Scale the motion angle to a position on the touch screen
-                int screenX = layout.getBotX() + relativeZ * layout.getBotWidth()  / 0.10f;
-                int screenY = layout.getBotY() + relativeX * layout.getBotHeight() / 0.10f;
+                    // Scale the stick position to a position on the touch screen
+                    screenX = layout.getBotX() + relativeX * layout.getBotWidth()  / STICK_TOUCH_RANGE;
+                    screenY = layout.getBotY() + relativeY * layout.getBotHeight() / STICK_TOUCH_RANGE;
+                }
 
                 // Draw a pointer on the screen to show the current touch position
                 uint8_t c = (held & keyMap[12]) ? 0x7F : 0xFF;
@@ -684,8 +713,8 @@ int main()
             }
             else
             {
-                // Reset the sensor mode, since it's not being used
-                sensorMode = 0;
+                // Reset the pointer mode, since it's not being used
+                pointerMode = 0;
 
                 // Scan for touch input
                 HidTouchScreenState touch;
@@ -717,7 +746,7 @@ int main()
         SwitchUI::update();
 
         // Open the pause menu if requested
-        if (!sensorMode && (pressed & keyMap[12]))
+        if (!pointerMode && (pressed & keyMap[12]))
             pauseMenu();
     }
 
