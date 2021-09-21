@@ -186,9 +186,9 @@ void CartridgeNds::loadRom(std::string path)
         }
     }
 
-    // If the save size is unknown, assume FLASH 512KB and hope the user will change it if it doesn't work
+    // If the save size is unknown, it must be guessed based on how the game uses it
     if (!save)
-        resizeSave(0x80000, false);
+        saveSize = -1;
 }
 
 void CartridgeNds::directBoot()
@@ -435,6 +435,34 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
     }
     else
     {
+        // Incredibly naive save type detection, based on commands that might be sent
+        if (saveSize == -1)
+        {
+            switch (auxCommand[cpu])
+            {
+                case 0x0B: // EEPROM 0.5KB: Read from upper memory
+                    LOG("Detected EEPROM 0.5KB save type\n");
+                    resizeSave(0x200, false);
+                    break;
+
+                case 0x02: // EEPROM 64KB: Write to memory
+                    LOG("Detected EEPROM 64KB save type\n");
+                    resizeSave(0x10000, false);
+                    break;
+
+                case 0x0A: // FLASH 512KB: Page write
+                    LOG("Detected FLASH 512KB save type\n");
+                    resizeSave(0x80000, false);
+                    break;
+
+                default:
+                    // Deselect chip
+                    if (!(auxSpiCnt[cpu] & BIT(6)))
+                        auxWriteCount[cpu] = 0;
+                    return;
+            }
+        }
+
         switch (saveSize)
         {
             case 0x200: // EEPROM 0.5KB

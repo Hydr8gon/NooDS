@@ -8,7 +8,7 @@ The goal of NooDS is to be a fast and portable Nintendo DS emulator. It's not qu
 NooDS is available for Linux, macOS, Windows, Switch, Vita, and Android. Automatic builds are provided via GitHub Actions; you can download them from the [releases page](https://github.com/Hydr8gon/NooDS/releases).
 
 ### Usage
-NooDS doesn't provide high-level emulation of the BIOS yet, so you'll need to provide BIOS and firmware files dumped from your physical DS. The file paths can be configured in the settings. It also currently lacks automatic save type detection for DS games. If you load a new game and saving doesn't work, you'll have to manually change the save type. This information can be difficult to find, so it's easier if you have working save files already present.
+NooDS doesn't provide high-level emulation of the BIOS yet, so you'll need to provide BIOS and firmware files dumped from your physical DS. The file paths can be configured in the settings. It has basic save type detection, but can easily be wrong. If you load a new game and saving doesn't work, you'll have to manually change the save type. This information can be difficult to find, so it's easier if you have working save files already present.
 
 ### Compiling for Linux or macOS
 To compile on Linux or macOS, you'll need to install [wxWidgets](https://www.wxwidgets.org) and [PortAudio](http://www.portaudio.com) using your favourite package manager. You can use [Homebrew](https://brew.sh) on macOS, since there is no package manager provided by default. The command will look something like `apt install libwxgtk3.0-dev portaudio19-dev` (Ubuntu) or `brew install wxmac portaudio` (macOS). After that, you can simply run `make` in the project root directory to compile.
