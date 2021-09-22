@@ -22,6 +22,8 @@
 
 #include <cstdint>
 
+#include "defines.h"
+
 class Core;
 
 class VramMapping
@@ -111,6 +113,9 @@ class Memory
         uint8_t wramCnt = 0;
         uint8_t haltCnt = 0;
 
+        template <typename T> T readFallback(bool cpu, uint32_t address);
+        template <typename T> void writeFallback(bool cpu, uint32_t address, T value);
+
         template <typename T> T ioRead9(uint32_t address);
         template <typename T> T ioRead7(uint32_t address);
         template <typename T> T ioReadGba(uint32_t address);
@@ -130,5 +135,52 @@ class Memory
         void writeHaltCnt(uint8_t value);
         void writeGbaHaltCnt(uint8_t value);
 };
+
+template uint8_t  Memory::read(bool cpu, uint32_t address);
+template uint16_t Memory::read(bool cpu, uint32_t address);
+template uint32_t Memory::read(bool cpu, uint32_t address);
+template <typename T> FORCE_INLINE T Memory::read(bool cpu, uint32_t address)
+{
+    // Align the address
+    address &= ~(sizeof(T) - 1);
+
+    uint8_t **readMap = (cpu == 0) ? readMap9 : readMap7;
+    if (readMap[address >> 12])
+    {
+        // Get a pointer to readable memory mapped to the given address
+        uint8_t *data = &readMap[address >> 12][address & 0xFFF];
+
+        // Form an LSB-first value from the data at the pointer
+        T value = 0;
+        for (size_t i = 0; i < sizeof(T); i++)
+            value |= data[i] << (i * 8);
+        return value;
+    }
+
+    return readFallback<T>(cpu, address);
+}
+
+template void Memory::write(bool cpu, uint32_t address, uint8_t  value);
+template void Memory::write(bool cpu, uint32_t address, uint16_t value);
+template void Memory::write(bool cpu, uint32_t address, uint32_t value);
+template <typename T> FORCE_INLINE void Memory::write(bool cpu, uint32_t address, T value)
+{
+    // Align the address
+    address &= ~(sizeof(T) - 1);
+
+    uint8_t **writeMap = (cpu == 0) ? writeMap9 : writeMap7;
+    if (writeMap[address >> 12])
+    {
+        // Get a pointer to writable memory mapped to the given address
+        uint8_t *data = &writeMap[address >> 12][address & 0xFFF];
+
+        // Write an LSB-first value to the data at the pointer
+        for (size_t i = 0; i < sizeof(T); i++)
+            data[i] = value >> (i * 8);
+        return;
+    }
+
+    return writeFallback<T>(cpu, address, value);
+}
 
 #endif // MEMORY_H

@@ -111,7 +111,7 @@ FORCE_INLINE int Interpreter::ldrsbOf(uint32_t opcode, uint32_t op2) // LDRSB Rd
     uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
 
     // Signed byte load, pre-adjust without writeback
-    *op0 = core->memory.read<int8_t>(cpu, op1 + op2);
+    *op0 = (int8_t)core->memory.read<uint8_t>(cpu, op1 + op2);
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
@@ -126,7 +126,7 @@ FORCE_INLINE int Interpreter::ldrshOf(uint32_t opcode, uint32_t op2) // LDRSH Rd
     uint32_t op1 = *registers[(opcode & 0x000F0000) >> 16];
 
     // Signed half-word load, pre-adjust without writeback
-    *op0 = core->memory.read<int16_t>(cpu, op1 += op2);
+    *op0 = (int16_t)core->memory.read<uint16_t>(cpu, op1 += op2);
 
     // Shift misaligned reads on ARM7
     if (cpu == 1 && (op1 & 1))
@@ -275,7 +275,7 @@ FORCE_INLINE int Interpreter::ldrsbPr(uint32_t opcode, uint32_t op2) // LDRSB Rd
 
     // Signed byte load, pre-adjust with writeback
     *op1 += op2;
-    *op0 = core->memory.read<int8_t>(cpu, *op1);
+    *op0 = (int8_t)core->memory.read<uint8_t>(cpu, *op1);
 
     // Handle pipelining
     if (op0 != registers[15]) return ((cpu == 0) ? 1 : 3);
@@ -292,7 +292,7 @@ FORCE_INLINE int Interpreter::ldrshPr(uint32_t opcode, uint32_t op2) // LDRSH Rd
 
     // Signed half-word load, pre-adjust with writeback
     *op1 += op2;
-    *op0 = core->memory.read<int16_t>(cpu, address = *op1);
+    *op0 = (int16_t)core->memory.read<uint16_t>(cpu, address = *op1);
 
     // Shift misaligned reads on ARM7
     if (cpu == 1 && (address & 1))
@@ -450,7 +450,7 @@ FORCE_INLINE int Interpreter::ldrsbPt(uint32_t opcode, uint32_t op2) // LDRSB Rd
     uint32_t *op1 = registers[(opcode & 0x000F0000) >> 16];
 
     // Signed byte load, post-adjust
-    *op0 = core->memory.read<int8_t>(cpu, *op1);
+    *op0 = (int8_t)core->memory.read<uint8_t>(cpu, *op1);
     if (op0 != op1) *op1 += op2;
 
     // Handle pipelining
@@ -467,7 +467,7 @@ FORCE_INLINE int Interpreter::ldrshPt(uint32_t opcode, uint32_t op2) // LDRSH Rd
     uint32_t address;
 
     // Signed half-word load, post-adjust
-    *op0 = core->memory.read<int16_t>(cpu, address = *op1);
+    *op0 = (int16_t)core->memory.read<uint16_t>(cpu, address = *op1);
     if (op0 != op1) *op1 += op2;
 
     // Shift misaligned reads on ARM7
@@ -1788,7 +1788,7 @@ FORCE_INLINE int Interpreter::ldrsbRegT(uint16_t opcode) // LDRSB Rd,[Rb,Ro]
     uint32_t op2 = *registers[(opcode & 0x01C0) >> 6];
 
     // Signed byte load, pre-adjust without writeback
-    *op0 = core->memory.read<int8_t>(cpu, op1 + op2);
+    *op0 = (int8_t)core->memory.read<uint8_t>(cpu, op1 + op2);
 
     return ((cpu == 0) ? 1 : 3);
 }
@@ -1801,7 +1801,7 @@ FORCE_INLINE int Interpreter::ldrshRegT(uint16_t opcode) // LDRSH Rd,[Rb,Ro]
     uint32_t op2 = *registers[(opcode & 0x01C0) >> 6];
 
     // Signed half-word load, pre-adjust without writeback
-    *op0 = core->memory.read<int16_t>(cpu, op1 += op2);
+    *op0 = (int16_t)core->memory.read<uint16_t>(cpu, op1 += op2);
 
     // Shift misaligned reads on ARM7
     if (cpu == 1 && (op1 & 1))

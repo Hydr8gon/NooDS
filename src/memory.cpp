@@ -302,10 +302,6 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                     data = &wram[address & 0x7FFF];
                     break;
 
-                case 0x05000000: // Palettes
-                    data = &palette[address & 0x3FF];
-                    break;
-
                 case 0x06000000: // VRAM
                     data = &vramC[address & ((address & 0x10000) ? 0x17FFF : 0xFFFF)];
                     break;
@@ -360,72 +356,51 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
     }
 }
 
-template int8_t   Memory::read(bool cpu, uint32_t address);
-template int16_t  Memory::read(bool cpu, uint32_t address);
-template uint8_t  Memory::read(bool cpu, uint32_t address);
-template uint16_t Memory::read(bool cpu, uint32_t address);
-template uint32_t Memory::read(bool cpu, uint32_t address);
-template <typename T> T Memory::read(bool cpu, uint32_t address)
+template <typename T> T Memory::readFallback(bool cpu, uint32_t address)
 {
-    // Align the address
-    address &= ~(sizeof(T) - 1);
-
     uint8_t *data = nullptr;
 
+    // Handle special memory reads that can't be done with the read map
+    // This includes I/O registers, overlapping VRAM, and areas smaller than 4KB
     if (cpu == 0) // ARM9
     {
-        if (readMap9[address >> 12])
+        switch (address & 0xFF000000)
         {
-            // Get a pointer to readable ARM9 memory mapped to the given address
-            data = &readMap9[address >> 12][address & 0xFFF];
-        }
-        else
-        {
-            // Handle ARM9 read special cases (fallback)
-            switch (address & 0xFF000000)
+            case 0x04000000: // I/O registers
+                return ioRead9<T>(address);
+
+            case 0x05000000: // Palettes
+                data = &palette[address & 0x7FF];
+                break;
+
+            case 0x06000000: // VRAM
             {
-                case 0x04000000: // I/O registers
-                    return ioRead9<T>(address);
-
-                case 0x05000000: // Palettes
-                    data = &palette[address & 0x7FF];
-                    break;
-
-                case 0x06000000: // VRAM
+                VramMapping *mapping;
+                switch (address & 0xFFE00000)
                 {
-                    VramMapping *mapping;
-                    switch (address & 0xFFE00000)
-                    {
-                        case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
-                        case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
-                        case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
-                        case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
-                        default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
-                    }
-                    if (mapping->getCount() == 0) break;
-                    return mapping->read<T>(address & 0x3FFF);
+                    case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
+                    case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
+                    case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
+                    case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
+                    default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
                 }
-
-                case 0x07000000: // OAM
-                    data = &oam[address & 0x7FF];
-                    break;
-
-                case 0x08000000: case 0x09000000: // GBA ROM (empty)
-                    return (T)0xFFFFFFFF;
-
-                case 0x0A000000: // GBA SRAM
-                    return core->cartridgeGba.sramRead(address + 0x4000000);
+                if (mapping->getCount() == 0) break;
+                return mapping->read<T>(address & 0x3FFF);
             }
+
+            case 0x07000000: // OAM
+                data = &oam[address & 0x7FF];
+                break;
+
+            case 0x08000000: case 0x09000000: // GBA ROM (empty)
+                return (T)0xFFFFFFFF;
+
+            case 0x0A000000: // GBA SRAM
+                return core->cartridgeGba.sramRead(address + 0x4000000);
         }
-    }
-    else if (readMap7[address >> 12])
-    {
-        // Get a pointer to readable GBA/ARM7 memory mapped to the given address
-        data = &readMap7[address >> 12][address & 0xFFF];
     }
     else if (core->isGbaMode()) // GBA
     {
-        // Handle GBA read special cases (fallback)
         switch (address & 0xFF000000)
         {
             case 0x04000000: // I/O registers
@@ -453,7 +428,6 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
     }
     else // ARM7
     {
-        // Handle ARM7 read special cases (fallback)
         switch (address & 0xFF000000)
         {
             case 0x04000000: // I/O registers
@@ -474,90 +448,67 @@ template <typename T> T Memory::read(bool cpu, uint32_t address)
         }
     }
 
-    T value = 0;
-
     if (data)
     {
         // Form an LSB-first value from the data at the pointer
-        for (unsigned int i = 0; i < sizeof(T); i++)
+        T value = 0;
+        for (size_t i = 0; i < sizeof(T); i++)
             value |= data[i] << (i * 8);
-    }
-    else if (core->isGbaMode())
-    {
-        LOG("Unmapped GBA memory read: 0x%X\n", address);
-    }
-    else
-    {
-        LOG("Unmapped ARM%d memory read: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
+        return value;
     }
 
-    return value;
+    if (core->isGbaMode())
+        LOG("Unmapped GBA memory read: 0x%X\n", address);
+    else
+        LOG("Unmapped ARM%d memory read: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
+    return 0;
 }
 
-template void Memory::write(bool cpu, uint32_t address, uint8_t  value);
-template void Memory::write(bool cpu, uint32_t address, uint16_t value);
-template void Memory::write(bool cpu, uint32_t address, uint32_t value);
-template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
+template <typename T> void Memory::writeFallback(bool cpu, uint32_t address, T value)
 {
-    // Align the address
-    address &= ~(sizeof(T) - 1);
-
     uint8_t *data = nullptr;
 
+    // Handle special memory writes that can't be done with the write map
+    // This includes I/O registers, overlapping VRAM, and areas smaller than 4KB
     if (cpu == 0) // ARM9
     {
-        if (writeMap9[address >> 12])
+        switch (address & 0xFF000000)
         {
-            // Get a pointer to writable ARM9 memory mapped to the given address
-            data = &writeMap9[address >> 12][address & 0xFFF];
-        }
-        else
-        {
-            // Handle ARM9 write special cases (fallback)
-            switch (address & 0xFF000000)
+            case 0x04000000: // I/O registers
+                ioWrite9<T>(address, value);
+                return;
+
+            case 0x05000000: // Palettes
+                data = &palette[address & 0x7FF];
+                break;
+
+            case 0x06000000: // VRAM
             {
-                case 0x04000000: // I/O registers
-                    ioWrite9<T>(address, value);
-                    return;
-
-                case 0x05000000: // Palettes
-                    data = &palette[address & 0x7FF];
-                    break;
-
-                case 0x06000000: // VRAM
+                VramMapping *mapping;
+                switch (address & 0xFFE00000)
                 {
-                    VramMapping *mapping;
-                    switch (address & 0xFFE00000)
-                    {
-                        case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
-                        case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
-                        case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
-                        case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
-                        default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
-                    }
-                    if (mapping->getCount() == 0) break;
-                    mapping->write<T>(address & 0x3FFF, value);
-                    return;
+                    case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
+                    case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
+                    case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
+                    case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
+                    default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
                 }
-
-                case 0x07000000: // OAM
-                    data = &oam[address & 0x7FF];
-                    break;
-
-                case 0x0A000000: // GBA SRAM
-                    core->cartridgeGba.sramWrite(address + 0x4000000, value);
-                    return;
+                if (mapping->getCount() == 0) break;
+                mapping->write<T>(address & 0x3FFF, value);
+                return;
             }
+
+            case 0x07000000: // OAM
+                data = &oam[address & 0x7FF];
+                break;
+
+            case 0x0A000000: // GBA SRAM
+                core->cartridgeGba.sramWrite(address + 0x4000000, value);
+                return;
         }
-    }
-    else if (writeMap7[address >> 12])
-    {
-        // Get a pointer to writable GBA/ARM7 memory mapped to the given address
-        data = &writeMap7[address >> 12][address & 0xFFF];
     }
     else if (core->isGbaMode()) // GBA
     {
-        // Handle GBA write special cases (fallback)
         switch (address & 0xFF000000)
         {
             case 0x04000000: // I/O registers
@@ -584,7 +535,6 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
     }
     else // ARM7
     {
-        // Handle ARM7 write special cases (fallback)
         switch (address & 0xFF000000)
         {
             case 0x04000000: // I/O registers
@@ -608,17 +558,15 @@ template <typename T> void Memory::write(bool cpu, uint32_t address, T value)
     if (data)
     {
         // Write an LSB-first value to the data at the pointer
-        for (unsigned int i = 0; i < sizeof(T); i++)
+        for (size_t i = 0; i < sizeof(T); i++)
             data[i] = value >> (i * 8);
+        return;
     }
-    else if (core->isGbaMode())
-    {
+
+    if (core->isGbaMode())
         LOG("Unmapped GBA memory write: 0x%X\n", address);
-    }
     else
-    {
         LOG("Unmapped ARM%d memory write: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
-    }
 }
 
 template <typename T> T Memory::ioRead9(uint32_t address)

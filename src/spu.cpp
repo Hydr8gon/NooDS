@@ -428,13 +428,13 @@ void Spu::runSample()
         {
             case 0: // PCM8
             {
-                data = core->memory.read<int8_t>(1, soundCurrent[i]) << 8;
+                data = (int8_t)core->memory.read<uint8_t>(1, soundCurrent[i]) << 8;
                 break;
             }
 
             case 1: // PCM16
             {
-                data = core->memory.read<int16_t>(1, soundCurrent[i]);
+                data = (int16_t)core->memory.read<uint16_t>(1, soundCurrent[i]);
                 break;
             }
 
