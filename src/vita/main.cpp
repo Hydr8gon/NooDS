@@ -29,6 +29,7 @@
 #include <psp2/io/dirent.h> 
 #include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/sysmem.h>
+#include <psp2/power.h>
 
 #include <vita2d.h>
 
@@ -109,9 +110,10 @@ void checkSave()
 
 void startCore()
 {
-    running = true;
+    scePowerSetArmClockFrequency(444);
 
     // Start the threads
+    running = true;
     coreThread  = new std::thread(runCore);
     audioThread = new std::thread(outputAudio);
     saveThread  = new std::thread(checkSave);
@@ -129,6 +131,8 @@ void stopCore()
     delete audioThread;
     saveThread->join();
     delete saveThread;
+
+    scePowerSetArmClockFrequency(333);
 }
 
 uint32_t menu(std::string title, std::string subtitle, std::vector<std::string> *items,
