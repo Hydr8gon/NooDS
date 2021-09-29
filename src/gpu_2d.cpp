@@ -509,12 +509,12 @@ void Gpu2D::drawText(int bg, int line)
     }
 
     // Get the base data addresses
-    uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
-    uint32_t indexBase = bgVramAddr + ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
+    uint32_t tileBase  = bgVramAddr + ((dispCnt >> 11) & 0x70000) + ((bgCnt[bg] <<  3) & 0x0F800);
+    uint32_t indexBase = bgVramAddr + ((dispCnt >>  8) & 0x70000) + ((bgCnt[bg] << 12) & 0x3C000);
 
     // Move the tile address to the current line
-    int yOffset = (line + bgVOfs[bg]) % 512;
-    tileBase += ((yOffset / 8) % 32) * 64;
+    int yOffset = (line + bgVOfs[bg]) & 0x1FF;
+    tileBase += (yOffset & 0xF8) << 3;
 
     // If the Y-offset exceeds 256 and the background is 512 pixels tall, move to the next 256x256 section
     // If the background is 512 pixels wide, move 2 sections to skip the second X section
@@ -527,8 +527,8 @@ void Gpu2D::drawText(int bg, int line)
         for (int i = 0; i <= 256; i += 8)
         {
             // Move the tile address to the current tile
-            int xOffset = (bgHOfs[bg] + i) % 512;
-            uint32_t tileAddr = tileBase + ((xOffset / 8) % 32) * 2;
+            int xOffset = (i + bgHOfs[bg]) & 0x1FF;
+            uint32_t tileAddr = tileBase + ((xOffset & 0xF8) >> 2);
 
             // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
             if (xOffset >= 256 && (bgCnt[bg] & BIT(14)))
@@ -555,22 +555,16 @@ void Gpu2D::drawText(int bg, int line)
             }
 
             // Get the palette indices for the current line of the tile, flipped vertically if enabled
-            uint32_t indexAddr = indexBase + (tile & 0x03FF) * 64 + ((tile & BIT(11)) ? ((7 - yOffset % 8) * 8) : ((yOffset % 8) * 8));
+            uint32_t indexAddr = indexBase + (tile & 0x3FF) * 64 + ((tile & BIT(11)) ? (7 - (yOffset & 7)) : (yOffset & 7)) * 8;
             uint64_t indices = core->memory.read<uint32_t>(core->isGbaMode(), indexAddr) |
                 ((uint64_t)core->memory.read<uint32_t>(core->isGbaMode(), indexAddr + 4) << 32);
 
-            // Draw the current line of the tile
-            for (int j = 0; j < 8; j++)
+            // Draw the current line of the tile, flipped horizontally if enabled
+            for (int x = i - (xOffset & 7) + ((tile & BIT(10)) ? 7 : 0); indices != 0; ((tile & BIT(10)) ? x-- : x++), indices >>= 8)
             {
-                // Flip the tile horizontally if enabled
-                int offset = i - (xOffset % 8) + ((tile & BIT(10)) ? (7 - j) : j);
-
-                // Draw a pixel
-                if (offset >= 0 && offset < 256 && (indices & 0xFF))
-                    drawBgPixel(bg, line, offset, U8TO16(pal, (indices & 0xFF) * 2) | BIT(15));
-
-                // Move to the next palette index
-                indices >>= 8;
+                // Draw a pixel if it's visible
+                if (x >= 0 && x < 256 && (indices & 0xFF))
+                    drawBgPixel(bg, line, x, U8TO16(pal, (indices & 0xFF) * 2) | BIT(15));
             }
         }
     }
@@ -579,8 +573,8 @@ void Gpu2D::drawText(int bg, int line)
         for (int i = 0; i <= 256; i += 8)
         {
             // Move the tile address to the current tile
-            int xOffset = (bgHOfs[bg] + i) % 512;
-            uint32_t tileAddr = tileBase + ((xOffset / 8) % 32) * 2;
+            int xOffset = (i + bgHOfs[bg]) & 0x1FF;
+            uint32_t tileAddr = tileBase + ((xOffset & 0xF8) >> 2);
 
             // If the X-offset exceeds 256 and the background is 512 pixels wide, move to the next 256x256 section
             if (xOffset >= 256 && (bgCnt[bg] & BIT(14)))
@@ -591,24 +585,18 @@ void Gpu2D::drawText(int bg, int line)
 
             // Get the tile's palette
             // In 4-bit mode, the tile can select from multiple 16-color palettes
-            uint8_t *pal = &palette[((tile & 0xF000) >> 12) * 32];
+            uint8_t *pal = &palette[(tile & 0xF000) >> 7];
 
             // Get the palette indices for the current line of the tile, flipped vertically if enabled
-            uint32_t indexAddr = indexBase + (tile & 0x03FF) * 32 + ((tile & BIT(11)) ? ((7 - yOffset % 8) * 4) : ((yOffset % 8) * 4));
+            uint32_t indexAddr = indexBase + (tile & 0x3FF) * 32 + ((tile & BIT(11)) ? (7 - (yOffset & 7)) : (yOffset & 7)) * 4;
             uint32_t indices = core->memory.read<uint32_t>(core->isGbaMode(), indexAddr);
 
-            // Draw the current line of the tile
-            for (int j = 0; j < 8; j++)
+            // Draw the current line of the tile, flipped horizontally if enabled
+            for (int x = i - (xOffset & 7) + ((tile & BIT(10)) ? 7 : 0); indices != 0; ((tile & BIT(10)) ? x-- : x++), indices >>= 4)
             {
-                // Flip the tile horizontally if enabled
-                int offset = i - (xOffset % 8) + ((tile & BIT(10)) ? (7 - j) : j);
-
-                // Draw a pixel
-                if (offset >= 0 && offset < 256 && (indices & 0xF))
-                    drawBgPixel(bg, line, offset, U8TO16(pal, (indices & 0xF) * 2) | BIT(15));
-
-                // Move to the next palette index
-                indices >>= 4;
+                // Draw a pixel if it's visible
+                if (x >= 0 && x < 256 && (indices & 0xF))
+                    drawBgPixel(bg, line, x, U8TO16(pal, (indices & 0xF) * 2) | BIT(15));
             }
         }
     }
