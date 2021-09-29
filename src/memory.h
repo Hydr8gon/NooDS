@@ -107,6 +107,8 @@ class Memory
         uint8_t *tex3D[4]      = {};
         uint8_t *pal3D[6]      = {};
 
+        uint8_t *lastGbaBios = nullptr;
+
         uint32_t dmaFill[4] = {};
         uint8_t vramCnt[9] = {};
         uint8_t vramStat = 0;

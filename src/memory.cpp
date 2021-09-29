@@ -206,11 +206,6 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
             // Map a 4KB block to the corresponding readable GBA memory, excluding special cases
             switch (address & 0xFF000000)
             {
-                case 0x00000000: // GBA BIOS
-                    if (address < 0x4000)
-                        data = &gbaBios[address];
-                    break;
-
                 case 0x02000000: // On-board WRAM
                     data = &ram[address & 0x3FFFF];
                     break;
@@ -403,6 +398,11 @@ template <typename T> T Memory::readFallback(bool cpu, uint32_t address)
     {
         switch (address & 0xFF000000)
         {
+            case 0x00000000: // GBA BIOS (only readable when executing; otherwise returns last value)
+                if (address < 0x4000)
+                    data = (core->interpreter[1].getPC() < 0x4000) ? (lastGbaBios = &gbaBios[address]) : lastGbaBios;
+                break;
+
             case 0x04000000: // I/O registers
                 return ioReadGba<T>(address);
 
@@ -457,11 +457,16 @@ template <typename T> T Memory::readFallback(bool cpu, uint32_t address)
         return value;
     }
 
-    if (core->isGbaMode())
-        LOG("Unmapped GBA memory read: 0x%X\n", address);
-    else
+    if (!core->isGbaMode())
+    {
         LOG("Unmapped ARM%d memory read: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
-    return 0;
+        return 0;
+    }
+    else
+    {
+        LOG("Unmapped GBA memory read: 0x%X\n", address);
+        return read<T>(cpu, core->interpreter[1].getPC()); // Open bus (last prefetched opcode)
+    }
 }
 
 template <typename T> void Memory::writeFallback(bool cpu, uint32_t address, T value)
@@ -563,10 +568,10 @@ template <typename T> void Memory::writeFallback(bool cpu, uint32_t address, T v
         return;
     }
 
-    if (core->isGbaMode())
-        LOG("Unmapped GBA memory write: 0x%X\n", address);
-    else
+    if (!core->isGbaMode())
         LOG("Unmapped ARM%d memory write: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
+    else
+        LOG("Unmapped GBA memory write: 0x%X\n", address);
 }
 
 template <typename T> T Memory::ioRead9(uint32_t address)

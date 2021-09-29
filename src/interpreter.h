@@ -41,7 +41,8 @@ class Interpreter
         void unhalt(int bit) { halted &= ~BIT(bit); }
         void sendInterrupt(int bit);
 
-        bool shouldRun() { return !halted; }
+        bool     shouldRun() { return !halted;        }
+        uint32_t getPC()     { return *registers[15]; }
 
         uint8_t  readIme()     { return ime;     }
         uint32_t readIe()      { return ie;      }
