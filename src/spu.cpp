@@ -623,8 +623,12 @@ void Spu::runSample()
             sndCapTimers[i] += soundTmr[1 + (i << 1)];
             overflow = (sndCapTimers[i] < soundTmr[1 + (i << 1)]);
 
-            // Write a sample to the buffer
+            // Get a sample from the mixer, clamped to be within range
             int64_t sample = ((i == 0) ? mixerLeft : mixerRight);
+            if (sample >  0x7FFFFF) sample =  0x7FFFFF;
+            if (sample < -0x800000) sample = -0x800000;
+
+            // Write a sample to the buffer
             if (sndCapCnt[i] & BIT(3)) // PCM8
             {
                 core->memory.write<uint8_t>(1, sndCapCurrent[i], sample >> 16);
