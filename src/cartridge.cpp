@@ -918,6 +918,19 @@ void CartridgeGba::loadRom(std::string path)
     fclose(romFile);
     romFile = nullptr;
 
+    // Calculate the mask for ROM mirroring
+    if (romSize > 0xAC && rom[0xAC] == 'F') // NES classic
+    {
+        // NES classic ROMs are mirrored based on their size
+        for (romMask = 1; romMask < romSize; romMask <<= 1);
+        romMask--;
+    }
+    else
+    {
+        // Most ROMs are only mirrored each 32MB wait state area
+        romMask = 0x1FFFFFF;
+    }
+
     // Update the memory maps at the GBA ROM locations
     core->memory.updateMap9(0x08000000, 0x0A000000);
     core->memory.updateMap7(0x08000000, 0x0D000000);

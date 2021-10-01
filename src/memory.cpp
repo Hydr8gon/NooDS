@@ -128,8 +128,7 @@ void Memory::updateMap9(uint32_t start, uint32_t end)
                 }
 
                 case 0x08000000: case 0x09000000: // GBA ROM
-                    if ((address & 0x01FFFFFF) < core->cartridgeGba.getRomSize())
-                        data = &core->cartridgeGba.getRom()[address & 0x01FFFFFF];
+                    data = core->cartridgeGba.getRom(address);
                     break;
 
                 case 0xFF000000: // ARM9 BIOS
@@ -220,8 +219,7 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
 
                 case 0x08000000: case 0x09000000: case 0x0A000000:
                 case 0x0B000000: case 0x0C000000: // ROM
-                    if ((address & 0x01FFFFFF) < core->cartridgeGba.getRomSize())
-                        data = &core->cartridgeGba.getRom()[address & 0x01FFFFFF];
+                    data = core->cartridgeGba.getRom(address);
                     break;
             }
         }
@@ -270,8 +268,7 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                 }
 
                 case 0x08000000: case 0x09000000: // GBA ROM
-                    if ((address & 0x01FFFFFF) < core->cartridgeGba.getRomSize())
-                        data = &core->cartridgeGba.getRom()[address & 0x01FFFFFF];
+                    data = core->cartridgeGba.getRom(address);
                     break;
             }
         }
@@ -417,6 +414,8 @@ template <typename T> T Memory::readFallback(bool cpu, uint32_t address)
             case 0x0D000000: // EEPROM/ROM
                 if (core->cartridgeGba.isEeprom(address))
                     return core->cartridgeGba.eepromRead();
+                if (data = core->cartridgeGba.getRom(address))
+                    break;
 
             case 0x08000000: case 0x09000000: case 0x0A000000:
             case 0x0B000000: case 0x0C000000: // ROM (empty)

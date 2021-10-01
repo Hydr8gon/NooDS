@@ -116,7 +116,10 @@ class CartridgeGba: public Cartridge
 
         void loadRom(std::string path);
 
-        uint8_t *getRom() { return rom; }
+        uint8_t *getRom(uint32_t address)
+        {
+            return ((address &= romMask) < romSize) ? &rom[address] : nullptr;
+        }
 
         bool isEeprom(uint32_t address)
         {
@@ -130,6 +133,8 @@ class CartridgeGba: public Cartridge
         void sramWrite(uint32_t address, uint8_t value);
 
     private:
+        uint32_t romMask = 0;
+
         int eepromCount = 0;
         uint16_t eepromCmd = 0;
         uint64_t eepromData = 0;
