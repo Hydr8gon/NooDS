@@ -143,6 +143,10 @@ uint32_t menu(std::string title, std::string subtitle, std::vector<std::string> 
 
     while (true)
     {
+        unsigned int y = 60;
+        unsigned int offset = 0;
+        unsigned int visible = std::min(items->size(), 24U);
+
         vita2d_start_drawing();
         vita2d_clear_screen();
 
@@ -150,24 +154,34 @@ uint32_t menu(std::string title, std::string subtitle, std::vector<std::string> 
         vita2d_pgf_draw_text(pgf, 5, 20, COLOR_TEXT1, 1.0f, title.c_str());
 
         // If there's a subtitle, draw it and offset the item list
-        unsigned int y = 60;
         if (subtitle != "")
         {
             vita2d_pgf_draw_text(pgf, 5, 40, COLOR_TEXT2, 1.0f, subtitle.c_str());
             y = 80;
         }
 
+        // Adjust the offset so the selection is centered while scrolling
+        if (items->size() > 24)
+        {
+            if (*selection >= items->size() - 13)
+                offset = items->size() - 24;
+            else if (*selection > 11)
+                offset = *selection - 11;
+        }
+
         // Draw the menu items, highlighting the current selection
-        for (size_t i = 0; i < items->size(); i++)
-            vita2d_pgf_draw_text(pgf, 5, y + i * 20, (*selection == i ? COLOR_TEXT3 : COLOR_TEXT1), 1.0f, (*items)[i].c_str());
+        for (size_t i = 0; i < visible; i++)
+            vita2d_pgf_draw_text(pgf, 5, y + i * 20, (*selection == i + offset) ?
+                COLOR_TEXT3 : COLOR_TEXT1, 1.0f, (*items)[i + offset].c_str());
 
         // If there are subitems, draw them right-aligned across from the main items
         if (subitems)
         {
-            for (size_t i = 0; i < subitems->size(); i++)
+            for (size_t i = 0; i < visible; i++)
             {
                 int width = vita2d_pgf_text_width(pgf, 1.0f, (*subitems)[i].c_str());
-                vita2d_pgf_draw_text(pgf, 955 - width, y + i * 20, (*selection == i ? COLOR_TEXT3 : COLOR_TEXT1), 1.0f, (*subitems)[i].c_str());
+                vita2d_pgf_draw_text(pgf, 955 - width, y + i * 20, (*selection == i + offset) ?
+                    COLOR_TEXT3 : COLOR_TEXT1, 1.0f, (*subitems)[i + offset].c_str());
             }
         }
 
