@@ -36,7 +36,8 @@ enum InputEvent
     REMAP_L,
     REMAP_R,
     REMAP_FAST_FORWARD,
-    REMAP_FULL_SCREEN
+    REMAP_FULL_SCREEN,
+    UPDATE_JOY
 };
 
 wxBEGIN_EVENT_TABLE(InputDialog, wxDialog)
@@ -54,9 +55,9 @@ EVT_BUTTON(REMAP_L,            InputDialog::remapL)
 EVT_BUTTON(REMAP_R,            InputDialog::remapR)
 EVT_BUTTON(REMAP_FAST_FORWARD, InputDialog::remapFastForward)
 EVT_BUTTON(REMAP_FULL_SCREEN,  InputDialog::remapFullScreen)
+EVT_TIMER(UPDATE_JOY,          InputDialog::updateJoystick)
 EVT_BUTTON(wxID_OK,            InputDialog::confirm)
 EVT_CHAR_HOOK(InputDialog::pressKey)
-EVT_JOYSTICK_EVENTS(InputDialog::joystickInput)
 wxEND_EVENT_TABLE()
 
 std::string InputDialog::keyToString(int key)
@@ -301,13 +302,25 @@ InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Inp
     SetMinSize(GetSize());
     SetMaxSize(GetSize());
 
-    // Capture joystick input if a joystick is connected
+    // Set up joystick input if a joystick is connected
     if (joystick)
     {
-        joystick->SetCapture(this, 10);
+        // Save the initial axis values so inputs can be detected as offsets instead of raw values
+        // This avoids issues with axes that have non-zero values in their resting positions
         for (int i = 0; i < joystick->GetNumberAxes(); i++)
             axisBases.push_back(joystick->GetPosition(i));
+
+        // Start a timer to update joystick input, since wxJoystickEvents are unreliable
+        timer = new wxTimer(this, UPDATE_JOY);
+        timer->Start(100);
     }
+}
+
+InputDialog::~InputDialog()
+{
+    // Clean up the joystick timer
+    if (joystick)
+        delete timer;
 }
 
 void InputDialog::resetLabels()
@@ -454,27 +467,7 @@ void InputDialog::remapFullScreen(wxCommandEvent &event)
     keyIndex = 13;
 }
 
-void InputDialog::confirm(wxCommandEvent &event)
-{
-    // Save the key mappings
-    for (int i = 0; i < 14; i++)
-        NooApp::setKeyBind(i, keyBinds[i]);
-    Settings::save();
-
-    event.Skip(true);
-}
-
-void InputDialog::pressKey(wxKeyEvent &event)
-{
-    if (!current) return;
-
-    // Map the current button to the pressed key
-    keyBinds[keyIndex] = event.GetKeyCode();
-    current->SetLabel(keyToString(keyBinds[keyIndex]));
-    current = nullptr;
-}
-
-void InputDialog::joystickInput(wxJoystickEvent &event)
+void InputDialog::updateJoystick(wxTimerEvent &event)
 {
     if (!current) return;
 
@@ -508,4 +501,24 @@ void InputDialog::joystickInput(wxJoystickEvent &event)
             return;
         }
     }
+}
+
+void InputDialog::confirm(wxCommandEvent &event)
+{
+    // Save the key mappings
+    for (int i = 0; i < 14; i++)
+        NooApp::setKeyBind(i, keyBinds[i]);
+    Settings::save();
+
+    event.Skip(true);
+}
+
+void InputDialog::pressKey(wxKeyEvent &event)
+{
+    if (!current) return;
+
+    // Map the current button to the pressed key
+    keyBinds[keyIndex] = event.GetKeyCode();
+    current->SetLabel(keyToString(keyBinds[keyIndex]));
+    current = nullptr;
 }

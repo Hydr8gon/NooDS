@@ -49,7 +49,7 @@ enum FrameEvent
     THREADED_3D_1,
     THREADED_3D_2,
     THREADED_3D_3,
-    UPDATE_FPS
+    UPDATE_JOY
 };
 
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
@@ -73,12 +73,12 @@ EVT_MENU(THREADED_3D_0,  NooFrame::threaded3D0)
 EVT_MENU(THREADED_3D_1,  NooFrame::threaded3D1)
 EVT_MENU(THREADED_3D_2,  NooFrame::threaded3D2)
 EVT_MENU(THREADED_3D_3,  NooFrame::threaded3D3)
+EVT_TIMER(UPDATE_JOY,    NooFrame::updateJoystick)
 EVT_DROP_FILES(NooFrame::dropFiles)
-EVT_JOYSTICK_EVENTS(NooFrame::joystickInput)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
-NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): wxFrame(nullptr, wxID_ANY, "NooDS"), joystick(joystick), emulator(emulator)
+NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator)
 {
     // Set the icon
     wxIcon icon(icon_xpm);
@@ -171,15 +171,25 @@ NooFrame::NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path): 
     Centre();
     Show(true);
 
-    // Capture joystick input if a joystick is connected
-    // The initial axis values are saved so that inputs can be detected as offsets instead of raw values
-    // This avoids issues with axes that have non-zero values in their resting position
-    // Just make sure you aren't touching the controller when the program starts!
-    if (joystick)
+    // Prepare a joystick if one is connected
+    joystick = new wxJoystick();
+    if (joystick->IsOk())
     {
-        joystick->SetCapture(this, 10);
+        // Save the initial axis values so inputs can be detected as offsets instead of raw values
+        // This avoids issues with axes that have non-zero values in their resting positions
         for (int i = 0; i < joystick->GetNumberAxes(); i++)
             axisBases.push_back(joystick->GetPosition(i));
+
+        // Start a timer to update joystick input, since wxJoystickEvents are unreliable
+        timer = new wxTimer(this, UPDATE_JOY);
+        timer->Start(100);
+    }
+    else
+    {
+        // Don't use a joystick if one isn't connected
+        delete joystick;
+        joystick = nullptr;
+        timer = nullptr;
     }
 
     // Load a filename passed through the command line
@@ -462,10 +472,11 @@ void NooFrame::pathSettings(wxCommandEvent &event)
 
 void NooFrame::inputSettings(wxCommandEvent &event)
 {
-    // Show the input settings dialog and recapture joystick input afterwards
+    // Pause joystick updates and show the input settings dialog
+    if (timer) timer->Stop();
     InputDialog inputDialog(joystick);
     inputDialog.ShowModal();
-    if (joystick) joystick->SetCapture(this, 10);
+    if (timer) timer->Start(100);
 }
 
 void NooFrame::layoutSettings(wxCommandEvent &event)
@@ -538,16 +549,7 @@ void NooFrame::threaded3D3(wxCommandEvent &event)
     Settings::save();
 }
 
-void NooFrame::dropFiles(wxDropFilesEvent &event)
-{
-    // Load a single dropped file
-    if (event.GetNumberOfFiles() != 1) return;
-    wxString path = event.GetFiles()[0];
-    if (!wxFileExists(path)) return;
-    loadRomPath((const char*)path.mb_str(wxConvUTF8));
-}
-
-void NooFrame::joystickInput(wxJoystickEvent &event)
+void NooFrame::updateJoystick(wxTimerEvent &event)
 {
     // Check the status of mapped joystick inputs and trigger key presses and releases accordingly
     for (int i = 0; i < 14; i++)
@@ -576,17 +578,18 @@ void NooFrame::joystickInput(wxJoystickEvent &event)
     }
 }
 
+void NooFrame::dropFiles(wxDropFilesEvent &event)
+{
+    // Load a single dropped file
+    if (event.GetNumberOfFiles() != 1) return;
+    wxString path = event.GetFiles()[0];
+    if (!wxFileExists(path)) return;
+    loadRomPath((const char*)path.mb_str(wxConvUTF8));
+}
+
 void NooFrame::close(wxCloseEvent &event)
 {
-    // Free the joystick if one was connected
-    if (joystick)
-    {
-        joystick->ReleaseCapture();
-        delete joystick;
-    }
-
     // Properly shut down the emulator
     stopCore(true);
-
     event.Skip(true);
 }

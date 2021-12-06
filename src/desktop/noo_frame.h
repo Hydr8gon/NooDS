@@ -36,7 +36,7 @@ struct Emulator
 class NooFrame: public wxFrame
 {
     public:
-        NooFrame(wxJoystick *joystick, Emulator *emulator, std::string path);
+        NooFrame(Emulator *emulator, std::string path);
 
         void startCore(bool full);
         void stopCore(bool full);
@@ -45,10 +45,11 @@ class NooFrame: public wxFrame
         void releaseKey(int key);
 
     private:
-        wxJoystick *joystick;
         Emulator *emulator;
 
         wxMenu *fileMenu, *systemMenu;
+        wxJoystick *joystick;
+        wxTimer *timer;
 
         std::string ndsPath, gbaPath;
         std::thread *coreThread = nullptr;
@@ -79,8 +80,8 @@ class NooFrame: public wxFrame
         void threaded3D1(wxCommandEvent &event);
         void threaded3D2(wxCommandEvent &event);
         void threaded3D3(wxCommandEvent &event);
+        void updateJoystick(wxTimerEvent &event);
         void dropFiles(wxDropFilesEvent &event);
-        void joystickInput(wxJoystickEvent &event);
         void close(wxCloseEvent &event);
 
         wxDECLARE_EVENT_TABLE();

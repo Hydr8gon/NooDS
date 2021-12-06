@@ -28,9 +28,11 @@ class InputDialog: public wxDialog
 {
     public:
         InputDialog(wxJoystick *joystick);
+        ~InputDialog();
 
     private:
         wxJoystick *joystick;
+        wxTimer *timer;
 
         wxButton *keyA;
         wxButton *keyB;
@@ -70,9 +72,9 @@ class InputDialog: public wxDialog
         void remapR(wxCommandEvent &event);
         void remapFastForward(wxCommandEvent &event);
         void remapFullScreen(wxCommandEvent &event);
+        void updateJoystick(wxTimerEvent &event);
         void confirm(wxCommandEvent &event);
         void pressKey(wxKeyEvent &event);
-        void joystickInput(wxJoystickEvent &event);
 
         wxDECLARE_EVENT_TABLE();
 };

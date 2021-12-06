@@ -87,17 +87,9 @@ bool NooApp::OnInit()
         }
     }
 
-    // Prepare a joystick if one is connected
-    joystick = new wxJoystick();
-    if (!joystick->IsOk())
-    {
-        delete joystick;
-        joystick = nullptr;
-    }
-
     // Set up the window
     // If a filename is passed through the command line, pass it along
-    frame = new NooFrame(joystick, &emulator, ((argc > 1) ? argv[1].ToStdString() : ""));
+    frame = new NooFrame(&emulator, ((argc > 1) ? argv[1].ToStdString() : ""));
     canvas = new NooCanvas(frame, &emulator);
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
     sizer->Add(canvas, 1, wxEXPAND);
