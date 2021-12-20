@@ -2,6 +2,12 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <item android:id="@+id/storage_action"
+        android:icon="@drawable/storage"
+        android:title="Change Storage"
+        app:showAsAction="always"
+        android:visible="false" />
+
     <item android:id="@+id/settings_action"
         android:icon="@drawable/settings"
         android:title="Settings"

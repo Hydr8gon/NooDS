@@ -49,14 +49,19 @@ public class FileBrowser extends AppCompatActivity
         System.loadLibrary("noods-core");
     }
 
+    private ArrayList<String> storagePaths;
     private ArrayList<String> fileNames;
     private ArrayList<Bitmap> fileIcons;
     private ListView fileView;
     private String path;
+    private int curStorage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
+        // Storage paths can be checked without permissions; prepare them for the options menu
+        updateStoragePaths();
+
         super.onCreate(savedInstanceState);
 
         // Request storage permissions if they haven't been given
@@ -80,6 +85,14 @@ public class FileBrowser extends AppCompatActivity
     public boolean onCreateOptionsMenu(Menu menu)
     {
         getMenuInflater().inflate(R.menu.file_menu, menu);
+
+        // Only show the storage switcher if there are multiple storage paths
+        if (storagePaths.size() > 1)
+        {
+            MenuItem item = menu.findItem(R.id.storage_action);
+            item.setVisible(true);
+        }
+
         return true;
     }
 
@@ -88,6 +101,15 @@ public class FileBrowser extends AppCompatActivity
     {
         switch (item.getItemId())
         {
+            case R.id.storage_action:
+            {
+                // Switch to the next storage device
+                curStorage = (curStorage + 1) % storagePaths.size();
+                path = storagePaths.get(curStorage);
+                update();
+                break;
+            }
+
             case R.id.settings_action:
             {
                 // Open the settings menu
@@ -103,10 +125,36 @@ public class FileBrowser extends AppCompatActivity
     public void onBackPressed()
     {
         // Navigate to the previous directory
-        if (!path.equals(Environment.getExternalStorageDirectory().getAbsolutePath()))
+        if (!path.equals(storagePaths.get(curStorage)))
         {
             path = path.substring(0, path.lastIndexOf('/'));
             update();
+        }
+    }
+
+    private void updateStoragePaths()
+    {
+        // There's no way to directly get root storage paths, but media paths contain them
+        storagePaths = new ArrayList<String>();
+        File[] mediaDirs = getExternalMediaDirs();
+        String basePath = Environment.getExternalStorageDirectory().getAbsolutePath();
+        String mediaPath = "";
+
+        // Extract the media sub-path so it can be removed from all paths
+        for (int i = 0; i < mediaDirs.length; i++)
+        {
+            if (mediaDirs[i].getAbsolutePath().contains(basePath))
+            {
+                mediaPath = mediaDirs[i].getAbsolutePath().substring(basePath.length());
+                break;
+            }
+        }
+
+        // Add all mounted storage paths to the list
+        for (int i = 0; i < mediaDirs.length; i++)
+        {
+            if (Environment.getExternalStorageState(mediaDirs[i]).equals(Environment.MEDIA_MOUNTED))
+                storagePaths.add(mediaDirs[i].getAbsolutePath().replace(mediaPath, ""));
         }
     }
 
@@ -115,7 +163,8 @@ public class FileBrowser extends AppCompatActivity
         fileNames = new ArrayList<String>();
         fileIcons = new ArrayList<Bitmap>();
         fileView = new ListView(this);
-        path = Environment.getExternalStorageDirectory().getAbsolutePath();
+        path = storagePaths.get(0);
+        curStorage = 0;
 
         fileView.setOnItemClickListener(new AdapterView.OnItemClickListener()
         {
