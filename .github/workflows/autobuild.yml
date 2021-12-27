@@ -43,16 +43,21 @@ jobs:
   build-windows:
     runs-on: windows-latest
 
+    strategy:
+      matrix:
+        platform:
+        - { arch: x86_64, msystem: mingw64 }
+
     steps:
     - name: Checkout
       uses: actions/checkout@v1
     - name: Install MSYS2
       uses: msys2/setup-msys2@v2
       with:
-        msystem: MINGW64
+        msystem: ${{matrix.platform.msystem}}
         update: true
     - name: Install build tools, wxWidgets, and PortAudio
-      run: pacman -S mingw-w64-x86_64-{gcc,pkg-config,wxWidgets,portaudio,jbigkit} make --noconfirm
+      run: pacman -S mingw-w64-${{matrix.platform.arch}}-{gcc,pkg-config,wxWidgets,portaudio,jbigkit} make --noconfirm
       shell: msys2 {0}
     - name: Compile
       run: |
@@ -63,7 +68,7 @@ jobs:
     - name: Upload
       uses: actions/upload-artifact@v2
       with:
-        name: noods-windows
+        name: noods-windows-${{matrix.platform.arch}}
         path: noods.exe
 
   build-switch:
