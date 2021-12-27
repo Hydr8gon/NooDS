@@ -1,9 +1,6 @@
 name: Automatic Builds
 
-on:
-  push:
-    branches:
-    - master
+on: [push, pull_request]
 
 jobs:
   build-linux:
@@ -119,6 +116,7 @@ jobs:
         ./gradlew assembleRelease
         mv build-android/outputs/apk/release/android-release-unsigned.apk noods.apk
     - name: Sign
+      if: github.repository_owner == 'Hydr8gon'
       run: $ANDROID_SDK_ROOT/build-tools/29.0.3/apksigner sign --ks keystore.jks --ks-pass pass:$KEYSTORE_PASS noods.apk
       env:
         KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
@@ -131,6 +129,7 @@ jobs:
   update-release:
     runs-on: ubuntu-latest
     needs: [build-linux, build-mac, build-windows, build-switch, build-vita, build-android]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
 
     steps:
     - name: Delete old release
