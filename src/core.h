@@ -70,6 +70,7 @@ class Core
 
         void schedule(Task task);
         void enterGbaMode();
+        void endFrame();
 
         CartridgeNds cartridgeNds;
         CartridgeGba cartridgeGba;
@@ -96,9 +97,10 @@ class Core
         void (Core::*runFunc)() = &Core::runNdsFrame;
 
         std::vector<Task> tasks;
-        uint32_t frameCycles = 0, globalCycles = 0;
+        uint32_t globalCycles = 0;
         uint32_t arm9Cycles = 0, arm7Cycles = 0;
 
+        std::atomic<bool> running;
         int fps = 0, fpsCount = 0;
         std::chrono::steady_clock::time_point lastFpsTime;
 

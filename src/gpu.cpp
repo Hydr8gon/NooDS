@@ -231,6 +231,7 @@ void Gpu::gbaScanline308()
         {
             // Clear the V-blank flag
             dispStat[1] &= ~BIT(0);
+            core->endFrame();
             break;
         }
 
@@ -506,6 +507,7 @@ void Gpu::scanline355()
             // Clear the V-blank flag
             for (int i = 0; i < 2; i++)
                 dispStat[i] &= ~BIT(0);
+            core->endFrame();
             break;
         }
 

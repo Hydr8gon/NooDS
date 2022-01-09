@@ -116,6 +116,9 @@ Core::Core(std::string ndsPath, std::string gbaPath):
             spi.directBoot();
         }
     }
+
+    // Let the core run
+    running.store(true);
 }
 
 void Core::resetCycles()
@@ -134,10 +137,8 @@ void Core::resetCycles()
 void Core::runGbaFrame()
 {
     // Run a frame in GBA mode
-    while (frameCycles < 228 * 308 * 4) // 228 scanlines, 308 dots, 4 ARM7 cycles
+    while (running.exchange(true))
     {
-        uint32_t i = globalCycles;
-
         // Run the ARM7 until the next scheduled task
         if (arm7Cycles > globalCycles) globalCycles = arm7Cycles;
         while (interpreter[1].shouldRun() && tasks[0].cycles > arm7Cycles)
@@ -145,7 +146,6 @@ void Core::runGbaFrame()
 
         // Jump to the next scheduled task
         globalCycles = tasks[0].cycles;
-        frameCycles += globalCycles - i;
 
         // Run all tasks that are scheduled now
         while (tasks[0].cycles <= globalCycles)
@@ -154,28 +154,13 @@ void Core::runGbaFrame()
             tasks.erase(tasks.begin());
         }
     }
-
-    // Count a frame
-    frameCycles -= 228 * 308 * 4;
-    fpsCount++;
-
-    // Update the FPS and reset the counter every second
-    std::chrono::duration<double> fpsTime = std::chrono::steady_clock::now() - lastFpsTime;
-    if (fpsTime.count() >= 1.0f)
-    {
-        fps = fpsCount;
-        fpsCount = 0;
-        lastFpsTime = std::chrono::steady_clock::now();
-    }
 }
 
 void Core::runNdsFrame()
 {
     // Run a frame in NDS mode
-    while (frameCycles < 263 * 355 * 6) // 263 scanlines, 355 dots, 6 ARM9 cycles
+    while (running.exchange(true))
     {
-        uint32_t i = globalCycles;
-
         // Run the CPUs until the next scheduled task
         while (tasks[0].cycles > globalCycles)
         {
@@ -194,7 +179,6 @@ void Core::runNdsFrame()
 
         // Jump to the next scheduled task
         globalCycles = tasks[0].cycles;
-        frameCycles += globalCycles - i;
 
         // Run all tasks that are scheduled now
         while (tasks[0].cycles <= globalCycles)
@@ -202,19 +186,6 @@ void Core::runNdsFrame()
             (*tasks[0].task)();
             tasks.erase(tasks.begin());
         }
-    }
-
-    // Count a frame
-    frameCycles -= 263 * 355 * 6;
-    fpsCount++;
-
-    // Update the FPS and reset the counter every second
-    std::chrono::duration<double> fpsTime = std::chrono::steady_clock::now() - lastFpsTime;
-    if (fpsTime.count() >= 1.0f)
-    {
-        fps = fpsCount;
-        fpsCount = 0;
-        lastFpsTime = std::chrono::steady_clock::now();
     }
 }
 
@@ -246,4 +217,20 @@ void Core::enterGbaMode()
     // This is used by the GPU to access the VRAM borders
     memory.write<uint8_t>(0, 0x4000240, 0x80); // VRAMCNT_A
     memory.write<uint8_t>(0, 0x4000241, 0x80); // VRAMCNT_B
+}
+
+void Core::endFrame()
+{
+    // Break execution at the end of a frame and count it
+    running.store(false);
+    fpsCount++;
+
+    // Update the FPS and reset the counter every second
+    std::chrono::duration<double> fpsTime = std::chrono::steady_clock::now() - lastFpsTime;
+    if (fpsTime.count() >= 1.0f)
+    {
+        fps = fpsCount;
+        fpsCount = 0;
+        lastFpsTime = std::chrono::steady_clock::now();
+    }
 }
