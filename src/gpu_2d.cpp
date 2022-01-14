@@ -972,14 +972,18 @@ void Gpu2D::drawObjects(int line, bool window)
             }
             else
             {
+                // Adjust the bitmap offset based on whether or not the sprite is vertically flipped
+                dataBase += ((object[1] & BIT(13)) ? (height - spriteY - 1) : spriteY) * bitmapWidth * 2;
+
                 // Draw a line of the object
                 for (int j = 0; j < width; j++)
                 {
-                    int offset = x + j;
+                    // Determine the horizontal pixel offset based on whether or not the sprite is horizontally flipped
+                    int offset = (object[1] & BIT(12)) ? (x + width - j - 1) : (x + j);
                     if (offset < 0 || offset >= 256) continue;
 
                     // Draw a pixel
-                    uint16_t pixel = core->memory.read<uint16_t>(0, dataBase + (spriteY * bitmapWidth + j) * 2);
+                    uint16_t pixel = core->memory.read<uint16_t>(0, dataBase + j * 2);
                     if (pixel & BIT(15))
                         drawObjPixel(line, offset, pixel, priority);
                 }
