@@ -321,44 +321,51 @@ void fileBrowser()
             {
                 core = new Core(ndsPath, gbaPath);
             }
-            catch (int e)
+            catch (CoreError e)
             {
                 // Handle errors during ROM boot
                 switch (e)
                 {
-                    case 1: // Missing BIOS and/or firmware files
+                    case ERROR_BIOS: // Missing BIOS files
                     {
                         // Inform the user of the error
                         std::vector<std::string> message =
                         {
-                            "Initialization failed.",
-                            "Make sure the path settings point to valid BIOS and firmware files and try again.",
+                            "Make sure the path settings point to valid BIOS files and try again.",
                             "You can modify the path settings in the noods.ini file."
                         };
-                        SwitchUI::message("Missing BIOS/Firmware", message);
-
-                        // Remove the ROM from the path and return to the file browser
-                        path = path.substr(0, path.rfind("/"));
-                        index = 0;
-                        continue;
+                        SwitchUI::message("Error Loading BIOS", message);
+                        break;
                     }
 
-                    case 2: // Unreadable ROM file
+                    case ERROR_FIRM: // Missing/non-bootable firmware file
                     {
                         // Inform the user of the error
                         std::vector<std::string> message =
                         {
-                            "Initialization failed.",
+                            "Make sure the path settings point to a valid bootable firmware file or try another boot method.",
+                            "You can modify the path settings in the noods.ini file."
+                        };
+                        SwitchUI::message("Error Loading Firmware", message);
+                        break;
+                    }
+
+                    case ERROR_ROM: // Unreadable ROM file
+                    {
+                        // Inform the user of the error
+                        std::vector<std::string> message =
+                        {
                             "Make sure the ROM file is accessible and try again."
                         };
-                        SwitchUI::message("Unreadable ROM", message);
-
-                        // Remove the ROM from the path and return to the file browser
-                        path = path.substr(0, path.rfind("/"));
-                        index = 0;
-                        continue;
+                        SwitchUI::message("Error Loading ROM", message);
+                        break;
                     }
                 }
+
+                // Remove the ROM from the path and return to the file browser
+                path = path.substr(0, path.rfind("/"));
+                index = 0;
+                continue;
             }
 
             delete[] folder;

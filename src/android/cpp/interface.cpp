@@ -87,7 +87,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_startCore(JNI
         core = new Core(ndsPath, gbaPath);
         return 0;
     }
-    catch (int e)
+    catch (CoreError e)
     {
         return e;
     }

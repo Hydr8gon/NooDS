@@ -404,14 +404,43 @@ void fileBrowser()
                 core = new Core(ndsPath, gbaPath);
                 return;
             }
-            catch (int e)
+            catch (CoreError e)
             {
-                // Loading probably failed because of missing BIOS/firmware, so inform the user
-                std::string text =
-                    "Initialization failed.\n"
-                    "Make sure the path settings point to valid BIOS and firmware files and try again.\n"
-                    "You can modify the path settings in ux0:/data/noods/noods.ini.";
-                message(text, confirmButton);
+                // Handle errors during ROM boot
+                switch (e)
+                {
+                    case ERROR_BIOS: // Missing BIOS files
+                    {
+                        // Inform the user of the error
+                        std::string text =
+                            "Error loading BIOS.\n"
+                            "Make sure the path settings point to valid BIOS files and try again.\n"
+                            "You can modify the path settings in ux0:/data/noods/noods.ini.";
+                        message(text, confirmButton);
+                        break;
+                    }
+
+                    case ERROR_FIRM: // Missing/non-bootable firmware file
+                    {
+                        // Inform the user of the error
+                        std::string text =
+                            "Error loading firmware.\n"
+                            "Make sure the path settings point to a valid bootable firmware file or try another boot method.\n"
+                            "You can modify the path settings in ux0:/data/noods/noods.ini.";
+                        message(text, confirmButton);
+                        break;
+                    }
+
+                    case ERROR_ROM: // Unreadable ROM file
+                    {
+                        // Inform the user of the error
+                        std::string text =
+                            "Error loading ROM.\n"
+                            "Make sure the ROM file is accessible and try again.";
+                        message(text, confirmButton);
+                        break;
+                    }
+                }
 
                 ndsPath = gbaPath = "";
             }

@@ -57,13 +57,13 @@ void Memory::loadBios()
 {
     // Attempt to load the ARM9 BIOS
     FILE *bios9File = fopen(Settings::getBios9Path().c_str(), "rb");
-    if (!bios9File) throw 1;
+    if (!bios9File) throw ERROR_BIOS;
     fread(bios9, sizeof(uint8_t), 0x1000, bios9File);
     fclose(bios9File);
 
     // Attempt to load the ARM7 BIOS
     FILE *bios7File = fopen(Settings::getBios7Path().c_str(), "rb");
-    if (!bios7File) throw 1;
+    if (!bios7File) throw ERROR_BIOS;
     fread(bios7, sizeof(uint8_t), 0x4000, bios7File);
     fclose(bios7File);
 }
@@ -72,7 +72,7 @@ void Memory::loadGbaBios()
 {
     // Attempt to load the GBA BIOS
     FILE *gbaBiosFile = fopen(Settings::getGbaBiosPath().c_str(), "rb");
-    if (!gbaBiosFile) throw 1;
+    if (!gbaBiosFile) throw ERROR_BIOS;
     fread(gbaBios, sizeof(uint8_t), 0x4000, gbaBiosFile);
     fclose(gbaBiosFile);
 }

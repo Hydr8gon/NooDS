@@ -28,8 +28,9 @@ class Spi
 {
     public:
         Spi(Core *core): core(core) {}
+        ~Spi();
 
-        void loadFirmware();
+        bool loadFirmware();
         void directBoot();
 
         void setTouch(int x, int y);
@@ -44,7 +45,8 @@ class Spi
     private:
         Core *core;
 
-        uint8_t firmware[0x40000] = {};
+        uint8_t *firmware = nullptr;
+        size_t firmSize = 0;
 
         unsigned int writeCount = 0;
         uint32_t address = 0;
@@ -53,6 +55,8 @@ class Spi
         uint16_t touchX = 0x000, touchY = 0xFFF;
         uint16_t spiCnt = 0;
         uint8_t spiData = 0;
+
+        static uint16_t crc16(uint32_t value, uint8_t *data, size_t size);
 };
 
 #endif // SPI_H

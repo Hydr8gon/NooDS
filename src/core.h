@@ -46,6 +46,13 @@
 #include "timers.h"
 #include "wifi.h"
 
+enum CoreError
+{
+    ERROR_BIOS = 1,
+    ERROR_FIRM,
+    ERROR_ROM
+};
+
 struct Task
 {
     Task(std::function<void()> *task, uint32_t cycles): task(task), cycles(cycles) {}

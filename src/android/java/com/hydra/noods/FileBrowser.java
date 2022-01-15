@@ -203,18 +203,24 @@ public class FileBrowser extends AppCompatActivity
             builder.setPositiveButton("OK", null);
 
             // Inform the user of the error if loading was not successful
-            if (result == 1) // Missing BIOS and/or firmware files
+            switch (result)
             {
-                builder.setTitle("Missing BIOS/Firmware");
-                builder.setMessage("Initialization failed. " +
-                                   "Make sure the path settings point to valid BIOS and firmware files and try again. " +
-                                   "You can modify the path settings in the noods.ini file.");
-            }
-            else // Unreadable ROM file
-            {
-                builder.setTitle("Unreadable ROM");
-                builder.setMessage("Initialization failed. " +
-                                   "Make sure the ROM file is accessible and try again.");
+                case 1: // Missing BIOS files
+                    builder.setTitle("Error Loading BIOS");
+                    builder.setMessage("Make sure the path settings point to valid BIOS files and try again. " +
+                                       "You can modify the path settings in the noods.ini file.");
+                    break;
+
+                case 2: // Non-bootable firmware file
+                    builder.setTitle("Error Loading Firmware");
+                    builder.setMessage("Make sure the path settings point to a valid bootable firmware file or try another boot method. " +
+                                       "You can modify the path settings in the noods.ini file.");
+                    break;
+
+                case 3: // Unreadable ROM file
+                    builder.setTitle("Error Loading ROM");
+                    builder.setMessage("Make sure the ROM file is accessible and try again.");
+                    break;
             }
 
             builder.create().show();

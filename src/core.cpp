@@ -55,7 +55,8 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     if (ndsPath != "" || gbaPath == "" || !Settings::getDirectBoot())
     {
         memory.loadBios();
-        spi.loadFirmware();
+        if (!spi.loadFirmware() && (ndsPath == "" || !Settings::getDirectBoot()))
+            throw ERROR_FIRM;
     }
 
     // Initialize the memory and CPUs

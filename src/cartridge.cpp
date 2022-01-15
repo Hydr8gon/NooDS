@@ -39,7 +39,7 @@ void Cartridge::loadRom(std::string path)
     // Attempt to open a ROM file
     romName = path;
     romFile = fopen(romName.c_str(), "rb");
-    if (!romFile) throw 2;
+    if (!romFile) throw ERROR_ROM;
     fseek(romFile, 0, SEEK_END);
     romSize = ftell(romFile);
     fseek(romFile, 0, SEEK_SET);

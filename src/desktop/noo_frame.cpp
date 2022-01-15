@@ -216,26 +216,25 @@ void NooFrame::startCore(bool full)
             // Attempt to boot the core
             emulator->core = new Core(ndsPath, gbaPath);
         }
-        catch (int e)
+        catch (CoreError e)
         {
-            // Handle errors during ROM load
+            // Inform the user of the error if loading was not successful
             switch (e)
             {
-                case 1: // Missing BIOS and/or firmware files
-                {
-                    // Inform the user of the error
-                    wxMessageDialog(this, "Make sure the path settings point to valid BIOS and firmware files and try again.",
-                        "Initialization Failed", wxICON_NONE).ShowModal();
+                case ERROR_BIOS: // Missing BIOS files
+                    wxMessageDialog(this, "Make sure the path settings point to valid BIOS files and try again.",
+                        "Error Loading BIOS", wxICON_NONE).ShowModal();
                     return;
-                }
 
-                case 2: // Unreadable ROM file
-                {
-                    // Inform the user of the error
-                    wxMessageDialog(this, "Make sure the ROM file is accessible and try again.",
-                        "Initialization Failed", wxICON_NONE).ShowModal();
+                case ERROR_FIRM: // Missing/non-bootable firmware file
+                    wxMessageDialog(this, "Make sure the path settings point to a valid bootable firmware file or try another boot method.",
+                        "Error Loading Firmware", wxICON_NONE).ShowModal();
                     return;
-                }
+
+                case ERROR_ROM: // Unreadable ROM file
+                    wxMessageDialog(this, "Make sure the ROM file is accessible and try again.",
+                        "Error Loading ROM", wxICON_NONE).ShowModal();
+                    return;
             }
         }
     }
