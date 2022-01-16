@@ -72,69 +72,6 @@ bool gbaMode = false;
 uint32_t audioBuffer[1024];
 int audioPort = 0;
 
-void runCore()
-{
-    // Run the emulator
-    while (running)
-        core->runFrame();
-}
-
-void outputAudio()
-{
-    while (running)
-    {
-        // The NDS sample rate is 32768Hz, but the Vita doesn't support this, so 48000Hz is used
-        // Get 699 samples at 32768Hz, which is equal to approximately 1024 samples at 48000Hz
-        uint32_t *original = core->spu.getSamples(699);
-
-        // Stretch the 699 samples out to 1024 samples in the audio buffer
-        for (int i = 0; i < 1024; i++)
-            audioBuffer[i] = original[i * 699 / 1024];
-
-        delete[] original;
-        sceAudioOutOutput(audioPort, audioBuffer);
-    }
-}
-
-void checkSave()
-{
-    while (running)
-    {
-        // Check save files every second and update them if changed
-        SceUInt timeout = 1000000;
-        sceKernelWaitEventFlag(eventFlag, 1, SCE_EVENT_WAITOR | SCE_EVENT_WAITCLEAR_PAT, nullptr, &timeout);
-        core->cartridgeNds.writeSave();
-        core->cartridgeGba.writeSave();
-    }
-}
-
-void startCore()
-{
-    scePowerSetArmClockFrequency(444);
-
-    // Start the threads
-    running = true;
-    coreThread  = new std::thread(runCore);
-    audioThread = new std::thread(outputAudio);
-    saveThread  = new std::thread(checkSave);
-}
-
-void stopCore()
-{
-    running = false;
-    sceKernelSetEventFlag(eventFlag, 1);
-
-    // Wait for the threads to stop
-    coreThread->join();
-    delete coreThread;
-    audioThread->join();
-    delete audioThread;
-    saveThread->join();
-    delete saveThread;
-
-    scePowerSetArmClockFrequency(333);
-}
-
 uint32_t menu(std::string title, std::string subtitle, std::vector<std::string> *items,
     std::vector<std::string> *subitems, unsigned int *selection, uint32_t buttonMask)
 {
@@ -252,6 +189,109 @@ uint32_t message(std::string text, uint32_t buttonMask)
 
         sceDisplayWaitVblankStart();
     }
+}
+
+void runCore()
+{
+    // Run the emulator
+    while (running)
+        core->runFrame();
+}
+
+void outputAudio()
+{
+    while (running)
+    {
+        // The NDS sample rate is 32768Hz, but the Vita doesn't support this, so 48000Hz is used
+        // Get 699 samples at 32768Hz, which is equal to approximately 1024 samples at 48000Hz
+        uint32_t *original = core->spu.getSamples(699);
+
+        // Stretch the 699 samples out to 1024 samples in the audio buffer
+        for (int i = 0; i < 1024; i++)
+            audioBuffer[i] = original[i * 699 / 1024];
+
+        delete[] original;
+        sceAudioOutOutput(audioPort, audioBuffer);
+    }
+}
+
+void checkSave()
+{
+    while (running)
+    {
+        // Check save files every second and update them if changed
+        SceUInt timeout = 1000000;
+        sceKernelWaitEventFlag(eventFlag, 1, SCE_EVENT_WAITOR | SCE_EVENT_WAITCLEAR_PAT, nullptr, &timeout);
+        core->cartridgeNds.writeSave();
+        core->cartridgeGba.writeSave();
+    }
+}
+
+bool createCore()
+{
+    try
+    {
+        // Attempt to create the core
+        if (core) delete core;
+        core = new Core(ndsPath, gbaPath);
+        return true;
+    }
+    catch (CoreError e)
+    {
+        std::string text;
+
+        // Inform the user of the error if loading wasn't successful
+        switch (e)
+        {
+            case ERROR_BIOS: // Missing BIOS files
+                text = "Error loading BIOS.\n"
+                       "Make sure the path settings point to valid BIOS files and try again.\n"
+                       "You can modify the path settings in ux0:/data/noods/noods.ini.";
+                break;
+
+            case ERROR_FIRM: // Non-bootable firmware file
+                text = "Error loading firmware.\n"
+                       "Make sure the path settings point to a bootable firmware file or try another boot method.\n"
+                       "You can modify the path settings in ux0:/data/noods/noods.ini.";
+                break;
+
+            case ERROR_ROM: // Unreadable ROM file
+                text = "Error loading ROM.\n"
+                       "Make sure the ROM file is accessible and try again.";
+                break;
+        }
+
+        message(text, confirmButton);
+        core = nullptr;
+        return false;
+    }
+}
+
+void startCore()
+{
+    scePowerSetArmClockFrequency(444);
+
+    // Start the threads
+    running = true;
+    coreThread  = new std::thread(runCore);
+    audioThread = new std::thread(outputAudio);
+    saveThread  = new std::thread(checkSave);
+}
+
+void stopCore()
+{
+    running = false;
+    sceKernelSetEventFlag(eventFlag, 1);
+
+    // Wait for the threads to stop
+    coreThread->join();
+    delete coreThread;
+    audioThread->join();
+    delete audioThread;
+    saveThread->join();
+    delete saveThread;
+
+    scePowerSetArmClockFrequency(333);
 }
 
 void settingsMenu()
@@ -397,58 +437,15 @@ void fileBrowser()
         // Try to load a ROM if one was set
         if (ndsPath != "" || gbaPath != "")
         {
-            try
-            {
-                // Restart the core and close the menu
-                if (core) delete core;
-                core = new Core(ndsPath, gbaPath);
+            if (createCore())
                 return;
-            }
-            catch (CoreError e)
-            {
-                // Handle errors during ROM boot
-                switch (e)
-                {
-                    case ERROR_BIOS: // Missing BIOS files
-                    {
-                        // Inform the user of the error
-                        std::string text =
-                            "Error loading BIOS.\n"
-                            "Make sure the path settings point to valid BIOS files and try again.\n"
-                            "You can modify the path settings in ux0:/data/noods/noods.ini.";
-                        message(text, confirmButton);
-                        break;
-                    }
-
-                    case ERROR_FIRM: // Missing/non-bootable firmware file
-                    {
-                        // Inform the user of the error
-                        std::string text =
-                            "Error loading firmware.\n"
-                            "Make sure the path settings point to a valid bootable firmware file or try another boot method.\n"
-                            "You can modify the path settings in ux0:/data/noods/noods.ini.";
-                        message(text, confirmButton);
-                        break;
-                    }
-
-                    case ERROR_ROM: // Unreadable ROM file
-                    {
-                        // Inform the user of the error
-                        std::string text =
-                            "Error loading ROM.\n"
-                            "Make sure the ROM file is accessible and try again.";
-                        message(text, confirmButton);
-                        break;
-                    }
-                }
-
+            else
                 ndsPath = gbaPath = "";
-            }
         }
     }
 }
 
-void saveTypeMenu()
+bool saveTypeMenu()
 {
     unsigned int selection = 0;
 
@@ -520,15 +517,12 @@ void saveTypeMenu()
                 }
             }
 
-            // Restart the core and close the menu
-            if (core) delete core;
-            core = new Core(ndsPath, gbaPath);
-            return;
+            return true;
         }
         else if (pressed & cancelButton)
         {
             // Close the menu
-            return;
+            return false;
         }
     }
 }
@@ -559,24 +553,35 @@ void pauseMenu()
             switch (selection)
             {
                 case 0: // Resume
+                    // Return to the emulator
                     startCore();
                     return;
 
                 case 1: // Restart
-                    if (core) delete core;
-                    core = new Core(ndsPath, gbaPath);
+                    // Restart and return to the emulator
+                    if (!createCore())
+                        fileBrowser();
                     startCore();
                     return;
 
                 case 2: // Change Save Type
-                    saveTypeMenu();
+                    // Open the save type menu and restart if the save changed
+                    if (saveTypeMenu())
+                    {
+                        if (!createCore())
+                            fileBrowser();
+                        startCore();
+                        return;
+                    }
                     break;
 
                 case 3: // Settings
+                    // Open the settings menu
                     settingsMenu();
                     break;
 
                 case 4: // File Browser
+                    // Open the file browser and close the pause menu
                     fileBrowser();
                     startCore();
                     return;

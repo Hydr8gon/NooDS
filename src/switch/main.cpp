@@ -100,6 +100,45 @@ void outputAudio()
     }
 }
 
+bool createCore()
+{
+    try
+    {
+        // Attempt to create the core
+        if (core) delete core;
+        core = new Core(ndsPath, gbaPath);
+        return true;
+    }
+    catch (CoreError e)
+    {
+        std::vector<std::string> message;
+
+        // Inform the user of the error if loading wasn't successful
+        switch (e)
+        {
+            case ERROR_BIOS: // Missing BIOS files
+                message.push_back("Make sure the path settings point to valid BIOS files and try again.");
+                message.push_back("You can modify the path settings in the noods.ini file.");
+                SwitchUI::message("Error Loading BIOS", message);
+                break;
+
+            case ERROR_FIRM: // Non-bootable firmware file
+                message.push_back("Make sure the path settings point to a bootable firmware file or try another boot method.");
+                message.push_back("You can modify the path settings in the noods.ini file.");
+                SwitchUI::message("Error Loading Firmware", message);
+                break;
+
+            case ERROR_ROM: // Unreadable ROM file
+                message.push_back("Make sure the ROM file is accessible and try again.");
+                SwitchUI::message("Error Loading ROM", message);
+                break;
+        }
+
+        core = nullptr;
+        return false;
+    }
+}
+
 void startCore()
 {
     if (running) return;
@@ -317,61 +356,17 @@ void fileBrowser()
             }
 
             // If a ROM was selected, attempt to boot it
-            try
+            if (createCore())
             {
-                core = new Core(ndsPath, gbaPath);
-            }
-            catch (CoreError e)
-            {
-                // Handle errors during ROM boot
-                switch (e)
-                {
-                    case ERROR_BIOS: // Missing BIOS files
-                    {
-                        // Inform the user of the error
-                        std::vector<std::string> message =
-                        {
-                            "Make sure the path settings point to valid BIOS files and try again.",
-                            "You can modify the path settings in the noods.ini file."
-                        };
-                        SwitchUI::message("Error Loading BIOS", message);
-                        break;
-                    }
-
-                    case ERROR_FIRM: // Missing/non-bootable firmware file
-                    {
-                        // Inform the user of the error
-                        std::vector<std::string> message =
-                        {
-                            "Make sure the path settings point to a valid bootable firmware file or try another boot method.",
-                            "You can modify the path settings in the noods.ini file."
-                        };
-                        SwitchUI::message("Error Loading Firmware", message);
-                        break;
-                    }
-
-                    case ERROR_ROM: // Unreadable ROM file
-                    {
-                        // Inform the user of the error
-                        std::vector<std::string> message =
-                        {
-                            "Make sure the ROM file is accessible and try again."
-                        };
-                        SwitchUI::message("Error Loading ROM", message);
-                        break;
-                    }
-                }
-
-                // Remove the ROM from the path and return to the file browser
-                path = path.substr(0, path.rfind("/"));
-                index = 0;
-                continue;
+                delete[] folder;
+                delete[] file;
+                startCore();
+                return;
             }
 
-            delete[] folder;
-            delete[] file;
-            startCore();
-            return;
+            // Remove the ROM from the path and return to the file browser
+            path = path.substr(0, path.rfind("/"));
+            index = 0;
         }
         else if (menu.pressed & HidNpadButton_B)
         {
@@ -395,7 +390,7 @@ void fileBrowser()
     }
 }
 
-void saveTypeMenu()
+bool saveTypeMenu()
 {
     unsigned int index = 0;
     std::vector<ListItem> items;
@@ -468,13 +463,10 @@ void saveTypeMenu()
                 }
             }
 
-            // Restart the core
-            delete core;
-            core = new Core(ndsPath, gbaPath);
+            return true;
         }
 
-        // Return to the pause menu
-        return;
+        return false;
     }
 }
 
@@ -509,41 +501,33 @@ void pauseMenu()
             switch (index)
             {
                 case 0: // Resume
-                {
                     // Return to the emulator
                     startCore();
                     return;
-                }
 
                 case 1: // Restart
-                {
                     // Restart and return to the emulator
-                    delete core;
-                    core = new Core(ndsPath, gbaPath);
-                    startCore();
+                    createCore() ? startCore() : fileBrowser();
                     return;
-                }
 
                 case 2: // Change Save Type
-                {
-                    // Open the save type menu
-                    saveTypeMenu();
+                    // Open the save type menu and restart if the save changed
+                    if (saveTypeMenu())
+                    {
+                        createCore() ? startCore() : fileBrowser();
+                        return;
+                    }
                     break;
-                }
 
                 case 3: // Settings
-                {
                     // Open the settings menu
                     settingsMenu();
                     break;
-                }
 
                 case 4: // File Browser
-                {
                     // Open the file browser and close the pause menu
                     fileBrowser();
                     return;
-                }
             }
         }
         else if (menu.pressed & HidNpadButton_B)

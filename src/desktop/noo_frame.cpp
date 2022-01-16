@@ -218,7 +218,7 @@ void NooFrame::startCore(bool full)
         }
         catch (CoreError e)
         {
-            // Inform the user of the error if loading was not successful
+            // Inform the user of the error if loading wasn't successful
             switch (e)
             {
                 case ERROR_BIOS: // Missing BIOS files
@@ -226,8 +226,8 @@ void NooFrame::startCore(bool full)
                         "Error Loading BIOS", wxICON_NONE).ShowModal();
                     return;
 
-                case ERROR_FIRM: // Missing/non-bootable firmware file
-                    wxMessageDialog(this, "Make sure the path settings point to a valid bootable firmware file or try another boot method.",
+                case ERROR_FIRM: // Non-bootable firmware file
+                    wxMessageDialog(this, "Make sure the path settings point to a bootable firmware file or try another boot method.",
                         "Error Loading Firmware", wxICON_NONE).ShowModal();
                     return;
 

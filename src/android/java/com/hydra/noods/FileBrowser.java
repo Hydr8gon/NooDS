@@ -202,7 +202,7 @@ public class FileBrowser extends AppCompatActivity
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setPositiveButton("OK", null);
 
-            // Inform the user of the error if loading was not successful
+            // Inform the user of the error if loading wasn't successful
             switch (result)
             {
                 case 1: // Missing BIOS files
@@ -213,7 +213,7 @@ public class FileBrowser extends AppCompatActivity
 
                 case 2: // Non-bootable firmware file
                     builder.setTitle("Error Loading Firmware");
-                    builder.setMessage("Make sure the path settings point to a valid bootable firmware file or try another boot method. " +
+                    builder.setMessage("Make sure the path settings point to a bootable firmware file or try another boot method. " +
                                        "You can modify the path settings in the noods.ini file.");
                     break;
 
