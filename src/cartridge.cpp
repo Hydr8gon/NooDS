@@ -70,17 +70,18 @@ void Cartridge::loadRomSection(uint32_t offset, uint32_t size)
 void Cartridge::writeSave()
 {
     // Update the save file if the data changed
+    mutex.lock();
     if (saveDirty)
     {
-        FILE *saveFile = fopen(saveName.c_str(), "wb");
-        if (saveFile)
+        if (FILE *saveFile = fopen(saveName.c_str(), "wb"))
         {
-            if (saveSize > 0)
-                fwrite(save, sizeof(uint8_t), saveSize, saveFile);
+            LOG("Writing save file to disk\n");
+            fwrite(save, sizeof(uint8_t), saveSize, saveFile);
             fclose(saveFile);
             saveDirty = false;
         }
     }
+    mutex.unlock();
 }
 
 void Cartridge::trimRom()
@@ -115,31 +116,29 @@ void Cartridge::trimRom()
 
 void Cartridge::resizeSave(int newSize, bool dirty)
 {
+    mutex.lock();
+    uint8_t *newSave = new uint8_t[newSize];
+
     // Resize the save
-    if (newSize > 0)
+    if (saveSize < newSize) // New save is larger
     {
-        uint8_t *newSave = new uint8_t[newSize];
-
-        if (saveSize < newSize) // New save is larger
-        {
-            // Copy all of the old save and fill the rest with 0xFF
-            if (saveSize < 0) saveSize = 0;
-            memcpy(newSave, save, saveSize * sizeof(uint8_t));
-            memset(&newSave[saveSize], 0xFF, (newSize - saveSize) * sizeof(uint8_t));
-        }
-        else // New save is smaller
-        {
-            // Copy as much of the old save as possible
-            memcpy(newSave, save, newSize * sizeof(uint8_t));
-        }
-
-        delete[] save;
-        save = newSave;
+        // Copy all of the old save and fill the rest with 0xFF
+        if (saveSize < 0) saveSize = 0;
+        memcpy(newSave, save, saveSize * sizeof(uint8_t));
+        memset(&newSave[saveSize], 0xFF, (newSize - saveSize) * sizeof(uint8_t));
+    }
+    else // New save is smaller
+    {
+        // Copy as much of the old save as possible
+        memcpy(newSave, save, newSize * sizeof(uint8_t));
     }
 
+    // Swap the old save for the new one
+    delete[] save;
+    save = newSave;
     saveSize = newSize;
-    if (dirty)
-        saveDirty = true;
+    if (dirty) saveDirty = true;
+    mutex.unlock();
 }
 
 void CartridgeNds::loadRom(std::string path)
@@ -516,8 +515,10 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                             // On writes 3+, write data to the save
                             if (auxAddress[cpu] < 0x200)
                             {
+                                mutex.lock();
                                 save[auxAddress[cpu]] = value;
                                 saveDirty = true;
+                                mutex.unlock();
                             }
 
                             auxAddress[cpu]++;
@@ -539,8 +540,10 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                             // On writes 3+, write data to the save
                             if (auxAddress[cpu] < 0x200)
                             {
+                                mutex.lock();
                                 save[auxAddress[cpu]] = value;
                                 saveDirty = true;
+                                mutex.unlock();
                             }
 
                             auxAddress[cpu]++;
@@ -595,8 +598,10 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                             // On writes 4+, write data to the save
                             if (auxAddress[cpu] < saveSize)
                             {
+                                mutex.lock();
                                 save[auxAddress[cpu]] = value;
                                 saveDirty = true;
+                                mutex.unlock();
                             }
 
                             auxAddress[cpu]++;
@@ -649,8 +654,10 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                             // On writes 5+, write data to the save
                             if (auxAddress[cpu] < saveSize)
                             {
+                                mutex.lock();
                                 save[auxAddress[cpu]] = value;
                                 saveDirty = true;
+                                mutex.unlock();
                             }
 
                             auxAddress[cpu]++;
@@ -1083,10 +1090,12 @@ void CartridgeGba::eepromWrite(uint8_t value)
             }
 
             // Write the data after all the bits have been received
+            mutex.lock();
             uint16_t addr = (saveSize == 0x200) ? ((eepromCmd & 0x3F00) >> 8) : (eepromCmd & 0x03FF);
             for (unsigned int i = 0; i < 8; i++)
                 save[addr * 8 + i] = eepromData >> (i * 8);
             saveDirty = true;
+            mutex.unlock();
 
             // Reset the transfer
             eepromCount = 0;
@@ -1133,8 +1142,10 @@ void CartridgeGba::sramWrite(uint32_t address, uint8_t value)
     if (saveSize == 0x8000 && address < 0xE008000) // SRAM
     {
         // Write a single byte because the data bus is only 8 bits
+        mutex.lock();
         save[address - 0xE000000] = value;
         saveDirty = true;
+        mutex.unlock();
     }
     else if ((saveSize == 0x10000 || saveSize == 0x20000) && address < 0xE010000) // FLASH
     {
@@ -1143,16 +1154,20 @@ void CartridgeGba::sramWrite(uint32_t address, uint8_t value)
         {
             // Write a single byte
             if (bankSwap) address += 0x10000;
+            mutex.lock();
             save[address - 0xE000000] = value;
             saveDirty = true;
+            mutex.unlock();
             flashCmd = 0xF0;
         }
         else if (flashErase && (address & ~0x000F000) == 0xE000000 && (value & 0xFF) == 0x30)
         {
             // Erase a sector
             if (bankSwap) address += 0x10000;
+            mutex.lock();
             memset(&save[address - 0xE000000], 0xFF, 0x1000 * sizeof(uint8_t));
             saveDirty = true;
+            mutex.unlock();
             flashErase = false;
         }
         else if (saveSize == 0x20000 && flashCmd == 0xB0 && address == 0xE000000)
@@ -1177,8 +1192,10 @@ void CartridgeGba::sramWrite(uint32_t address, uint8_t value)
             }
             else if (flashErase && flashCmd == 0x10)
             {
+                mutex.lock();
                 memset(save, 0xFF, saveSize * sizeof(uint8_t));
                 saveDirty = true;
+                mutex.unlock();
             }
         }
     }

@@ -204,6 +204,18 @@ void NooFrame::runCore()
         emulator->core->runFrame();
 }
 
+void NooFrame::checkSave()
+{
+    while (emulator->running)
+    {
+        // Check save files every few seconds and update them if changed
+        std::unique_lock<std::mutex> lock(mutex);
+        cond.wait_for(lock, std::chrono::seconds(3), [&]{ return !emulator->running; });
+        emulator->core->cartridgeNds.writeSave();
+        emulator->core->cartridgeGba.writeSave();
+    }
+}
+
 void NooFrame::startCore(bool full)
 {
     if (full)
@@ -253,21 +265,36 @@ void NooFrame::startCore(bool full)
         systemMenu->Enable(RESTART, true);
         systemMenu->Enable(STOP,    true);
 
-        // Start the core thread
+        // Start the threads
         emulator->running = true;
         coreThread = new std::thread(&NooFrame::runCore, this);
+        saveThread = new std::thread(&NooFrame::checkSave, this);
     }
 }
 
 void NooFrame::stopCore(bool full)
 {
-    // Stop the core thread
-    emulator->running = false;
+    // Signal for the threads to stop if the core is running
+    {
+        std::lock_guard<std::mutex> guard(mutex);
+        emulator->running = false;
+        cond.notify_one();
+    }
+
+    // Wait for the core thread to stop
     if (coreThread)
     {
         coreThread->join();
         delete coreThread;
         coreThread = nullptr;
+    }
+
+    // Wait for the save thread to stop
+    if (saveThread)
+    {
+        saveThread->join();
+        delete saveThread;
+        saveThread = nullptr;
     }
 
     systemMenu->SetLabel(PAUSE, "&Resume");
@@ -284,12 +311,6 @@ void NooFrame::stopCore(bool full)
         // Shut down the core
         if (emulator->core) delete emulator->core;
         emulator->core = nullptr;
-    }
-    else if (emulator->core)
-    {
-        // Update the save file since the core isn't running
-        emulator->core->cartridgeNds.writeSave();
-        emulator->core->cartridgeGba.writeSave();
     }
 }
 

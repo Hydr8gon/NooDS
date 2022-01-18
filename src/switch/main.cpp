@@ -21,7 +21,6 @@
 #include <cstring>
 #include <dirent.h>
 #include <switch.h>
-#include <thread>
 #include <malloc.h>
 
 #include "switch_ui.h"
@@ -52,7 +51,9 @@ std::string ndsPath, gbaPath;
 Core *core;
 
 bool running = false;
-std::thread *coreThread, *audioThread;
+std::thread *coreThread, *audioThread, *saveThread;
+std::condition_variable cond;
+std::mutex mutex;
 ClkrstSession cpuSession;
 
 ScreenLayout layout;
@@ -97,6 +98,18 @@ void outputAudio()
 
         delete[] original;
         audoutAppendAudioOutBuffer(audioReleasedBuffer);
+    }
+}
+
+void checkSave()
+{
+    while (running)
+    {
+        // Check save files every few seconds and update them if changed
+        std::unique_lock<std::mutex> lock(mutex);
+        cond.wait_for(lock, std::chrono::seconds(3), [&]{ return !running; });
+        core->cartridgeNds.writeSave();
+        core->cartridgeGba.writeSave();
     }
 }
 
@@ -169,20 +182,32 @@ void startCore()
     }
 
     // Start the threads
+    coreThread  = new std::thread(runCore);
     audioThread = new std::thread(outputAudio);
-    coreThread = new std::thread(runCore);
+    saveThread  = new std::thread(checkSave);
 }
 
 void stopCore()
 {
-    if (!running) return;
-    running = false;
+    // Signal for the threads to stop if the core is running
+    if (running)
+    {
+        std::lock_guard<std::mutex> guard(mutex);
+        running = false;
+        cond.notify_one();
+    }
+    else
+    {
+        return;
+    }
 
     // Wait for the threads to stop
     coreThread->join();
     delete coreThread;
     audioThread->join();
     delete audioThread;
+    saveThread->join();
+    delete saveThread;
 
     // Free the audio buffers
     delete[] audioData[0];
@@ -472,10 +497,8 @@ bool saveTypeMenu()
 
 void pauseMenu()
 {
-    // Stop the core and write the save as an extra precaution
+    // Pause the emulator
     stopCore();
-    core->cartridgeNds.writeSave();
-    core->cartridgeGba.writeSave();
 
     unsigned int index = 0;
 

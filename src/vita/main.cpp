@@ -219,8 +219,8 @@ void checkSave()
 {
     while (running)
     {
-        // Check save files every second and update them if changed
-        SceUInt timeout = 1000000;
+        // Check save files every few seconds and update them if changed
+        SceUInt timeout = 3000000;
         sceKernelWaitEventFlag(eventFlag, 1, SCE_EVENT_WAITOR | SCE_EVENT_WAITCLEAR_PAT, nullptr, &timeout);
         core->cartridgeNds.writeSave();
         core->cartridgeGba.writeSave();

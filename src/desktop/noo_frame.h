@@ -20,7 +20,6 @@
 #ifndef NOO_FRAME_H
 #define NOO_FRAME_H
 
-#include <thread>
 #include <wx/wx.h>
 #include <wx/joystick.h>
 
@@ -52,12 +51,16 @@ class NooFrame: public wxFrame
         wxTimer *timer;
 
         std::string ndsPath, gbaPath;
-        std::thread *coreThread = nullptr;
+        std::thread *coreThread = nullptr, *saveThread = nullptr;
+        std::condition_variable cond;
+        std::mutex mutex;
+
         std::vector<int> axisBases;
         int fpsLimiterBackup = 0;
         bool fullScreen = false;
 
         void runCore();
+        void checkSave();
         void loadRomPath(std::string path);
 
         void loadRom(wxCommandEvent &event);
