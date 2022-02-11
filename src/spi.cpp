@@ -143,6 +143,9 @@ void Spi::directBoot()
 
 void Spi::setTouch(int x, int y)
 {
+    if (!firmware)
+        return;
+
     // Read calibration points from the firmware
     uint16_t adcX1 = U8TO16(firmware, firmSize - 0xA8);
     uint16_t adcY1 = U8TO16(firmware, firmSize - 0xA6);

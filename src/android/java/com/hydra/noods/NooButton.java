@@ -117,6 +117,6 @@ public class NooButton extends Button
         }
     }
 
-    public native void pressKey(int key);
-    public native void releaseKey(int key);
+    public static native void pressKey(int key);
+    public static native void releaseKey(int key);
 }

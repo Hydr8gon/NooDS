@@ -42,6 +42,16 @@ import android.widget.TextView;
 
 public class NooActivity extends AppCompatActivity
 {
+    private static final int keyMap[] =
+    {
+        KeyEvent.KEYCODE_BUTTON_A,      KeyEvent.KEYCODE_BUTTON_B,
+        KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BUTTON_START,
+        KeyEvent.KEYCODE_DPAD_RIGHT,    KeyEvent.KEYCODE_DPAD_LEFT,
+        KeyEvent.KEYCODE_DPAD_UP,       KeyEvent.KEYCODE_DPAD_DOWN,
+        KeyEvent.KEYCODE_BUTTON_L2,     KeyEvent.KEYCODE_BUTTON_R2,
+        KeyEvent.KEYCODE_BUTTON_X,      KeyEvent.KEYCODE_BUTTON_Y
+    };
+
     private boolean running;
     private Thread core, audio, fps;
     private AudioTrack track;
@@ -96,7 +106,43 @@ public class NooActivity extends AppCompatActivity
             }
         });
 
+        // Handle physical controller key events
+        view.setOnKeyListener(new View.OnKeyListener()
+        {
+            @Override
+            public boolean onKey(View view, int keyCode, KeyEvent event)
+            {
+                if (event.getAction() == KeyEvent.ACTION_DOWN)
+                {
+                    // Trigger a key press if a mapped key was pressed
+                    for (int i = 0; i < 12; i++)
+                    {
+                        if (keyCode == keyMap[i])
+                        {
+                            NooButton.pressKey(i);
+                            return true;
+                        }
+                    }
+                }
+                else if (event.getAction() == KeyEvent.ACTION_UP)
+                {
+                    // Trigger a key release if a mapped key was released
+                    for (int i = 0; i < 12; i++)
+                    {
+                        if (keyCode == keyMap[i])
+                        {
+                            NooButton.releaseKey(i);
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+        });
+
         // Add the view to the layout
+        view.setFocusable(true);
         layout.addView(view);
 
         // Get the display density and dimensions
@@ -388,15 +434,15 @@ public class NooActivity extends AppCompatActivity
 
     public boolean isRunning() { return running; }
 
-    public native void fillAudioBuffer(short[] buffer);
-    public native int getShowFpsCounter();
-    public native int getFps();
-    public native boolean isGbaMode();
-    public native void runFrame();
-    public native void writeSave();
-    public native void restartCore();
-    public native void pressScreen(int x, int y);
-    public native void releaseScreen();
-    public native void resizeGbaSave(int size);
-    public native void resizeNdsSave(int size);
+    public static native void fillAudioBuffer(short[] buffer);
+    public static native int getShowFpsCounter();
+    public static native int getFps();
+    public static native boolean isGbaMode();
+    public static native void runFrame();
+    public static native void writeSave();
+    public static native void restartCore();
+    public static native void pressScreen(int x, int y);
+    public static native void releaseScreen();
+    public static native void resizeGbaSave(int size);
+    public static native void resizeNdsSave(int size);
 }

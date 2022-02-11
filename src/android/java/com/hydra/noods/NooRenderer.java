@@ -209,17 +209,17 @@ public class NooRenderer implements GLSurfaceView.Renderer
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
     }
 
-    public native boolean copyFramebuffer(Bitmap bitmap, boolean gbaCrop);
-    public native int getScreenRotation();
-    public native int getGbaCrop();
-    public native int getScreenFilter();
-    public native void updateLayout(int width, int height);
-    public native int getTopX();
-    public native int getBotX();
-    public native int getTopY();
-    public native int getBotY();
-    public native int getTopWidth();
-    public native int getBotWidth();
-    public native int getTopHeight();
-    public native int getBotHeight();
+    public static native boolean copyFramebuffer(Bitmap bitmap, boolean gbaCrop);
+    public static native int getScreenRotation();
+    public static native int getGbaCrop();
+    public static native int getScreenFilter();
+    public static native void updateLayout(int width, int height);
+    public static native int getTopX();
+    public static native int getBotX();
+    public static native int getTopY();
+    public static native int getBotY();
+    public static native int getTopWidth();
+    public static native int getBotWidth();
+    public static native int getTopHeight();
+    public static native int getBotHeight();
 }

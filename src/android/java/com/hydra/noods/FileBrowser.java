@@ -365,11 +365,11 @@ public class FileBrowser extends AppCompatActivity
         fileView.setAdapter(new FileAdapter(this, fileNames, fileIcons));
     }
 
-    public native void loadSettings(String rootPath);
-    public native void getNdsIcon(String romPath, Bitmap bitmap);
-    public native int startCore();
-    public native String getNdsPath();
-    public native String getGbaPath();
-    public native void setNdsPath(String value);
-    public native void setGbaPath(String value);
+    public static native void loadSettings(String rootPath);
+    public static native void getNdsIcon(String romPath, Bitmap bitmap);
+    public static native int startCore();
+    public static native String getNdsPath();
+    public static native String getGbaPath();
+    public static native void setNdsPath(String value);
+    public static native void setGbaPath(String value);
 }
