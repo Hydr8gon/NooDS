@@ -28,4 +28,4 @@ add_library(noods-core SHARED
             ../timers.cpp
             ../wifi.cpp)
 
-target_link_libraries(noods-core jnigraphics)
+target_link_libraries(noods-core jnigraphics OpenSLES)

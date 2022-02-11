@@ -26,9 +26,6 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
-import android.media.AudioFormat;
-import android.media.AudioManager;
-import android.media.AudioTrack;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -53,8 +50,7 @@ public class NooActivity extends AppCompatActivity
     };
 
     private boolean running;
-    private Thread core, audio, fps;
-    private AudioTrack track;
+    private Thread core, fps;
 
     private ConstraintLayout layout;
     private GLSurfaceView view;
@@ -175,11 +171,6 @@ public class NooActivity extends AppCompatActivity
             layout.addView(fpsCounter);
 
         setContentView(layout);
-
-        // Set up audio playback
-        track = new AudioTrack(AudioManager.STREAM_MUSIC, 32768, AudioFormat.CHANNEL_OUT_STEREO,
-                AudioFormat.ENCODING_PCM_16BIT, 1024 * 2 * 2, AudioTrack.MODE_STREAM);
-        track.play();
     }
 
     @Override
@@ -323,12 +314,12 @@ public class NooActivity extends AppCompatActivity
     private void pauseCore()
     {
         running = false;
+        stopAudio();
 
         // Wait for the emulator to stop
         try
         {
             core.join();
-            audio.join();
             if (getShowFpsCounter() != 0)
                 fps.join();
         }
@@ -345,6 +336,7 @@ public class NooActivity extends AppCompatActivity
     private void resumeCore()
     {
         running = true;
+        startAudio();
 
         // Prepare the core thread
         core = new Thread()
@@ -359,24 +351,6 @@ public class NooActivity extends AppCompatActivity
 
         core.setPriority(Thread.MAX_PRIORITY);
         core.start();
-
-        // Prepare the audio thread
-        audio = new Thread()
-        {
-            @Override
-            public void run()
-            {             
-                while (running)
-                {
-                    short[] buffer = new short[1024 * 2];
-                    fillAudioBuffer(buffer);
-                    track.write(buffer, 0, 1024 * 2);
-                }
-            }
-        };
-
-        audio.setPriority(Thread.NORM_PRIORITY);
-        audio.start();
 
         if (getShowFpsCounter() != 0)
         {
@@ -434,7 +408,8 @@ public class NooActivity extends AppCompatActivity
 
     public boolean isRunning() { return running; }
 
-    public static native void fillAudioBuffer(short[] buffer);
+    public static native void startAudio();
+    public static native void stopAudio();
     public static native int getShowFpsCounter();
     public static native int getFps();
     public static native boolean isGbaMode();
