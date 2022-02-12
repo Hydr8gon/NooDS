@@ -182,7 +182,7 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
 
         // Start a timer to update joystick input, since wxJoystickEvents are unreliable
         timer = new wxTimer(this, UPDATE_JOY);
-        timer->Start(100);
+        timer->Start(10);
     }
     else
     {
@@ -496,7 +496,7 @@ void NooFrame::inputSettings(wxCommandEvent &event)
     if (timer) timer->Stop();
     InputDialog inputDialog(joystick);
     inputDialog.ShowModal();
-    if (timer) timer->Start(100);
+    if (timer) timer->Start(10);
 }
 
 void NooFrame::layoutSettings(wxCommandEvent &event)

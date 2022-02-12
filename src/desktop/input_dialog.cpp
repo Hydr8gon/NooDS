@@ -312,7 +312,7 @@ InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Inp
 
         // Start a timer to update joystick input, since wxJoystickEvents are unreliable
         timer = new wxTimer(this, UPDATE_JOY);
-        timer->Start(100);
+        timer->Start(10);
     }
 }
 
