@@ -1188,7 +1188,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
             framebuffer[layer][i] = BIT(26) | (((disp3DCnt & BIT(3)) && (framebuffer[layer][i] & 0xFC0000)) ?
                 interpolateColor(framebuffer[layer][i], color, 0, color >> 18, 63) : color);
             if (polygon->transNewDepth) depthBuffer[layer][i] = depth;
-            attribBuffer[layer][i] = (attribBuffer[layer][i] & 0x1FE03F) | BIT(12) | (polygon->id << 6);
+            attribBuffer[layer][i] = (attribBuffer[layer][i] & (0x1FC03F | (polygon->fog << 13))) | BIT(12) | (polygon->id << 6);
 
             // Blend with the back layer as well if drawing over a front anti-aliased edge pixel
             if ((disp3DCnt & BIT(4)) && layer == 0 && (attribBuffer[0][i] & BIT(14)))
@@ -1196,7 +1196,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
                 framebuffer[1][i] = BIT(26) | (((disp3DCnt & BIT(3)) && (framebuffer[1][i] & 0xFC0000)) ?
                     interpolateColor(framebuffer[1][i], color, 0, color >> 18, 63) : color);
                 if (polygon->transNewDepth) depthBuffer[1][i] = depth;
-                attribBuffer[1][i] = (attribBuffer[1][i] & 0x1FE03F) | BIT(12) | (polygon->id << 6);
+                attribBuffer[1][i] = (attribBuffer[1][i] & (0x1FC03F | (polygon->fog << 13))) | BIT(12) | (polygon->id << 6);
             }
         }
     }
