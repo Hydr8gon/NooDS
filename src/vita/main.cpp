@@ -445,6 +445,44 @@ void fileBrowser()
     }
 }
 
+bool directGameBoot(std::string filename)
+{
+    FILE *retroflowFile = fopen("ux0:/data/noods/retroflow.ini", "r");
+    if (retroflowFile)
+    {
+        char data[1024];
+
+        // Read the retroflow file
+        while (fgets(data, 1024, retroflowFile) != NULL)
+        {
+            std::string line = data;
+            int split = line.find("=");
+            std::string name = line.substr(0, split);
+            std::string value = line.substr(split + 1, line.size() - split - 2);
+
+            if (name == "ndsPath")
+            {
+                ndsPath = value;
+            }
+            else if (name == "gbaPath")
+            {
+                gbaPath = value;
+            }
+        }
+    }
+
+    fclose(retroflowFile);
+
+    if (ndsPath != "" || gbaPath != "")
+    {
+        if (createCore())
+            return true;
+    }
+
+    ndsPath = gbaPath = "";
+    return false;
+}
+
 bool saveTypeMenu()
 {
     unsigned int selection = 0;
@@ -674,8 +712,10 @@ int main()
     // Initialize audio output
     audioPort = sceAudioOutOpenPort(SCE_AUDIO_OUT_PORT_TYPE_BGM, 1024, 48000, SCE_AUDIO_OUT_MODE_STEREO);
 
-    // Open the file browser
-    fileBrowser();
+    // Check for retroflow.ini
+    if (!directGameBoot("ux0:/data/noods/retroflow.ini"))
+        // Use file browser if direct boot failed
+        fileBrowser();
 
     // Set the screen layout and start the core
     layout.update(960, 544, gbaMode);
