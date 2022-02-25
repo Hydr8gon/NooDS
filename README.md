@@ -1,3 +1,4 @@
+https://github.com/BlackSheepBoy69/NooDS-Launcher-Vita-/releases
 # NooDS Launcher (Vita)
 An experimental mod of NooDS that makes use of an upcoming version of Retroflow Launcher to launch Nintendo DS games directly, on the vita. Everytime you launch a DS game from Retroflow (upcoming release) it generates a file "retroflow.ini" in the data folder of NooDS, with the contents of: "ndsPath=ux0:(your rom location)/brain_age.nds (new line, empty)" Without quotes and the stuff in brackets you can figure it out. It doesn't have to be brain_age, that's just an example.
 
@@ -35,3 +36,4 @@ To compile for Android, the easiest way would be to use [Android Studio](https:/
 ### Other Links
 * [Hydra's Lair](https://hydr8gon.github.io/) - you can read about my progress here!
 * [NooDS Discord](https://discord.gg/JbNz7y4) - here we can chat and do other fun stuff!
+* [releases page](https://github.com/BlackSheepBoy69/NooDS-Launcher-Vita-/releases)
