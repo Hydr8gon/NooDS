@@ -1,5 +1,5 @@
-# NooDS
-A (hopefully!) speedy NDS emulator.
+# NooDS Launcher (Vita)
+An experimental mod of NooDS that makes use of an upcoming version of Retroflow Launcher to launch Nintendo DS games directly, on the vita.
 
 ### Overview
 The goal of NooDS is to be a fast and portable Nintendo DS emulator. It's not quite there speed-wise, but it does offer most other features that you might expect from a DS emulator. It even supports GBA backwards compatability! I'm doing this for fun and as a learning experience, and also because I'm a huge fan of the DS. It may not be a worthy competitor for the other DS emulators just yet, but I believe that I can get it there someday. If not, that's fine too; like I said, I'm just having fun!
