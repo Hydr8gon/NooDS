@@ -1,6 +1,5 @@
-https://github.com/BlackSheepBoy69/NooDS-Launcher-Vita-/releases
 # NooDS Launcher (Vita)
-An experimental mod of NooDS that makes use of an upcoming version of Retroflow Launcher to launch Nintendo DS games directly, on the vita. Everytime you launch a DS game from Retroflow (upcoming release) it generates a file "retroflow.ini" in the data folder of NooDS, with the contents of: "ndsPath=ux0:(your rom location)/brain_age.nds (new line, empty)" Without quotes and the stuff in brackets you can figure it out. It doesn't have to be brain_age, that's just an example.
+A (hopefully!) speedy NDS emulator.
 
 ### Overview
 The goal of NooDS is to be a fast and portable Nintendo DS emulator. It's not quite there speed-wise, but it does offer most other features that you might expect from a DS emulator. It even supports GBA backwards compatability! I'm doing this for fun and as a learning experience, and also because I'm a huge fan of the DS. It may not be a worthy competitor for the other DS emulators just yet, but I believe that I can get it there someday. If not, that's fine too; like I said, I'm just having fun!
@@ -22,6 +21,8 @@ To compile for the Switch, you'll need to install [devkitPro](https://devkitpro.
 
 ### Compiling for Vita
 To compile for the Vita, you'll need to install [Vita SDK](https://vitasdk.org/). You can then run `make -f Makefile.vita` in the project root directory to compile.
+### Vita Retroflow Support
+In compliance with a planned (at the time of writing) upcoming [RetroFlow-Launcher](https://github.com/jimbob4000/RetroFlow-Launcher) release, this edition of NooDS supports direct boot. Everytime you launch a DS game from Retroflow (future release), Retroflow will generate a file called "retroflow.ini" in the data folder of NooDS, with the contents of: "ndsPath=ux0:(your rom location)/brain_age.nds (new line, empty)" Without quotes and the stuff in brackets you can figure it out. It doesn't have to be brain_age, that's just an example.
 
 ### Compiling for Android
 To compile for Android, the easiest way would be to use [Android Studio](https://developer.android.com/studio). You'll also need to install the [Android NDK](https://developer.android.com/studio/projects/install-ndk) for compiling native code. Alternatively, you can use the [command line tools](https://developer.android.com/studio#command-tools); use `sdkmanager` to install `build-tools`, `cmake`, `ndk-bundle`, `platform-tools`, and `platforms;android-29`, and set an `ANDROID_SDK_ROOT` environment variable to the folder containing `cmdline-tools`. You should then be able to compile by running `./gradlew assembleRelease` in the project root directory.
@@ -36,4 +37,3 @@ To compile for Android, the easiest way would be to use [Android Studio](https:/
 ### Other Links
 * [Hydra's Lair](https://hydr8gon.github.io/) - you can read about my progress here!
 * [NooDS Discord](https://discord.gg/JbNz7y4) - here we can chat and do other fun stuff!
-* [releases page](https://github.com/BlackSheepBoy69/NooDS-Launcher-Vita-/releases)
