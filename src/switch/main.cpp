@@ -293,6 +293,59 @@ void settingsMenu()
     }
 }
 
+int setPath(std::string path)
+{
+    // Set the ROM path if the extension matches
+    if (path.find(".nds", path.length() - 4) != std::string::npos) // NDS ROM
+    {
+        // If a GBA path is set, allow clearing it
+        if (gbaPath != "")
+        {
+            if (!SwitchUI::message("Loading NDS ROM", std::vector<std::string>{"Load the previous GBA ROM alongside this ROM?"}, true))
+                gbaPath = "";
+        }
+
+        // Set the NDS ROM path
+        ndsPath = path;
+
+        // Attempt to boot the core with the set ROMs
+        if (createCore())
+        {
+            startCore();
+            return 2;
+        }
+
+        // Clear the NDS ROM path if booting failed
+        ndsPath = "";
+        return 1;
+    }
+    else if (path.find(".gba", path.length() - 4) != std::string::npos) // GBA ROM
+    {
+        // If an NDS path is set, allow clearing it
+        if (ndsPath != "")
+        {
+            if (!SwitchUI::message("Loading GBA ROM", std::vector<std::string>{"Load the previous NDS ROM alongside this ROM?"}, true))
+                ndsPath = "";
+        }
+
+        // Set the GBA ROM path
+        gbaPath = path;
+
+        // Attempt to boot the core with the set ROMs
+        if (createCore())
+        {
+            startCore();
+            return 2;
+        }
+
+        // Clear the GBA ROM path if booting failed
+        gbaPath = "";
+        return 1;
+    }
+
+    return 0;
+}
+
 void fileBrowser()
 {
     std::string path = "sdmc:/";
@@ -355,43 +408,19 @@ void fileBrowser()
             path += "/" + files[menu.index].name;
             index = 0;
 
-            // Check if a ROM was selected, and set the NDS or GBA ROM path depending on the file extension
-            // If a ROM of the other type is already loaded, ask if it should be loaded alongside the new ROM
-            if (path.find(".nds", path.length() - 4) != std::string::npos) // NDS ROM
+            // Try to set a ROM path
+            switch (setPath(path))
             {
-                if (gbaPath != "")
-                {
-                    if (!SwitchUI::message("Loading NDS ROM", std::vector<std::string>{"Load the previous GBA ROM alongside this ROM?"}, true))
-                        gbaPath = "";
-                }
-                ndsPath = path;
-            }
-            else if (path.find(".gba", path.length() - 4) != std::string::npos) // GBA ROM
-            {
-                if (ndsPath != "")
-                {
-                    if (!SwitchUI::message("Loading GBA ROM", std::vector<std::string>{"Load the previous NDS ROM alongside this ROM?"}, true))
-                        ndsPath = "";
-                }
-                gbaPath = path;
-            }
-            else
-            {
-                continue;
-            }
+                case 1: // ROM failed to load
+                    // Remove the ROM from the path and continue browsing
+                    path = path.substr(0, path.rfind("/"));
+                    index = 0;
+                case 0: // ROM not selected
+                    continue;
 
-            // If a ROM was selected, attempt to boot it
-            if (createCore())
-            {
-                delete[] folder;
-                delete[] file;
-                startCore();
-                return;
+                case 2: // ROM loaded
+                    return;
             }
-
-            // Remove the ROM from the path and return to the file browser
-            path = path.substr(0, path.rfind("/"));
-            index = 0;
         }
         else if (menu.pressed & HidNpadButton_B)
         {
@@ -567,7 +596,7 @@ void pauseMenu()
     }
 }
 
-int main()
+int main(int argc, char **argv)
 {
     appletLockExit();
     SwitchUI::initialize();
@@ -594,8 +623,9 @@ int main()
 
     layout.update(1280, 720, gbaMode);
 
-    // Open the file browser
-    fileBrowser();
+    // Open the file browser if a ROM can't be loaded from arguments
+    if (argc < 2 || setPath(argv[1]) < 2)
+        fileBrowser();
 
     while (appletMainLoop() && running)
     {
