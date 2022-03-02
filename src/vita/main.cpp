@@ -374,10 +374,55 @@ void settingsMenu()
     }
 }
 
+int setPath(std::string path)
+{
+    // Set the ROM path if the extension matches
+    if (path.find(".nds", path.length() - 4) != std::string::npos) // NDS ROM
+    {
+        // If a GBA path is set, allow clearing it
+        if (gbaPath != "")
+        {
+            if (!(message("Load the previous GBA ROM alongside this ROM?", confirmButton | cancelButton) & confirmButton))
+                gbaPath = "";
+        }
+
+        // Set the NDS ROM path
+        ndsPath = path;
+
+        // Attempt to boot the core with the set ROMs
+        if (createCore())
+            return 2;
+
+        // Clear the NDS ROM path if booting failed
+        ndsPath = "";
+        return 1;
+    }
+    else if (path.find(".gba", path.length() - 4) != std::string::npos) // GBA ROM
+    {
+        // If an NDS path is set, allow clearing it
+        if (ndsPath != "")
+        {
+            if (!(message("Load the previous NDS ROM alongside this ROM?", confirmButton | cancelButton) & confirmButton))
+                ndsPath = "";
+        }
+
+        // Set the GBA ROM path
+        gbaPath = path;
+
+        // Attempt to boot the core with the set ROMs
+        if (createCore())
+            return 2;
+
+        // Clear the GBA ROM path if booting failed
+        gbaPath = "";
+        return 1;
+    }
+
+    return 0;
+}
+
 void fileBrowser()
 {
-    ndsPath = gbaPath = "";
-
     std::string path = "ux0:";
     unsigned int selection = 0;
 
@@ -405,21 +450,21 @@ void fileBrowser()
         // Handle special menu input
         if ((pressed & confirmButton) && files.size() > 0)
         {
-            if (files[selection].find(".nds", files[selection].length() - 4) != std::string::npos)
+            // Navigate to the selected directory
+            path += "/" + files[selection];
+            selection = 0;
+
+            // Try to set a ROM path
+            switch (setPath(path))
             {
-                // Set an NDS ROM to load
-                ndsPath = path + "/" + files[selection];
-            }
-            else if (files[selection].find(".gba", files[selection].length() - 4) != std::string::npos)
-            {
-                // Set a GBA ROM to load
-                gbaPath = path + "/" + files[selection];
-            }
-            else
-            {
-                // Navigate to the selected directory
-                path += "/" + files[selection];
-                selection = 0;
+               case 1: // ROM failed to load
+                    // Remove the ROM from the path and continue browsing
+                    path = path.substr(0, path.rfind("/"));
+                case 0: // ROM not selected
+                    continue;
+
+                case 2: // ROM loaded
+                    return;
             }
         }
         else if ((pressed & cancelButton) && path != "ux0:")
@@ -432,15 +477,6 @@ void fileBrowser()
         {
             // Open the settings menu
             settingsMenu();
-        }
-
-        // Try to load a ROM if one was set
-        if (ndsPath != "" || gbaPath != "")
-        {
-            if (createCore())
-                return;
-            else
-                ndsPath = gbaPath = "";
         }
     }
 }
@@ -674,8 +710,27 @@ int main()
     // Initialize audio output
     audioPort = sceAudioOutOpenPort(SCE_AUDIO_OUT_PORT_TYPE_BGM, 1024, 48000, SCE_AUDIO_OUT_MODE_STEREO);
 
-    // Open the file browser
-    fileBrowser();
+    if (FILE *args = fopen("ux0:/data/noods/args.txt", "r"))
+    {
+        // If an arguments file exists, read and delete it
+        char line[512];
+        fgets(line, sizeof(line), args);
+        fclose(args);
+        remove("ux0:/data/noods/args.txt");
+
+        // Remove trailing whitespace
+        std::string path = line;
+        path = path.substr(0, path.length() - 1);
+
+        // Open the file browser if a ROM can't be loaded from arguments
+        if (setPath(path) < 2)
+            fileBrowser();
+    }
+    else
+    {
+        // Open the file browser
+        fileBrowser();
+    }
 
     // Set the screen layout and start the core
     layout.update(960, 544, gbaMode);
