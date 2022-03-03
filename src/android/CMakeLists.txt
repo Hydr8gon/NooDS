@@ -19,6 +19,9 @@ add_library(noods-core SHARED
             ../gpu_3d_renderer.cpp
             ../input.cpp
             ../interpreter.cpp
+            ../interpreter_alu.cpp
+            ../interpreter_branch.cpp
+            ../interpreter_transfer.cpp
             ../ipc.cpp
             ../memory.cpp
             ../rtc.cpp

@@ -17,9 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef INTERPRETER_ALU
-#define INTERPRETER_ALU
-
+#include "interpreter.h"
 #include "core.h"
 
 FORCE_INLINE uint32_t Interpreter::lli(uint32_t opcode) // Rm,LSL #i
@@ -839,7 +837,273 @@ FORCE_INLINE int Interpreter::mvns(uint32_t opcode, uint32_t op2) // MVNS Rd,op2
     return 3;
 }
 
-FORCE_INLINE int Interpreter::mul(uint32_t opcode) // MUL Rd,Rm,Rs
+int Interpreter::andLli(uint32_t opcode)  { return _and(opcode, lli(opcode));      } // AND  Rd,Rn,Rm,LSL #i
+int Interpreter::andLlr(uint32_t opcode)  { return _and(opcode, llr(opcode)) + 1;  } // AND  Rd,Rn,Rm,LSL Rs
+int Interpreter::andLri(uint32_t opcode)  { return _and(opcode, lri(opcode));      } // AND  Rd,Rn,Rm,LSR #i
+int Interpreter::andLrr(uint32_t opcode)  { return _and(opcode, lrr(opcode)) + 1;  } // AND  Rd,Rn,Rm,LSR Rs
+int Interpreter::andAri(uint32_t opcode)  { return _and(opcode, ari(opcode));      } // AND  Rd,Rn,Rm,ASR #i
+int Interpreter::andArr(uint32_t opcode)  { return _and(opcode, arr(opcode)) + 1;  } // AND  Rd,Rn,Rm,ASR Rs
+int Interpreter::andRri(uint32_t opcode)  { return _and(opcode, rri(opcode));      } // AND  Rd,Rn,Rm,ROR #i
+int Interpreter::andRrr(uint32_t opcode)  { return _and(opcode, rrr(opcode)) + 1;  } // AND  Rd,Rn,Rm,ROR Rs
+int Interpreter::andImm(uint32_t opcode)  { return _and(opcode, imm(opcode));      } // AND  Rd,Rn,#i
+int Interpreter::andsLli(uint32_t opcode) { return ands(opcode, lliS(opcode));     } // ANDS Rd,Rn,Rm,LSL #i
+int Interpreter::andsLlr(uint32_t opcode) { return ands(opcode, llrS(opcode)) + 1; } // ANDS Rd,Rn,Rm,LSL Rs
+int Interpreter::andsLri(uint32_t opcode) { return ands(opcode, lriS(opcode));     } // ANDS Rd,Rn,Rm,LSR #i
+int Interpreter::andsLrr(uint32_t opcode) { return ands(opcode, lrrS(opcode)) + 1; } // ANDS Rd,Rn,Rm,LSR Rs
+int Interpreter::andsAri(uint32_t opcode) { return ands(opcode, ariS(opcode));     } // ANDS Rd,Rn,Rm,ASR #i
+int Interpreter::andsArr(uint32_t opcode) { return ands(opcode, arrS(opcode)) + 1; } // ANDS Rd,Rn,Rm,ASR Rs
+int Interpreter::andsRri(uint32_t opcode) { return ands(opcode, rriS(opcode));     } // ANDS Rd,Rn,Rm,ROR #i
+int Interpreter::andsRrr(uint32_t opcode) { return ands(opcode, rrrS(opcode)) + 1; } // ANDS Rd,Rn,Rm,ROR Rs
+int Interpreter::andsImm(uint32_t opcode) { return ands(opcode, immS(opcode));     } // ANDS Rd,Rn,#i
+
+int Interpreter::eorLli(uint32_t opcode)  { return eor(opcode, lli(opcode));       } // EOR  Rd,Rn,Rm,LSL #i
+int Interpreter::eorLlr(uint32_t opcode)  { return eor(opcode, llr(opcode)) + 1;   } // EOR  Rd,Rn,Rm,LSL Rs
+int Interpreter::eorLri(uint32_t opcode)  { return eor(opcode, lri(opcode));       } // EOR  Rd,Rn,Rm,LSR #i
+int Interpreter::eorLrr(uint32_t opcode)  { return eor(opcode, lrr(opcode)) + 1;   } // EOR  Rd,Rn,Rm,LSR Rs
+int Interpreter::eorAri(uint32_t opcode)  { return eor(opcode, ari(opcode));       } // EOR  Rd,Rn,Rm,ASR #i
+int Interpreter::eorArr(uint32_t opcode)  { return eor(opcode, arr(opcode)) + 1;   } // EOR  Rd,Rn,Rm,ASR Rs
+int Interpreter::eorRri(uint32_t opcode)  { return eor(opcode, rri(opcode));       } // EOR  Rd,Rn,Rm,ROR #i
+int Interpreter::eorRrr(uint32_t opcode)  { return eor(opcode, rrr(opcode)) + 1;   } // EOR  Rd,Rn,Rm,ROR Rs
+int Interpreter::eorImm(uint32_t opcode)  { return eor(opcode, imm(opcode));       } // EOR  Rd,Rn,#i
+int Interpreter::eorsLli(uint32_t opcode) { return eors(opcode, lliS(opcode));     } // EORS Rd,Rn,Rm,LSL #i
+int Interpreter::eorsLlr(uint32_t opcode) { return eors(opcode, llrS(opcode)) + 1; } // EORS Rd,Rn,Rm,LSL Rs
+int Interpreter::eorsLri(uint32_t opcode) { return eors(opcode, lriS(opcode));     } // EORS Rd,Rn,Rm,LSR #i
+int Interpreter::eorsLrr(uint32_t opcode) { return eors(opcode, lrrS(opcode)) + 1; } // EORS Rd,Rn,Rm,LSR Rs
+int Interpreter::eorsAri(uint32_t opcode) { return eors(opcode, ariS(opcode));     } // EORS Rd,Rn,Rm,ASR #i
+int Interpreter::eorsArr(uint32_t opcode) { return eors(opcode, arrS(opcode)) + 1; } // EORS Rd,Rn,Rm,ASR Rs
+int Interpreter::eorsRri(uint32_t opcode) { return eors(opcode, rriS(opcode));     } // EORS Rd,Rn,Rm,ROR #i
+int Interpreter::eorsRrr(uint32_t opcode) { return eors(opcode, rrrS(opcode)) + 1; } // EORS Rd,Rn,Rm,ROR Rs
+int Interpreter::eorsImm(uint32_t opcode) { return eors(opcode, immS(opcode));     } // EORS Rd,Rn,#i
+
+int Interpreter::subLli(uint32_t opcode)  { return sub(opcode, lli(opcode));      } // SUB  Rd,Rn,Rm,LSL #i
+int Interpreter::subLlr(uint32_t opcode)  { return sub(opcode, llr(opcode)) + 1;  } // SUB  Rd,Rn,Rm,LSL Rs
+int Interpreter::subLri(uint32_t opcode)  { return sub(opcode, lri(opcode));      } // SUB  Rd,Rn,Rm,LSR #i
+int Interpreter::subLrr(uint32_t opcode)  { return sub(opcode, lrr(opcode)) + 1;  } // SUB  Rd,Rn,Rm,LSR Rs
+int Interpreter::subAri(uint32_t opcode)  { return sub(opcode, ari(opcode));      } // SUB  Rd,Rn,Rm,ASR #i
+int Interpreter::subArr(uint32_t opcode)  { return sub(opcode, arr(opcode)) + 1;  } // SUB  Rd,Rn,Rm,ASR Rs
+int Interpreter::subRri(uint32_t opcode)  { return sub(opcode, rri(opcode));      } // SUB  Rd,Rn,Rm,ROR #i
+int Interpreter::subRrr(uint32_t opcode)  { return sub(opcode, rrr(opcode)) + 1;  } // SUB  Rd,Rn,Rm,ROR Rs
+int Interpreter::subImm(uint32_t opcode)  { return sub(opcode, imm(opcode));      } // SUB  Rd,Rn,#i
+int Interpreter::subsLli(uint32_t opcode) { return subs(opcode, lli(opcode));     } // SUBS Rd,Rn,Rm,LSL #i
+int Interpreter::subsLlr(uint32_t opcode) { return subs(opcode, llr(opcode)) + 1; } // SUBS Rd,Rn,Rm,LSL Rs
+int Interpreter::subsLri(uint32_t opcode) { return subs(opcode, lri(opcode));     } // SUBS Rd,Rn,Rm,LSR #i
+int Interpreter::subsLrr(uint32_t opcode) { return subs(opcode, lrr(opcode)) + 1; } // SUBS Rd,Rn,Rm,LSR Rs
+int Interpreter::subsAri(uint32_t opcode) { return subs(opcode, ari(opcode));     } // SUBS Rd,Rn,Rm,ASR #i
+int Interpreter::subsArr(uint32_t opcode) { return subs(opcode, arr(opcode)) + 1; } // SUBS Rd,Rn,Rm,ASR Rs
+int Interpreter::subsRri(uint32_t opcode) { return subs(opcode, rri(opcode));     } // SUBS Rd,Rn,Rm,ROR #i
+int Interpreter::subsRrr(uint32_t opcode) { return subs(opcode, rrr(opcode)) + 1; } // SUBS Rd,Rn,Rm,ROR Rs
+int Interpreter::subsImm(uint32_t opcode) { return subs(opcode, imm(opcode));     } // SUBS Rd,Rn,#i
+
+int Interpreter::rsbLli(uint32_t opcode)  { return rsb(opcode, lli(opcode));      } // RSB  Rd,Rn,Rm,LSL #i
+int Interpreter::rsbLlr(uint32_t opcode)  { return rsb(opcode, llr(opcode)) + 1;  } // RSB  Rd,Rn,Rm,LSL Rs
+int Interpreter::rsbLri(uint32_t opcode)  { return rsb(opcode, lri(opcode));      } // RSB  Rd,Rn,Rm,LSR #i
+int Interpreter::rsbLrr(uint32_t opcode)  { return rsb(opcode, lrr(opcode)) + 1;  } // RSB  Rd,Rn,Rm,LSR Rs
+int Interpreter::rsbAri(uint32_t opcode)  { return rsb(opcode, ari(opcode));      } // RSB  Rd,Rn,Rm,ASR #i
+int Interpreter::rsbArr(uint32_t opcode)  { return rsb(opcode, arr(opcode)) + 1;  } // RSB  Rd,Rn,Rm,ASR Rs
+int Interpreter::rsbRri(uint32_t opcode)  { return rsb(opcode, rri(opcode));      } // RSB  Rd,Rn,Rm,ROR #i
+int Interpreter::rsbRrr(uint32_t opcode)  { return rsb(opcode, rrr(opcode)) + 1;  } // RSB  Rd,Rn,Rm,ROR Rs
+int Interpreter::rsbImm(uint32_t opcode)  { return rsb(opcode, imm(opcode));      } // RSB  Rd,Rn,#i
+int Interpreter::rsbsLli(uint32_t opcode) { return rsbs(opcode, lli(opcode));     } // RSBS Rd,Rn,Rm,LSL #i
+int Interpreter::rsbsLlr(uint32_t opcode) { return rsbs(opcode, llr(opcode)) + 1; } // RSBS Rd,Rn,Rm,LSL Rs
+int Interpreter::rsbsLri(uint32_t opcode) { return rsbs(opcode, lri(opcode));     } // RSBS Rd,Rn,Rm,LSR #i
+int Interpreter::rsbsLrr(uint32_t opcode) { return rsbs(opcode, lrr(opcode)) + 1; } // RSBS Rd,Rn,Rm,LSR Rs
+int Interpreter::rsbsAri(uint32_t opcode) { return rsbs(opcode, ari(opcode));     } // RSBS Rd,Rn,Rm,ASR #i
+int Interpreter::rsbsArr(uint32_t opcode) { return rsbs(opcode, arr(opcode)) + 1; } // RSBS Rd,Rn,Rm,ASR Rs
+int Interpreter::rsbsRri(uint32_t opcode) { return rsbs(opcode, rri(opcode));     } // RSBS Rd,Rn,Rm,ROR #i
+int Interpreter::rsbsRrr(uint32_t opcode) { return rsbs(opcode, rrr(opcode)) + 1; } // RSBS Rd,Rn,Rm,ROR Rs
+int Interpreter::rsbsImm(uint32_t opcode) { return rsbs(opcode, imm(opcode));     } // RSBS Rd,Rn,#i
+
+int Interpreter::addLli(uint32_t opcode)  { return add(opcode, lli(opcode));      } // ADD  Rd,Rn,Rm,LSL #i
+int Interpreter::addLlr(uint32_t opcode)  { return add(opcode, llr(opcode)) + 1;  } // ADD  Rd,Rn,Rm,LSL Rs
+int Interpreter::addLri(uint32_t opcode)  { return add(opcode, lri(opcode));      } // ADD  Rd,Rn,Rm,LSR #i
+int Interpreter::addLrr(uint32_t opcode)  { return add(opcode, lrr(opcode)) + 1;  } // ADD  Rd,Rn,Rm,LSR Rs
+int Interpreter::addAri(uint32_t opcode)  { return add(opcode, ari(opcode));      } // ADD  Rd,Rn,Rm,ASR #i
+int Interpreter::addArr(uint32_t opcode)  { return add(opcode, arr(opcode)) + 1;  } // ADD  Rd,Rn,Rm,ASR Rs
+int Interpreter::addRri(uint32_t opcode)  { return add(opcode, rri(opcode));      } // ADD  Rd,Rn,Rm,ROR #i
+int Interpreter::addRrr(uint32_t opcode)  { return add(opcode, rrr(opcode)) + 1;  } // ADD  Rd,Rn,Rm,ROR Rs
+int Interpreter::addImm(uint32_t opcode)  { return add(opcode, imm(opcode));      } // ADD  Rd,Rn,#i
+int Interpreter::addsLli(uint32_t opcode) { return adds(opcode, lli(opcode));     } // ADDS Rd,Rn,Rm,LSL #i
+int Interpreter::addsLlr(uint32_t opcode) { return adds(opcode, llr(opcode)) + 1; } // ADDS Rd,Rn,Rm,LSL Rs
+int Interpreter::addsLri(uint32_t opcode) { return adds(opcode, lri(opcode));     } // ADDS Rd,Rn,Rm,LSR #i
+int Interpreter::addsLrr(uint32_t opcode) { return adds(opcode, lrr(opcode)) + 1; } // ADDS Rd,Rn,Rm,LSR Rs
+int Interpreter::addsAri(uint32_t opcode) { return adds(opcode, ari(opcode));     } // ADDS Rd,Rn,Rm,ASR #i
+int Interpreter::addsArr(uint32_t opcode) { return adds(opcode, arr(opcode)) + 1; } // ADDS Rd,Rn,Rm,ASR Rs
+int Interpreter::addsRri(uint32_t opcode) { return adds(opcode, rri(opcode));     } // ADDS Rd,Rn,Rm,ROR #i
+int Interpreter::addsRrr(uint32_t opcode) { return adds(opcode, rrr(opcode)) + 1; } // ADDS Rd,Rn,Rm,ROR Rs
+int Interpreter::addsImm(uint32_t opcode) { return adds(opcode, imm(opcode));     } // ADDS Rd,Rn,#i
+
+int Interpreter::adcLli(uint32_t opcode)  { return adc(opcode, lli(opcode));      } // ADC  Rd,Rn,Rm,LSL #i
+int Interpreter::adcLlr(uint32_t opcode)  { return adc(opcode, llr(opcode)) + 1;  } // ADC  Rd,Rn,Rm,LSL Rs
+int Interpreter::adcLri(uint32_t opcode)  { return adc(opcode, lri(opcode));      } // ADC  Rd,Rn,Rm,LSR #i
+int Interpreter::adcLrr(uint32_t opcode)  { return adc(opcode, lrr(opcode)) + 1;  } // ADC  Rd,Rn,Rm,LSR Rs
+int Interpreter::adcAri(uint32_t opcode)  { return adc(opcode, ari(opcode));      } // ADC  Rd,Rn,Rm,ASR #i
+int Interpreter::adcArr(uint32_t opcode)  { return adc(opcode, arr(opcode)) + 1;  } // ADC  Rd,Rn,Rm,ASR Rs
+int Interpreter::adcRri(uint32_t opcode)  { return adc(opcode, rri(opcode));      } // ADC  Rd,Rn,Rm,ROR #i
+int Interpreter::adcRrr(uint32_t opcode)  { return adc(opcode, rrr(opcode)) + 1;  } // ADC  Rd,Rn,Rm,ROR Rs
+int Interpreter::adcImm(uint32_t opcode)  { return adc(opcode, imm(opcode));      } // ADC  Rd,Rn,#i
+int Interpreter::adcsLli(uint32_t opcode) { return adcs(opcode, lli(opcode));     } // ADCS Rd,Rn,Rm,LSL #i
+int Interpreter::adcsLlr(uint32_t opcode) { return adcs(opcode, llr(opcode)) + 1; } // ADCS Rd,Rn,Rm,LSL Rs
+int Interpreter::adcsLri(uint32_t opcode) { return adcs(opcode, lri(opcode));     } // ADCS Rd,Rn,Rm,LSR #i
+int Interpreter::adcsLrr(uint32_t opcode) { return adcs(opcode, lrr(opcode)) + 1; } // ADCS Rd,Rn,Rm,LSR Rs
+int Interpreter::adcsAri(uint32_t opcode) { return adcs(opcode, ari(opcode));     } // ADCS Rd,Rn,Rm,ASR #i
+int Interpreter::adcsArr(uint32_t opcode) { return adcs(opcode, arr(opcode)) + 1; } // ADCS Rd,Rn,Rm,ASR Rs
+int Interpreter::adcsRri(uint32_t opcode) { return adcs(opcode, rri(opcode));     } // ADCS Rd,Rn,Rm,ROR #i
+int Interpreter::adcsRrr(uint32_t opcode) { return adcs(opcode, rrr(opcode)) + 1; } // ADCS Rd,Rn,Rm,ROR Rs
+int Interpreter::adcsImm(uint32_t opcode) { return adcs(opcode, imm(opcode));     } // ADCS Rd,Rn,#i
+
+int Interpreter::sbcLli(uint32_t opcode)  { return sbc(opcode, lli(opcode));      } // SBC  Rd,Rn,Rm,LSL #i
+int Interpreter::sbcLlr(uint32_t opcode)  { return sbc(opcode, llr(opcode)) + 1;  } // SBC  Rd,Rn,Rm,LSL Rs
+int Interpreter::sbcLri(uint32_t opcode)  { return sbc(opcode, lri(opcode));      } // SBC  Rd,Rn,Rm,LSR #i
+int Interpreter::sbcLrr(uint32_t opcode)  { return sbc(opcode, lrr(opcode)) + 1;  } // SBC  Rd,Rn,Rm,LSR Rs
+int Interpreter::sbcAri(uint32_t opcode)  { return sbc(opcode, ari(opcode));      } // SBC  Rd,Rn,Rm,ASR #i
+int Interpreter::sbcArr(uint32_t opcode)  { return sbc(opcode, arr(opcode)) + 1;  } // SBC  Rd,Rn,Rm,ASR Rs
+int Interpreter::sbcRri(uint32_t opcode)  { return sbc(opcode, rri(opcode));      } // SBC  Rd,Rn,Rm,ROR #i
+int Interpreter::sbcRrr(uint32_t opcode)  { return sbc(opcode, rrr(opcode)) + 1;  } // SBC  Rd,Rn,Rm,ROR Rs
+int Interpreter::sbcImm(uint32_t opcode)  { return sbc(opcode, imm(opcode));      } // SBC  Rd,Rn,#i
+int Interpreter::sbcsLli(uint32_t opcode) { return sbcs(opcode, lli(opcode));     } // SBCS Rd,Rn,Rm,LSL #i
+int Interpreter::sbcsLlr(uint32_t opcode) { return sbcs(opcode, llr(opcode)) + 1; } // SBCS Rd,Rn,Rm,LSL Rs
+int Interpreter::sbcsLri(uint32_t opcode) { return sbcs(opcode, lri(opcode));     } // SBCS Rd,Rn,Rm,LSR #i
+int Interpreter::sbcsLrr(uint32_t opcode) { return sbcs(opcode, lrr(opcode)) + 1; } // SBCS Rd,Rn,Rm,LSR Rs
+int Interpreter::sbcsAri(uint32_t opcode) { return sbcs(opcode, ari(opcode));     } // SBCS Rd,Rn,Rm,ASR #i
+int Interpreter::sbcsArr(uint32_t opcode) { return sbcs(opcode, arr(opcode)) + 1; } // SBCS Rd,Rn,Rm,ASR Rs
+int Interpreter::sbcsRri(uint32_t opcode) { return sbcs(opcode, rri(opcode));     } // SBCS Rd,Rn,Rm,ROR #i
+int Interpreter::sbcsRrr(uint32_t opcode) { return sbcs(opcode, rrr(opcode)) + 1; } // SBCS Rd,Rn,Rm,ROR Rs
+int Interpreter::sbcsImm(uint32_t opcode) { return sbcs(opcode, imm(opcode));     } // SBCS Rd,Rn,#i
+
+int Interpreter::rscLli(uint32_t opcode)  { return rsc(opcode, lli(opcode));      } // RSC  Rd,Rn,Rm,LSL #i
+int Interpreter::rscLlr(uint32_t opcode)  { return rsc(opcode, llr(opcode)) + 1;  } // RSC  Rd,Rn,Rm,LSL Rs
+int Interpreter::rscLri(uint32_t opcode)  { return rsc(opcode, lri(opcode));      } // RSC  Rd,Rn,Rm,LSR #i
+int Interpreter::rscLrr(uint32_t opcode)  { return rsc(opcode, lrr(opcode)) + 1;  } // RSC  Rd,Rn,Rm,LSR Rs
+int Interpreter::rscAri(uint32_t opcode)  { return rsc(opcode, ari(opcode));      } // RSC  Rd,Rn,Rm,ASR #i
+int Interpreter::rscArr(uint32_t opcode)  { return rsc(opcode, arr(opcode)) + 1;  } // RSC  Rd,Rn,Rm,ASR Rs
+int Interpreter::rscRri(uint32_t opcode)  { return rsc(opcode, rri(opcode));      } // RSC  Rd,Rn,Rm,ROR #i
+int Interpreter::rscRrr(uint32_t opcode)  { return rsc(opcode, rrr(opcode)) + 1;  } // RSC  Rd,Rn,Rm,ROR Rs
+int Interpreter::rscImm(uint32_t opcode)  { return rsc(opcode, imm(opcode));      } // RSC  Rd,Rn,#i
+int Interpreter::rscsLli(uint32_t opcode) { return rscs(opcode, lli(opcode));     } // RSCS Rd,Rn,Rm,LSL #i
+int Interpreter::rscsLlr(uint32_t opcode) { return rscs(opcode, llr(opcode)) + 1; } // RSCS Rd,Rn,Rm,LSL Rs
+int Interpreter::rscsLri(uint32_t opcode) { return rscs(opcode, lri(opcode));     } // RSCS Rd,Rn,Rm,LSR #i
+int Interpreter::rscsLrr(uint32_t opcode) { return rscs(opcode, lrr(opcode)) + 1; } // RSCS Rd,Rn,Rm,LSR Rs
+int Interpreter::rscsAri(uint32_t opcode) { return rscs(opcode, ari(opcode));     } // RSCS Rd,Rn,Rm,ASR #i
+int Interpreter::rscsArr(uint32_t opcode) { return rscs(opcode, arr(opcode)) + 1; } // RSCS Rd,Rn,Rm,ASR Rs
+int Interpreter::rscsRri(uint32_t opcode) { return rscs(opcode, rri(opcode));     } // RSCS Rd,Rn,Rm,ROR #i
+int Interpreter::rscsRrr(uint32_t opcode) { return rscs(opcode, rrr(opcode)) + 1; } // RSCS Rd,Rn,Rm,ROR Rs
+int Interpreter::rscsImm(uint32_t opcode) { return rscs(opcode, imm(opcode));     } // RSCS Rd,Rn,#i
+
+int Interpreter::tstLli(uint32_t opcode) { return tst(opcode, lliS(opcode));     } // TST Rn,Rm,LSL #i
+int Interpreter::tstLlr(uint32_t opcode) { return tst(opcode, llrS(opcode)) + 1; } // TST Rn,Rm,LSL Rs
+int Interpreter::tstLri(uint32_t opcode) { return tst(opcode, lriS(opcode));     } // TST Rn,Rm,LSR #i
+int Interpreter::tstLrr(uint32_t opcode) { return tst(opcode, lrrS(opcode)) + 1; } // TST Rn,Rm,LSR Rs
+int Interpreter::tstAri(uint32_t opcode) { return tst(opcode, ariS(opcode));     } // TST Rn,Rm,ASR #i
+int Interpreter::tstArr(uint32_t opcode) { return tst(opcode, arrS(opcode)) + 1; } // TST Rn,Rm,ASR Rs
+int Interpreter::tstRri(uint32_t opcode) { return tst(opcode, rriS(opcode));     } // TST Rn,Rm,ROR #i
+int Interpreter::tstRrr(uint32_t opcode) { return tst(opcode, rrrS(opcode)) + 1; } // TST Rn,Rm,ROR Rs
+int Interpreter::tstImm(uint32_t opcode) { return tst(opcode, immS(opcode));     } // TST Rn,#i
+int Interpreter::teqLli(uint32_t opcode) { return teq(opcode, lliS(opcode));     } // TEQ Rn,Rm,LSL #i
+int Interpreter::teqLlr(uint32_t opcode) { return teq(opcode, llrS(opcode)) + 1; } // TEQ Rn,Rm,LSL Rs
+int Interpreter::teqLri(uint32_t opcode) { return teq(opcode, lriS(opcode));     } // TEQ Rn,Rm,LSR #i
+int Interpreter::teqLrr(uint32_t opcode) { return teq(opcode, lrrS(opcode)) + 1; } // TEQ Rn,Rm,LSR Rs
+int Interpreter::teqAri(uint32_t opcode) { return teq(opcode, ariS(opcode));     } // TEQ Rn,Rm,ASR #i
+int Interpreter::teqArr(uint32_t opcode) { return teq(opcode, arrS(opcode)) + 1; } // TEQ Rn,Rm,ASR Rs
+int Interpreter::teqRri(uint32_t opcode) { return teq(opcode, rriS(opcode));     } // TEQ Rn,Rm,ROR #i
+int Interpreter::teqRrr(uint32_t opcode) { return teq(opcode, rrrS(opcode)) + 1; } // TEQ Rn,Rm,ROR Rs
+int Interpreter::teqImm(uint32_t opcode) { return teq(opcode, immS(opcode));     } // TEQ Rn,#i
+
+int Interpreter::cmpLli(uint32_t opcode) { return cmp(opcode, lliS(opcode));     } // CMP Rn,Rm,LSL #i
+int Interpreter::cmpLlr(uint32_t opcode) { return cmp(opcode, llrS(opcode)) + 1; } // CMP Rn,Rm,LSL Rs
+int Interpreter::cmpLri(uint32_t opcode) { return cmp(opcode, lriS(opcode));     } // CMP Rn,Rm,LSR #i
+int Interpreter::cmpLrr(uint32_t opcode) { return cmp(opcode, lrrS(opcode)) + 1; } // CMP Rn,Rm,LSR Rs
+int Interpreter::cmpAri(uint32_t opcode) { return cmp(opcode, ariS(opcode));     } // CMP Rn,Rm,ASR #i
+int Interpreter::cmpArr(uint32_t opcode) { return cmp(opcode, arrS(opcode)) + 1; } // CMP Rn,Rm,ASR Rs
+int Interpreter::cmpRri(uint32_t opcode) { return cmp(opcode, rriS(opcode));     } // CMP Rn,Rm,ROR #i
+int Interpreter::cmpRrr(uint32_t opcode) { return cmp(opcode, rrrS(opcode)) + 1; } // CMP Rn,Rm,ROR Rs
+int Interpreter::cmpImm(uint32_t opcode) { return cmp(opcode, immS(opcode));     } // CMP Rn,#i
+int Interpreter::cmnLli(uint32_t opcode) { return cmn(opcode, lliS(opcode));     } // CMN Rn,Rm,LSL #i
+int Interpreter::cmnLlr(uint32_t opcode) { return cmn(opcode, llrS(opcode)) + 1; } // CMN Rn,Rm,LSL Rs
+int Interpreter::cmnLri(uint32_t opcode) { return cmn(opcode, lriS(opcode));     } // CMN Rn,Rm,LSR #i
+int Interpreter::cmnLrr(uint32_t opcode) { return cmn(opcode, lrrS(opcode)) + 1; } // CMN Rn,Rm,LSR Rs
+int Interpreter::cmnAri(uint32_t opcode) { return cmn(opcode, ariS(opcode));     } // CMN Rn,Rm,ASR #i
+int Interpreter::cmnArr(uint32_t opcode) { return cmn(opcode, arrS(opcode)) + 1; } // CMN Rn,Rm,ASR Rs
+int Interpreter::cmnRri(uint32_t opcode) { return cmn(opcode, rriS(opcode));     } // CMN Rn,Rm,ROR #i
+int Interpreter::cmnRrr(uint32_t opcode) { return cmn(opcode, rrrS(opcode)) + 1; } // CMN Rn,Rm,ROR Rs
+int Interpreter::cmnImm(uint32_t opcode) { return cmn(opcode, immS(opcode));     } // CMN Rn,#i
+
+int Interpreter::orrLli(uint32_t opcode)  { return orr(opcode, lli(opcode));       } // ORR  Rd,Rn,Rm,LSL #i
+int Interpreter::orrLlr(uint32_t opcode)  { return orr(opcode, llr(opcode)) + 1;   } // ORR  Rd,Rn,Rm,LSL Rs
+int Interpreter::orrLri(uint32_t opcode)  { return orr(opcode, lri(opcode));       } // ORR  Rd,Rn,Rm,LSR #i
+int Interpreter::orrLrr(uint32_t opcode)  { return orr(opcode, lrr(opcode)) + 1;   } // ORR  Rd,Rn,Rm,LSR Rs
+int Interpreter::orrAri(uint32_t opcode)  { return orr(opcode, ari(opcode));       } // ORR  Rd,Rn,Rm,ASR #i
+int Interpreter::orrArr(uint32_t opcode)  { return orr(opcode, arr(opcode)) + 1;   } // ORR  Rd,Rn,Rm,ASR Rs
+int Interpreter::orrRri(uint32_t opcode)  { return orr(opcode, rri(opcode));       } // ORR  Rd,Rn,Rm,ROR #i
+int Interpreter::orrRrr(uint32_t opcode)  { return orr(opcode, rrr(opcode)) + 1;   } // ORR  Rd,Rn,Rm,ROR Rs
+int Interpreter::orrImm(uint32_t opcode)  { return orr(opcode, imm(opcode));       } // ORR  Rd,Rn,#i
+int Interpreter::orrsLli(uint32_t opcode) { return orrs(opcode, lliS(opcode));     } // ORRS Rd,Rn,Rm,LSL #i
+int Interpreter::orrsLlr(uint32_t opcode) { return orrs(opcode, llrS(opcode)) + 1; } // ORRS Rd,Rn,Rm,LSL Rs
+int Interpreter::orrsLri(uint32_t opcode) { return orrs(opcode, lriS(opcode));     } // ORRS Rd,Rn,Rm,LSR #i
+int Interpreter::orrsLrr(uint32_t opcode) { return orrs(opcode, lrrS(opcode)) + 1; } // ORRS Rd,Rn,Rm,LSR Rs
+int Interpreter::orrsAri(uint32_t opcode) { return orrs(opcode, ariS(opcode));     } // ORRS Rd,Rn,Rm,ASR #i
+int Interpreter::orrsArr(uint32_t opcode) { return orrs(opcode, arrS(opcode)) + 1; } // ORRS Rd,Rn,Rm,ASR Rs
+int Interpreter::orrsRri(uint32_t opcode) { return orrs(opcode, rriS(opcode));     } // ORRS Rd,Rn,Rm,ROR #i
+int Interpreter::orrsRrr(uint32_t opcode) { return orrs(opcode, rrrS(opcode)) + 1; } // ORRS Rd,Rn,Rm,ROR Rs
+int Interpreter::orrsImm(uint32_t opcode) { return orrs(opcode, immS(opcode));     } // ORRS Rd,Rn,#i
+
+int Interpreter::movLli(uint32_t opcode)  { return mov(opcode, lli(opcode));       } // MOV  Rd,Rm,LSL #i
+int Interpreter::movLlr(uint32_t opcode)  { return mov(opcode, llr(opcode)) + 1;   } // MOV  Rd,Rm,LSL Rs
+int Interpreter::movLri(uint32_t opcode)  { return mov(opcode, lri(opcode));       } // MOV  Rd,Rm,LSR #i
+int Interpreter::movLrr(uint32_t opcode)  { return mov(opcode, lrr(opcode)) + 1;   } // MOV  Rd,Rm,LSR Rs
+int Interpreter::movAri(uint32_t opcode)  { return mov(opcode, ari(opcode));       } // MOV  Rd,Rm,ASR #i
+int Interpreter::movArr(uint32_t opcode)  { return mov(opcode, arr(opcode)) + 1;   } // MOV  Rd,Rm,ASR Rs
+int Interpreter::movRri(uint32_t opcode)  { return mov(opcode, rri(opcode));       } // MOV  Rd,Rm,ROR #i
+int Interpreter::movRrr(uint32_t opcode)  { return mov(opcode, rrr(opcode)) + 1;   } // MOV  Rd,Rm,ROR Rs
+int Interpreter::movImm(uint32_t opcode)  { return mov(opcode, imm(opcode));       } // MOV  Rd,#i
+int Interpreter::movsLli(uint32_t opcode) { return movs(opcode, lliS(opcode));     } // MOVS Rd,Rm,LSL #i
+int Interpreter::movsLlr(uint32_t opcode) { return movs(opcode, llrS(opcode)) + 1; } // MOVS Rd,Rm,LSL Rs
+int Interpreter::movsLri(uint32_t opcode) { return movs(opcode, lriS(opcode));     } // MOVS Rd,Rm,LSR #i
+int Interpreter::movsLrr(uint32_t opcode) { return movs(opcode, lrrS(opcode)) + 1; } // MOVS Rd,Rm,LSR Rs
+int Interpreter::movsAri(uint32_t opcode) { return movs(opcode, ariS(opcode));     } // MOVS Rd,Rm,ASR #i
+int Interpreter::movsArr(uint32_t opcode) { return movs(opcode, arrS(opcode)) + 1; } // MOVS Rd,Rm,ASR Rs
+int Interpreter::movsRri(uint32_t opcode) { return movs(opcode, rriS(opcode));     } // MOVS Rd,Rm,ROR #i
+int Interpreter::movsRrr(uint32_t opcode) { return movs(opcode, rrrS(opcode)) + 1; } // MOVS Rd,Rm,ROR Rs
+int Interpreter::movsImm(uint32_t opcode) { return movs(opcode, immS(opcode));     } // MOVS Rd,#i
+
+int Interpreter::bicLli(uint32_t opcode)  { return bic(opcode, lli(opcode));       } // BIC  Rd,Rn,Rm,LSL #i
+int Interpreter::bicLlr(uint32_t opcode)  { return bic(opcode, llr(opcode)) + 1;   } // BIC  Rd,Rn,Rm,LSL Rs
+int Interpreter::bicLri(uint32_t opcode)  { return bic(opcode, lri(opcode));       } // BIC  Rd,Rn,Rm,LSR #i
+int Interpreter::bicLrr(uint32_t opcode)  { return bic(opcode, lrr(opcode)) + 1;   } // BIC  Rd,Rn,Rm,LSR Rs
+int Interpreter::bicAri(uint32_t opcode)  { return bic(opcode, ari(opcode));       } // BIC  Rd,Rn,Rm,ASR #i
+int Interpreter::bicArr(uint32_t opcode)  { return bic(opcode, arr(opcode)) + 1;   } // BIC  Rd,Rn,Rm,ASR Rs
+int Interpreter::bicRri(uint32_t opcode)  { return bic(opcode, rri(opcode));       } // BIC  Rd,Rn,Rm,ROR #i
+int Interpreter::bicRrr(uint32_t opcode)  { return bic(opcode, rrr(opcode)) + 1;   } // BIC  Rd,Rn,Rm,ROR Rs
+int Interpreter::bicImm(uint32_t opcode)  { return bic(opcode, imm(opcode));       } // BIC  Rd,Rn,#i
+int Interpreter::bicsLli(uint32_t opcode) { return bics(opcode, lliS(opcode));     } // BICS Rd,Rn,Rm,LSL #i
+int Interpreter::bicsLlr(uint32_t opcode) { return bics(opcode, llrS(opcode)) + 1; } // BICS Rd,Rn,Rm,LSL Rs
+int Interpreter::bicsLri(uint32_t opcode) { return bics(opcode, lriS(opcode));     } // BICS Rd,Rn,Rm,LSR #i
+int Interpreter::bicsLrr(uint32_t opcode) { return bics(opcode, lrrS(opcode)) + 1; } // BICS Rd,Rn,Rm,LSR Rs
+int Interpreter::bicsAri(uint32_t opcode) { return bics(opcode, ariS(opcode));     } // BICS Rd,Rn,Rm,ASR #i
+int Interpreter::bicsArr(uint32_t opcode) { return bics(opcode, arrS(opcode)) + 1; } // BICS Rd,Rn,Rm,ASR Rs
+int Interpreter::bicsRri(uint32_t opcode) { return bics(opcode, rriS(opcode));     } // BICS Rd,Rn,Rm,ROR #i
+int Interpreter::bicsRrr(uint32_t opcode) { return bics(opcode, rrrS(opcode)) + 1; } // BICS Rd,Rn,Rm,ROR Rs
+int Interpreter::bicsImm(uint32_t opcode) { return bics(opcode, immS(opcode));     } // BICS Rd,Rn,#i
+
+int Interpreter::mvnLli(uint32_t opcode)  { return mvn(opcode, lli(opcode));       } // MVN  Rd,Rm,LSL #i
+int Interpreter::mvnLlr(uint32_t opcode)  { return mvn(opcode, llr(opcode)) + 1;   } // MVN  Rd,Rm,LSL Rs
+int Interpreter::mvnLri(uint32_t opcode)  { return mvn(opcode, lri(opcode));       } // MVN  Rd,Rm,LSR #i
+int Interpreter::mvnLrr(uint32_t opcode)  { return mvn(opcode, lrr(opcode)) + 1;   } // MVN  Rd,Rm,LSR Rs
+int Interpreter::mvnAri(uint32_t opcode)  { return mvn(opcode, ari(opcode));       } // MVN  Rd,Rm,ASR #i
+int Interpreter::mvnArr(uint32_t opcode)  { return mvn(opcode, arr(opcode)) + 1;   } // MVN  Rd,Rm,ASR Rs
+int Interpreter::mvnRri(uint32_t opcode)  { return mvn(opcode, rri(opcode));       } // MVN  Rd,Rm,ROR #i
+int Interpreter::mvnRrr(uint32_t opcode)  { return mvn(opcode, rrr(opcode)) + 1;   } // MVN  Rd,Rm,ROR Rs
+int Interpreter::mvnImm(uint32_t opcode)  { return mvn(opcode, imm(opcode));       } // MVN  Rd,#i
+int Interpreter::mvnsLli(uint32_t opcode) { return mvns(opcode, lliS(opcode));     } // MVNS Rd,Rm,LSL #i
+int Interpreter::mvnsLlr(uint32_t opcode) { return mvns(opcode, llrS(opcode)) + 1; } // MVNS Rd,Rm,LSL Rs
+int Interpreter::mvnsLri(uint32_t opcode) { return mvns(opcode, lriS(opcode));     } // MVNS Rd,Rm,LSR #i
+int Interpreter::mvnsLrr(uint32_t opcode) { return mvns(opcode, lrrS(opcode)) + 1; } // MVNS Rd,Rm,LSR Rs
+int Interpreter::mvnsAri(uint32_t opcode) { return mvns(opcode, ariS(opcode));     } // MVNS Rd,Rm,ASR #i
+int Interpreter::mvnsArr(uint32_t opcode) { return mvns(opcode, arrS(opcode)) + 1; } // MVNS Rd,Rm,ASR Rs
+int Interpreter::mvnsRri(uint32_t opcode) { return mvns(opcode, rriS(opcode));     } // MVNS Rd,Rm,ROR #i
+int Interpreter::mvnsRrr(uint32_t opcode) { return mvns(opcode, rrrS(opcode)) + 1; } // MVNS Rd,Rm,ROR Rs
+int Interpreter::mvnsImm(uint32_t opcode) { return mvns(opcode, immS(opcode));     } // MVNS Rd,#i
+
+int Interpreter::mul(uint32_t opcode) // MUL Rd,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -855,7 +1119,7 @@ FORCE_INLINE int Interpreter::mul(uint32_t opcode) // MUL Rd,Rm,Rs
     return m + 1;
 }
 
-FORCE_INLINE int Interpreter::mla(uint32_t opcode) // MLA Rd,Rm,Rs,Rn
+int Interpreter::mla(uint32_t opcode) // MLA Rd,Rm,Rs,Rn
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -872,7 +1136,7 @@ FORCE_INLINE int Interpreter::mla(uint32_t opcode) // MLA Rd,Rm,Rs,Rn
     return m + 2;
 }
 
-FORCE_INLINE int Interpreter::umull(uint32_t opcode) // UMULL RdLo,RdHi,Rm,Rs
+int Interpreter::umull(uint32_t opcode) // UMULL RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -891,7 +1155,7 @@ FORCE_INLINE int Interpreter::umull(uint32_t opcode) // UMULL RdLo,RdHi,Rm,Rs
     return m + 2;
 }
 
-FORCE_INLINE int Interpreter::umlal(uint32_t opcode) // UMLAL RdLo,RdHi,Rm,Rs
+int Interpreter::umlal(uint32_t opcode) // UMLAL RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -911,7 +1175,7 @@ FORCE_INLINE int Interpreter::umlal(uint32_t opcode) // UMLAL RdLo,RdHi,Rm,Rs
     return m + 3;
 }
 
-FORCE_INLINE int Interpreter::smull(uint32_t opcode) // SMULL RdLo,RdHi,Rm,Rs
+int Interpreter::smull(uint32_t opcode) // SMULL RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -930,7 +1194,7 @@ FORCE_INLINE int Interpreter::smull(uint32_t opcode) // SMULL RdLo,RdHi,Rm,Rs
     return m + 2;
 }
 
-FORCE_INLINE int Interpreter::smlal(uint32_t opcode) // SMLAL RdLo,RdHi,Rm,Rs
+int Interpreter::smlal(uint32_t opcode) // SMLAL RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -950,7 +1214,7 @@ FORCE_INLINE int Interpreter::smlal(uint32_t opcode) // SMLAL RdLo,RdHi,Rm,Rs
     return m + 3;
 }
 
-FORCE_INLINE int Interpreter::muls(uint32_t opcode) // MULS Rd,Rm,Rs
+int Interpreter::muls(uint32_t opcode) // MULS Rd,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -969,7 +1233,7 @@ FORCE_INLINE int Interpreter::muls(uint32_t opcode) // MULS Rd,Rm,Rs
     return m + 1;
 }
 
-FORCE_INLINE int Interpreter::mlas(uint32_t opcode) // MLAS Rd,Rm,Rs,Rn
+int Interpreter::mlas(uint32_t opcode) // MLAS Rd,Rm,Rs,Rn
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x000F0000) >> 16];
@@ -989,7 +1253,7 @@ FORCE_INLINE int Interpreter::mlas(uint32_t opcode) // MLAS Rd,Rm,Rs,Rn
     return m + 2;
 }
 
-FORCE_INLINE int Interpreter::umulls(uint32_t opcode) // UMULLS RdLo,RdHi,Rm,Rs
+int Interpreter::umulls(uint32_t opcode) // UMULLS RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -1011,7 +1275,7 @@ FORCE_INLINE int Interpreter::umulls(uint32_t opcode) // UMULLS RdLo,RdHi,Rm,Rs
     return m + 2;
 }
 
-FORCE_INLINE int Interpreter::umlals(uint32_t opcode) // UMLALS RdLo,RdHi,Rm,Rs
+int Interpreter::umlals(uint32_t opcode) // UMLALS RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -1034,7 +1298,7 @@ FORCE_INLINE int Interpreter::umlals(uint32_t opcode) // UMLALS RdLo,RdHi,Rm,Rs
     return m + 3;
 }
 
-FORCE_INLINE int Interpreter::smulls(uint32_t opcode) // SMULLS RdLo,RdHi,Rm,Rs
+int Interpreter::smulls(uint32_t opcode) // SMULLS RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -1056,7 +1320,7 @@ FORCE_INLINE int Interpreter::smulls(uint32_t opcode) // SMULLS RdLo,RdHi,Rm,Rs
     return m + 2;
 }
 
-FORCE_INLINE int Interpreter::smlals(uint32_t opcode) // SMLALS RdLo,RdHi,Rm,Rs
+int Interpreter::smlals(uint32_t opcode) // SMLALS RdLo,RdHi,Rm,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0000F000) >> 12];
@@ -1079,7 +1343,7 @@ FORCE_INLINE int Interpreter::smlals(uint32_t opcode) // SMLALS RdLo,RdHi,Rm,Rs
     return m + 3;
 }
 
-FORCE_INLINE int Interpreter::smulbb(uint32_t opcode) // SMULBB Rd,Rm,Rs
+int Interpreter::smulbb(uint32_t opcode) // SMULBB Rd,Rm,Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1094,7 +1358,7 @@ FORCE_INLINE int Interpreter::smulbb(uint32_t opcode) // SMULBB Rd,Rm,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smulbt(uint32_t opcode) // SMULBT Rd,Rm,Rs
+int Interpreter::smulbt(uint32_t opcode) // SMULBT Rd,Rm,Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1109,7 +1373,7 @@ FORCE_INLINE int Interpreter::smulbt(uint32_t opcode) // SMULBT Rd,Rm,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smultb(uint32_t opcode) // SMULTB Rd,Rm,Rs
+int Interpreter::smultb(uint32_t opcode) // SMULTB Rd,Rm,Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1124,7 +1388,7 @@ FORCE_INLINE int Interpreter::smultb(uint32_t opcode) // SMULTB Rd,Rm,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smultt(uint32_t opcode) // SMULTT Rd,Rm,Rs
+int Interpreter::smultt(uint32_t opcode) // SMULTT Rd,Rm,Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1139,7 +1403,7 @@ FORCE_INLINE int Interpreter::smultt(uint32_t opcode) // SMULTT Rd,Rm,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smulwb(uint32_t opcode) // SMULWB Rd,Rm,Rs
+int Interpreter::smulwb(uint32_t opcode) // SMULWB Rd,Rm,Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1154,7 +1418,7 @@ FORCE_INLINE int Interpreter::smulwb(uint32_t opcode) // SMULWB Rd,Rm,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smulwt(uint32_t opcode) // SMULWT Rd,Rm,Rs
+int Interpreter::smulwt(uint32_t opcode) // SMULWT Rd,Rm,Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1169,7 +1433,7 @@ FORCE_INLINE int Interpreter::smulwt(uint32_t opcode) // SMULWT Rd,Rm,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smlabb(uint32_t opcode) // SMLABB Rd,Rm,Rs,Rn
+int Interpreter::smlabb(uint32_t opcode) // SMLABB Rd,Rm,Rs,Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1189,7 +1453,7 @@ FORCE_INLINE int Interpreter::smlabb(uint32_t opcode) // SMLABB Rd,Rm,Rs,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smlabt(uint32_t opcode) // SMLABT Rd,Rm,Rs,Rn
+int Interpreter::smlabt(uint32_t opcode) // SMLABT Rd,Rm,Rs,Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1209,7 +1473,7 @@ FORCE_INLINE int Interpreter::smlabt(uint32_t opcode) // SMLABT Rd,Rm,Rs,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smlatb(uint32_t opcode) // SMLATB Rd,Rm,Rs,Rn
+int Interpreter::smlatb(uint32_t opcode) // SMLATB Rd,Rm,Rs,Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1229,7 +1493,7 @@ FORCE_INLINE int Interpreter::smlatb(uint32_t opcode) // SMLATB Rd,Rm,Rs,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smlatt(uint32_t opcode) // SMLATT Rd,Rm,Rs,Rn
+int Interpreter::smlatt(uint32_t opcode) // SMLATT Rd,Rm,Rs,Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1249,7 +1513,7 @@ FORCE_INLINE int Interpreter::smlatt(uint32_t opcode) // SMLATT Rd,Rm,Rs,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smlawb(uint32_t opcode) // SMLAWB Rd,Rm,Rs,Rn
+int Interpreter::smlawb(uint32_t opcode) // SMLAWB Rd,Rm,Rs,Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1269,7 +1533,7 @@ FORCE_INLINE int Interpreter::smlawb(uint32_t opcode) // SMLAWB Rd,Rm,Rs,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smlawt(uint32_t opcode) // SMLAWT Rd,Rm,Rs,Rn
+int Interpreter::smlawt(uint32_t opcode) // SMLAWT Rd,Rm,Rs,Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1289,7 +1553,7 @@ FORCE_INLINE int Interpreter::smlawt(uint32_t opcode) // SMLAWT Rd,Rm,Rs,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::smlalbb(uint32_t opcode) // SMLALBB RdLo,RdHi,Rm,Rs
+int Interpreter::smlalbb(uint32_t opcode) // SMLALBB RdLo,RdHi,Rm,Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1308,7 +1572,7 @@ FORCE_INLINE int Interpreter::smlalbb(uint32_t opcode) // SMLALBB RdLo,RdHi,Rm,R
     return 2;
 }
 
-FORCE_INLINE int Interpreter::smlalbt(uint32_t opcode) // SMLALBT RdLo,RdHi,Rm,Rs
+int Interpreter::smlalbt(uint32_t opcode) // SMLALBT RdLo,RdHi,Rm,Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1327,7 +1591,7 @@ FORCE_INLINE int Interpreter::smlalbt(uint32_t opcode) // SMLALBT RdLo,RdHi,Rm,R
     return 2;
 }
 
-FORCE_INLINE int Interpreter::smlaltb(uint32_t opcode) // SMLALTB RdLo,RdHi,Rm,Rs
+int Interpreter::smlaltb(uint32_t opcode) // SMLALTB RdLo,RdHi,Rm,Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1346,7 +1610,7 @@ FORCE_INLINE int Interpreter::smlaltb(uint32_t opcode) // SMLALTB RdLo,RdHi,Rm,R
     return 2;
 }
 
-FORCE_INLINE int Interpreter::smlaltt(uint32_t opcode) // SMLALTT RdLo,RdHi,Rm,Rs
+int Interpreter::smlaltt(uint32_t opcode) // SMLALTT RdLo,RdHi,Rm,Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1365,7 +1629,7 @@ FORCE_INLINE int Interpreter::smlaltt(uint32_t opcode) // SMLALTT RdLo,RdHi,Rm,R
     return 2;
 }
 
-FORCE_INLINE int Interpreter::qadd(uint32_t opcode) // QADD Rd,Rm,Rn
+int Interpreter::qadd(uint32_t opcode) // QADD Rd,Rm,Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1392,7 +1656,7 @@ FORCE_INLINE int Interpreter::qadd(uint32_t opcode) // QADD Rd,Rm,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::qsub(uint32_t opcode) // QSUB Rd,Rm,Rn
+int Interpreter::qsub(uint32_t opcode) // QSUB Rd,Rm,Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1419,7 +1683,7 @@ FORCE_INLINE int Interpreter::qsub(uint32_t opcode) // QSUB Rd,Rm,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::qdadd(uint32_t opcode) // QDADD Rd,Rm,Rn
+int Interpreter::qdadd(uint32_t opcode) // QDADD Rd,Rm,Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1458,7 +1722,7 @@ FORCE_INLINE int Interpreter::qdadd(uint32_t opcode) // QDADD Rd,Rm,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::qdsub(uint32_t opcode) // QDSUB Rd,Rm,Rn
+int Interpreter::qdsub(uint32_t opcode) // QDSUB Rd,Rm,Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1497,7 +1761,7 @@ FORCE_INLINE int Interpreter::qdsub(uint32_t opcode) // QDSUB Rd,Rm,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::clz(uint32_t opcode) // CLZ Rd,Rm
+int Interpreter::clz(uint32_t opcode) // CLZ Rd,Rm
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -1517,7 +1781,7 @@ FORCE_INLINE int Interpreter::clz(uint32_t opcode) // CLZ Rd,Rm
     return 1;
 }
 
-FORCE_INLINE int Interpreter::addRegT(uint16_t opcode) // ADD Rd,Rs,Rn
+int Interpreter::addRegT(uint16_t opcode) // ADD Rd,Rs,Rn
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1534,7 +1798,7 @@ FORCE_INLINE int Interpreter::addRegT(uint16_t opcode) // ADD Rd,Rs,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::subRegT(uint16_t opcode) // SUB Rd,Rs,Rn
+int Interpreter::subRegT(uint16_t opcode) // SUB Rd,Rs,Rn
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1551,7 +1815,7 @@ FORCE_INLINE int Interpreter::subRegT(uint16_t opcode) // SUB Rd,Rs,Rn
     return 1;
 }
 
-FORCE_INLINE int Interpreter::addHT(uint16_t opcode) // ADD Rd,Rs
+int Interpreter::addHT(uint16_t opcode) // ADD Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[((opcode & 0x0080) >> 4) | (opcode & 0x0007)];
@@ -1566,7 +1830,7 @@ FORCE_INLINE int Interpreter::addHT(uint16_t opcode) // ADD Rd,Rs
     return 3;
 }
 
-FORCE_INLINE int Interpreter::cmpHT(uint16_t opcode) // CMP Rd,Rs
+int Interpreter::cmpHT(uint16_t opcode) // CMP Rd,Rs
 {
     // Decode the operands
     uint32_t op1 = *registers[((opcode & 0x0080) >> 4) | (opcode & 0x0007)];
@@ -1582,7 +1846,7 @@ FORCE_INLINE int Interpreter::cmpHT(uint16_t opcode) // CMP Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::movHT(uint16_t opcode) // MOV Rd,Rs
+int Interpreter::movHT(uint16_t opcode) // MOV Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[((opcode & 0x0080) >> 4) | (opcode & 0x0007)];
@@ -1597,7 +1861,7 @@ FORCE_INLINE int Interpreter::movHT(uint16_t opcode) // MOV Rd,Rs
     return 3;
 }
 
-FORCE_INLINE int Interpreter::addPcT(uint16_t opcode) // ADD Rd,PC,#i
+int Interpreter::addPcT(uint16_t opcode) // ADD Rd,PC,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -1610,7 +1874,7 @@ FORCE_INLINE int Interpreter::addPcT(uint16_t opcode) // ADD Rd,PC,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::addSpT(uint16_t opcode) // ADD Rd,SP,#i
+int Interpreter::addSpT(uint16_t opcode) // ADD Rd,SP,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -1623,7 +1887,7 @@ FORCE_INLINE int Interpreter::addSpT(uint16_t opcode) // ADD Rd,SP,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::addSpImmT(uint16_t opcode) // ADD SP,#i
+int Interpreter::addSpImmT(uint16_t opcode) // ADD SP,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[13];
@@ -1635,7 +1899,7 @@ FORCE_INLINE int Interpreter::addSpImmT(uint16_t opcode) // ADD SP,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::lslImmT(uint16_t opcode) // LSL Rd,Rs,#i
+int Interpreter::lslImmT(uint16_t opcode) // LSL Rd,Rs,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1653,7 +1917,7 @@ FORCE_INLINE int Interpreter::lslImmT(uint16_t opcode) // LSL Rd,Rs,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::lsrImmT(uint16_t opcode) // LSR Rd,Rs,#i
+int Interpreter::lsrImmT(uint16_t opcode) // LSR Rd,Rs,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1671,7 +1935,7 @@ FORCE_INLINE int Interpreter::lsrImmT(uint16_t opcode) // LSR Rd,Rs,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::asrImmT(uint16_t opcode) // ASR Rd,Rs,#i
+int Interpreter::asrImmT(uint16_t opcode) // ASR Rd,Rs,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1689,7 +1953,7 @@ FORCE_INLINE int Interpreter::asrImmT(uint16_t opcode) // ASR Rd,Rs,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::addImm3T(uint16_t opcode) // ADD Rd,Rs,#i
+int Interpreter::addImm3T(uint16_t opcode) // ADD Rd,Rs,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1706,7 +1970,7 @@ FORCE_INLINE int Interpreter::addImm3T(uint16_t opcode) // ADD Rd,Rs,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::subImm3T(uint16_t opcode) // SUB Rd,Rs,#i
+int Interpreter::subImm3T(uint16_t opcode) // SUB Rd,Rs,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1723,7 +1987,7 @@ FORCE_INLINE int Interpreter::subImm3T(uint16_t opcode) // SUB Rd,Rs,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::addImm8T(uint16_t opcode) // ADD Rd,#i
+int Interpreter::addImm8T(uint16_t opcode) // ADD Rd,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -1740,7 +2004,7 @@ FORCE_INLINE int Interpreter::addImm8T(uint16_t opcode) // ADD Rd,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::subImm8T(uint16_t opcode) // SUB Rd,#i
+int Interpreter::subImm8T(uint16_t opcode) // SUB Rd,#i
 {
     // Decode the operands
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -1758,7 +2022,7 @@ FORCE_INLINE int Interpreter::subImm8T(uint16_t opcode) // SUB Rd,#i
 }
 
 
-FORCE_INLINE int Interpreter::cmpImm8T(uint16_t opcode) // CMP Rd,#i
+int Interpreter::cmpImm8T(uint16_t opcode) // CMP Rd,#i
 {
     // Decode the operands
     uint32_t op1 = *registers[(opcode & 0x0700) >> 8];
@@ -1774,7 +2038,7 @@ FORCE_INLINE int Interpreter::cmpImm8T(uint16_t opcode) // CMP Rd,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::movImm8T(uint16_t opcode) // MOV Rd,#i
+int Interpreter::movImm8T(uint16_t opcode) // MOV Rd,#i
 {
     // Decode the other operand
     uint32_t *op0 = registers[(opcode & 0x0700) >> 8];
@@ -1789,7 +2053,7 @@ FORCE_INLINE int Interpreter::movImm8T(uint16_t opcode) // MOV Rd,#i
     return 1;
 }
 
-FORCE_INLINE int Interpreter::lslDpT(uint16_t opcode) // LSL Rd,Rs
+int Interpreter::lslDpT(uint16_t opcode) // LSL Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1808,7 +2072,7 @@ FORCE_INLINE int Interpreter::lslDpT(uint16_t opcode) // LSL Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::lsrDpT(uint16_t opcode) // LSR Rd,Rs
+int Interpreter::lsrDpT(uint16_t opcode) // LSR Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1827,7 +2091,7 @@ FORCE_INLINE int Interpreter::lsrDpT(uint16_t opcode) // LSR Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::asrDpT(uint16_t opcode) // ASR Rd,Rs
+int Interpreter::asrDpT(uint16_t opcode) // ASR Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1846,7 +2110,7 @@ FORCE_INLINE int Interpreter::asrDpT(uint16_t opcode) // ASR Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::rorDpT(uint16_t opcode) // ROR Rd,Rs
+int Interpreter::rorDpT(uint16_t opcode) // ROR Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1864,7 +2128,7 @@ FORCE_INLINE int Interpreter::rorDpT(uint16_t opcode) // ROR Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::andDpT(uint16_t opcode) // AND Rd,Rs
+int Interpreter::andDpT(uint16_t opcode) // AND Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1879,7 +2143,7 @@ FORCE_INLINE int Interpreter::andDpT(uint16_t opcode) // AND Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::eorDpT(uint16_t opcode) // EOR Rd,Rs
+int Interpreter::eorDpT(uint16_t opcode) // EOR Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1894,7 +2158,7 @@ FORCE_INLINE int Interpreter::eorDpT(uint16_t opcode) // EOR Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::adcDpT(uint16_t opcode) // ADC Rd,Rs
+int Interpreter::adcDpT(uint16_t opcode) // ADC Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1912,7 +2176,7 @@ FORCE_INLINE int Interpreter::adcDpT(uint16_t opcode) // ADC Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::sbcDpT(uint16_t opcode) // SBC Rd,Rs
+int Interpreter::sbcDpT(uint16_t opcode) // SBC Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1930,7 +2194,7 @@ FORCE_INLINE int Interpreter::sbcDpT(uint16_t opcode) // SBC Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::tstDpT(uint16_t opcode) // TST Rd,Rs
+int Interpreter::tstDpT(uint16_t opcode) // TST Rd,Rs
 {
     // Decode the operands
     uint32_t op1 = *registers[opcode & 0x0007];
@@ -1945,7 +2209,7 @@ FORCE_INLINE int Interpreter::tstDpT(uint16_t opcode) // TST Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::cmpDpT(uint16_t opcode) // CMP Rd,Rs
+int Interpreter::cmpDpT(uint16_t opcode) // CMP Rd,Rs
 {
     // Decode the operands
     uint32_t op1 = *registers[opcode & 0x0007];
@@ -1961,7 +2225,7 @@ FORCE_INLINE int Interpreter::cmpDpT(uint16_t opcode) // CMP Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::cmnDpT(uint16_t opcode) // CMN Rd,Rs
+int Interpreter::cmnDpT(uint16_t opcode) // CMN Rd,Rs
 {
     // Decode the operands
     uint32_t op1 = *registers[opcode & 0x0007];
@@ -1977,7 +2241,7 @@ FORCE_INLINE int Interpreter::cmnDpT(uint16_t opcode) // CMN Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::orrDpT(uint16_t opcode) // ORR Rd,Rs
+int Interpreter::orrDpT(uint16_t opcode) // ORR Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -1992,7 +2256,7 @@ FORCE_INLINE int Interpreter::orrDpT(uint16_t opcode) // ORR Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bicDpT(uint16_t opcode) // BIC Rd,Rs
+int Interpreter::bicDpT(uint16_t opcode) // BIC Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -2007,7 +2271,7 @@ FORCE_INLINE int Interpreter::bicDpT(uint16_t opcode) // BIC Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::mvnDpT(uint16_t opcode) // MVN Rd,Rs
+int Interpreter::mvnDpT(uint16_t opcode) // MVN Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -2022,7 +2286,7 @@ FORCE_INLINE int Interpreter::mvnDpT(uint16_t opcode) // MVN Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::negDpT(uint16_t opcode) // NEG Rd,Rs
+int Interpreter::negDpT(uint16_t opcode) // NEG Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -2039,7 +2303,7 @@ FORCE_INLINE int Interpreter::negDpT(uint16_t opcode) // NEG Rd,Rs
     return 1;
 }
 
-FORCE_INLINE int Interpreter::mulDpT(uint16_t opcode) // MUL Rd,Rs
+int Interpreter::mulDpT(uint16_t opcode) // MUL Rd,Rs
 {
     // Decode the operands
     uint32_t *op0 = registers[opcode & 0x0007];
@@ -2057,5 +2321,3 @@ FORCE_INLINE int Interpreter::mulDpT(uint16_t opcode) // MUL Rd,Rs
     int m; for (m = 1; (op2 < (-1 << (m * 8)) || op2 >= (1 << (m * 8))) && m < 4; m++);
     return m + 1;
 }
-
-#endif // INTERPRETER_ALU

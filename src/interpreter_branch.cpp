@@ -17,12 +17,10 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef INTERPRETER_BRANCH
-#define INTERPRETER_BRANCH
-
+#include "interpreter.h"
 #include "core.h"
 
-FORCE_INLINE int Interpreter::bx(uint32_t opcode) // BX Rn
+int Interpreter::bx(uint32_t opcode) // BX Rn
 {
     // Decode the operand
     uint32_t op0 = *registers[opcode & 0x0000000F];
@@ -35,7 +33,7 @@ FORCE_INLINE int Interpreter::bx(uint32_t opcode) // BX Rn
     return 3;
 }
 
-FORCE_INLINE int Interpreter::blxReg(uint32_t opcode) // BLX Rn
+int Interpreter::blxReg(uint32_t opcode) // BLX Rn
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -51,7 +49,7 @@ FORCE_INLINE int Interpreter::blxReg(uint32_t opcode) // BLX Rn
     return 3;
 }
 
-FORCE_INLINE int Interpreter::b(uint32_t opcode) // B label
+int Interpreter::b(uint32_t opcode) // B label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(23)) ? 0xFC000000 : 0) | ((opcode & 0x00FFFFFF) << 2);
@@ -63,7 +61,7 @@ FORCE_INLINE int Interpreter::b(uint32_t opcode) // B label
     return 3;
 }
 
-FORCE_INLINE int Interpreter::bl(uint32_t opcode) // BL label
+int Interpreter::bl(uint32_t opcode) // BL label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(23)) ? 0xFC000000 : 0) | ((opcode & 0x00FFFFFF) << 2);
@@ -76,7 +74,7 @@ FORCE_INLINE int Interpreter::bl(uint32_t opcode) // BL label
     return 3;
 }
 
-FORCE_INLINE int Interpreter::blx(uint32_t opcode) // BLX label
+int Interpreter::blx(uint32_t opcode) // BLX label
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -92,7 +90,7 @@ FORCE_INLINE int Interpreter::blx(uint32_t opcode) // BLX label
     return 3;
 }
 
-FORCE_INLINE int Interpreter::swi() // SWI #i
+int Interpreter::swi(uint32_t opcode) // SWI #i
 {
     // Software interrupt
     setCpsr((cpsr & ~0x1F) | 0x93, true); // Supervisor, interrupts off
@@ -103,7 +101,7 @@ FORCE_INLINE int Interpreter::swi() // SWI #i
     return 3;
 }
 
-FORCE_INLINE int Interpreter::bxRegT(uint16_t opcode) // BX Rs
+int Interpreter::bxRegT(uint16_t opcode) // BX Rs
 {
     // Decode the operand
     uint32_t op0 = *registers[(opcode & 0x0078) >> 3];
@@ -116,7 +114,7 @@ FORCE_INLINE int Interpreter::bxRegT(uint16_t opcode) // BX Rs
     return 3;
 }
 
-FORCE_INLINE int Interpreter::blxRegT(uint16_t opcode) // BLX Rs
+int Interpreter::blxRegT(uint16_t opcode) // BLX Rs
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -132,7 +130,7 @@ FORCE_INLINE int Interpreter::blxRegT(uint16_t opcode) // BLX Rs
     return 3;
 }
 
-FORCE_INLINE int Interpreter::beqT(uint16_t opcode) // BEQ label
+int Interpreter::beqT(uint16_t opcode) // BEQ label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -148,7 +146,7 @@ FORCE_INLINE int Interpreter::beqT(uint16_t opcode) // BEQ label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bneT(uint16_t opcode) // BNE label
+int Interpreter::bneT(uint16_t opcode) // BNE label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -164,7 +162,7 @@ FORCE_INLINE int Interpreter::bneT(uint16_t opcode) // BNE label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bcsT(uint16_t opcode) // BCS label
+int Interpreter::bcsT(uint16_t opcode) // BCS label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -180,7 +178,7 @@ FORCE_INLINE int Interpreter::bcsT(uint16_t opcode) // BCS label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bccT(uint16_t opcode) // BCC label
+int Interpreter::bccT(uint16_t opcode) // BCC label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -196,7 +194,7 @@ FORCE_INLINE int Interpreter::bccT(uint16_t opcode) // BCC label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bmiT(uint16_t opcode) // BMI label
+int Interpreter::bmiT(uint16_t opcode) // BMI label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -212,7 +210,7 @@ FORCE_INLINE int Interpreter::bmiT(uint16_t opcode) // BMI label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bplT(uint16_t opcode) // BPL label
+int Interpreter::bplT(uint16_t opcode) // BPL label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -228,7 +226,7 @@ FORCE_INLINE int Interpreter::bplT(uint16_t opcode) // BPL label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bvsT(uint16_t opcode) // BVS label
+int Interpreter::bvsT(uint16_t opcode) // BVS label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -244,7 +242,7 @@ FORCE_INLINE int Interpreter::bvsT(uint16_t opcode) // BVS label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bvcT(uint16_t opcode) // BVC label
+int Interpreter::bvcT(uint16_t opcode) // BVC label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -260,7 +258,7 @@ FORCE_INLINE int Interpreter::bvcT(uint16_t opcode) // BVC label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bhiT(uint16_t opcode) // BHI label
+int Interpreter::bhiT(uint16_t opcode) // BHI label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -276,7 +274,7 @@ FORCE_INLINE int Interpreter::bhiT(uint16_t opcode) // BHI label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::blsT(uint16_t opcode) // BLS label
+int Interpreter::blsT(uint16_t opcode) // BLS label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -292,7 +290,7 @@ FORCE_INLINE int Interpreter::blsT(uint16_t opcode) // BLS label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bgeT(uint16_t opcode) // BGE label
+int Interpreter::bgeT(uint16_t opcode) // BGE label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -308,7 +306,7 @@ FORCE_INLINE int Interpreter::bgeT(uint16_t opcode) // BGE label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bltT(uint16_t opcode) // BLT label
+int Interpreter::bltT(uint16_t opcode) // BLT label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -324,7 +322,7 @@ FORCE_INLINE int Interpreter::bltT(uint16_t opcode) // BLT label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bgtT(uint16_t opcode) // BGT label
+int Interpreter::bgtT(uint16_t opcode) // BGT label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -340,7 +338,7 @@ FORCE_INLINE int Interpreter::bgtT(uint16_t opcode) // BGT label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bleT(uint16_t opcode) // BLE label
+int Interpreter::bleT(uint16_t opcode) // BLE label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
@@ -356,7 +354,7 @@ FORCE_INLINE int Interpreter::bleT(uint16_t opcode) // BLE label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::bT(uint16_t opcode) // B label
+int Interpreter::bT(uint16_t opcode) // B label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(10)) ? 0xFFFFF000 : 0) | ((opcode & 0x07FF) << 1);
@@ -368,7 +366,7 @@ FORCE_INLINE int Interpreter::bT(uint16_t opcode) // B label
     return 3;
 }
 
-FORCE_INLINE int Interpreter::blSetupT(uint16_t opcode) // BL/BLX label
+int Interpreter::blSetupT(uint16_t opcode) // BL/BLX label
 {
     // Decode the operand
     uint32_t op0 = ((opcode & BIT(10)) ? 0xFFFFF000 : 0) | ((opcode & 0x07FF) << 1);
@@ -379,7 +377,7 @@ FORCE_INLINE int Interpreter::blSetupT(uint16_t opcode) // BL/BLX label
     return 1;
 }
 
-FORCE_INLINE int Interpreter::blOffT(uint16_t opcode) // BL label
+int Interpreter::blOffT(uint16_t opcode) // BL label
 {
     // Decode the operand
     uint32_t op0 = (opcode & 0x07FF) << 1;
@@ -393,7 +391,7 @@ FORCE_INLINE int Interpreter::blOffT(uint16_t opcode) // BL label
     return 3;
 }
 
-FORCE_INLINE int Interpreter::blxOffT(uint16_t opcode) // BLX label
+int Interpreter::blxOffT(uint16_t opcode) // BLX label
 {
     if (cpu == 1) return 1; // ARM9 exclusive
 
@@ -410,7 +408,7 @@ FORCE_INLINE int Interpreter::blxOffT(uint16_t opcode) // BLX label
     return 3;
 }
 
-FORCE_INLINE int Interpreter::swiT() // SWI #i
+int Interpreter::swiT(uint16_t opcode) // SWI #i
 {
     // Software interrupt
     setCpsr((cpsr & ~0x3F) | 0x93, true); // ARM, supervisor, interrupts off
@@ -420,5 +418,3 @@ FORCE_INLINE int Interpreter::swiT() // SWI #i
 
     return 3;
 }
-
-#endif // INTERPRETER_BRANCH

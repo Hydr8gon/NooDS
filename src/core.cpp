@@ -235,3 +235,32 @@ void Core::endFrame()
         lastFpsTime = std::chrono::steady_clock::now();
     }
 }
+
+FORCE_INLINE int Interpreter::runOpcode()
+{
+    // Push the next opcode through the pipeline
+    uint32_t opcode = pipeline[0];
+    pipeline[0] = pipeline[1];
+
+    // Execute an instruction
+    if (cpsr & BIT(5)) // THUMB mode
+    {
+        // Fill the pipeline, incrementing the program counter
+        pipeline[1] = core->memory.read<uint16_t>(cpu, *registers[15] += 2);
+
+        return (this->*thumbInstrs[(opcode >> 6) & 0x3FF])(opcode);
+    }
+    else // ARM mode
+    {
+        // Fill the pipeline, incrementing the program counter
+        pipeline[1] = core->memory.read<uint32_t>(cpu, *registers[15] += 4);
+
+        // Evaluate the current opcode's condition
+        switch (condition[((opcode >> 24) & 0xF0) | (cpsr >> 28)])
+        {
+            case 0:  return 1;                      // False
+            case 2:  return handleReserved(opcode); // Reserved
+            default: return (this->*armInstrs[((opcode >> 16) & 0xFF0) | ((opcode >> 4) & 0xF)])(opcode);
+        }
+    }
+}
