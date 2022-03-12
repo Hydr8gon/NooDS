@@ -182,6 +182,15 @@ public class FileBrowser extends AppCompatActivity
         if (!dir.exists()) dir.mkdir();
         loadSettings(path);
 
+        // Set a custom launch path if one is specified
+        Bundle extras = getIntent().getExtras();
+        if (extras != null)
+        {
+            String launchPath = extras.getString("LaunchPath");
+            if (launchPath != null)
+                path = launchPath;
+        }
+
         setContentView(fileView);
         update();
     }
