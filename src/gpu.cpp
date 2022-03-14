@@ -379,6 +379,10 @@ void Gpu::scanline256()
                     // Get the VRAM source address for the current scanline
                     uint32_t readOffset = ((dispCapCnt & 0x0C000000) >> 11) + vCount * width * 2;
 
+                    // Get the blending factors for the two sources
+                    uint8_t eva = std::min((dispCapCnt >> 0) & 0x1F, 16U);
+                    uint8_t evb = std::min((dispCapCnt >> 8) & 0x1F, 16U);
+
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
                     {
@@ -386,14 +390,10 @@ void Gpu::scanline256()
                         uint16_t c1 = rgb6ToRgb5(source[i]);
                         uint16_t c2 = core->memory.read<uint16_t>(0, base + (readOffset + i * 2) % 0x20000);
 
-                        // Get the blending factors for the two sources
-                        int eva = (dispCapCnt & 0x0000001F) >> 0; if (eva > 16) eva = 16;
-                        int evb = (dispCapCnt & 0x00001F00) >> 8; if (evb > 16) evb = 16;
-
                         // Blend the color values
-                        uint8_t r = (((c1 >>  0) & 0x1F) * eva + ((c2 >>  0) & 0x1F) * evb) / 16;
-                        uint8_t g = (((c1 >>  5) & 0x1F) * eva + ((c2 >>  5) & 0x1F) * evb) / 16;
-                        uint8_t b = (((c1 >> 10) & 0x1F) * eva + ((c2 >> 10) & 0x1F) * evb) / 16;
+                        uint8_t r = std::min((((c1 >>  0) & 0x1F) * eva + ((c2 >>  0) & 0x1F) * evb) / 16, 31);
+                        uint8_t g = std::min((((c1 >>  5) & 0x1F) * eva + ((c2 >>  5) & 0x1F) * evb) / 16, 31);
+                        uint8_t b = std::min((((c1 >> 10) & 0x1F) * eva + ((c2 >> 10) & 0x1F) * evb) / 16, 31);
 
                         uint16_t color = BIT(15) | (b << 10) | (g << 5) | r;
                         core->memory.write<uint16_t>(0, base + (writeOffset + i * 2) % 0x20000, color);

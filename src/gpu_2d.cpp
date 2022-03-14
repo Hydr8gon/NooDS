@@ -111,11 +111,11 @@ void Gpu2D::drawGbaScanline(int line)
             break;
     }
 
+    uint8_t mode = (bldCnt >> 6) & 0x3;
+
     // Blend the layers to form the final image
     for (int i = 0; i < 240; i++)
     {
-        uint8_t mode = (bldCnt >> 6) & 0x3;
-
         // Check if blending can/should be performed
         if (layers[0][i] & BIT(25)) // Semi-transparent pixel
         {
@@ -154,9 +154,9 @@ void Gpu2D::drawGbaScanline(int line)
             {
                 uint8_t eva = std::min((bldAlpha >> 0) & 0x1F, 16);
                 uint8_t evb = std::min((bldAlpha >> 8) & 0x1F, 16);
-                uint8_t r = std::min(((layers[0][i] >>  0) & 0x1F) * eva / 16 + ((layers[1][i] >>  0) & 0x1F) * evb / 16, 31U);
-                uint8_t g = std::min(((layers[0][i] >>  5) & 0x1F) * eva / 16 + ((layers[1][i] >>  5) & 0x1F) * evb / 16, 31U);
-                uint8_t b = std::min(((layers[0][i] >> 10) & 0x1F) * eva / 16 + ((layers[1][i] >> 10) & 0x1F) * evb / 16, 31U);
+                uint8_t r = std::min((((layers[0][i] >>  0) & 0x1F) * eva + ((layers[1][i] >>  0) & 0x1F) * evb) / 16, 31U);
+                uint8_t g = std::min((((layers[0][i] >>  5) & 0x1F) * eva + ((layers[1][i] >>  5) & 0x1F) * evb) / 16, 31U);
+                uint8_t b = std::min((((layers[0][i] >> 10) & 0x1F) * eva + ((layers[1][i] >> 10) & 0x1F) * evb) / 16, 31U);
                 layers[0][i] = (b << 10) | (g << 5) | r;
                 continue;
             }
@@ -266,11 +266,11 @@ void Gpu2D::drawScanline(int line)
             break;
     }
 
+    uint8_t mode = (bldCnt >> 6) & 0x3;
+
     // Blend the layers to form the final image
     for (int i = 0; i < 256; i++)
     {
-        uint8_t mode = (bldCnt >> 6) & 0x3;
-
         // Check if blending can/should be performed
         if (layers[0][i] & BIT(26)) // 3D pixel
         {
@@ -280,9 +280,9 @@ void Gpu2D::drawScanline(int line)
                 uint32_t blend = rgb5ToRgb6(layers[1][i]);
                 uint8_t eva = ((layers[0][i] >> 18) & 0x3F) + 1;
                 uint8_t evb = 64 - eva;
-                uint8_t r = std::min(((layers[0][i] >>  0) & 0x3F) * eva / 64 + ((blend >>  0) & 0x3F) * evb / 64, 63U);
-                uint8_t g = std::min(((layers[0][i] >>  6) & 0x3F) * eva / 64 + ((blend >>  6) & 0x3F) * evb / 64, 63U);
-                uint8_t b = std::min(((layers[0][i] >> 12) & 0x3F) * eva / 64 + ((blend >> 12) & 0x3F) * evb / 64, 63U);
+                uint8_t r = std::min((((layers[0][i] >>  0) & 0x3F) * eva + ((blend >>  0) & 0x3F) * evb) / 64, 63U);
+                uint8_t g = std::min((((layers[0][i] >>  6) & 0x3F) * eva + ((blend >>  6) & 0x3F) * evb) / 64, 63U);
+                uint8_t b = std::min((((layers[0][i] >> 12) & 0x3F) * eva + ((blend >> 12) & 0x3F) * evb) / 64, 63U);
                 layers[0][i] = (b << 12) | (g << 6) | r;
                 continue;
             }
@@ -336,9 +336,9 @@ void Gpu2D::drawScanline(int line)
                 uint32_t blend = (layers[1][i] & BIT(26)) ? layers[1][i] : rgb5ToRgb6(layers[1][i]);
                 uint8_t eva = std::min((bldAlpha >> 0) & 0x1F, 16);
                 uint8_t evb = std::min((bldAlpha >> 8) & 0x1F, 16);
-                uint8_t r = std::min(((layers[0][i] >>  0) & 0x3F) * eva / 16 + ((blend >>  0) & 0x3F) * evb / 16, 63U);
-                uint8_t g = std::min(((layers[0][i] >>  6) & 0x3F) * eva / 16 + ((blend >>  6) & 0x3F) * evb / 16, 63U);
-                uint8_t b = std::min(((layers[0][i] >> 12) & 0x3F) * eva / 16 + ((blend >> 12) & 0x3F) * evb / 16, 63U);
+                uint8_t r = std::min((((layers[0][i] >>  0) & 0x3F) * eva + ((blend >>  0) & 0x3F) * evb) / 16, 63U);
+                uint8_t g = std::min((((layers[0][i] >>  6) & 0x3F) * eva + ((blend >>  6) & 0x3F) * evb) / 16, 63U);
+                uint8_t b = std::min((((layers[0][i] >> 12) & 0x3F) * eva + ((blend >> 12) & 0x3F) * evb) / 16, 63U);
                 layers[0][i] = (b << 12) | (g << 6) | r;
                 continue;
             }

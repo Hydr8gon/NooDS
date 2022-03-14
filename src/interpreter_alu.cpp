@@ -518,19 +518,12 @@ FORCE_INLINE int Interpreter::ands(uint32_t opcode, uint32_t op2) // ANDS Rd,Rn,
     // Bitwise and
     *op0 = op1 & op2;
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -545,19 +538,12 @@ FORCE_INLINE int Interpreter::eors(uint32_t opcode, uint32_t op2) // EORS Rd,Rn,
     // Bitwise exclusive or
     *op0 = op1 ^ op2;
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -572,20 +558,13 @@ FORCE_INLINE int Interpreter::subs(uint32_t opcode, uint32_t op2) // SUBS Rd,Rn,
     // Subtraction
     *op0 = op1 - op2;
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 >= *op0) << 29) |
         (((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31))) << 28);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -600,20 +579,13 @@ FORCE_INLINE int Interpreter::rsbs(uint32_t opcode, uint32_t op2) // RSBS Rd,Rn,
     // Reverse subtraction
     *op0 = op2 - op1;
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op2 >= *op0) << 29) |
         (((op1 & BIT(31)) != (op2 & BIT(31)) && (*op0 & BIT(31)) == (op1 & BIT(31))) << 28);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -628,20 +600,13 @@ FORCE_INLINE int Interpreter::adds(uint32_t opcode, uint32_t op2) // ADDS Rd,Rn,
     // Addition
     *op0 = op1 + op2;
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) | ((op1 > *op0) << 29) |
         (((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31))) << 28);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -656,21 +621,14 @@ FORCE_INLINE int Interpreter::adcs(uint32_t opcode, uint32_t op2) // ADCS Rd,Rn,
     // Addition with carry
     *op0 = op1 + op2 + ((cpsr & BIT(29)) >> 29);
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) |
         ((op1 > *op0 || (op2 == 0xFFFFFFFF && (cpsr & BIT(29)))) << 29) |
         (((op2 & BIT(31)) == (op1 & BIT(31)) && (*op0 & BIT(31)) != (op2 & BIT(31))) << 28);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -685,21 +643,14 @@ FORCE_INLINE int Interpreter::sbcs(uint32_t opcode, uint32_t op2) // SBCS Rd,Rn,
     // Subtraction with carry
     *op0 = op1 - op2 - 1 + ((cpsr & BIT(29)) >> 29);
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xF0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) |
         ((op1 >= *op0 && (op2 != 0xFFFFFFFF || (cpsr & BIT(29)))) << 29) |
         (((op2 & BIT(31)) != (op1 & BIT(31)) && (*op0 & BIT(31)) == (op2 & BIT(31))) << 28);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -714,21 +665,14 @@ FORCE_INLINE int Interpreter::rscs(uint32_t opcode, uint32_t op2) // RSCS Rd,Rn,
     // Reverse subtraction with carry
     *op0 = op2 - op1 - 1 + ((cpsr & BIT(29)) >> 29);
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30) |
         ((op2 >= *op0 && (op1 != 0xFFFFFFFF || (cpsr & BIT(29)))) << 29) |
         (((op1 & BIT(31)) != (op2 & BIT(31)) && (*op0 & BIT(31)) == (op1 & BIT(31))) << 28);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -743,19 +687,12 @@ FORCE_INLINE int Interpreter::orrs(uint32_t opcode, uint32_t op2) // ORRS Rd,Rn,
     // Bitwise or
     *op0 = op1 | op2;
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -768,19 +705,12 @@ FORCE_INLINE int Interpreter::movs(uint32_t opcode, uint32_t op2) // MOVS Rd,op2
     // Move
     *op0 = op2;
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -795,19 +725,12 @@ FORCE_INLINE int Interpreter::bics(uint32_t opcode, uint32_t op2) // BICS Rd,Rn,
     // Bit clear
     *op0 = op1 & ~op2;
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
@@ -820,19 +743,12 @@ FORCE_INLINE int Interpreter::mvns(uint32_t opcode, uint32_t op2) // MVNS Rd,op2
     // Move negative
     *op0 = ~op2;
 
-    // Handle mode switching
-    if (op0 == registers[15] && spsr)
-    {
-        setCpsr(*spsr);
-        flushPipeline();
-        return 3;
-    }
-
     // Set the flags
     cpsr = (cpsr & ~0xC0000000) | (*op0 & BIT(31)) | ((*op0 == 0) << 30);
 
-    // Handle pipelining
+    // Handle pipelining and mode switching
     if (op0 != registers[15]) return 1;
+    if (spsr) setCpsr(*spsr);
     flushPipeline();
     return 3;
 }
