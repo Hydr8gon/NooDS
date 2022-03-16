@@ -103,7 +103,7 @@ void Gpu2D::drawGbaScanline(int line)
             break;
 
         case 3: case 4: case 5:
-            if (dispCnt & BIT(10)) drawExtended(2, line);
+            if (dispCnt & BIT(10)) drawExtendedGba(2, line);
             break;
 
         default:
@@ -604,39 +604,44 @@ void Gpu2D::drawText(int bg, int line)
 
 void Gpu2D::drawAffine(int bg, int line)
 {
-    // Get the base data addresses
-    uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
-    uint32_t indexBase = bgVramAddr + ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
+    // Calculate the base data addresses
+    uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] <<  3) & 0x0F800) + ((dispCnt >> 11) & 0x70000);
+    uint32_t indexBase = bgVramAddr + ((bgCnt[bg] << 12) & 0x3C000) + ((dispCnt >>  8) & 0x70000);
 
-    // Get the background's size
+    // Set the initial rotscale coordinates
+    int rotscaleX = internalX[bg - 2] - bgPA[bg - 2];
+    int rotscaleY = internalY[bg - 2] - bgPC[bg - 2];
+
+    // Get the background size
     int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
 
     // Draw a line
     for (int i = 0; i < 256; i++)
     {
-        // Calculate the rotscaled coordinates relative to the background
-        int rotscaleX = (internalX[bg - 2] + bgPA[bg - 2] * i) >> 8;
-        int rotscaleY = (internalY[bg - 2] + bgPC[bg - 2] * i) >> 8;
+        // Increment the rotscaled coordinates and remove the fraction
+        int x = (rotscaleX += bgPA[bg - 2]) >> 8;
+        int y = (rotscaleY += bgPC[bg - 2]) >> 8;
 
         // Handle display area overflow
         if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
         {
-            rotscaleX %= size; if (rotscaleX < 0) rotscaleX += size;
-            rotscaleY %= size; if (rotscaleY < 0) rotscaleY += size;
+            x &= size - 1;
+            y &= size - 1;
         }
-        else if (rotscaleX < 0 || rotscaleX >= size || rotscaleY < 0 || rotscaleY >= size) // Transparent
+        else if (x < 0 || x >= size || y < 0 || y >= size) // Transparent
         {
             continue;
         }
 
-        // Get the current tile
-        uint8_t tile = core->memory.read<uint8_t>(core->isGbaMode(), tileBase + (rotscaleY / 8) * (size / 8) + (rotscaleX / 8));
+        // Read the current tile
+        uint32_t tileAddr = tileBase + (y / 8) * (size / 8) + (x / 8);
+        uint8_t tile = core->memory.read<uint8_t>(core->isGbaMode(), tileAddr);
 
-        // Get the palette index for the current pixel of the tile
-        uint32_t indexAddr = indexBase + tile * 64 + (rotscaleY % 8) * 8 + (rotscaleX % 8);
+        // Read the palette index for the current pixel of the tile
+        uint32_t indexAddr = indexBase + tile * 64 + (y & 7) * 8 + (x & 7);
         uint8_t index = core->memory.read<uint8_t>(core->isGbaMode(), indexAddr);
 
-        // Draw a pixel
+        // Draw a pixel if it isn't transparent
         if (index)
             drawBgPixel(bg, line, i, U8TO16(palette, index * 2) | BIT(15));
     }
@@ -648,66 +653,47 @@ void Gpu2D::drawAffine(int bg, int line)
 
 void Gpu2D::drawExtended(int bg, int line)
 {
-    if (core->isGbaMode() || (bgCnt[bg] & BIT(7))) // Bitmap
+    // Set the initial rotscale coordinates
+    int rotscaleX = internalX[bg - 2] - bgPA[bg - 2];
+    int rotscaleY = internalY[bg - 2] - bgPC[bg - 2];
+
+    if (bgCnt[bg] & BIT(7)) // Bitmap
     {
-        uint32_t dataBase = bgVramAddr;
+        // Calculate the base data address
+        uint32_t dataBase = bgVramAddr + ((bgCnt[bg] << 6) & 0x7C000);
+
+        // Get the bitmap size
         int sizeX, sizeY;
-
-        // Get information about the bitmap data
-        if (core->isGbaMode())
+        switch ((bgCnt[bg] >> 14) & 0x3)
         {
-            // Get the base data address
-            dataBase += ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800;
-
-            // Modes 4 and 5 have two bitmaps; one can be drawn while the other is displayed
-            // Draw the second bitmap if enabled
-            if ((dispCnt & BIT(4)) && (dispCnt & 0x0007) > 3)
-                dataBase += 0xA000;
-
-            // Get the bitmap size
-            switch (dispCnt & 0x0007)
-            {
-                case 5:  sizeX = 160; sizeY = 128; break;
-                default: sizeX = 240; sizeY = 160; break;
-            }
-        }
-        else
-        {
-            // Get the base data address
-            dataBase += ((bgCnt[bg] & 0x1F00) >> 8) * 0x4000;
-
-            // Get the bitmap size
-            switch ((bgCnt[bg] & 0xC000) >> 14)
-            {
-                case 0: sizeX = 128; sizeY = 128; break;
-                case 1: sizeX = 256; sizeY = 256; break;
-                case 2: sizeX = 512; sizeY = 256; break;
-                case 3: sizeX = 512; sizeY = 512; break;
-            }
+            case 0: sizeX = 128; sizeY = 128; break;
+            case 1: sizeX = 256; sizeY = 256; break;
+            case 2: sizeX = 512; sizeY = 256; break;
+            case 3: sizeX = 512; sizeY = 512; break;
         }
 
-        if ((core->isGbaMode() && (dispCnt & 0x0007) != 4) || (!core->isGbaMode() && (bgCnt[bg] & BIT(2)))) // Direct color bitmap
+        if (bgCnt[bg] & BIT(2)) // Direct color bitmap
         {
             // Draw a line
             for (int i = 0; i < 256; i++)
             {
-                // Calculate the rotscaled coordinates relative to the background
-                int rotscaleX = (internalX[bg - 2] + bgPA[bg - 2] * i) >> 8;
-                int rotscaleY = (internalY[bg - 2] + bgPC[bg - 2] * i) >> 8;
+                // Increment the rotscaled coordinates and remove the fraction
+                int x = (rotscaleX += bgPA[bg - 2]) >> 8;
+                int y = (rotscaleY += bgPC[bg - 2]) >> 8;
 
                 // Handle display area overflow
                 if (bgCnt[bg] & BIT(13)) // Wraparound
                 {
-                    rotscaleX %= sizeX; if (rotscaleX < 0) rotscaleX += sizeX;
-                    rotscaleY %= sizeY; if (rotscaleY < 0) rotscaleY += sizeY;
+                    x &= sizeX - 1;
+                    y &= sizeY - 1;
                 }
-                else if (rotscaleX < 0 || rotscaleX >= sizeX || rotscaleY < 0 || rotscaleY >= sizeY) // Transparent
+                else if (x < 0 || x >= sizeX || y < 0 || y >= sizeY) // Transparent
                 {
                     continue;
                 }
 
-                // Draw a pixel, ignoring transparency in GBA mode
-                uint16_t pixel = (core->isGbaMode() << 15) | core->memory.read<uint16_t>(core->isGbaMode(), dataBase + (rotscaleY * sizeX + rotscaleX) * 2);
+                // Draw a pixel if it isn't transparent
+                uint16_t pixel = core->memory.read<uint16_t>(0, dataBase + (y * sizeX + x) * 2);
                 if (pixel & BIT(15))
                     drawBgPixel(bg, line, i, pixel);
             }
@@ -717,25 +703,25 @@ void Gpu2D::drawExtended(int bg, int line)
             // Draw a line
             for (int i = 0; i < 256; i++)
             {
-                // Calculate the rotscaled coordinates relative to the background
-                int rotscaleX = (internalX[bg - 2] + bgPA[bg - 2] * i) >> 8;
-                int rotscaleY = (internalY[bg - 2] + bgPC[bg - 2] * i) >> 8;
+                // Increment the rotscaled coordinates and remove the fraction
+                int x = (rotscaleX += bgPA[bg - 2]) >> 8;
+                int y = (rotscaleY += bgPC[bg - 2]) >> 8;
 
                 // Handle display area overflow
                 if (bgCnt[bg] & BIT(13)) // Wraparound
                 {
-                    rotscaleX %= sizeX; if (rotscaleX < 0) rotscaleX += sizeX;
-                    rotscaleY %= sizeY; if (rotscaleY < 0) rotscaleY += sizeY;
+                    x &= sizeX - 1;
+                    y &= sizeY - 1;
                 }
-                else if (rotscaleX < 0 || rotscaleX >= sizeX || rotscaleY < 0 || rotscaleY >= sizeY) // Transparent
+                else if (x < 0 || x >= sizeX || y < 0 || y >= sizeY) // Transparent
                 {
                     continue;
                 }
 
-                // Get the palette index for the current pixel
-                uint8_t index = core->memory.read<uint8_t>(core->isGbaMode(), dataBase + rotscaleY * sizeX + rotscaleX);
+                // Read the palette index for the current pixel
+                uint8_t index = core->memory.read<uint8_t>(0, dataBase + y * sizeX + x);
 
-                // Draw a pixel
+                // Draw a pixel if it isn't transparent
                 if (index)
                     drawBgPixel(bg, line, i, U8TO16(palette, index * 2) | BIT(15));
             }
@@ -743,55 +729,52 @@ void Gpu2D::drawExtended(int bg, int line)
     }
     else // Extended affine
     {
-        // Get the base data addresses
-        uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] & 0x1F00) >> 8) * 0x0800 + ((dispCnt & 0x38000000) >> 27) * 0x10000;
-        uint32_t indexBase = bgVramAddr + ((bgCnt[bg] & 0x003C) >> 2) * 0x4000 + ((dispCnt & 0x07000000) >> 24) * 0x10000;
+        // Calculate the base data addresses
+        uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] <<  3) & 0x0F800) + ((dispCnt >> 11) & 0x70000);
+        uint32_t indexBase = bgVramAddr + ((bgCnt[bg] << 12) & 0x3C000) + ((dispCnt >>  8) & 0x70000);
 
-        // Get the background's size
-        int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
+        // Get the bitmap size
+        size_t size = 128 << ((bgCnt[bg] >> 14) & 0x3);
 
-        // Draw a line
+        // Use the standard palette by default
+        uint8_t *pal = palette;
+
+        // Draw a line of the layer
         for (int i = 0; i < 256; i++)
         {
-            // Calculate the rotscaled coordinates relative to the background
-            int rotscaleX = (internalX[bg - 2] + bgPA[bg - 2] * i) >> 8;
-            int rotscaleY = (internalY[bg - 2] + bgPC[bg - 2] * i) >> 8;
+            // Increment the rotscaled coordinates and remove the fraction
+            int x = (rotscaleX += bgPA[bg - 2]) >> 8;
+            int y = (rotscaleY += bgPC[bg - 2]) >> 8;
 
             // Handle display area overflow
-            if (bg < 2 || (bgCnt[bg] & BIT(13))) // Wraparound
+            if (bgCnt[bg] & BIT(13)) // Wraparound
             {
-                rotscaleX %= size; if (rotscaleX < 0) rotscaleX += size;
-                rotscaleY %= size; if (rotscaleY < 0) rotscaleY += size;
+                x &= size - 1;
+                y &= size - 1;
             }
-            else if (rotscaleX < 0 || rotscaleX >= size || rotscaleY < 0 || rotscaleY >= size) // Transparent
+            else if (x < 0 || x >= size || y < 0 || y >= size) // Transparent
             {
                 continue;
             }
 
-            // Get the current tile
-            uint32_t tileAddr = tileBase + ((rotscaleY / 8) * (size / 8) + (rotscaleX / 8)) * 2;
-            uint16_t tile = core->memory.read<uint16_t>(core->isGbaMode(), tileAddr);
+            // Read the current tile
+            uint32_t tileAddr = tileBase + ((y / 8) * (size / 8) + (x / 8)) * 2;
+            uint16_t tile = core->memory.read<uint16_t>(0, tileAddr);
 
-            // Get the tile's palette
-            uint8_t *pal;
-            if (dispCnt & BIT(30)) // Extended palette
+            // Switch to an extended palette selected by the tile if enabled
+            if (dispCnt & BIT(30))
             {
-                // In extended palette mode, the tile can select from multiple 256-color palettes
                 if (!extPalettes[bg]) continue;
-                pal = &extPalettes[bg][(tile & 0xF000) >> 3];
-            }
-            else // Standard palette
-            {
-                pal = palette;
+                pal = &extPalettes[bg][(tile >> 3) & 0x1E00];
             }
 
-            // Get the palette index for the current pixel of the tile, flipped vertically or horizontally if enabled
-            uint32_t indexAddr = indexBase + (tile & 0x03FF) * 64;
-            indexAddr += ((tile & BIT(11)) ? (7 - rotscaleY % 8) : (rotscaleY % 8)) * 8;
-            indexAddr += ((tile & BIT(10)) ? (7 - rotscaleX % 8) : (rotscaleX % 8));
-            uint8_t index = core->memory.read<uint8_t>(core->isGbaMode(), indexAddr);
+            // Read the palette index for the current pixel
+            uint32_t indexAddr = indexBase + (tile & 0x3FF) * 64 + // Tile offset
+                (((tile & BIT(11)) ? (7 - y) : y) & 7)      *  8 + // Vertical offset, flipped if enabled
+                (((tile & BIT(10)) ? (7 - x) : x) & 7);            // Horizontal offset, flipped if enabled
+            uint8_t index = core->memory.read<uint8_t>(0, indexAddr);
 
-            // Draw a pixel
+            // Draw the pixel if it isn't transparent
             if (index)
                 drawBgPixel(bg, line, i, U8TO16(pal, index * 2) | BIT(15));
         }
@@ -802,35 +785,92 @@ void Gpu2D::drawExtended(int bg, int line)
     internalY[bg - 2] += bgPD[bg - 2];
 }
 
-void Gpu2D::drawLarge(int bg, int line)
+void Gpu2D::drawExtendedGba(int bg, int line)
 {
+    uint8_t mode = dispCnt & 0x7;
+
+    // Calculate the base data address
+    // Modes 4 and 5 have two bitmaps that can be selected with DISPCNT bit 4
+    uint32_t dataBase = bgVramAddr + ((bgCnt[bg] << 3) & 0xF800) +
+        ((mode > 3 && (dispCnt & BIT(4))) ? 0xA000 : 0);
+
+    // Set the initial rotscale coordinates
+    int rotscaleX = internalX[bg - 2] - bgPA[bg - 2];
+    int rotscaleY = internalY[bg - 2] - bgPC[bg - 2];
+
     // Get the bitmap size
-    int sizeX, sizeY;
-    if (((bgCnt[bg] & 0xC000) >> 14) == 0)
+    int sizeX = (mode == 5) ? 160 : 240;
+    int sizeY = (mode == 5) ? 128 : 160;
+
+    if (mode == 4) // 256 color bitmap
     {
-        sizeX =  512;
-        sizeY = 1024;
+        // Draw a line of the layer
+        for (int i = 0; i < 240; i++)
+        {
+            // Increment the rotscaled coordinates and remove the fraction
+            int x = (rotscaleX += bgPA[bg - 2]) >> 8;
+            int y = (rotscaleY += bgPC[bg - 2]) >> 8;
+
+            // Don't draw anything on display area overflow
+            if (x < 0 || x >= sizeX || y < 0 || y >= sizeY)
+                continue;
+
+            // Read the palette index for the current pixel
+            uint8_t index = core->memory.read<uint8_t>(1, dataBase + y * sizeX + x);
+
+            // Draw the pixel if it isn't transparent
+            if (index)
+                drawBgPixel(bg, line, i, U8TO16(palette, index * 2) | BIT(15));
+        }
     }
-    else
+    else // Direct color bitmap
     {
-        sizeX = 1024;
-        sizeY =  512;
+        // Draw a line of the layer
+        for (int i = 0; i < 240; i++)
+        {
+            // Increment the rotscaled coordinates and remove the fraction
+            int x = (rotscaleX += bgPA[bg - 2]) >> 8;
+            int y = (rotscaleY += bgPC[bg - 2]) >> 8;
+
+            // Don't draw anything on display area overflow
+            if (x < 0 || x >= sizeX || y < 0 || y >= sizeY)
+                continue;
+
+            // Draw a pixel, ignoring transparency
+            uint16_t pixel = core->memory.read<uint16_t>(1, dataBase + (y * sizeX + x) * 2);
+            drawBgPixel(bg, line, i, pixel | BIT(15));
+        }
     }
 
-    // Draw a line
+    // Increment the internal registers at the end of the scanline
+    internalX[bg - 2] += bgPB[bg - 2];
+    internalY[bg - 2] += bgPD[bg - 2];
+}
+
+void Gpu2D::drawLarge(int bg, int line)
+{
+    // Set the initial rotscale coordinates
+    int rotscaleX = internalX[bg - 2] - bgPA[bg - 2];
+    int rotscaleY = internalY[bg - 2] - bgPC[bg - 2];
+
+    // Get the bitmap size
+    int sizeX = ((bgCnt[bg] >> 14) & 0x3) ? 1024 :  512;
+    int sizeY = ((bgCnt[bg] >> 14) & 0x3) ?  512 : 1024;
+
+    // Draw a line of the layer
     for (int i = 0; i < 256; i++)
     {
-        // Calculate the rotscaled coordinates relative to the background
-        int rotscaleX = (internalX[bg - 2] + bgPA[bg - 2] * i) >> 8;
-        int rotscaleY = (internalY[bg - 2] + bgPC[bg - 2] * i) >> 8;
+        // Increment the rotscaled coordinates and remove the fraction
+        int x = (rotscaleX += bgPA[bg - 2]) >> 8;
+        int y = (rotscaleY += bgPC[bg - 2]) >> 8;
 
         // Handle display area overflow
         if (bgCnt[bg] & BIT(13)) // Wraparound
         {
-            rotscaleX %= sizeX; if (rotscaleX < 0) rotscaleX += sizeX;
-            rotscaleY %= sizeY; if (rotscaleY < 0) rotscaleY += sizeY;
+            x &= sizeX - 1;
+            y &= sizeY - 1;
         }
-        else if (rotscaleX < 0 || rotscaleX >= sizeX || rotscaleY < 0 || rotscaleY >= sizeY) // Transparent
+        else if (x < 0 || x >= sizeX || y < 0 || y >= sizeY) // Transparent
         {
             continue;
         }
@@ -838,12 +878,12 @@ void Gpu2D::drawLarge(int bg, int line)
         // A full large bitmap requires 512KB of VRAM, but engine B can only use 128KB
         // For engine B, wrap the 128KB bitmap 4 times to cover the full area
         if (engine == 1)
-            rotscaleY %= sizeY / 4;
+            y &= (sizeY / 4) - 1;
 
-        // Get the palette index for the current pixel
-        uint8_t index = core->memory.read<uint8_t>(0, bgVramAddr + rotscaleY * sizeX + rotscaleX);
+        // Read the palette index for the current pixel
+        uint8_t index = core->memory.read<uint8_t>(0, bgVramAddr + y * sizeX + x);
 
-        // Draw a pixel
+        // Draw a pixel if it isn't transparent
         if (index)
             drawBgPixel(bg, line, i, U8TO16(palette, index * 2) | BIT(15));
     }
