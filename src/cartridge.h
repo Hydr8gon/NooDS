@@ -41,7 +41,7 @@ class Cartridge
         Cartridge(Core *core): core(core) {}
         ~Cartridge();
 
-        virtual void loadRom(std::string path);
+        virtual bool loadRom(std::string path);
         void writeSave();
 
         void trimRom();
@@ -70,7 +70,7 @@ class CartridgeNds: public Cartridge
     public:
         CartridgeNds(Core *core): Cartridge(core) {}
 
-        void loadRom(std::string path);
+        bool loadRom(std::string path);
         void directBoot();
 
         uint16_t readAuxSpiCnt(bool cpu)  { return auxSpiCnt[cpu];  }
@@ -116,7 +116,7 @@ class CartridgeGba: public Cartridge
     public:
         CartridgeGba(Core *core): Cartridge(core) {}
 
-        void loadRom(std::string path);
+        bool loadRom(std::string path);
 
         uint8_t *getRom(uint32_t address)
         {

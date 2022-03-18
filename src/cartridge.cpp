@@ -34,12 +34,12 @@ Cartridge::~Cartridge()
     if (save) delete[] save;
 }
 
-void Cartridge::loadRom(std::string path)
+bool Cartridge::loadRom(std::string path)
 {
     // Attempt to open a ROM file
     romName = path;
     romFile = fopen(romName.c_str(), "rb");
-    if (!romFile) throw ERROR_ROM;
+    if (!romFile) return false;
     fseek(romFile, 0, SEEK_END);
     romSize = ftell(romFile);
     fseek(romFile, 0, SEEK_SET);
@@ -56,6 +56,8 @@ void Cartridge::loadRom(std::string path)
         fread(save, sizeof(uint8_t), saveSize, saveFile);
         fclose(saveFile);
     }
+
+    return true;
 }
 
 void Cartridge::loadRomSection(uint32_t offset, uint32_t size)
@@ -141,9 +143,9 @@ void Cartridge::resizeSave(int newSize, bool dirty)
     mutex.unlock();
 }
 
-void CartridgeNds::loadRom(std::string path)
+bool CartridgeNds::loadRom(std::string path)
 {
-    Cartridge::loadRom(path);
+    bool res = Cartridge::loadRom(path);
 
     // If the ROM is 512MB or smaller, try to load it into memory; otherwise fall back to file-based loading
     if (romSize <= 0x20000000) // 512MB
@@ -188,6 +190,8 @@ void CartridgeNds::loadRom(std::string path)
     // If the save size is unknown, it must be guessed based on how the game uses it
     if (!save)
         saveSize = -1;
+
+    return res;
 }
 
 void CartridgeNds::directBoot()
@@ -916,9 +920,9 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
     return 0xFFFFFFFF;
 }
 
-void CartridgeGba::loadRom(std::string path)
+bool CartridgeGba::loadRom(std::string path)
 {
-    Cartridge::loadRom(path);
+    bool res = Cartridge::loadRom(path);
 
     // Load the ROM into memory
     loadRomSection(0, romSize);
@@ -977,32 +981,34 @@ void CartridgeGba::loadRom(std::string path)
                 {
                     // EEPROM can be either 0.5KB or 8KB, so it must be guessed based on how the game uses it
                     saveSize = -1;
-                    return;
+                    return res;
                 }
 
                 case 1: // SRAM 32KB
                 {
                     LOG("Detected SRAM 32KB save type\n");
                     resizeSave(0x8000, false);
-                    return;
+                    return res;
                 }
 
                 case 2: case 3: // FLASH 64KB
                 {
                     LOG("Detected FLASH 64KB save type\n");
                     resizeSave(0x10000, false);
-                    return;
+                    return res;
                 }
 
                 case 4: // FLASH 128KB
                 {
                     LOG("Detected FLASH 128KB save type\n");
                     resizeSave(0x20000, false);
-                    return;
+                    return res;
                 }
             }
         }
     }
+
+    return res;
 }
 
 uint8_t CartridgeGba::eepromRead()

@@ -47,8 +47,8 @@ class Memory
     public:
         Memory(Core *core): core(core) {};
 
-        void loadBios();
-        void loadGbaBios();
+        bool loadBios();
+        bool loadGbaBios();
 
         void updateMap7(uint32_t start, uint32_t end);
         void updateMap9(uint32_t start, uint32_t end);

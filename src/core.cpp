@@ -54,7 +54,8 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     // Load the NDS BIOS and firmware unless directly booting a GBA ROM
     if (ndsPath != "" || gbaPath == "" || !Settings::getDirectBoot())
     {
-        memory.loadBios();
+        if (!memory.loadBios())
+            throw ERROR_BIOS;
         if (!spi.loadFirmware() && (ndsPath == "" || !Settings::getDirectBoot()))
             throw ERROR_FIRM;
     }
@@ -65,14 +66,15 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     interpreter[0].init();
     interpreter[1].init();
 
+    // Always load the GBA BIOS if possible; require it when booting a GBA ROM
+    if (!memory.loadGbaBios() && (gbaPath != "" && (ndsPath == "" || !Settings::getDirectBoot())))
+        throw ERROR_BIOS;
+
     if (gbaPath != "")
     {
-        // Load the GBA BIOS unless directly booting an NDS ROM
-        if (ndsPath == "" || !Settings::getDirectBoot())
-            memory.loadGbaBios();
-
         // Load a GBA ROM
-        cartridgeGba.loadRom(gbaPath);
+        if (!cartridgeGba.loadRom(gbaPath))
+            throw ERROR_ROM;
 
         // Enable GBA mode right away if direct boot is enabled
         if (ndsPath == "" && Settings::getDirectBoot())
@@ -85,7 +87,8 @@ Core::Core(std::string ndsPath, std::string gbaPath):
     if (ndsPath != "")
     {
         // Load an NDS ROM
-        cartridgeNds.loadRom(ndsPath);
+        if (!cartridgeNds.loadRom(ndsPath))
+            throw ERROR_ROM;
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled
         if (Settings::getDirectBoot())
@@ -203,6 +206,7 @@ void Core::enterGbaMode()
     // Switch to GBA mode
     gbaMode = true;
     runFunc = &Core::runGbaFrame;
+    running.store(false);
 
     // Reset the scheduler and schedule initial tasks for GBA mode
     tasks.clear();

@@ -53,28 +53,32 @@ template <typename T> void VramMapping::write(uint32_t address, T value)
     }
 }
 
-void Memory::loadBios()
+bool Memory::loadBios()
 {
     // Attempt to load the ARM9 BIOS
     FILE *bios9File = fopen(Settings::getBios9Path().c_str(), "rb");
-    if (!bios9File) throw ERROR_BIOS;
+    if (!bios9File) return false;
     fread(bios9, sizeof(uint8_t), 0x1000, bios9File);
     fclose(bios9File);
 
     // Attempt to load the ARM7 BIOS
     FILE *bios7File = fopen(Settings::getBios7Path().c_str(), "rb");
-    if (!bios7File) throw ERROR_BIOS;
+    if (!bios7File) return false;
     fread(bios7, sizeof(uint8_t), 0x4000, bios7File);
     fclose(bios7File);
+
+    return true;
 }
 
-void Memory::loadGbaBios()
+bool Memory::loadGbaBios()
 {
     // Attempt to load the GBA BIOS
     FILE *gbaBiosFile = fopen(Settings::getGbaBiosPath().c_str(), "rb");
-    if (!gbaBiosFile) throw ERROR_BIOS;
+    if (!gbaBiosFile) return false;
     fread(gbaBios, sizeof(uint8_t), 0x4000, gbaBiosFile);
     fclose(gbaBiosFile);
+
+    return true;
 }
 
 void Memory::updateMap9(uint32_t start, uint32_t end)
