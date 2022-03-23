@@ -19,6 +19,7 @@
 
 #include "noo_canvas.h"
 #include "noo_app.h"
+#include "noo_frame.h"
 #include "../settings.h"
 
 #ifdef _WIN32
@@ -36,7 +37,7 @@ EVT_MOTION(NooCanvas::pressScreen)
 EVT_LEFT_UP(NooCanvas::releaseScreen)
 wxEND_EVENT_TABLE()
 
-NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator): wxGLCanvas(frame, wxID_ANY, nullptr), frame(frame), emulator(emulator)
+NooCanvas::NooCanvas(NooFrame *frame): wxGLCanvas(frame, wxID_ANY, nullptr), frame(frame)
 {
     // Prepare the OpenGL context
     context = new wxGLContext(this);
@@ -59,7 +60,7 @@ NooCanvas::NooCanvas(NooFrame *frame, Emulator *emulator): wxGLCanvas(frame, wxI
 void NooCanvas::draw(wxPaintEvent &event)
 {
     // Continuous rendering can prevent the canvas from closing, so only render when needed
-    if (!emulator->core && !display) return;
+    if (!frame->getCore() && !display) return;
 
     SetCurrent(*context);
 
@@ -67,10 +68,10 @@ void NooCanvas::draw(wxPaintEvent &event)
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    if (emulator->core)
+    if (frame->getCore())
     {
         // Update the layout if GBA mode changed
-        bool gba = (emulator->core->isGbaMode() && ScreenLayout::getGbaCrop());
+        bool gba = (frame->getCore()->isGbaMode() && ScreenLayout::getGbaCrop());
         if (gbaMode != gba)
         {
             gbaMode = gba;
@@ -80,7 +81,7 @@ void NooCanvas::draw(wxPaintEvent &event)
         // Emulation is limited by audio, so frames aren't always generated at a consistent rate
         // This can mess up frame pacing at higher refresh rates when frames are ready too soon
         // To solve this, use a software-based swap interval to wait before getting the next frame
-        if (++frameCount >= swapInterval && emulator->core->gpu.getFrame(framebuffer, gba))
+        if (++frameCount >= swapInterval && frame->getCore()->gpu.getFrame(framebuffer, gba))
             frameCount = 0;
 
         // Rotate the texture coordinates
@@ -167,11 +168,11 @@ void NooCanvas::resize(wxSizeEvent &event)
 
     // Prevent resizing smaller than the minimum layout size
     // The minimum size breaks when returning from full screen, but fixes when changing to a different value
-    // As a workaround, the minium size is cleared when returning from full screen and then reset on the next resize
-    if (emulator->frameReset)
+    // As a workaround, the minimum size is cleared when returning from full screen and reset on the next resize
+    if (frameReset)
     {
         frame->SetMinClientSize(wxSize(0, 0));
-        emulator->frameReset = false;
+        frameReset = false;
     }
     else
     {
@@ -212,23 +213,23 @@ void NooCanvas::releaseKey(wxKeyEvent &event)
 void NooCanvas::pressScreen(wxMouseEvent &event)
 {
     // Ensure the left mouse button is clicked
-    if (!emulator->running || !event.LeftIsDown()) return;
+    if (!frame->isRunning() || !event.LeftIsDown()) return;
 
     // Determine the touch position relative to the emulated touch screen
     int touchX = layout.getTouchX(event.GetX(), event.GetY());
     int touchY = layout.getTouchY(event.GetX(), event.GetY());
 
     // Send the touch coordinates to the core
-    emulator->core->input.pressScreen();
-    emulator->core->spi.setTouch(touchX, touchY);
+    frame->getCore()->input.pressScreen();
+    frame->getCore()->spi.setTouch(touchX, touchY);
 }
 
 void NooCanvas::releaseScreen(wxMouseEvent &event)
 {
     // Send a touch release to the core
-    if (emulator->running)
+    if (frame->isRunning())
     {
-        emulator->core->input.releaseScreen();
-        emulator->core->spi.clearTouch();
+        frame->getCore()->input.releaseScreen();
+        frame->getCore()->spi.clearTouch();
     }
 }

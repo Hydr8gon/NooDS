@@ -25,17 +25,14 @@
 
 #include "../core.h"
 
-struct Emulator
-{
-    Core *core = nullptr;
-    bool running = false;
-    bool frameReset = false;
-};
+class NooCanvas;
 
 class NooFrame: public wxFrame
 {
     public:
-        NooFrame(Emulator *emulator, std::string path);
+        NooFrame(std::string path = "");
+
+        void Refresh();
 
         void startCore(bool full);
         void stopCore(bool full);
@@ -43,12 +40,17 @@ class NooFrame: public wxFrame
         void pressKey(int key);
         void releaseKey(int key);
 
-    private:
-        Emulator *emulator;
+        Core *getCore()  { return core;    }
+        bool isRunning() { return running; }
 
+    private:
+        NooCanvas *canvas;
         wxMenu *fileMenu, *systemMenu;
         wxJoystick *joystick;
         wxTimer *timer;
+
+        Core *core = nullptr;
+        bool running = false;
 
         std::string ndsPath, gbaPath;
         std::thread *coreThread = nullptr, *saveThread = nullptr;

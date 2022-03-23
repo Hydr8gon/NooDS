@@ -21,6 +21,7 @@
 #include "input_dialog.h"
 #include "layout_dialog.h"
 #include "noo_app.h"
+#include "noo_canvas.h"
 #include "path_dialog.h"
 #include "save_dialog.h"
 #include "../common/screen_layout.h"
@@ -78,7 +79,7 @@ EVT_DROP_FILES(NooFrame::dropFiles)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
-NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_ANY, "NooDS"), emulator(emulator)
+NooFrame::NooFrame(std::string path): wxFrame(nullptr, wxID_ANY, "NooDS")
 {
     // Set the icon
     wxIcon icon(icon_xpm);
@@ -171,6 +172,12 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
     Centre();
     Show(true);
 
+    // Create and add a canvas for drawing the framebuffer
+    canvas = new NooCanvas(this);
+    wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
+    sizer->Add(canvas, 1, wxEXPAND);
+    SetSizer(sizer);
+
     // Prepare a joystick if one is connected
     joystick = new wxJoystick();
     if (joystick->IsOk())
@@ -197,22 +204,29 @@ NooFrame::NooFrame(Emulator *emulator, std::string path): wxFrame(nullptr, wxID_
         loadRomPath(path);
 }
 
+void NooFrame::Refresh()
+{
+    // Override the refresh function to also update the FPS counter
+    wxFrame::Refresh();
+    SetLabel(running ? wxString::Format("NooDS - %d FPS", core->getFps()) : "NooDS");
+}
+
 void NooFrame::runCore()
 {
     // Run the emulator
-    while (emulator->running)
-        emulator->core->runFrame();
+    while (running)
+        core->runFrame();
 }
 
 void NooFrame::checkSave()
 {
-    while (emulator->running)
+    while (running)
     {
         // Check save files every few seconds and update them if changed
         std::unique_lock<std::mutex> lock(mutex);
-        cond.wait_for(lock, std::chrono::seconds(3), [&]{ return !emulator->running; });
-        emulator->core->cartridgeNds.writeSave();
-        emulator->core->cartridgeGba.writeSave();
+        cond.wait_for(lock, std::chrono::seconds(3), [&]{ return !running; });
+        core->cartridgeNds.writeSave();
+        core->cartridgeGba.writeSave();
     }
 }
 
@@ -226,7 +240,7 @@ void NooFrame::startCore(bool full)
         try
         {
             // Attempt to boot the core
-            emulator->core = new Core(ndsPath, gbaPath);
+            core = new Core(ndsPath, gbaPath);
         }
         catch (CoreError e)
         {
@@ -251,7 +265,7 @@ void NooFrame::startCore(bool full)
         }
     }
 
-    if (emulator->core)
+    if (core)
     {
         systemMenu->SetLabel(PAUSE, "&Pause");
 
@@ -266,7 +280,7 @@ void NooFrame::startCore(bool full)
         systemMenu->Enable(STOP,    true);
 
         // Start the threads
-        emulator->running = true;
+        running = true;
         coreThread = new std::thread(&NooFrame::runCore, this);
         saveThread = new std::thread(&NooFrame::checkSave, this);
     }
@@ -277,7 +291,7 @@ void NooFrame::stopCore(bool full)
     // Signal for the threads to stop if the core is running
     {
         std::lock_guard<std::mutex> guard(mutex);
-        emulator->running = false;
+        running = false;
         cond.notify_one();
     }
 
@@ -309,8 +323,8 @@ void NooFrame::stopCore(bool full)
         systemMenu->Enable(STOP,      false);
 
         // Shut down the core
-        if (emulator->core) delete emulator->core;
-        emulator->core = nullptr;
+        if (core) delete core;
+        core = nullptr;
     }
 }
 
@@ -334,15 +348,15 @@ void NooFrame::pressKey(int key)
         {
             // Toggle full screen mode
             ShowFullScreen(fullScreen = !fullScreen);
-            if (!fullScreen) emulator->frameReset = true;
+            if (!fullScreen) canvas->resetFrame();
             break;
         }
 
         default: // Core input
         {
             // Send a key press to the core
-            if (emulator->running)
-                emulator->core->input.pressKey(key);
+            if (running)
+                core->input.pressKey(key);
             break;
         }
     }
@@ -367,8 +381,8 @@ void NooFrame::releaseKey(int key)
         default: // Core input
         {
             // Send a key release to the core
-            if (emulator->running)
-                emulator->core->input.releaseKey(key);
+            if (running)
+                core->input.releaseKey(key);
             break;
         }
     }
@@ -423,7 +437,7 @@ void NooFrame::bootFirmware(wxCommandEvent &event)
 
 void NooFrame::trimRom(wxCommandEvent &event)
 {
-    bool gba = emulator->core->isGbaMode();
+    bool gba = core->isGbaMode();
 
     // Confirm that the current ROM should be trimmed
     wxMessageDialog dialog(this, "Trim the current ROM to save space?", "Trimming ROM", wxYES_NO | wxICON_NONE);
@@ -433,7 +447,7 @@ void NooFrame::trimRom(wxCommandEvent &event)
 
         // Pause the core for safety and trim the ROM
         stopCore(false);
-        Cartridge *cartridge = gba ? (Cartridge*)&emulator->core->cartridgeGba : (Cartridge*)&emulator->core->cartridgeNds;
+        Cartridge *cartridge = gba ? (Cartridge*)&core->cartridgeGba : (Cartridge*)&core->cartridgeNds;
         oldSize = cartridge->getRomSize();
         cartridge->trimRom();
         newSize = cartridge->getRomSize();
@@ -452,7 +466,7 @@ void NooFrame::trimRom(wxCommandEvent &event)
 void NooFrame::changeSave(wxCommandEvent &event)
 {
     // Show the save dialog
-    SaveDialog saveDialog(this, emulator);
+    SaveDialog saveDialog(this);
     saveDialog.ShowModal();
 }
 
@@ -465,7 +479,7 @@ void NooFrame::quit(wxCommandEvent &event)
 void NooFrame::pause(wxCommandEvent &event)
 {
     // Pause or resume the core
-    if (emulator->running)
+    if (running)
         stopCore(false);
     else
         startCore(false);

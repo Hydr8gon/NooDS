@@ -22,12 +22,13 @@
 
 #include <wx/wx.h>
 
-#include "noo_frame.h"
+class NooFrame;
+class Cartridge;
 
 class SaveDialog: public wxDialog
 {
     public:
-        SaveDialog(NooFrame *frame, Emulator *emulator);
+        SaveDialog(NooFrame *frame);
 
     private:
         NooFrame *frame;

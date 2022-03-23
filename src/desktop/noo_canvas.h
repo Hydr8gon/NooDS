@@ -24,23 +24,26 @@
 #include <wx/wx.h>
 #include <wx/glcanvas.h>
 
-#include "noo_frame.h"
 #include "../common/screen_layout.h"
+
+class NooFrame;
 
 class NooCanvas: public wxGLCanvas
 {
     public:
-        NooCanvas(NooFrame *frame, Emulator *emulator);
+        NooCanvas(NooFrame *frame);
+
+        void resetFrame() { frameReset = true; }
 
     private:
         NooFrame *frame;
-        Emulator *emulator;
         wxGLContext *context;
 
         ScreenLayout layout;
         uint32_t framebuffer[256 * 192 * 2] = {};
         bool gbaMode = false;
         bool display = true;
+        bool frameReset = false;
 
         int frameCount = 0;
         int swapInterval = 0;

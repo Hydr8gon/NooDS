@@ -21,6 +21,7 @@
 #include <wx/stdpaths.h>
 
 #include "noo_app.h"
+#include "noo_frame.h"
 #include "../common/screen_layout.h"
 #include "../settings.h"
 
@@ -87,13 +88,8 @@ bool NooApp::OnInit()
         }
     }
 
-    // Set up the window
-    // If a filename is passed through the command line, pass it along
-    frame = new NooFrame(&emulator, ((argc > 1) ? argv[1].ToStdString() : ""));
-    canvas = new NooCanvas(frame, &emulator);
-    wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
-    sizer->Add(canvas, 1, wxEXPAND);
-    frame->SetSizer(sizer);
+    // Create the frame, passing along a command line filename if given
+    frame = new NooFrame((argc > 1) ? argv[1].ToStdString() : "");
 
     // Set up the update timer
     wxTimer *timer = new wxTimer(this, UPDATE);
@@ -102,7 +98,7 @@ bool NooApp::OnInit()
     // Start the audio service
     PaStream *stream;
     Pa_Initialize();
-    Pa_OpenDefaultStream(&stream, 0, 2, paInt16, 48000, 1024, audioCallback, &emulator);
+    Pa_OpenDefaultStream(&stream, 0, 2, paInt16, 48000, 1024, audioCallback, frame);
     Pa_StartStream(stream);
 
     return true;
@@ -110,23 +106,22 @@ bool NooApp::OnInit()
 
 void NooApp::update(wxTimerEvent &event)
 {
-    // Refresh the display and update the FPS counter
-    canvas->Refresh();
-    frame->SetLabel(emulator.running ? wxString::Format("NooDS - %d FPS", emulator.core->getFps()) : "NooDS");
+    // Continuously refresh the frame
+    frame->Refresh();
 }
 
 int NooApp::audioCallback(const void *in, void *out, unsigned long frames,
                           const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data)
 {
     int16_t *buffer = (int16_t*)out;
-    Emulator *emulator = (Emulator*)data;
+    Core *core = ((NooFrame*)data)->getCore();
 
-    if (emulator->core)
+    if (core)
     {
         // The NDS sample rate is 32768Hz, and PortAudio supports this frequency directly
         // It causes issues on some systems though, so a more standard frequency of 48000Hz is used instead
         // Get 699 samples at 32768Hz, which is equal to approximately 1024 samples at 48000Hz
-        uint32_t *original = emulator->core->spu.getSamples(699);
+        uint32_t *original = core->spu.getSamples(699);
 
         // Stretch the 699 samples out to 1024 samples in the audio buffer
         for (int i = 0; i < frames; i++)
