@@ -21,6 +21,9 @@
 #define WIFI_H
 
 #include <cstdint>
+#include <functional>
+#include <mutex>
+#include <vector>
 
 class Core;
 
@@ -29,29 +32,38 @@ class Wifi
     public:
         Wifi(Core *core);
 
-        uint16_t readWModeWep()          { return wModeWep;        }
-        uint16_t readWIrf()              { return wIrf;            }
-        uint16_t readWIe()               { return wIe;             }
-        uint16_t readWMacaddr(int index) { return wMacaddr[index]; }
-        uint16_t readWBssid(int index)   { return wBssid[index];   }
-        uint16_t readWAidFull()          { return wAidFull;        }
-        uint16_t readWPowerstate()       { return wPowerstate;     }
-        uint16_t readWPowerforce()       { return wPowerforce;     }
-        uint16_t readWRxbufBegin()       { return wRxbufBegin;     }
-        uint16_t readWRxbufEnd()         { return wRxbufEnd;       }
-        uint16_t readWRxbufWrAddr()      { return wRxbufWrAddr;    }
-        uint16_t readWRxbufRdAddr()      { return wRxbufRdAddr;    }
-        uint16_t readWRxbufReadcsr()     { return wRxbufReadcsr;   }
-        uint16_t readWRxbufGap()         { return wRxbufGap;       }
-        uint16_t readWRxbufGapdisp()     { return wRxbufGapdisp;   }
-        uint16_t readWRxbufCount()       { return wRxbufCount;     }
-        uint16_t readWTxbufWrAddr()      { return wTxbufWrAddr;    }
-        uint16_t readWTxbufCount()       { return wTxbufCount;     }
-        uint16_t readWTxbufGap()         { return wTxbufGap;       }
-        uint16_t readWTxbufGapdisp()     { return wTxbufGapdisp;   }
-        uint16_t readWConfig(int index)  { return wConfig[index];  }
-        uint16_t readWBeaconcount2()     { return wBeaconcount2;   }
-        uint16_t readWBbRead()           { return wBbRead;         }
+        bool shouldSchedule() { return !connections.empty() && !scheduled; }
+        void scheduleInit();
+
+        void addConnection(Core *core);
+        void remConnection(Core *core);
+
+        uint16_t readWModeWep()           { return wModeWep;         }
+        uint16_t readWIrf()               { return wIrf;             }
+        uint16_t readWIe()                { return wIe;              }
+        uint16_t readWMacaddr(int index)  { return wMacaddr[index];  }
+        uint16_t readWBssid(int index)    { return wBssid[index];    }
+        uint16_t readWAidFull()           { return wAidFull;         }
+        uint16_t readWRxcnt()             { return wRxcnt;           }
+        uint16_t readWPowerstate()        { return wPowerstate;      }
+        uint16_t readWPowerforce()        { return wPowerforce;      }
+        uint16_t readWRxbufBegin()        { return wRxbufBegin;      }
+        uint16_t readWRxbufEnd()          { return wRxbufEnd;        }
+        uint16_t readWRxbufWrcsr()        { return wRxbufWrcsr;      }
+        uint16_t readWRxbufWrAddr()       { return wRxbufWrAddr;     }
+        uint16_t readWRxbufRdAddr()       { return wRxbufRdAddr;     }
+        uint16_t readWRxbufReadcsr()      { return wRxbufReadcsr;    }
+        uint16_t readWRxbufGap()          { return wRxbufGap;        }
+        uint16_t readWRxbufGapdisp()      { return wRxbufGapdisp;    }
+        uint16_t readWRxbufCount()        { return wRxbufCount;      }
+        uint16_t readWTxbufWrAddr()       { return wTxbufWrAddr;     }
+        uint16_t readWTxbufCount()        { return wTxbufCount;      }
+        uint16_t readWTxbufGap()          { return wTxbufGap;        }
+        uint16_t readWTxbufGapdisp()      { return wTxbufGapdisp;    }
+        uint16_t readWTxbufLoc(int index) { return wTxbufLoc[index]; }
+        uint16_t readWConfig(int index)   { return wConfig[index];   }
+        uint16_t readWBeaconcount2()      { return wBeaconcount2;    }
+        uint16_t readWBbRead()            { return wBbRead;          }
         uint16_t readWRxbufRdData();
 
         void writeWModeWep(uint16_t mask, uint16_t value);
@@ -60,6 +72,7 @@ class Wifi
         void writeWMacaddr(int index, uint16_t mask, uint16_t value);
         void writeWBssid(int index, uint16_t mask, uint16_t value);
         void writeWAidFull(uint16_t mask, uint16_t value);
+        void writeWRxcnt(uint16_t mask, uint16_t value);
         void writeWPowerstate(uint16_t mask, uint16_t value);
         void writeWPowerforce(uint16_t mask, uint16_t value);
         void writeWRxbufBegin(uint16_t mask, uint16_t value);
@@ -69,6 +82,7 @@ class Wifi
         void writeWRxbufReadcsr(uint16_t mask, uint16_t value);
         void writeWRxbufGap(uint16_t mask, uint16_t value);
         void writeWRxbufGapdisp(uint16_t mask, uint16_t value);
+        void writeWTxbufLoc(int index, uint16_t mask, uint16_t value);
         void writeWRxbufCount(uint16_t mask, uint16_t value);
         void writeWTxbufWrAddr(uint16_t mask, uint16_t value);
         void writeWTxbufCount(uint16_t mask, uint16_t value);
@@ -84,6 +98,11 @@ class Wifi
     private:
         Core *core;
 
+        std::vector<Wifi*> connections;
+        std::vector<uint16_t*> packets;
+        std::mutex mutex;
+        bool scheduled = false;
+
         uint8_t bbRegisters[0x100] = {};
 
         uint16_t wModeWep = 0;
@@ -92,15 +111,18 @@ class Wifi
         uint16_t wMacaddr[3] = {};
         uint16_t wBssid[3] = {};
         uint16_t wAidFull = 0;
+        uint16_t wRxcnt = 0;
         uint16_t wPowerstate = 0x0200;
         uint16_t wPowerforce = 0;
         uint16_t wRxbufBegin = 0;
         uint16_t wRxbufEnd = 0;
+        uint16_t wRxbufWrcsr = 0;
         uint16_t wRxbufWrAddr = 0;
         uint16_t wRxbufRdAddr = 0;
         uint16_t wRxbufReadcsr = 0;
         uint16_t wRxbufGap = 0;
         uint16_t wRxbufGapdisp = 0;
+        uint16_t wTxbufLoc[5] = {};
         uint16_t wRxbufCount = 0;
         uint16_t wTxbufWrAddr = 0;
         uint16_t wTxbufCount = 0;
@@ -117,7 +139,10 @@ class Wifi
             0x0016, 0x0016, 0x162C, 0x0204, 0x0058
         };
 
+        std::function<void()> processPacketsTask;
+
         void sendInterrupt(int bit);
+        void processPackets();
 };
 
 #endif // WIFI_H

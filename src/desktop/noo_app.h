@@ -33,6 +33,9 @@ class NooApp: public wxApp
         void createFrame();
         void removeFrame(int number);
 
+        void connectCore(int number);
+        void disconnCore(int number);
+
         static int getScreenFilter()     { return screenFilter;    }
         static int getKeyBind(int index) { return keyBinds[index]; }
 

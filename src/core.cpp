@@ -238,6 +238,10 @@ void Core::endFrame()
         fpsCount = 0;
         lastFpsTime = std::chrono::steady_clock::now();
     }
+
+    // Schedule packet processing only when needed
+    if (wifi.shouldSchedule())
+        wifi.scheduleInit();
 }
 
 FORCE_INLINE int Interpreter::runOpcode()

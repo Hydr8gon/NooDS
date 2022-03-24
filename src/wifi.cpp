@@ -17,6 +17,8 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <algorithm>
+
 #include "wifi.h"
 #include "core.h"
 
@@ -26,6 +28,44 @@ Wifi::Wifi(Core *core): core(core)
     bbRegisters[0x00] = 0x6D;
     bbRegisters[0x5D] = 0x01;
     bbRegisters[0x64] = 0xFF;
+
+    // Prepare tasks to be used with the scheduler
+    processPacketsTask = std::bind(&Wifi::processPackets, this);
+}
+
+void Wifi::scheduleInit()
+{
+    // Schedule packet processing for as long as there are connections
+    core->schedule(Task(&processPacketsTask, 1024));
+    scheduled = true;
+}
+
+void Wifi::addConnection(Core *core)
+{
+    // Add an external core to this one's connection list
+    mutex.lock();
+    connections.push_back(&core->wifi);
+    mutex.unlock();
+
+    // Add this core to the external one's connection list
+    core->wifi.mutex.lock();
+    core->wifi.connections.push_back(this);
+    core->wifi.mutex.unlock();
+}
+
+void Wifi::remConnection(Core *core)
+{
+    // Remove an external core from this one's connection list
+    mutex.lock();
+    auto position = std::find(connections.begin(), connections.end(), &core->wifi);
+    connections.erase(position);
+    mutex.unlock();
+
+    // Remove this core from the external one's connection list
+    core->wifi.mutex.lock();
+    position = std::find(core->wifi.connections.begin(), core->wifi.connections.end(), this);
+    core->wifi.connections.erase(position);
+    core->wifi.mutex.unlock();
 }
 
 void Wifi::sendInterrupt(int bit)
@@ -35,6 +75,45 @@ void Wifi::sendInterrupt(int bit)
         core->interpreter[1].sendInterrupt(24);
 
     wIrf |= BIT(bit);
+}
+
+void Wifi::processPackets()
+{
+    mutex.lock();
+
+    // Write all queued packets to the circular buffer
+    for (size_t i = 0; i < packets.size(); i++)
+    {
+        uint16_t size = (packets[i][4] + 12) / 2;
+
+        for (size_t j = 0; j < size; j++)
+        {
+            // Write a half-word of the packet to memory
+            core->memory.write<uint16_t>(1, 0x4804000 + (wRxbufWrcsr << 1), packets[i][j]);
+
+            // Increment the circular buffer address
+            if ((wRxbufBegin & 0x1FFE) != (wRxbufEnd & 0x1FFE))
+            {
+                wRxbufWrcsr++;
+                wRxbufWrcsr = (wRxbufBegin & 0x1FFE) + (wRxbufWrcsr - (wRxbufBegin & 0x1FFE)) % ((wRxbufEnd & 0x1FFE) - (wRxbufBegin & 0x1FFE));
+                wRxbufWrcsr &= 0x1FFF;
+            }
+        }
+
+        delete[] packets[i];
+
+        // Trigger a receive complete interrupt
+        sendInterrupt(0);
+    }
+
+    // Reschedule the task as long as there are still connections
+    if (connections.empty())
+        scheduled = false;
+    else
+        core->schedule(Task(&processPacketsTask, 1024));
+
+    packets.clear();
+    mutex.unlock();
 }
 
 void Wifi::writeWModeWep(uint16_t mask, uint16_t value)
@@ -78,6 +157,17 @@ void Wifi::writeWAidFull(uint16_t mask, uint16_t value)
     // Write to the W_AID_FULL register
     mask &= 0x07FF;
     wAidFull = (wAidFull & ~mask) | (value & mask);
+}
+
+void Wifi::writeWRxcnt(uint16_t mask, uint16_t value)
+{
+    // Write to the W_RXCNT register
+    mask &= 0xFF0E;
+    wRxcnt = (wRxcnt & ~mask) | (value & mask);
+
+    // Latch W_RXBUF_WR_ADDR to W_RXBUF_WRCSR
+    if (value & BIT(0))
+        wRxbufWrcsr = wRxbufWrAddr;
 }
 
 void Wifi::writeWPowerstate(uint16_t mask, uint16_t value)
@@ -130,7 +220,7 @@ void Wifi::writeWRxbufRdAddr(uint16_t mask, uint16_t value)
 
 void Wifi::writeWRxbufReadcsr(uint16_t mask, uint16_t value)
 {
-    // Write to the W_RXBUF_RDCSR register
+    // Write to the W_RXBUF_READCSR register
     mask &= 0x0FFF;
     wRxbufReadcsr = (wRxbufReadcsr & ~mask) | (value & mask);
 }
@@ -198,6 +288,44 @@ void Wifi::writeWTxbufGapdisp(uint16_t mask, uint16_t value)
     // Write to the W_TXBUF_GAPDISP register
     mask &= 0x0FFF;
     wTxbufGapdisp = (wTxbufGapdisp & ~mask) | (value & mask);
+}
+
+void Wifi::writeWTxbufLoc(int index, uint16_t mask, uint16_t value)
+{
+    // Write to one of the W_TXBUF_[BEACON,CMD,LOC1,LOC2,LOC3] registers
+    mask &= 0x7FFF;
+    wTxbufLoc[index] = (wTxbufLoc[index] & ~mask) | (value & mask);
+
+    // Send a packet to connected cores if triggered
+    if (value & BIT(15))
+    {
+        uint16_t address = (wTxbufLoc[index] & 0xFFF) << 1;
+        uint16_t size = core->memory.read<uint16_t>(1, 0x4804000 + address + 0x0A) + 8;
+        LOG("Sending packet on channel %d with size 0x%X\n", index, size);
+
+        mutex.lock();
+
+        for (size_t i = 0; i < connections.size(); i++)
+        {
+            // Read the packet from memory
+            uint16_t *data = new uint16_t[size / 2];
+            for (size_t j = 0; j < size; j += 2)
+                data[j / 2] = core->memory.read<uint16_t>(1, 0x4804000 + address + j);
+
+            // Set the packet size in the outgoing header
+            data[4] = size - 12;
+
+            // Add the packet to the queue
+            connections[i]->mutex.lock();
+            connections[i]->packets.push_back(data);
+            connections[i]->mutex.unlock();
+        }
+
+        mutex.unlock();
+
+        // Trigger a transmit complete interrupt
+        sendInterrupt(1);
+    }
 }
 
 void Wifi::writeWConfig(int index, uint16_t mask, uint16_t value)

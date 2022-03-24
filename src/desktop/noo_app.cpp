@@ -123,6 +123,28 @@ void NooApp::removeFrame(int number)
     frames[number] = nullptr;
 }
 
+void NooApp::connectCore(int number)
+{
+    // Connect a frame's core to all other active cores
+    for (int i = 0; i < MAX_FRAMES; i++)
+    {
+        if (!frames[i] || i == number) continue;
+        if (Core *core = frames[i]->getCore())
+            core->wifi.addConnection(frames[number]->getCore());
+    }
+}
+
+void NooApp::disconnCore(int number)
+{
+    // Disconnect a frame's core from all other active cores
+    for (int i = 0; i < MAX_FRAMES; i++)
+    {
+        if (!frames[i] || i == number) continue;
+        if (Core *core = frames[i]->getCore())
+            core->wifi.remConnection(frames[number]->getCore());
+    }
+}
+
 void NooApp::update(wxTimerEvent &event)
 {
     // Continuously refresh the frames

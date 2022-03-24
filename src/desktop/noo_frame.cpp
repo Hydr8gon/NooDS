@@ -251,6 +251,7 @@ void NooFrame::startCore(bool full)
         {
             // Attempt to boot the core
             core = new Core(ndsPath, gbaPath, number);
+            app->connectCore(number);
         }
         catch (CoreError e)
         {
@@ -333,8 +334,12 @@ void NooFrame::stopCore(bool full)
         systemMenu->Enable(STOP,      false);
 
         // Shut down the core
-        if (core) delete core;
-        core = nullptr;
+        if (core)
+        {
+            app->disconnCore(number);
+            delete core;
+            core = nullptr;
+        }
     }
 }
 
