@@ -25,12 +25,13 @@
 
 #include "../core.h"
 
+class NooApp;
 class NooCanvas;
 
 class NooFrame: public wxFrame
 {
     public:
-        NooFrame(std::string path = "");
+        NooFrame(NooApp *app, int number = 0, std::string path = "");
 
         void Refresh();
 
@@ -44,11 +45,13 @@ class NooFrame: public wxFrame
         bool isRunning() { return running; }
 
     private:
+        NooApp *app;
         NooCanvas *canvas;
         wxMenu *fileMenu, *systemMenu;
         wxJoystick *joystick;
         wxTimer *timer;
 
+        int number = 0;
         Core *core = nullptr;
         bool running = false;
 
@@ -73,6 +76,7 @@ class NooFrame: public wxFrame
         void pause(wxCommandEvent &event);
         void restart(wxCommandEvent &event);
         void stop(wxCommandEvent &event);
+        void addSystem(wxCommandEvent &event);
         void pathSettings(wxCommandEvent &event);
         void inputSettings(wxCommandEvent &event);
         void layoutSettings(wxCommandEvent &event);

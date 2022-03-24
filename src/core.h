@@ -66,7 +66,7 @@ struct Task
 class Core
 {
     public:
-        Core(std::string ndsPath = "", std::string gbaPath = "");
+        Core(std::string ndsPath = "", std::string gbaPath = "", int number = 0);
 
         void runFrame() { (this->*runFunc)(); }
 

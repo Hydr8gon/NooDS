@@ -88,8 +88,8 @@ bool NooApp::OnInit()
         }
     }
 
-    // Create the frame, passing along a command line filename if given
-    frame = new NooFrame((argc > 1) ? argv[1].ToStdString() : "");
+    // Create the initial frame, passing along a command line filename if given
+    frames[0] = new NooFrame(this, 0, (argc > 1) ? argv[1].ToStdString() : "");
 
     // Set up the update timer
     wxTimer *timer = new wxTimer(this, UPDATE);
@@ -98,45 +98,79 @@ bool NooApp::OnInit()
     // Start the audio service
     PaStream *stream;
     Pa_Initialize();
-    Pa_OpenDefaultStream(&stream, 0, 2, paInt16, 48000, 1024, audioCallback, frame);
+    Pa_OpenDefaultStream(&stream, 0, 2, paInt16, 48000, 1024, audioCallback, frames);
     Pa_StartStream(stream);
 
     return true;
 }
 
-void NooApp::update(wxTimerEvent &event)
+void NooApp::createFrame()
 {
-    // Continuously refresh the frame
-    frame->Refresh();
+    // Create a new frame using the lowest free instance number
+    for (int i = 0; i < MAX_FRAMES; i++)
+    {
+        if (!frames[i])
+        {
+            frames[i] = new NooFrame(this, i);
+            return;
+        }
+    }
 }
 
-int NooApp::audioCallback(const void *in, void *out, unsigned long frames,
+void NooApp::removeFrame(int number)
+{
+    // Free an instance number; this should be done on frame destruction
+    frames[number] = nullptr;
+}
+
+void NooApp::update(wxTimerEvent &event)
+{
+    // Continuously refresh the frames
+    for (size_t i = 0; i < MAX_FRAMES; i++)
+    {
+        if (frames[i])
+            frames[i]->Refresh();
+    }
+}
+
+int NooApp::audioCallback(const void *in, void *out, unsigned long count,
                           const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data)
 {
     int16_t *buffer = (int16_t*)out;
-    Core *core = ((NooFrame*)data)->getCore();
+    NooFrame **frames = (NooFrame**)data;
+    uint32_t *original = nullptr;
 
-    if (core)
+    // Get samples from each instance so frame limiting is enforced
+    // Only the lowest instance number's samples are played; the rest are discarded
+    for (size_t i = 0; i < MAX_FRAMES; i++)
     {
-        // The NDS sample rate is 32768Hz, and PortAudio supports this frequency directly
-        // It causes issues on some systems though, so a more standard frequency of 48000Hz is used instead
-        // Get 699 samples at 32768Hz, which is equal to approximately 1024 samples at 48000Hz
-        uint32_t *original = core->spu.getSamples(699);
+        if (!frames[i]) continue;
+        if (Core *core = frames[i]->getCore())
+        {
+            uint32_t *samples = core->spu.getSamples(699);
+            if (!original)
+                original = samples;
+            else
+                delete[] samples;
+        }
+    }
 
-        // Stretch the 699 samples out to 1024 samples in the audio buffer
-        for (int i = 0; i < frames; i++)
+    if (original)
+    {
+        // The NDS sample rate is 32768Hz, but it causes issues on some systems, so 48000Hz is used instead
+        // Stretch 699 samples at 32768Hz to approximately 1024 samples at 48000Hz
+        for (int i = 0; i < count; i++)
         {
             uint32_t sample = original[i * 699 / 1024];
             buffer[i * 2 + 0] = sample >>  0;
             buffer[i * 2 + 1] = sample >> 16;
         }
-
         delete[] original;
     }
     else
     {
         // Play silence if the emulator isn't running
-        memset(buffer, 0, frames * sizeof(uint32_t));
+        memset(buffer, 0, count * sizeof(uint32_t));
     }
 
     return 0;

@@ -23,11 +23,16 @@
 #include <portaudio.h>
 #include <wx/wx.h>
 
+#define MAX_FRAMES 8
+
 class NooFrame;
 
 class NooApp: public wxApp
 {
     public:
+        void createFrame();
+        void removeFrame(int number);
+
         static int getScreenFilter()     { return screenFilter;    }
         static int getKeyBind(int index) { return keyBinds[index]; }
 
@@ -35,17 +40,17 @@ class NooApp: public wxApp
         static void setKeyBind(int index, int value) { keyBinds[index] = value; }
 
     private:
-        NooFrame *frame;
+        NooFrame *frames[MAX_FRAMES] = {};
 
         static int screenFilter;
         static int keyBinds[14];
 
         bool OnInit();
 
-        static int audioCallback(const void *in, void *out, unsigned long frames,
-                                 const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
-
         void update(wxTimerEvent &event);
+
+        static int audioCallback(const void *in, void *out, unsigned long count,
+                                 const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
 
         wxDECLARE_EVENT_TABLE();
 };

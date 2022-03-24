@@ -38,6 +38,7 @@ enum FrameEvent
     PAUSE,
     RESTART,
     STOP,
+    ADD_SYSTEM,
     PATH_SETTINGS,
     INPUT_BINDINGS,
     SCREEN_LAYOUT,
@@ -62,6 +63,7 @@ EVT_MENU(QUIT,           NooFrame::quit)
 EVT_MENU(PAUSE,          NooFrame::pause)
 EVT_MENU(RESTART,        NooFrame::restart)
 EVT_MENU(STOP,           NooFrame::stop)
+EVT_MENU(ADD_SYSTEM,     NooFrame::addSystem)
 EVT_MENU(PATH_SETTINGS,  NooFrame::pathSettings)
 EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
 EVT_MENU(SCREEN_LAYOUT,  NooFrame::layoutSettings)
@@ -79,7 +81,8 @@ EVT_DROP_FILES(NooFrame::dropFiles)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
-NooFrame::NooFrame(std::string path): wxFrame(nullptr, wxID_ANY, "NooDS")
+NooFrame::NooFrame(NooApp *app, int number, std::string path):
+    wxFrame(nullptr, wxID_ANY, "NooDS"), app(app), number(number)
 {
     // Set the icon
     wxIcon icon(icon_xpm);
@@ -97,9 +100,11 @@ NooFrame::NooFrame(std::string path): wxFrame(nullptr, wxID_ANY, "NooDS")
 
     // Set up the System menu
     systemMenu = new wxMenu();
-    systemMenu->Append(PAUSE,   "&Resume");
-    systemMenu->Append(RESTART, "&Restart");
-    systemMenu->Append(STOP,    "&Stop");
+    systemMenu->Append(PAUSE,      "&Resume");
+    systemMenu->Append(RESTART,    "&Restart");
+    systemMenu->Append(STOP,       "&Stop");
+    systemMenu->AppendSeparator();
+    systemMenu->Append(ADD_SYSTEM, "&Add System");
 
     // Disable some menu items until the core is running
     fileMenu->Enable(TRIM_ROM,    false);
@@ -140,15 +145,15 @@ NooFrame::NooFrame(std::string path): wxFrame(nullptr, wxID_ANY, "NooDS")
 
     // Set up the Settings menu
     wxMenu *settingsMenu = new wxMenu();
-    settingsMenu->Append(PATH_SETTINGS,  "&Path Settings");
-    settingsMenu->Append(INPUT_BINDINGS, "&Input Bindings");
-    settingsMenu->Append(SCREEN_LAYOUT,  "&Screen Layout");
+    settingsMenu->Append(PATH_SETTINGS,        "&Path Settings");
+    settingsMenu->Append(INPUT_BINDINGS,       "&Input Bindings");
+    settingsMenu->Append(SCREEN_LAYOUT,        "&Screen Layout");
     settingsMenu->AppendSeparator();
     settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
-    settingsMenu->AppendSubMenu(fpsLimiter, "&FPS Limiter");
+    settingsMenu->AppendSubMenu(fpsLimiter,    "&FPS Limiter");
     settingsMenu->AppendSeparator();
     settingsMenu->AppendCheckItem(THREADED_2D, "&Threaded 2D");
-    settingsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
+    settingsMenu->AppendSubMenu(threaded3D,    "&Threaded 3D");
 
     // Set the current values of the checkboxes
     settingsMenu->Check(DIRECT_BOOT, Settings::getDirectBoot());
@@ -156,9 +161,10 @@ NooFrame::NooFrame(std::string path): wxFrame(nullptr, wxID_ANY, "NooDS")
 
     // Set up the menu bar
     wxMenuBar *menuBar = new wxMenuBar();
-    menuBar->Append(fileMenu,     "&File");
-    menuBar->Append(systemMenu,   "&System");
-    menuBar->Append(settingsMenu, "&Settings");
+    menuBar->Append(fileMenu,   "&File");
+    menuBar->Append(systemMenu, "&System");
+    if (number == 0) // Only show settings in the main instance
+        menuBar->Append(settingsMenu, "&Settings");
     SetMenuBar(menuBar);
 
     // Set the initial window size based on the current screen layout
@@ -206,9 +212,13 @@ NooFrame::NooFrame(std::string path): wxFrame(nullptr, wxID_ANY, "NooDS")
 
 void NooFrame::Refresh()
 {
-    // Override the refresh function to also update the FPS counter
     wxFrame::Refresh();
-    SetLabel(running ? wxString::Format("NooDS - %d FPS", core->getFps()) : "NooDS");
+
+    // Override the refresh function to also update the FPS counter
+    wxString label = "NooDS";
+    if (number)  label += wxString::Format(" (%d)", number + 1);
+    if (running) label += wxString::Format(" - %d FPS", core->getFps());
+    SetLabel(label);
 }
 
 void NooFrame::runCore()
@@ -240,7 +250,7 @@ void NooFrame::startCore(bool full)
         try
         {
             // Attempt to boot the core
-            core = new Core(ndsPath, gbaPath);
+            core = new Core(ndsPath, gbaPath, number);
         }
         catch (CoreError e)
         {
@@ -497,6 +507,12 @@ void NooFrame::stop(wxCommandEvent &event)
     stopCore(true);
 }
 
+void NooFrame::addSystem(wxCommandEvent &event)
+{
+    // Create a new emulator instance
+    app->createFrame();
+}
+
 void NooFrame::pathSettings(wxCommandEvent &event)
 {
     // Show the path settings dialog
@@ -625,5 +641,6 @@ void NooFrame::close(wxCloseEvent &event)
 {
     // Properly shut down the emulator
     stopCore(true);
+    app->removeFrame(number);
     event.Skip(true);
 }

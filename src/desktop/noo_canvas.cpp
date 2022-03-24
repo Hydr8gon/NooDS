@@ -179,6 +179,8 @@ void NooCanvas::resize(wxSizeEvent &event)
         frame->SetMinClientSize(wxSize(layout.getMinWidth(), layout.getMinHeight()));
     }
 
+    SetCurrent(*context);
+
     // Update the display dimensions
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();

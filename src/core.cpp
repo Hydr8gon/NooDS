@@ -24,9 +24,9 @@
 #include "core.h"
 #include "settings.h"
 
-Core::Core(std::string ndsPath, std::string gbaPath):
-    cartridgeNds(this),
-    cartridgeGba(this),
+Core::Core(std::string ndsPath, std::string gbaPath, int number):
+    cartridgeNds(this, number),
+    cartridgeGba(this, number),
     cp15(this),
     divSqrt(this),
     dldi(this),
