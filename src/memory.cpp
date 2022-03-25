@@ -1230,6 +1230,8 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4800077: base -= 0x4800076; size = 2; data = core->wifi.readWTxbufGapdisp();       break; // W_TXBUF_GAPDISP
             case 0x4800080:
             case 0x4800081: base -= 0x4800080; size = 2; data = core->wifi.readWTxbufLoc(0);          break; // W_TXBUF_BEACON
+            case 0x480008C:
+            case 0x480008D: base -= 0x480008C; size = 2; data = core->wifi.readWBeaconInt();          break; // W_BEACON_INT
             case 0x4800090:
             case 0x4800091: base -= 0x4800090; size = 2; data = core->wifi.readWTxbufLoc(1);          break; // W_TXBUF_CMD
             case 0x48000A0:
@@ -1238,6 +1240,14 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x48000A5: base -= 0x48000A4; size = 2; data = core->wifi.readWTxbufLoc(3);          break; // W_TXBUF_LOC2
             case 0x48000A8:
             case 0x48000A9: base -= 0x48000A8; size = 2; data = core->wifi.readWTxbufLoc(4);          break; // W_TXBUF_LOC3
+            case 0x48000E8:
+            case 0x48000E9: base -= 0x48000E8; size = 2; data = core->wifi.readWUsCountcnt();         break; // W_US_COUNTCNT
+            case 0x48000EA:
+            case 0x48000EB: base -= 0x48000EA; size = 2; data = core->wifi.readWUsComparecnt();       break; // W_US_COMPARECNT
+            case 0x4800110:
+            case 0x4800111: base -= 0x4800110; size = 2; data = core->wifi.readWPreBeacon();          break; // W_PRE_BEACON
+            case 0x480011C:
+            case 0x480011D: base -= 0x480011C; size = 2; data = core->wifi.readWBeaconCount();        break; // W_BEACON_COUNT
             case 0x4800120:
             case 0x4800121: base -= 0x4800120; size = 2; data = core->wifi.readWConfig(0);            break; // W_CONFIG_120
             case 0x4800122:
@@ -1251,7 +1261,7 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4800132:
             case 0x4800133: base -= 0x4800132; size = 2; data = core->wifi.readWConfig(5);            break; // W_CONFIG_132
             case 0x4800134:
-            case 0x4800135: base -= 0x4800134; size = 2; data = core->wifi.readWBeaconcount2();       break; // W_BEACONCOUNT2
+            case 0x4800135: base -= 0x4800134; size = 2; data = core->wifi.readWPostBeacon();         break; // W_POST_BEACON
             case 0x4800140:
             case 0x4800141: base -= 0x4800140; size = 2; data = core->wifi.readWConfig(6);            break; // W_CONFIG_140
             case 0x4800142:
@@ -2584,6 +2594,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4800077: base -= 0x4800076; size = 2; core->wifi.writeWTxbufGapdisp(mask << (base * 8), data << (base * 8));         break; // W_TXBUF_GAPDISP
             case 0x4800080:
             case 0x4800081: base -= 0x4800080; size = 2; core->wifi.writeWTxbufLoc(0, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_BEACON
+            case 0x480008C:
+            case 0x480008D: base -= 0x480008C; size = 2; core->wifi.writeWBeaconInt(mask << (base * 8), data << (base * 8));            break; // W_BEACON_INT
             case 0x4800090:
             case 0x4800091: base -= 0x4800090; size = 2; core->wifi.writeWTxbufLoc(1, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_CMD
             case 0x48000A0:
@@ -2592,6 +2604,14 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x48000A5: base -= 0x48000A4; size = 2; core->wifi.writeWTxbufLoc(3, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_LOC2
             case 0x48000A8:
             case 0x48000A9: base -= 0x48000A8; size = 2; core->wifi.writeWTxbufLoc(4, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_LOC3
+            case 0x48000E8:
+            case 0x48000E9: base -= 0x48000E8; size = 2; core->wifi.writeWUsCountcnt(mask << (base * 8), data << (base * 8));           break; // W_US_COUNTCNT
+            case 0x48000EA:
+            case 0x48000EB: base -= 0x48000EA; size = 2; core->wifi.writeWUsComparecnt(mask << (base * 8), data << (base * 8));         break; // W_US_COMPARECNT
+            case 0x4800110:
+            case 0x4800111: base -= 0x4800110; size = 2; core->wifi.writeWPreBeacon(mask << (base * 8), data << (base * 8));            break; // W_PRE_BEACON
+            case 0x480011C:
+            case 0x480011D: base -= 0x480011C; size = 2; core->wifi.writeWBeaconCount(mask << (base * 8), data << (base * 8));          break; // W_BEACON_COUNT
             case 0x4800120:
             case 0x4800121: base -= 0x4800120; size = 2; core->wifi.writeWConfig(0,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_120
             case 0x4800122:
@@ -2605,7 +2625,7 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4800132:
             case 0x4800133: base -= 0x4800132; size = 2; core->wifi.writeWConfig(5,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_132
             case 0x4800134:
-            case 0x4800135: base -= 0x4800134; size = 2; core->wifi.writeWBeaconcount2(mask << (base * 8), data << (base * 8));         break; // W_BEACONCOUNT2
+            case 0x4800135: base -= 0x4800134; size = 2; core->wifi.writeWPostBeacon(mask << (base * 8), data << (base * 8));           break; // W_POST_BEACON
             case 0x4800140:
             case 0x4800141: base -= 0x4800140; size = 2; core->wifi.writeWConfig(6,  mask << (base * 8), data << (base * 8));           break; // W_CONFIG_140
             case 0x4800142:

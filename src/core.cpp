@@ -239,7 +239,7 @@ void Core::endFrame()
         lastFpsTime = std::chrono::steady_clock::now();
     }
 
-    // Schedule packet processing only when needed
+    // Schedule WiFi updates only when needed
     if (wifi.shouldSchedule())
         wifi.scheduleInit();
 }

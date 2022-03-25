@@ -22,6 +22,8 @@
 #include "wifi.h"
 #include "core.h"
 
+#define MS_CYCLES 34418
+
 Wifi::Wifi(Core *core): core(core)
 {
     // Set some default BB register values
@@ -30,13 +32,13 @@ Wifi::Wifi(Core *core): core(core)
     bbRegisters[0x64] = 0xFF;
 
     // Prepare tasks to be used with the scheduler
-    processPacketsTask = std::bind(&Wifi::processPackets, this);
+    countMsTask = std::bind(&Wifi::countMs, this);
 }
 
 void Wifi::scheduleInit()
 {
-    // Schedule packet processing for as long as there are connections
-    core->schedule(Task(&processPacketsTask, 1024));
+    // Schedule an initial millisecond tick (this will reschedule itself as needed)
+    core->schedule(Task(&countMsTask, MS_CYCLES));
     scheduled = true;
 }
 
@@ -77,6 +79,46 @@ void Wifi::sendInterrupt(int bit)
     wIrf |= BIT(bit);
 }
 
+void Wifi::countMs()
+{
+    // Process any queued packets
+    if (!packets.empty())
+        processPackets();
+
+    if (wUsCountcnt) // Counter enable
+    {
+        // Trigger a pre-beacon interrupt at the pre-beacon timestamp
+        if (wBeaconCount == wPreBeacon)
+            sendInterrupt(15);
+
+        // Decrement the beacon millisecond counter and handle underflows
+        if (--wBeaconCount == 0)
+        {
+            // Trigger a beacon transfer and reload the millisecond counter
+            if (wTxbufLoc[0] & BIT(15))
+                transfer(0);
+            wBeaconCount = wBeaconInt;
+
+            // Trigger an immediate beacon interrupt if enabled
+            if (wUsComparecnt)
+            {
+                sendInterrupt(14);
+                wPostBeacon = 0xFFFF;
+            }
+        }
+
+        // Trigger a post-beacon interrupt when the counter reaches zero
+        if (wPostBeacon && --wPostBeacon == 0)
+            sendInterrupt(13);
+    }
+
+    // Reschedule the task as long as something is active
+    if (!connections.empty() || wUsCountcnt)
+        core->schedule(Task(&countMsTask, MS_CYCLES));
+    else
+        scheduled = false;
+}
+
 void Wifi::processPackets()
 {
     mutex.lock();
@@ -106,14 +148,42 @@ void Wifi::processPackets()
         sendInterrupt(0);
     }
 
-    // Reschedule the task as long as there are still connections
-    if (connections.empty())
-        scheduled = false;
-    else
-        core->schedule(Task(&processPacketsTask, 1024));
-
     packets.clear();
     mutex.unlock();
+}
+
+void Wifi::transfer(int index)
+{
+    uint16_t address = (wTxbufLoc[index] & 0xFFF) << 1;
+    uint16_t size = core->memory.read<uint16_t>(1, 0x4804000 + address + 0x0A) + 8;
+    LOG("Sending packet on channel %d with size 0x%X\n", index, size);
+
+    mutex.lock();
+
+    for (size_t i = 0; i < connections.size(); i++)
+    {
+        // Read the packet from memory
+        uint16_t *data = new uint16_t[size / 2];
+        for (size_t j = 0; j < size; j += 2)
+            data[j / 2] = core->memory.read<uint16_t>(1, 0x4804000 + address + j);
+
+        // Set the packet size in the outgoing header
+        data[4] = size - 12;
+
+        // Add the packet to the queue
+        connections[i]->mutex.lock();
+        connections[i]->packets.push_back(data);
+        connections[i]->mutex.unlock();
+    }
+
+    mutex.unlock();
+
+    // Clear the enable flag for non-beacons
+    if (index > 0)
+        wTxbufLoc[index] &= ~BIT(15);
+
+    // Trigger a transmit complete interrupt
+    sendInterrupt(1);
 }
 
 void Wifi::writeWModeWep(uint16_t mask, uint16_t value)
@@ -293,39 +363,57 @@ void Wifi::writeWTxbufGapdisp(uint16_t mask, uint16_t value)
 void Wifi::writeWTxbufLoc(int index, uint16_t mask, uint16_t value)
 {
     // Write to one of the W_TXBUF_[BEACON,CMD,LOC1,LOC2,LOC3] registers
-    mask &= 0x7FFF;
     wTxbufLoc[index] = (wTxbufLoc[index] & ~mask) | (value & mask);
 
-    // Send a packet to connected cores if triggered
-    if (value & BIT(15))
+    // Send a packet to connected cores if triggered for non-beacons
+    if ((value & BIT(15)) && index > 0)
     {
-        uint16_t address = (wTxbufLoc[index] & 0xFFF) << 1;
-        uint16_t size = core->memory.read<uint16_t>(1, 0x4804000 + address + 0x0A) + 8;
-        LOG("Sending packet on channel %d with size 0x%X\n", index, size);
-
-        mutex.lock();
-
-        for (size_t i = 0; i < connections.size(); i++)
-        {
-            // Read the packet from memory
-            uint16_t *data = new uint16_t[size / 2];
-            for (size_t j = 0; j < size; j += 2)
-                data[j / 2] = core->memory.read<uint16_t>(1, 0x4804000 + address + j);
-
-            // Set the packet size in the outgoing header
-            data[4] = size - 12;
-
-            // Add the packet to the queue
-            connections[i]->mutex.lock();
-            connections[i]->packets.push_back(data);
-            connections[i]->mutex.unlock();
-        }
-
-        mutex.unlock();
-
-        // Trigger a transmit complete interrupt
-        sendInterrupt(1);
+        transfer(index);
+        wTxbufLoc[index] &= ~BIT(15);
     }
+}
+
+void Wifi::writeWBeaconInt(uint16_t mask, uint16_t value)
+{
+    // Write to the W_BEACON_INT register
+    mask &= 0x03FF;
+    wBeaconInt = (wBeaconInt & ~mask) | (value & mask);
+
+    // Reload the beacon millisecond counter
+    wBeaconCount = wBeaconInt;
+}
+
+void Wifi::writeWUsCountcnt(uint16_t mask, uint16_t value)
+{
+    // Write to the W_US_COUNTCNT register
+    mask &= 0x0001;
+    wUsCountcnt = (wUsCountcnt & ~mask) | (value & mask);
+}
+
+void Wifi::writeWUsComparecnt(uint16_t mask, uint16_t value)
+{
+    // Write to the W_US_COMPARECNT register
+    mask &= 0x0001;
+    wUsComparecnt = (wUsComparecnt & ~mask) | (value & mask);
+
+    // Trigger an immediate beacon interrupt if requested
+    if (value & BIT(1))
+    {
+        sendInterrupt(14);
+        wPostBeacon = 0xFFFF;
+    }
+}
+
+void Wifi::writeWPreBeacon(uint16_t mask, uint16_t value)
+{
+    // Write to the W_PRE_BEACON register
+    wPreBeacon = (wPreBeacon & ~mask) | (value & mask);
+}
+
+void Wifi::writeWBeaconCount(uint16_t mask, uint16_t value)
+{
+    // Write to the W_BEACON_COUNT register
+    wBeaconCount = (wBeaconCount & ~mask) | (value & mask);
 }
 
 void Wifi::writeWConfig(int index, uint16_t mask, uint16_t value)
@@ -342,10 +430,10 @@ void Wifi::writeWConfig(int index, uint16_t mask, uint16_t value)
     wConfig[index] = (wConfig[index] & ~mask) | (value & mask);
 }
 
-void Wifi::writeWBeaconcount2(uint16_t mask, uint16_t value)
+void Wifi::writeWPostBeacon(uint16_t mask, uint16_t value)
 {
-    // Write to the W_BEACONCOUNT2 register
-    wBeaconcount2 = (wBeaconcount2 & ~mask) | (value & mask);
+    // Write to the W_POST_BEACON register
+    wPostBeacon = (wPostBeacon & ~mask) | (value & mask);
 }
 
 void Wifi::writeWBbCnt(uint16_t mask, uint16_t value)
