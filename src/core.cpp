@@ -40,7 +40,7 @@ Core::Core(std::string ndsPath, std::string gbaPath, int number):
     ipc(this),
     memory(this),
     rtc(this),
-    spi(this),
+    spi(this, number),
     spu(this),
     timers { Timers(this, 0), Timers(this, 1) },
     wifi(this)
