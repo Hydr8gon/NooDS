@@ -1229,17 +1229,19 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             case 0x4800076:
             case 0x4800077: base -= 0x4800076; size = 2; data = core->wifi.readWTxbufGapdisp();       break; // W_TXBUF_GAPDISP
             case 0x4800080:
-            case 0x4800081: base -= 0x4800080; size = 2; data = core->wifi.readWTxbufLoc(0);          break; // W_TXBUF_BEACON
+            case 0x4800081: base -= 0x4800080; size = 2; data = core->wifi.readWTxbufLoc(4);          break; // W_TXBUF_BEACON
             case 0x480008C:
             case 0x480008D: base -= 0x480008C; size = 2; data = core->wifi.readWBeaconInt();          break; // W_BEACON_INT
             case 0x4800090:
             case 0x4800091: base -= 0x4800090; size = 2; data = core->wifi.readWTxbufLoc(1);          break; // W_TXBUF_CMD
             case 0x48000A0:
-            case 0x48000A1: base -= 0x48000A0; size = 2; data = core->wifi.readWTxbufLoc(2);          break; // W_TXBUF_LOC1
+            case 0x48000A1: base -= 0x48000A0; size = 2; data = core->wifi.readWTxbufLoc(0);          break; // W_TXBUF_LOC1
             case 0x48000A4:
-            case 0x48000A5: base -= 0x48000A4; size = 2; data = core->wifi.readWTxbufLoc(3);          break; // W_TXBUF_LOC2
+            case 0x48000A5: base -= 0x48000A4; size = 2; data = core->wifi.readWTxbufLoc(2);          break; // W_TXBUF_LOC2
             case 0x48000A8:
-            case 0x48000A9: base -= 0x48000A8; size = 2; data = core->wifi.readWTxbufLoc(4);          break; // W_TXBUF_LOC3
+            case 0x48000A9: base -= 0x48000A8; size = 2; data = core->wifi.readWTxbufLoc(3);          break; // W_TXBUF_LOC3
+            case 0x48000B0:
+            case 0x48000B1: base -= 0x48000B0; size = 2; data = core->wifi.readWTxreqRead();          break; // W_TXREQ_READ
             case 0x48000E8:
             case 0x48000E9: base -= 0x48000E8; size = 2; data = core->wifi.readWUsCountcnt();         break; // W_US_COUNTCNT
             case 0x48000EA:
@@ -2593,17 +2595,21 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             case 0x4800076:
             case 0x4800077: base -= 0x4800076; size = 2; core->wifi.writeWTxbufGapdisp(mask << (base * 8), data << (base * 8));         break; // W_TXBUF_GAPDISP
             case 0x4800080:
-            case 0x4800081: base -= 0x4800080; size = 2; core->wifi.writeWTxbufLoc(0, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_BEACON
+            case 0x4800081: base -= 0x4800080; size = 2; core->wifi.writeWTxbufLoc(4, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_BEACON
             case 0x480008C:
             case 0x480008D: base -= 0x480008C; size = 2; core->wifi.writeWBeaconInt(mask << (base * 8), data << (base * 8));            break; // W_BEACON_INT
             case 0x4800090:
             case 0x4800091: base -= 0x4800090; size = 2; core->wifi.writeWTxbufLoc(1, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_CMD
             case 0x48000A0:
-            case 0x48000A1: base -= 0x48000A0; size = 2; core->wifi.writeWTxbufLoc(2, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_LOC1
+            case 0x48000A1: base -= 0x48000A0; size = 2; core->wifi.writeWTxbufLoc(0, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_LOC1
             case 0x48000A4:
-            case 0x48000A5: base -= 0x48000A4; size = 2; core->wifi.writeWTxbufLoc(3, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_LOC2
+            case 0x48000A5: base -= 0x48000A4; size = 2; core->wifi.writeWTxbufLoc(2, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_LOC2
             case 0x48000A8:
-            case 0x48000A9: base -= 0x48000A8; size = 2; core->wifi.writeWTxbufLoc(4, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_LOC3
+            case 0x48000A9: base -= 0x48000A8; size = 2; core->wifi.writeWTxbufLoc(3, mask << (base * 8), data << (base * 8));          break; // W_TXBUF_LOC3
+            case 0x48000AC:
+            case 0x48000AD: base -= 0x48000AC; size = 2; core->wifi.writeWTxreqReset(mask << (base * 8), data << (base * 8));           break; // W_TXREQ_RESET
+            case 0x48000AE:
+            case 0x48000AF: base -= 0x48000AE; size = 2; core->wifi.writeWTxreqSet(mask << (base * 8), data << (base * 8));             break; // W_TXREQ_SET
             case 0x48000E8:
             case 0x48000E9: base -= 0x48000E8; size = 2; core->wifi.writeWUsCountcnt(mask << (base * 8), data << (base * 8));           break; // W_US_COUNTCNT
             case 0x48000EA:

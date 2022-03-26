@@ -76,7 +76,15 @@ void Wifi::sendInterrupt(int bit)
     if (!(wIe & wIrf) && (wIe & BIT(bit)))
         core->interpreter[1].sendInterrupt(24);
 
+    // Set the interrupt's request bit
     wIrf |= BIT(bit);
+
+    // Perform additional actions for beacon interrupts
+    if (bit == 14)
+    {
+        wPostBeacon = 0xFFFF;
+        wTxreqRead &= 0xFFF2;
+    }
 }
 
 void Wifi::countMs()
@@ -95,16 +103,13 @@ void Wifi::countMs()
         if (--wBeaconCount == 0)
         {
             // Trigger a beacon transfer and reload the millisecond counter
-            if (wTxbufLoc[0] & BIT(15))
-                transfer(0);
+            if ((wTxbufLoc[4] & BIT(15)) && (wTxreqRead & BIT(4)))
+                transfer(4);
             wBeaconCount = wBeaconInt;
 
             // Trigger an immediate beacon interrupt if enabled
             if (wUsComparecnt)
-            {
                 sendInterrupt(14);
-                wPostBeacon = 0xFFFF;
-            }
         }
 
         // Trigger a post-beacon interrupt when the counter reaches zero
@@ -179,7 +184,7 @@ void Wifi::transfer(int index)
     mutex.unlock();
 
     // Clear the enable flag for non-beacons
-    if (index > 0)
+    if (index != 4)
         wTxbufLoc[index] &= ~BIT(15);
 
     // Trigger a transmit complete interrupt
@@ -366,11 +371,8 @@ void Wifi::writeWTxbufLoc(int index, uint16_t mask, uint16_t value)
     wTxbufLoc[index] = (wTxbufLoc[index] & ~mask) | (value & mask);
 
     // Send a packet to connected cores if triggered for non-beacons
-    if ((value & BIT(15)) && index > 0)
-    {
+    if (index != 4 && (wTxbufLoc[index] & BIT(15)) && (wTxreqRead & BIT(index)))
         transfer(index);
-        wTxbufLoc[index] &= ~BIT(15);
-    }
 }
 
 void Wifi::writeWBeaconInt(uint16_t mask, uint16_t value)
@@ -381,6 +383,27 @@ void Wifi::writeWBeaconInt(uint16_t mask, uint16_t value)
 
     // Reload the beacon millisecond counter
     wBeaconCount = wBeaconInt;
+}
+
+void Wifi::writeWTxreqReset(uint16_t mask, uint16_t value)
+{
+    // Clear bits in W_TXREQ_READ
+    mask &= 0x000F;
+    wTxreqRead &= ~(value & mask);
+}
+
+void Wifi::writeWTxreqSet(uint16_t mask, uint16_t value)
+{
+    // Set bits in W_TXREQ_READ
+    mask &= 0x000F;
+    wTxreqRead |= (value & mask);
+
+    // Send a packet to connected cores if triggered for non-beacons
+    for (int i = 0; i < 4; i++)
+    {
+        if ((wTxbufLoc[i] & BIT(15)) && (wTxreqRead & BIT(i)))
+            transfer(i);
+    }
 }
 
 void Wifi::writeWUsCountcnt(uint16_t mask, uint16_t value)
@@ -398,10 +421,7 @@ void Wifi::writeWUsComparecnt(uint16_t mask, uint16_t value)
 
     // Trigger an immediate beacon interrupt if requested
     if (value & BIT(1))
-    {
         sendInterrupt(14);
-        wPostBeacon = 0xFFFF;
-    }
 }
 
 void Wifi::writeWPreBeacon(uint16_t mask, uint16_t value)

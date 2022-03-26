@@ -62,6 +62,7 @@ class Wifi
         uint16_t readWTxbufGapdisp()      { return wTxbufGapdisp;    }
         uint16_t readWTxbufLoc(int index) { return wTxbufLoc[index]; }
         uint16_t readWBeaconInt()         { return wBeaconInt;       }
+        uint16_t readWTxreqRead()         { return wTxreqRead;       }
         uint16_t readWUsCountcnt()        { return wUsCountcnt;      }
         uint16_t readWUsComparecnt()      { return wUsComparecnt;    }
         uint16_t readWPreBeacon()         { return wPreBeacon;       }
@@ -89,6 +90,8 @@ class Wifi
         void writeWRxbufGapdisp(uint16_t mask, uint16_t value);
         void writeWTxbufLoc(int index, uint16_t mask, uint16_t value);
         void writeWBeaconInt(uint16_t mask, uint16_t value);
+        void writeWTxreqReset(uint16_t mask, uint16_t value);
+        void writeWTxreqSet(uint16_t mask, uint16_t value);
         void writeWUsCountcnt(uint16_t mask, uint16_t value);
         void writeWUsComparecnt(uint16_t mask, uint16_t value);
         void writeWPreBeacon(uint16_t mask, uint16_t value);
@@ -134,6 +137,7 @@ class Wifi
         uint16_t wRxbufGapdisp = 0;
         uint16_t wTxbufLoc[5] = {};
         uint16_t wBeaconInt = 0;
+        uint16_t wTxreqRead = 0x0010;
         uint16_t wUsCountcnt = 0;
         uint16_t wUsComparecnt = 0;
         uint16_t wPreBeacon = 0;
