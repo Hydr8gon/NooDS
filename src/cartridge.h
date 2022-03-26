@@ -38,7 +38,7 @@ enum NdsCmdMode
 class Cartridge
 {
     public:
-        Cartridge(Core *core, int number): core(core), number(number) {}
+        Cartridge(Core *core): core(core) {}
         ~Cartridge();
 
         virtual bool loadRom(std::string path);
@@ -52,7 +52,6 @@ class Cartridge
 
     protected:
         Core *core;
-        int number;
 
         FILE *romFile = nullptr;
         uint8_t *rom = nullptr, *save = nullptr;
@@ -69,7 +68,7 @@ class Cartridge
 class CartridgeNds: public Cartridge
 {
     public:
-        CartridgeNds(Core *core, int number): Cartridge(core, number) {}
+        CartridgeNds(Core *core): Cartridge(core) {}
 
         bool loadRom(std::string path);
         void directBoot();
@@ -115,7 +114,7 @@ class CartridgeNds: public Cartridge
 class CartridgeGba: public Cartridge
 {
     public:
-        CartridgeGba(Core *core, int number): Cartridge(core, number) {}
+        CartridgeGba(Core *core): Cartridge(core) {}
 
         bool loadRom(std::string path);
 

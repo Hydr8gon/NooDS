@@ -143,7 +143,7 @@ void Wifi::processPackets()
             {
                 wRxbufWrcsr++;
                 wRxbufWrcsr = (wRxbufBegin & 0x1FFE) + (wRxbufWrcsr - (wRxbufBegin & 0x1FFE)) % ((wRxbufEnd & 0x1FFE) - (wRxbufBegin & 0x1FFE));
-                wRxbufWrcsr &= 0x1FFF;
+                wRxbufWrcsr &= 0xFFF;
             }
         }
 
@@ -344,7 +344,7 @@ void Wifi::writeWTxbufWrData(uint16_t mask, uint16_t value)
     wTxbufWrAddr += 2;
     if (wTxbufWrAddr == wTxbufGap)
         wTxbufWrAddr += wTxbufGapdisp << 1;
-    wTxbufWrAddr %= 0x2000;
+    wTxbufWrAddr &= 0x1FFF;
 
     // Decrement the write counter and trigger an interrupt at the end
     if (wTxbufCount > 0 && --wTxbufCount == 0)
@@ -503,12 +503,14 @@ uint16_t Wifi::readWRxbufRdData()
     uint16_t value = core->memory.read<uint16_t>(1, 0x4804000 + wRxbufRdAddr);
 
     // Increment the read address
-    wRxbufRdAddr += 2;
-    if (wRxbufRdAddr == wRxbufGap)
-        wRxbufRdAddr += wRxbufGapdisp << 1;
     if ((wRxbufBegin & 0x1FFE) != (wRxbufEnd & 0x1FFE))
+    {
+        wRxbufRdAddr += 2;
+        if (wRxbufRdAddr == wRxbufGap)
+            wRxbufRdAddr += wRxbufGapdisp << 1;
         wRxbufRdAddr = (wRxbufBegin & 0x1FFE) + (wRxbufRdAddr - (wRxbufBegin & 0x1FFE)) % ((wRxbufEnd & 0x1FFE) - (wRxbufBegin & 0x1FFE));
-    wRxbufRdAddr %= 0x2000;
+        wRxbufRdAddr &= 0x1FFF;
+    }
 
     // Decrement the read counter and trigger an interrupt at the end
     if (wRxbufCount > 0 && --wRxbufCount == 0)

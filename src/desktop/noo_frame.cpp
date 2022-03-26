@@ -81,8 +81,8 @@ EVT_DROP_FILES(NooFrame::dropFiles)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
-NooFrame::NooFrame(NooApp *app, int number, std::string path):
-    wxFrame(nullptr, wxID_ANY, "NooDS"), app(app), number(number)
+NooFrame::NooFrame(NooApp *app, int id, std::string path):
+    wxFrame(nullptr, wxID_ANY, "NooDS"), app(app), id(id)
 {
     // Set the icon
     wxIcon icon(icon_xpm);
@@ -163,7 +163,7 @@ NooFrame::NooFrame(NooApp *app, int number, std::string path):
     wxMenuBar *menuBar = new wxMenuBar();
     menuBar->Append(fileMenu,   "&File");
     menuBar->Append(systemMenu, "&System");
-    if (number == 0) // Only show settings in the main instance
+    if (id == 0) // Only show settings in the main instance
         menuBar->Append(settingsMenu, "&Settings");
     SetMenuBar(menuBar);
 
@@ -216,7 +216,7 @@ void NooFrame::Refresh()
 
     // Override the refresh function to also update the FPS counter
     wxString label = "NooDS";
-    if (number)  label += wxString::Format(" (%d)", number + 1);
+    if (id > 0)  label += wxString::Format(" (%d)", id + 1);
     if (running) label += wxString::Format(" - %d FPS", core->getFps());
     SetLabel(label);
 }
@@ -250,8 +250,8 @@ void NooFrame::startCore(bool full)
         try
         {
             // Attempt to boot the core
-            core = new Core(ndsPath, gbaPath, number);
-            app->connectCore(number);
+            core = new Core(ndsPath, gbaPath, id);
+            app->connectCore(id);
         }
         catch (CoreError e)
         {
@@ -336,7 +336,7 @@ void NooFrame::stopCore(bool full)
         // Shut down the core
         if (core)
         {
-            app->disconnCore(number);
+            app->disconnCore(id);
             delete core;
             core = nullptr;
         }
@@ -537,7 +537,7 @@ void NooFrame::inputSettings(wxCommandEvent &event)
 void NooFrame::layoutSettings(wxCommandEvent &event)
 {
     // Show the layout settings dialog
-    LayoutDialog layoutDialog(this);
+    LayoutDialog layoutDialog(app);
     layoutDialog.ShowModal();
 }
 
@@ -646,6 +646,6 @@ void NooFrame::close(wxCloseEvent &event)
 {
     // Properly shut down the emulator
     stopCore(true);
-    app->removeFrame(number);
+    app->removeFrame(id);
     event.Skip(true);
 }

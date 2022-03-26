@@ -106,7 +106,7 @@ bool NooApp::OnInit()
 
 void NooApp::createFrame()
 {
-    // Create a new frame using the lowest free instance number
+    // Create a new frame using the lowest free instance ID
     for (int i = 0; i < MAX_FRAMES; i++)
     {
         if (!frames[i])
@@ -117,31 +117,41 @@ void NooApp::createFrame()
     }
 }
 
-void NooApp::removeFrame(int number)
+void NooApp::removeFrame(int id)
 {
-    // Free an instance number; this should be done on frame destruction
-    frames[number] = nullptr;
+    // Free an instance ID; this should be done on frame destruction
+    frames[id] = nullptr;
 }
 
-void NooApp::connectCore(int number)
+void NooApp::connectCore(int id)
 {
     // Connect a frame's core to all other active cores
     for (int i = 0; i < MAX_FRAMES; i++)
     {
-        if (!frames[i] || i == number) continue;
+        if (!frames[i] || i == id) continue;
         if (Core *core = frames[i]->getCore())
-            core->wifi.addConnection(frames[number]->getCore());
+            core->wifi.addConnection(frames[id]->getCore());
     }
 }
 
-void NooApp::disconnCore(int number)
+void NooApp::disconnCore(int id)
 {
     // Disconnect a frame's core from all other active cores
     for (int i = 0; i < MAX_FRAMES; i++)
     {
-        if (!frames[i] || i == number) continue;
+        if (!frames[i] || i == id) continue;
         if (Core *core = frames[i]->getCore())
-            core->wifi.remConnection(frames[number]->getCore());
+            core->wifi.remConnection(frames[id]->getCore());
+    }
+}
+
+void NooApp::updateLayouts()
+{
+    // Trigger resize events for frames to update screen layouts
+    for (size_t i = 0; i < MAX_FRAMES; i++)
+    {
+        if (frames[i])
+            frames[i]->SendSizeEvent();
     }
 }
 
@@ -163,7 +173,7 @@ int NooApp::audioCallback(const void *in, void *out, unsigned long count,
     uint32_t *original = nullptr;
 
     // Get samples from each instance so frame limiting is enforced
-    // Only the lowest instance number's samples are played; the rest are discarded
+    // Only the lowest instance ID's samples are played; the rest are discarded
     for (size_t i = 0; i < MAX_FRAMES; i++)
     {
         if (!frames[i]) continue;

@@ -63,7 +63,7 @@ EVT_BUTTON(wxID_CANCEL,       LayoutDialog::cancel)
 EVT_BUTTON(wxID_OK,           LayoutDialog::confirm)
 wxEND_EVENT_TABLE()
 
-LayoutDialog::LayoutDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Screen Layout"), frame(frame)
+LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Layout"), app(app)
 {
     // Remember the previous settings in case the changes are discarded
     prevSettings[0] = ScreenLayout::getScreenRotation();
@@ -173,144 +173,112 @@ void LayoutDialog::rotateNone(wxCommandEvent &event)
 {
     // Set the screen rotation setting to none
     ScreenLayout::setScreenRotation(0);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::rotateCw(wxCommandEvent &event)
 {
     // Set the screen rotation setting to clockwise
     ScreenLayout::setScreenRotation(1);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::rotateCcw(wxCommandEvent &event)
 {
     // Set the screen rotation setting to counter-clockwise
     ScreenLayout::setScreenRotation(2);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::arrangeAuto(wxCommandEvent &event)
 {
     // Set the screen arrangement setting to automatic
     ScreenLayout::setScreenArrangement(0);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::arrangeVert(wxCommandEvent &event)
 {
     // Set the screen arrangement setting to vertical
     ScreenLayout::setScreenArrangement(1);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::arrangeHori(wxCommandEvent &event)
 {
     // Set the screen arrangement setting to horizontal
     ScreenLayout::setScreenArrangement(2);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::sizeEven(wxCommandEvent &event)
 {
     // Set the screen sizing setting to even
     ScreenLayout::setScreenSizing(0);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::sizeTop(wxCommandEvent &event)
 {
     // Set the screen sizing setting to enlarge top
     ScreenLayout::setScreenSizing(1);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::sizeBot(wxCommandEvent &event)
 {
     // Set the screen sizing setting to enlarge bottom
     ScreenLayout::setScreenSizing(2);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::gapNone(wxCommandEvent &event)
 {
     // Set the screen gap setting to none
     ScreenLayout::setScreenGap(0);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::gapQuart(wxCommandEvent &event)
 {
     // Set the screen gap setting to quarter
     ScreenLayout::setScreenGap(1);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::gapHalf(wxCommandEvent &event)
 {
     // Set the screen gap setting to half
     ScreenLayout::setScreenGap(2);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::gapFull(wxCommandEvent &event)
 {
     // Set the screen gap setting to full
     ScreenLayout::setScreenGap(3);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::intScale(wxCommandEvent &event)
 {
     // Toggle the integer scale setting
     ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::gbaCrop(wxCommandEvent &event)
 {
     // Toggle the GBA crop setting
     ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::filter(wxCommandEvent &event)
 {
     // Toggle the screen filter setting
     NooApp::setScreenFilter(!NooApp::getScreenFilter());
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 }
 
 void LayoutDialog::cancel(wxCommandEvent &event)
@@ -323,9 +291,7 @@ void LayoutDialog::cancel(wxCommandEvent &event)
     ScreenLayout::setIntegerScale(prevSettings[4]);
     ScreenLayout::setGbaCrop(prevSettings[5]);
     NooApp::setScreenFilter(prevSettings[6]);
-
-    // Trigger a resize to update the screen layout
-    frame->SendSizeEvent();
+    app->updateLayouts();
 
     event.Skip(true);
 }

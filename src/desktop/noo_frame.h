@@ -31,7 +31,7 @@ class NooCanvas;
 class NooFrame: public wxFrame
 {
     public:
-        NooFrame(NooApp *app, int number = 0, std::string path = "");
+        NooFrame(NooApp *app, int id = 0, std::string path = "");
 
         void Refresh();
 
@@ -51,7 +51,7 @@ class NooFrame: public wxFrame
         wxJoystick *joystick;
         wxTimer *timer;
 
-        int number = 0;
+        int id = 0;
         Core *core = nullptr;
         bool running = false;
 

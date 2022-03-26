@@ -24,9 +24,10 @@
 #include "core.h"
 #include "settings.h"
 
-Core::Core(std::string ndsPath, std::string gbaPath, int number):
-    cartridgeNds(this, number),
-    cartridgeGba(this, number),
+Core::Core(std::string ndsPath, std::string gbaPath, int id):
+    id(id),
+    cartridgeNds(this),
+    cartridgeGba(this),
     cp15(this),
     divSqrt(this),
     dldi(this),
@@ -40,7 +41,7 @@ Core::Core(std::string ndsPath, std::string gbaPath, int number):
     ipc(this),
     memory(this),
     rtc(this),
-    spi(this, number),
+    spi(this),
     spu(this),
     timers { Timers(this, 0), Timers(this, 1) },
     wifi(this)

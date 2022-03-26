@@ -27,7 +27,7 @@ class Core;
 class Spi
 {
     public:
-        Spi(Core *core, int number): core(core), number(number) {}
+        Spi(Core *core): core(core) {}
         ~Spi();
 
         bool loadFirmware();
@@ -44,7 +44,6 @@ class Spi
 
     private:
         Core *core;
-        int number;
 
         uint8_t *firmware = nullptr;
         size_t firmSize = 0;

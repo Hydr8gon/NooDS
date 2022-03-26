@@ -66,11 +66,12 @@ struct Task
 class Core
 {
     public:
-        Core(std::string ndsPath = "", std::string gbaPath = "", int number = 0);
+        Core(std::string ndsPath = "", std::string gbaPath = "", int id = 0);
 
         void runFrame() { (this->*runFunc)(); }
 
         bool isGbaMode() { return gbaMode; }
+        int  getId()     { return id;      }
         int  getFps()    { return fps;     }
 
         uint32_t getGlobalCycles() { return globalCycles; }
@@ -100,8 +101,9 @@ class Core
         Wifi wifi;
 
     private:
-        bool gbaMode = false;
         void (Core::*runFunc)() = &Core::runNdsFrame;
+        bool gbaMode = false;
+        int id = 0;
 
         std::vector<Task> tasks;
         uint32_t globalCycles = 0;

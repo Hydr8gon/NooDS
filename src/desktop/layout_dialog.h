@@ -22,15 +22,15 @@
 
 #include <wx/wx.h>
 
-#include "noo_frame.h"
+class NooApp;
 
 class LayoutDialog: public wxDialog
 {
     public:
-        LayoutDialog(NooFrame *frame);
+        LayoutDialog(NooApp *app);
 
     private:
-        NooFrame *frame;
+        NooApp *app;
 
         int prevSettings[7];
 

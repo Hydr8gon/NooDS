@@ -31,10 +31,12 @@ class NooApp: public wxApp
 {
     public:
         void createFrame();
-        void removeFrame(int number);
+        void removeFrame(int id);
 
-        void connectCore(int number);
-        void disconnCore(int number);
+        void connectCore(int id);
+        void disconnCore(int id);
+
+        void updateLayouts();
 
         static int getScreenFilter()     { return screenFilter;    }
         static int getKeyBind(int index) { return keyBinds[index]; }
