@@ -147,6 +147,13 @@ void Cartridge::resizeSave(int newSize, bool dirty)
     mutex.unlock();
 }
 
+CartridgeNds::CartridgeNds(Core *core): Cartridge(core)
+{
+    // Prepare tasks to be used with the scheduler
+    wordReadyTasks[0] = std::bind(&CartridgeNds::wordReady, this, 0);
+    wordReadyTasks[1] = std::bind(&CartridgeNds::wordReady, this, 1);
+}
+
 bool CartridgeNds::loadRom(std::string path)
 {
     bool res = Cartridge::loadRom(path);
@@ -723,6 +730,9 @@ void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
     mask &= 0xDF7F7FFF;
     romCtrl[cpu] = (romCtrl[cpu] & ~mask) | (value & mask);
 
+    // Set the time to transfer a word: 4 cycles at either 4.2MHz or 6.7MHz
+    wordCycles[cpu] = (romCtrl[cpu] & BIT(27)) ? (4 * 8) : (4 * 5);
+
     if (!transfer) return;
 
     // Determine the size of the block to transfer
@@ -833,14 +843,19 @@ void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
     }
     else
     {
-        // Indicate that a word is ready
-        romCtrl[cpu] |= BIT(23);
-
-        // Trigger DS cartridge DMA transfers
-        core->dma[cpu].trigger((cpu == 0) ? 5 : 2);
-
+        // Schedule the first word to be ready
+        core->schedule(Task(&wordReadyTasks[cpu], wordCycles[cpu]));
         readCount[cpu] = 0;
     }
+}
+
+void CartridgeNds::wordReady(bool cpu)
+{
+    // Indicate that a word is ready
+    romCtrl[cpu] |= BIT(23);
+
+    // Trigger DS cartridge DMA transfers
+    core->dma[cpu].trigger((cpu == 0) ? 5 : 2);
 }
 
 uint32_t CartridgeNds::readRomDataIn(bool cpu)
@@ -849,11 +864,13 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
     if (!(romCtrl[cpu] & BIT(23)))
         return 0;
 
+    // Mark the next word as not ready
+    romCtrl[cpu] &= ~BIT(23);
+
     // Increment the read counter
     if ((readCount[cpu] += 4) == blockSize[cpu])
     {
         // End the transfer when the block size has been reached
-        romCtrl[cpu] &= ~BIT(23); // Word not ready
         romCtrl[cpu] &= ~BIT(31); // Block ready
 
         // Trigger a block ready IRQ if enabled
@@ -862,8 +879,8 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
     }
     else
     {
-        // Trigger DS cartridge DMA transfers until the block size is reached
-        core->dma[cpu].trigger((cpu == 0) ? 5 : 2);
+        // Schedule the next word to be ready
+        core->schedule(Task(&wordReadyTasks[cpu], wordCycles[cpu]));
     }
 
     // Return a value from the cart depending on the current command

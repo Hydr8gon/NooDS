@@ -21,6 +21,7 @@
 #define CARTRIDGE_H
 
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <string>
 
@@ -68,7 +69,7 @@ class Cartridge
 class CartridgeNds: public Cartridge
 {
     public:
-        CartridgeNds(Core *core): Cartridge(core) {}
+        CartridgeNds(Core *core);
 
         bool loadRom(std::string path);
         void directBoot();
@@ -94,6 +95,7 @@ class CartridgeNds: public Cartridge
 
         uint32_t romAddrReal[2] = {}, romAddrVirt[2] = {};
         uint16_t blockSize[2] = {}, readCount[2] = {};
+        uint32_t wordCycles[2] = {};
         bool encrypted[2] = {};
 
         uint8_t auxCommand[2] = {};
@@ -105,10 +107,14 @@ class CartridgeNds: public Cartridge
         uint32_t romCtrl[2] = {};
         uint64_t romCmdOut[2] = {};
 
+        std::function<void()> wordReadyTasks[2];
+
         uint64_t encrypt64(uint64_t value);
         uint64_t decrypt64(uint64_t value);
         void initKeycode(int level);
         void applyKeycode();
+
+        void wordReady(bool cpu);
 };
 
 class CartridgeGba: public Cartridge
