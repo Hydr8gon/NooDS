@@ -17,8 +17,9 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <wx/notebook.h>
+
 #include "input_dialog.h"
-#include "noo_app.h"
 #include "../settings.h"
 
 enum InputEvent
@@ -35,8 +36,12 @@ enum InputEvent
     REMAP_RIGHT,
     REMAP_L,
     REMAP_R,
-    REMAP_FAST_FORWARD,
+    REMAP_FAST_HOLD,
+    REMAP_FAST_TOGGLE,
     REMAP_FULL_SCREEN,
+    REMAP_ENLARGE_SWAP,
+    REMAP_SYSTEM_PAUSE,
+    CLEAR_MAP,
     UPDATE_JOY
 };
 
@@ -53,8 +58,12 @@ EVT_BUTTON(REMAP_LEFT,         InputDialog::remapLeft)
 EVT_BUTTON(REMAP_RIGHT,        InputDialog::remapRight)
 EVT_BUTTON(REMAP_L,            InputDialog::remapL)
 EVT_BUTTON(REMAP_R,            InputDialog::remapR)
-EVT_BUTTON(REMAP_FAST_FORWARD, InputDialog::remapFastForward)
+EVT_BUTTON(REMAP_FAST_HOLD,    InputDialog::remapFastHold)
+EVT_BUTTON(REMAP_FAST_TOGGLE,  InputDialog::remapFastToggle)
 EVT_BUTTON(REMAP_FULL_SCREEN,  InputDialog::remapFullScreen)
+EVT_BUTTON(REMAP_ENLARGE_SWAP, InputDialog::remapEnlargeSwap)
+EVT_BUTTON(REMAP_SYSTEM_PAUSE, InputDialog::remapSystemPause)
+EVT_BUTTON(CLEAR_MAP,          InputDialog::clearMap)
 EVT_TIMER(UPDATE_JOY,          InputDialog::updateJoystick)
 EVT_BUTTON(wxID_OK,            InputDialog::confirm)
 EVT_CHAR_HOOK(InputDialog::pressKey)
@@ -74,6 +83,7 @@ std::string InputDialog::keyToString(int key)
     // Convert special keys to words representing their respective keys
     switch (key)
     {
+        case 0:                    return "None";
         case WXK_BACK:             return "Backspace";
         case WXK_TAB:              return "Tab";
         case WXK_RETURN:           return "Return";
@@ -184,7 +194,7 @@ std::string InputDialog::keyToString(int key)
 InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Input Bindings"), joystick(joystick)
 {
     // Load the key bindings
-    for (int i = 0; i < 14; i++)
+    for (int i = 0; i < MAX_KEYS; i++)
         keyBinds[i] = NooApp::getKeyBind(i);
 
     // Determine the height of a button
@@ -193,112 +203,150 @@ InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Inp
     int size = dummy->GetSize().y;
     delete dummy;
 
+    // Create separate tabs for buttons and hotkeys
+    wxNotebook *notebook = new wxNotebook(this, wxID_ANY);
+    wxPanel* buttonTab = new wxPanel(notebook, wxID_ANY);
+    wxPanel* hotkeyTab = new wxPanel(notebook, wxID_ANY);
+    notebook->AddPage(buttonTab, "&Buttons");
+    notebook->AddPage(hotkeyTab, "&Hotkeys");
+
     // Set up the A button setting
     wxBoxSizer *aSizer = new wxBoxSizer(wxHORIZONTAL);
-    aSizer->Add(new wxStaticText(this, wxID_ANY, "A:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    aSizer->Add(keyA = new wxButton(this, REMAP_A, keyToString(keyBinds[0]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    aSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "A:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    aSizer->Add(keyA = new wxButton(buttonTab, REMAP_A, keyToString(keyBinds[0]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the B button setting
     wxBoxSizer *bSizer = new wxBoxSizer(wxHORIZONTAL);
-    bSizer->Add(new wxStaticText(this, wxID_ANY, "B:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    bSizer->Add(keyB = new wxButton(this, REMAP_B, keyToString(keyBinds[1]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    bSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "B:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    bSizer->Add(keyB = new wxButton(buttonTab, REMAP_B, keyToString(keyBinds[1]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the X button setting
     wxBoxSizer *xSizer = new wxBoxSizer(wxHORIZONTAL);
-    xSizer->Add(new wxStaticText(this, wxID_ANY, "X:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    xSizer->Add(keyX = new wxButton(this, REMAP_X, keyToString(keyBinds[10]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    xSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "X:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    xSizer->Add(keyX = new wxButton(buttonTab, REMAP_X, keyToString(keyBinds[10]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Y button setting
     wxBoxSizer *ySizer = new wxBoxSizer(wxHORIZONTAL);
-    ySizer->Add(new wxStaticText(this, wxID_ANY, "Y:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    ySizer->Add(keyY = new wxButton(this, REMAP_Y, keyToString(keyBinds[11]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    ySizer->Add(new wxStaticText(buttonTab, wxID_ANY, "Y:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    ySizer->Add(keyY = new wxButton(buttonTab, REMAP_Y, keyToString(keyBinds[11]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Start button setting
     wxBoxSizer *startSizer = new wxBoxSizer(wxHORIZONTAL);
-    startSizer->Add(new wxStaticText(this, wxID_ANY, "Start:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    startSizer->Add(keyStart = new wxButton(this, REMAP_START, keyToString(keyBinds[3]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    startSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "Start:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    startSizer->Add(keyStart = new wxButton(buttonTab, REMAP_START, keyToString(keyBinds[3]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Select button setting
     wxBoxSizer *selectSizer = new wxBoxSizer(wxHORIZONTAL);
-    selectSizer->Add(new wxStaticText(this, wxID_ANY, "Select:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    selectSizer->Add(keySelect = new wxButton(this, REMAP_SELECT, keyToString(keyBinds[2]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    selectSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "Select:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    selectSizer->Add(keySelect = new wxButton(buttonTab, REMAP_SELECT, keyToString(keyBinds[2]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Up button setting
     wxBoxSizer *upSizer = new wxBoxSizer(wxHORIZONTAL);
-    upSizer->Add(new wxStaticText(this, wxID_ANY, "Up:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    upSizer->Add(keyUp = new wxButton(this, REMAP_UP, keyToString(keyBinds[6]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    upSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "Up:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    upSizer->Add(keyUp = new wxButton(buttonTab, REMAP_UP, keyToString(keyBinds[6]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Down button setting
     wxBoxSizer *downSizer = new wxBoxSizer(wxHORIZONTAL);
-    downSizer->Add(new wxStaticText(this, wxID_ANY, "Down:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    downSizer->Add(keyDown = new wxButton(this, REMAP_DOWN, keyToString(keyBinds[7]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    downSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "Down:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    downSizer->Add(keyDown = new wxButton(buttonTab, REMAP_DOWN, keyToString(keyBinds[7]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Left button setting
     wxBoxSizer *leftSizer = new wxBoxSizer(wxHORIZONTAL);
-    leftSizer->Add(new wxStaticText(this, wxID_ANY, "Left:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    leftSizer->Add(keyLeft = new wxButton(this, REMAP_LEFT, keyToString(keyBinds[5]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    leftSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "Left:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    leftSizer->Add(keyLeft = new wxButton(buttonTab, REMAP_LEFT, keyToString(keyBinds[5]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the Right button setting
     wxBoxSizer *rightSizer = new wxBoxSizer(wxHORIZONTAL);
-    rightSizer->Add(new wxStaticText(this, wxID_ANY, "Right:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    rightSizer->Add(keyRight = new wxButton(this, REMAP_RIGHT, keyToString(keyBinds[4]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    rightSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "Right:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    rightSizer->Add(keyRight = new wxButton(buttonTab, REMAP_RIGHT, keyToString(keyBinds[4]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the L button setting
     wxBoxSizer *lSizer = new wxBoxSizer(wxHORIZONTAL);
-    lSizer->Add(new wxStaticText(this, wxID_ANY, "L:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    lSizer->Add(keyL = new wxButton(this, REMAP_L, keyToString(keyBinds[9]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    lSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "L:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    lSizer->Add(keyL = new wxButton(buttonTab, REMAP_L, keyToString(keyBinds[9]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the R button setting
     wxBoxSizer *rSizer = new wxBoxSizer(wxHORIZONTAL);
-    rSizer->Add(new wxStaticText(this, wxID_ANY, "R:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    rSizer->Add(keyR = new wxButton(this, REMAP_R, keyToString(keyBinds[8]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    rSizer->Add(new wxStaticText(buttonTab, wxID_ANY, "R:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    rSizer->Add(keyR = new wxButton(buttonTab, REMAP_R, keyToString(keyBinds[8]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
-    // Set up the fast forward button setting
-    wxBoxSizer *fastForwardSizer = new wxBoxSizer(wxHORIZONTAL);
-    fastForwardSizer->Add(new wxStaticText(this, wxID_ANY, "Fast Forward:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    fastForwardSizer->Add(keyFastForward = new wxButton(this, REMAP_FAST_FORWARD, keyToString(keyBinds[12]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
-
-    // Set up the full screen button setting
-    wxBoxSizer *fullScreenSizer = new wxBoxSizer(wxHORIZONTAL);
-    fullScreenSizer->Add(new wxStaticText(this, wxID_ANY, "Full Screen:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    fullScreenSizer->Add(keyFullScreen = new wxButton(this, REMAP_FULL_SCREEN, keyToString(keyBinds[13]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
-
-    // Set up the cancel and confirm buttons
-    wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
-    buttonSizer->Add(new wxStaticText(this, wxID_ANY, ""), 1);
-    buttonSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"),  0, wxRIGHT, size / 16);
-    buttonSizer->Add(new wxButton(this, wxID_OK,     "Confirm"), 0, wxLEFT,  size / 16);
-
-    // Combine all of the left contents
+    // Combine all of the left button tab contents
     wxBoxSizer *leftContents = new wxBoxSizer(wxVERTICAL);
-    leftContents->Add(aSizer,           1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(bSizer,           1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(xSizer,           1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(ySizer,           1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(startSizer,       1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(selectSizer,      1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(fastForwardSizer, 1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(new wxStaticText(this, wxID_ANY, ""), 1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(aSizer,      1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(bSizer,      1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(xSizer,      1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(ySizer,      1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(startSizer,  1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(selectSizer, 1, wxEXPAND | wxALL, size / 8);
 
-    // Combine all of the right contents
+    // Combine all of the right button tab contents
     wxBoxSizer *rightContents = new wxBoxSizer(wxVERTICAL);
-    rightContents->Add(upSizer,         1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(downSizer,       1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(leftSizer,       1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(rightSizer,      1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(lSizer,          1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(rSizer,          1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(fullScreenSizer, 1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(buttonSizer,     1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(upSizer,    1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(downSizer,  1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(leftSizer,  1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(rightSizer, 1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(lSizer,     1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(rSizer,     1, wxEXPAND | wxALL, size / 8);
 
-    // Add a final border around everything
-    wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
-    sizer->Add(leftContents,  1, wxEXPAND | wxALL, size / 8);
-    sizer->Add(rightContents, 1, wxEXPAND | wxALL, size / 8);
-    SetSizer(sizer);
+    // Combine the button tab contents and add a final border around it
+    wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
+    buttonSizer->Add(leftContents,  1, wxEXPAND | wxALL, size / 8);
+    buttonSizer->Add(rightContents, 1, wxEXPAND | wxALL, size / 8);
+    buttonTab->SetSizer(buttonSizer);
 
-    // Size the window to fit the contents and prevent resizing
-    sizer->Fit(this);
+    // Set up the fast forward hold hotkey setting
+    wxBoxSizer *fastHoldSizer = new wxBoxSizer(wxHORIZONTAL);
+    fastHoldSizer->Add(new wxStaticText(hotkeyTab, wxID_ANY, "Fast Forward Hold:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    fastHoldSizer->Add(keyFastHold = new wxButton(hotkeyTab, REMAP_FAST_HOLD, keyToString(keyBinds[12]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+
+    // Set up the fast forward toggle hotkey setting
+    wxBoxSizer *fastToggleSizer = new wxBoxSizer(wxHORIZONTAL);
+    fastToggleSizer->Add(new wxStaticText(hotkeyTab, wxID_ANY, "Fast Forward Toggle:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    fastToggleSizer->Add(keyFastToggle = new wxButton(hotkeyTab, REMAP_FAST_TOGGLE, keyToString(keyBinds[13]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+
+    // Set up the full screen toggle hotkey setting
+    wxBoxSizer *fullScreenSizer = new wxBoxSizer(wxHORIZONTAL);
+    fullScreenSizer->Add(new wxStaticText(hotkeyTab, wxID_ANY, "Full Screen Toggle:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    fullScreenSizer->Add(keyFullScreen = new wxButton(hotkeyTab, REMAP_FULL_SCREEN, keyToString(keyBinds[14]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+
+    // Set up the enlarge swap toggle hotkey setting
+    wxBoxSizer *enlargeSwapSizer = new wxBoxSizer(wxHORIZONTAL);
+    enlargeSwapSizer->Add(new wxStaticText(hotkeyTab, wxID_ANY, "Enlarge Swap Toggle:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    enlargeSwapSizer->Add(keyEnlargeSwap = new wxButton(hotkeyTab, REMAP_ENLARGE_SWAP, keyToString(keyBinds[15]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+
+    // Set up the system pause toggle hotkey setting
+    wxBoxSizer *systemPauseSizer = new wxBoxSizer(wxHORIZONTAL);
+    systemPauseSizer->Add(new wxStaticText(hotkeyTab, wxID_ANY, "System Pause Toggle:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    systemPauseSizer->Add(keySystemPause = new wxButton(hotkeyTab, REMAP_SYSTEM_PAUSE, keyToString(keyBinds[16]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+
+    // Combine all of the hotkey tab contents
+    wxBoxSizer *hotkeyContents = new wxBoxSizer(wxVERTICAL);
+    hotkeyContents->Add(fastHoldSizer,    1, wxEXPAND | wxALL, size / 8);
+    hotkeyContents->Add(fastToggleSizer,  1, wxEXPAND | wxALL, size / 8);
+    hotkeyContents->Add(fullScreenSizer,  1, wxEXPAND | wxALL, size / 8);
+    hotkeyContents->Add(enlargeSwapSizer, 1, wxEXPAND | wxALL, size / 8);
+    hotkeyContents->Add(systemPauseSizer, 1, wxEXPAND | wxALL, size / 8);
+    hotkeyContents->Add(new wxStaticText(hotkeyTab, wxID_ANY, ""), 1);
+
+    // Add a final border around the hotkey tab
+    wxBoxSizer *hotkeySizer = new wxBoxSizer(wxHORIZONTAL);
+    hotkeySizer->Add(hotkeyContents,  1, wxEXPAND | wxALL, size / 8);
+    hotkeyTab->SetSizer(hotkeySizer);
+
+    // Set up the common navigation buttons
+    wxBoxSizer *naviSizer = new wxBoxSizer(wxHORIZONTAL);
+    naviSizer->Add(new wxStaticText(this, wxID_ANY, ""), 1);
+    naviSizer->Add(new wxButton(this, CLEAR_MAP,   "Clear"),   0, wxRIGHT,          size / 16);
+    naviSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"),  0, wxLEFT | wxRIGHT, size / 16);
+    naviSizer->Add(new wxButton(this, wxID_OK,     "Confirm"), 0, wxLEFT,           size / 16);
+
+    // Populate the dialog
+    wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+    sizer->Add(notebook, 1, wxEXPAND);
+    sizer->Add(naviSizer, 0, wxEXPAND | wxALL, size / 8);
+    SetSizerAndFit(sizer);
+
+    // Size the window to prevent resizing
     SetMinSize(GetSize());
     SetMaxSize(GetSize());
 
@@ -338,6 +386,11 @@ void InputDialog::resetLabels()
     keyRight->SetLabel(keyToString(keyBinds[4]));
     keyL->SetLabel(keyToString(keyBinds[9]));
     keyR->SetLabel(keyToString(keyBinds[8]));
+    keyFastHold->SetLabel(keyToString(keyBinds[12]));
+    keyFastToggle->SetLabel(keyToString(keyBinds[13]));
+    keyFullScreen->SetLabel(keyToString(keyBinds[14]));
+    keyEnlargeSwap->SetLabel(keyToString(keyBinds[15]));
+    keySystemPause->SetLabel(keyToString(keyBinds[16]));
     current = nullptr;
 }
 
@@ -449,22 +502,67 @@ void InputDialog::remapR(wxCommandEvent &event)
     keyIndex = 8;
 }
 
-void InputDialog::remapFastForward(wxCommandEvent &event)
+void InputDialog::remapFastHold(wxCommandEvent &event)
 {
-    // Prepare the fast forward button for remapping
+    // Prepare the fast forward hold hotkey for remapping
     resetLabels();
-    keyFastForward->SetLabel("Press a key");
-    current = keyFastForward;
+    keyFastHold->SetLabel("Press a key");
+    current = keyFastHold;
     keyIndex = 12;
+}
+
+void InputDialog::remapFastToggle(wxCommandEvent &event)
+{
+    // Prepare the fast forward toggle hotkey for remapping
+    resetLabels();
+    keyFastToggle->SetLabel("Press a key");
+    current = keyFastToggle;
+    keyIndex = 13;
 }
 
 void InputDialog::remapFullScreen(wxCommandEvent &event)
 {
-    // Prepare the full screen button for remapping
+    // Prepare the full screen toggle hotkey for remapping
     resetLabels();
     keyFullScreen->SetLabel("Press a key");
     current = keyFullScreen;
-    keyIndex = 13;
+    keyIndex = 14;
+}
+
+void InputDialog::remapEnlargeSwap(wxCommandEvent &event)
+{
+    // Prepare the enlarge swap toggle hotkey for remapping
+    resetLabels();
+    keyEnlargeSwap->SetLabel("Press a key");
+    current = keyEnlargeSwap;
+    keyIndex = 15;
+}
+
+void InputDialog::remapSystemPause(wxCommandEvent &event)
+{
+    // Prepare the system pause toggle hotkey for remapping
+    resetLabels();
+    keySystemPause->SetLabel("Press a key");
+    current = keySystemPause;
+    keyIndex = 16;
+}
+
+void InputDialog::clearMap(wxCommandEvent &event)
+{
+    if (current)
+    {
+        // If a button is selected, clear only its mapping
+        keyBinds[keyIndex] = 0;
+        current->SetLabel(keyToString(keyBinds[keyIndex]));
+        current = nullptr;
+    }
+    else
+    {
+        // If no button is selected, clear all mappings
+        for (int i = 0; i < MAX_KEYS; i++)
+            keyBinds[i] = 0;
+        resetLabels();
+    }
 }
 
 void InputDialog::updateJoystick(wxTimerEvent &event)
@@ -506,7 +604,7 @@ void InputDialog::updateJoystick(wxTimerEvent &event)
 void InputDialog::confirm(wxCommandEvent &event)
 {
     // Save the key mappings
-    for (int i = 0; i < 14; i++)
+    for (int i = 0; i < MAX_KEYS; i++)
         NooApp::setKeyBind(i, keyBinds[i]);
     Settings::save();
 

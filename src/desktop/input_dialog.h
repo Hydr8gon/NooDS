@@ -24,6 +24,8 @@
 #include <wx/wx.h>
 #include <wx/joystick.h>
 
+#include "noo_app.h"
+
 class InputDialog: public wxDialog
 {
     public:
@@ -46,10 +48,13 @@ class InputDialog: public wxDialog
         wxButton *keyRight;
         wxButton *keyL;
         wxButton *keyR;
-        wxButton *keyFastForward;
+        wxButton *keyFastHold;
+        wxButton *keyFastToggle;
         wxButton *keyFullScreen;
+        wxButton *keyEnlargeSwap;
+        wxButton *keySystemPause;
 
-        int keyBinds[14];
+        int keyBinds[MAX_KEYS];
         std::vector<int> axisBases;
         wxButton *current = nullptr;
         int keyIndex = 0;
@@ -70,8 +75,12 @@ class InputDialog: public wxDialog
         void remapRight(wxCommandEvent &event);
         void remapL(wxCommandEvent &event);
         void remapR(wxCommandEvent &event);
-        void remapFastForward(wxCommandEvent &event);
+        void remapFastHold(wxCommandEvent &event);
+        void remapFastToggle(wxCommandEvent &event);
         void remapFullScreen(wxCommandEvent &event);
+        void remapEnlargeSwap(wxCommandEvent &event);
+        void remapSystemPause(wxCommandEvent &event);
+        void clearMap(wxCommandEvent &event);
         void updateJoystick(wxTimerEvent &event);
         void confirm(wxCommandEvent &event);
         void pressKey(wxKeyEvent &event);

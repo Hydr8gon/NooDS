@@ -195,7 +195,7 @@ void NooCanvas::resize(wxSizeEvent &event)
 void NooCanvas::pressKey(wxKeyEvent &event)
 {
     // Trigger a key press if a mapped key was pressed
-    for (int i = 0; i < 14; i++)
+    for (int i = 0; i < MAX_KEYS; i++)
     {
         if (event.GetKeyCode() == NooApp::getKeyBind(i))
             frame->pressKey(i);
@@ -205,7 +205,7 @@ void NooCanvas::pressKey(wxKeyEvent &event)
 void NooCanvas::releaseKey(wxKeyEvent &event)
 {
     // Trigger a key release if a mapped key was released
-    for (int i = 0; i < 14; i++)
+    for (int i = 0; i < MAX_KEYS; i++)
     {
         if (event.GetKeyCode() == NooApp::getKeyBind(i))
             frame->releaseKey(i);

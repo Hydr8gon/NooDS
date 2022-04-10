@@ -61,7 +61,9 @@ class NooFrame: public wxFrame
         std::mutex mutex;
 
         std::vector<int> axisBases;
+        uint8_t hotkeyToggles = 0;
         int fpsLimiterBackup = 0;
+        bool fastForward = false;
         bool fullScreen = false;
 
         void runCore();

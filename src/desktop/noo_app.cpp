@@ -35,7 +35,7 @@ EVT_TIMER(UPDATE, NooApp::update)
 wxEND_EVENT_TABLE()
 
 int NooApp::screenFilter = 1;
-int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I', WXK_TAB, WXK_ESCAPE };
+int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I', WXK_TAB, 0, WXK_ESCAPE, 0, WXK_BACK };
 
 bool NooApp::OnInit()
 {
@@ -57,8 +57,11 @@ bool NooApp::OnInit()
         Setting("keyL",           &keyBinds[9],  false),
         Setting("keyX",           &keyBinds[10], false),
         Setting("keyY",           &keyBinds[11], false),
-        Setting("keyFastForward", &keyBinds[12], false),
-        Setting("keyFullScreen",  &keyBinds[13], false)
+        Setting("keyFastHold",    &keyBinds[12], false),
+        Setting("keyFastToggle",  &keyBinds[13], false),
+        Setting("keyFullScreen",  &keyBinds[14], false),
+        Setting("keyEnlargeSwap", &keyBinds[15], false),
+        Setting("keySystemPause", &keyBinds[16], false)
     };
 
     // Add the platform settings

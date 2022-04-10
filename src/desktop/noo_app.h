@@ -24,6 +24,7 @@
 #include <wx/wx.h>
 
 #define MAX_FRAMES 8
+#define MAX_KEYS  17
 
 class NooFrame;
 
@@ -48,7 +49,7 @@ class NooApp: public wxApp
         NooFrame *frames[MAX_FRAMES] = {};
 
         static int screenFilter;
-        static int keyBinds[14];
+        static int keyBinds[MAX_KEYS];
 
         bool OnInit();
 
