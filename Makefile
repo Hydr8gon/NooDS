@@ -17,6 +17,7 @@ else
   INCLUDES += $(shell wx-config --cxxflags)
   ifeq ($(shell uname -s),Darwin)
     ARGS += -DMACOS
+    LIBS += -headerpad_max_install_names
   else
     ARGS += -no-pie
     LIBS += -lGL
