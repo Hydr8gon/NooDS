@@ -51,6 +51,7 @@ enum FrameEvent
     THREADED_3D_1,
     THREADED_3D_2,
     THREADED_3D_3,
+    MIC_ENABLE,
     UPDATE_JOY
 };
 
@@ -76,6 +77,7 @@ EVT_MENU(THREADED_3D_0,  NooFrame::threaded3D0)
 EVT_MENU(THREADED_3D_1,  NooFrame::threaded3D1)
 EVT_MENU(THREADED_3D_2,  NooFrame::threaded3D2)
 EVT_MENU(THREADED_3D_3,  NooFrame::threaded3D3)
+EVT_MENU(MIC_ENABLE,     NooFrame::micEnable)
 EVT_TIMER(UPDATE_JOY,    NooFrame::updateJoystick)
 EVT_DROP_FILES(NooFrame::dropFiles)
 EVT_CLOSE(NooFrame::close)
@@ -154,10 +156,13 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path):
     settingsMenu->AppendSeparator();
     settingsMenu->AppendCheckItem(THREADED_2D, "&Threaded 2D");
     settingsMenu->AppendSubMenu(threaded3D,    "&Threaded 3D");
+    settingsMenu->AppendSeparator();
+    settingsMenu->AppendCheckItem(MIC_ENABLE,  "&Use Microphone");
 
     // Set the current values of the checkboxes
     settingsMenu->Check(DIRECT_BOOT, Settings::getDirectBoot());
     settingsMenu->Check(THREADED_2D, Settings::getThreaded2D());
+    settingsMenu->Check(MIC_ENABLE,  NooApp::getMicEnable());
 
     // Set up the menu bar
     wxMenuBar *menuBar = new wxMenuBar();
@@ -638,6 +643,14 @@ void NooFrame::threaded3D3(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to 3 threads
     Settings::setThreaded3D(3);
+    Settings::save();
+}
+
+void NooFrame::micEnable(wxCommandEvent &event)
+{
+    // Toggle the use microphone setting
+    NooApp::setMicEnable(!NooApp::getMicEnable());
+    NooApp::getMicEnable() ? app->startStream(1) : app->stopStream(1);
     Settings::save();
 }
 

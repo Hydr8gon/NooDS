@@ -25,9 +25,9 @@
 
 Spi::~Spi()
 {
-    // Free the firmware memory
-    if (firmware)
-        delete[] firmware;
+    // Free any dynamic memory
+    if (firmware)  delete[] firmware;
+    if (micBuffer) delete[] micBuffer;
 }
 
 uint16_t Spi::crc16(uint32_t value, uint8_t *data, size_t size)
@@ -187,6 +187,23 @@ void Spi::clearTouch()
     touchY = 0xFFF;
 }
 
+void Spi::sendMicData(const int16_t* samples, size_t count, size_t rate)
+{
+    mutex.lock();
+
+    // Copy samples into the microphone buffer
+    if (micBuffer) delete[] micBuffer;
+    micBuffer = new int16_t[count];
+    memcpy(micBuffer, samples, count * sizeof(int16_t));
+    micBufSize = count;
+
+    // Set the cycle start time of the microphone buffer, and the number of cycles per sample
+    micCycles = core->getGlobalCycles();
+    micStep = (60 * 263 * 355 * 6) / rate;
+
+    mutex.unlock();
+}
+
 void Spi::writeSpiCnt(uint16_t mask, uint16_t value)
 {
     // Write to the SPICNT register
@@ -219,7 +236,6 @@ void Spi::writeSpiData(uint8_t value)
                 switch (command)
                 {
                     case 0x03: // Read data bytes
-                    {
                         if (writeCount < 4)
                         {
                             // On writes 2-4, set the 3 byte address to read from
@@ -235,14 +251,11 @@ void Spi::writeSpiData(uint8_t value)
                             address += (spiCnt & BIT(10)) ? 2 : 1;
                         }
                         break;
-                    }
 
                     default:
-                    {
                         LOG("Write to SPI with unknown firmware command: 0x%X\n", command);
                         spiData = 0;
                         break;
-                    }
                 }
                 break;
             }
@@ -252,35 +265,46 @@ void Spi::writeSpiData(uint8_t value)
                 switch ((command & 0x70) >> 4) // Channel
                 {
                     case 1: // Y-coordinate
-                    {
                         // Send the ADC Y coordinate MSB first, with 3 dummy bits in front
-                        spiData = ((touchY << 11) & 0xFF00) | ((touchY >> 5) & 0x00FF) >> ((writeCount - 1) % 2);
+                        spiData = (writeCount & 1) ? (touchY >> 5) : (touchY << 3);
                         break;
-                    }
 
                     case 5: // X-coordinate
-                    {
                         // Send the ADC X coordinate MSB first, with 3 dummy bits in front
-                        spiData = ((touchX << 11) & 0xFF00) | ((touchX >> 5) & 0x00FF) >> ((writeCount - 1) % 2);
+                        spiData = (writeCount & 1) ? (touchX >> 5) : (touchX << 3);
                         break;
-                    }
+
+                    case 6: // AUX input
+                        if (writeCount & 1)
+                        {
+                            // Load a sample based on cycle time since the buffer was sent
+                            // The sample is converted to an unsigned 12-bit value
+                            mutex.lock();
+                            size_t index = std::min<size_t>((core->getGlobalCycles() - micCycles) / micStep, micBufSize);
+                            micSample = (micBuffer[index] >> 4) + 0x800;
+                            mutex.unlock();
+
+                            // Send the most significant 7 bits of the sample first
+                            spiData = micSample >> 5;
+                            break;
+                        }
+
+                        // Send the last 5 bits of the sample. with 3 dummy bits in front
+                        spiData = micSample << 3;
+                        break;
 
                     default:
-                    {
                         LOG("Write to SPI with unknown touchscreen channel: %d\n", (command & 0x70) >> 4);
                         spiData = 0;
                         break;
-                    }
                 }
                 break;
             }
 
             default:
-            {
                 LOG("Write to SPI with unknown device: %d\n", (spiCnt & 0x0300) >> 8);
                 spiData = 0;
                 break;
-            }
         }
     }
 

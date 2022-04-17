@@ -38,25 +38,34 @@ class NooApp: public wxApp
         void disconnCore(int id);
 
         void updateLayouts();
+        void startStream(bool stream);
+        void stopStream(bool stream);
 
         static int getScreenFilter()     { return screenFilter;    }
+        static int getMicEnable()        { return micEnable;       }
         static int getKeyBind(int index) { return keyBinds[index]; }
 
         static void setScreenFilter(int value)       { screenFilter    = value; }
+        static void setMicEnable(int value)          { micEnable       = value; }
         static void setKeyBind(int index, int value) { keyBinds[index] = value; }
 
     private:
         NooFrame *frames[MAX_FRAMES] = {};
+        PaStream *streams[2] = {};
 
         static int screenFilter;
+        static int micEnable;
         static int keyBinds[MAX_KEYS];
 
         bool OnInit();
+        int  OnExit();
 
         void update(wxTimerEvent &event);
 
         static int audioCallback(const void *in, void *out, unsigned long count,
-                                 const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
+            const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
+        static int micCallback(const void *in, void *out, unsigned long count,
+            const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data);
 
         wxDECLARE_EVENT_TABLE();
 };

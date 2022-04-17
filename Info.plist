@@ -34,6 +34,8 @@
     <true/>
     <key>NSRequiresAquaSystemAppearance</key>
     <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>This app requires microphone access to emulate the DS microphone.</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>

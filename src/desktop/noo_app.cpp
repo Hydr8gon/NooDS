@@ -35,6 +35,7 @@ EVT_TIMER(UPDATE, NooApp::update)
 wxEND_EVENT_TABLE()
 
 int NooApp::screenFilter = 1;
+int NooApp::micEnable = 1;
 int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I', WXK_TAB, 0, WXK_ESCAPE, 0, WXK_BACK };
 
 bool NooApp::OnInit()
@@ -45,6 +46,7 @@ bool NooApp::OnInit()
     std::vector<Setting> platformSettings =
     {
         Setting("screenFilter",   &screenFilter, false),
+        Setting("micEnable",      &micEnable,    false),
         Setting("keyA",           &keyBinds[0],  false),
         Setting("keyB",           &keyBinds[1],  false),
         Setting("keySelect",      &keyBinds[2],  false),
@@ -74,7 +76,7 @@ bool NooApp::OnInit()
         // Get the system-specific application settings directory
         std::string settingsDir;
         wxStandardPaths &paths = wxStandardPaths::Get();
-#if defined(WINDOWS) || defined(MACOS)
+#if defined(WINDOWS) || defined(MACOS) || !wxCHECK_VERSION(3, 1, 0)
         settingsDir = paths.GetUserDataDir().mb_str(wxConvUTF8);
 #else
         paths.SetFileLayout(wxStandardPaths::FileLayout_XDG);
@@ -98,13 +100,22 @@ bool NooApp::OnInit()
     wxTimer *timer = new wxTimer(this, UPDATE);
     timer->Start(6);
 
-    // Start the audio service
-    PaStream *stream;
+    // Start the audio service and output/input streams
     Pa_Initialize();
-    Pa_OpenDefaultStream(&stream, 0, 2, paInt16, 48000, 1024, audioCallback, frames);
-    Pa_StartStream(stream);
+    startStream(0);
+    startStream(1);
 
     return true;
+}
+
+int NooApp::OnExit()
+{
+    // Clean up the audio service and streams
+    stopStream(1);
+    stopStream(0);
+    Pa_Terminate();
+
+    return wxApp::OnExit();
 }
 
 void NooApp::createFrame()
@@ -158,6 +169,36 @@ void NooApp::updateLayouts()
     }
 }
 
+void NooApp::startStream(bool stream)
+{
+    if (stream == 0)
+    {
+        if (Pa_GetDefaultOutputDevice() != paNoDevice)
+        {
+            // Initialize the audio output stream
+            Pa_OpenDefaultStream(&streams[0], 0, 2, paInt16, 48000, 1024, audioCallback, frames);
+            Pa_StartStream(streams[0]);
+        }
+    }
+    else if (micEnable && Pa_GetDefaultInputDevice() != paNoDevice)
+    {
+        // Initialize the audio input stream
+        Pa_OpenDefaultStream(&streams[1], 1, 0, paInt16, 48000, 1024, micCallback, frames);
+        Pa_StartStream(streams[1]);
+    }
+}
+
+void NooApp::stopStream(bool stream)
+{
+    // Stop a stream if it was running
+    if (streams[stream])
+    {
+        Pa_StopStream(streams[stream]);
+        Pa_CloseStream(streams[stream]);
+        streams[stream] = nullptr;
+    }
+}
+
 void NooApp::update(wxTimerEvent &event)
 {
     // Continuously refresh the frames
@@ -169,7 +210,7 @@ void NooApp::update(wxTimerEvent &event)
 }
 
 int NooApp::audioCallback(const void *in, void *out, unsigned long count,
-                          const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data)
+    const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data)
 {
     int16_t *buffer = (int16_t*)out;
     NooFrame **frames = (NooFrame**)data;
@@ -208,5 +249,26 @@ int NooApp::audioCallback(const void *in, void *out, unsigned long count,
         memset(buffer, 0, count * sizeof(uint32_t));
     }
 
-    return 0;
+    return paContinue;
+}
+
+int NooApp::micCallback(const void *in, void *out, unsigned long count,
+    const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data)
+{
+    const int16_t *buffer = (const int16_t*)in;
+    NooFrame **frames = (NooFrame**)data;
+    Core *core = nullptr;
+
+    // Find the core with the lowest instance ID
+    for (size_t i = 0; i < MAX_FRAMES; i++)
+    {
+        if (frames[i] && (core = frames[i]->getCore()))
+            break;
+    }
+
+    // Send microphone samples to the core
+    if (core)
+        core->spi.sendMicData(buffer, count, 48000);
+
+    return paContinue;
 }
