@@ -281,7 +281,7 @@ void Spi::writeSpiData(uint8_t value)
                             // The sample is converted to an unsigned 12-bit value
                             mutex.lock();
                             size_t index = std::min<size_t>((core->getGlobalCycles() - micCycles) / micStep, micBufSize);
-                            micSample = (micBuffer[index] >> 4) + 0x800;
+                            micSample = (micBufSize > 0) ? ((micBuffer[index] >> 4) + 0x800) : 0;
                             mutex.unlock();
 
                             // Send the most significant 7 bits of the sample first
