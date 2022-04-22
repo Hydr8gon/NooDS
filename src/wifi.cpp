@@ -136,15 +136,13 @@ void Wifi::processPackets()
         for (size_t j = 0; j < size; j++)
         {
             // Write a half-word of the packet to memory
-            core->memory.write<uint16_t>(1, 0x4804000 + (wRxbufWrcsr << 1), packets[i][j]);
+            core->memory.write<uint16_t>(1, 0x4804000 + wRxbufWrcsr, packets[i][j]);
 
             // Increment the circular buffer address
+            wRxbufWrcsr += 2;
             if ((wRxbufBegin & 0x1FFE) != (wRxbufEnd & 0x1FFE))
-            {
-                wRxbufWrcsr++;
                 wRxbufWrcsr = (wRxbufBegin & 0x1FFE) + (wRxbufWrcsr - (wRxbufBegin & 0x1FFE)) % ((wRxbufEnd & 0x1FFE) - (wRxbufBegin & 0x1FFE));
-                wRxbufWrcsr &= 0xFFF;
-            }
+            wRxbufWrcsr &= 0x1FFE;
         }
 
         delete[] packets[i];
@@ -242,7 +240,7 @@ void Wifi::writeWRxcnt(uint16_t mask, uint16_t value)
 
     // Latch W_RXBUF_WR_ADDR to W_RXBUF_WRCSR
     if (value & BIT(0))
-        wRxbufWrcsr = wRxbufWrAddr;
+        wRxbufWrcsr = wRxbufWrAddr << 1;
 }
 
 void Wifi::writeWPowerstate(uint16_t mask, uint16_t value)
@@ -503,14 +501,11 @@ uint16_t Wifi::readWRxbufRdData()
     uint16_t value = core->memory.read<uint16_t>(1, 0x4804000 + wRxbufRdAddr);
 
     // Increment the read address
+    if ((wRxbufRdAddr += 2) == wRxbufGap)
+        wRxbufRdAddr += wRxbufGapdisp << 1;
     if ((wRxbufBegin & 0x1FFE) != (wRxbufEnd & 0x1FFE))
-    {
-        wRxbufRdAddr += 2;
-        if (wRxbufRdAddr == wRxbufGap)
-            wRxbufRdAddr += wRxbufGapdisp << 1;
         wRxbufRdAddr = (wRxbufBegin & 0x1FFE) + (wRxbufRdAddr - (wRxbufBegin & 0x1FFE)) % ((wRxbufEnd & 0x1FFE) - (wRxbufBegin & 0x1FFE));
-        wRxbufRdAddr &= 0x1FFF;
-    }
+    wRxbufRdAddr &= 0x1FFF;
 
     // Decrement the read counter and trigger an interrupt at the end
     if (wRxbufCount > 0 && --wRxbufCount == 0)

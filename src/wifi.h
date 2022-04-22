@@ -49,7 +49,7 @@ class Wifi
         uint16_t readWPowerforce()        { return wPowerforce;      }
         uint16_t readWRxbufBegin()        { return wRxbufBegin;      }
         uint16_t readWRxbufEnd()          { return wRxbufEnd;        }
-        uint16_t readWRxbufWrcsr()        { return wRxbufWrcsr;      }
+        uint16_t readWRxbufWrcsr()        { return wRxbufWrcsr >> 1; }
         uint16_t readWRxbufWrAddr()       { return wRxbufWrAddr;     }
         uint16_t readWRxbufRdAddr()       { return wRxbufRdAddr;     }
         uint16_t readWRxbufReadcsr()      { return wRxbufReadcsr;    }
