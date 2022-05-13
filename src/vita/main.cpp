@@ -27,6 +27,7 @@
 #include <psp2/registrymgr.h> 
 #include <psp2/touch.h>
 #include <psp2/io/dirent.h> 
+#include <psp2/io/stat.h>
 #include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/sysmem.h>
 #include <psp2/power.h>
