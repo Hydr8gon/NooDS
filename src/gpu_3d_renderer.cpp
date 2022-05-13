@@ -287,7 +287,7 @@ void Gpu3DRenderer::finishScanline(int line)
                 {
                     // Determine the fog table index for the current pixel's depth
                     int32_t offset = ((depthBuffer[layer][i] / 0x200) - fogOffset);
-                    int n = (fogStep > 0) ? (offset / fogStep) : ((offset > 0) ? 31 : 0);
+                    int n = (fogStep > 0) ? (offset / fogStep - 1) : ((offset > 0) ? 31 : 0);
 
                     // Get the fog density from the table
                     uint8_t density;
@@ -304,6 +304,9 @@ void Gpu3DRenderer::finishScanline(int line)
                         int m = offset % fogStep;
                         density = ((m >= 0) ? ((fogTable[n + 1] * m + fogTable[n] * (fogStep - m)) / fogStep) : fogTable[0]);
                     }
+
+                    if (density == 127)
+                        density++;
 
                     // Blend the fog with the pixel
                     uint8_t a = (((fog >> 18) & 0x3F) * density + ((framebuffer[layer][i] >> 18) & 0x3F) * (128 - density)) / 128;
