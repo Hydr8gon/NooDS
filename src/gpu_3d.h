@@ -165,12 +165,13 @@ class Gpu3D
         GXState state = GX_IDLE;
 
         std::queue<Entry> fifo;
-        int pipeSize = 0;
+        size_t pipeSize = 0;
+        size_t testQueue = 0;
+        size_t matrixQueue = 0;
 
         static const uint8_t paramCounts[0x100];
 
-        int matrixMode = 0;
-        int projectionPtr = 0, coordinatePtr = 0;
+        uint8_t matrixMode = 0;
         bool clipDirty = false;
 
         Matrix projection, projectionStack;

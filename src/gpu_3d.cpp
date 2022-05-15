@@ -258,8 +258,6 @@ void Gpu3D::runCommand()
     if (pipeSize > fifo.size()) pipeSize = fifo.size();
 
     // Update the FIFO status
-    gxStat = (gxStat & ~0x00001F00) | (coordinatePtr            <<  8); // Coordinate stack pointer
-    gxStat = (gxStat & ~0x00002000) | (projectionPtr            << 13); // Projection stack pointer
     gxStat = (gxStat & ~0x01FF0000) | ((fifo.size() - pipeSize) << 16); // FIFO entries
     if (fifo.size() - pipeSize == 0) gxStat |=  BIT(26); // FIFO empty
     if (fifo.size() == 0)            gxStat &= ~BIT(27); // Commands not executing
@@ -611,11 +609,11 @@ void Gpu3D::mtxPushCmd()
     {
         case 0: // Projection stack
         {
-            if (projectionPtr < 1)
+            if (!(gxStat & BIT(13)))
             {
                 // Push to the single projection stack slot and increment the pointer
                 projectionStack = projection;
-                projectionPtr++;
+                gxStat |= BIT(13);
             }
             else
             {
@@ -627,16 +625,20 @@ void Gpu3D::mtxPushCmd()
 
         case 1: case 2: // Coordinate and directional stacks
         {
+            // Get the stack pointer to push to
+            uint8_t pointer = (gxStat >> 8) & 0x1F;
+
             // Indicate a matrix stack overflow error
             // Even though the 31st slot exists, it still causes an overflow error
-            if (coordinatePtr >= 30) gxStat |= BIT(15);
+            if (pointer >= 30)
+                gxStat |= BIT(15);
 
             // Push to the current coordinate and directional stack slots and increment the pointer
-            if (coordinatePtr < 31)
+            if (pointer < 31)
             {
-                coordinateStack[coordinatePtr] = coordinate;
-                directionStack[coordinatePtr] = direction;
-                coordinatePtr++;
+                coordinateStack[pointer] = coordinate;
+                directionStack[pointer] = direction;
+                gxStat += BIT(8);
             }
             break;
         }
@@ -648,6 +650,10 @@ void Gpu3D::mtxPushCmd()
             break;
         }
     }
+
+    // Clear the busy bit if no more matrix commands are queued
+    if (--matrixQueue == 0)
+        gxStat &= ~BIT(14);
 }
 
 void Gpu3D::mtxPopCmd(uint32_t param)
@@ -657,10 +663,10 @@ void Gpu3D::mtxPopCmd(uint32_t param)
     {
         case 0: // Projection stack
         {
-            if (projectionPtr > 0)
+            if (gxStat & BIT(13))
             {
                 // Pop from the single projection stack slot and decrement the pointer
-                projectionPtr--;
+                gxStat &= ~BIT(13);
                 projection = projectionStack;
                 clipDirty = true;
             }
@@ -674,19 +680,20 @@ void Gpu3D::mtxPopCmd(uint32_t param)
 
         case 1: case 2: // Coordinate and directional stacks
         {
-            // Calculate the stack address to pop from
-            int address = coordinatePtr - (((param & BIT(5)) ? 0xFFFFFFC0 : 0) | (param & 0x0000003F));
+            // Get the stack pointer to pop from
+            uint8_t pointer = ((gxStat >> 8) & 0x1F) - ((int8_t)(param << 2) >> 2);
 
             // Indicate a matrix stack underflow or overflow error
             // Even though the 31st slot exists, it still causes an overflow error
-            if (address < 0 || address >= 30) gxStat |= BIT(15);
+            if (pointer >= 30)
+                gxStat |= BIT(15);
 
             // Pop from the current coordinate and directional stack slots and update the pointer
-            if (address >= 0 && address < 31)
+            if (pointer < 31)
             {
-                coordinate = coordinateStack[address];
-                direction = directionStack[address];
-                coordinatePtr = address;
+                gxStat = (gxStat & ~0x1F00) | (pointer << 8);
+                coordinate = coordinateStack[pointer];
+                direction = directionStack[pointer];
                 clipDirty = true;
             }
             break;
@@ -699,6 +706,10 @@ void Gpu3D::mtxPopCmd(uint32_t param)
             break;
         }
     }
+
+    // Clear the busy bit if no more matrix commands are queued
+    if (--matrixQueue == 0)
+        gxStat &= ~BIT(14);
 }
 
 void Gpu3D::mtxStoreCmd(uint32_t param)
@@ -1435,6 +1446,10 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
         { vertices[1], vertices[5], vertices[7], vertices[4] }
     };
 
+    // Clear the busy bit if no more test commands are queued
+    if (--testQueue == 0)
+        gxStat &= ~BIT(0);
+
     // Clip the faces of the box
     // If any of the faces are in view, set the result bit
     for (int i = 0; i < 6; i++)
@@ -1475,6 +1490,10 @@ void Gpu3D::posTestCmd(std::vector<uint32_t> &params)
     posResult[1] = vertex.y;
     posResult[2] = vertex.z;
     posResult[3] = vertex.w;
+
+    // Clear the busy bit if no more test commands are queued
+    if (--testQueue == 0)
+        gxStat &= ~BIT(0);
 }
 
 void Gpu3D::vecTestCmd(uint32_t param)
@@ -1491,6 +1510,10 @@ void Gpu3D::vecTestCmd(uint32_t param)
     vecResult[0] = ((int16_t)(vector.x << 3)) >> 3;
     vecResult[1] = ((int16_t)(vector.y << 3)) >> 3;
     vecResult[2] = ((int16_t)(vector.z << 3)) >> 3;
+
+    // Clear the busy bit if no more test commands are queued
+    if (--testQueue == 0)
+        gxStat &= ~BIT(0);
 }
 
 void Gpu3D::addEntry(Entry entry)
@@ -1520,6 +1543,21 @@ void Gpu3D::addEntry(Entry entry)
         // If the FIFO is half full or more, disable GXFIFO DMA transfers
         if (fifo.size() - pipeSize >= 128 && (gxStat & BIT(25)))
             gxStat &= ~BIT(25);
+    }
+
+    switch (entry.command)
+    {
+        case 0x11: case 0x12: // MTX_PUSH, MTX_POP
+            // Track queued matrix commands and set the busy bit until they finish
+            matrixQueue++;
+            gxStat |= BIT(14);
+            break;
+
+        case 0x70: case 0x71: case 0x72: // BOX_TEST, POS_TEST, VEC_TEST
+            // Track queued test commands and set the busy bit until they finish
+            testQueue++;
+            gxStat |= BIT(0);
+            break;
     }
 
     // Start executing commands if one is ready
@@ -1824,10 +1862,7 @@ void Gpu3D::writeGxStat(uint32_t mask, uint32_t value)
 {
     // Clear the error bit and reset the projection stack pointer
     if (value & BIT(15))
-    {
-        gxStat &= ~0x0000A000;
-        projectionPtr = 0;
-    }
+        gxStat &= ~0xA000;
 
     // Write to the GXSTAT register
     mask &= 0xC0000000;
