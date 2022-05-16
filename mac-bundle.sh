@@ -41,7 +41,7 @@ fixup_libs() {
 
         if [[ ! -f "$install_path" ]]; then
             install -m644 "$abslib" "$install_path"
-            strip -SNTx "$install_path"
+            strip -Sx "$install_path"
             fixup_libs "$install_path"
         fi
     done
