@@ -64,13 +64,14 @@ bool Cartridge::loadRom(std::string path)
     return true;
 }
 
-void Cartridge::loadRomSection(uint32_t offset, uint32_t size)
+void Cartridge::loadRomSection(size_t offset, size_t size)
 {
     // Load a section of the current ROM file into memory
     if (rom) delete[] rom;
     rom = new uint8_t[size];
     fseek(romFile, offset, SEEK_SET);
     fread(rom, sizeof(uint8_t), size, romFile);
+    core->dldi.patchRom(rom, offset, size);
 }
 
 void Cartridge::writeSave()
@@ -304,16 +305,6 @@ void CartridgeNds::directBoot()
         else
         {
             core->memory.write<uint32_t>(1, ramAddr7 + i, U8TO32(rom, offset + i));
-        }
-    }
-
-    // Scan the initial ARM9 binary for a DLDI header and patch the driver if found
-    for (int i = ramAddr9; i < ramAddr9 + size9; i += 0x40)
-    {
-        if (core->memory.read<uint32_t>(0, i) == 0xBF8DA5ED)
-        {
-            core->dldi.patchDriver(i);
-            break;
         }
     }
 }

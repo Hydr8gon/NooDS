@@ -60,7 +60,7 @@ class Cartridge
         bool saveDirty = false;
         std::mutex mutex;
 
-        void loadRomSection(uint32_t offset, uint32_t size);
+        void loadRomSection(size_t offset, size_t size);
 
     private:
         std::string romName, saveName;

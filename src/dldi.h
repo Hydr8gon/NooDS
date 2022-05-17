@@ -41,20 +41,20 @@ class Dldi
         Dldi(Core *core): core(core) {}
         ~Dldi();
 
-        void patchDriver(uint32_t address);
-        bool isFunction(uint32_t address);
+        void patchRom(uint8_t *rom, size_t offset, size_t size);
+        bool isPatched() { return patched; }
 
         int startup();
         int isInserted();
-        int readSectors(int sector, int numSectors, uint32_t buf);
-        int writeSectors(int sector, int numSectors, uint32_t buf);
+        int readSectors(bool cpu, int sector, int numSectors, uint32_t buf);
+        int writeSectors(bool cpu, int sector, int numSectors, uint32_t buf);
         int clearStatus();
         int shutdown();
 
     private:
         Core *core;
 
-        uint32_t funcAddress = 0;
+        bool patched = false;
         FILE *sdImage = nullptr;
 };
 

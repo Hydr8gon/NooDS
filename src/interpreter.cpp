@@ -1527,16 +1527,16 @@ int Interpreter::handleReserved(uint32_t opcode)
         return blx(opcode); // BLX label
 
     // If a DLDI function was jumped to, HLE it and return
-    if (core->dldi.isFunction(*registers[15] - 8))
+    if (core->dldi.isPatched())
     {
         switch (opcode)
         {
-            case DLDI_START:  *registers[0] = core->dldi.startup();                                                 break;
-            case DLDI_INSERT: *registers[0] = core->dldi.isInserted();                                              break;
-            case DLDI_READ:   *registers[0] = core->dldi.readSectors(*registers[0], *registers[1], *registers[2]);  break;
-            case DLDI_WRITE:  *registers[0] = core->dldi.writeSectors(*registers[0], *registers[1], *registers[2]); break;
-            case DLDI_CLEAR:  *registers[0] = core->dldi.clearStatus();                                             break;
-            case DLDI_STOP:   *registers[0] = core->dldi.shutdown();                                                break;
+            case DLDI_START:  *registers[0] = core->dldi.startup();                                                      break;
+            case DLDI_INSERT: *registers[0] = core->dldi.isInserted();                                                   break;
+            case DLDI_READ:   *registers[0] = core->dldi.readSectors(cpu, *registers[0], *registers[1], *registers[2]);  break;
+            case DLDI_WRITE:  *registers[0] = core->dldi.writeSectors(cpu, *registers[0], *registers[1], *registers[2]); break;
+            case DLDI_CLEAR:  *registers[0] = core->dldi.clearStatus();                                                  break;
+            case DLDI_STOP:   *registers[0] = core->dldi.shutdown();                                                     break;
         }
         return bx(14);
     }
