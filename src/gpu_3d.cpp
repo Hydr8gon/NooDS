@@ -1447,7 +1447,7 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
     };
 
     // Clear the busy bit if no more test commands are queued
-    if (--testQueue == 0)
+    if ((testQueue -= 3) == 0)
         gxStat &= ~BIT(0);
 
     // Clip the faces of the box
@@ -1492,7 +1492,7 @@ void Gpu3D::posTestCmd(std::vector<uint32_t> &params)
     posResult[3] = vertex.w;
 
     // Clear the busy bit if no more test commands are queued
-    if (--testQueue == 0)
+    if ((testQueue -= 2) == 0)
         gxStat &= ~BIT(0);
 }
 
