@@ -85,32 +85,49 @@ template <typename T> void VramMapping::write(uint32_t address, T value)
     }
 }
 
-bool Memory::loadBios()
+bool Memory::loadBios9()
 {
-    // Attempt to load the ARM9 BIOS
-    FILE *bios9File = fopen(Settings::getBios9Path().c_str(), "rb");
-    if (!bios9File) return false;
-    fread(bios9, sizeof(uint8_t), 0x1000, bios9File);
-    fclose(bios9File);
+    // Load the ARM9 BIOS if the file is found
+    if (FILE *file = fopen(Settings::getBios9Path().c_str(), "rb"))
+    {
+        fread(bios9, sizeof(uint8_t), 0x1000, file);
+        fclose(file);
+        return true;
+    }
 
-    // Attempt to load the ARM7 BIOS
-    FILE *bios7File = fopen(Settings::getBios7Path().c_str(), "rb");
-    if (!bios7File) return false;
-    fread(bios7, sizeof(uint8_t), 0x4000, bios7File);
-    fclose(bios7File);
+    // Prepare HLE BIOS with a special opcode for interrupt return
+    bios9[3] = 0xFF;
+    core->interpreter[0].setBios(&core->bios9);
+    return false;
+}
 
-    return true;
+bool Memory::loadBios7()
+{
+    // Load the ARM7 BIOS if the file is found
+    if (FILE *file = fopen(Settings::getBios7Path().c_str(), "rb"))
+    {
+        fread(bios7, sizeof(uint8_t), 0x4000, file);
+        fclose(file);
+        return true;
+    }
+
+    // Prepare HLE BIOS with a special opcode for interrupt return
+    bios7[3] = 0xFF;
+    core->interpreter[1].setBios(&core->bios7);
+    return false;
 }
 
 bool Memory::loadGbaBios()
 {
-    // Attempt to load the GBA BIOS
-    FILE *gbaBiosFile = fopen(Settings::getGbaBiosPath().c_str(), "rb");
-    if (!gbaBiosFile) return false;
-    fread(gbaBios, sizeof(uint8_t), 0x4000, gbaBiosFile);
-    fclose(gbaBiosFile);
+    // Load the GBA BIOS if the file is found
+    if (FILE *file = fopen(Settings::getGbaBiosPath().c_str(), "rb"))
+    {
+        fread(gbaBios, sizeof(uint8_t), 0x4000, file);
+        fclose(file);
+        return true;
+    }
 
-    return true;
+    return false;
 }
 
 void Memory::updateMap9(uint32_t start, uint32_t end)

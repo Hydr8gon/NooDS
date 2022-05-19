@@ -1400,18 +1400,27 @@ void Interpreter::sendInterrupt(int bit)
 
 void Interpreter::interrupt()
 {
-    // Perform an interrupt if the conditions still hold
+    // Trigger an interrupt and unhalt the CPU if the conditions still hold
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
     {
-        // Switch to interrupt mode, save the return address, and jump to the interrupt handler
-        setCpsr((cpsr & ~0x3F) | 0x92, true); // ARM, IRQ, interrupts off
-        *registers[14] = *registers[15] + ((*spsr & BIT(5)) ? 2 : 0);
-        *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x18;
-        flushPipeline();
-
-        // Unhalt the CPU
+        exception(0x18);
         halted &= ~BIT(0);
     }
+}
+
+int Interpreter::exception(uint8_t vector)
+{
+    // Forward the call to HLE BIOS if enabled, unless on ARM9 with the exception address changed
+    if (bios && (cpu || core->cp15.getExceptionAddr()))
+        return bios->execute(vector, cpu, registers);
+
+    // Switch the CPU mode, save the return address, and jump to the exception vector
+    static uint8_t modes[] = { 0x13, 0x1B, 0x13, 0x17, 0x17, 0x13, 0x12, 0x11 };
+    setCpsr((cpsr & ~0x3F) | BIT(7) | modes[vector >> 2], true); // ARM, interrupts off, new mode
+    *registers[14] = *registers[15] + ((*spsr & BIT(5)) ? 2 : 0);
+    *registers[15] = (cpu ? 0 : core->cp15.getExceptionAddr()) + vector;
+    flushPipeline();
+    return 3;
 }
 
 void Interpreter::flushPipeline()
@@ -1526,6 +1535,10 @@ int Interpreter::handleReserved(uint32_t opcode)
     if ((opcode & 0x0E000000) == 0x0A000000)
         return blx(opcode); // BLX label
 
+    // If the special HLE BIOS opcode was jumped to, return from an HLE interrupt
+    if (bios && opcode == 0xFF000000)
+        return finishHleIrq();
+
     // If a DLDI function was jumped to, HLE it and return
     if (core->dldi.isPatched())
     {
@@ -1542,6 +1555,34 @@ int Interpreter::handleReserved(uint32_t opcode)
     }
 
     return unkArm(opcode);
+}
+
+int Interpreter::handleHleIrq()
+{
+    // Switch to IRQ mode, save the return address, and push registers to the stack
+    setCpsr((cpsr & ~0x3F) | BIT(7) | 0x12, true);
+    *registers[14] = *registers[15] + ((*spsr & BIT(5)) ? 2 : 0);
+    stmdbW((13 << 16) | BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(12) | BIT(14));
+
+    // Set the return address to the special HLE BIOS opcode amd jump to the interrupt handler
+    *registers[14] = cpu ? 0x00000000 : 0xFFFF0000;
+    *registers[15] = core->memory.read<uint32_t>(cpu, cpu ? 0x3FFFFFC : (core->cp15.getDtcmAddr() + 0x3FFC));
+    flushPipeline();
+    return 3;
+}
+
+int Interpreter::finishHleIrq()
+{
+    // Update the wait flags if in the middle of an HLE IntrWait function
+    if (bios->shouldCheck())
+        bios->checkWaitFlags(cpu);
+
+    // Pop registers from the stack, jump to the return address, and restore the mode
+    ldmiaW((13 << 16) | BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(12) | BIT(14));
+    *registers[15] = *registers[14] - 4;
+    if (spsr) setCpsr(*spsr);
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::unkArm(uint32_t opcode)

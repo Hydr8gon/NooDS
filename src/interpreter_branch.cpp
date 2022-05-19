@@ -93,12 +93,8 @@ int Interpreter::blx(uint32_t opcode) // BLX label
 int Interpreter::swi(uint32_t opcode) // SWI #i
 {
     // Software interrupt
-    setCpsr((cpsr & ~0x1F) | 0x93, true); // Supervisor, interrupts off
-    *registers[14] = *registers[15] - 4;
-    *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x08;
-    flushPipeline();
-
-    return 3;
+    *registers[15] -= 4;
+    return exception(0x08);
 }
 
 int Interpreter::bxRegT(uint16_t opcode) // BX Rs
@@ -411,10 +407,6 @@ int Interpreter::blxOffT(uint16_t opcode) // BLX label
 int Interpreter::swiT(uint16_t opcode) // SWI #i
 {
     // Software interrupt
-    setCpsr((cpsr & ~0x3F) | 0x93, true); // ARM, supervisor, interrupts off
-    *registers[14] = *registers[15] - 2;
-    *registers[15] = ((cpu == 0) ? core->cp15.getExceptionAddr() : 0x00000000) + 0x08;
-    flushPipeline();
-
-    return 3;
+    *registers[15] -= 4;
+    return exception(0x08);
 }

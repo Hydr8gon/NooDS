@@ -26,6 +26,8 @@
 
 Core::Core(std::string ndsPath, std::string gbaPath, int id):
     id(id),
+    bios9(this),
+    bios7(this),
     cartridgeNds(this),
     cartridgeGba(this),
     cp15(this),
@@ -46,30 +48,33 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id):
     timers { Timers(this, 0), Timers(this, 1) },
     wifi(this)
 {
+    // Try to load the ARM9 BIOS; require it when not direct booting
+    if (!memory.loadBios9() && (!Settings::getDirectBoot() || (ndsPath == "" && gbaPath == "")))
+        throw ERROR_BIOS;
+
+    // Try to load the ARM7 BIOS; require it when not direct booting
+    if (!memory.loadBios7() && (!Settings::getDirectBoot() || (ndsPath == "" && gbaPath == "")))
+        throw ERROR_BIOS;
+
+    // Try to load the firmware; require it when not direct booting
+    if (!spi.loadFirmware() && (!Settings::getDirectBoot() || (ndsPath == "" && gbaPath == "")))
+        throw ERROR_FIRM;
+
+    // Try to load the GBA BIOS; require it when booting a GBA ROM
+    if (!memory.loadGbaBios() && (gbaPath != "" && (ndsPath == "" || !Settings::getDirectBoot())))
+        throw ERROR_BIOS;
+
     // Schedule initial tasks for NDS mode
     resetCyclesTask = std::bind(&Core::resetCycles, this);
     schedule(Task(&resetCyclesTask, 0x7FFFFFFF));
     gpu.scheduleInit();
     spu.scheduleInit();
 
-    // Load the NDS BIOS and firmware unless directly booting a GBA ROM
-    if (ndsPath != "" || gbaPath == "" || !Settings::getDirectBoot())
-    {
-        if (!memory.loadBios())
-            throw ERROR_BIOS;
-        if (!spi.loadFirmware() && (ndsPath == "" || !Settings::getDirectBoot()))
-            throw ERROR_FIRM;
-    }
-
     // Initialize the memory and CPUs
     memory.updateMap9(0x00000000, 0xFFFFFFFF);
     memory.updateMap7(0x00000000, 0xFFFFFFFF);
     interpreter[0].init();
     interpreter[1].init();
-
-    // Always load the GBA BIOS if possible; require it when booting a GBA ROM
-    if (!memory.loadGbaBios() && (gbaPath != "" && (ndsPath == "" || !Settings::getDirectBoot())))
-        throw ERROR_BIOS;
 
     if (gbaPath != "")
     {
@@ -218,6 +223,7 @@ void Core::enterGbaMode()
     // Reset the ARM7 for GBA mode
     memory.updateMap7(0x00000000, 0xFFFFFFFF);
     interpreter[1].init();
+    interpreter[1].setBios(nullptr);
 
     // Set VRAM blocks A and B to plain access mode
     // This is used by the GPU to access the VRAM borders

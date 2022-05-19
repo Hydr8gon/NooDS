@@ -26,6 +26,7 @@
 #include "defines.h"
 
 class Core;
+class Bios;
 
 class Interpreter
 {
@@ -42,7 +43,11 @@ class Interpreter
         void sendInterrupt(int bit);
 
         bool     shouldRun() { return !halted;        }
+        bool     isThumb()   { return cpsr & BIT(5);  }
         uint32_t getPC()     { return *registers[15]; }
+
+        void setBios(Bios *bios) { this->bios = bios; }
+        int handleHleIrq();
 
         uint8_t  readIme()     { return ime;     }
         uint32_t readIe()      { return ie;      }
@@ -57,6 +62,8 @@ class Interpreter
     private:
         Core *core;
         bool cpu;
+
+        Bios *bios = nullptr;
 
         uint32_t pipeline[2] = {};
 
@@ -86,9 +93,11 @@ class Interpreter
         std::function<void()> interruptTask;
 
         void interrupt();
+        int exception(uint8_t vector);
         void flushPipeline();
         void setCpsr(uint32_t value, bool save = false);
         int handleReserved(uint32_t opcode);
+        int finishHleIrq();
 
         int unkArm(uint32_t opcode);
         int unkThumb(uint16_t opcode);

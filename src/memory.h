@@ -47,11 +47,12 @@ class Memory
     public:
         Memory(Core *core): core(core) {};
 
-        bool loadBios();
+        bool loadBios9();
+        bool loadBios7();
         bool loadGbaBios();
 
-        void updateMap7(uint32_t start, uint32_t end);
         void updateMap9(uint32_t start, uint32_t end);
+        void updateMap7(uint32_t start, uint32_t end);
 
         template <typename T> T read(bool cpu, uint32_t address);
         template <typename T> void write(bool cpu, uint32_t address, T value);

@@ -8,7 +8,7 @@ The goal of NooDS is to be a fast and portable Nintendo DS emulator. It's not qu
 NooDS is available for Linux, macOS, Windows, Switch, Vita, and Android. Automatic builds are provided via GitHub Actions; you can download them from the [releases page](https://github.com/Hydr8gon/NooDS/releases).
 
 ### Usage
-NooDS doesn't have high-level BIOS emulation yet, so you'll need to provide your own BIOS files. These can be dumped from a DS with [DSBF Dumper](https://archive.org/details/dsbf-dumper), or you can use the open-source [DraStic BIOS](https://drive.google.com/file/d/1dl6xgOXc892r43RzkIJKI6nikYIipzoN/view). Firmware is optional, but if you want to boot the DS menu, you'll need to dump it from an original DS; DSi and 3DS dumps don't contain any boot code. The BIOS and firmware file paths can be configured in the settings. There's basic save type detection, but it isn't always accurate. If you load a new game and saving doesn't work, you'll have to manually change the save type until it does.
+NooDS should be able to run most things without any additional setup. To boot from the DS menu, you'll need to provide DS BIOS and firmware files, which can be dumped from a DS with [DSBF Dumper](https://archive.org/details/dsbf-dumper). The firmware must be dumped from an original DS; DSi and 3DS dumps don't contain any boot code. To run GBA games, you'll need to provide a GBA BIOS file, which can be dumped from a variety of systems with [this dumper](https://github.com/mgba-emu/bios-dump). The BIOS and firmware file paths can be configured in the settings. Save types are automatically detected, but this isn't always accurate. If you load a new game and saving doesn't work, you'll have to manually change the save type until it does.
 
 ### Compiling for Linux or macOS
 To compile on Linux or macOS, you'll need to install [wxWidgets](https://www.wxwidgets.org) and [PortAudio](http://www.portaudio.com) using your favourite package manager. You can use [Homebrew](https://brew.sh) on macOS, since there is no package manager provided by default. The command will look something like `apt install libwxgtk3.0-dev portaudio19-dev` (Ubuntu) or `brew install wxmac portaudio` (macOS). After that, you can simply run `make` in the project root directory to compile.
@@ -29,6 +29,7 @@ To compile for Android, the easiest way would be to use [Android Studio](https:/
 * [GBATEK](https://problemkaputt.de/gbatek.htm) by Martin Korth - This is where most of my information came from
 * [GBATEK Addendum](http://melonds.kuribo64.net/board/thread.php?id=13) by Arisotura - GBATEK isn't perfect, so some information came from here as well
 * Blog Posts [1](http://melonds.kuribo64.net/comments.php?id=85), [2](http://melonds.kuribo64.net/comments.php?id=56), [3](http://melonds.kuribo64.net/comments.php?id=32), and [4](http://melonds.kuribo64.net/comments.php?id=27) by Arisotura - Great resources that detail the 3D GPU's lesser-known quirks
+* [DraStic BIOS](https://drive.google.com/file/d/1dl6xgOXc892r43RzkIJKI6nikYIipzoN/view) by Exophase - Reference for the HLE BIOS implementation
 * [ARM Opcode Map](http://imrannazar.com/ARM-Opcode-Map) by Imran Nazar - Used to create the interpreter lookup table
 * Hardware tests by me - When there's something that I can't find or want to verify, I write tests for it myself!
 

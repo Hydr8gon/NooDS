@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 
+#include "bios.h"
 #include "cartridge.h"
 #include "cp15.h"
 #include "defines.h"
@@ -80,6 +81,8 @@ class Core
         void enterGbaMode();
         void endFrame();
 
+        Bios9 bios9;
+        Bios7 bios7;
         CartridgeNds cartridgeNds;
         CartridgeGba cartridgeGba;
         Cp15 cp15;
