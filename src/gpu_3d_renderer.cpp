@@ -571,7 +571,8 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
 
             // Get the palette, using the base for the tile stored in slot 1
             address = 0x20000 + (polygon->textureAddr % 0x20000) / 2 + ((polygon->textureAddr / 0x20000 == 2) ? 0x10000 : 0);
-            uint16_t palBase = U8TO16(getTexture(address), tile * 2);
+            if (!(data = getTexture(address))) return 0;
+            uint16_t palBase = U8TO16(data, tile * 2);
             uint8_t *palette = getPalette(polygon->paletteAddr + (palBase & 0x3FFF) * 4);
             if (!palette) return 0;
 
