@@ -77,29 +77,29 @@ void Gpu2D::drawGbaScanline(int line)
     // Draw the objects, object window first if enabled
     if (dispCnt & BIT(12))
     {
-        if (dispCnt & BIT(15)) drawObjects(line, true);
-        drawObjects(line, false);
+        if (dispCnt & BIT(15)) drawObjects<1>(line, true);
+        drawObjects<1>(line, false);
     }
 
     // Draw the background layers depending on the BG mode
     switch (dispCnt & 0x7)
     {
         case 0:
-            if (dispCnt & BIT(11)) drawText(3, line);
-            if (dispCnt & BIT(10)) drawText(2, line);
-            if (dispCnt & BIT(9))  drawText(1, line);
-            if (dispCnt & BIT(8))  drawText(0, line);
+            if (dispCnt & BIT(11)) drawText<1>(3, line);
+            if (dispCnt & BIT(10)) drawText<1>(2, line);
+            if (dispCnt & BIT(9))  drawText<1>(1, line);
+            if (dispCnt & BIT(8))  drawText<1>(0, line);
             break;
 
         case 1:
-            if (dispCnt & BIT(10)) drawAffine(2, line);
-            if (dispCnt & BIT(9))    drawText(1, line);
-            if (dispCnt & BIT(8))    drawText(0, line);
+            if (dispCnt & BIT(10)) drawAffine<1>(2, line);
+            if (dispCnt & BIT(9))    drawText<1>(1, line);
+            if (dispCnt & BIT(8))    drawText<1>(0, line);
             break;
 
         case 2:
-            if (dispCnt & BIT(11)) drawAffine(3, line);
-            if (dispCnt & BIT(10)) drawAffine(2, line);
+            if (dispCnt & BIT(11)) drawAffine<1>(3, line);
+            if (dispCnt & BIT(10)) drawAffine<1>(2, line);
             break;
 
         case 3: case 4: case 5:
@@ -208,53 +208,53 @@ void Gpu2D::drawScanline(int line)
     // Draw the objects, object window first if enabled
     if (dispCnt & BIT(12))
     {
-        if (dispCnt & BIT(15)) drawObjects(line, true);
-        drawObjects(line, false);
+        if (dispCnt & BIT(15)) drawObjects<0>(line, true);
+        drawObjects<0>(line, false);
     }
 
     // Draw the background layers depending on the BG mode
     switch (dispCnt & 0x7)
     {
         case 0:
-            if (dispCnt & BIT(11)) drawText(3, line);
-            if (dispCnt & BIT(10)) drawText(2, line);
-            if (dispCnt & BIT(9))  drawText(1, line);
-            if (dispCnt & BIT(8))  drawText(0, line);
+            if (dispCnt & BIT(11)) drawText<0>(3, line);
+            if (dispCnt & BIT(10)) drawText<0>(2, line);
+            if (dispCnt & BIT(9))  drawText<0>(1, line);
+            if (dispCnt & BIT(8))  drawText<0>(0, line);
             break;
 
         case 1:
-            if (dispCnt & BIT(11)) drawAffine(3, line);
-            if (dispCnt & BIT(10))   drawText(2, line);
-            if (dispCnt & BIT(9))    drawText(1, line);
-            if (dispCnt & BIT(8))    drawText(0, line);
+            if (dispCnt & BIT(11)) drawAffine<0>(3, line);
+            if (dispCnt & BIT(10))   drawText<0>(2, line);
+            if (dispCnt & BIT(9))    drawText<0>(1, line);
+            if (dispCnt & BIT(8))    drawText<0>(0, line);
             break;
 
         case 2:
-            if (dispCnt & BIT(11)) drawAffine(3, line);
-            if (dispCnt & BIT(10)) drawAffine(2, line);
-            if (dispCnt & BIT(9))    drawText(1, line);
-            if (dispCnt & BIT(8))    drawText(0, line);
+            if (dispCnt & BIT(11)) drawAffine<0>(3, line);
+            if (dispCnt & BIT(10)) drawAffine<0>(2, line);
+            if (dispCnt & BIT(9))    drawText<0>(1, line);
+            if (dispCnt & BIT(8))    drawText<0>(0, line);
             break;
 
         case 3:
             if (dispCnt & BIT(11)) drawExtended(3, line);
-            if (dispCnt & BIT(10))     drawText(2, line);
-            if (dispCnt & BIT(9))      drawText(1, line);
-            if (dispCnt & BIT(8))      drawText(0, line);
+            if (dispCnt & BIT(10))  drawText<0>(2, line);
+            if (dispCnt & BIT(9))   drawText<0>(1, line);
+            if (dispCnt & BIT(8))   drawText<0>(0, line);
             break;
 
         case 4:
-            if (dispCnt & BIT(11)) drawExtended(3, line);
-            if (dispCnt & BIT(10))   drawAffine(2, line);
-            if (dispCnt & BIT(9))      drawText(1, line);
-            if (dispCnt & BIT(8))      drawText(0, line);
+            if (dispCnt & BIT(11))  drawExtended(3, line);
+            if (dispCnt & BIT(10)) drawAffine<0>(2, line);
+            if (dispCnt & BIT(9))    drawText<0>(1, line);
+            if (dispCnt & BIT(8))    drawText<0>(0, line);
             break;
 
         case 5:
             if (dispCnt & BIT(11)) drawExtended(3, line);
             if (dispCnt & BIT(10)) drawExtended(2, line);
-            if (dispCnt & BIT(9))      drawText(1, line);
-            if (dispCnt & BIT(8))      drawText(0, line);
+            if (dispCnt & BIT(9))   drawText<0>(1, line);
+            if (dispCnt & BIT(8))   drawText<0>(0, line);
             break;
 
         case 6:
@@ -494,10 +494,10 @@ void Gpu2D::drawObjPixel(int line, int x, uint32_t pixel, int8_t priority)
     }
 }
 
-void Gpu2D::drawText(int bg, int line)
+template <bool gbaMode> void Gpu2D::drawText(int bg, int line)
 {
     // If 3D is enabled, override BG0 in text mode
-    if (!core->isGbaMode() && bg == 0 && (dispCnt & BIT(3)))
+    if (!gbaMode && bg == 0 && (dispCnt & BIT(3)))
     {
         uint32_t *data = core->gpu3DRenderer.getLine(line);
         for (int i = 0; i < 256; i++)
@@ -524,7 +524,7 @@ void Gpu2D::drawText(int bg, int line)
     // Draw a line
     if (bgCnt[bg] & BIT(7)) // 8-bit
     {
-        for (int i = 0; i <= 256; i += 8)
+        for (int i = 0; i <= (gbaMode ? 240 : 256); i += 8)
         {
             // Move the tile address to the current tile
             int xOffset = (i + bgHOfs[bg]) & 0x1FF;
@@ -535,7 +535,7 @@ void Gpu2D::drawText(int bg, int line)
                 tileAddr += 0x800;
 
             // Get the current tile
-            uint16_t tile = core->memory.read<uint16_t>(core->isGbaMode(), tileAddr);
+            uint16_t tile = core->memory.read<uint16_t>(gbaMode, tileAddr);
 
             // Get the tile's palette
             uint8_t *pal;
@@ -556,21 +556,21 @@ void Gpu2D::drawText(int bg, int line)
 
             // Get the palette indices for the current line of the tile, flipped vertically if enabled
             uint32_t indexAddr = indexBase + (tile & 0x3FF) * 64 + ((tile & BIT(11)) ? (7 - (yOffset & 7)) : (yOffset & 7)) * 8;
-            uint64_t indices = core->memory.read<uint32_t>(core->isGbaMode(), indexAddr) |
-                ((uint64_t)core->memory.read<uint32_t>(core->isGbaMode(), indexAddr + 4) << 32);
+            uint64_t indices = core->memory.read<uint32_t>(gbaMode, indexAddr) |
+                ((uint64_t)core->memory.read<uint32_t>(gbaMode, indexAddr + 4) << 32);
 
             // Draw the current line of the tile, flipped horizontally if enabled
             for (int x = i - (xOffset & 7) + ((tile & BIT(10)) ? 7 : 0); indices != 0; ((tile & BIT(10)) ? x-- : x++), indices >>= 8)
             {
                 // Draw a pixel if it's visible
-                if (x >= 0 && x < 256 && (indices & 0xFF))
+                if (x >= 0 && x < (gbaMode ? 240 : 256) && (indices & 0xFF))
                     drawBgPixel(bg, line, x, U8TO16(pal, (indices & 0xFF) * 2) | BIT(15));
             }
         }
     }
     else // 4-bit
     {
-        for (int i = 0; i <= 256; i += 8)
+        for (int i = 0; i <= (gbaMode ? 240 : 256); i += 8)
         {
             // Move the tile address to the current tile
             int xOffset = (i + bgHOfs[bg]) & 0x1FF;
@@ -581,7 +581,7 @@ void Gpu2D::drawText(int bg, int line)
                 tileAddr += 0x800;
 
             // Get the current tile
-            uint16_t tile = core->memory.read<uint16_t>(core->isGbaMode(), tileAddr);
+            uint16_t tile = core->memory.read<uint16_t>(gbaMode, tileAddr);
 
             // Get the tile's palette
             // In 4-bit mode, the tile can select from multiple 16-color palettes
@@ -589,20 +589,20 @@ void Gpu2D::drawText(int bg, int line)
 
             // Get the palette indices for the current line of the tile, flipped vertically if enabled
             uint32_t indexAddr = indexBase + (tile & 0x3FF) * 32 + ((tile & BIT(11)) ? (7 - (yOffset & 7)) : (yOffset & 7)) * 4;
-            uint32_t indices = core->memory.read<uint32_t>(core->isGbaMode(), indexAddr);
+            uint32_t indices = core->memory.read<uint32_t>(gbaMode, indexAddr);
 
             // Draw the current line of the tile, flipped horizontally if enabled
             for (int x = i - (xOffset & 7) + ((tile & BIT(10)) ? 7 : 0); indices != 0; ((tile & BIT(10)) ? x-- : x++), indices >>= 4)
             {
                 // Draw a pixel if it's visible
-                if (x >= 0 && x < 256 && (indices & 0xF))
+                if (x >= 0 && x < (gbaMode ? 240 : 256) && (indices & 0xF))
                     drawBgPixel(bg, line, x, U8TO16(pal, (indices & 0xF) * 2) | BIT(15));
             }
         }
     }
 }
 
-void Gpu2D::drawAffine(int bg, int line)
+template <bool gbaMode> void Gpu2D::drawAffine(int bg, int line)
 {
     // Calculate the base data addresses
     uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] <<  3) & 0x0F800) + ((dispCnt >> 11) & 0x70000);
@@ -616,7 +616,7 @@ void Gpu2D::drawAffine(int bg, int line)
     int size = 128 << ((bgCnt[bg] & 0xC000) >> 14);
 
     // Draw a line
-    for (int i = 0; i < 256; i++)
+    for (int i = 0; i < (gbaMode ? 240 : 256); i++)
     {
         // Increment the rotscaled coordinates and remove the fraction
         int x = (rotscaleX += bgPA[bg - 2]) >> 8;
@@ -635,11 +635,11 @@ void Gpu2D::drawAffine(int bg, int line)
 
         // Read the current tile
         uint32_t tileAddr = tileBase + (y / 8) * (size / 8) + (x / 8);
-        uint8_t tile = core->memory.read<uint8_t>(core->isGbaMode(), tileAddr);
+        uint8_t tile = core->memory.read<uint8_t>(gbaMode, tileAddr);
 
         // Read the palette index for the current pixel of the tile
         uint32_t indexAddr = indexBase + tile * 64 + (y & 7) * 8 + (x & 7);
-        uint8_t index = core->memory.read<uint8_t>(core->isGbaMode(), indexAddr);
+        uint8_t index = core->memory.read<uint8_t>(gbaMode, indexAddr);
 
         // Draw a pixel if it isn't transparent
         if (index)
@@ -893,7 +893,7 @@ void Gpu2D::drawLarge(int bg, int line)
     internalY[bg - 2] += bgPD[bg - 2];
 }
 
-void Gpu2D::drawObjects(int line, bool window)
+template <bool gbaMode> void Gpu2D::drawObjects(int line, bool window)
 {
     // Loop through and draw the 128 sprites in OAM
     for (int i = 0; i < 128; i++)
@@ -961,7 +961,7 @@ void Gpu2D::drawObjects(int line, bool window)
         int8_t priority = ((object[2] >> 10) & 0x3) - 1;
 
         // Draw bitmap objects
-        if (!core->isGbaMode() && type == 3)
+        if (!gbaMode && type == 3)
         {
             uint32_t dataBase;
             int bitmapWidth;
@@ -994,7 +994,7 @@ void Gpu2D::drawObjects(int line, bool window)
                 for (int j = 0; j < width2; j++)
                 {
                     int offset = x + j;
-                    if (offset < 0 || offset >= 256) continue;
+                    if (offset < 0 || offset >= (gbaMode ? 240 : 256)) continue;
 
                     // Calculate the rotscaled X coordinate relative to the object
                     int rotscaleX = ((params[0] * (j - width2 / 2) + params[1] * (spriteY - height2 / 2)) >> 8) + width / 2;
@@ -1020,7 +1020,7 @@ void Gpu2D::drawObjects(int line, bool window)
                 {
                     // Determine the horizontal pixel offset based on whether or not the sprite is horizontally flipped
                     int offset = (object[1] & BIT(12)) ? (x + width - j - 1) : (x + j);
-                    if (offset < 0 || offset >= 256) continue;
+                    if (offset < 0 || offset >= (gbaMode ? 240 : 256)) continue;
 
                     // Draw a pixel
                     uint16_t pixel = core->memory.read<uint16_t>(0, dataBase + j * 2);
@@ -1034,7 +1034,7 @@ void Gpu2D::drawObjects(int line, bool window)
 
         // Get the base tile address
         uint32_t tileBase;
-        if (core->isGbaMode())
+        if (gbaMode)
         {
             tileBase = 0x6010000 + (object[2] & 0x3FF) * 32;
         }
@@ -1058,7 +1058,7 @@ void Gpu2D::drawObjects(int line, bool window)
 
             if (object[0] & BIT(13)) // 8-bit
             {
-                int mapWidth = (dispCnt & BIT(core->isGbaMode() ? 6 : 4)) ? width : 128;
+                int mapWidth = (dispCnt & BIT(gbaMode ? 6 : 4)) ? width : 128;
 
                 // Get the object's palette
                 uint8_t *pal;
@@ -1077,7 +1077,7 @@ void Gpu2D::drawObjects(int line, bool window)
                 for (int j = 0; j < width2; j++)
                 {
                     int offset = x + j;
-                    if (offset < 0 || offset >= 256) continue;
+                    if (offset < 0 || offset >= (gbaMode ? 240 : 256)) continue;
 
                     // Calculate the rotscaled X coordinate relative to the object
                     int rotscaleX = ((params[0] * (j - width2 / 2) + params[1] * (spriteY - height2 / 2)) >> 8) + width / 2;
@@ -1088,7 +1088,7 @@ void Gpu2D::drawObjects(int line, bool window)
                     if (rotscaleY < 0 || rotscaleY >= height) continue;
 
                     // Get the palette index for the current pixel
-                    uint8_t index = core->memory.read<uint8_t>(core->isGbaMode(), tileBase +
+                    uint8_t index = core->memory.read<uint8_t>(gbaMode, tileBase +
                         ((rotscaleY / 8) * mapWidth + rotscaleY % 8) * 8 + (rotscaleX / 8) * 64 + rotscaleX % 8);
 
                     if (index && type == 2) // Object window
@@ -1104,14 +1104,14 @@ void Gpu2D::drawObjects(int line, bool window)
 
                         // Update the priority even if the pixel is transparent
                         // This is a quirky behavior of the GBA, but it seems to have been fixed on the DS
-                        if (core->isGbaMode() && priority < priorities[0][offset] && blendBits[0][offset] == 4)
+                        if (gbaMode && priority < priorities[0][offset] && blendBits[0][offset] == 4)
                             priorities[0][offset] = priority;
                     }
                 }
             }
             else // 4-bit
             {
-                int mapWidth = (dispCnt & BIT(core->isGbaMode() ? 6 : 4)) ? width : 256;
+                int mapWidth = (dispCnt & BIT(gbaMode ? 6 : 4)) ? width : 256;
 
                 // Get the object's palette
                 // In 4-bit mode, the object can select from multiple 16-color palettes
@@ -1121,7 +1121,7 @@ void Gpu2D::drawObjects(int line, bool window)
                 for (int j = 0; j < width2; j++)
                 {
                     int offset = x + j;
-                    if (offset < 0 || offset >= 256) continue;
+                    if (offset < 0 || offset >= (gbaMode ? 240 : 256)) continue;
 
                     // Calculate the rotscaled X coordinate relative to the object
                     int rotscaleX = ((params[0] * (j - width2 / 2) + params[1] * (spriteY - height2 / 2)) >> 8) + width / 2;
@@ -1132,7 +1132,7 @@ void Gpu2D::drawObjects(int line, bool window)
                     if (rotscaleY < 0 || rotscaleY >= height) continue;
 
                     // Get the palette index for the current pixel
-                    uint8_t index = core->memory.read<uint8_t>(core->isGbaMode(), tileBase +
+                    uint8_t index = core->memory.read<uint8_t>(gbaMode, tileBase +
                         ((rotscaleY / 8) * mapWidth + rotscaleY % 8) * 4 + (rotscaleX / 8) * 32 + (rotscaleX % 8) / 2);
                     index = (rotscaleX & 1) ? ((index & 0xF0) >> 4) : (index & 0x0F);
 
@@ -1149,7 +1149,7 @@ void Gpu2D::drawObjects(int line, bool window)
 
                         // Update the priority even if the pixel is transparent
                         // This is a quirky behavior of the GBA, but it seems to have been fixed on the DS
-                        if (core->isGbaMode() && priority < priorities[0][offset] && blendBits[0][offset] == 4)
+                        if (gbaMode && priority < priorities[0][offset] && blendBits[0][offset] == 4)
                             priorities[0][offset] = priority;
                     }
                 }
@@ -1158,7 +1158,7 @@ void Gpu2D::drawObjects(int line, bool window)
         else if (object[0] & BIT(13)) // 8-bit
         {
             // Adjust the current tile to align with the current Y coordinate relative to the object
-            int mapWidth = (dispCnt & BIT(core->isGbaMode() ? 6 : 4)) ? width : 128;
+            int mapWidth = (dispCnt & BIT(gbaMode ? 6 : 4)) ? width : 128;
             if (object[1] & BIT(13)) // Vertical flip
                 tileBase += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 8;
             else
@@ -1182,10 +1182,10 @@ void Gpu2D::drawObjects(int line, bool window)
             {
                 // Determine the horizontal pixel offset based on whether or not the sprite is horizontally flipped
                 int offset = (object[1] & BIT(12)) ? (x + width - j - 1) : (x + j);
-                if (offset < 0 || offset >= 256) continue;
+                if (offset < 0 || offset >= (gbaMode ? 240 : 256)) continue;
 
                 // Get the palette index for the current pixel
-                uint8_t index = core->memory.read<uint8_t>(core->isGbaMode(), tileBase + (j / 8) * 64 + j % 8);
+                uint8_t index = core->memory.read<uint8_t>(gbaMode, tileBase + (j / 8) * 64 + j % 8);
 
                 if (index && type == 2) // Object window
                 {
@@ -1200,7 +1200,7 @@ void Gpu2D::drawObjects(int line, bool window)
 
                     // Update the priority even if the pixel is transparent
                     // This is a quirky behavior of the GBA, but it seems to have been fixed on the DS
-                    if (core->isGbaMode() && priority < priorities[0][offset] && blendBits[0][offset] == 4)
+                    if (gbaMode && priority < priorities[0][offset] && blendBits[0][offset] == 4)
                         priorities[0][offset] = priority;
                 }
             }
@@ -1208,7 +1208,7 @@ void Gpu2D::drawObjects(int line, bool window)
         else // 4-bit
         {
             // Adjust the current tile to align with the current Y coordinate relative to the object
-            int mapWidth = (dispCnt & BIT(core->isGbaMode() ? 6 : 4)) ? width : 256;
+            int mapWidth = (dispCnt & BIT(gbaMode ? 6 : 4)) ? width : 256;
             if (object[1] & BIT(13)) // Vertical flip
                 tileBase += (7 - (spriteY % 8) + ((height - 1 - spriteY) / 8) * mapWidth) * 4;
             else
@@ -1223,10 +1223,10 @@ void Gpu2D::drawObjects(int line, bool window)
             {
                 // Determine the horizontal pixel offset based on whether or not the sprite is horizontally flipped
                 int offset = (object[1] & BIT(12)) ? (x + width - j - 1) : (x + j);
-                if (offset < 0 || offset >= 256) continue;
+                if (offset < 0 || offset >= (gbaMode ? 240 : 256)) continue;
 
                 // Get the palette index for the current pixel
-                uint8_t index = core->memory.read<uint8_t>(core->isGbaMode(), tileBase + (j / 8) * 32 + (j % 8) / 2);
+                uint8_t index = core->memory.read<uint8_t>(gbaMode, tileBase + (j / 8) * 32 + (j % 8) / 2);
                 index = (j & 1) ? ((index & 0xF0) >> 4) : (index & 0x0F);
 
                 if (index && type == 2) // Object window
@@ -1242,7 +1242,7 @@ void Gpu2D::drawObjects(int line, bool window)
 
                     // Update the priority even if the pixel is transparent
                     // This is a quirky behavior of the GBA, but it seems to have been fixed on the DS
-                    if (core->isGbaMode() && priority < priorities[0][offset] && blendBits[0][offset] == 4)
+                    if (gbaMode && priority < priorities[0][offset] && blendBits[0][offset] == 4)
                         priorities[0][offset] = priority;
                 }
             }

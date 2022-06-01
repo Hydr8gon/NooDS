@@ -104,12 +104,12 @@ class Gpu2D
         void drawBgPixel(int bg, int line, int x, uint32_t pixel);
         void drawObjPixel(int line, int x, uint32_t pixel, int8_t priority);
 
-        void drawText(int bg, int line);
-        void drawAffine(int bg, int line);
+        template <bool gbaMode> void drawText(int bg, int line);
+        template <bool gbaMode> void drawAffine(int bg, int line);
         void drawExtended(int bg, int line);
         void drawExtendedGba(int bg, int line);
         void drawLarge(int bg, int line);
-        void drawObjects(int line, bool window);
+        template <bool gbaMode> void drawObjects(int line, bool window);
 };
 
 #endif // GPU_2D_H
