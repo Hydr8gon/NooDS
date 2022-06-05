@@ -1394,32 +1394,23 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
         (int16_t)params[2], (int16_t)(params[2] >> 16)
     };
 
-    // Get the vertices of the box
-    Vertex vertices[8];
-    vertices[0].x = boxTestCoords[0];
-    vertices[0].y = boxTestCoords[1];
-    vertices[0].z = boxTestCoords[2];
-    vertices[1].x = boxTestCoords[0] + boxTestCoords[3];
-    vertices[1].y = boxTestCoords[1];
-    vertices[1].z = boxTestCoords[2];
-    vertices[2].x = boxTestCoords[0];
-    vertices[2].y = boxTestCoords[1] + boxTestCoords[4];
-    vertices[2].z = boxTestCoords[2];
-    vertices[3].x = boxTestCoords[0];
-    vertices[3].y = boxTestCoords[1];
-    vertices[3].z = boxTestCoords[2] + boxTestCoords[5];
-    vertices[4].x = boxTestCoords[0] + boxTestCoords[3];
-    vertices[4].y = boxTestCoords[1] + boxTestCoords[4];
-    vertices[4].z = boxTestCoords[2];
-    vertices[5].x = boxTestCoords[0] + boxTestCoords[3];
-    vertices[5].y = boxTestCoords[1];
-    vertices[5].z = boxTestCoords[2] + boxTestCoords[5];
-    vertices[6].x = boxTestCoords[0];
-    vertices[6].y = boxTestCoords[1] + boxTestCoords[4];
-    vertices[6].z = boxTestCoords[2] + boxTestCoords[5];
-    vertices[7].x = boxTestCoords[0] + boxTestCoords[3];
-    vertices[7].y = boxTestCoords[1] + boxTestCoords[4];
-    vertices[7].z = boxTestCoords[2] + boxTestCoords[5];
+    // Add positions to the offsets so everything is a 16-bit position
+    boxTestCoords[3] += boxTestCoords[0];
+    boxTestCoords[4] += boxTestCoords[1];
+    boxTestCoords[5] += boxTestCoords[2];
+
+    // Define the coordinate indices that make up the box vertices
+    static const uint8_t indices[8 * 3] =
+    {
+        0, 1, 2,
+        3, 1, 2,
+        0, 4, 2,
+        0, 1, 5,
+        3, 4, 2,
+        3, 1, 5,
+        0, 4, 5,
+        3, 4, 5
+    };
 
     // Update the clip matrix if necessary
     if (clipDirty)
@@ -1428,9 +1419,13 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
         clipDirty = false;
     }
 
-    // Transform the vertices
+    // Get the transformed vertices of the box
+    Vertex vertices[8];
     for (int i = 0; i < 8; i++)
     {
+        vertices[i].x = boxTestCoords[indices[i * 3 + 0]];
+        vertices[i].y = boxTestCoords[indices[i * 3 + 1]];
+        vertices[i].z = boxTestCoords[indices[i * 3 + 2]];
         vertices[i].w = 1 << 12;
         vertices[i] = vertices[i] * clip;
     }
