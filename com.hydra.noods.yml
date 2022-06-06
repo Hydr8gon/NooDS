@@ -1,0 +1,61 @@
+app-id: com.hydra.noods
+runtime: org.freedesktop.Platform
+runtime-version: '21.08'
+sdk: org.freedesktop.Sdk
+command: noods
+
+finish-args:
+  - --device=all
+  - --share=ipc
+  - --socket=x11
+  - --socket=pulseaudio
+  - --filesystem=host:ro
+
+modules:
+  - name: wxwidgets
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    sources:
+      - type: git
+        url: https://github.com/wxWidgets/wxWidgets.git
+        tag: v3.1.7
+    modules:
+      - name: glu
+        config-opts:
+          - --disable-static
+        sources:
+          - type: archive
+            url: https://mesa.freedesktop.org/archive/glu/glu-9.0.2.tar.xz
+            sha256: 6e7280ff585c6a1d9dfcdf2fca489251634b3377bfc33c29e4002466a38d02d4
+        cleanup:
+          - /include
+          - /lib/*.a
+          - /lib/*.la
+          - /lib/pkgconfig
+    cleanup:
+      - /bin
+      - /include
+      - /lib/wx/include
+
+  - name: portaudio
+    config-opts:
+      - --disable-static
+      - --without-oss
+      - --without-jack
+    sources:
+      - type: git
+        url: https://github.com/PortAudio/portaudio.git
+        tag: v19.7.0
+    cleanup:
+      - /include
+      - /lib/*.la
+      - /lib/pkgconfig
+
+  - name: noods
+    buildsystem: simple
+    build-commands:
+      - DESTDIR=/app make install
+    sources:
+      - type: git
+        url: https://github.com/Hydr8gon/NooDS.git

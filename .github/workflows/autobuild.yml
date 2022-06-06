@@ -10,21 +10,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install wxWidgets and PortAudio
+    - name: Install Flatpak and SDK
       run: |
-        sudo apt-key adv --fetch-keys https://repos.codelite.org/CodeLite.asc 
-        sudo apt-add-repository 'deb https://repos.codelite.org/wx3.1.4/ubuntu/ focal universe' 
-        sudo apt update 
-        sudo apt install libwxgtk3.1-dev portaudio19-dev -y
+        sudo apt install flatpak flatpak-builder -y
+        sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+        sudo flatpak install flathub org.freedesktop.Platform//21.08 org.freedesktop.Sdk//21.08 -y
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: make -j$(nproc)
+      run: make flatpak
     - name: Upload
       uses: actions/upload-artifact@v2
       with:
         name: noods-linux
-        path: noods
+        path: noods.flatpak
 
   build-mac:
     runs-on: macos-latest

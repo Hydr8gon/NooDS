@@ -51,7 +51,7 @@ install_name_tool -add_rpath "@executable_path/../Frameworks" $contents/MacOS/No
 
 fixup_libs $contents/MacOS/NooDS
 
-cp "icon/icon.icns" "$contents/Resources/NooDS.icns"
+cp "icon/icon-mac.icns" "$contents/Resources/NooDS.icns"
 
 codesign --deep -s - NooDS.app
 

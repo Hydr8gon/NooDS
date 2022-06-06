@@ -26,7 +26,7 @@ all: $(NAME).vpk
 
 $(NAME).vpk: eboot.bin param.sfo
 	$(PACKVPK) -b eboot.bin -s param.sfo \
-		--add icon/icon.png=sce_sys/icon0.png \
+		--add icon/icon-vita.png=sce_sys/icon0.png \
 		$@
 
 eboot.bin: $(NAME).velf

@@ -6,6 +6,7 @@ LIBS     := $(shell pkg-config --libs portaudio-2.0)
 INCLUDES := $(shell pkg-config --cflags portaudio-2.0)
 
 APPNAME := NooDS
+PKGNAME := com.hydra.noods
 DESTDIR ?= /usr
 
 ifeq ($(OS),Windows_NT)
@@ -29,7 +30,7 @@ HFILES   := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.h))
 OFILES   := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
 
 ifeq ($(OS),Windows_NT)
-  OFILES += $(BUILD)/icon.o
+  OFILES += $(BUILD)/icon-windows.o
 endif
 
 all: $(NAME)
@@ -46,15 +47,25 @@ uninstall:
 
 else
 
+flatpak:
+	flatpak-builder --repo=repo --force-clean build-flatpak $(PKGNAME).yml
+	flatpak build-bundle repo $(NAME).flatpak $(PKGNAME)
+
+flatpak-clean:
+	rm -rf .flatpak-builder
+	rm -rf build-flatpak
+	rm -rf repo
+	rm -f $(NAME).flatpak
+
 install: $(NAME)
 	install -Dm755 $(NAME) "$(DESTDIR)/bin/$(NAME)"
-	install -Dm644 icon/icon.xpm "$(DESTDIR)/share/icons/hicolor/64x64/apps/$(NAME).xpm"
-	install -Dm644 $(NAME).desktop "$(DESTDIR)/share/applications/$(NAME).desktop"
+	install -Dm644 $(PKGNAME).desktop "$(DESTDIR)/share/applications/$(PKGNAME).desktop"
+	install -Dm644 icon/icon-linux.png "$(DESTDIR)/share/icons/hicolor/64x64/apps/$(PKGNAME).png"
 
 uninstall: 
 	rm -f "$(DESTDIR)/bin/$(NAME)"
-	rm -f "$(DESTDIR)/share/applications/$(NAME).desktop"
-	rm -f "$(DESTDIR)/share/icons/hicolor/64x64/apps/$(NAME).xpm"
+	rm -f "$(DESTDIR)/share/applications/$(PKGNAME).desktop"
+	rm -f "$(DESTDIR)/share/icons/hicolor/64x64/apps/$(PKGNAME).png"
 
 endif
 endif
@@ -65,8 +76,8 @@ $(NAME): $(OFILES)
 $(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
 	g++ -c -o $@ $(ARGS) $(INCLUDES) $<
 
-$(BUILD)/icon.o:
-	windres icon/icon.rc $@
+$(BUILD)/icon-windows.o:
+	windres icon/icon-windows.rc $@
 
 $(BUILD):
 	for dir in $(SOURCES); \
