@@ -135,9 +135,9 @@ void Gpu2D::drawGbaScanline(int line)
         if (dispCnt & 0x0000E000) // Windows enabled
         {
             uint8_t enabled;
-            if ((dispCnt & BIT(13)) && i >= winX1[0] && i < winX2[0] && line >= winY1[0] && line < winY2[0])
+            if ((dispCnt & BIT(13)) && (i >= winX1[0] && i < winX2[0]) != winHFlip[0] && (line >= winY1[0] && line < winY2[0]) != winVFlip[0])
                 enabled = winIn >> 0; // Window 0
-            else if ((dispCnt & BIT(14)) && i >= winX1[1] && i < winX2[1] && line >= winY1[1] && line < winY2[1])
+            else if ((dispCnt & BIT(14)) && (i >= winX1[1] && i < winX2[1]) != winHFlip[1] && (line >= winY1[1] && line < winY2[1]) != winVFlip[1])
                 enabled = winIn >> 8; // Window 1
             else if ((dispCnt & BIT(15)) && (framebuffer[line * 256 + i] & BIT(24)))
                 enabled = winOut >> 8; // Object window
@@ -316,9 +316,9 @@ void Gpu2D::drawScanline(int line)
         if (dispCnt & 0x0000E000) // Windows enabled
         {
             uint8_t enabled;
-            if ((dispCnt & BIT(13)) && i >= winX1[0] && i < winX2[0] && line >= winY1[0] && line < winY2[0])
+            if ((dispCnt & BIT(13)) && (i >= winX1[0] && i < winX2[0]) != winHFlip[0] && (line >= winY1[0] && line < winY2[0]) != winVFlip[0])
                 enabled = winIn >> 0; // Window 0
-            else if ((dispCnt & BIT(14)) && i >= winX1[1] && i < winX2[1] && line >= winY1[1] && line < winY2[1])
+            else if ((dispCnt & BIT(14)) && (i >= winX1[1] && i < winX2[1]) != winHFlip[1] && (line >= winY1[1] && line < winY2[1]) != winVFlip[1])
                 enabled = winIn >> 8; // Window 1
             else if ((dispCnt & BIT(15)) && (framebuffer[line * 256 + i] & BIT(24)))
                 enabled = winOut >> 8; // Object window
@@ -434,9 +434,9 @@ void Gpu2D::drawBgPixel(int bg, int line, int x, uint32_t pixel)
     if (dispCnt & 0x0000E000) // Windows enabled
     {
         uint8_t enabled;
-        if ((dispCnt & BIT(13)) && x >= winX1[0] && x < winX2[0] && line >= winY1[0] && line < winY2[0])
+        if ((dispCnt & BIT(13)) && (x >= winX1[0] && x < winX2[0]) != winHFlip[0] && (line >= winY1[0] && line < winY2[0]) != winVFlip[0])
             enabled = winIn >> 0; // Window 0
-        else if ((dispCnt & BIT(14)) && x >= winX1[1] && x < winX2[1] && line >= winY1[1] && line < winY2[1])
+        else if ((dispCnt & BIT(14)) && (x >= winX1[1] && x < winX2[1]) != winHFlip[1] && (line >= winY1[1] && line < winY2[1]) != winVFlip[1])
             enabled = winIn >> 8; // Window 1
         else if ((dispCnt & BIT(15)) && (framebuffer[line * 256 + x] & BIT(24)))
             enabled = winOut >> 8; // Object window
@@ -473,9 +473,9 @@ void Gpu2D::drawObjPixel(int line, int x, uint32_t pixel, int8_t priority)
     if (dispCnt & 0x0000E000) // Windows enabled
     {
         uint8_t enabled;
-        if ((dispCnt & BIT(13)) && x >= winX1[0] && x < winX2[0] && line >= winY1[0] && line < winY2[0])
+        if ((dispCnt & BIT(13)) && (x >= winX1[0] && x < winX2[0]) != winHFlip[0] && (line >= winY1[0] && line < winY2[0]) != winVFlip[0])
             enabled = winIn >> 0; // Window 0
-        else if ((dispCnt & BIT(14)) && x >= winX1[1] && x < winX2[1] && line >= winY1[1] && line < winY2[1])
+        else if ((dispCnt & BIT(14)) && (x >= winX1[1] && x < winX2[1]) != winHFlip[1] && (line >= winY1[1] && line < winY2[1]) != winVFlip[1])
             enabled = winIn >> 8; // Window 1
         else if ((dispCnt & BIT(15)) && (framebuffer[line * 256 + x] & BIT(24)))
             enabled = winOut >> 8; // Object window
@@ -1336,9 +1336,9 @@ void Gpu2D::writeWinH(int win, uint16_t mask, uint16_t value)
     if (mask & 0x00FF) winX2[win] = (value & 0x00FF) >> 0;
     if (mask & 0xFF00) winX1[win] = (value & 0xFF00) >> 8;
 
-    // Handle invalid values
-    if (winX1[win] > winX2[win])
-        winX2[win] = 256;
+    // Invert the window if X1 exceeds X2
+    if (winHFlip[win] = (winX1[win] > winX2[win]))
+        SWAP(winX1[win], winX2[win]);
 }
 
 void Gpu2D::writeWinV(int win, uint16_t mask, uint16_t value)
@@ -1347,9 +1347,9 @@ void Gpu2D::writeWinV(int win, uint16_t mask, uint16_t value)
     if (mask & 0x00FF) winY2[win] = (value & 0x00FF) >> 0;
     if (mask & 0xFF00) winY1[win] = (value & 0xFF00) >> 8;
 
-    // Handle invalid values
-    if (winY1[win] > winY2[win])
-        winY2[win] = 192;
+    // Invert the window if Y1 exceeds Y2
+    if (winVFlip[win] = (winY1[win] > winY2[win]))
+        SWAP(winY1[win], winY2[win]);
 }
 
 void Gpu2D::writeWinIn(uint16_t mask, uint16_t value)

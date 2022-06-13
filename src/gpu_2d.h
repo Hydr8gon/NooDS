@@ -77,6 +77,8 @@ class Gpu2D
 
         int internalX[2] = {};
         int internalY[2] = {};
+        bool winHFlip[2] = {};
+        bool winVFlip[2] = {};
 
         uint32_t dispCnt = 0;
         uint16_t bgCnt[4] = {};
