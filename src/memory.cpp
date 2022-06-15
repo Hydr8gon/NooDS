@@ -1078,6 +1078,7 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             DEF_IO16(0x4000046, core->gpu2D[0].writeWinV(1, IOWR_PARAMS))            // WIN1V (engine A)
             DEF_IO16(0x4000048, core->gpu2D[0].writeWinIn(IOWR_PARAMS))              // WININ (engine A)
             DEF_IO16(0x400004A, core->gpu2D[0].writeWinOut(IOWR_PARAMS))             // WINOUT (engine A)
+            DEF_IO16(0x400004C, core->gpu2D[0].writeMosaic(IOWR_PARAMS))             // MOSAIC (engine A)
             DEF_IO16(0x4000050, core->gpu2D[0].writeBldCnt(IOWR_PARAMS))             // BLDCNT (engine A)
             DEF_IO16(0x4000052, core->gpu2D[0].writeBldAlpha(IOWR_PARAMS))           // BLDALPHA (engine A)
             DEF_IO_8(0x4000054, core->gpu2D[0].writeBldY(IOWR_PARAMS8))              // BLDY (engine A)
@@ -1300,6 +1301,7 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
             DEF_IO16(0x4001046, core->gpu2D[1].writeWinV(1, IOWR_PARAMS))            // WIN1V (engine B)
             DEF_IO16(0x4001048, core->gpu2D[1].writeWinIn(IOWR_PARAMS))              // WININ (engine B)
             DEF_IO16(0x400104A, core->gpu2D[1].writeWinOut(IOWR_PARAMS))             // WINOUT (engine B)
+            DEF_IO16(0x400104C, core->gpu2D[1].writeMosaic(IOWR_PARAMS))             // MOSAIC (engine B)
             DEF_IO16(0x4001050, core->gpu2D[1].writeBldCnt(IOWR_PARAMS))             // BLDCNT (engine B)
             DEF_IO16(0x4001052, core->gpu2D[1].writeBldAlpha(IOWR_PARAMS))           // BLDALPHA (engine B)
             DEF_IO_8(0x4001054, core->gpu2D[1].writeBldY(IOWR_PARAMS8))              // BLDY (engine B)
@@ -1588,6 +1590,7 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value)
             DEF_IO16(0x4000046, core->gpu2D[0].writeWinV(1, IOWR_PARAMS))        // WIN1V
             DEF_IO16(0x4000048, core->gpu2D[0].writeWinIn(IOWR_PARAMS))          // WININ
             DEF_IO16(0x400004A, core->gpu2D[0].writeWinOut(IOWR_PARAMS))         // WINOUT
+            DEF_IO16(0x400004C, core->gpu2D[0].writeMosaic(IOWR_PARAMS))         // MOSAIC
             DEF_IO16(0x4000050, core->gpu2D[0].writeBldCnt(IOWR_PARAMS))         // BLDCNT
             DEF_IO16(0x4000052, core->gpu2D[0].writeBldAlpha(IOWR_PARAMS))       // BLDALPHA
             DEF_IO_8(0x4000054, core->gpu2D[0].writeBldY(IOWR_PARAMS8))          // BLDY

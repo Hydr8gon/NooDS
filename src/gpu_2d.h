@@ -57,6 +57,7 @@ class Gpu2D
         void writeWinV(int win, uint16_t mask, uint16_t value);
         void writeWinIn(uint16_t mask, uint16_t value);
         void writeWinOut(uint16_t mask, uint16_t value);
+        void writeMosaic(uint16_t mask, uint16_t value);
         void writeBldCnt(uint16_t mask, uint16_t value);
         void writeBldAlpha(uint16_t mask, uint16_t value);
         void writeBldY(uint8_t value);
@@ -97,6 +98,7 @@ class Gpu2D
         uint16_t winIn = 0;
         uint16_t winOut = 0;
         uint16_t bldCnt = 0;
+        uint16_t mosaic = 0;
         uint16_t bldAlpha = 0;
         uint8_t bldY = 0;
         uint16_t masterBright = 0;

@@ -512,8 +512,8 @@ template <bool gbaMode> void Gpu2D::drawText(int bg, int line)
     uint32_t tileBase  = bgVramAddr + ((dispCnt >> 11) & 0x70000) + ((bgCnt[bg] <<  3) & 0x0F800);
     uint32_t indexBase = bgVramAddr + ((dispCnt >>  8) & 0x70000) + ((bgCnt[bg] << 12) & 0x3C000);
 
-    // Move the tile address to the current line
-    int yOffset = (line + bgVOfs[bg]) & 0x1FF;
+    // Adjust the Y-coordinate within the background based on vertical mosaic
+    int yOffset = (((bgCnt[bg] & BIT(6)) ? (line - (line % (((mosaic >> 4) & 0xF) + 1))) : line) + bgVOfs[bg]) & 0x1FF;
     tileBase += (yOffset & 0xF8) << 3;
 
     // If the Y-offset exceeds 256 and the background is 512 pixels tall, move to the next 256x256 section
@@ -948,8 +948,8 @@ template <bool gbaMode> void Gpu2D::drawObjects(int line, bool window)
         int y = object[0] & 0xFF;
         if (y >= 192) y -= 256;
 
-        // Don't draw anything if the current scanline lies outside of the object's bounds
-        int spriteY = line - y;
+        // Adjust the Y-coordinate within the sprite based on vertical mosaic
+        int spriteY = ((object[0] & BIT(12)) ? (line - (line % (((mosaic >> 12) & 0xF) + 1))) : line) - y;
         if (spriteY < 0 || spriteY >= height2)
             continue;
 
@@ -1364,6 +1364,12 @@ void Gpu2D::writeWinOut(uint16_t mask, uint16_t value)
     // Write to the WINOUT register
     mask &= 0x3F3F;
     winOut = (winOut & ~mask) | (value & mask);
+}
+
+void Gpu2D::writeMosaic(uint16_t mask, uint16_t value)
+{
+    // Write to the MOSAIC register
+    mosaic = (mosaic & ~mask) | (value & mask);
 }
 
 void Gpu2D::writeBldCnt(uint16_t mask, uint16_t value)
