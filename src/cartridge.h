@@ -60,6 +60,8 @@ class Cartridge
         bool saveDirty = false;
         std::mutex mutex;
 
+        uint32_t romMask = 0;
+
         void loadRomSection(size_t offset, size_t size);
 
     private:
@@ -141,8 +143,6 @@ class CartridgeGba: public Cartridge
         void sramWrite(uint32_t address, uint8_t value);
 
     private:
-        uint32_t romMask = 0;
-
         int eepromCount = 0;
         uint16_t eepromCmd = 0;
         uint64_t eepromData = 0;

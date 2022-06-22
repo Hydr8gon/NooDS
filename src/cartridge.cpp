@@ -178,6 +178,10 @@ bool CartridgeNds::loadRom(std::string path)
         loadRomSection(0, 0x5000);
     }
 
+    // Calculate the mask for ROM mirroring
+    for (romMask = 1; romMask < romSize; romMask <<= 1);
+    romMask -= 1;
+
     // Save the ROM code, which is mainly used for encryption
     romCode = U8TO32(rom, 0x0C);
 
@@ -785,16 +789,16 @@ void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
                 romAddrVirt[cpu] = romAddrReal[cpu];
             }
         }
-        else if (((command >> 56) & 0xF0) == 0xA0) // Enter main data mode
+        else if ((command >> 60) == 0xA) // Enter main data mode
         {
             // Disable KEY1 encryption
             // On hardware, this is where KEY2 encryption would start
             encrypted[cpu] = false;
         }
-        else if ((command & 0xFF00000000FFFFFF) == 0xB700000000000000) // Get data
+        else if ((command >> 56) == 0xB7) // Get data
         {
             cmdMode = CMD_DATA;
-            romAddrReal[cpu] = (command & 0x00FFFFFFFF000000) >> 24;
+            romAddrReal[cpu] = (command >> 24) & romMask;
 
             // Load the ROM data from file if needed
             if (romFile)
