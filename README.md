@@ -23,7 +23,7 @@ The easiest way to build for Android would be with [Android Studio](https://deve
 up to date. You can then run `make` in the project root directory to build.
 
 ## Usage
-NooDS should be able to run most things without additional setups. DS BIOS and firmware files must be provided to boot from the DS menu, which can be dumped from a DS with [DSBF Dumper](https://archive.org/details/dsbf-dumper). The firmware must be dumped from an original DS; DSi and 3DS dumps don't have any boot code. A GBA BIOS file must be provided to run GBA games, which can be dumped from many systems with [this dumper](https://github.com/mgba-emu/bios-dump). The BIOS and firmware file paths can be set in the settings. Although not always accurate, save types are automatically detected. You'll need to manually change the save type until it does if you load a new game and saving does not work.
+It should be able to run most things without additional setups. DS BIOS and firmware files must be provided to boot from the DS menu, which can be dumped from a DS with [DSBF Dumper](https://archive.org/details/dsbf-dumper). The firmware must be dumped from an original DS; DSi and 3DS dumps don't have any boot code. A GBA BIOS file must be provided to run GBA games, which can be dumped from many systems with [this dumper](https://github.com/mgba-emu/bios-dump). The BIOS and firmware file paths can be set in the settings. Although not always accurate, save types are automatically detected. You'll need to manually change the save type until it does if you load a new game and saving does not work.
 
 ## References
 * [GBATEK](https://problemkaputt.de/gbatek.htm) by Martin Korth - It's where most of my information came from
