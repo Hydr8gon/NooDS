@@ -22,153 +22,231 @@
 #include "rtc.h"
 #include "core.h"
 
-// I find GBATEK's RTC documentation to be lacking, so here's a quick summary of how the I/O works
-//
-// Bits 2 and 6 are connected to the CS pinout
-// Bit 6 should always be set, so setting bit 2 to 1 or 0 causes CS to be high or low, respectively
-//
-// Bits 1 and 5 are connected to the SCK pinout
-// Bit 5 should always be set, so setting bit 1 to 1 or 0 causes SCK to be high or low, respectively
-//
-// Bits 0 and 4 are connected to the SIO pinout
-// Bit 4 indicates data direction; 0 is read, and 1 is write
-// Bit 0 is where data sent from the RTC is read, and where data sent to the RTC is written
-//
-// To start a transfer, switch CS from low to high
-// To end a transfer, switch CS from high to low
-//
-// To transfer a bit, set SCK to low and then high (it should be high when the transfer starts)
-// When writing a bit to the RTC, you should set bit 0 at the same time as setting SCK to low
-// When reading a bit from the RTC, you should read bit 0 after setting SCK to low (or high?)
-
-void Rtc::writeRtc(uint8_t value)
+void Rtc::updateRtc(bool cs, bool sck, bool sio)
 {
-    if (value & BIT(2)) // CS high
+    if (cs)
     {
-        if ((rtc & BIT(1)) && !(value & BIT(1))) // SCK high to low
+        // Transfer a bit to the RTC when SCK changes from low to high
+        if (!sckCur && sck)
         {
             if (writeCount < 8)
             {
-                // Write the first 8 bits to the command register, in reverse order
-                command |= (value & BIT(0)) << (7 - writeCount);
-                writeCount++;
+                // Write the first 8 bits to the command register
+                command |= sio << (7 - writeCount);
+
+                // Once the command is written, reverse the bit order if necessary
+                if (writeCount == 7 && (command & 0xF0) != 0x60)
+                {
+                    uint8_t value = 0;
+                    for (int i = 0; i < 8; i++)
+                        value |= ((command >> i) & BIT(0)) << (7 - i);
+                    command = value;
+                }
+            }
+            else if (command & BIT(0))
+            {
+                // Read a bit from an RTC register
+                sio = readRegister((command >> 1) & 0x7);
             }
             else
             {
-                if (!(value & BIT(4))) // Read
-                {
-                    value &= ~BIT(0);
-
-                    // Read a bit from an RTC register
-                    switch ((command & 0x0E) >> 1) // Register select
-                    {
-                        case 0: // Status register 1
-                        {
-                            value |= ((status1 >> (writeCount - 8)) & BIT(0));
-                            break;
-                        }
-
-                        case 2: // Date and time
-                        {
-                            // Update the date and time
-                            if (writeCount == 8)
-                            {
-                                // Get the local time
-                                std::time_t t = std::time(nullptr);
-                                std::tm *time = std::localtime(&t);
-                                time->tm_year %= 100; // The DS only counts years 2000-2099
-                                time->tm_mon++; // The DS starts month values at 1, not 0
-
-                                // Convert to 12-hour mode if enabled
-                                uint8_t hour = time->tm_hour;
-                                if (!(status1 & BIT(1))) time->tm_hour %= 12;
-
-                                // Save to the date and time registers in BCD format
-                                // Index 3 contains the day of the week, but most things don't care
-                                dateTime[0] = ((time->tm_year / 10) << 4) | (time->tm_year % 10);
-                                dateTime[1] = ((time->tm_mon  / 10) << 4) | (time->tm_mon  % 10);
-                                dateTime[2] = ((time->tm_mday / 10) << 4) | (time->tm_mday % 10);
-                                dateTime[4] = ((time->tm_hour / 10) << 4) | (time->tm_hour % 10);
-                                dateTime[5] = ((time->tm_min  / 10) << 4) | (time->tm_min  % 10);
-                                dateTime[6] = ((time->tm_sec  / 10) << 4) | (time->tm_sec  % 10);
-
-                                // Set the AM/PM bit
-                                if (hour >= 12) dateTime[4] |= BIT(6);
-                            }
-
-                            value |= ((dateTime[(writeCount / 8) - 1] >> (writeCount % 8)) & BIT(0));
-                            break;
-                        }
-
-                        case 3: // Time
-                        {
-                            // Update the time
-                            if (writeCount == 8)
-                            {
-                                // Get the local time
-                                std::time_t t = std::time(nullptr);
-                                std::tm *time = std::localtime(&t);
-
-                                // Convert to 12-hour mode if enabled
-                                uint8_t hour = time->tm_hour;
-                                if (!(status1 & BIT(1))) time->tm_hour %= 12;
-
-                                // Save to the date and time registers in BCD format
-                                dateTime[4] = ((time->tm_hour / 10) << 4) | (time->tm_hour % 10);
-                                dateTime[5] = ((time->tm_min  / 10) << 4) | (time->tm_min  % 10);
-                                dateTime[6] = ((time->tm_sec  / 10) << 4) | (time->tm_sec  % 10);
-
-                                // Set the AM/PM bit
-                                if (hour >= 12) dateTime[4] |= BIT(6);
-                            }
-
-                            value |= ((dateTime[(writeCount / 8) - 5] >> (writeCount % 8)) & BIT(0));
-                            break;
-                        }
-
-                        default:
-                        {
-                            LOG("Read from unknown RTC registers: %d\n", (command & 0x0E) >> 1);
-                            break;
-                        }
-                    }
-                }
-                else // Write
-                {
-                    // Write a bit to an RTC register
-                    switch ((command & 0x0E) >> 1) // Register select
-                    {
-                        case 0: // Status register 1
-                        {
-                            // Only write to the writable bits 1 through 3
-                            if (writeCount - 8 >= 1 && writeCount - 8 <= 3)
-                                status1 = (status1 & ~BIT(writeCount - 8)) | ((value & BIT(0)) << (writeCount - 8));
-                            break;
-                        }
-
-                        default:
-                        {
-                            LOG("Write to unknown RTC registers: %d\n", (command & 0x0E) >> 1);
-                            break;
-                        }
-                    }
-                }
-
-                writeCount++;
+                // Write a bit to an RTC register
+                writeRegister((command >> 1) & 0x7, sio);
             }
-        }
-        else if (!(rtc & BIT(1)) && (value & BIT(1)) && !(value & BIT(4))) // SCK low to high, read
-        {
-            // Read bits can still be read after switching SCK to high, so keep the previous bit value
-            value = (value & ~BIT(0)) | (rtc & BIT(0));
+
+            writeCount++;
         }
     }
-    else // CS low
+    else
     {
-        // Reset the transfer
+        // Reset the transfer when CS is low
         writeCount = 0;
         command = 0;
     }
 
-    rtc = value;
+    // Update the CS/SCK/SIO bits
+    csCur = cs;
+    sckCur = sck;
+    sioCur = sio;
+}
+
+void Rtc::updateDateTime()
+{
+    // Get the local time
+    std::time_t t = std::time(nullptr);
+    std::tm *time = std::localtime(&t);
+    time->tm_year %= 100; // The DS only counts years 2000-2099
+    time->tm_mon++; // The DS starts month values at 1, not 0
+
+    // Convert to 12-hour format if enabled
+    if (!(control & BIT(core->isGbaMode() ? 6 : 1)))
+        time->tm_hour %= 12;
+
+    // Save to the date and time registers in BCD format
+    // Index 3 contains the day of the week, but most things don't care
+    dateTime[0] = ((time->tm_year / 10) << 4) | (time->tm_year % 10);
+    dateTime[1] = ((time->tm_mon  / 10) << 4) | (time->tm_mon  % 10);
+    dateTime[2] = ((time->tm_mday / 10) << 4) | (time->tm_mday % 10);
+    dateTime[4] = ((time->tm_hour / 10) << 4) | (time->tm_hour % 10);
+    dateTime[5] = ((time->tm_min  / 10) << 4) | (time->tm_min  % 10);
+    dateTime[6] = ((time->tm_sec  / 10) << 4) | (time->tm_sec  % 10);
+
+    // Set the AM/PM bit
+    if (time->tm_hour >= 12)
+        dateTime[4] |= BIT(6 << core->isGbaMode());
+}
+
+void Rtc::reset()
+{
+    // Reset the RTC registers
+    updateRtc(0, 0, 0);
+    control = 0;
+    rtc = 0;
+    gpDirection = 0;
+    gpControl = 0;
+}
+
+bool Rtc::readRegister(uint8_t index)
+{
+    if (core->isGbaMode())
+    {
+        // Read a bit from a GBA RTC register
+        switch (index)
+        {
+            case 0: // Reset
+                reset();
+                return 0;
+
+            case 1: // Control
+                return (control >> (writeCount & 7)) & BIT(0);
+
+            case 2: // Date and time
+                if (writeCount == 8) updateDateTime();
+                return (dateTime[(writeCount / 8) - 1] >> (writeCount % 8)) & BIT(0);
+
+            case 3: // Time
+                if (writeCount == 8) updateDateTime();
+                return (dateTime[(writeCount / 8) - 5] >> (writeCount % 8)) & BIT(0);
+
+            default:
+                LOG("Read from unknown GBA RTC register: %d\n", index);
+                return 0;
+        }
+    }
+
+    // Read a bit from an NDS RTC register
+    switch (index)
+    {
+        case 0: // Status 1
+            return (control >> (writeCount & 7)) & BIT(0);
+
+        case 2: // Date and time
+            if (writeCount == 8) updateDateTime();
+            return (dateTime[(writeCount / 8) - 1] >> (writeCount & 7)) & BIT(0);
+
+        case 3: // Time
+            if (writeCount == 8) updateDateTime();
+            return (dateTime[(writeCount / 8) - 5] >> (writeCount & 7)) & BIT(0);
+
+        default:
+            LOG("Read from unknown RTC register: %d\n", index);
+            return 0;
+    }
+}
+
+void Rtc::writeRegister(uint8_t index, bool value)
+{
+    if (core->isGbaMode())
+    {
+        // Read a bit from a GBA RTC register
+        switch (index)
+        {
+            case 1: // Control
+                if (BIT(writeCount & 7) & 0x6A) // R/W bits
+                    control = (control & ~BIT(writeCount & 7)) | (value << (writeCount & 7));
+                return;
+
+            default:
+                LOG("Write to unknown GBA RTC register: %d\n", index);
+                return;
+        }
+    }
+
+    // Write a bit to an NDS RTC register
+    switch (index)
+    {
+        case 0: // Status 1
+            if ((BIT(writeCount & 7) & 0x01) && value) // Reset bit
+                reset();
+            else if (BIT(writeCount & 7) & 0x0E) // R/W bits
+                control = (control & ~BIT(writeCount & 7)) | (value << (writeCount & 7));
+            return;
+
+        default:
+            LOG("Write to unknown RTC register: %d\n", index);
+            return;
+    }
+}
+
+void Rtc::writeRtc(uint8_t value)
+{
+    // Write to the RTC register
+    rtc = value & ~0x07;
+
+    // Change the CS/SCK/SIO bits if writable and update the RTC
+    bool cs  = (rtc & BIT(6)) ?  (value & BIT(2)) : csCur;
+    bool sck = (rtc & BIT(5)) ? !(value & BIT(1)) : sckCur;
+    bool sio = (rtc & BIT(4)) ?  (value & BIT(0)) : sioCur;
+    updateRtc(cs, sck, sio);
+}
+
+void Rtc::writeGpData(uint16_t mask, uint16_t value)
+{
+    if (mask & 0xFF)
+    {
+        // Change the CS/SCK/SIO bits if writable and update the RTC
+        bool cs  = (gpDirection & BIT(2)) ? (value & BIT(2)) : csCur;
+        bool sio = (gpDirection & BIT(1)) ? (value & BIT(1)) : sioCur;
+        bool sck = (gpDirection & BIT(0)) ? (value & BIT(0)) : sckCur;
+        updateRtc(cs, sck, sio);
+    }
+}
+
+void Rtc::writeGpDirection(uint16_t mask, uint16_t value)
+{
+    // Write to the GP_DIRECTION register
+    mask &= 0x000F;
+    gpDirection = (gpDirection & ~mask) | (value & mask);
+}
+
+void Rtc::writeGpControl(uint16_t mask, uint16_t value)
+{
+    // Only allow enabling register reads if an RTC was detected
+    if (!gpRtc)
+        return;
+
+    // Write to the GP_CONTROL register
+    mask &= 0x0001;
+    gpControl = (gpControl & ~mask) | (value & mask);
+
+    // Update the memory map to reflect the read status of the GP registers
+    core->memory.updateMap7(0x8000000, 0x8001000);
+}
+
+uint8_t Rtc::readRtc()
+{
+    // Get the CS/SCK/SIO bits if readable and read from the RTC register
+    bool cs  = csCur;
+    bool sck = (rtc & BIT(5)) ? 0 : sckCur;
+    bool sio = (rtc & BIT(4)) ? 0 : sioCur;
+    return rtc | (cs << 2) | (sck << 1) | (sio << 0);
+}
+
+uint16_t Rtc::readGpData()
+{
+    // Get the CS/SCK/SIO bits if readable and read from the GP_DATA register
+    bool cs  = (gpDirection & BIT(2)) ? 0 : csCur;
+    bool sio = (gpDirection & BIT(1)) ? 0 : sioCur;
+    bool sck = (gpDirection & BIT(0)) ? 0 : sckCur;
+    return (cs << 2) | (sio << 1) | (sck << 0);
 }

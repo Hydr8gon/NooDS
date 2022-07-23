@@ -936,6 +936,29 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
     return 0xFFFFFFFF;
 }
 
+bool CartridgeGba::findString(std::string string)
+{
+    // Scan a GBA ROM for a string and report if it was found
+    for (int i = 0; i < romSize; i += 4)
+    {
+        bool found = true;
+
+        for (size_t j = 0; j < string.length(); j++)
+        {
+            if (i + j >= romSize || rom[i + j] != string[j])
+            {
+                found = false;
+                break;
+            }
+        }
+
+        if (found)
+            return true;
+    }
+
+    return false;
+}
+
 bool CartridgeGba::loadRom(std::string path)
 {
     bool res = Cartridge::loadRom(path);
@@ -958,6 +981,10 @@ bool CartridgeGba::loadRom(std::string path)
         romMask = 0x1FFFFFF;
     }
 
+    // Detect if the cart has an RTC by searching for the relevant string
+    if (findString("SIIRTC_V"))
+        core->rtc.enableGpRtc();
+
     // Update the memory maps at the GBA ROM locations
     core->memory.updateMap9(0x08000000, 0x0A000000);
     core->memory.updateMap7(0x08000000, 0x0D000000);
@@ -966,60 +993,36 @@ bool CartridgeGba::loadRom(std::string path)
     if (!save)
     {
         const std::string saveStrs[] = { "EEPROM_V", "SRAM_V", "FLASH_V", "FLASH512_V", "FLASH1M_V" };
-        int match = -1;
 
         // Unlike the DS, a GBA cart's save type can be detected by searching for strings in the ROM
         // Search the ROM for a save string so a new save of that type can be created
-        for (unsigned int i = 0; i < romSize; i += 4)
+        for (int i = 0; i < 5; i++)
         {
-            for (unsigned int j = 0; j < 5; j++)
-            {
-                match = j;
-                for (unsigned int k = 0; k < saveStrs[j].length(); k++)
-                {
-                    if (i + k >= romSize || rom[i + k] != saveStrs[j][k])
-                    {
-                        match = -1;
-                        break;
-                    }
-                }
-                if (match != -1) break;
-            }
-            if (match != -1) break;
-        }
+            if (!findString(saveStrs[i]))
+                continue;
 
-        // Create a new GBA save of the detected type
-        if (match != -1)
-        {
-            switch (match)
+            // Create a new GBA save of the detected type
+            switch (i)
             {
                 case 0: // EEPROM
-                {
                     // EEPROM can be either 0.5KB or 8KB, so it must be guessed based on how the game uses it
                     saveSize = -1;
                     return res;
-                }
 
                 case 1: // SRAM 32KB
-                {
                     LOG("Detected SRAM 32KB save type\n");
                     resizeSave(0x8000, false);
                     return res;
-                }
 
                 case 2: case 3: // FLASH 64KB
-                {
                     LOG("Detected FLASH 64KB save type\n");
                     resizeSave(0x10000, false);
                     return res;
-                }
 
                 case 4: // FLASH 128KB
-                {
                     LOG("Detected FLASH 128KB save type\n");
                     resizeSave(0x20000, false);
                     return res;
-                }
             }
         }
     }

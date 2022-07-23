@@ -272,7 +272,8 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
 
                 case 0x08000000: case 0x09000000: case 0x0A000000:
                 case 0x0B000000: case 0x0C000000: // ROM
-                    data = core->cartridgeGba.getRom(address);
+                    if (address > 0x8000000 || !core->rtc.readGpControl()) // GPIO fallback
+                        data = core->cartridgeGba.getRom(address);
                     break;
             }
         }
@@ -467,11 +468,13 @@ template <typename T> T Memory::readFallback(bool cpu, uint32_t address)
             case 0x0D000000: // EEPROM/ROM
                 if (core->cartridgeGba.isEeprom(address))
                     return core->cartridgeGba.eepromRead();
-                if (data = core->cartridgeGba.getRom(address))
-                    break;
 
             case 0x08000000: case 0x09000000: case 0x0A000000:
-            case 0x0B000000: case 0x0C000000: // ROM (empty)
+            case 0x0B000000: case 0x0C000000: // GPIO/ROM
+                if (address >= 0x80000C4 && address < 0x80000CA)
+                    return ioReadGba<T>(address);
+                if (data = core->cartridgeGba.getRom(address))
+                    break;
                 return (T)0xFFFFFFFF;
 
             case 0x0E000000: // SRAM
@@ -580,10 +583,15 @@ template <typename T> void Memory::writeFallback(bool cpu, uint32_t address, T v
                 data = &oam[address & 0x3FF];
                 break;
 
+            case 0x08000000: // GPIO
+                if (address >= 0x80000C4 && address < 0x80000CA)
+                    return ioWriteGba<T>(address, value);
+                break;
+
             case 0x0D000000: // EEPROM
                 if (core->cartridgeGba.isEeprom(address))
-                    core->cartridgeGba.eepromWrite(value);
-                return;
+                    return core->cartridgeGba.eepromWrite(value);
+                break;
 
             case 0x0E000000: // SRAM
                 core->cartridgeGba.sramWrite(address, value);
@@ -1010,6 +1018,9 @@ template <typename T> T Memory::ioReadGba(uint32_t address)
             DEF_IO16(0x4000202, data = core->interpreter[1].readIrf())     // IF
             DEF_IO_8(0x4000208, data = core->interpreter[1].readIme())     // IME
             DEF_IO_8(0x4000300, data = core->interpreter[1].readPostFlg()) // POSTFLG
+            DEF_IO16(0x80000C4, data = core->rtc.readGpData())             // GP_DATA
+            DEF_IO16(0x80000C6, data = core->rtc.readGpDirection())        // GP_DIRECTION
+            DEF_IO16(0x80000C8, data = core->rtc.readGpControl())          // GP_CONTROL
 
             default:
                 // Handle unknown reads by returning 0
@@ -1651,6 +1662,9 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value)
             DEF_IO_8(0x4000208, core->interpreter[1].writeIme(IOWR_PARAMS8))     // IME
             DEF_IO_8(0x4000300, core->interpreter[1].writePostFlg(IOWR_PARAMS8)) // POSTFLG
             DEF_IO_8(0x4000301, writeGbaHaltCnt(IOWR_PARAMS8))                   // HALTCNT
+            DEF_IO16(0x80000C4, core->rtc.writeGpData(IOWR_PARAMS))              // GP_DATA
+            DEF_IO16(0x80000C6, core->rtc.writeGpDirection(IOWR_PARAMS))         // GP_DIRECTION
+            DEF_IO16(0x80000C8, core->rtc.writeGpControl(IOWR_PARAMS))           // GP_CONTROL
 
             default:
                 // Catch unknown writes

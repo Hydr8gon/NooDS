@@ -25,6 +25,8 @@
 #include <mutex>
 #include <string>
 
+#include "defines.h"
+
 class Core;
 
 enum NdsCmdMode
@@ -126,15 +128,8 @@ class CartridgeGba: public Cartridge
 
         bool loadRom(std::string path);
 
-        uint8_t *getRom(uint32_t address)
-        {
-            return ((address &= romMask) < romSize) ? &rom[address] : nullptr;
-        }
-
-        bool isEeprom(uint32_t address)
-        {
-            return (saveSize == -1 || saveSize == 0x200 || saveSize == 0x2000) && (romSize <= 0x1000000 || address >= 0x0DFFFF00);
-        }
+        uint8_t *getRom(uint32_t address);
+        bool isEeprom(uint32_t address);
 
         uint8_t eepromRead();
         void eepromWrite(uint8_t value);
@@ -151,6 +146,18 @@ class CartridgeGba: public Cartridge
         uint8_t flashCmd = 0;
         bool bankSwap = false;
         bool flashErase = false;
+
+        bool findString(std::string string);
 };
+
+FORCE_INLINE uint8_t *CartridgeGba::getRom(uint32_t address)
+{
+    return ((address &= romMask) < romSize) ? &rom[address] : nullptr;
+}
+
+FORCE_INLINE bool CartridgeGba::isEeprom(uint32_t address)
+{
+    return (saveSize == -1 || saveSize == 0x200 || saveSize == 0x2000) && (romSize <= 0x1000000 || address >= 0x0DFFFF00);
+}
 
 #endif // CARTRIDGE_H

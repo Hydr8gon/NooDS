@@ -220,10 +220,11 @@ void Core::enterGbaMode()
     gpu.gbaScheduleInit();
     spu.gbaScheduleInit();
 
-    // Reset the ARM7 for GBA mode
+    // Reset the system for GBA mode
     memory.updateMap7(0x00000000, 0xFFFFFFFF);
     interpreter[1].init();
     interpreter[1].setBios(nullptr);
+    rtc.reset();
 
     // Set VRAM blocks A and B to plain access mode
     // This is used by the GPU to access the VRAM borders
