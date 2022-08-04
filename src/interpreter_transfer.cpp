@@ -2256,9 +2256,8 @@ int Interpreter::ldmiaT(uint16_t opcode) // LDMIA Rb!,<Rlist>
     }
 
     // Writeback
-    // On ARM9, if Rn is in Rlist, writeback only happens if Rn is the only register, or not the last
-    // On ARM7, if Rn is in Rlist, writeback never happens
-    if (!(opcode & BIT(m)) || (cpu == 0 && ((opcode & 0x00FF) == BIT(m) || (opcode & 0x00FF & ~(BIT(m + 1) - 1)))))
+    // On ARM7 and ARM9 in THUMB mode, if Rn is in Rlist, writeback never happens
+    if (!(opcode & BIT(m)))
         *registers[m] = op0;
 
     return n + ((cpu == 0) ? ((n > 1) ? 0 : 1) : 2);
