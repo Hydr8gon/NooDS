@@ -27,7 +27,7 @@ up to date. You can then run `make` in the project root directory to build.
 
 ## References
 * [GBATEK](https://problemkaputt.de/gbatek.htm) by Martin Korth - It's where most of my information came from
-* [GBATEK addendum](https://melonds.kuribo64.net/board/thread.php?id=13) by Arisotura - GBATEK isn't perfect, so some information came from here too
+* [GBATEK addendum](https://melonds.kuribo64.net/board/thread.php?id=13) by Arisotura - Some information came from here too as GBATEK isn't perfect
 * Blog posts [1](https://melonds.kuribo64.net/comments.php?id=85), [2](https://melonds.kuribo64.net/comments.php?id=56), [3](https://melonds.kuribo64.net/comments.php?id=32), and [4](https://melonds.kuribo64.net/comments.php?id=27) by Arisotura - Great resources that detail the 3D GPU's lesser-known quirks
 * [DraStic BIOS](https://drive.google.com/file/d/1dl6xgOXc892r43RzkIJKI6nikYIipzoN/view) by Exophase - Reference for the HLE BIOS implementation
 * [ARM Opcode Map](https://imrannazar.com/ARM-Opcode-Map) by Imran Nazar - Used to create the interpreter lookup table
