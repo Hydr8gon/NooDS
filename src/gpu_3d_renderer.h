@@ -52,18 +52,19 @@ class Gpu3DRenderer
     private:
         Core *core;
 
-        uint32_t framebuffer[2][256 * 192] = {};
-        int32_t depthBuffer[2][256 * 192] = {};
-        uint32_t attribBuffer[2][256 * 192] = {};
-        uint8_t stencilBuffer[256 * 192] = {};
-        bool stencilClear[256] = {};
+        bool resShift = false;
+        uint32_t framebuffer[2][256 * 192 * 4] = {};
+        int32_t depthBuffer[2][256 * 192 * 4] = {};
+        uint32_t attribBuffer[2][256 * 192 * 4] = {};
+        uint8_t stencilBuffer[256 * 192 * 4] = {};
+        bool stencilClear[256 * 2] = {};
 
         int polygonTop[2048] = {};
         int polygonBot[2048] = {};
 
         int activeThreads = 0;
         std::thread *threads[3] = {};
-        std::atomic<int> ready[192];
+        std::atomic<int> ready[192 * 2];
 
         uint16_t disp3DCnt = 0;
         uint16_t edgeColor[8] = {};
@@ -75,6 +76,8 @@ class Gpu3DRenderer
         uint16_t toonTable[32] = {};
 
         static uint32_t rgba5ToRgba6(uint32_t color);
+
+        uint32_t *getLine1(int line);
 
         void drawThreaded(int thread);
         void drawScanline1(int line);

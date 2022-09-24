@@ -38,6 +38,7 @@ public class NooRenderer implements GLSurfaceView.Renderer
     private int program;
     private int textures[];
     private Bitmap bitmap;
+    private int highRes3D;
     private boolean gbaMode;
     private int width, height;
 
@@ -101,6 +102,7 @@ public class NooRenderer implements GLSurfaceView.Renderer
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, (getScreenFilter() == 1) ? GLES20.GL_LINEAR : GLES20.GL_NEAREST);
 
         bitmap = Bitmap.createBitmap(256, 192 * 2, Bitmap.Config.ARGB_8888);
+        highRes3D = 0;
         gbaMode = false;
     }
 
@@ -132,12 +134,21 @@ public class NooRenderer implements GLSurfaceView.Renderer
     @Override
     public void onDrawFrame(GL10 unused)
     {
+        // Update the resolution if the high-res 3D setting changed
+        if (highRes3D != getHighRes3D())
+        {
+            highRes3D = getHighRes3D();
+            bitmap = Bitmap.createBitmap((gbaMode ? 240 : 256) << highRes3D,
+                (gbaMode ? 160 : (192 * 2)) << highRes3D, Bitmap.Config.ARGB_8888);
+        }
+
         // Update the layout if GBA mode changed
         if (gbaMode != (activity.isGbaMode() && getGbaCrop() != 0))
         {
             gbaMode = !gbaMode;
             updateLayout(width, height);
-            bitmap = Bitmap.createBitmap((gbaMode ? 240 : 256), (gbaMode ? 160 : (192 * 2)), Bitmap.Config.ARGB_8888);
+            bitmap = Bitmap.createBitmap((gbaMode ? 240 : 256) << highRes3D,
+                (gbaMode ? 160 : (192 * 2)) << highRes3D, Bitmap.Config.ARGB_8888);
         }
 
         // Clear the display
@@ -210,6 +221,7 @@ public class NooRenderer implements GLSurfaceView.Renderer
     }
 
     public static native boolean copyFramebuffer(Bitmap bitmap, boolean gbaCrop);
+    public static native int getHighRes3D();
     public static native int getScreenRotation();
     public static native int getGbaCrop();
     public static native int getScreenFilter();

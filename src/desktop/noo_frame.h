@@ -91,6 +91,7 @@ class NooFrame: public wxFrame
         void threaded3D1(wxCommandEvent &event);
         void threaded3D2(wxCommandEvent &event);
         void threaded3D3(wxCommandEvent &event);
+        void highRes3D(wxCommandEvent &event);
         void micEnable(wxCommandEvent &event);
         void updateJoystick(wxTimerEvent &event);
         void dropFiles(wxDropFilesEvent &event);

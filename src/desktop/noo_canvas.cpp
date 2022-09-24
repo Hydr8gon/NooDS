@@ -93,10 +93,14 @@ void NooCanvas::draw(wxPaintEvent &event)
             case 2: texCoords = 0xD2; break; // Counter-clockwise
         }
 
+        // Shift the screen resolutions if high-res is enabled
+        bool resShift = Settings::getHighRes3D();
+
         if (gbaMode)
         {
             // Draw the GBA screen
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 240, 160, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 240 << resShift, 160 << resShift, 0,
+                GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
             glBegin(GL_QUADS);
             glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
             glVertex2i(layout.getTopX() + layout.getTopWidth(), layout.getTopY() + layout.getTopHeight());
@@ -111,7 +115,8 @@ void NooCanvas::draw(wxPaintEvent &event)
         else // NDS mode
         {
             // Draw the DS top screen
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256 << resShift, 192 << resShift, 0,
+                GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
             glBegin(GL_QUADS);
             glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
             glVertex2i(layout.getTopX() + layout.getTopWidth(), layout.getTopY() + layout.getTopHeight());
@@ -124,7 +129,8 @@ void NooCanvas::draw(wxPaintEvent &event)
             glEnd();
 
             // Draw the DS bottom screen
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 192, 0, GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[256 * 192]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256 << resShift, 192 << resShift, 0,
+                GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[(256 * 192) << (resShift * 2)]);
             glBegin(GL_QUADS);
             glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
             glVertex2i(layout.getBotX() + layout.getBotWidth(), layout.getBotY() + layout.getBotHeight());

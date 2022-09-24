@@ -67,7 +67,7 @@ SceUID eventFlag;
 std::thread *coreThread, *audioThread, *saveThread;
 
 ScreenLayout layout;
-uint32_t framebuffer[256 * 192 * 2];
+uint32_t framebuffer[256 * 192 * 8];
 bool gbaMode = false;
 
 uint32_t audioBuffer[1024];
@@ -305,6 +305,7 @@ void settingsMenu()
         "FPS Limiter",
         "Threaded 2D",
         "Threaded 3D",
+        "High-Resolution 3D",
         "Screen Rotation",
         "Screen Arrangement",
         "Screen Sizing",
@@ -330,6 +331,7 @@ void settingsMenu()
             toggle[Settings::getFpsLimiter()],
             toggle[Settings::getThreaded2D()],
             toggle[(bool)Settings::getThreaded3D()],
+            toggle[Settings::getHighRes3D()],
             rotation[ScreenLayout::getScreenRotation()],
             arrangement[ScreenLayout::getScreenArrangement()],
             sizing[ScreenLayout::getScreenSizing()],
@@ -355,14 +357,15 @@ void settingsMenu()
                 case  1: Settings::setFpsLimiter(!Settings::getFpsLimiter());                                break;
                 case  2: Settings::setThreaded2D(!Settings::getThreaded2D());                                break;
                 case  3: Settings::setThreaded3D(!Settings::getThreaded3D());                                break;
-                case  4: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
-                case  5: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
-                case  6: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
-                case  7: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
-                case  8: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
-                case  9: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
-                case 10: screenFilter   = !screenFilter;                                                     break;
-                case 11: showFpsCounter = !showFpsCounter;                                                   break;
+                case  4: Settings::setHighRes3D(!Settings::getHighRes3D());                                  break;
+                case  5: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
+                case  6: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
+                case  7: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
+                case  8: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
+                case  9: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
+                case 10: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
+                case 11: screenFilter   = !screenFilter;                                                     break;
+                case 12: showFpsCounter = !showFpsCounter;                                                   break;
             }
         }
         else if (pressed & cancelButton)
@@ -788,19 +791,25 @@ int main()
                 layout.update(960, 544, gbaMode);
             }
 
+            // Shift the screen resolutions if high-res is enabled
+            bool resShift = Settings::getHighRes3D();
+
     		vita2d_start_drawing();
     		vita2d_clear_screen();
 
             if (gbaMode)
             {
                 // Draw the GBA screen
-                drawScreen(top, &framebuffer[0], 240, 160, layout.getTopX(), layout.getTopY(), layout.getTopWidth(), layout.getTopHeight());
+                drawScreen(top, &framebuffer[0], 240 << resShift, 160 << resShift,
+                    layout.getTopX(), layout.getTopY(), layout.getTopWidth(), layout.getTopHeight());
             }
             else
             {
                 // Draw the DS top and bottom screens
-                drawScreen(top, &framebuffer[0],         256, 192, layout.getTopX(), layout.getTopY(), layout.getTopWidth(), layout.getTopHeight());
-                drawScreen(bot, &framebuffer[256 * 192], 256, 192, layout.getBotX(), layout.getBotY(), layout.getBotWidth(), layout.getBotHeight());
+                drawScreen(top, &framebuffer[0], 256 << resShift, 192 << resShift,
+                    layout.getTopX(), layout.getTopY(), layout.getTopWidth(), layout.getTopHeight());
+                drawScreen(bot, &framebuffer[(256 * 192) << (resShift * 2)], 256 << resShift, 192 << resShift,
+                    layout.getBotX(), layout.getBotY(), layout.getBotWidth(), layout.getBotHeight());
             }
 
             // Draw the FPS counter if enabled

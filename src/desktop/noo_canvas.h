@@ -40,7 +40,7 @@ class NooCanvas: public wxGLCanvas
         wxGLContext *context;
 
         ScreenLayout layout;
-        uint32_t framebuffer[256 * 192 * 2] = {};
+        uint32_t framebuffer[256 * 192 * 8] = {};
         bool gbaMode = false;
         bool display = true;
         bool frameReset = false;

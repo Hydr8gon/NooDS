@@ -43,6 +43,7 @@ class Settings
         static int         getFpsLimiter()   { return fpsLimiter;   }
         static int         getThreaded2D()   { return threaded2D;   }
         static int         getThreaded3D()   { return threaded3D;   }
+        static int         getHighRes3D()    { return highRes3D;    }
         static std::string getBios9Path()    { return bios9Path;    }
         static std::string getBios7Path()    { return bios7Path;    }
         static std::string getFirmwarePath() { return firmwarePath; }
@@ -53,6 +54,7 @@ class Settings
         static void setFpsLimiter(int value)           { fpsLimiter   = value; }
         static void setThreaded2D(int value)           { threaded2D   = value; }
         static void setThreaded3D(int value)           { threaded3D   = value; }
+        static void setHighRes3D(int value)            { highRes3D    = value; }
         static void setBios9Path(std::string value)    { bios9Path    = value; }
         static void setBios7Path(std::string value)    { bios7Path    = value; }
         static void setFirmwarePath(std::string value) { firmwarePath = value; }
@@ -68,6 +70,7 @@ class Settings
         static int fpsLimiter;
         static int threaded2D;
         static int threaded3D;
+        static int highRes3D;
         static std::string bios9Path;
         static std::string bios7Path;
         static std::string firmwarePath;

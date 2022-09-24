@@ -49,7 +49,9 @@ Gpu::~Gpu()
     // Clean up any queued framebuffers
     while (!framebuffers.empty())
     {
-        delete[] framebuffers.front();
+        Buffers &buffers = framebuffers.front();
+        delete[] buffers.framebuffer;
+        delete[] buffers.hiRes3D;
         framebuffers.pop();
     }
 }
@@ -101,12 +103,34 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     if (!ready.load())
         return false;
 
+    // Get the next queued buffers
+    Buffers &buffers = framebuffers.front();
+
     if (gbaCrop)
     {
         // Output the frame in RGB8 format, cropped for GBA
-        for (int y = 0; y < 160; y++)
-            for (int x = 0; x < 240; x++)
-                out[y * 240 + x] = rgb5ToRgb8(framebuffers.front()[y * 256 + x]);
+        if (Settings::getHighRes3D())
+        {
+            // GBA doesn't have 3D, but draw the screen upscaled for consistency
+            for (int y = 0; y < 160; y++)
+            {
+                for (int x = 0; x < 240; x++)
+                {
+                    uint32_t color = rgb5ToRgb8(buffers.framebuffer[y * 256 + x]);
+                    out[(y * 2 + 0) * 240 * 2 + (x * 2 + 0)] = color;
+                    out[(y * 2 + 0) * 240 * 2 + (x * 2 + 1)] = color;
+                    out[(y * 2 + 1) * 240 * 2 + (x * 2 + 0)] = color;
+                    out[(y * 2 + 1) * 240 * 2 + (x * 2 + 1)] = color;
+                }
+            }
+        }
+        else
+        {
+            // Draw to a native resolution buffer
+            for (int y = 0; y < 160; y++)
+                for (int x = 0; x < 240; x++)
+                    out[y * 240 + x] = rgb5ToRgb8(buffers.framebuffer[y * 256 + x]);
+        }
     }
     else if (core->isGbaMode())
     {
@@ -117,36 +141,125 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
         // The DS draws the GBA screen by capturing it to alternating VRAM blocks and then displaying that
         // While not used officially, it's possible to copy images into VRAM before entering GBA mode to use as a border
         // Output the GBA frame, centered, with the current VRAM border around it
-        for (int y = 0; y < 192; y++)
+        if (Settings::getHighRes3D())
         {
-            for (int x = 0; x < 256; x++)
+            // GBA doesn't have 3D, but draw the screen upscaled for consistency
+            for (int y = 0; y < 192; y++)
             {
-                if (x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16)
-                    out[offset + y * 256 + x] = rgb5ToRgb8(framebuffers.front()[(y - 16) * 256 + (x - 8)]);
-                else
-                    out[offset + y * 256 + x] = rgb5ToRgb8(core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
+                for (int x = 0; x < 256; x++)
+                {
+                    uint32_t color;
+                    if (x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16)
+                        color = rgb5ToRgb8(buffers.framebuffer[(y - 16) * 256 + (x - 8)]);
+                    else
+                        color = rgb5ToRgb8(core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
+                    out[offset * 4 + (y * 2 + 0) * 256 * 2 + (x * 2 + 0)] = color;
+                    out[offset * 4 + (y * 2 + 0) * 256 * 2 + (x * 2 + 1)] = color;
+                    out[offset * 4 + (y * 2 + 1) * 256 * 2 + (x * 2 + 0)] = color;
+                    out[offset * 4 + (y * 2 + 1) * 256 * 2 + (x * 2 + 1)] = color;
+                }
             }
-        }
 
-        // Clear the secondary display
-        memset(&out[256 * 192 - offset], 0, 256 * 192 * sizeof(uint32_t));
+            // Clear the secondary display
+            memset(&out[(256 * 192 - offset) * 4], 0, 256 * 192 * 4 * sizeof(uint32_t));
+        }
+        else
+        {
+            // Draw to a native resolution buffer
+            for (int y = 0; y < 192; y++)
+            {
+                for (int x = 0; x < 256; x++)
+                {
+                    if (x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16)
+                        out[offset + y * 256 + x] = rgb5ToRgb8(buffers.framebuffer[(y - 16) * 256 + (x - 8)]);
+                    else
+                        out[offset + y * 256 + x] = rgb5ToRgb8(core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
+                }
+            }
+
+            // Clear the secondary display
+            memset(&out[256 * 192 - offset], 0, 256 * 192 * sizeof(uint32_t));
+        }
     }
     else
     {
         // Output the full frame in RGB8 format
-        for (int i = 0; i < 256 * 192 * 2; i++)
-            out[i] = rgb6ToRgb8(framebuffers.front()[i]);
+        if (Settings::getHighRes3D())
+        {
+            if (buffers.hiRes3D)
+            {
+                if (buffers.top3D)
+                {
+                    // Draw the upscaled 3D output to the top screen
+                    for (int i = 0; i < 256 * 192 * 4; i++)
+                        out[i] = rgb6ToRgb8(buffers.hiRes3D[i]);
+
+                    // Draw the bottom screen upscaled
+                    for (int y = 0; y < 192; y++)
+                    {
+                        for (int x = 0; x < 256; x++)
+                        {
+                            uint32_t color = rgb6ToRgb8(buffers.framebuffer[(y + 192) * 256 + x]);
+                            out[((y + 192) * 2 + 0) * 256 * 2 + (x * 2 + 0)] = color;
+                            out[((y + 192) * 2 + 0) * 256 * 2 + (x * 2 + 1)] = color;
+                            out[((y + 192) * 2 + 1) * 256 * 2 + (x * 2 + 0)] = color;
+                            out[((y + 192) * 2 + 1) * 256 * 2 + (x * 2 + 1)] = color;
+                        }
+                    }
+                }
+                else
+                {
+                    // Draw the top screen upscaled
+                    for (int y = 0; y < 192; y++)
+                    {
+                        for (int x = 0; x < 256; x++)
+                        {
+                            uint32_t color = rgb6ToRgb8(buffers.framebuffer[y * 256 + x]);
+                            out[(y * 2 + 0) * 256 * 2 + (x * 2 + 0)] = color;
+                            out[(y * 2 + 0) * 256 * 2 + (x * 2 + 1)] = color;
+                            out[(y * 2 + 1) * 256 * 2 + (x * 2 + 0)] = color;
+                            out[(y * 2 + 1) * 256 * 2 + (x * 2 + 1)] = color;
+                        }
+                    }
+
+                    // Draw the upscaled 3D output to the bottom screen
+                    for (int i = 0; i < 256 * 192 * 4; i++)
+                        out[256 * 192 * 4 + i] = rgb6ToRgb8(buffers.hiRes3D[i]);
+                }
+            }
+            else
+            {
+                // Even when 3D isn't enabled, draw the screens upscaled for consistency
+                for (int y = 0; y < 192 * 2; y++)
+                {
+                    for (int x = 0; x < 256; x++)
+                    {
+                        uint32_t color = rgb6ToRgb8(buffers.framebuffer[y * 256 + x]);
+                        out[(y * 2 + 0) * 256 * 2 + (x * 2 + 0)] = color;
+                        out[(y * 2 + 0) * 256 * 2 + (x * 2 + 1)] = color;
+                        out[(y * 2 + 1) * 256 * 2 + (x * 2 + 0)] = color;
+                        out[(y * 2 + 1) * 256 * 2 + (x * 2 + 1)] = color;
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Draw to a native resolution buffer
+            for (int i = 0; i < 256 * 192 * 2; i++)
+                out[i] = rgb6ToRgb8(buffers.framebuffer[i]);
+        }
     }
 
-    // Free the used framebuffer
-    delete[] framebuffers.front();
+    // Free the used buffers
+    delete[] buffers.framebuffer;
+    delete[] buffers.hiRes3D;
 
     // Remove the frame from the queue
     mutex.lock();
     framebuffers.pop();
     ready.store(!framebuffers.empty());
     mutex.unlock();
-
     return true;
 }
 
@@ -214,12 +327,13 @@ void Gpu::gbaScanline308()
             if (framebuffers.size() < 2)
             {
                 // Copy the completed sub-framebuffer to a new framebuffer
-                uint32_t *framebuffer = new uint32_t[256 * 160];
-                memcpy(&framebuffer[0], core->gpu2D[0].getFramebuffer(), 256 * 160 * sizeof(uint32_t));
+                Buffers buffers;
+                buffers.framebuffer = new uint32_t[256 * 160];
+                memcpy(buffers.framebuffer, core->gpu2D[0].getFramebuffer(), 256 * 160 * sizeof(uint32_t));
 
                 // Add the frame to the queue
                 mutex.lock();
-                framebuffers.push(framebuffer);
+                framebuffers.push(buffers);
                 ready.store(true);
                 mutex.unlock();
             }
@@ -472,29 +586,39 @@ void Gpu::scanline355()
             // Allow up to 2 framebuffers to be queued, to preserve frame pacing if emulation runs ahead
             if (framebuffers.size() < 2)
             {
+                Buffers buffers;
+
                 // Copy the completed sub-framebuffers to a new framebuffer
-                uint32_t *framebuffer = new uint32_t[256 * 192 * 2];
+                buffers.framebuffer = new uint32_t[256 * 192 * 2];
                 if (powCnt1 & BIT(0)) // LCDs enabled
                 {
                     if (powCnt1 & BIT(15)) // Display swap
                     {
-                        memcpy(&framebuffer[0],         core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-                        memcpy(&framebuffer[256 * 192], core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                        memcpy(&buffers.framebuffer[0],         core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                        memcpy(&buffers.framebuffer[256 * 192], core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                     }
                     else
                     {
-                        memcpy(&framebuffer[0],         core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
-                        memcpy(&framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                        memcpy(&buffers.framebuffer[0],         core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                        memcpy(&buffers.framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                     }
                 }
                 else
                 {
-                    memset(framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
+                    memset(buffers.framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
+                }
+
+                // Copy the upscaled 3D output to a new buffer if enabled
+                if (Settings::getHighRes3D() && (core->gpu2D[0].readDispCnt() & BIT(3)))
+                {
+                    buffers.hiRes3D = new uint32_t[256 * 192 * 4];
+                    memcpy(buffers.hiRes3D, core->gpu3DRenderer.getLine(0), 256 * 192 * 4 * sizeof(uint32_t));
+                    buffers.top3D = (powCnt1 & BIT(15));
                 }
 
                 // Add the frame to the queue
                 mutex.lock();
-                framebuffers.push(framebuffer);
+                framebuffers.push(buffers);
                 ready.store(true);
                 mutex.unlock();
             }

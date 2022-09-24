@@ -21,6 +21,7 @@
 
 #include "gpu_3d.h"
 #include "core.h"
+#include "settings.h"
 
 Matrix Matrix::operator*(Matrix &mtx)
 {
@@ -293,6 +294,15 @@ void Gpu3D::runCommand()
 
 void Gpu3D::swapBuffers()
 {
+    // Scale the viewport based on the high-res 3D setting
+    bool resShift = Settings::getHighRes3D();
+    uint16_t x = viewportX      << resShift;
+    uint16_t y = viewportY      << resShift;
+    uint16_t w = viewportWidth  << resShift;
+    uint16_t h = viewportHeight << resShift;
+    uint16_t xMask = (0x200 << resShift) - 1;
+    uint16_t yMask = (0x100 << resShift) - 1;
+
     // Normalize and scale the vertices to the viewport
     // X coordinates are 9-bit and Y coordinates are 8-bit; invalid viewports can cause wraparound
     // Z coordinates (and depth values in general) are 24-bit
@@ -300,8 +310,8 @@ void Gpu3D::swapBuffers()
     {
         if (verticesIn[i].w != 0)
         {
-            verticesIn[i].x = (( (int64_t)verticesIn[i].x + verticesIn[i].w) * viewportWidth  / (verticesIn[i].w * 2) + viewportX) & 0x1FF;
-            verticesIn[i].y = ((-(int64_t)verticesIn[i].y + verticesIn[i].w) * viewportHeight / (verticesIn[i].w * 2) + viewportY) &  0xFF;
+            verticesIn[i].x = (( (int64_t)verticesIn[i].x + verticesIn[i].w) * w / (verticesIn[i].w * 2) + x) & xMask;
+            verticesIn[i].y = ((-(int64_t)verticesIn[i].y + verticesIn[i].w) * h / (verticesIn[i].w * 2) + y) & yMask;
             verticesIn[i].z = (((((int64_t)verticesIn[i].z << 14) / verticesIn[i].w) + 0x3FFF) << 9);
         }
     }

@@ -56,7 +56,14 @@ class Gpu
     private:
         Core *core;
 
-        std::queue<uint32_t*> framebuffers;
+        struct Buffers
+        {
+            uint32_t *framebuffer = nullptr;
+            uint32_t *hiRes3D = nullptr;
+            bool top3D = false;
+        };
+
+        std::queue<Buffers> framebuffers;
         std::atomic<bool> ready;
         std::mutex mutex;
 

@@ -34,6 +34,7 @@ int showFpsCounter = 0;
 std::string ndsPath, gbaPath;
 Core *core = nullptr;
 ScreenLayout layout;
+uint32_t framebuffer[256 * 192 * 8];
 
 SLEngineItf audioEngine;
 SLObjectItf audioEngineObj;
@@ -197,15 +198,15 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_stopAudio(JNI
 extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooRenderer_copyFramebuffer(JNIEnv *env, jobject obj, jobject bitmap, jboolean gbaCrop)
 {
     // Get a new frame if one is ready
-    uint32_t framebuffer[256 * 192 * 2];
-    if (!core->gpu.getFrame(framebuffer, gbaCrop)) return false;
+    if (!core->gpu.getFrame(framebuffer, gbaCrop))
+        return false;
 
     // Copy the frame to the bitmap
     uint32_t *data;
     AndroidBitmap_lockPixels(env, bitmap, (void**)&data);
-    memcpy(data, framebuffer, (gbaCrop ? (240 * 160) : (256 * 192 * 2)) * sizeof(uint32_t));
+    size_t count = (gbaCrop ? (240 * 160) : (256 * 192 * 2)) << (Settings::getHighRes3D() * 2);
+    memcpy(data, framebuffer, count * sizeof(uint32_t));
     AndroidBitmap_unlockPixels(env, bitmap);
-
     return true;
 }
 
@@ -229,6 +230,11 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getThreaded2
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getThreaded3D(JNIEnv* env, jobject obj)
 {
     return Settings::getThreaded3D();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getHighRes3D(JNIEnv* env, jobject obj)
+{
+    return Settings::getHighRes3D();
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenRotation(JNIEnv* env, jobject obj)
@@ -289,6 +295,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setThreaded2
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setThreaded3D(JNIEnv* env, jobject obj, jint value)
 {
     Settings::setThreaded3D(value);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setHighRes3D(JNIEnv* env, jobject obj, jint value)
+{
+    Settings::setHighRes3D(value);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenRotation(JNIEnv* env, jobject obj, jint value)
@@ -388,6 +399,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_resizeGbaSave
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_resizeNdsSave(JNIEnv *env, jobject obj, jint size)
 {
     core->cartridgeNds.resizeSave(size);
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getHighRes3D(JNIEnv* env, jobject obj)
+{
+    return Settings::getHighRes3D();
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenRotation(JNIEnv* env, jobject obj)

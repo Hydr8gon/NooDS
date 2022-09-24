@@ -28,7 +28,7 @@ Gpu3DRenderer::Gpu3DRenderer(Core *core): core(core)
 {
     // Mark the scanlines as ready to start
     // This is mainly in case 3D is requested before the threads have a chance to start
-    for (int i = 0; i < 192; i++)
+    for (int i = 0; i < 192 * 2; i++)
         ready[i].store(3);
 }
 
@@ -56,6 +56,19 @@ uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 }
 
 uint32_t *Gpu3DRenderer::getLine(int line)
+{
+    // Get 2 lines when high-res is enabled, to ensure they're both finished
+    if (resShift)
+    {
+        uint32_t *data = getLine1(line * 2);
+        getLine1(line * 2 + 1);
+        return data;
+    }
+
+    return getLine1(line);
+}
+
+uint32_t *Gpu3DRenderer::getLine1(int line)
 {
     // If a thread is falling behind, see if this thread can help out instead of waiting around
     // Threads go back for the final pass after drawing their next scanline, so check 2 scanlines ahead
@@ -85,7 +98,7 @@ uint32_t *Gpu3DRenderer::getLine(int line)
 
     // Wait until a scanline is ready, and then return it
     while (ready[line].load() < 3) std::this_thread::yield();
-    return &framebuffer[0][256 * line];
+    return &framebuffer[0][line * 256 * 2];
 }
 
 void Gpu3DRenderer::drawScanline(int line)
@@ -95,8 +108,8 @@ void Gpu3DRenderer::drawScanline(int line)
         // Calculate the scanline bounds for each polygon
         for (int i = 0; i < core->gpu3D.getPolygonCount(); i++)
         {
-            polygonTop[i] = 192;
-            polygonBot[i] =   0;
+            polygonTop[i] = 192 * 2;
+            polygonBot[i] =   0 * 2;
 
             _Polygon *polygon = &core->gpu3D.getPolygons()[i];
             for (int j = 0; j < polygon->size; j++)
@@ -109,6 +122,9 @@ void Gpu3DRenderer::drawScanline(int line)
             // Allow horizontal line polygons to be drawn
             if (polygonTop[i] == polygonBot[i]) polygonBot[i]++;
         }
+
+        // Update the resolution shift for the next frame
+        resShift = Settings::getHighRes3D();
 
         // Clean up any existing threads
         for (int i = 0; i < activeThreads; i++)
@@ -128,7 +144,8 @@ void Gpu3DRenderer::drawScanline(int line)
         if (activeThreads > 0)
         {
             // Mark the scanlines as not ready
-            for (int i = 0; i < 192; i++)
+            int end = 192 << resShift;
+            for (int i = 0; i < end; i++)
                 ready[i].store(0);
 
             // Create threads to draw the scanlines
@@ -137,12 +154,26 @@ void Gpu3DRenderer::drawScanline(int line)
         }
     }
 
-    // Draw one scanline at a time if threading is disabled
+    // Draw scanlines normally when threading is disabled
     if (activeThreads == 0)
     {
-        drawScanline1(line);
-        if (line > 0) finishScanline(line - 1);
-        if (line == 191) finishScanline(191);
+        if (resShift)
+        {
+            // Draw two scanlines at a time when high-res is enabled
+            for (int i = line * 2; i < line * 2 + 2; i++)
+            {
+                drawScanline1(i);
+                if (i > 0) finishScanline(i - 1);
+                if (i == 383) finishScanline(383);
+            }
+        }
+        else
+        {
+            // Draw one scanline at a time
+            drawScanline1(line);
+            if (line > 0) finishScanline(line - 1);
+            if (line == 191) finishScanline(191);
+        }
     }
 }
 
@@ -151,8 +182,8 @@ void Gpu3DRenderer::drawThreaded(int thread)
     // Draw the 3D scanlines in a threaded sequence
     // The amount of scanlines skipped per thread depends on the number of active threads
     // Together, they render the entire 3D image
-    int i;
-    for (i = thread; i < 192; i += activeThreads)
+    int i, end = 192 << resShift;
+    for (i = thread; i < end; i += activeThreads)
     {
         switch (ready[i].exchange(1))
         {
@@ -201,7 +232,8 @@ void Gpu3DRenderer::drawScanline1(int line)
         (0x3F << 15) | (((clearColor & 0x001F0000) && ((clearColor & 0x001F0000) >> 16) < 31) << 12);
 
     // Clear the scanline buffers with the clear values
-    for (int i = line * 256; i < (line + 1) * 256; i++)
+    int start = line * 256 * 2, end = start + (256 << resShift);
+    for (int i = start; i < end; i++)
     {
         framebuffer[0][i]  = color;
         depthBuffer[0][i]  = depth;
@@ -237,26 +269,30 @@ void Gpu3DRenderer::finishScanline(int line)
     // Perform edge marking if enabled
     if (disp3DCnt & BIT(5))
     {
-        for (int i = line * 256; i < (line + 1) * 256; i++)
+        int offset = line * 256 * 2;
+        int w = (256 << resShift) - 1;
+        int h = (192 << resShift) - 1;
+
+        for (int i = offset; i <= offset + w; i++)
         {
             if (attribBuffer[0][i] & BIT(14)) // Edge bit
             {
                 // Get the polygon IDs of the surrounding pixels
                 uint32_t id[4] =
                 {
-                    ((i % 256 >   0) ? attribBuffer[0][i -   1] : (clearColor >> 24)) & 0x3F, // Left
-                    ((i % 256 < 255) ? attribBuffer[0][i +   1] : (clearColor >> 24)) & 0x3F, // Right
-                    ((line    >   0) ? attribBuffer[0][i - 256] : (clearColor >> 24)) & 0x3F, // Up
-                    ((line    < 191) ? attribBuffer[0][i + 256] : (clearColor >> 24)) & 0x3F  // Down
+                    (((i & w) > 0) ? attribBuffer[0][i -   1] : (clearColor >> 24)) & 0x3F, // Left
+                    (((i & w) < w) ? attribBuffer[0][i +   1] : (clearColor >> 24)) & 0x3F, // Right
+                    ((line    > 0) ? attribBuffer[0][i - 512] : (clearColor >> 24)) & 0x3F, // Up
+                    ((line    < h) ? attribBuffer[0][i + 512] : (clearColor >> 24)) & 0x3F  // Down
                 };
 
                 // Get the depth values of the surrounding pixels
                 int32_t depth[4] =
                 {
-                    ((i % 256 >   0) ? depthBuffer[0][i -   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Left
-                    ((i % 256 < 255) ? depthBuffer[0][i +   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Right
-                    ((line    >   0) ? depthBuffer[0][i - 256] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Up
-                    ((line    < 191) ? depthBuffer[0][i + 256] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9)))  // Down
+                    (((i & w) > 0) ? depthBuffer[0][i -   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Left
+                    (((i & w) < w) ? depthBuffer[0][i +   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Right
+                    ((line    > 0) ? depthBuffer[0][i - 512] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Up
+                    ((line    < h) ? depthBuffer[0][i + 512] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9)))  // Down
                 };
 
                 // Check the surrounding pixels, and mark the edge if at least one has a different ID and greater depth
@@ -281,7 +317,8 @@ void Gpu3DRenderer::finishScanline(int line)
 
         for (int layer = 0; layer < ((disp3DCnt & BIT(4)) ? 2 : 1); layer++) // Apply to the back layer as well if anti-aliased
         {
-            for (int i = line * 256; i < (line + 1) * 256; i++)
+            int start = line * 256 * 2, end = start + (256 << resShift);
+            for (int i = start; i < end; i++)
             {
                 if (attribBuffer[layer][i] & BIT(13)) // Fog bit
                 {
@@ -329,7 +366,8 @@ void Gpu3DRenderer::finishScanline(int line)
     // Perform anti-aliasing if enabled
     if (disp3DCnt & BIT(4))
     {
-        for (int i = line * 256; i < (line + 1) * 256; i++)
+        int start = line * 256 * 2, end = start + (256 << resShift);
+        for (int i = start; i < end; i++)
         {
             if (((attribBuffer[0][i] >> 15) & 0x3F) < 0x3F) // Edge not opaque
             {
@@ -967,7 +1005,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
         // Clear the stencil buffer at the start of a shadow mask polygon group
         if (!stencilClear[line])
         {
-            memset(&stencilBuffer[line * 256], 0, 256 * sizeof(uint8_t));
+            memset(&stencilBuffer[line * 256 * 2], 0, 256 << resShift);
             stencilClear[line] = true;
         }
     }
@@ -1002,10 +1040,11 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
             x = x3;
 
         // Invalid viewports can cause out-of-bounds vertices, so only draw within bounds
-        if (x >= 256) break;
+        if (x >= (256 << resShift))
+            break;
 
         bool layer = 0;
-        int i = line * 256 + x;
+        int i = line * 256 * 2 + x;
 
         // Calculate the depth value of the current pixel
         int32_t depth;

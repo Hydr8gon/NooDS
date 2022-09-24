@@ -34,6 +34,13 @@
         app:allowDividerAbove="true"
         app:allowDividerBelow="true" />
 
+    <SwitchPreferenceCompat
+        app:key="high_res_3d"
+        app:title="High-Resolution 3D"
+        app:iconSpaceReserved="false"
+        app:allowDividerAbove="true"
+        app:allowDividerBelow="true" />
+
     <ListPreference
         app:key="screen_rotation"
         app:title="Screen Rotation"

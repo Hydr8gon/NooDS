@@ -57,7 +57,7 @@ std::mutex mutex;
 ClkrstSession cpuSession;
 
 ScreenLayout layout;
-uint32_t framebuffer[256 * 192 * 2] = {};
+uint32_t framebuffer[256 * 192 * 8] = {};
 bool gbaMode = false;
 
 AudioOutBuffer audioBuffers[2];
@@ -243,6 +243,7 @@ void settingsMenu()
             ListItem("FPS Limiter",        toggle[Settings::getFpsLimiter()]),
             ListItem("Threaded 2D",        toggle[Settings::getThreaded2D()]),
             ListItem("Threaded 3D",        toggle[(bool)Settings::getThreaded3D()]),
+            ListItem("High-Resolution 3D", toggle[Settings::getHighRes3D()]),
             ListItem("Screen Rotation",    rotation[ScreenLayout::getScreenRotation()]),
             ListItem("Screen Arrangement", arrangement[ScreenLayout::getScreenArrangement()]),
             ListItem("Screen Sizing",      sizing[ScreenLayout::getScreenSizing()]),
@@ -271,16 +272,17 @@ void settingsMenu()
                 case  1: Settings::setFpsLimiter(!Settings::getFpsLimiter());                                break;
                 case  2: Settings::setThreaded2D(!Settings::getThreaded2D());                                break;
                 case  3: Settings::setThreaded3D(!Settings::getThreaded3D());                                break;
-                case  4: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
-                case  5: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
-                case  6: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
-                case  7: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
-                case  8: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
-                case  9: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
-                case 10: screenFilter    = !screenFilter;                                                    break;
-                case 11: showFpsCounter  = !showFpsCounter;                                                  break;
-                case 12: dockedTouchMode = !dockedTouchMode;                                                 break;
-                case 13: switchOverclock = (switchOverclock + 1) % 4;                                        break;
+                case  4: Settings::setHighRes3D(!Settings::getHighRes3D());                                  break;
+                case  5: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
+                case  6: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
+                case  7: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
+                case  8: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
+                case  9: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
+                case 10: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
+                case 11: screenFilter    = !screenFilter;                                                    break;
+                case 12: showFpsCounter  = !showFpsCounter;                                                  break;
+                case 13: dockedTouchMode = !dockedTouchMode;                                                 break;
+                case 14: switchOverclock = (switchOverclock + 1) % 4;                                        break;
             }
         }
         else
@@ -662,21 +664,25 @@ int main(int argc, char **argv)
         // Get a new frame if one is ready
         core->gpu.getFrame(framebuffer, gbaMode);
 
+        // Shift the screen resolutions if high-res is enabled
+        bool resShift = Settings::getHighRes3D();
+
         if (gbaMode)
         {
             // Draw the GBA screen
-            SwitchUI::drawImage(&framebuffer[0], 240, 160, layout.getTopX(), layout.getTopY(),
+            SwitchUI::drawImage(&framebuffer[0], 240 << resShift, 160 << resShift, layout.getTopX(), layout.getTopY(),
                 layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
         }
         else // NDS mode
         {
             // Draw the DS top screen
-            SwitchUI::drawImage(&framebuffer[0], 256, 192, layout.getTopX(), layout.getTopY(),
+            SwitchUI::drawImage(&framebuffer[0], 256 << resShift, 192 << resShift, layout.getTopX(), layout.getTopY(),
                 layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
 
             // Draw the DS bottom screen
-            SwitchUI::drawImage(&framebuffer[256 * 192], 256, 192, layout.getBotX(), layout.getBotY(),
-                layout.getBotWidth(), layout.getBotHeight(), screenFilter, ScreenLayout::getScreenRotation());
+            SwitchUI::drawImage(&framebuffer[(256 * 192) << (resShift * 2)], 256 << resShift,
+                192 << resShift, layout.getBotX(), layout.getBotY(), layout.getBotWidth(),
+                layout.getBotHeight(), screenFilter, ScreenLayout::getScreenRotation());
 
             // Handle touch input, depending on the current operation mode
             if (appletGetOperationMode() == AppletOperationMode_Console &&
