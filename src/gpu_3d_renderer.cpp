@@ -419,7 +419,7 @@ uint32_t Gpu3DRenderer::interpolateLinRev(uint32_t v1, uint32_t v2, uint32_t x1,
         return v1 - (v1 - v2) * (x - x1) / (x2 - x1);
 }
 
-uint32_t Gpu3DRenderer::interpolateFill(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2)
+uint32_t Gpu3DRenderer::interpolateFill(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2, int s)
 {
     if (x <= x1) return v1;
     if (x >= x2) return v2;
@@ -429,16 +429,17 @@ uint32_t Gpu3DRenderer::interpolateFill(uint32_t v1, uint32_t v2, uint32_t x1, u
         return interpolateLinear(v1, v2, x1, x, x2);
 
     // Calculate the interpolation factor with a precision of 8 bits for polygon fills
-    uint32_t factor = ((w1 * (x - x1)) << 8) / (w2 * (x2 - x) + w1 * (x - x1));
+    // In high-res mode, 7 bits of precision are used to avoid overflow
+    uint32_t factor = ((w1 * (x - x1)) << s) / (w2 * (x2 - x) + w1 * (x - x1));
 
     // Interpolate a new value between the min and max values
     if (v1 <= v2)
-        return v1 + (((v2 - v1) * factor) >> 8);
+        return v1 + (((v2 - v1) * factor) >> s);
     else
-        return v2 + (((v1 - v2) * ((1 << 8) - factor)) >> 8);
+        return v2 + (((v1 - v2) * ((1 << s) - factor)) >> s);
 }
 
-uint32_t Gpu3DRenderer::interpolateEdge(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2)
+uint32_t Gpu3DRenderer::interpolateEdge(uint32_t v1, uint32_t v2, uint32_t x1, uint32_t x, uint32_t x2, uint32_t w1, uint32_t w2, int s)
 {
     if (x <= x1) return v1;
     if (x >= x2) return v2;
@@ -454,13 +455,14 @@ uint32_t Gpu3DRenderer::interpolateEdge(uint32_t v1, uint32_t v2, uint32_t x1, u
     w2 >>= 1;
 
     // Calculate the interpolation factor with a precision of 9 bits for polygon edges
-    uint32_t factor = ((w1 * (x - x1)) << 9) / (w2 * (x2 - x) + w1a * (x - x1));
+    // In high-res mode, 8 bits of precision are used to avoid overflow
+    uint32_t factor = ((w1 * (x - x1)) << s) / (w2 * (x2 - x) + w1a * (x - x1));
 
     // Interpolate a new value between the min and max values
     if (v1 <= v2)
-        return v1 + (((v2 - v1) * factor) >> 9);
+        return v1 + (((v2 - v1) * factor) >> s);
     else
-        return v2 + (((v1 - v2) * ((1 << 9) - factor)) >> 9);
+        return v2 + (((v1 - v2) * ((1 << s) - factor)) >> s);
 }
 
 uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, uint32_t x1, uint32_t x, uint32_t x2)
@@ -980,24 +982,24 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     uint32_t z2 = interpolateLinear(vertices[v[2]]->z, vertices[v[3]]->z, rx1, rx, rx2);
 
     // Calculate the W values of the polygon edges on the current line
-    uint32_t w1 = interpolateEdge(ws[0], ws[1], lx1, lx, lx2, ws[0], ws[1]);
-    uint32_t w2 = interpolateEdge(ws[2], ws[3], rx1, rx, rx2, ws[2], ws[3]);
+    uint32_t w1 = interpolateEdge(ws[0], ws[1], lx1, lx, lx2, ws[0], ws[1], 9 - resShift);
+    uint32_t w2 = interpolateEdge(ws[2], ws[3], rx1, rx, rx2, ws[2], ws[3], 9 - resShift);
 
     // Interpolate the vertex color of the polygon edges on the current line
     // The color values are expanded to 9 bits during interpolation for extra precision
-    uint32_t r1 = interpolateEdge(((vertices[v[0]]->color >>  0) & 0x3F) << 3, ((vertices[v[1]]->color >>  0) & 0x3F) << 3, lx1, lx, lx2, ws[0], ws[1]);
-    uint32_t g1 = interpolateEdge(((vertices[v[0]]->color >>  6) & 0x3F) << 3, ((vertices[v[1]]->color >>  6) & 0x3F) << 3, lx1, lx, lx2, ws[0], ws[1]);
-    uint32_t b1 = interpolateEdge(((vertices[v[0]]->color >> 12) & 0x3F) << 3, ((vertices[v[1]]->color >> 12) & 0x3F) << 3, lx1, lx, lx2, ws[0], ws[1]);
-    uint32_t r2 = interpolateEdge(((vertices[v[2]]->color >>  0) & 0x3F) << 3, ((vertices[v[3]]->color >>  0) & 0x3F) << 3, rx1, rx, rx2, ws[2], ws[3]);
-    uint32_t g2 = interpolateEdge(((vertices[v[2]]->color >>  6) & 0x3F) << 3, ((vertices[v[3]]->color >>  6) & 0x3F) << 3, rx1, rx, rx2, ws[2], ws[3]);
-    uint32_t b2 = interpolateEdge(((vertices[v[2]]->color >> 12) & 0x3F) << 3, ((vertices[v[3]]->color >> 12) & 0x3F) << 3, rx1, rx, rx2, ws[2], ws[3]);
+    uint32_t r1 = interpolateEdge(((vertices[v[0]]->color >>  0) & 0x3F) << 3, ((vertices[v[1]]->color >>  0) & 0x3F) << 3, lx1, lx, lx2, ws[0], ws[1], 9 - resShift);
+    uint32_t g1 = interpolateEdge(((vertices[v[0]]->color >>  6) & 0x3F) << 3, ((vertices[v[1]]->color >>  6) & 0x3F) << 3, lx1, lx, lx2, ws[0], ws[1], 9 - resShift);
+    uint32_t b1 = interpolateEdge(((vertices[v[0]]->color >> 12) & 0x3F) << 3, ((vertices[v[1]]->color >> 12) & 0x3F) << 3, lx1, lx, lx2, ws[0], ws[1], 9 - resShift);
+    uint32_t r2 = interpolateEdge(((vertices[v[2]]->color >>  0) & 0x3F) << 3, ((vertices[v[3]]->color >>  0) & 0x3F) << 3, rx1, rx, rx2, ws[2], ws[3], 9 - resShift);
+    uint32_t g2 = interpolateEdge(((vertices[v[2]]->color >>  6) & 0x3F) << 3, ((vertices[v[3]]->color >>  6) & 0x3F) << 3, rx1, rx, rx2, ws[2], ws[3], 9 - resShift);
+    uint32_t b2 = interpolateEdge(((vertices[v[2]]->color >> 12) & 0x3F) << 3, ((vertices[v[3]]->color >> 12) & 0x3F) << 3, rx1, rx, rx2, ws[2], ws[3], 9 - resShift);
 
     // Interpolate the texture coordinates of the polygon edges on the current line
     // Interpolation is unsigned, so temporarily convert the signed values to unsigned
-    int32_t s1 = interpolateEdge((int32_t)vertices[v[0]]->s + 0xFFFF, (int32_t)vertices[v[1]]->s + 0xFFFF, lx1, lx, lx2, ws[0], ws[1]) - 0xFFFF;
-    int32_t t1 = interpolateEdge((int32_t)vertices[v[0]]->t + 0xFFFF, (int32_t)vertices[v[1]]->t + 0xFFFF, lx1, lx, lx2, ws[0], ws[1]) - 0xFFFF;
-    int32_t s2 = interpolateEdge((int32_t)vertices[v[2]]->s + 0xFFFF, (int32_t)vertices[v[3]]->s + 0xFFFF, rx1, rx, rx2, ws[2], ws[3]) - 0xFFFF;
-    int32_t t2 = interpolateEdge((int32_t)vertices[v[2]]->t + 0xFFFF, (int32_t)vertices[v[3]]->t + 0xFFFF, rx1, rx, rx2, ws[2], ws[3]) - 0xFFFF;
+    int32_t s1 = interpolateEdge((int32_t)vertices[v[0]]->s + 0xFFFF, (int32_t)vertices[v[1]]->s + 0xFFFF, lx1, lx, lx2, ws[0], ws[1], 9 - resShift) - 0xFFFF;
+    int32_t t1 = interpolateEdge((int32_t)vertices[v[0]]->t + 0xFFFF, (int32_t)vertices[v[1]]->t + 0xFFFF, lx1, lx, lx2, ws[0], ws[1], 9 - resShift) - 0xFFFF;
+    int32_t s2 = interpolateEdge((int32_t)vertices[v[2]]->s + 0xFFFF, (int32_t)vertices[v[3]]->s + 0xFFFF, rx1, rx, rx2, ws[2], ws[3], 9 - resShift) - 0xFFFF;
+    int32_t t2 = interpolateEdge((int32_t)vertices[v[2]]->t + 0xFFFF, (int32_t)vertices[v[3]]->t + 0xFFFF, rx1, rx, rx2, ws[2], ws[3], 9 - resShift) - 0xFFFF;
 
     // Keep track of shadow mask polygons
     if (polygon->mode == 3 && polygon->id == 0) // Shadow mask polygon
@@ -1050,7 +1052,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
         int32_t depth;
         if (polygon->wBuffer)
         {
-            depth = interpolateFill(w1, w2, x1, x, x4, w1, w2);
+            depth = interpolateFill(w1, w2, x1, x, x4, w1, w2, 8 - resShift);
             if (polygon->wShift > 0)
                 depth <<= polygon->wShift;
             else if (polygon->wShift < 0)
@@ -1107,17 +1109,17 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
         }
 
         // Interpolate the vertex color at the current pixel
-        uint32_t r = interpolateFill(r1, r2, x1, x, x4, w1, w2) >> 3;
-        uint32_t g = interpolateFill(g1, g2, x1, x, x4, w1, w2) >> 3;
-        uint32_t b = interpolateFill(b1, b2, x1, x, x4, w1, w2) >> 3;
+        uint32_t r = interpolateFill(r1, r2, x1, x, x4, w1, w2, 8 - resShift) >> 3;
+        uint32_t g = interpolateFill(g1, g2, x1, x, x4, w1, w2, 8 - resShift) >> 3;
+        uint32_t b = interpolateFill(b1, b2, x1, x, x4, w1, w2, 8 - resShift) >> 3;
         uint32_t color = ((polygon->alpha ? polygon->alpha : 0x3F) << 18) | (b << 12) | (g << 6) | r;
 
         // Blend the texture with the vertex color
         if (polygon->textureFmt != 0)
         {
             // Interpolate the texture coordinates at the current pixel
-            int s = interpolateFill(s1 + 0xFFFF, s2 + 0xFFFF, x1, x, x4, w1, w2) - 0xFFFF;
-            int t = interpolateFill(t1 + 0xFFFF, t2 + 0xFFFF, x1, x, x4, w1, w2) - 0xFFFF;
+            int s = interpolateFill(s1 + 0xFFFF, s2 + 0xFFFF, x1, x, x4, w1, w2, 8 - resShift) - 0xFFFF;
+            int t = interpolateFill(t1 + 0xFFFF, t2 + 0xFFFF, x1, x, x4, w1, w2, 8 - resShift) - 0xFFFF;
 
             // Read a texel from the texture
             uint32_t texel = readTexture(polygon, s >> 4, t >> 4);
