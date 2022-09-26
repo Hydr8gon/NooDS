@@ -117,10 +117,11 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                 for (int x = 0; x < 240; x++)
                 {
                     uint32_t color = rgb5ToRgb8(buffers.framebuffer[y * 256 + x]);
-                    out[(y * 2 + 0) * 240 * 2 + (x * 2 + 0)] = color;
-                    out[(y * 2 + 0) * 240 * 2 + (x * 2 + 1)] = color;
-                    out[(y * 2 + 1) * 240 * 2 + (x * 2 + 0)] = color;
-                    out[(y * 2 + 1) * 240 * 2 + (x * 2 + 1)] = color;
+                    int i = (y * 2) * (240 * 2) + (x * 2);
+                    out[i +   0] = color;
+                    out[i +   1] = color;
+                    out[i + 480] = color;
+                    out[i + 481] = color;
                 }
             }
         }
@@ -148,15 +149,14 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
             {
                 for (int x = 0; x < 256; x++)
                 {
-                    uint32_t color;
-                    if (x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16)
-                        color = rgb5ToRgb8(buffers.framebuffer[(y - 16) * 256 + (x - 8)]);
-                    else
-                        color = rgb5ToRgb8(core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
-                    out[offset * 4 + (y * 2 + 0) * 256 * 2 + (x * 2 + 0)] = color;
-                    out[offset * 4 + (y * 2 + 0) * 256 * 2 + (x * 2 + 1)] = color;
-                    out[offset * 4 + (y * 2 + 1) * 256 * 2 + (x * 2 + 0)] = color;
-                    out[offset * 4 + (y * 2 + 1) * 256 * 2 + (x * 2 + 1)] = color;
+                    uint32_t color = rgb5ToRgb8((x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16) ?
+                        buffers.framebuffer[(y - 16) * 256 + (x - 8)] :
+                        core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
+                    int i = (offset * 4) + (y * 2) * (256 * 2) + (x * 2);
+                    out[i +   0] = color;
+                    out[i +   1] = color;
+                    out[i + 512] = color;
+                    out[i + 513] = color;
                 }
             }
 
@@ -170,10 +170,9 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
             {
                 for (int x = 0; x < 256; x++)
                 {
-                    if (x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16)
-                        out[offset + y * 256 + x] = rgb5ToRgb8(buffers.framebuffer[(y - 16) * 256 + (x - 8)]);
-                    else
-                        out[offset + y * 256 + x] = rgb5ToRgb8(core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
+                    out[offset + y * 256 + x] = rgb5ToRgb8((x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16) ?
+                        buffers.framebuffer[(y - 16) * 256 + (x - 8)] :
+                        core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
                 }
             }
 
@@ -188,43 +187,29 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
         {
             if (buffers.hiRes3D)
             {
-                if (buffers.top3D)
+                // Draw the screens upscaled, replacing any 3D pixels with high-res output
+                for (int y = 0; y < 192 * 2; y++)
                 {
-                    // Draw the upscaled 3D output to the top screen
-                    for (int i = 0; i < 256 * 192 * 4; i++)
-                        out[i] = rgb6ToRgb8(buffers.hiRes3D[i]);
-
-                    // Draw the bottom screen upscaled
-                    for (int y = 0; y < 192; y++)
+                    for (int x = 0; x < 256; x++)
                     {
-                        for (int x = 0; x < 256; x++)
+                        uint32_t value = buffers.framebuffer[y * 256 + x];
+                        int i = (y * 2) * (256 * 2) + (x * 2);
+                        if (value & BIT(26)) // 3D
                         {
-                            uint32_t color = rgb6ToRgb8(buffers.framebuffer[(y + 192) * 256 + x]);
-                            out[((y + 192) * 2 + 0) * 256 * 2 + (x * 2 + 0)] = color;
-                            out[((y + 192) * 2 + 0) * 256 * 2 + (x * 2 + 1)] = color;
-                            out[((y + 192) * 2 + 1) * 256 * 2 + (x * 2 + 0)] = color;
-                            out[((y + 192) * 2 + 1) * 256 * 2 + (x * 2 + 1)] = color;
+                            out[i +   0] = rgb6ToRgb8(buffers.hiRes3D[(i +   0) % (256 * 192 * 4)]);
+                            out[i +   1] = rgb6ToRgb8(buffers.hiRes3D[(i +   1) % (256 * 192 * 4)]);
+                            out[i + 512] = rgb6ToRgb8(buffers.hiRes3D[(i + 512) % (256 * 192 * 4)]);
+                            out[i + 513] = rgb6ToRgb8(buffers.hiRes3D[(i + 513) % (256 * 192 * 4)]);
+                        }
+                        else
+                        {
+                            uint32_t color = rgb6ToRgb8(value);
+                            out[i +   0] = color;
+                            out[i +   1] = color;
+                            out[i + 512] = color;
+                            out[i + 513] = color;
                         }
                     }
-                }
-                else
-                {
-                    // Draw the top screen upscaled
-                    for (int y = 0; y < 192; y++)
-                    {
-                        for (int x = 0; x < 256; x++)
-                        {
-                            uint32_t color = rgb6ToRgb8(buffers.framebuffer[y * 256 + x]);
-                            out[(y * 2 + 0) * 256 * 2 + (x * 2 + 0)] = color;
-                            out[(y * 2 + 0) * 256 * 2 + (x * 2 + 1)] = color;
-                            out[(y * 2 + 1) * 256 * 2 + (x * 2 + 0)] = color;
-                            out[(y * 2 + 1) * 256 * 2 + (x * 2 + 1)] = color;
-                        }
-                    }
-
-                    // Draw the upscaled 3D output to the bottom screen
-                    for (int i = 0; i < 256 * 192 * 4; i++)
-                        out[256 * 192 * 4 + i] = rgb6ToRgb8(buffers.hiRes3D[i]);
                 }
             }
             else
@@ -235,10 +220,11 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                     for (int x = 0; x < 256; x++)
                     {
                         uint32_t color = rgb6ToRgb8(buffers.framebuffer[y * 256 + x]);
-                        out[(y * 2 + 0) * 256 * 2 + (x * 2 + 0)] = color;
-                        out[(y * 2 + 0) * 256 * 2 + (x * 2 + 1)] = color;
-                        out[(y * 2 + 1) * 256 * 2 + (x * 2 + 0)] = color;
-                        out[(y * 2 + 1) * 256 * 2 + (x * 2 + 1)] = color;
+                        int i = (y * 2) * (256 * 2) + (x * 2);
+                        out[i +   0] = color;
+                        out[i +   1] = color;
+                        out[i + 512] = color;
+                        out[i + 513] = color;
                     }
                 }
             }
@@ -449,11 +435,13 @@ void Gpu::scanline256()
                 case 0: // Source A
                 {
                     // Choose from 2D engine A or the 3D engine
+                    // In high-res mode, skip every other pixel when capturing 3D
                     uint32_t *source = (dispCapCnt & BIT(24)) ? core->gpu3DRenderer.getLine(vCount) : core->gpu2D[0].getRawLine();
+                    bool resShift = (Settings::getHighRes3D() && (dispCapCnt & BIT(24)));
 
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
-                        core->memory.write<uint16_t>(0, base + (writeOffset + i * 2) % 0x20000, rgb6ToRgb5(source[i]));
+                        core->memory.write<uint16_t>(0, base + ((writeOffset + i * 2) & 0x1FFFF), rgb6ToRgb5(source[i << resShift]));
 
                     break;
                 }
@@ -472,8 +460,8 @@ void Gpu::scanline256()
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
                     {
-                        uint16_t color = core->memory.read<uint16_t>(0, base + (readOffset + i * 2) % 0x20000);
-                        core->memory.write<uint16_t>(0, base + (writeOffset + i * 2) % 0x20000, color);
+                        uint16_t color = core->memory.read<uint16_t>(0, base + ((readOffset + i * 2) & 0x1FFFF));
+                        core->memory.write<uint16_t>(0, base + ((writeOffset + i * 2) & 0x1FFFF), color);
                     }
 
                     break;
@@ -488,7 +476,9 @@ void Gpu::scanline256()
                     }
 
                     // Choose from 2D engine A or the 3D engine
+                    // In high-res mode, skip every other pixel when capturing 3D
                     uint32_t *source = (dispCapCnt & BIT(24)) ? core->gpu3DRenderer.getLine(vCount) : core->gpu2D[0].getRawLine();
+                    bool resShift = (Settings::getHighRes3D() && (dispCapCnt & BIT(24)));
 
                     // Get the VRAM source address for the current scanline
                     uint32_t readOffset = ((dispCapCnt & 0x0C000000) >> 11) + vCount * width * 2;
@@ -501,8 +491,8 @@ void Gpu::scanline256()
                     for (int i = 0; i < width; i++)
                     {
                         // Get colors from the two sources
-                        uint16_t c1 = rgb6ToRgb5(source[i]);
-                        uint16_t c2 = core->memory.read<uint16_t>(0, base + (readOffset + i * 2) % 0x20000);
+                        uint16_t c1 = rgb6ToRgb5(source[i << resShift]);
+                        uint16_t c2 = core->memory.read<uint16_t>(0, base + ((readOffset + i * 2) & 0x1FFFF));
 
                         // Blend the color values
                         uint8_t r = std::min((((c1 >>  0) & 0x1F) * eva + ((c2 >>  0) & 0x1F) * evb) / 16, 31);
@@ -510,7 +500,7 @@ void Gpu::scanline256()
                         uint8_t b = std::min((((c1 >> 10) & 0x1F) * eva + ((c2 >> 10) & 0x1F) * evb) / 16, 31);
 
                         uint16_t color = BIT(15) | (b << 10) | (g << 5) | r;
-                        core->memory.write<uint16_t>(0, base + (writeOffset + i * 2) % 0x20000, color);
+                        core->memory.write<uint16_t>(0, base + ((writeOffset + i * 2) & 0x1FFFF), color);
                     }
 
                     break;

@@ -21,6 +21,7 @@
 
 #include "gpu_2d.h"
 #include "core.h"
+#include "settings.h"
 
 Gpu2D::Gpu2D(Core *core, bool engine): core(core), engine(engine)
 {
@@ -283,7 +284,7 @@ void Gpu2D::drawScanline(int line)
                 uint8_t r = std::min((((layers[0][i] >>  0) & 0x3F) * eva + ((blend >>  0) & 0x3F) * evb) / 64, 63U);
                 uint8_t g = std::min((((layers[0][i] >>  6) & 0x3F) * eva + ((blend >>  6) & 0x3F) * evb) / 64, 63U);
                 uint8_t b = std::min((((layers[0][i] >> 12) & 0x3F) * eva + ((blend >> 12) & 0x3F) * evb) / 64, 63U);
-                layers[0][i] = (b << 12) | (g << 6) | r;
+                layers[0][i] = BIT(26) | (b << 12) | (g << 6) | r;
                 continue;
             }
             else if (mode < 2 || !(bldCnt & BIT(blendBits[0][i])))
@@ -399,32 +400,32 @@ void Gpu2D::drawScanline(int line)
     switch ((masterBright >> 14) & 0x3) // Mode
     {
         case 1: // Increase
-        {
-            uint8_t factor = std::min(masterBright & 0x1F, 16);
-            for (int i = 0; i < 256; i++)
+            if (uint8_t factor = std::min(masterBright & 0x1F, 16))
             {
-                uint32_t *pixel = &framebuffer[line * 256 + i];
-                uint8_t r = (*pixel >>  0) & 0x3F; r += (63 - r) * factor / 16;
-                uint8_t g = (*pixel >>  6) & 0x3F; g += (63 - g) * factor / 16;
-                uint8_t b = (*pixel >> 12) & 0x3F; b += (63 - b) * factor / 16;
-                *pixel = (b << 12) | (g << 6) | r;
+                for (int i = 0; i < 256; i++)
+                {
+                    uint32_t *pixel = &framebuffer[line * 256 + i];
+                    uint8_t r = (*pixel >>  0) & 0x3F; r += (63 - r) * factor / 16;
+                    uint8_t g = (*pixel >>  6) & 0x3F; g += (63 - g) * factor / 16;
+                    uint8_t b = (*pixel >> 12) & 0x3F; b += (63 - b) * factor / 16;
+                    *pixel = (b << 12) | (g << 6) | r;
+                }
             }
             break;
-        }
 
         case 2: // Decrease
-        {
-            uint8_t factor = std::min(masterBright & 0x1F, 16);
-            for (int i = 0; i < 256; i++)
+            if (uint8_t factor = std::min(masterBright & 0x1F, 16))
             {
-                uint32_t *pixel = &framebuffer[line * 256 + i];
-                uint8_t r = (*pixel >>  0) & 0x3F; r -= r * factor / 16;
-                uint8_t g = (*pixel >>  6) & 0x3F; g -= g * factor / 16;
-                uint8_t b = (*pixel >> 12) & 0x3F; b -= b * factor / 16;
-                *pixel = (b << 12) | (g << 6) | r;
+                for (int i = 0; i < 256; i++)
+                {
+                    uint32_t *pixel = &framebuffer[line * 256 + i];
+                    uint8_t r = (*pixel >>  0) & 0x3F; r -= r * factor / 16;
+                    uint8_t g = (*pixel >>  6) & 0x3F; g -= g * factor / 16;
+                    uint8_t b = (*pixel >> 12) & 0x3F; b -= b * factor / 16;
+                    *pixel = (b << 12) | (g << 6) | r;
+                }
             }
             break;
-        }
     }
 }
 
@@ -499,11 +500,15 @@ template <bool gbaMode> void Gpu2D::drawText(int bg, int line)
     // If 3D is enabled, override BG0 in text mode
     if (!gbaMode && bg == 0 && (dispCnt & BIT(3)))
     {
+        // In high-res 3D mode, skip every other pixel
         uint32_t *data = core->gpu3DRenderer.getLine(line);
+        bool resShift = Settings::getHighRes3D();
+
+        // Draw a scanline of 3D pixels
         for (int i = 0; i < 256; i++)
         {
-            if (data[i] & 0xFC0000)
-                drawBgPixel(bg, line, i, data[i]);
+            if (data[i << resShift] & 0xFC0000)
+                drawBgPixel(bg, line, i, data[i << resShift]);
         }
         return;
     }
