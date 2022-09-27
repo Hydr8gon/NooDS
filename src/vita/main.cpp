@@ -708,8 +708,8 @@ int main()
     vita2d_init();
     vita2d_set_clear_color(COLOR_CLEAR);
     pgf = vita2d_load_default_pgf();
-    vita2d_texture *top = vita2d_create_empty_texture(256, 192);
-    vita2d_texture *bot = vita2d_create_empty_texture(256, 192);
+    vita2d_texture *top = vita2d_create_empty_texture(256 * 2, 192 * 2);
+    vita2d_texture *bot = vita2d_create_empty_texture(256 * 2, 192 * 2);
 
     // Initialize audio output
     audioPort = sceAudioOutOpenPort(SCE_AUDIO_OUT_PORT_TYPE_BGM, 1024, 48000, SCE_AUDIO_OUT_MODE_STEREO);
