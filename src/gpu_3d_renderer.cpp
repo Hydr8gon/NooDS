@@ -1041,6 +1041,9 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     // Instead, simply consider the entire span across the top and bottom of a polygon to be an edge
     bool horizontal = (line == polygonTop[polygonIndex] || line == polygonBot[polygonIndex] - 1);
 
+    int lastS = 0xFFFF, lastT = 0xFFFF;
+    uint32_t texel;
+
     // Draw a line segment
     for (uint32_t x = x1; x < x4; x++)
     {
@@ -1163,17 +1166,21 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
             int s, t;
             if (factor == -1)
             {
-                s = interpolateLinear(se[0] + 0xFFFF, se[1] + 0xFFFF, x1, x, x4) - 0xFFFF;
-                t = interpolateLinear(te[0] + 0xFFFF, te[1] + 0xFFFF, x1, x, x4) - 0xFFFF;
+                s = (int)(interpolateLinear(se[0] + 0xFFFF, se[1] + 0xFFFF, x1, x, x4) - 0xFFFF) >> 4;
+                t = (int)(interpolateLinear(te[0] + 0xFFFF, te[1] + 0xFFFF, x1, x, x4) - 0xFFFF) >> 4;
             }
             else
             {
-                s = interpolateFactor(factor, 8, se[0] + 0xFFFF, se[1] + 0xFFFF) - 0xFFFF;
-                t = interpolateFactor(factor, 8, te[0] + 0xFFFF, te[1] + 0xFFFF) - 0xFFFF;
+                s = (int)(interpolateFactor(factor, 8, se[0] + 0xFFFF, se[1] + 0xFFFF) - 0xFFFF) >> 4;
+                t = (int)(interpolateFactor(factor, 8, te[0] + 0xFFFF, te[1] + 0xFFFF) - 0xFFFF) >> 4;
             }
 
-            // Read a texel from the texture
-            uint32_t texel = readTexture(polygon, s >> 4, t >> 4);
+            // Read a new texel from the texture if the coordinates changed
+            if (s != lastS || t != lastT)
+            {
+                lastS = s; lastT = t;
+                texel = readTexture(polygon, s, t);
+            }
 
             // Apply texture blending
             // These formulas are a translation of the pseudocode from GBATEK to C++
