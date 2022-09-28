@@ -72,7 +72,7 @@ uint32_t *Gpu3DRenderer::getLine1(int line)
 {
     // If a thread is falling behind, see if this thread can help out instead of waiting around
     // Threads go back for the final pass after drawing their next scanline, so check 2 scanlines ahead
-    if (ready[line].load() < 3 && line + activeThreads * 2 < 192)
+    if (ready[line].load() < 3 && line + activeThreads * 2 < (192 << resShift))
     {
         int next = line + activeThreads * 2;
         switch (ready[next].exchange(1))
