@@ -163,22 +163,24 @@ void Gpu2D::drawGbaScanline(int line)
             }
 
             case 2: // Brightness increase
-            {
-                uint8_t r = (layers[0][i] >>  0) & 0x1F; r += (31 - r) * bldY / 16;
-                uint8_t g = (layers[0][i] >>  5) & 0x1F; g += (31 - g) * bldY / 16;
-                uint8_t b = (layers[0][i] >> 10) & 0x1F; b += (31 - b) * bldY / 16;
-                layers[0][i] = (b << 10) | (g << 5) | r;
+                if (bldY)
+                {
+                    uint8_t r = (layers[0][i] >>  0) & 0x1F; r += (31 - r) * bldY / 16;
+                    uint8_t g = (layers[0][i] >>  5) & 0x1F; g += (31 - g) * bldY / 16;
+                    uint8_t b = (layers[0][i] >> 10) & 0x1F; b += (31 - b) * bldY / 16;
+                    layers[0][i] = (b << 10) | (g << 5) | r;
+                }
                 continue;
-            }
 
             case 3: // Brightness decrease
-            {
-                uint8_t r = (layers[0][i] >>  0) & 0x1F; r -= r * bldY / 16;
-                uint8_t g = (layers[0][i] >>  5) & 0x1F; g -= g * bldY / 16;
-                uint8_t b = (layers[0][i] >> 10) & 0x1F; b -= b * bldY / 16;
-                layers[0][i] = (b << 10) | (g << 5) | r;
+                if (bldY)
+                {
+                    uint8_t r = (layers[0][i] >>  0) & 0x1F; r -= r * bldY / 16;
+                    uint8_t g = (layers[0][i] >>  5) & 0x1F; g -= g * bldY / 16;
+                    uint8_t b = (layers[0][i] >> 10) & 0x1F; b -= b * bldY / 16;
+                    layers[0][i] = (b << 10) | (g << 5) | r;
+                }
                 continue;
-            }
         }
     }
 
@@ -345,22 +347,24 @@ void Gpu2D::drawScanline(int line)
             }
 
             case 2: // Brightness increase
-            {
-                uint8_t r = (layers[0][i] >>  0) & 0x3F; r += (63 - r) * bldY / 16;
-                uint8_t g = (layers[0][i] >>  6) & 0x3F; g += (63 - g) * bldY / 16;
-                uint8_t b = (layers[0][i] >> 12) & 0x3F; b += (63 - b) * bldY / 16;
-                layers[0][i] = (b << 12) | (g << 6) | r;
+                if (bldY)
+                {
+                    uint8_t r = (layers[0][i] >>  0) & 0x3F; r += (63 - r) * bldY / 16;
+                    uint8_t g = (layers[0][i] >>  6) & 0x3F; g += (63 - g) * bldY / 16;
+                    uint8_t b = (layers[0][i] >> 12) & 0x3F; b += (63 - b) * bldY / 16;
+                    layers[0][i] = (b << 12) | (g << 6) | r;
+                }
                 continue;
-            }
 
             case 3: // Brightness decrease
-            {
-                uint8_t r = (layers[0][i] >>  0) & 0x3F; r -= r * bldY / 16;
-                uint8_t g = (layers[0][i] >>  6) & 0x3F; g -= g * bldY / 16;
-                uint8_t b = (layers[0][i] >> 12) & 0x3F; b -= b * bldY / 16;
-                layers[0][i] = (b << 12) | (g << 6) | r;
+                if (bldY)
+                {
+                    uint8_t r = (layers[0][i] >>  0) & 0x3F; r -= r * bldY / 16;
+                    uint8_t g = (layers[0][i] >>  6) & 0x3F; g -= g * bldY / 16;
+                    uint8_t b = (layers[0][i] >> 12) & 0x3F; b -= b * bldY / 16;
+                    layers[0][i] = (b << 12) | (g << 6) | r;
+                }
                 continue;
-            }
         }
     }
 
