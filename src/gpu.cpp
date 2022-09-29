@@ -118,8 +118,8 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                 {
                     uint32_t color = rgb5ToRgb8(buffers.framebuffer[y * 256 + x]);
                     int i = (y * 2) * (240 * 2) + (x * 2);
-                    out[i +   0] = color;
-                    out[i +   1] = color;
+                    out[i + 0] = color;
+                    out[i + 1] = color;
                     out[i + 480] = color;
                     out[i + 481] = color;
                 }
@@ -153,8 +153,8 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                         buffers.framebuffer[(y - 16) * 256 + (x - 8)] :
                         core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
                     int i = (offset * 4) + (y * 2) * (256 * 2) + (x * 2);
-                    out[i +   0] = color;
-                    out[i +   1] = color;
+                    out[i + 0] = color;
+                    out[i + 1] = color;
                     out[i + 512] = color;
                     out[i + 513] = color;
                 }
@@ -196,16 +196,20 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                         int i = (y * 2) * (256 * 2) + (x * 2);
                         if (value & BIT(26)) // 3D
                         {
-                            out[i +   0] = rgb6ToRgb8(buffers.hiRes3D[(i +   0) % (256 * 192 * 4)]);
-                            out[i +   1] = rgb6ToRgb8(buffers.hiRes3D[(i +   1) % (256 * 192 * 4)]);
-                            out[i + 512] = rgb6ToRgb8(buffers.hiRes3D[(i + 512) % (256 * 192 * 4)]);
-                            out[i + 513] = rgb6ToRgb8(buffers.hiRes3D[(i + 513) % (256 * 192 * 4)]);
+                            uint32_t value2 = buffers.hiRes3D[(i + 0) % (256 * 192 * 4)];
+                            out[i + 0] = rgb6ToRgb8((value2 & 0xFC0000) ? value2 : value);
+                            value2 = buffers.hiRes3D[(i + 1) % (256 * 192 * 4)];
+                            out[i + 1] = rgb6ToRgb8((value2 & 0xFC0000) ? value2 : value);
+                            value2 = buffers.hiRes3D[(i + 512) % (256 * 192 * 4)];
+                            out[i + 512] = rgb6ToRgb8((value2 & 0xFC0000) ? value2 : value);
+                            value2 = buffers.hiRes3D[(i + 513) % (256 * 192 * 4)];
+                            out[i + 513] = rgb6ToRgb8((value2 & 0xFC0000) ? value2 : value);
                         }
                         else
                         {
                             uint32_t color = rgb6ToRgb8(value);
-                            out[i +   0] = color;
-                            out[i +   1] = color;
+                            out[i + 0] = color;
+                            out[i + 1] = color;
                             out[i + 512] = color;
                             out[i + 513] = color;
                         }
@@ -221,8 +225,8 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                     {
                         uint32_t color = rgb6ToRgb8(buffers.framebuffer[y * 256 + x]);
                         int i = (y * 2) * (256 * 2) + (x * 2);
-                        out[i +   0] = color;
-                        out[i +   1] = color;
+                        out[i + 0] = color;
+                        out[i + 1] = color;
                         out[i + 512] = color;
                         out[i + 513] = color;
                     }

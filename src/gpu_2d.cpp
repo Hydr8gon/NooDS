@@ -280,13 +280,15 @@ void Gpu2D::drawScanline(int line)
             if (bldCnt & BIT(8 + blendBits[1][i])) // Below pixel is blendable
             {
                 // Override the default blending rules and apply special alpha blending
-                uint32_t blend = rgb5ToRgb6(layers[1][i]);
+                // If 3D alpha is max, skip blending; high-res 3D is transposed on these pixels
                 uint8_t eva = ((layers[0][i] >> 18) & 0x3F) + 1;
+                if (eva == 64) continue;
+                uint32_t blend = rgb5ToRgb6(layers[1][i]);
                 uint8_t evb = 64 - eva;
                 uint8_t r = std::min((((layers[0][i] >>  0) & 0x3F) * eva + ((blend >>  0) & 0x3F) * evb) / 64, 63U);
                 uint8_t g = std::min((((layers[0][i] >>  6) & 0x3F) * eva + ((blend >>  6) & 0x3F) * evb) / 64, 63U);
                 uint8_t b = std::min((((layers[0][i] >> 12) & 0x3F) * eva + ((blend >> 12) & 0x3F) * evb) / 64, 63U);
-                layers[0][i] = BIT(26) | (b << 12) | (g << 6) | r;
+                layers[0][i] = (b << 12) | (g << 6) | r;
                 continue;
             }
             else if (mode < 2 || !(bldCnt & BIT(blendBits[0][i])))
