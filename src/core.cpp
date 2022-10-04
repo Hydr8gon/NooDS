@@ -183,8 +183,8 @@ void Core::runNdsFrame()
                 arm7Cycles = globalCycles + (interpreter[1].runOpcode() << 1);
 
             // Count cycles up to the next soonest event
-            globalCycles = std::min((interpreter[0].shouldRun() ? arm9Cycles : tasks[0].cycles),
-                (interpreter[1].shouldRun() ? arm7Cycles : tasks[0].cycles));
+            globalCycles = std::min<uint32_t>((interpreter[0].shouldRun() ? arm9Cycles : -1),
+                (interpreter[1].shouldRun() ? arm7Cycles : -1));
         }
 
         // Jump to the next scheduled task
