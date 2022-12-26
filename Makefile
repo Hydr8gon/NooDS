@@ -77,7 +77,7 @@ $(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
 	g++ -c -o $@ $(ARGS) $(INCLUDES) $<
 
 $(BUILD)/icon-windows.o:
-	windres icon/icon-windows.rc $@
+	windres $(shell wx-config-static --cppflags) icon/icon-windows.rc $@
 
 $(BUILD):
 	for dir in $(SOURCES); \
