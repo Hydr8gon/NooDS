@@ -18,7 +18,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: make flatpak
+      run: |
+        git config --global protocol.file.allow always
+        make flatpak
     - name: Upload
       uses: actions/upload-artifact@v2
       with:
