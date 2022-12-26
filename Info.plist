@@ -32,8 +32,8 @@
     <string>Licensed under GPLv3</string>
     <key>NSSupportsAutomaticGraphicsSwitching</key>
     <true/>
-    <key>NSRequiresAquaSystemAppearance</key>
-    <true/>
+    <key>NSPrincipalClass</key>
+    <string>wxNSApplication</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>This app requires microphone access to emulate the DS microphone.</string>
     <key>CFBundleDocumentTypes</key>
