@@ -1,7 +1,7 @@
 NAME    := noods
 BUILD   := build-vita
 SOURCES := src src/common src/vita
-ARGS    := -Ofast -flto -std=c++11 #-DDEBUG
+ARGS    := -Ofast -flto -std=c++11 -march=armv7-a -mtune=generic-armv7-a #-DDEBUG
 LIBS    := -Wl,-q -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -lvita2d -lSceAppMgr_stub -lSceAudio_stub -lSceCommonDialog_stub \
            -lSceCtrl_stub -lSceDisplay_stub -lSceGxm_stub -lSceRegistryMgr_stub -lSceSysmodule_stub -lScePgf_stub -lSceTouch_stub -lScePower_stub
 
