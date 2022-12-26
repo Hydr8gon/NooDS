@@ -55,8 +55,8 @@ void Cp15::write(int cn, int cm, int cp, uint32_t value)
             itcmWriteEnabled = (ctrlReg & BIT(18));
 
             // Update the memory map at the current TCM locations
-            core->memory.updateMap9(dtcmAddr, dtcmAddr + dtcmSize);
-            core->memory.updateMap9(0x00000000, itcmSize);
+            core->memory.updateMap9<true>(dtcmAddr, dtcmAddr + dtcmSize);
+            core->memory.updateMap9<true>(0x00000000, itcmSize);
 
             return;
         }
@@ -73,8 +73,8 @@ void Cp15::write(int cn, int cm, int cp, uint32_t value)
             if (dtcmSize < 0x1000) dtcmSize = 0x1000;
 
             // Update the memory map at the old and new DTCM locations
-            core->memory.updateMap9(dtcmAddrOld, dtcmAddrOld + dtcmSizeOld);
-            core->memory.updateMap9(dtcmAddr,    dtcmAddr    + dtcmSize);
+            core->memory.updateMap9<true>(dtcmAddrOld, dtcmAddrOld + dtcmSizeOld);
+            core->memory.updateMap9<true>(dtcmAddr,    dtcmAddr    + dtcmSize);
 
             return;
         }
@@ -96,7 +96,7 @@ void Cp15::write(int cn, int cm, int cp, uint32_t value)
             if (itcmSize < 0x1000) itcmSize = 0x1000;
 
             // Update the memory map at the old and new ITCM locations
-            core->memory.updateMap9(0x00000000, std::max(itcmSizeOld, itcmSize));
+            core->memory.updateMap9<true>(0x00000000, std::max(itcmSizeOld, itcmSize));
 
             return;
         }

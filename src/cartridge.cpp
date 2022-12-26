@@ -986,7 +986,7 @@ bool CartridgeGba::loadRom(std::string path)
         core->rtc.enableGpRtc();
 
     // Update the memory maps at the GBA ROM locations
-    core->memory.updateMap9(0x08000000, 0x0A000000);
+    core->memory.updateMap9<false>(0x08000000, 0x0A000000);
     core->memory.updateMap7(0x08000000, 0x0D000000);
 
     // If the save size is unknown, try to detect it

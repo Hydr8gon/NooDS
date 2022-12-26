@@ -71,7 +71,7 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id):
     spu.scheduleInit();
 
     // Initialize the memory and CPUs
-    memory.updateMap9(0x00000000, 0xFFFFFFFF);
+    memory.updateMap9<false>(0x00000000, 0xFFFFFFFF);
     memory.updateMap7(0x00000000, 0xFFFFFFFF);
     interpreter[0].init();
     interpreter[1].init();

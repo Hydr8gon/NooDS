@@ -130,165 +130,129 @@ bool Memory::loadGbaBios()
     return false;
 }
 
-void Memory::updateMap9(uint32_t start, uint32_t end)
+template <bool tcm> void Memory::updateMap9(uint32_t start, uint32_t end)
 {
-    // Update the ARM9 read memory map in the given range
+    // Update the ARM9 read and write memory maps in the given range
     for (uint64_t address = start; address < end; address += 0x1000)
     {
-        uint8_t *data = nullptr;
+        // Some components can't access TCM, so there are TCM and non-TCM maps
+        uint8_t *&read = (tcm ? readMap9A : readMap9B)[address >> 12];
+        uint8_t *&write = (tcm ? writeMap9A : writeMap9B)[address >> 12];
+        read = write = nullptr;
 
-        // Map a 4KB block to the corresponding readable ARM9 memory, excluding special cases
-        if (core->cp15.getItcmReadEnabled() && address < core->cp15.getItcmSize()) // Instruction TCM
+        // Map a 4KB block to the corresponding ARM9 memory, excluding special cases
+        switch (address & 0xFF000000)
         {
-            data = &instrTcm[address & 0x7FFF];
-        }
-        else if (core->cp15.getDtcmReadEnabled() && address >= core->cp15.getDtcmAddr() &&
-            address < core->cp15.getDtcmAddr() + core->cp15.getDtcmSize()) // Data TCM
-        {
-            data = &dataTcm[(address - core->cp15.getDtcmAddr()) & 0x3FFF];
-        }
-        else
-        {
-            switch (address & 0xFF000000)
-            {
-                case 0x02000000: // Main RAM
-                    data = &ram[address & 0x3FFFFF];
-                    break;
+            case 0x02000000: // Main RAM
+                read = write = &ram[address & 0x3FFFFF];
+                break;
 
-                case 0x03000000: // Shared WRAM
-                    switch (wramCnt)
-                    {
-                        case 0: data = &wram[(address & 0x7FFF)];          break;
-                        case 1: data = &wram[(address & 0x3FFF) + 0x4000]; break;
-                        case 2: data = &wram[(address & 0x3FFF)];          break;
-                    }
-                    break;
-
-                case 0x06000000: // VRAM
+            case 0x03000000: // Shared WRAM
+                switch (wramCnt)
                 {
-                    VramMapping *mapping;
-                    switch (address & 0xFFE00000)
-                    {
-                        case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
-                        case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
-                        case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
-                        case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
-                        default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
-                    }
-                    if (mapping->getCount() == 1)
-                        data = &mapping->getBaseMapping()[address & 0x3FFF];
-                    break;
+                    case 0: read = write = &wram[(address & 0x7FFF)];          break;
+                    case 1: read = write = &wram[(address & 0x3FFF) + 0x4000]; break;
+                    case 2: read = write = &wram[(address & 0x3FFF)];          break;
                 }
+                break;
 
-                case 0x08000000: case 0x09000000: // GBA ROM
-                    data = core->cartridgeGba.getRom(address);
-                    break;
-
-                case 0xFF000000: // ARM9 BIOS
-                    if ((address & 0xFFFF8000) == 0xFFFF0000)
-                        data = &bios9[address & 0xFFFF];
-                    break;
-            }
-        }
-
-        readMap9[address >> 12] = data;
-    }
-
-    // Update the ARM9 write memory map in the given range
-    for (uint64_t address = start; address < end; address += 0x1000)
-    {
-        uint8_t *data = nullptr;
-
-        // Map a 4KB block to the corresponding writable ARM9 memory, excluding special cases
-        if (core->cp15.getItcmWriteEnabled() && address < core->cp15.getItcmSize()) // Instruction TCM
-        {
-            data = &instrTcm[address & 0x7FFF];
-        }
-        else if (core->cp15.getDtcmWriteEnabled() && address >= core->cp15.getDtcmAddr() &&
-            address < core->cp15.getDtcmAddr() + core->cp15.getDtcmSize()) // Data TCM
-        {
-            data = &dataTcm[(address - core->cp15.getDtcmAddr()) & 0x3FFF];
-        }
-        else
-        {
-            switch (address & 0xFF000000)
+            case 0x06000000: // VRAM
             {
-                case 0x02000000: // Main RAM
-                    data = &ram[address & 0x3FFFFF];
-                    break;
-
-                case 0x03000000: // Shared WRAM
-                    switch (wramCnt)
-                    {
-                        case 0: data = &wram[(address & 0x7FFF)];          break;
-                        case 1: data = &wram[(address & 0x3FFF) + 0x4000]; break;
-                        case 2: data = &wram[(address & 0x3FFF)];          break;
-                    }
-                    break;
-
-                case 0x06000000: // VRAM
-                    VramMapping *mapping;
-                    switch (address & 0xFFE00000)
-                    {
-                        case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
-                        case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
-                        case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
-                        case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
-                        default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
-                    }
-                    if (mapping->getCount() == 1)
-                        data = &mapping->getBaseMapping()[address & 0x3FFF];
-                    break;
+                VramMapping *mapping;
+                switch (address & 0xFFE00000)
+                {
+                    case 0x06000000: mapping =  &engABg[(address & 0x7FFFF) >> 14]; break;
+                    case 0x06200000: mapping =  &engBBg[(address & 0x1FFFF) >> 14]; break;
+                    case 0x06400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
+                    case 0x06600000: mapping = &engBObj[(address & 0x1FFFF) >> 14]; break;
+                    default:         mapping =    &lcdc[(address & 0xFFFFF) >> 14]; break;
+                }
+                if (mapping->getCount() == 1)
+                    read = write = &mapping->getBaseMapping()[address & 0x3FFF];
+                break;
             }
+
+            case 0x08000000: case 0x09000000: // GBA ROM
+                read = core->cartridgeGba.getRom(address);
+                break;
+
+            case 0xFF000000: // ARM9 BIOS
+                if ((address & 0xFFFF8000) == 0xFFFF0000)
+                    read = &bios9[address & 0xFFFF];
+                break;
         }
 
-        writeMap9[address >> 12] = data;
+        if (tcm)
+        {
+            // Map TCM on top of the standard memory layout
+            if (address < core->cp15.getItcmSize()) // Instruction TCM
+            {
+                if (core->cp15.getItcmReadEnabled())
+                    read = &instrTcm[address & 0x7FFF];
+                if (core->cp15.getItcmWriteEnabled())
+                    write = &instrTcm[address & 0x7FFF];
+            }
+            else if (address >= core->cp15.getDtcmAddr() && // Data TCM
+                address < core->cp15.getDtcmAddr() + core->cp15.getDtcmSize())
+            {
+                if (core->cp15.getDtcmReadEnabled())
+                    read = &dataTcm[(address - core->cp15.getDtcmAddr()) & 0x3FFF];
+                if (core->cp15.getDtcmWriteEnabled())
+                    write = &dataTcm[(address - core->cp15.getDtcmAddr()) & 0x3FFF];
+            }
+        }
     }
+
+    // For non-TCM updates, update the TCM map as well
+    if (!tcm)
+        updateMap9<true>(start, end);
 }
 
 void Memory::updateMap7(uint32_t start, uint32_t end)
 {
-    // Update the ARM7 read memory map in the given range
+    // Update the ARM7 read and write memory maps in the given range
     for (uint64_t address = start; address < end; address += 0x1000)
     {
-        uint8_t *data = nullptr;
+        uint8_t *&read = readMap7[address >> 12];
+        uint8_t *&write = writeMap7[address >> 12];
+        read = write = nullptr;
 
         if (core->isGbaMode()) // GBA
         {
-            // Map a 4KB block to the corresponding readable GBA memory, excluding special cases
+            // Map a 4KB block to the corresponding GBA memory, excluding special cases
             switch (address & 0xFF000000)
             {
                 case 0x02000000: // On-board WRAM
-                    data = &ram[address & 0x3FFFF];
+                    read = write = &ram[address & 0x3FFFF];
                     break;
 
                 case 0x03000000: // On-chip WRAM
-                    data = &wram[address & 0x7FFF];
+                    read = write = &wram[address & 0x7FFF];
                     break;
 
                 case 0x06000000: // VRAM
-                    data = &vramC[address & ((address & 0x10000) ? 0x17FFF : 0xFFFF)];
+                    read = write = &vramC[address & ((address & 0x10000) ? 0x17FFF : 0xFFFF)];
                     break;
 
                 case 0x08000000: case 0x09000000: case 0x0A000000:
                 case 0x0B000000: case 0x0C000000: // ROM
                     if (address > 0x8000000 || !core->rtc.readGpControl()) // GPIO fallback
-                        data = core->cartridgeGba.getRom(address);
+                        read = core->cartridgeGba.getRom(address);
                     break;
             }
         }
         else // ARM7
         {
-            // Map a 4KB block to the corresponding readable ARM7 memory, excluding special cases
+            // Map a 4KB block to the corresponding ARM7 memory, excluding special cases
             switch (address & 0xFF000000)
             {
                 case 0x00000000: // ARM7 BIOS
                     if (address < 0x4000)
-                        data = &bios7[address];
+                        read = &bios7[address];
                     break;
 
                 case 0x02000000: // Main RAM
-                    data = &ram[address & 0x3FFFFF];
+                    read = write = &ram[address & 0x3FFFFF];
                     break;
 
                 case 0x03000000: // WRAM
@@ -296,12 +260,13 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                     {
                         switch (wramCnt)
                         {
-                            case 1: data = &wram[(address & 0x3FFF)];          break;
-                            case 2: data = &wram[(address & 0x3FFF) + 0x4000]; break;
-                            case 3: data = &wram[(address & 0x7FFF)];          break;
+                            case 1: read = write = &wram[(address & 0x3FFF)];          break;
+                            case 2: read = write = &wram[(address & 0x3FFF) + 0x4000]; break;
+                            case 3: read = write = &wram[(address & 0x7FFF)];          break;
                         }
                     }
-                    if (!data) data = &wram7[address & 0xFFFF]; // ARM7 WRAM
+                    if (!read)
+                        read = write = &wram7[address & 0xFFFF]; // ARM7 WRAM
                     break;
 
                 case 0x04000000: // I/O registers
@@ -309,7 +274,7 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                     {
                         uint32_t addr = address & ~0x00008000; // Mirror
                         if (addr >= 0x04804000 && addr < 0x04806000) // WiFi RAM
-                            data = &wifiRam[addr & 0x1FFF];
+                            read = write = &wifiRam[addr & 0x1FFF];
                     }
                     break;
 
@@ -317,88 +282,15 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                 {
                     VramMapping *mapping = &vram7[(address & 0x3FFFF) >> 17];
                     if (mapping->getCount() == 1)
-                        data = &mapping->getBaseMapping()[address & 0x1FFFF];
+                        read = write = &mapping->getBaseMapping()[address & 0x1FFFF];
                     break;
                 }
 
                 case 0x08000000: case 0x09000000: // GBA ROM
-                    data = core->cartridgeGba.getRom(address);
+                    read = core->cartridgeGba.getRom(address);
                     break;
             }
         }
-
-        readMap7[address >> 12] = data;
-    }
-
-    // Update the ARM7 write memory map in the given range
-    for (uint64_t address = start; address < end; address += 0x1000)
-    {
-        uint8_t *data = nullptr;
-
-        if (core->isGbaMode()) // GBA
-        {
-            // Map a 4KB block to the corresponding writable GBA memory, excluding special cases
-            switch (address & 0xFF000000)
-            {
-                case 0x02000000: // On-board WRAM
-                    data = &ram[address & 0x3FFFF];
-                    break;
-
-                case 0x03000000: // On-chip WRAM
-                    data = &wram[address & 0x7FFF];
-                    break;
-
-                case 0x06000000: // VRAM
-                    data = &vramC[address & ((address & 0x10000) ? 0x17FFF : 0xFFFF)];
-                    break;
-
-                case 0x07000000: // OAM
-                    data = &oam[address & 0x3FF];
-                    break;
-            }
-        }
-        else // ARM7
-        {
-            // Map a 4KB block to the corresponding writable ARM7 memory, excluding special cases
-            switch (address & 0xFF000000)
-            {
-                case 0x02000000: // Main RAM
-                    data = &ram[address & 0x3FFFFF];
-                    break;
-
-                case 0x03000000: // WRAM
-                    if (!(address & 0x00800000)) // Shared WRAM
-                    {
-                        switch (wramCnt)
-                        {
-                            case 1: data = &wram[(address & 0x3FFF)];          break;
-                            case 2: data = &wram[(address & 0x3FFF) + 0x4000]; break;
-                            case 3: data = &wram[(address & 0x7FFF)];          break;
-                        }
-                    }
-                    if (!data) data = &wram7[address & 0xFFFF]; // ARM7 WRAM
-                    break;
-
-                case 0x04000000: // I/O registers
-                    if (address & 0x00800000) // WiFi regions
-                    {
-                        uint32_t addr = address & ~0x00008000; // Mirror
-                        if (addr >= 0x04804000 && addr < 0x04806000) // WiFi RAM
-                            data = &wifiRam[addr & 0x1FFF];
-                    }
-                    break;
-
-                case 0x06000000: // VRAM
-                {
-                    VramMapping *mapping = &vram7[(address & 0x3FFFF) >> 17];
-                    if (mapping->getCount() == 1)
-                        data = &mapping->getBaseMapping()[address & 0x1FFFF];
-                    break;
-                }
-            }
-        }
-
-        writeMap7[address >> 12] = data;
     }
 }
 
@@ -1984,7 +1876,7 @@ void Memory::writeVramCnt(int index, uint8_t value)
     }
 
     // Update the memory maps at the VRAM locations
-    updateMap9(0x06000000, 0x07000000);
+    updateMap9<false>(0x06000000, 0x07000000);
     updateMap7(0x06000000, 0x07000000);
     core->gpu.invalidate3D();
 }
@@ -1995,7 +1887,7 @@ void Memory::writeWramCnt(uint8_t value)
     wramCnt = value & 0x03;
 
     // Update the memory maps at the WRAM locations
-    updateMap9(0x03000000, 0x04000000);
+    updateMap9<false>(0x03000000, 0x04000000);
     updateMap7(0x03000000, 0x04000000);
 }
 

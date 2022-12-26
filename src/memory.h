@@ -51,11 +51,11 @@ class Memory
         bool loadBios7();
         bool loadGbaBios();
 
-        void updateMap9(uint32_t start, uint32_t end);
+        template <bool tcm> void updateMap9(uint32_t start, uint32_t end);
         void updateMap7(uint32_t start, uint32_t end);
 
-        template <typename T> T read(bool cpu, uint32_t address);
-        template <typename T> void write(bool cpu, uint32_t address, T value);
+        template <typename T> T read(bool cpu, uint32_t address, bool tcm = true);
+        template <typename T> void write(bool cpu, uint32_t address, T value, bool tcm = true);
 
         uint8_t  *getPalette()    { return palette;    }
         uint8_t  *getOam()        { return oam;        }
@@ -68,10 +68,12 @@ class Memory
         Core *core;
 
         // 32-bit address space, split into 4KB blocks
-        uint8_t *readMap9[0x100000]  = {};
-        uint8_t *readMap7[0x100000]  = {};
-        uint8_t *writeMap9[0x100000] = {};
-        uint8_t *writeMap7[0x100000] = {};
+        uint8_t *readMap9A[0x100000]  = {};
+        uint8_t *readMap9B[0x100000]  = {};
+        uint8_t *readMap7[0x100000]   = {};
+        uint8_t *writeMap9A[0x100000] = {};
+        uint8_t *writeMap9B[0x100000] = {};
+        uint8_t *writeMap7[0x100000]  = {};
 
         uint8_t bios9[0x8000]   = {}; // 32KB ARM9 BIOS
         uint8_t bios7[0x4000]   = {}; // 16KB ARM7 BIOS
@@ -139,15 +141,15 @@ class Memory
         void writeGbaHaltCnt(uint8_t value);
 };
 
-template uint8_t  Memory::read(bool cpu, uint32_t address);
-template uint16_t Memory::read(bool cpu, uint32_t address);
-template uint32_t Memory::read(bool cpu, uint32_t address);
-template <typename T> FORCE_INLINE T Memory::read(bool cpu, uint32_t address)
+template uint8_t  Memory::read(bool cpu, uint32_t address, bool tcm);
+template uint16_t Memory::read(bool cpu, uint32_t address, bool tcm);
+template uint32_t Memory::read(bool cpu, uint32_t address, bool tcm);
+template <typename T> FORCE_INLINE T Memory::read(bool cpu, uint32_t address, bool tcm)
 {
     // Align the address
     address &= ~(sizeof(T) - 1);
 
-    uint8_t **readMap = (cpu == 0) ? readMap9 : readMap7;
+    uint8_t **readMap = (cpu == 0) ? (tcm ? readMap9A : readMap9B) : readMap7;
     if (readMap[address >> 12])
     {
         // Get a pointer to readable memory mapped to the given address
@@ -163,15 +165,15 @@ template <typename T> FORCE_INLINE T Memory::read(bool cpu, uint32_t address)
     return readFallback<T>(cpu, address);
 }
 
-template void Memory::write(bool cpu, uint32_t address, uint8_t  value);
-template void Memory::write(bool cpu, uint32_t address, uint16_t value);
-template void Memory::write(bool cpu, uint32_t address, uint32_t value);
-template <typename T> FORCE_INLINE void Memory::write(bool cpu, uint32_t address, T value)
+template void Memory::write(bool cpu, uint32_t address, uint8_t  value, bool tcm);
+template void Memory::write(bool cpu, uint32_t address, uint16_t value, bool tcm);
+template void Memory::write(bool cpu, uint32_t address, uint32_t value, bool tcm);
+template <typename T> FORCE_INLINE void Memory::write(bool cpu, uint32_t address, T value, bool tcm)
 {
     // Align the address
     address &= ~(sizeof(T) - 1);
 
-    uint8_t **writeMap = (cpu == 0) ? writeMap9 : writeMap7;
+    uint8_t **writeMap = (cpu == 0) ? (tcm ? writeMap9A : writeMap9B) : writeMap7;
     if (writeMap[address >> 12])
     {
         // Get a pointer to writable memory mapped to the given address

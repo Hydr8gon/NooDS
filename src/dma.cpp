@@ -41,7 +41,8 @@ void Dma::transfer(int channel)
         {
             // Transfer a word
             // GBA sound DMAs always transfer 4 words and never adjust the destination address
-            core->memory.write<uint32_t>(cpu, dstAddrs[channel], core->memory.read<uint32_t>(cpu, srcAddrs[channel]));
+            uint32_t value = core->memory.read<uint32_t>(cpu, srcAddrs[channel], false);
+            core->memory.write<uint32_t>(cpu, dstAddrs[channel], value, false);
 
             // Adjust the source address
             if (srcAddrCnt == 0) // Increment
@@ -55,7 +56,8 @@ void Dma::transfer(int channel)
         for (unsigned int i = 0; i < wordCounts[channel]; i++)
         {
             // Transfer a word
-            core->memory.write<uint32_t>(cpu, dstAddrs[channel], core->memory.read<uint32_t>(cpu, srcAddrs[channel]));
+            uint32_t value = core->memory.read<uint32_t>(cpu, srcAddrs[channel], false);
+            core->memory.write<uint32_t>(cpu, dstAddrs[channel], value, false);
 
             // Adjust the source address
             if (srcAddrCnt == 0) // Increment
@@ -79,7 +81,8 @@ void Dma::transfer(int channel)
         for (unsigned int i = 0; i < wordCounts[channel]; i++)
         {
             // Transfer a half-word
-            core->memory.write<uint16_t>(cpu, dstAddrs[channel], core->memory.read<uint16_t>(cpu, srcAddrs[channel]));
+            uint16_t value = core->memory.read<uint16_t>(cpu, srcAddrs[channel], false);
+            core->memory.write<uint16_t>(cpu, dstAddrs[channel], value, false);
 
             // Adjust the source address
             if (srcAddrCnt == 0) // Increment
