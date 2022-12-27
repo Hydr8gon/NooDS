@@ -50,7 +50,7 @@ public class NooActivity extends AppCompatActivity
     };
 
     private boolean running;
-    private Thread core, fps;
+    private Thread coreThread, saveThread, fpsThread;
 
     private ConstraintLayout layout;
     private GLSurfaceView view;
@@ -319,17 +319,20 @@ public class NooActivity extends AppCompatActivity
         // Wait for the emulator to stop
         try
         {
-            core.join();
+            coreThread.join();
+            saveThread.interrupt();
+            saveThread.join();
             if (getShowFpsCounter() != 0)
-                fps.join();
+            {
+                fpsThread.interrupt();
+                fpsThread.join();
+            }
         }
         catch (Exception e)
         {
             // Oh well, I guess
         }
 
-        // Write the save file and pause rendering
-        writeSave();
         view.onPause();
     }
 
@@ -339,7 +342,7 @@ public class NooActivity extends AppCompatActivity
         startAudio();
 
         // Prepare the core thread
-        core = new Thread()
+        coreThread = new Thread()
         {
             @Override
             public void run()
@@ -349,8 +352,34 @@ public class NooActivity extends AppCompatActivity
             }
         };
 
-        core.setPriority(Thread.MAX_PRIORITY);
-        core.start();
+        coreThread.setPriority(Thread.MAX_PRIORITY);
+        coreThread.start();
+
+        // Prepare the save thread
+        saveThread = new Thread()
+        {
+            @Override
+            public void run()
+            {
+                while (running)
+                {
+                    // Check save files every few seconds and update them if changed
+                    try
+                    {
+                        Thread.sleep(3000);
+                    }
+                    catch (Exception e)
+                    {
+                        // Oh well, I guess
+                    }
+
+                    writeSave();
+                }
+            }
+        };
+
+        saveThread.setPriority(Thread.MIN_PRIORITY);
+        saveThread.start();
 
         if (getShowFpsCounter() != 0)
         {
@@ -362,7 +391,7 @@ public class NooActivity extends AppCompatActivity
             }
 
             // Prepare the FPS counter thread if enabled
-            fps = new Thread()
+            fpsThread = new Thread()
             {
                 @Override
                 public void run()
@@ -392,8 +421,8 @@ public class NooActivity extends AppCompatActivity
                 }
             };
 
-            fps.setPriority(Thread.MIN_PRIORITY);
-            fps.start();
+            fpsThread.setPriority(Thread.MIN_PRIORITY);
+            fpsThread.start();
         }
         else if (showingFps)
         {
