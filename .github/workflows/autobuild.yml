@@ -88,22 +88,13 @@ jobs:
 
   build-vita:
     runs-on: ubuntu-latest
+    container: vitasdk/vitasdk:latest
 
     steps:
-    - name: Install Vita SDK
-      run: |
-        git clone https://github.com/vitasdk/vdpm
-        cd vdpm
-        ./bootstrap-vitasdk.sh
-        ./install-all.sh
-      env:
-        VITASDK: /usr/local/vitasdk
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
       run: make -f Makefile.vita -j$(nproc)
-      env:
-        VITASDK: /usr/local/vitasdk
     - name: Upload
       uses: actions/upload-artifact@v2
       with:
