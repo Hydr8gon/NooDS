@@ -257,7 +257,7 @@ public class NooActivity extends AppCompatActivity
         // Trigger a key press if a mapped key was pressed
         for (int i = 0; i < 12; i++)
         {
-            if (keyCode == getKeyBind(i))
+            if (keyCode == getKeyBind(i) - 1)
             {
                 NooButton.pressKey(i);
                 return true;
@@ -273,7 +273,7 @@ public class NooActivity extends AppCompatActivity
         // Trigger a key release if a mapped key was released
         for (int i = 0; i < 12; i++)
         {
-            if (keyCode == getKeyBind(i))
+            if (keyCode == getKeyBind(i) - 1)
             {
                 NooButton.releaseKey(i);
                 return true;

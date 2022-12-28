@@ -43,7 +43,7 @@ public class BindingsPreference extends Preference
         if (value == 0)
             setSummary("None");
         else
-            setSummary("Input " + Integer.toString(value));
+            setSummary("Input " + Integer.toString(value - 1));
     }
 
     @Override
@@ -72,7 +72,7 @@ public class BindingsPreference extends Preference
             public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event)
             {
                 // Set the binding for the key index
-                setKeyBind(index, keyCode);
+                setKeyBind(index, keyCode + 1);
                 setSummary("Input " + Integer.toString(keyCode));
                 dialog.dismiss();
                 return true;
