@@ -8,6 +8,11 @@
         app:showAsAction="always"
         android:visible="false" />
 
+    <item android:id="@+id/bindings_action"
+        android:icon="@drawable/bindings"
+        android:title="Input Bindings"
+        app:showAsAction="always" />
+
     <item android:id="@+id/settings_action"
         android:icon="@drawable/settings"
         android:title="Settings"

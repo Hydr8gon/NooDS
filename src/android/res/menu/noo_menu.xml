@@ -11,6 +11,9 @@
     <item android:id="@+id/save_action"
         android:title="Change Save Type" />
 
+    <item android:id="@+id/bindings_action"
+        android:title="Input Bindings" />
+
     <item android:id="@+id/settings_action"
         android:title="Settings" />
 

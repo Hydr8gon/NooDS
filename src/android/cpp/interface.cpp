@@ -30,6 +30,7 @@
 
 int screenFilter = 1;
 int showFpsCounter = 0;
+int keyBinds[12] = {};
 
 std::string ndsPath, gbaPath;
 Core *core = nullptr;
@@ -72,7 +73,19 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(
     std::vector<Setting> platformSettings =
     {
         Setting("screenFilter",   &screenFilter,   false),
-        Setting("showFpsCounter", &showFpsCounter, false)
+        Setting("showFpsCounter", &showFpsCounter, false),
+        Setting("keyA",           &keyBinds[0],    false),
+        Setting("keyB",           &keyBinds[1],    false),
+        Setting("keySelect",      &keyBinds[2],    false),
+        Setting("keyStart",       &keyBinds[3],    false),
+        Setting("keyRight",       &keyBinds[4],    false),
+        Setting("keyLeft",        &keyBinds[5],    false),
+        Setting("keyUp",          &keyBinds[6],    false),
+        Setting("keyDown",        &keyBinds[7],    false),
+        Setting("keyR",           &keyBinds[8],    false),
+        Setting("keyL",           &keyBinds[9],    false),
+        Setting("keyX",           &keyBinds[10],   false),
+        Setting("keyY",           &keyBinds[11],   false)
     };
 
     // Add the platform settings
@@ -212,6 +225,21 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooRenderer_copyFrame
 
 // The below functions are pretty much direct forwarders to core functions
 
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_BindingsPreference_getKeyBind(JNIEnv* env, jobject obj, jint index)
+{
+    return keyBinds[index];
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_BindingsPreference_setKeyBind(JNIEnv* env, jobject obj, jint index, jint value)
+{
+    keyBinds[index] = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_BindingsMenu_saveSettings(JNIEnv* env, jobject obj)
+{
+    Settings::save();
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getDirectBoot(JNIEnv* env, jobject obj)
 {
     return Settings::getDirectBoot();
@@ -345,6 +373,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowFpsCo
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_saveSettings(JNIEnv* env, jobject obj)
 {
     Settings::save();
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooActivity_getKeyBind(JNIEnv* env, jobject obj, jint index)
+{
+    return keyBinds[index];
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooActivity_getShowFpsCounter(JNIEnv* env, jobject obj)

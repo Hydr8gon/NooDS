@@ -102,20 +102,21 @@ public class FileBrowser extends AppCompatActivity
         switch (item.getItemId())
         {
             case R.id.storage_action:
-            {
                 // Switch to the next storage device
                 curStorage = (curStorage + 1) % storagePaths.size();
                 path = storagePaths.get(curStorage);
                 update();
                 break;
-            }
+
+            case R.id.bindings_action:
+                // Open the input bindings menu
+                startActivity(new Intent(this, BindingsMenu.class));
+                return true;
 
             case R.id.settings_action:
-            {
                 // Open the settings menu
                 startActivity(new Intent(this, SettingsMenu.class));
                 return true;
-            }
         }
 
         return super.onOptionsItemSelected(item);

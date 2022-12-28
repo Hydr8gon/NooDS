@@ -22,6 +22,12 @@
 
         </activity>
 
+        <activity android:name=".BindingsMenu"
+            android:label="Input Bindings"
+            android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+        </activity>
+
         <activity android:name=".SettingsMenu"
             android:label="Settings"
             android:theme="@style/Theme.AppCompat.Light.DarkActionBar"

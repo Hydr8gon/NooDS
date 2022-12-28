@@ -64,6 +64,7 @@ public class SettingsMenu extends AppCompatActivity
         editor.putBoolean("show_fps_counter", (getShowFpsCounter() == 0) ? false : true);
         editor.commit();
 
+        // Populate the settings UI
         getSupportFragmentManager().beginTransaction()
             .add(android.R.id.content, new SettingsFragment())
             .commit();
@@ -88,7 +89,7 @@ public class SettingsMenu extends AppCompatActivity
         setShowFpsCounter(prefs.getBoolean("show_fps_counter", false) ? 1 : 0);
         saveSettings();
 
-        // Return to the file browser
+        // Return to the previous activity
         finish();
     }
 

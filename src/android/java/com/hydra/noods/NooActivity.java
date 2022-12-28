@@ -39,16 +39,6 @@ import android.widget.TextView;
 
 public class NooActivity extends AppCompatActivity
 {
-    private static final int keyMap[] =
-    {
-        KeyEvent.KEYCODE_BUTTON_A,      KeyEvent.KEYCODE_BUTTON_B,
-        KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BUTTON_START,
-        KeyEvent.KEYCODE_DPAD_RIGHT,    KeyEvent.KEYCODE_DPAD_LEFT,
-        KeyEvent.KEYCODE_DPAD_UP,       KeyEvent.KEYCODE_DPAD_DOWN,
-        KeyEvent.KEYCODE_BUTTON_L2,     KeyEvent.KEYCODE_BUTTON_R2,
-        KeyEvent.KEYCODE_BUTTON_X,      KeyEvent.KEYCODE_BUTTON_Y
-    };
-
     private boolean running;
     private Thread coreThread, saveThread, fpsThread;
 
@@ -102,43 +92,7 @@ public class NooActivity extends AppCompatActivity
             }
         });
 
-        // Handle physical controller key events
-        view.setOnKeyListener(new View.OnKeyListener()
-        {
-            @Override
-            public boolean onKey(View view, int keyCode, KeyEvent event)
-            {
-                if (event.getAction() == KeyEvent.ACTION_DOWN)
-                {
-                    // Trigger a key press if a mapped key was pressed
-                    for (int i = 0; i < 12; i++)
-                    {
-                        if (keyCode == keyMap[i])
-                        {
-                            NooButton.pressKey(i);
-                            return true;
-                        }
-                    }
-                }
-                else if (event.getAction() == KeyEvent.ACTION_UP)
-                {
-                    // Trigger a key release if a mapped key was released
-                    for (int i = 0; i < 12; i++)
-                    {
-                        if (keyCode == keyMap[i])
-                        {
-                            NooButton.releaseKey(i);
-                            return true;
-                        }
-                    }
-                }
-
-                return false;
-            }
-        });
-
         // Add the view to the layout
-        view.setFocusable(true);
         layout.addView(view);
 
         // Get the display density and dimensions
@@ -204,7 +158,6 @@ public class NooActivity extends AppCompatActivity
         switch (item.getItemId())
         {
             case R.id.controls_action:
-            {
                 // Toggle hiding the on-screen buttons
                 if (showingButtons = !showingButtons)
                 {
@@ -217,10 +170,8 @@ public class NooActivity extends AppCompatActivity
                         layout.removeView(buttons[i]);
                 }
                 return true;
-            }
 
             case R.id.save_action:
-            {
                 final boolean gba = isGbaMode();
                 final String[] names = getResources().getStringArray(gba ? R.array.save_entries_gba : R.array.save_entries_nds);
                 final int[] values = getResources().getIntArray(gba ? R.array.save_values_gba : R.array.save_values_nds);
@@ -262,31 +213,29 @@ public class NooActivity extends AppCompatActivity
 
                 builder.create().show();
                 return true;
-            }
 
             case R.id.restart_action:
-            {
                 // Restart the core
                 pauseCore();
                 restartCore();
                 resumeCore();
                 return true;
-            }
+
+            case R.id.bindings_action:
+                // Open the input bindings menu
+                startActivity(new Intent(this, BindingsMenu.class));
+                return true;
 
             case R.id.settings_action:
-            {
                 // Open the settings menu
                 startActivity(new Intent(this, SettingsMenu.class));
                 return true;
-            }
 
             case R.id.browser_action:
-            {
                 // Go back to the file browser
                 startActivity(new Intent(this, FileBrowser.class));
                 finish();
                 return true;
-            }
         }
 
         return super.onOptionsItemSelected(item);
@@ -300,6 +249,38 @@ public class NooActivity extends AppCompatActivity
         // Rehide the status bar
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
             View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event)
+    {
+        // Trigger a key press if a mapped key was pressed
+        for (int i = 0; i < 12; i++)
+        {
+            if (keyCode == getKeyBind(i))
+            {
+                NooButton.pressKey(i);
+                return true;
+            }
+        }
+
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event)
+    {
+        // Trigger a key release if a mapped key was released
+        for (int i = 0; i < 12; i++)
+        {
+            if (keyCode == getKeyBind(i))
+            {
+                NooButton.releaseKey(i);
+                return true;
+            }
+        }
+
+        return super.onKeyUp(keyCode, event);
     }
 
     @Override
@@ -439,6 +420,7 @@ public class NooActivity extends AppCompatActivity
 
     public static native void startAudio();
     public static native void stopAudio();
+    public static native int getKeyBind(int index);
     public static native int getShowFpsCounter();
     public static native int getFps();
     public static native boolean isGbaMode();
