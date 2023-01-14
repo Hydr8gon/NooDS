@@ -41,6 +41,7 @@ class ScreenLayout
         int getTopHeight() { return topHeight; }
         int getBotHeight() { return botHeight; }
 
+        static int getScreenPosition()    { return screenPosition;    }
         static int getScreenRotation()    { return screenRotation;    }
         static int getScreenArrangement() { return screenArrangement; }
         static int getScreenSizing()      { return screenSizing;      }
@@ -48,6 +49,7 @@ class ScreenLayout
         static int getIntegerScale()      { return integerScale;      }
         static int getGbaCrop()           { return gbaCrop;           }
 
+        static void setScreenPosition(int value)    { screenPosition    = value; }
         static void setScreenRotation(int value)    { screenRotation    = value; }
         static void setScreenArrangement(int value) { screenArrangement = value; }
         static void setScreenSizing(int value)      { screenSizing      = value; }
@@ -62,6 +64,7 @@ class ScreenLayout
         int topWidth = 0, botWidth = 0;
         int topHeight = 0, botHeight = 0;
 
+        static int screenPosition;
         static int screenRotation;
         static int screenArrangement;
         static int screenSizing;

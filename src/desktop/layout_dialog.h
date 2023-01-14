@@ -34,6 +34,11 @@ class LayoutDialog: public wxDialog
 
         int prevSettings[7];
 
+        void posCenter(wxCommandEvent &event);
+        void posTop(wxCommandEvent &event);
+        void posBottom(wxCommandEvent &event);
+        void posLeft(wxCommandEvent &event);
+        void posRight(wxCommandEvent &event);
         void rotateNone(wxCommandEvent &event);
         void rotateCw(wxCommandEvent &event);
         void rotateCcw(wxCommandEvent &event);

@@ -54,6 +54,7 @@ public class SettingsMenu extends AppCompatActivity
         editor.putBoolean("threaded_2d", (getThreaded2D() == 0) ? false : true);
         editor.putString("threaded_3d", Integer.toString(getThreaded3D()));
         editor.putBoolean("high_res_3d", (getHighRes3D() == 0) ? false : true);
+        editor.putString("screen_position", Integer.toString(getScreenPosition()));
         editor.putString("screen_rotation", Integer.toString(getScreenRotation()));
         editor.putString("screen_arrangement", Integer.toString(getScreenArrangement()));
         editor.putString("screen_sizing", Integer.toString(getScreenSizing()));
@@ -79,6 +80,7 @@ public class SettingsMenu extends AppCompatActivity
         setThreaded2D(prefs.getBoolean("threaded_2d", true) ? 1 : 0);
         setThreaded3D(Integer.parseInt(prefs.getString("threaded_3d", "1")));
         setHighRes3D(prefs.getBoolean("high_res_3d", true) ? 1 : 0);
+        setScreenPosition(Integer.parseInt(prefs.getString("screen_position", "0")));
         setScreenRotation(Integer.parseInt(prefs.getString("screen_rotation", "0")));
         setScreenArrangement(Integer.parseInt(prefs.getString("screen_arrangement", "0")));
         setScreenSizing(Integer.parseInt(prefs.getString("screen_sizing", "0")));
@@ -98,6 +100,7 @@ public class SettingsMenu extends AppCompatActivity
     public static native int getThreaded2D();
     public static native int getThreaded3D();
     public static native int getHighRes3D();
+    public static native int getScreenPosition();
     public static native int getScreenRotation();
     public static native int getScreenArrangement();
     public static native int getScreenSizing();
@@ -111,6 +114,7 @@ public class SettingsMenu extends AppCompatActivity
     public static native void setThreaded2D(int value);
     public static native void setThreaded3D(int value);
     public static native void setHighRes3D(int value);
+    public static native void setScreenPosition(int value);
     public static native void setScreenRotation(int value);
     public static native void setScreenArrangement(int value);
     public static native void setScreenSizing(int value);

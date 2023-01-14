@@ -20,6 +20,7 @@
 #include "screen_layout.h"
 #include "../settings.h"
 
+int ScreenLayout::screenPosition    = 0;
 int ScreenLayout::screenRotation    = 0;
 int ScreenLayout::screenArrangement = 0;
 int ScreenLayout::screenSizing      = 0;
@@ -32,6 +33,7 @@ void ScreenLayout::addSettings()
     // Define the layout settings
     std::vector<Setting> layoutSettings =
     {
+        Setting("screenPosition",    &screenPosition,    false),
         Setting("screenRotation",    &screenRotation,    false),
         Setting("screenArrangement", &screenArrangement, false),
         Setting("screenSizing",      &screenSizing,      false),
@@ -64,11 +66,25 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
         float scale = ((baseRatio > screenRatio) ? ((float)winWidth / width) : ((float)winHeight / height));
         if (integerScale) scale = (int)scale;
 
-        // Calculate the dimensions and position of the screen
+        // Calculate the dimensions of the screen
         topWidth  = scale * width;
         topHeight = scale * height;
-        topX = (winWidth - topWidth) / 2;
-        topY = (winHeight - topHeight) / 2;
+
+        // Position the screen horizontally
+        if (screenPosition == 3) // Left
+            topX = 0;
+        else if (screenPosition == 4) // Right
+            topX = winWidth - topWidth;
+        else // Center, Top, Bottom
+            topX = (winWidth - topWidth) / 2;
+
+        // Position the screen vertically
+        if (screenPosition == 1) // Top
+            topY = 0;
+        else if (screenPosition == 2) // Bottom
+            topY = winHeight - topHeight;
+        else // Center, Left, Right
+            topY = (winHeight - topHeight) / 2;
     }
     else // NDS mode
     {
@@ -184,12 +200,25 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
             botHeight = largeScale * height;
         }
 
-        // Calculate the positions of each screen
-        // The screens are centered and placed next to each other either vertically or horizontally
+        // Calculate the positions of each screen, placed next to each other vertically or horizontally
         if (vertical)
         {
-            topX = (winWidth - topWidth) / 2;
-            botX = (winWidth - botWidth) / 2;
+            // Position the screens horizontally
+            if (screenPosition == 3) // Left
+            {
+                topX = 0;
+                botX = 0;
+            }
+            else if (screenPosition == 4) // Right
+            {
+                topX = winWidth - topWidth;
+                botX = winWidth - botWidth;
+            }
+            else // Center, Top, Bottom
+            {
+                topX = (winWidth - topWidth) / 2;
+                botX = (winWidth - botWidth) / 2;
+            }
 
             // Swap the screens if rotated clockwise to keep the top above the bottom
             if (screenRotation == 1) // Clockwise
@@ -203,6 +232,18 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
                     botY -= (largeScale * gap + smallScale * gap) / 4;
                     topY += (largeScale * gap + smallScale * gap) / 4;
                 }
+
+                // Position the screen vertically
+                if (screenPosition == 1) // Top
+                {
+                    topY -= botY;
+                    botY -= botY;
+                }
+                else if (screenPosition == 2) // Bottom
+                {
+                    topY += botY;
+                    botY += botY;
+                }
             }
             else // None/Counter-Clockwise
             {
@@ -215,12 +256,38 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
                     topY -= (largeScale * gap + smallScale * gap) / 4;
                     botY += (largeScale * gap + smallScale * gap) / 4;
                 }
+
+                // Position the screen vertically
+                if (screenPosition == 1) // Top
+                {
+                    botY -= topY;
+                    topY -= topY;
+                }
+                else if (screenPosition == 2) // Bottom
+                {
+                    botY += topY;
+                    topY += topY;
+                }
             }
         }
         else // Horizontal
         {
-            topY = (winHeight - topHeight) / 2;
-            botY = (winHeight - botHeight) / 2;
+            // Position the screen vertically
+            if (screenPosition == 1) // Top
+            {
+                topY = 0;
+                botY = 0;
+            }
+            else if (screenPosition == 2) // Bottom
+            {
+                topY = winHeight - topHeight;
+                botY = winHeight - botHeight;
+            }
+            else // Center, Left, Right
+            {
+                topY = (winHeight - topHeight) / 2;
+                botY = (winHeight - botHeight) / 2;
+            }
 
             // Swap the screens if rotated clockwise to keep the top above the bottom
             if (screenRotation == 1) // Clockwise
@@ -234,6 +301,18 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
                     botX -= (largeScale * gap + smallScale * gap) / 4;
                     topX += (largeScale * gap + smallScale * gap) / 4;
                 }
+
+                // Position the screen horizontally
+                if (screenPosition == 3) // Left
+                {
+                    topX -= botX;
+                    botX -= botX;
+                }
+                else if (screenPosition == 4) // Right
+                {
+                    topX += botX;
+                    botX += botX;
+                }
             }
             else // None/Counter-Clockwise
             {
@@ -245,6 +324,18 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
                 {
                     topX -= (largeScale * gap + smallScale * gap) / 4;
                     botX += (largeScale * gap + smallScale * gap) / 4;
+                }
+
+                // Position the screen horizontally
+                if (screenPosition == 3) // Left
+                {
+                    botX -= topX;
+                    topX -= topX;
+                }
+                else if (screenPosition == 4) // Right
+                {
+                    botX += topX;
+                    topX += topX;
                 }
             }
         }

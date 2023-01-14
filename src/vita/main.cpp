@@ -306,6 +306,7 @@ void settingsMenu()
         "Threaded 2D",
         "Threaded 3D",
         "High-Resolution 3D",
+        "Screen Position",
         "Screen Rotation",
         "Screen Arrangement",
         "Screen Sizing",
@@ -316,11 +317,12 @@ void settingsMenu()
         "Show FPS Counter"
     };
 
-    std::vector<std::string> toggle      = { "Off", "On"                              };
-    std::vector<std::string> rotation    = { "None", "Clockwise", "Counter-Clockwise" };
-    std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal"    };
-    std::vector<std::string> sizing      = { "Even", "Enlarge Top", "Enlarge Bottom"  };
-    std::vector<std::string> gap         = { "None", "Quarter", "Half", "Full"        };
+    std::vector<std::string> toggle      = { "Off", "On"                                };
+    std::vector<std::string> position    = { "Center", "Top", "Bottom", "Left", "Right" };
+    std::vector<std::string> rotation    = { "None", "Clockwise", "Counter-Clockwise"   };
+    std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal"      };
+    std::vector<std::string> sizing      = { "Even", "Enlarge Top", "Enlarge Bottom"    };
+    std::vector<std::string> gap         = { "None", "Quarter", "Half", "Full"          };
 
     while (true)
     {
@@ -332,6 +334,7 @@ void settingsMenu()
             toggle[Settings::getThreaded2D()],
             toggle[(bool)Settings::getThreaded3D()],
             toggle[Settings::getHighRes3D()],
+            position[ScreenLayout::getScreenPosition()],
             rotation[ScreenLayout::getScreenRotation()],
             arrangement[ScreenLayout::getScreenArrangement()],
             sizing[ScreenLayout::getScreenSizing()],
@@ -358,14 +361,15 @@ void settingsMenu()
                 case  2: Settings::setThreaded2D(!Settings::getThreaded2D());                                break;
                 case  3: Settings::setThreaded3D(!Settings::getThreaded3D());                                break;
                 case  4: Settings::setHighRes3D(!Settings::getHighRes3D());                                  break;
-                case  5: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
-                case  6: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
-                case  7: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
-                case  8: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
-                case  9: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
-                case 10: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
-                case 11: screenFilter   = !screenFilter;                                                     break;
-                case 12: showFpsCounter = !showFpsCounter;                                                   break;
+                case  5: ScreenLayout::setScreenPosition((ScreenLayout::getScreenPosition()       + 1) % 5); break;
+                case  6: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
+                case  7: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
+                case  8: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
+                case  9: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
+                case 10: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
+                case 11: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
+                case 12: screenFilter   = !screenFilter;                                                     break;
+                case 13: showFpsCounter = !showFpsCounter;                                                   break;
             }
         }
         else if (pressed & cancelButton)

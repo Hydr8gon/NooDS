@@ -42,6 +42,16 @@
         app:allowDividerBelow="true" />
 
     <ListPreference
+        app:key="screen_position"
+        app:title="Screen Position"
+        app:entries="@array/screen_position_entries"
+        app:entryValues="@array/setting_values"
+        app:useSimpleSummaryProvider="true"
+        app:iconSpaceReserved="false"
+        app:allowDividerAbove="true"
+        app:allowDividerBelow="true" />
+
+    <ListPreference
         app:key="screen_rotation"
         app:title="Screen Rotation"
         app:entries="@array/screen_rotation_entries"

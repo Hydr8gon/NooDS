@@ -24,7 +24,12 @@
 
 enum LayoutEvent
 {
-    ROTATE_NONE = 1,
+    POS_CENTER = 1,
+    POS_TOP,
+    POS_BOTTOM,
+    POS_LEFT,
+    POS_RIGHT,
+    ROTATE_NONE,
     ROTATE_CW,
     ROTATE_CCW,
     ARRANGE_AUTO,
@@ -43,6 +48,11 @@ enum LayoutEvent
 };
 
 wxBEGIN_EVENT_TABLE(LayoutDialog, wxDialog)
+EVT_RADIOBUTTON(POS_CENTER,   LayoutDialog::posCenter)
+EVT_RADIOBUTTON(POS_TOP,      LayoutDialog::posTop)
+EVT_RADIOBUTTON(POS_BOTTOM,   LayoutDialog::posBottom)
+EVT_RADIOBUTTON(POS_LEFT,     LayoutDialog::posLeft)
+EVT_RADIOBUTTON(POS_RIGHT,    LayoutDialog::posRight)
 EVT_RADIOBUTTON(ROTATE_NONE,  LayoutDialog::rotateNone)
 EVT_RADIOBUTTON(ROTATE_CW,    LayoutDialog::rotateCw)
 EVT_RADIOBUTTON(ROTATE_CCW,   LayoutDialog::rotateCcw)
@@ -79,6 +89,18 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     wxButton *dummy = new wxButton(this, wxID_ANY, "");
     int size = dummy->GetSize().y;
     delete dummy;
+
+    // Set up the position settings
+    wxRadioButton *posBtns[5];
+    wxBoxSizer *posSizer = new wxBoxSizer(wxHORIZONTAL);
+    posSizer->Add(new wxStaticText(this, wxID_ANY, "Position:", wxDefaultPosition,
+        wxSize(wxDefaultSize.GetWidth(), size)), 0, wxALIGN_CENTRE | wxRIGHT, size / 8);
+    posSizer->Add(posBtns[0] = new wxRadioButton(this, POS_CENTER, "Center",
+        wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
+    posSizer->Add(posBtns[1] = new wxRadioButton(this, POS_TOP,    "Top"),    0, wxLEFT, size / 8);
+    posSizer->Add(posBtns[2] = new wxRadioButton(this, POS_BOTTOM, "Bottom"), 0, wxLEFT, size / 8);
+    posSizer->Add(posBtns[3] = new wxRadioButton(this, POS_LEFT,   "Left"),   0, wxLEFT, size / 8);
+    posSizer->Add(posBtns[4] = new wxRadioButton(this, POS_RIGHT,  "Right"),  0, wxLEFT, size / 8);
 
     // Set up the rotation settings
     wxRadioButton *rotateBtns[3];
@@ -129,6 +151,8 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     checkSizer->Add(boxes[2] = new wxCheckBox(this, FILTER,    "Filter"),        0, wxLEFT, size / 8);
 
     // Set the current values of the radio buttons
+    if (ScreenLayout::getScreenPosition() < 5)
+        posBtns[ScreenLayout::getScreenPosition()]->SetValue(true);
     if (ScreenLayout::getScreenRotation() < 3)
         rotateBtns[ScreenLayout::getScreenRotation()]->SetValue(true);
     if (ScreenLayout::getScreenArrangement() < 3)
@@ -151,6 +175,7 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
 
     // Combine all of the contents
     wxBoxSizer *contents = new wxBoxSizer(wxVERTICAL);
+    contents->Add(posSizer,     1, wxEXPAND);
     contents->Add(rotateSizer,  1, wxEXPAND);
     contents->Add(arrangeSizer, 1, wxEXPAND);
     contents->Add(sizeSizer,    1, wxEXPAND);
@@ -167,6 +192,41 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     sizer->Fit(this);
     SetMinSize(GetSize());
     SetMaxSize(GetSize());
+}
+
+void LayoutDialog::posCenter(wxCommandEvent &event)
+{
+    // Set the screen position setting to center
+    ScreenLayout::setScreenPosition(0);
+    app->updateLayouts();
+}
+
+void LayoutDialog::posTop(wxCommandEvent &event)
+{
+    // Set the screen position setting to top
+    ScreenLayout::setScreenPosition(1);
+    app->updateLayouts();
+}
+
+void LayoutDialog::posBottom(wxCommandEvent &event)
+{
+    // Set the screen position setting to bottom
+    ScreenLayout::setScreenPosition(2);
+    app->updateLayouts();
+}
+
+void LayoutDialog::posLeft(wxCommandEvent &event)
+{
+    // Set the screen position setting to left
+    ScreenLayout::setScreenPosition(3);
+    app->updateLayouts();
+}
+
+void LayoutDialog::posRight(wxCommandEvent &event)
+{
+    // Set the screen position setting to right
+    ScreenLayout::setScreenPosition(4);
+    app->updateLayouts();
 }
 
 void LayoutDialog::rotateNone(wxCommandEvent &event)

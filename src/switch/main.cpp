@@ -225,6 +225,7 @@ void stopCore()
 void settingsMenu()
 {
     const std::vector<std::string> toggle      = { "Off", "On"                                    };
+    const std::vector<std::string> position    = { "Center", "Top", "Bottom", "Left", "Right"     };
     const std::vector<std::string> rotation    = { "None", "Clockwise", "Counter-Clockwise"       };
     const std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal"          };
     const std::vector<std::string> sizing      = { "Even", "Enlarge Top", "Enlarge Bottom"        };
@@ -244,6 +245,7 @@ void settingsMenu()
             ListItem("Threaded 2D",        toggle[Settings::getThreaded2D()]),
             ListItem("Threaded 3D",        toggle[(bool)Settings::getThreaded3D()]),
             ListItem("High-Resolution 3D", toggle[Settings::getHighRes3D()]),
+            ListItem("Screen Position",    position[ScreenLayout::getScreenPosition()]),
             ListItem("Screen Rotation",    rotation[ScreenLayout::getScreenRotation()]),
             ListItem("Screen Arrangement", arrangement[ScreenLayout::getScreenArrangement()]),
             ListItem("Screen Sizing",      sizing[ScreenLayout::getScreenSizing()]),
@@ -273,16 +275,17 @@ void settingsMenu()
                 case  2: Settings::setThreaded2D(!Settings::getThreaded2D());                                break;
                 case  3: Settings::setThreaded3D(!Settings::getThreaded3D());                                break;
                 case  4: Settings::setHighRes3D(!Settings::getHighRes3D());                                  break;
-                case  5: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
-                case  6: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
-                case  7: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
-                case  8: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
-                case  9: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
-                case 10: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
-                case 11: screenFilter    = !screenFilter;                                                    break;
-                case 12: showFpsCounter  = !showFpsCounter;                                                  break;
-                case 13: dockedTouchMode = !dockedTouchMode;                                                 break;
-                case 14: switchOverclock = (switchOverclock + 1) % 4;                                        break;
+                case  5: ScreenLayout::setScreenPosition((ScreenLayout::getScreenPosition()       + 1) % 5); break;
+                case  6: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
+                case  7: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
+                case  8: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
+                case  9: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
+                case 10: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
+                case 11: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
+                case 12: screenFilter    = !screenFilter;                                                    break;
+                case 13: showFpsCounter  = !showFpsCounter;                                                  break;
+                case 14: dockedTouchMode = !dockedTouchMode;                                                 break;
+                case 15: switchOverclock = (switchOverclock + 1) % 4;                                        break;
             }
         }
         else
