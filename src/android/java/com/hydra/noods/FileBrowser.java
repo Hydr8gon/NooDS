@@ -125,11 +125,16 @@ public class FileBrowser extends AppCompatActivity
     @Override
     public void onBackPressed()
     {
-        // Navigate to the previous directory
         if (!path.equals(storagePaths.get(curStorage)))
         {
+            // Navigate to the previous directory
             path = path.substring(0, path.lastIndexOf('/'));
             update();
+        }
+        else
+        {
+            // On the top directory, close the app
+            this.finishAffinity();
         }
     }
 
