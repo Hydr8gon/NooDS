@@ -140,9 +140,17 @@ public class FileBrowser extends AppCompatActivity
 
     private void updateStoragePaths()
     {
+        // Fall back to the default storage directory pre-Lollipop
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.LOLLIPOP)
+        {
+            storagePaths = new ArrayList<String>();
+            storagePaths.add(Environment.getExternalStorageDirectory().getAbsolutePath());
+            return;
+        }
+
         // There's no way to directly get root storage paths, but media paths contain them
         storagePaths = new ArrayList<String>();
-        File[] mediaDirs = getExternalMediaDirs();
+        File[] mediaDirs = getExternalMediaDirs(); // Added in Lollipop
         String basePath = Environment.getExternalStorageDirectory().getAbsolutePath();
         String mediaPath = "";
 
