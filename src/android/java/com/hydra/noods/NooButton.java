@@ -25,7 +25,7 @@ import android.view.View;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 
-public class NooButton extends Button
+public class NooButton extends androidx.appcompat.widget.AppCompatButton
 {
     private int id;
 
