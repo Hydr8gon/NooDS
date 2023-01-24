@@ -13,7 +13,8 @@
 
         <activity android:name=".FileBrowser"
             android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:exported="true">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
