@@ -41,6 +41,13 @@
         app:allowDividerAbove="true"
         app:allowDividerBelow="true" />
 
+    <SwitchPreferenceCompat
+        app:key="haptic_feedback"
+        app:title="Haptic Feedback"
+        app:iconSpaceReserved="false"
+        app:allowDividerAbove="true"
+        app:allowDividerBelow="true" />
+
     <ListPreference
         app:key="screen_position"
         app:title="Screen Position"

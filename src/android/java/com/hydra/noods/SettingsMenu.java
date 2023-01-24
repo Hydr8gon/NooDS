@@ -52,6 +52,7 @@ public class SettingsMenu extends AppCompatActivity
         editor.putBoolean("threaded_2d", (getThreaded2D() == 0) ? false : true);
         editor.putString("threaded_3d", Integer.toString(getThreaded3D()));
         editor.putBoolean("high_res_3d", (getHighRes3D() == 0) ? false : true);
+        editor.putBoolean("haptic_feedback", prefs.getBoolean("haptic_feedback", true));
         editor.putString("screen_position", Integer.toString(getScreenPosition()));
         editor.putString("screen_rotation", Integer.toString(getScreenRotation()));
         editor.putString("screen_arrangement", Integer.toString(getScreenArrangement()));

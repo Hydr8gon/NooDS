@@ -20,18 +20,27 @@
 package com.hydra.noods;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Build;
+import android.os.Vibrator;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 
+import androidx.preference.PreferenceManager;
+
 public class NooButton extends androidx.appcompat.widget.AppCompatButton
 {
     private int id;
+    private SharedPreferences prefs;
 
     public NooButton(Context context, int resId, int btnId, int x, int y, int width, int height)
     {
         super(context);
+
+        prefs = PreferenceManager.getDefaultSharedPreferences(context);
 
         // Set the button parameters
         setBackgroundResource(resId);
@@ -52,6 +61,8 @@ public class NooButton extends androidx.appcompat.widget.AppCompatButton
                     switch (event.getAction())
                     {
                         case MotionEvent.ACTION_DOWN:
+                            //Vibrate
+                            vibrateOnKeyPress(context);
                         case MotionEvent.ACTION_MOVE:
                         {
                             // Press the right key if in range, otherwise release
@@ -61,13 +72,13 @@ public class NooButton extends androidx.appcompat.widget.AppCompatButton
                                 releaseKey(4);
 
                             // Press the left key if in range, otherwise release
-                            if (event.getX() < view.getWidth() * 1 / 3)
+                            if (event.getX() < view.getWidth() / 3)
                                 pressKey(5);
                             else
                                 releaseKey(5);
 
                             // Press the up key if in range, otherwise release
-                            if (event.getY() < view.getHeight() * 1 / 3)
+                            if (event.getY() < view.getHeight() / 3)
                                 pressKey(6);
                             else
                                 releaseKey(6);
@@ -106,13 +117,28 @@ public class NooButton extends androidx.appcompat.widget.AppCompatButton
                     // Press or release the key specified by the ID
                     switch (event.getAction())
                     {
-                        case MotionEvent.ACTION_DOWN: pressKey(id); break;
+                        case MotionEvent.ACTION_DOWN:
+                            vibrateOnKeyPress(context);
+                            pressKey(id);
+                            break;
                         case MotionEvent.ACTION_UP: releaseKey(id); break;
                     }
 
                     return true;
                 }
             });
+        }
+    }
+
+
+    private void vibrateOnKeyPress(Context context){
+        if(prefs.getBoolean("haptic_feedback", true)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
+            } else {
+                Vibrator v = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+                v.vibrate(20);
+            }
         }
     }
 
