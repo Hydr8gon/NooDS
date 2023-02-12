@@ -23,6 +23,8 @@
 #include "core.h"
 #include "settings.h"
 
+Language Spi::language = LG_ENGLISH;
+
 Spi::~Spi()
 {
     // Free any dynamic memory
@@ -137,6 +139,9 @@ bool Spi::loadFirmware()
         firmware[addr + 0x61] = 0x0B; // ADC Y2, byte 2
         firmware[addr + 0x62] = 0xFF; // SCR X2
         firmware[addr + 0x63] = 0xBF; // SCR Y2
+
+        // Set the language specified by the frontend
+        firmware[addr + 0x64] = language;
 
         // Calculate the user settings CRC
         crc = crc16(0xFFFF, &firmware[addr], 0x70);

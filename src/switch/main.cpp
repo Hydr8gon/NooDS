@@ -625,8 +625,28 @@ int main(int argc, char **argv)
     ScreenLayout::addSettings();
     Settings::add(platformSettings);
     if (!Settings::load()) Settings::save();
-
     layout.update(1280, 720, gbaMode);
+
+    // Get the system language
+    uint64_t langCode;
+    SetLanguage lang;
+    setInitialize();
+    setGetSystemLanguage(&langCode);
+    setMakeLanguage(langCode, &lang);
+    setExit();
+
+    // Set the language for the generated firmware
+    switch (lang)
+    {
+        case SetLanguage_JA: Spi::setLanguage(LG_JAPANESE); break;
+        case SetLanguage_FRCA:
+        case SetLanguage_FR: Spi::setLanguage(LG_FRENCH);   break;
+        case SetLanguage_DE: Spi::setLanguage(LG_GERMAN);   break;
+        case SetLanguage_IT: Spi::setLanguage(LG_ITALIAN);  break;
+        case SetLanguage_ES419:
+        case SetLanguage_ES: Spi::setLanguage(LG_SPANISH);  break;
+        default:             Spi::setLanguage(LG_ENGLISH);  break;
+    }
 
     // Open the file browser if a ROM can't be loaded from arguments
     if (argc < 2 || setPath(argv[1]) < 2)

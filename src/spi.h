@@ -23,6 +23,16 @@
 #include <cstdint>
 #include <mutex>
 
+enum Language
+{
+    LG_JAPANESE = 0,
+    LG_ENGLISH,
+    LG_FRENCH,
+    LG_GERMAN,
+    LG_ITALIAN,
+    LG_SPANISH
+};
+
 class Core;
 
 class Spi
@@ -37,6 +47,7 @@ class Spi
         void setTouch(int x, int y);
         void clearTouch();
 
+        static void setLanguage(Language lang) { language = lang; }
         void sendMicData(const int16_t* samples, size_t count, size_t rate);
 
         uint16_t readSpiCnt()  { return spiCnt;  }
@@ -48,6 +59,7 @@ class Spi
     private:
         Core *core;
 
+        static Language language;
         uint8_t *firmware = nullptr;
         size_t firmSize = 0;
 
