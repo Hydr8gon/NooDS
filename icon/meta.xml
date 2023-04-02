@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<app version="1">
+  <name>NooDS</name>
+  <coder>Hydr8gon</coder>
+  <version>0.1</version>
+  <short_description>NDS and GBA emulator</short_description>
+  <long_description>A (hopefully!) speedy DS emulator.</long_description>
+</app>

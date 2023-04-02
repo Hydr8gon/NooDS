@@ -1,7 +1,8 @@
 /build
+/build-android
 /build-switch
 /build-vita
-/build-android
+/build-wiiu
 /.gradle
 /src/android/.cxx
 /eboot.bin
@@ -11,6 +12,7 @@
 /noods.elf
 /noods.nacp
 /noods.nro
+/noods.rpx
 /noods.velf
 /noods.vpk
 /noods.ini
