@@ -71,7 +71,7 @@ void NooCanvas::draw(wxPaintEvent &event)
     if (frame->getCore())
     {
         // Update the layout if GBA mode changed
-        bool gba = (frame->getCore()->isGbaMode() && ScreenLayout::getGbaCrop());
+        bool gba = (frame->getCore()->isGbaMode() && ScreenLayout::gbaCrop);
         if (gbaMode != gba)
         {
             gbaMode = gba;
@@ -86,7 +86,7 @@ void NooCanvas::draw(wxPaintEvent &event)
 
         // Rotate the texture coordinates
         uint8_t texCoords;
-        switch (ScreenLayout::getScreenRotation())
+        switch (ScreenLayout::screenRotation)
         {
             case 0: texCoords = 0x4B; break; // None
             case 1: texCoords = 0x2D; break; // Clockwise
@@ -94,7 +94,7 @@ void NooCanvas::draw(wxPaintEvent &event)
         }
 
         // Shift the screen resolutions if high-res is enabled
-        bool resShift = Settings::getHighRes3D();
+        bool resShift = Settings::highRes3D;
 
         if (gbaMode)
         {
@@ -103,13 +103,13 @@ void NooCanvas::draw(wxPaintEvent &event)
                 GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
             glBegin(GL_QUADS);
             glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
-            glVertex2i(layout.getTopX() + layout.getTopWidth(), layout.getTopY() + layout.getTopHeight());
+            glVertex2i(layout.topX + layout.topWidth, layout.topY + layout.topHeight);
             glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1);
-            glVertex2i(layout.getTopX(), layout.getTopY() + layout.getTopHeight());
+            glVertex2i(layout.topX, layout.topY + layout.topHeight);
             glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1);
-            glVertex2i(layout.getTopX(), layout.getTopY());
+            glVertex2i(layout.topX, layout.topY);
             glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1);
-            glVertex2i(layout.getTopX() + layout.getTopWidth(), layout.getTopY());
+            glVertex2i(layout.topX + layout.topWidth, layout.topY);
             glEnd();
         }
         else // NDS mode
@@ -119,13 +119,13 @@ void NooCanvas::draw(wxPaintEvent &event)
                 GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
             glBegin(GL_QUADS);
             glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
-            glVertex2i(layout.getTopX() + layout.getTopWidth(), layout.getTopY() + layout.getTopHeight());
+            glVertex2i(layout.topX + layout.topWidth, layout.topY + layout.topHeight);
             glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1);
-            glVertex2i(layout.getTopX(), layout.getTopY() + layout.getTopHeight());
+            glVertex2i(layout.topX, layout.topY + layout.topHeight);
             glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1);
-            glVertex2i(layout.getTopX(), layout.getTopY());
+            glVertex2i(layout.topX, layout.topY);
             glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1);
-            glVertex2i(layout.getTopX() + layout.getTopWidth(), layout.getTopY());
+            glVertex2i(layout.topX + layout.topWidth, layout.topY);
             glEnd();
 
             // Draw the DS bottom screen
@@ -133,13 +133,13 @@ void NooCanvas::draw(wxPaintEvent &event)
                 GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[(256 * 192) << (resShift * 2)]);
             glBegin(GL_QUADS);
             glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
-            glVertex2i(layout.getBotX() + layout.getBotWidth(), layout.getBotY() + layout.getBotHeight());
+            glVertex2i(layout.botX + layout.botWidth, layout.botY + layout.botHeight);
             glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1);
-            glVertex2i(layout.getBotX(), layout.getBotY() + layout.getBotHeight());
+            glVertex2i(layout.botX, layout.botY + layout.botHeight);
             glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1);
-            glVertex2i(layout.getBotX(), layout.getBotY());
+            glVertex2i(layout.botX, layout.botY);
             glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1);
-            glVertex2i(layout.getBotX() + layout.getBotWidth(), layout.getBotY());
+            glVertex2i(layout.botX + layout.botWidth, layout.botY);
             glEnd();
         }
 
@@ -182,7 +182,7 @@ void NooCanvas::resize(wxSizeEvent &event)
     }
     else
     {
-        frame->SetMinClientSize(wxSize(layout.getMinWidth(), layout.getMinHeight()));
+        frame->SetMinClientSize(wxSize(layout.minWidth, layout.minHeight));
     }
 
     SetCurrent(*context);
@@ -194,8 +194,8 @@ void NooCanvas::resize(wxSizeEvent &event)
     glViewport(0, 0, size.x, size.y);
 
     // Set filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, NooApp::getScreenFilter() ? GL_LINEAR : GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, NooApp::getScreenFilter() ? GL_LINEAR : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, NooApp::screenFilter ? GL_LINEAR : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, NooApp::screenFilter ? GL_LINEAR : GL_NEAREST);
 }
 
 void NooCanvas::pressKey(wxKeyEvent &event)
@@ -203,7 +203,7 @@ void NooCanvas::pressKey(wxKeyEvent &event)
     // Trigger a key press if a mapped key was pressed
     for (int i = 0; i < MAX_KEYS; i++)
     {
-        if (event.GetKeyCode() == NooApp::getKeyBind(i))
+        if (event.GetKeyCode() == NooApp::keyBinds[i])
             frame->pressKey(i);
     }
 }
@@ -213,7 +213,7 @@ void NooCanvas::releaseKey(wxKeyEvent &event)
     // Trigger a key release if a mapped key was released
     for (int i = 0; i < MAX_KEYS; i++)
     {
-        if (event.GetKeyCode() == NooApp::getKeyBind(i))
+        if (event.GetKeyCode() == NooApp::keyBinds[i])
             frame->releaseKey(i);
     }
 }

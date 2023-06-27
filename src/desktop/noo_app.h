@@ -31,6 +31,10 @@ class NooFrame;
 class NooApp: public wxApp
 {
     public:
+        static int screenFilter;
+        static int micEnable;
+        static int keyBinds[MAX_KEYS];
+
         void createFrame();
         void removeFrame(int id);
 
@@ -41,21 +45,9 @@ class NooApp: public wxApp
         void startStream(bool stream);
         void stopStream(bool stream);
 
-        static int getScreenFilter()     { return screenFilter;    }
-        static int getMicEnable()        { return micEnable;       }
-        static int getKeyBind(int index) { return keyBinds[index]; }
-
-        static void setScreenFilter(int value)       { screenFilter    = value; }
-        static void setMicEnable(int value)          { micEnable       = value; }
-        static void setKeyBind(int index, int value) { keyBinds[index] = value; }
-
     private:
         NooFrame *frames[MAX_FRAMES] = {};
         PaStream *streams[2] = {};
-
-        static int screenFilter;
-        static int micEnable;
-        static int keyBinds[MAX_KEYS];
 
         bool OnInit();
         int  OnExit();

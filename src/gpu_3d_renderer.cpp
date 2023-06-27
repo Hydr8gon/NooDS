@@ -124,7 +124,7 @@ void Gpu3DRenderer::drawScanline(int line)
         }
 
         // Update the resolution shift for the next frame
-        resShift = Settings::getHighRes3D();
+        resShift = Settings::highRes3D;
 
         // Clean up any existing threads
         for (int i = 0; i < activeThreads; i++)
@@ -137,7 +137,7 @@ void Gpu3DRenderer::drawScanline(int line)
         }
 
         // Update the thread count
-        activeThreads = Settings::getThreaded3D();
+        activeThreads = Settings::threaded3D;
         if (activeThreads > 3) activeThreads = 3;
 
         // Set up threaded 3D rendering if enabled

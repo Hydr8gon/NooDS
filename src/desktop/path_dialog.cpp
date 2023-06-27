@@ -49,31 +49,31 @@ PathDialog::PathDialog(): wxDialog(nullptr, wxID_ANY, "Path Settings")
     // Set up the ARM9 BIOS path setting
     wxBoxSizer *arm9Sizer = new wxBoxSizer(wxHORIZONTAL);
     arm9Sizer->Add(new wxStaticText(this, wxID_ANY, "ARM9 BIOS:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
-    arm9Sizer->Add(bios9Path = new wxTextCtrl(this, wxID_ANY, Settings::getBios9Path(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
+    arm9Sizer->Add(bios9Path = new wxTextCtrl(this, wxID_ANY, Settings::bios9Path, wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
     arm9Sizer->Add(new wxButton(this, BIOS9_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the ARM7 BIOS path setting
     wxBoxSizer *arm7Sizer = new wxBoxSizer(wxHORIZONTAL);
     arm7Sizer->Add(new wxStaticText(this, wxID_ANY, "ARM7 BIOS:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
-    arm7Sizer->Add(bios7Path = new wxTextCtrl(this, wxID_ANY, Settings::getBios7Path(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
+    arm7Sizer->Add(bios7Path = new wxTextCtrl(this, wxID_ANY, Settings::bios7Path, wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
     arm7Sizer->Add(new wxButton(this, BIOS7_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the firmware path setting
     wxBoxSizer *firmSizer = new wxBoxSizer(wxHORIZONTAL);
     firmSizer->Add(new wxStaticText(this, wxID_ANY, "Firmware:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
-    firmSizer->Add(firmwarePath = new wxTextCtrl(this, wxID_ANY, Settings::getFirmwarePath(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
+    firmSizer->Add(firmwarePath = new wxTextCtrl(this, wxID_ANY, Settings::firmwarePath, wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
     firmSizer->Add(new wxButton(this, FIRMWARE_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the GBA BIOS path setting
     wxBoxSizer *gbaSizer = new wxBoxSizer(wxHORIZONTAL);
     gbaSizer->Add(new wxStaticText(this, wxID_ANY, "GBA BIOS:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
-    gbaSizer->Add(gbaBiosPath = new wxTextCtrl(this, wxID_ANY, Settings::getGbaBiosPath(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
+    gbaSizer->Add(gbaBiosPath = new wxTextCtrl(this, wxID_ANY, Settings::gbaBiosPath, wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
     gbaSizer->Add(new wxButton(this, GBA_BIOS_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the SD image path setting
     wxBoxSizer *sdSizer = new wxBoxSizer(wxHORIZONTAL);
     sdSizer->Add(new wxStaticText(this, wxID_ANY, "SD Image:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
-    sdSizer->Add(sdImagePath = new wxTextCtrl(this, wxID_ANY, Settings::getSdImagePath(), wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
+    sdSizer->Add(sdImagePath = new wxTextCtrl(this, wxID_ANY, Settings::sdImagePath, wxDefaultPosition, wxSize(size * 6, size)), 0, wxALIGN_CENTRE);
     sdSizer->Add(new wxButton(this, SD_IMAGE_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the cancel and confirm buttons
@@ -168,23 +168,23 @@ void PathDialog::confirm(wxCommandEvent &event)
 
     // Save the ARM9 BIOS path
     path = (const char*)bios9Path->GetValue().mb_str(wxConvUTF8);
-    Settings::setBios9Path(path);
+    Settings::bios9Path = path;
 
     // Save the ARM7 BIOS path
     path = (const char*)bios7Path->GetValue().mb_str(wxConvUTF8);
-    Settings::setBios7Path(path);
+    Settings::bios7Path = path;
 
     // Save the firmware path
     path = (const char*)firmwarePath->GetValue().mb_str(wxConvUTF8);
-    Settings::setFirmwarePath(path);
+    Settings::firmwarePath = path;
 
     // Save the GBA BIOS path
     path = (const char*)gbaBiosPath->GetValue().mb_str(wxConvUTF8);
-    Settings::setGbaBiosPath(path);
+    Settings::gbaBiosPath = path;
 
     // Save the SD image path
     path = (const char*)sdImagePath->GetValue().mb_str(wxConvUTF8);
-    Settings::setSdImagePath(path);
+    Settings::sdImagePath = path;
 
     Settings::save();
 

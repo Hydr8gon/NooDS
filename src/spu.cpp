@@ -88,7 +88,7 @@ uint32_t *Spu::getSamples(int count)
     // If FPS limit is enabled, try to wait until the buffer is filled
     // If the emulation isn't full speed, waiting would starve the audio buffer
     // So if it's taking too long, just let it play an empty buffer
-    if (Settings::getFpsLimiter() == 2) // Accurate
+    if (Settings::fpsLimiter == 2) // Accurate
     {
         std::chrono::steady_clock::time_point waitTime = std::chrono::steady_clock::now();
         wait = false;
@@ -715,12 +715,12 @@ void Spu::swapBuffers()
 {
     // Wait until the buffer has been played, keeping the emulator throttled to 60 FPS
     // Synchronizing to the audio eliminites the potential for nasty audio crackles
-    if (Settings::getFpsLimiter() == 2) // Accurate
+    if (Settings::fpsLimiter == 2) // Accurate
     {
         std::chrono::steady_clock::time_point waitTime = std::chrono::steady_clock::now();
         while (ready.load() && std::chrono::steady_clock::now() - waitTime <= std::chrono::microseconds(1000000));
     }
-    else if (Settings::getFpsLimiter() == 1) // Light
+    else if (Settings::fpsLimiter == 1) // Light
     {
         std::unique_lock<std::mutex> lock(mutex1);
         cond1.wait_for(lock, std::chrono::microseconds(1000000), [&]{ return !ready.load(); });

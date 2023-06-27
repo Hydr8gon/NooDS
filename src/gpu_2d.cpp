@@ -508,7 +508,7 @@ template <bool gbaMode> void Gpu2D::drawText(int bg, int line)
     {
         // In high-res 3D mode, skip every other pixel
         uint32_t *data = core->gpu3DRenderer.getLine(line);
-        bool resShift = Settings::getHighRes3D();
+        bool resShift = Settings::highRes3D;
 
         // Draw a scanline of 3D pixels
         for (int i = 0; i < 256; i++)

@@ -72,7 +72,7 @@ void Dldi::patchRom(uint8_t *rom, size_t offset, size_t size)
 int Dldi::startup()
 {
     // Try to open the SD image
-    sdImage = fopen(Settings::getSdImagePath().c_str(), "rb+");
+    sdImage = fopen(Settings::sdImagePath.c_str(), "rb+");
     return (sdImage ? 1 : 0);
 }
 

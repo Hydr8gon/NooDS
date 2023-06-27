@@ -19,6 +19,7 @@
 */
 
 #include <coreinit/memdefaultheap.h>
+#include <gx2/display.h>
 #include <gx2/draw.h>
 #include <gx2/mem.h>
 #include <gx2r/draw.h>
@@ -42,11 +43,13 @@ const uint32_t vpadMap[] =
      VPAD_BUTTON_ZR,    VPAD_BUTTON_ZL,   VPAD_BUTTON_X,     VPAD_BUTTON_Y
 };
 
+int screenFilter = 1;
+
 Core *core;
 bool running = false;
 std::thread *coreThread;
 
-ScreenLayout layout;
+ScreenLayout tvLayout, gpLayout;
 uint32_t framebuffer[256 * 192 * 8];
 bool gbaMode = false;
 
@@ -71,13 +74,13 @@ static void audioCallback(void *data, uint8_t *buffer, int length)
     delete[] samples;
 }
 
-void drawTexture(int tex, int x, int y, int w, int h)
+void drawTexture(int tex, int x, int y, int w, int h, int scrW, int scrH)
 {
     // Calculate the position coordinates based on gamepad resolution
-    float x1 =  ((float)(x + 0) / (854 / 2) - 1.0f);
-    float x2 =  ((float)(x + w) / (854 / 2) - 1.0f);
-    float y1 = -((float)(y + 0) / (480 / 2) - 1.0f);
-    float y2 = -((float)(y + h) / (480 / 2) - 1.0f);
+    float x1 =  ((float)(x + 0) / (scrW / 2) - 1.0f);
+    float x2 =  ((float)(x + w) / (scrW / 2) - 1.0f);
+    float y1 = -((float)(y + 0) / (scrH / 2) - 1.0f);
+    float y2 = -((float)(y + h) / (scrH / 2) - 1.0f);
     float posCoords[] = { x1, y1, x2, y1, x2, y2, x1, y2 };
 
     // Upload the position coodinates to the buffer
@@ -87,7 +90,7 @@ void drawTexture(int tex, int x, int y, int w, int h)
     GX2RSetAttributeBuffer(&posBuffer, 0, posBuffer.elemSize, bufOffset);
 
     // Define the texture coordinates based on rotation
-    uint32_t texOffset = ScreenLayout::getScreenRotation() * 8;
+    uint32_t texOffset = ScreenLayout::screenRotation * 8;
     static const float texCoords[] =
     {
         0, 0, 1, 0, 1, 1, 0, 1, // None
@@ -118,6 +121,73 @@ int main()
     WHBGfxInit();
     VPADInit();
     WHBMountSdCard();
+
+    // Get the base path to look for files in
+    std::string base = WHBGetSdCardMountPath();
+    base += "/wiiu/apps/noods/";
+
+    // Define the platform settings
+    std::vector<Setting> platformSettings =
+    {
+        Setting("screenFilter", &screenFilter, false)
+    };
+
+    // Add the platform settings
+    ScreenLayout::addSettings();
+    Settings::add(platformSettings);
+
+    // Load the settings
+    // If this is the first time, set the default Wii U path settings
+    if (!Settings::load(base + "noods.ini"))
+    {
+        Settings::bios9Path = base + "bios9.bin";
+        Settings::bios7Path = base + "bios7.bin";
+        Settings::firmwarePath = base + "firmware.bin";
+        Settings::gbaBiosPath = base + "gba_bios.bin";
+        Settings::sdImagePath = base + "sd.img";
+        Settings::save();
+    }
+
+    // Get the current TV render dimensions
+    int tvWidth, tvHeight;
+    switch (GX2GetSystemTVScanMode())
+    {
+        case GX2_TV_SCAN_MODE_480I:
+        case GX2_TV_SCAN_MODE_480P:
+            tvWidth = 854;
+            tvHeight = 480;
+            break;
+
+        case GX2_TV_SCAN_MODE_1080I:
+        case GX2_TV_SCAN_MODE_1080P:
+            tvWidth = 1920;
+            tvHeight = 1080;
+            break;
+
+        case GX2_TV_SCAN_MODE_720P:
+        default:
+            tvWidth = 1280;
+            tvHeight = 720;
+            break;
+    }
+
+    // Initialize the screen layouts
+    tvLayout.update(tvWidth, tvHeight, gbaMode);
+    gpLayout.update(854, 480, gbaMode);
+
+    // Initialize the emulator with an NDS and/or GBA ROM
+    std::string ndsPath = "", gbaPath = "";
+    if (FILE *file = fopen((base + "rom.nds").c_str(), "rb"))
+    {
+        ndsPath = base + "rom.nds";
+        fclose(file);
+    }
+    if (FILE *file = fopen((base + "rom2.gba").c_str(), "rb"))
+    {
+        gbaPath = base + "rom2.gba";
+        fclose(file);
+    }
+    core = new Core(ndsPath, gbaPath);
 
     // Initialize the shader
     WHBGfxLoadGFDShaderGroup(&group, 0, texture_shader_gsh);
@@ -156,41 +226,8 @@ int main()
     }
 
     // Initialize the texture sampler
-    GX2InitSampler(&sampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_LINEAR);
-
-    // Get the base path to look for files in
-    std::string base = WHBGetSdCardMountPath();
-    base += "/wiiu/apps/noods/";
-
-    // Load the settings
-    // If this is the first time, set the default Wii U path settings
-    ScreenLayout::addSettings();
-    if (!Settings::load(base + "noods.ini"))
-    {
-        Settings::setBios9Path(base + "bios9.bin");
-        Settings::setBios7Path(base + "bios7.bin");
-        Settings::setFirmwarePath(base + "firmware.bin");
-        Settings::setGbaBiosPath(base + "gba_bios.bin");
-        Settings::setSdImagePath(base + "sd.img");
-        Settings::save();
-    }
-
-    // Initialize the screen layout
-    layout.update(854, 480, gbaMode);
-
-    // Initialize the emulator with an NDS and/or GBA ROM
-    std::string ndsPath = "", gbaPath = "";
-    if (FILE *file = fopen((base + "rom.nds").c_str(), "rb"))
-    {
-        ndsPath = base + "rom.nds";
-        fclose(file);
-    }
-    if (FILE *file = fopen((base + "rom2.gba").c_str(), "rb"))
-    {
-        gbaPath = base + "rom2.gba";
-        fclose(file);
-    }
-    core = new Core(ndsPath, gbaPath);
+    GX2TexXYFilterMode filter = screenFilter ? GX2_TEX_XY_FILTER_MODE_LINEAR : GX2_TEX_XY_FILTER_MODE_POINT;
+    GX2InitSampler(&sampler, GX2_TEX_CLAMP_MODE_CLAMP, filter);
 
     // Initialize audio output
     SDL_Init(SDL_INIT_AUDIO);
@@ -230,8 +267,8 @@ int main()
         if (touchData.touched)
         {
             // Determine the touch position relative to the emulated touch screen
-            int touchX = layout.getTouchX(touchData.x * 854 / 1280, touchData.y * 480 / 720);
-            int touchY = layout.getTouchY(touchData.x * 854 / 1280, touchData.y * 480 / 720);
+            int touchX = gpLayout.getTouchX(touchData.x * 854 / 1280, touchData.y * 480 / 720);
+            int touchY = gpLayout.getTouchY(touchData.x * 854 / 1280, touchData.y * 480 / 720);
 
             // Send the touch coordinates to the core
             core->input.pressScreen();
@@ -266,15 +303,15 @@ int main()
         // Draw the TV screen
         WHBGfxBeginRenderTV();
         WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        drawTexture(0, layout.getTopX(), layout.getTopY(), layout.getTopWidth(), layout.getTopHeight());
-        drawTexture(1, layout.getBotX(), layout.getBotY(), layout.getBotWidth(), layout.getBotHeight());
+        drawTexture(0, tvLayout.topX, tvLayout.topY, tvLayout.topWidth, tvLayout.topHeight, tvWidth, tvHeight);
+        drawTexture(1, tvLayout.botX, tvLayout.botY, tvLayout.botWidth, tvLayout.botHeight, tvWidth, tvHeight);
         WHBGfxFinishRenderTV();
 
         // Draw the gamepad screen
         WHBGfxBeginRenderDRC();
         WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        drawTexture(0, layout.getTopX(), layout.getTopY(), layout.getTopWidth(), layout.getTopHeight());
-        drawTexture(1, layout.getBotX(), layout.getBotY(), layout.getBotWidth(), layout.getBotHeight());
+        drawTexture(0, gpLayout.topX, gpLayout.topY, gpLayout.topWidth, gpLayout.topHeight, 854, 480);
+        drawTexture(1, gpLayout.botX, gpLayout.botY, gpLayout.botWidth, gpLayout.botHeight, 854, 480);
         WHBGfxFinishRenderDRC();
 
         // Finish drawing

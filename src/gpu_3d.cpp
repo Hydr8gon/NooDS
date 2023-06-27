@@ -295,7 +295,7 @@ void Gpu3D::runCommand()
 void Gpu3D::swapBuffers()
 {
     // Scale the viewport based on the high-res 3D setting
-    bool resShift = Settings::getHighRes3D();
+    bool resShift = Settings::highRes3D;
     uint16_t x = viewportX      << resShift;
     uint16_t y = viewportY      << resShift;
     uint16_t w = viewportWidth  << resShift;

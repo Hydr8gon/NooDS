@@ -76,13 +76,13 @@ wxEND_EVENT_TABLE()
 LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Layout"), app(app)
 {
     // Remember the previous settings in case the changes are discarded
-    prevSettings[0] = ScreenLayout::getScreenRotation();
-    prevSettings[1] = ScreenLayout::getScreenArrangement();
-    prevSettings[2] = ScreenLayout::getScreenSizing();
-    prevSettings[3] = ScreenLayout::getScreenGap();
-    prevSettings[4] = ScreenLayout::getIntegerScale();
-    prevSettings[5] = ScreenLayout::getGbaCrop();
-    prevSettings[6] = NooApp::getScreenFilter();
+    prevSettings[0] = ScreenLayout::screenRotation;
+    prevSettings[1] = ScreenLayout::screenArrangement;
+    prevSettings[2] = ScreenLayout::screenSizing;
+    prevSettings[3] = ScreenLayout::screenGap;
+    prevSettings[4] = ScreenLayout::integerScale;
+    prevSettings[5] = ScreenLayout::gbaCrop;
+    prevSettings[6] = NooApp::screenFilter;
 
     // Determine the height of a button
     // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
@@ -151,21 +151,21 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     checkSizer->Add(boxes[2] = new wxCheckBox(this, FILTER,    "Filter"),        0, wxLEFT, size / 8);
 
     // Set the current values of the radio buttons
-    if (ScreenLayout::getScreenPosition() < 5)
-        posBtns[ScreenLayout::getScreenPosition()]->SetValue(true);
-    if (ScreenLayout::getScreenRotation() < 3)
-        rotateBtns[ScreenLayout::getScreenRotation()]->SetValue(true);
-    if (ScreenLayout::getScreenArrangement() < 3)
-        arrangeBtns[ScreenLayout::getScreenArrangement()]->SetValue(true);
-    if (ScreenLayout::getScreenSizing() < 3)
-        sizeBtns[ScreenLayout::getScreenSizing()]->SetValue(true);
-    if (ScreenLayout::getScreenGap() < 4)
-        gapBtns[ScreenLayout::getScreenGap()]->SetValue(true);
+    if (ScreenLayout::screenPosition < 5)
+        posBtns[ScreenLayout::screenPosition]->SetValue(true);
+    if (ScreenLayout::screenRotation < 3)
+        rotateBtns[ScreenLayout::screenRotation]->SetValue(true);
+    if (ScreenLayout::screenArrangement < 3)
+        arrangeBtns[ScreenLayout::screenArrangement]->SetValue(true);
+    if (ScreenLayout::screenSizing < 3)
+        sizeBtns[ScreenLayout::screenSizing]->SetValue(true);
+    if (ScreenLayout::screenGap < 4)
+        gapBtns[ScreenLayout::screenGap]->SetValue(true);
 
     // Set the current values of the checkboxes
-    boxes[0]->SetValue(ScreenLayout::getIntegerScale());
-    boxes[1]->SetValue(ScreenLayout::getGbaCrop());
-    boxes[2]->SetValue(NooApp::getScreenFilter());
+    boxes[0]->SetValue(ScreenLayout::integerScale);
+    boxes[1]->SetValue(ScreenLayout::gbaCrop);
+    boxes[2]->SetValue(NooApp::screenFilter);
 
     // Set up the cancel and confirm buttons
     wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -197,160 +197,160 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
 void LayoutDialog::posCenter(wxCommandEvent &event)
 {
     // Set the screen position setting to center
-    ScreenLayout::setScreenPosition(0);
+    ScreenLayout::screenPosition = 0;
     app->updateLayouts();
 }
 
 void LayoutDialog::posTop(wxCommandEvent &event)
 {
     // Set the screen position setting to top
-    ScreenLayout::setScreenPosition(1);
+    ScreenLayout::screenPosition = 1;
     app->updateLayouts();
 }
 
 void LayoutDialog::posBottom(wxCommandEvent &event)
 {
     // Set the screen position setting to bottom
-    ScreenLayout::setScreenPosition(2);
+    ScreenLayout::screenPosition = 2;
     app->updateLayouts();
 }
 
 void LayoutDialog::posLeft(wxCommandEvent &event)
 {
     // Set the screen position setting to left
-    ScreenLayout::setScreenPosition(3);
+    ScreenLayout::screenPosition = 3;
     app->updateLayouts();
 }
 
 void LayoutDialog::posRight(wxCommandEvent &event)
 {
     // Set the screen position setting to right
-    ScreenLayout::setScreenPosition(4);
+    ScreenLayout::screenPosition = 4;
     app->updateLayouts();
 }
 
 void LayoutDialog::rotateNone(wxCommandEvent &event)
 {
     // Set the screen rotation setting to none
-    ScreenLayout::setScreenRotation(0);
+    ScreenLayout::screenRotation = 0;
     app->updateLayouts();
 }
 
 void LayoutDialog::rotateCw(wxCommandEvent &event)
 {
     // Set the screen rotation setting to clockwise
-    ScreenLayout::setScreenRotation(1);
+    ScreenLayout::screenRotation = 1;
     app->updateLayouts();
 }
 
 void LayoutDialog::rotateCcw(wxCommandEvent &event)
 {
     // Set the screen rotation setting to counter-clockwise
-    ScreenLayout::setScreenRotation(2);
+    ScreenLayout::screenRotation = 2;
     app->updateLayouts();
 }
 
 void LayoutDialog::arrangeAuto(wxCommandEvent &event)
 {
     // Set the screen arrangement setting to automatic
-    ScreenLayout::setScreenArrangement(0);
+    ScreenLayout::screenArrangement = 0;
     app->updateLayouts();
 }
 
 void LayoutDialog::arrangeVert(wxCommandEvent &event)
 {
     // Set the screen arrangement setting to vertical
-    ScreenLayout::setScreenArrangement(1);
+    ScreenLayout::screenArrangement = 1;
     app->updateLayouts();
 }
 
 void LayoutDialog::arrangeHori(wxCommandEvent &event)
 {
     // Set the screen arrangement setting to horizontal
-    ScreenLayout::setScreenArrangement(2);
+    ScreenLayout::screenArrangement = 2;
     app->updateLayouts();
 }
 
 void LayoutDialog::sizeEven(wxCommandEvent &event)
 {
     // Set the screen sizing setting to even
-    ScreenLayout::setScreenSizing(0);
+    ScreenLayout::screenSizing = 0;
     app->updateLayouts();
 }
 
 void LayoutDialog::sizeTop(wxCommandEvent &event)
 {
     // Set the screen sizing setting to enlarge top
-    ScreenLayout::setScreenSizing(1);
+    ScreenLayout::screenSizing = 1;
     app->updateLayouts();
 }
 
 void LayoutDialog::sizeBot(wxCommandEvent &event)
 {
     // Set the screen sizing setting to enlarge bottom
-    ScreenLayout::setScreenSizing(2);
+    ScreenLayout::screenSizing = 2;
     app->updateLayouts();
 }
 
 void LayoutDialog::gapNone(wxCommandEvent &event)
 {
     // Set the screen gap setting to none
-    ScreenLayout::setScreenGap(0);
+    ScreenLayout::screenGap = 0;
     app->updateLayouts();
 }
 
 void LayoutDialog::gapQuart(wxCommandEvent &event)
 {
     // Set the screen gap setting to quarter
-    ScreenLayout::setScreenGap(1);
+    ScreenLayout::screenGap = 1;
     app->updateLayouts();
 }
 
 void LayoutDialog::gapHalf(wxCommandEvent &event)
 {
     // Set the screen gap setting to half
-    ScreenLayout::setScreenGap(2);
+    ScreenLayout::screenGap = 2;
     app->updateLayouts();
 }
 
 void LayoutDialog::gapFull(wxCommandEvent &event)
 {
     // Set the screen gap setting to full
-    ScreenLayout::setScreenGap(3);
+    ScreenLayout::screenGap = 3;
     app->updateLayouts();
 }
 
 void LayoutDialog::intScale(wxCommandEvent &event)
 {
     // Toggle the integer scale setting
-    ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());
+    ScreenLayout::integerScale = !ScreenLayout::integerScale;
     app->updateLayouts();
 }
 
 void LayoutDialog::gbaCrop(wxCommandEvent &event)
 {
     // Toggle the GBA crop setting
-    ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());
+    ScreenLayout::gbaCrop = !ScreenLayout::gbaCrop;
     app->updateLayouts();
 }
 
 void LayoutDialog::filter(wxCommandEvent &event)
 {
     // Toggle the screen filter setting
-    NooApp::setScreenFilter(!NooApp::getScreenFilter());
+    NooApp::screenFilter = !NooApp::screenFilter;
     app->updateLayouts();
 }
 
 void LayoutDialog::cancel(wxCommandEvent &event)
 {
     // Reset the settings to their previous values
-    ScreenLayout::setScreenRotation(prevSettings[0]);
-    ScreenLayout::setScreenArrangement(prevSettings[1]);
-    ScreenLayout::setScreenSizing(prevSettings[2]);
-    ScreenLayout::setScreenGap(prevSettings[3]);
-    ScreenLayout::setIntegerScale(prevSettings[4]);
-    ScreenLayout::setGbaCrop(prevSettings[5]);
-    NooApp::setScreenFilter(prevSettings[6]);
+    ScreenLayout::screenRotation = prevSettings[0];
+    ScreenLayout::screenArrangement = prevSettings[1];
+    ScreenLayout::screenSizing = prevSettings[2];
+    ScreenLayout::screenGap = prevSettings[3];
+    ScreenLayout::integerScale = prevSettings[4];
+    ScreenLayout::gbaCrop = prevSettings[5];
+    NooApp::screenFilter = prevSettings[6];
     app->updateLayouts();
 
     event.Skip(true);

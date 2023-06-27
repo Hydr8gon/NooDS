@@ -96,11 +96,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(
     // If this is the first time, set the path settings based on the root storage path
     if (!Settings::load(path + "/noods/noods.ini"))
     {
-        Settings::setBios7Path(path + "/noods/bios7.bin");
-        Settings::setBios9Path(path + "/noods/bios9.bin");
-        Settings::setFirmwarePath(path + "/noods/firmware.bin");
-        Settings::setGbaBiosPath(path + "/noods/gba_bios.bin");
-        Settings::setSdImagePath(path + "/noods/sd.img");
+        Settings::bios7Path = path + "/noods/bios7.bin";
+        Settings::bios9Path = path + "/noods/bios9.bin";
+        Settings::firmwarePath = path + "/noods/firmware.bin";
+        Settings::gbaBiosPath = path + "/noods/gba_bios.bin";
+        Settings::sdImagePath = path + "/noods/sd.img";
         Settings::save();
     }
 }
@@ -217,7 +217,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooRenderer_copyFrame
     // Copy the frame to the bitmap
     uint32_t *data;
     AndroidBitmap_lockPixels(env, bitmap, (void**)&data);
-    size_t count = (gbaCrop ? (240 * 160) : (256 * 192 * 2)) << (Settings::getHighRes3D() * 2);
+    size_t count = (gbaCrop ? (240 * 160) : (256 * 192 * 2)) << (Settings::highRes3D * 2);
     memcpy(data, framebuffer, count * sizeof(uint32_t));
     AndroidBitmap_unlockPixels(env, bitmap);
     return true;
@@ -242,62 +242,62 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_BindingsMenu_saveSettings
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getDirectBoot(JNIEnv* env, jobject obj)
 {
-    return Settings::getDirectBoot();
+    return Settings::directBoot;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getFpsLimiter(JNIEnv* env, jobject obj)
 {
-    return Settings::getFpsLimiter();
+    return Settings::fpsLimiter;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getThreaded2D(JNIEnv* env, jobject obj)
 {
-    return Settings::getThreaded2D();
+    return Settings::threaded2D;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getThreaded3D(JNIEnv* env, jobject obj)
 {
-    return Settings::getThreaded3D();
+    return Settings::threaded3D;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getHighRes3D(JNIEnv* env, jobject obj)
 {
-    return Settings::getHighRes3D();
+    return Settings::highRes3D;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenPosition(JNIEnv* env, jobject obj)
 {
-    return ScreenLayout::getScreenPosition();
+    return ScreenLayout::screenPosition;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenRotation(JNIEnv* env, jobject obj)
 {
-    return ScreenLayout::getScreenRotation();
+    return ScreenLayout::screenRotation;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenArrangement(JNIEnv* env, jobject obj)
 {
-    return ScreenLayout::getScreenArrangement();
+    return ScreenLayout::screenArrangement;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenSizing(JNIEnv* env, jobject obj)
 {
-    return ScreenLayout::getScreenSizing();
+    return ScreenLayout::screenSizing;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenGap(JNIEnv* env, jobject obj)
 {
-    return ScreenLayout::getScreenGap();
+    return ScreenLayout::screenGap;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getIntegerScale(JNIEnv* env, jobject obj)
 {
-    return ScreenLayout::getIntegerScale();
+    return ScreenLayout::integerScale;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getGbaCrop(JNIEnv* env, jobject obj)
 {
-    return ScreenLayout::getGbaCrop();
+    return ScreenLayout::gbaCrop;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenFilter(JNIEnv* env, jobject obj)
@@ -312,62 +312,62 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getShowFpsCo
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setDirectBoot(JNIEnv* env, jobject obj, jint value)
 {
-    Settings::setDirectBoot(value);
+    Settings::directBoot = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setFpsLimiter(JNIEnv* env, jobject obj, jint value)
 {
-    Settings::setFpsLimiter(value);
+    Settings::fpsLimiter = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setThreaded2D(JNIEnv* env, jobject obj, jint value)
 {
-    Settings::setThreaded2D(value);
+    Settings::threaded2D = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setThreaded3D(JNIEnv* env, jobject obj, jint value)
 {
-    Settings::setThreaded3D(value);
+    Settings::threaded3D = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setHighRes3D(JNIEnv* env, jobject obj, jint value)
 {
-    Settings::setHighRes3D(value);
+    Settings::highRes3D = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenPosition(JNIEnv* env, jobject obj, jint value)
 {
-    ScreenLayout::setScreenPosition(value);
+    ScreenLayout::screenPosition = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenRotation(JNIEnv* env, jobject obj, jint value)
 {
-    ScreenLayout::setScreenRotation(value);
+    ScreenLayout::screenRotation = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenArrangement(JNIEnv* env, jobject obj, jint value)
 {
-    ScreenLayout::setScreenArrangement(value);
+    ScreenLayout::screenArrangement = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenSizing(JNIEnv* env, jobject obj, jint value)
 {
-    ScreenLayout::setScreenSizing(value);
+    ScreenLayout::screenSizing = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenGap(JNIEnv* env, jobject obj, jint value)
 {
-    ScreenLayout::setScreenGap(value);
+    ScreenLayout::screenGap = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setIntegerScale(JNIEnv* env, jobject obj, jint value)
 {
-    ScreenLayout::setIntegerScale(value);
+    ScreenLayout::integerScale = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setGbaCrop(JNIEnv* env, jobject obj, jint value)
 {
-    ScreenLayout::setGbaCrop(value);
+    ScreenLayout::gbaCrop = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenFilter(JNIEnv* env, jobject obj, jint value)
@@ -446,17 +446,17 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_resizeNdsSave
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getHighRes3D(JNIEnv* env, jobject obj)
 {
-    return Settings::getHighRes3D();
+    return Settings::highRes3D;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenRotation(JNIEnv* env, jobject obj)
 {
-    return ScreenLayout::getScreenRotation();
+    return ScreenLayout::screenRotation;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getGbaCrop(JNIEnv* env, jobject obj)
 {
-    return ScreenLayout::getGbaCrop();
+    return ScreenLayout::gbaCrop;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenFilter(JNIEnv* env, jobject obj)
@@ -471,42 +471,42 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooRenderer_updateLayout(
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getTopX(JNIEnv *env, jobject obj)
 {
-    return layout.getTopX();
+    return layout.topX;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getBotX(JNIEnv *env, jobject obj)
 {
-    return layout.getBotX();
+    return layout.botX;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getTopY(JNIEnv *env, jobject obj)
 {
-    return layout.getTopY();
+    return layout.topY;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getBotY(JNIEnv *env, jobject obj)
 {
-    return layout.getBotY();
+    return layout.botY;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getTopWidth(JNIEnv *env, jobject obj)
 {
-    return layout.getTopWidth();
+    return layout.topWidth;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getBotWidth(JNIEnv *env, jobject obj)
 {
-    return layout.getBotWidth();
+    return layout.botWidth;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getTopHeight(JNIEnv *env, jobject obj)
 {
-    return layout.getTopHeight();
+    return layout.topHeight;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getBotHeight(JNIEnv *env, jobject obj)
 {
-    return layout.getBotHeight();
+    return layout.botHeight;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooButton_pressKey(JNIEnv *env, jobject obj, jint key)

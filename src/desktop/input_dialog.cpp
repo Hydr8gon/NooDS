@@ -194,8 +194,7 @@ std::string InputDialog::keyToString(int key)
 InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Input Bindings"), joystick(joystick)
 {
     // Load the key bindings
-    for (int i = 0; i < MAX_KEYS; i++)
-        keyBinds[i] = NooApp::getKeyBind(i);
+    memcpy(keyBinds, NooApp::keyBinds, sizeof(keyBinds));
 
     // Determine the height of a button
     // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
@@ -604,10 +603,8 @@ void InputDialog::updateJoystick(wxTimerEvent &event)
 void InputDialog::confirm(wxCommandEvent &event)
 {
     // Save the key mappings
-    for (int i = 0; i < MAX_KEYS; i++)
-        NooApp::setKeyBind(i, keyBinds[i]);
+    memcpy(NooApp::keyBinds, keyBinds, sizeof(keyBinds));
     Settings::save();
-
     event.Skip(true);
 }
 

@@ -109,7 +109,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     if (gbaCrop)
     {
         // Output the frame in RGB8 format, cropped for GBA
-        if (Settings::getHighRes3D())
+        if (Settings::highRes3D)
         {
             // GBA doesn't have 3D, but draw the screen upscaled for consistency
             for (int y = 0; y < 160; y++)
@@ -142,7 +142,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
         // The DS draws the GBA screen by capturing it to alternating VRAM blocks and then displaying that
         // While not used officially, it's possible to copy images into VRAM before entering GBA mode to use as a border
         // Output the GBA frame, centered, with the current VRAM border around it
-        if (Settings::getHighRes3D())
+        if (Settings::highRes3D)
         {
             // GBA doesn't have 3D, but draw the screen upscaled for consistency
             for (int y = 0; y < 192; y++)
@@ -183,7 +183,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     else
     {
         // Output the full frame in RGB8 format
-        if (Settings::getHighRes3D())
+        if (Settings::highRes3D)
         {
             if (buffers.hiRes3D)
             {
@@ -345,7 +345,7 @@ void Gpu::gbaScanline308()
             vCount = 0;
 
             // Start the 2D thread if enabled
-            if (Settings::getThreaded2D() && !thread)
+            if (Settings::threaded2D && !thread)
             {
                 running = true;
                 thread = new std::thread(&Gpu::drawGbaThreaded, this);
@@ -441,7 +441,7 @@ void Gpu::scanline256()
                     // Choose from 2D engine A or the 3D engine
                     // In high-res mode, skip every other pixel when capturing 3D
                     uint32_t *source = (dispCapCnt & BIT(24)) ? core->gpu3DRenderer.getLine(vCount) : core->gpu2D[0].getRawLine();
-                    bool resShift = (Settings::getHighRes3D() && (dispCapCnt & BIT(24)));
+                    bool resShift = (Settings::highRes3D && (dispCapCnt & BIT(24)));
 
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
@@ -482,7 +482,7 @@ void Gpu::scanline256()
                     // Choose from 2D engine A or the 3D engine
                     // In high-res mode, skip every other pixel when capturing 3D
                     uint32_t *source = (dispCapCnt & BIT(24)) ? core->gpu3DRenderer.getLine(vCount) : core->gpu2D[0].getRawLine();
-                    bool resShift = (Settings::getHighRes3D() && (dispCapCnt & BIT(24)));
+                    bool resShift = (Settings::highRes3D && (dispCapCnt & BIT(24)));
 
                     // Get the VRAM source address for the current scanline
                     uint32_t readOffset = ((dispCapCnt & 0x0C000000) >> 11) + vCount * width * 2;
@@ -603,7 +603,7 @@ void Gpu::scanline355()
                 }
 
                 // Copy the upscaled 3D output to a new buffer if enabled
-                if (Settings::getHighRes3D() && (core->gpu2D[0].readDispCnt() & BIT(3)))
+                if (Settings::highRes3D && (core->gpu2D[0].readDispCnt() & BIT(3)))
                 {
                     buffers.hiRes3D = new uint32_t[256 * 192 * 4];
                     memcpy(buffers.hiRes3D, core->gpu3DRenderer.getLine(0), 256 * 192 * 4 * sizeof(uint32_t));
@@ -635,7 +635,7 @@ void Gpu::scanline355()
             vCount = 0;
 
             // Start the 2D thread if enabled
-            if (Settings::getThreaded2D() && !thread)
+            if (Settings::threaded2D && !thread)
             {
                 running = true;
                 thread = new std::thread(&Gpu::drawThreaded, this);

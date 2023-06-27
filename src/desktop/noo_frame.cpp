@@ -124,7 +124,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path):
     fpsLimiter->AppendRadioItem(FPS_ACCURATE, "&Accurate");
 
     // Set the current value of the FPS limiter setting
-    switch (Settings::getFpsLimiter())
+    switch (Settings::fpsLimiter)
     {
         case 0:  fpsLimiter->Check(FPS_DISABLED, true); break;
         case 1:  fpsLimiter->Check(FPS_LIGHT,    true); break;
@@ -139,7 +139,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path):
     threaded3D->AppendRadioItem(THREADED_3D_3, "&3 Threads");
 
     // Set the current value of the threaded 3D setting
-    switch (Settings::getThreaded3D())
+    switch (Settings::threaded3D)
     {
         case 0:  threaded3D->Check(THREADED_3D_0, true); break;
         case 1:  threaded3D->Check(THREADED_3D_1, true); break;
@@ -164,10 +164,10 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path):
     settingsMenu->AppendCheckItem(MIC_ENABLE,  "&Use Microphone");
 
     // Set the current values of the checkboxes
-    settingsMenu->Check(DIRECT_BOOT, Settings::getDirectBoot());
-    settingsMenu->Check(THREADED_2D, Settings::getThreaded2D());
-    settingsMenu->Check(HIGH_RES_3D, Settings::getHighRes3D());
-    settingsMenu->Check(MIC_ENABLE,  NooApp::getMicEnable());
+    settingsMenu->Check(DIRECT_BOOT, Settings::directBoot);
+    settingsMenu->Check(THREADED_2D, Settings::threaded2D);
+    settingsMenu->Check(HIGH_RES_3D, Settings::highRes3D);
+    settingsMenu->Check(MIC_ENABLE,  NooApp::micEnable);
 
     // Set up the menu bar
     wxMenuBar *menuBar = new wxMenuBar();
@@ -180,7 +180,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path):
     // Set the initial window size based on the current screen layout
     ScreenLayout layout;
     layout.update(0, 0, false);
-    SetClientSize(wxSize(layout.getMinWidth(), layout.getMinHeight()));
+    SetClientSize(wxSize(layout.minWidth, layout.minHeight));
 
     // Prepare and show the window
     DragAcceptFiles(true);
@@ -360,10 +360,10 @@ void NooFrame::pressKey(int key)
     {
         case 12: // Fast Forward Hold
             // Disable the FPS limiter
-            if (Settings::getFpsLimiter() != 0)
+            if (Settings::fpsLimiter != 0)
             {
-                fpsLimiterBackup = Settings::getFpsLimiter();
-                Settings::setFpsLimiter(0);
+                fpsLimiterBackup = Settings::fpsLimiter;
+                Settings::fpsLimiter = 0;
             }
             break;
 
@@ -371,16 +371,16 @@ void NooFrame::pressKey(int key)
             // Toggle the FPS limiter on or off
             if (!(hotkeyToggles & BIT(0)))
             {
-                if (Settings::getFpsLimiter() != 0)
+                if (Settings::fpsLimiter != 0)
                 {
                     // Disable the FPS limiter
-                    fpsLimiterBackup = Settings::getFpsLimiter();
-                    Settings::setFpsLimiter(0);
+                    fpsLimiterBackup = Settings::fpsLimiter;
+                    Settings::fpsLimiter = 0;
                 }
                 else if (fpsLimiterBackup != 0)
                 {
                     // Restore the previous FPS limiter setting
-                    Settings::setFpsLimiter(fpsLimiterBackup);
+                    Settings::fpsLimiter = fpsLimiterBackup;
                     fpsLimiterBackup = 0;
                 }
 
@@ -398,7 +398,7 @@ void NooFrame::pressKey(int key)
             // Toggle between enlarging the top or bottom screen
             if (!(hotkeyToggles & BIT(2)))
             {
-                ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing() == 1) ? 2 : 1);
+                ScreenLayout::screenSizing = (ScreenLayout::screenSizing == 1) ? 2 : 1;
                 app->updateLayouts();
                 hotkeyToggles |= BIT(2);
             }
@@ -430,7 +430,7 @@ void NooFrame::releaseKey(int key)
             // Restore the previous FPS limiter setting
             if (fpsLimiterBackup != 0)
             {
-                Settings::setFpsLimiter(fpsLimiterBackup);
+                Settings::fpsLimiter = fpsLimiterBackup;
                 fpsLimiterBackup = 0;
             }
             break;
@@ -591,78 +591,78 @@ void NooFrame::layoutSettings(wxCommandEvent &event)
 void NooFrame::directBootToggle(wxCommandEvent &event)
 {
     // Toggle the direct boot setting
-    Settings::setDirectBoot(!Settings::getDirectBoot());
+    Settings::directBoot = !Settings::directBoot;
     Settings::save();
 }
 
 void NooFrame::fpsDisabled(wxCommandEvent &event)
 {
     // Set the FPS limiter setting to disabled
-    Settings::setFpsLimiter(0);
+    Settings::fpsLimiter = 0;
     Settings::save();
 }
 
 void NooFrame::fpsLight(wxCommandEvent &event)
 {
     // Set the FPS limiter setting to light
-    Settings::setFpsLimiter(1);
+    Settings::fpsLimiter = 1;
     Settings::save();
 }
 
 void NooFrame::fpsAccurate(wxCommandEvent &event)
 {
     // Set the FPS limiter setting to accurate
-    Settings::setFpsLimiter(2);
+    Settings::fpsLimiter = 2;
     Settings::save();
 }
 
 void NooFrame::threaded2D(wxCommandEvent &event)
 {
     // Toggle the threaded 2D setting
-    Settings::setThreaded2D(!Settings::getThreaded2D());
+    Settings::threaded2D = !Settings::threaded2D;
     Settings::save();
 }
 
 void NooFrame::threaded3D0(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to disabled
-    Settings::setThreaded3D(0);
+    Settings::threaded3D = 0;
     Settings::save();
 }
 
 void NooFrame::threaded3D1(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to 1 thread
-    Settings::setThreaded3D(1);
+    Settings::threaded3D = 1;
     Settings::save();
 }
 
 void NooFrame::threaded3D2(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to 2 threads
-    Settings::setThreaded3D(2);
+    Settings::threaded3D = 2;
     Settings::save();
 }
 
 void NooFrame::threaded3D3(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to 3 threads
-    Settings::setThreaded3D(3);
+    Settings::threaded3D = 3;
     Settings::save();
 }
 
 void NooFrame::highRes3D(wxCommandEvent &event)
 {
     // Toggle the high-resolution 3D setting
-    Settings::setHighRes3D(!Settings::getHighRes3D());
+    Settings::highRes3D = !Settings::highRes3D;
     Settings::save();
 }
 
 void NooFrame::micEnable(wxCommandEvent &event)
 {
     // Toggle the use microphone setting
-    NooApp::setMicEnable(!NooApp::getMicEnable());
-    NooApp::getMicEnable() ? app->startStream(1) : app->stopStream(1);
+    NooApp::micEnable = !NooApp::micEnable;
+    NooApp::micEnable ? app->startStream(1) : app->stopStream(1);
     Settings::save();
 }
 
@@ -671,23 +671,23 @@ void NooFrame::updateJoystick(wxTimerEvent &event)
     // Check the status of mapped joystick inputs and trigger key presses and releases accordingly
     for (int i = 0; i < MAX_KEYS; i++)
     {
-        if (NooApp::getKeyBind(i) >= 3000 && joystick->GetNumberAxes() > NooApp::getKeyBind(i) - 3000) // Axis -
+        if (NooApp::keyBinds[i] >= 3000 && joystick->GetNumberAxes() > NooApp::keyBinds[i] - 3000) // Axis -
         {
-            if (joystick->GetPosition(NooApp::getKeyBind(i) - 3000) - axisBases[NooApp::getKeyBind(i) - 3000] < -16384)
+            if (joystick->GetPosition(NooApp::keyBinds[i] - 3000) - axisBases[NooApp::keyBinds[i] - 3000] < -16384)
                 pressKey(i);
             else
                 releaseKey(i);
         }
-        else if (NooApp::getKeyBind(i) >= 2000 && joystick->GetNumberAxes() > NooApp::getKeyBind(i) - 2000) // Axis +
+        else if (NooApp::keyBinds[i] >= 2000 && joystick->GetNumberAxes() > NooApp::keyBinds[i] - 2000) // Axis +
         {
-            if (joystick->GetPosition(NooApp::getKeyBind(i) - 2000) - axisBases[NooApp::getKeyBind(i) - 2000] > 16384)
+            if (joystick->GetPosition(NooApp::keyBinds[i] - 2000) - axisBases[NooApp::keyBinds[i] - 2000] > 16384)
                 pressKey(i);
             else
                 releaseKey(i);
         }
-        else if (NooApp::getKeyBind(i) >= 1000 && joystick->GetNumberButtons() > NooApp::getKeyBind(i) - 1000) // Button
+        else if (NooApp::keyBinds[i] >= 1000 && joystick->GetNumberButtons() > NooApp::keyBinds[i] - 1000) // Button
         {
-            if (joystick->GetButtonState(NooApp::getKeyBind(i) - 1000))
+            if (joystick->GetButtonState(NooApp::keyBinds[i] - 1000))
                 pressKey(i);
             else
                 releaseKey(i);

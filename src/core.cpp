@@ -49,19 +49,19 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id):
     wifi(this)
 {
     // Try to load the ARM9 BIOS; require it when not direct booting
-    if (!memory.loadBios9() && (!Settings::getDirectBoot() || (ndsPath == "" && gbaPath == "")))
+    if (!memory.loadBios9() && (!Settings::directBoot || (ndsPath == "" && gbaPath == "")))
         throw ERROR_BIOS;
 
     // Try to load the ARM7 BIOS; require it when not direct booting
-    if (!memory.loadBios7() && (!Settings::getDirectBoot() || (ndsPath == "" && gbaPath == "")))
+    if (!memory.loadBios7() && (!Settings::directBoot || (ndsPath == "" && gbaPath == "")))
         throw ERROR_BIOS;
 
     // Try to load the firmware; require it when not direct booting
-    if (!spi.loadFirmware() && (!Settings::getDirectBoot() || (ndsPath == "" && gbaPath == "")))
+    if (!spi.loadFirmware() && (!Settings::directBoot || (ndsPath == "" && gbaPath == "")))
         throw ERROR_FIRM;
 
     // Try to load the GBA BIOS; require it when booting a GBA ROM
-    if (!memory.loadGbaBios() && (gbaPath != "" && (ndsPath == "" || !Settings::getDirectBoot())))
+    if (!memory.loadGbaBios() && (gbaPath != "" && (ndsPath == "" || !Settings::directBoot)))
         throw ERROR_BIOS;
 
     // Schedule initial tasks for NDS mode
@@ -83,7 +83,7 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id):
             throw ERROR_ROM;
 
         // Enable GBA mode right away if direct boot is enabled
-        if (ndsPath == "" && Settings::getDirectBoot())
+        if (ndsPath == "" && Settings::directBoot)
         {
             memory.write<uint16_t>(0, 0x4000304, 0x8003); // POWCNT1
             enterGbaMode();
@@ -97,7 +97,7 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id):
             throw ERROR_ROM;
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled
-        if (Settings::getDirectBoot())
+        if (Settings::directBoot)
         {
             // Set some registers as the BIOS/firmware would
             cp15.write(1, 0, 0, 0x0005707D); // CP15 Control

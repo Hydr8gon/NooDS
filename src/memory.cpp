@@ -88,7 +88,7 @@ template <typename T> void VramMapping::write(uint32_t address, T value)
 bool Memory::loadBios9()
 {
     // Load the ARM9 BIOS if the file is found
-    if (FILE *file = fopen(Settings::getBios9Path().c_str(), "rb"))
+    if (FILE *file = fopen(Settings::bios9Path.c_str(), "rb"))
     {
         fread(bios9, sizeof(uint8_t), 0x1000, file);
         fclose(file);
@@ -104,7 +104,7 @@ bool Memory::loadBios9()
 bool Memory::loadBios7()
 {
     // Load the ARM7 BIOS if the file is found
-    if (FILE *file = fopen(Settings::getBios7Path().c_str(), "rb"))
+    if (FILE *file = fopen(Settings::bios7Path.c_str(), "rb"))
     {
         fread(bios7, sizeof(uint8_t), 0x4000, file);
         fclose(file);
@@ -120,7 +120,7 @@ bool Memory::loadBios7()
 bool Memory::loadGbaBios()
 {
     // Load the GBA BIOS if the file is found
-    if (FILE *file = fopen(Settings::getGbaBiosPath().c_str(), "rb"))
+    if (FILE *file = fopen(Settings::gbaBiosPath.c_str(), "rb"))
     {
         fread(gbaBios, sizeof(uint8_t), 0x4000, file);
         fclose(file);

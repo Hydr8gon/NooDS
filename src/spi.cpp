@@ -54,7 +54,7 @@ bool Spi::loadFirmware()
         delete[] firmware;
 
     // Load the firmware from a file if it exists
-    if (FILE *file = fopen(Settings::getFirmwarePath().c_str(), "rb"))
+    if (FILE *file = fopen(Settings::firmwarePath.c_str(), "rb"))
     {
         fseek(file, 0, SEEK_END);
         firmSize = ftell(file);

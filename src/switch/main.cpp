@@ -240,18 +240,18 @@ void settingsMenu()
         // Get the list of settings and current values
         std::vector<ListItem> settings =
         {
-            ListItem("Direct Boot",        toggle[Settings::getDirectBoot()]),
-            ListItem("FPS Limiter",        toggle[Settings::getFpsLimiter()]),
-            ListItem("Threaded 2D",        toggle[Settings::getThreaded2D()]),
-            ListItem("Threaded 3D",        toggle[(bool)Settings::getThreaded3D()]),
-            ListItem("High-Resolution 3D", toggle[Settings::getHighRes3D()]),
-            ListItem("Screen Position",    position[ScreenLayout::getScreenPosition()]),
-            ListItem("Screen Rotation",    rotation[ScreenLayout::getScreenRotation()]),
-            ListItem("Screen Arrangement", arrangement[ScreenLayout::getScreenArrangement()]),
-            ListItem("Screen Sizing",      sizing[ScreenLayout::getScreenSizing()]),
-            ListItem("Screen Gap",         gap[ScreenLayout::getScreenGap()]),
-            ListItem("Integer Scale",      toggle[ScreenLayout::getIntegerScale()]),
-            ListItem("GBA Crop",           toggle[ScreenLayout::getGbaCrop()]),
+            ListItem("Direct Boot",        toggle[Settings::directBoot]),
+            ListItem("FPS Limiter",        toggle[Settings::fpsLimiter]),
+            ListItem("Threaded 2D",        toggle[Settings::threaded2D]),
+            ListItem("Threaded 3D",        toggle[(bool)Settings::threaded3D]),
+            ListItem("High-Resolution 3D", toggle[Settings::highRes3D]),
+            ListItem("Screen Position",    position[ScreenLayout::screenPosition]),
+            ListItem("Screen Rotation",    rotation[ScreenLayout::screenRotation]),
+            ListItem("Screen Arrangement", arrangement[ScreenLayout::screenArrangement]),
+            ListItem("Screen Sizing",      sizing[ScreenLayout::screenSizing]),
+            ListItem("Screen Gap",         gap[ScreenLayout::screenGap]),
+            ListItem("Integer Scale",      toggle[ScreenLayout::integerScale]),
+            ListItem("GBA Crop",           toggle[ScreenLayout::gbaCrop]),
             ListItem("Screen Filter",      toggle[screenFilter]),
             ListItem("Show FPS Counter",   toggle[showFpsCounter]),
             ListItem("Docked Touch Mode",  touchMode[dockedTouchMode]),
@@ -270,22 +270,22 @@ void settingsMenu()
             // 1 thread for 3D seems to work best, so there's no need for advanced selection
             switch (index)
             {
-                case  0: Settings::setDirectBoot(!Settings::getDirectBoot());                                break;
-                case  1: Settings::setFpsLimiter(!Settings::getFpsLimiter());                                break;
-                case  2: Settings::setThreaded2D(!Settings::getThreaded2D());                                break;
-                case  3: Settings::setThreaded3D(!Settings::getThreaded3D());                                break;
-                case  4: Settings::setHighRes3D(!Settings::getHighRes3D());                                  break;
-                case  5: ScreenLayout::setScreenPosition((ScreenLayout::getScreenPosition()       + 1) % 5); break;
-                case  6: ScreenLayout::setScreenRotation((ScreenLayout::getScreenRotation()       + 1) % 3); break;
-                case  7: ScreenLayout::setScreenArrangement((ScreenLayout::getScreenArrangement() + 1) % 3); break;
-                case  8: ScreenLayout::setScreenSizing((ScreenLayout::getScreenSizing()           + 1) % 3); break;
-                case  9: ScreenLayout::setScreenGap((ScreenLayout::getScreenGap()                 + 1) % 4); break;
-                case 10: ScreenLayout::setIntegerScale(!ScreenLayout::getIntegerScale());                    break;
-                case 11: ScreenLayout::setGbaCrop(!ScreenLayout::getGbaCrop());                              break;
-                case 12: screenFilter    = !screenFilter;                                                    break;
-                case 13: showFpsCounter  = !showFpsCounter;                                                  break;
-                case 14: dockedTouchMode = !dockedTouchMode;                                                 break;
-                case 15: switchOverclock = (switchOverclock + 1) % 4;                                        break;
+                case  0: Settings::directBoot            = (Settings::directBoot            + 1) % 2; break;
+                case  1: Settings::fpsLimiter            = (Settings::fpsLimiter            + 1) % 2; break;
+                case  2: Settings::threaded2D            = (Settings::threaded2D            + 1) % 2; break;
+                case  3: Settings::threaded3D            = (Settings::threaded3D            + 1) % 2; break;
+                case  4: Settings::highRes3D             = (Settings::highRes3D             + 1) % 2; break;
+                case  5: ScreenLayout::screenPosition    = (ScreenLayout::screenPosition    + 1) % 5; break;
+                case  6: ScreenLayout::screenRotation    = (ScreenLayout::screenRotation    + 1) % 3; break;
+                case  7: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 3; break;
+                case  8: ScreenLayout::screenSizing      = (ScreenLayout::screenSizing      + 1) % 3; break;
+                case  9: ScreenLayout::screenGap         = (ScreenLayout::screenGap         + 1) % 4; break;
+                case 10: ScreenLayout::integerScale      = (ScreenLayout::integerScale      + 1) % 2; break;
+                case 11: ScreenLayout::gbaCrop           = (ScreenLayout::gbaCrop           + 1) % 2; break;
+                case 12: screenFilter                    = (screenFilter                    + 1) % 2; break;
+                case 13: showFpsCounter                  = (showFpsCounter                  + 1) % 2; break;
+                case 14: dockedTouchMode                 = (dockedTouchMode                 + 1) % 2; break;
+                case 15: switchOverclock                 = (switchOverclock                 + 1) % 4; break;
             }
         }
         else
@@ -678,7 +678,7 @@ int main(int argc, char **argv)
         }
 
         // Update the layout if GBA mode changed
-        if (gbaMode != (core->isGbaMode() && ScreenLayout::getGbaCrop()))
+        if (gbaMode != (core->isGbaMode() && ScreenLayout::gbaCrop))
         {
             gbaMode = !gbaMode;
             layout.update(1280, 720, gbaMode);
@@ -688,24 +688,23 @@ int main(int argc, char **argv)
         core->gpu.getFrame(framebuffer, gbaMode);
 
         // Shift the screen resolutions if high-res is enabled
-        bool resShift = Settings::getHighRes3D();
+        bool resShift = Settings::highRes3D;
 
         if (gbaMode)
         {
             // Draw the GBA screen
-            SwitchUI::drawImage(&framebuffer[0], 240 << resShift, 160 << resShift, layout.getTopX(), layout.getTopY(),
-                layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
+            SwitchUI::drawImage(&framebuffer[0], 240 << resShift, 160 << resShift, layout.topX, layout.topY,
+                layout.topWidth, layout.topHeight, screenFilter, ScreenLayout::screenRotation);
         }
         else // NDS mode
         {
             // Draw the DS top screen
-            SwitchUI::drawImage(&framebuffer[0], 256 << resShift, 192 << resShift, layout.getTopX(), layout.getTopY(),
-                layout.getTopWidth(), layout.getTopHeight(), screenFilter, ScreenLayout::getScreenRotation());
+            SwitchUI::drawImage(&framebuffer[0], 256 << resShift, 192 << resShift, layout.topX, layout.topY,
+                layout.topWidth, layout.topHeight, screenFilter, ScreenLayout::screenRotation);
 
             // Draw the DS bottom screen
-            SwitchUI::drawImage(&framebuffer[(256 * 192) << (resShift * 2)], 256 << resShift,
-                192 << resShift, layout.getBotX(), layout.getBotY(), layout.getBotWidth(),
-                layout.getBotHeight(), screenFilter, ScreenLayout::getScreenRotation());
+            SwitchUI::drawImage(&framebuffer[(256 * 192) << (resShift * 2)], 256 << resShift, 192 << resShift,
+                layout.botX, layout.botY, layout.botWidth, layout.botHeight, screenFilter, ScreenLayout::screenRotation);
 
             // Handle touch input, depending on the current operation mode
             if (appletGetOperationMode() == AppletOperationMode_Console &&
@@ -743,8 +742,8 @@ int main(int argc, char **argv)
                         GYRO_TOUCH_RANGE / 2), -(GYRO_TOUCH_RANGE / 2)) + GYRO_TOUCH_RANGE / 2;
 
                     // Scale the motion angle to a position on the touch screen
-                    screenX = layout.getBotX() + relativeX * layout.getBotWidth()  / GYRO_TOUCH_RANGE;
-                    screenY = layout.getBotY() + relativeY * layout.getBotHeight() / GYRO_TOUCH_RANGE;
+                    screenX = layout.botX + relativeX * layout.botWidth  / GYRO_TOUCH_RANGE;
+                    screenY = layout.botY + relativeY * layout.botHeight / GYRO_TOUCH_RANGE;
                 }
                 else // Joystick
                 {
@@ -757,8 +756,8 @@ int main(int argc, char **argv)
                         STICK_TOUCH_RANGE / 2), -(STICK_TOUCH_RANGE / 2)) + STICK_TOUCH_RANGE / 2;
 
                     // Scale the stick position to a position on the touch screen
-                    screenX = layout.getBotX() + relativeX * layout.getBotWidth()  / STICK_TOUCH_RANGE;
-                    screenY = layout.getBotY() + relativeY * layout.getBotHeight() / STICK_TOUCH_RANGE;
+                    screenX = layout.botX + relativeX * layout.botWidth  / STICK_TOUCH_RANGE;
+                    screenY = layout.botY + relativeY * layout.botHeight / STICK_TOUCH_RANGE;
                 }
 
                 // Draw a pointer on the screen to show the current touch position

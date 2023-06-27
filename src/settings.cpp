@@ -20,8 +20,6 @@
 #include "settings.h"
 #include "defines.h"
 
-std::string Settings::filename = "noods.ini";
-
 int Settings::directBoot = 1;
 int Settings::fpsLimiter = 1;
 int Settings::threaded2D = 1;
@@ -32,6 +30,8 @@ std::string Settings::bios7Path = "bios7.bin";
 std::string Settings::firmwarePath = "firmware.bin";
 std::string Settings::gbaBiosPath = "gba_bios.bin";
 std::string Settings::sdImagePath = "sd.img";
+
+std::string Settings::filename = "noods.ini";
 
 std::vector<Setting> Settings::settings =
 {
