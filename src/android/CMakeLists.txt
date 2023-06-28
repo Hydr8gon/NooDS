@@ -22,6 +22,7 @@ add_library(noods-core SHARED
             ../interpreter.cpp
             ../interpreter_alu.cpp
             ../interpreter_branch.cpp
+            ../interpreter_lookup.cpp
             ../interpreter_transfer.cpp
             ../ipc.cpp
             ../memory.cpp

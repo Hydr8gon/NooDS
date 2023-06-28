@@ -31,14 +31,14 @@ void Timers::resetCycles()
 {
     // Adjust timer end cycles for a global cycle reset
     for (int i = 0; i < 4; i++)
-        endCycles[i] -= core->getGlobalCycles();
+        endCycles[i] -= core->globalCycles;
 }
 
 void Timers::overflow(int timer)
 {
     // Ensure the timer is enabled and the end cycle is correct if not in count-up mode
     // The end cycle check ensures that if a timer was changed while running, outdated events are ignored
-    if (!(tmCntH[timer] & BIT(7)) || ((timer == 0 || !(tmCntH[timer] & BIT(2))) && endCycles[timer] != core->getGlobalCycles()))
+    if (!(tmCntH[timer] & BIT(7)) || ((timer == 0 || !(tmCntH[timer] & BIT(2))) && endCycles[timer] != core->globalCycles))
         return;
 
     // Reload the timer and schedule another overflow if not in count-up mode
@@ -46,7 +46,7 @@ void Timers::overflow(int timer)
     if (timer == 0 || !(tmCntH[timer] & BIT(2)))
     {
         core->schedule(Task(&overflowTask[timer], (0x10000 - timers[timer]) << shifts[timer]));
-        endCycles[timer] = core->getGlobalCycles() + ((0x10000 - timers[timer]) << shifts[timer]);
+        endCycles[timer] = core->globalCycles + ((0x10000 - timers[timer]) << shifts[timer]);
     }
 
     // Trigger a timer overflow IRQ if enabled
@@ -54,7 +54,7 @@ void Timers::overflow(int timer)
         core->interpreter[cpu].sendInterrupt(3 + timer);
 
     // Trigger a GBA sound FIFO event
-    if (core->isGbaMode() && timer < 2)
+    if (core->gbaMode && timer < 2)
         core->spu.gbaFifoTimer(timer);
 
     // If the next timer has count-up timing enabled, tick it now
@@ -76,7 +76,7 @@ void Timers::writeTmCntH(int timer, uint16_t mask, uint16_t value)
 
     // Update the current timer value if it's running on the scheduler
     if ((tmCntH[timer] & BIT(7)) && (timer == 0 || !(value & BIT(2))))
-        timers[timer] = 0x10000 - ((endCycles[timer] - core->getGlobalCycles()) >> shifts[timer]);
+        timers[timer] = 0x10000 - ((endCycles[timer] - core->globalCycles) >> shifts[timer]);
 
     // Update the timer shift if the prescaler setting was changed
     // The prescaler allows timers to tick at frequencies of f/1, f/64, f/256, or f/1024 (when not in count-up mode)
@@ -105,7 +105,7 @@ void Timers::writeTmCntH(int timer, uint16_t mask, uint16_t value)
     if (dirty && (tmCntH[timer] & BIT(7)) && (timer == 0 || !(tmCntH[timer] & BIT(2))))
     {
         core->schedule(Task(&overflowTask[timer], (0x10000 - timers[timer]) << shifts[timer]));
-        endCycles[timer] = core->getGlobalCycles() + ((0x10000 - timers[timer]) << shifts[timer]);
+        endCycles[timer] = core->globalCycles + ((0x10000 - timers[timer]) << shifts[timer]);
     }
 }
 
@@ -113,6 +113,6 @@ uint16_t Timers::readTmCntL(int timer)
 {
     // Read the current timer value, updating it if it's running on the scheduler
     if ((tmCntH[timer] & BIT(7)) && (timer == 0 || !(tmCntH[timer] & BIT(2))))
-        timers[timer] = 0x10000 - ((endCycles[timer] - core->getGlobalCycles()) >> shifts[timer]);
+        timers[timer] = 0x10000 - ((endCycles[timer] - core->globalCycles) >> shifts[timer]);
     return timers[timer];
 }

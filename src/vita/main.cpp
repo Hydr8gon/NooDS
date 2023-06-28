@@ -494,7 +494,7 @@ bool saveTypeMenu()
     unsigned int selection = 0;
 
     std::vector<std::string> items;
-    if (core->isGbaMode())
+    if (core->gbaMode)
     {
         // Set up list items for GBA save types
         items.push_back("None");
@@ -532,7 +532,7 @@ bool saveTypeMenu()
                 continue;
 
             // Apply the change
-            if (core->isGbaMode())
+            if (core->gbaMode)
             {
                 switch (selection)
                 {
@@ -785,7 +785,7 @@ int main()
         }
 
         // Draw a new frame if one is ready
-        bool gba = (core->isGbaMode() && ScreenLayout::gbaCrop);
+        bool gba = (core->gbaMode && ScreenLayout::gbaCrop);
         if (core->gpu.getFrame(framebuffer, gba))
         {
             // Update the layout if GBA mode changed
@@ -819,7 +819,7 @@ int main()
             // Draw the FPS counter if enabled
             if (showFpsCounter)
             {
-                std::string fps = std::to_string(core->getFps()) + " FPS";
+                std::string fps = std::to_string(core->fps) + " FPS";
                 vita2d_pgf_draw_text(pgf, 5, 20, COLOR_TEXT1, 1.0f, fps.c_str());
             }
 

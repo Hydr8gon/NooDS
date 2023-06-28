@@ -397,12 +397,12 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooActivity_getShowFpsCou
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooActivity_getFps(JNIEnv *env, jobject obj)
 {
-    return core->getFps();
+    return core->fps;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooActivity_isGbaMode(JNIEnv *env, jobject obj)
 {
-    return core->isGbaMode();
+    return core->gbaMode;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_runFrame(JNIEnv *env, jobject obj)
@@ -466,7 +466,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenFilt
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooRenderer_updateLayout(JNIEnv *env, jobject obj, jint width, jint height)
 {
-    layout.update(width, height, core->isGbaMode());
+    layout.update(width, height, core->gbaMode);
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getTopX(JNIEnv *env, jobject obj)

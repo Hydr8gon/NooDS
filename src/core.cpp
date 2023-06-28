@@ -134,69 +134,12 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id):
 void Core::resetCycles()
 {
     // Reset the global cycle count periodically to prevent overflow
-    for (unsigned int i = 0; i < tasks.size(); i++)
+    for (size_t i = 0; i < tasks.size(); i++)
         tasks[i].cycles -= globalCycles;
-    arm9Cycles -= std::min(globalCycles, arm9Cycles);
-    arm7Cycles -= std::min(globalCycles, arm7Cycles);
-    timers[0].resetCycles();
-    timers[1].resetCycles();
+    for (int i = 0; i < 2; i++)
+        interpreter[i].resetCycles(), timers[i].resetCycles();
     globalCycles -= globalCycles;
     schedule(Task(&resetCyclesTask, 0x7FFFFFFF));
-}
-
-void Core::runGbaFrame()
-{
-    // Run a frame in GBA mode
-    while (running.exchange(true))
-    {
-        // Run the ARM7 until the next scheduled task
-        if (arm7Cycles > globalCycles) globalCycles = arm7Cycles;
-        while (interpreter[1].shouldRun() && tasks[0].cycles > arm7Cycles)
-            arm7Cycles = (globalCycles += interpreter[1].runOpcode());
-
-        // Jump to the next scheduled task
-        globalCycles = tasks[0].cycles;
-
-        // Run all tasks that are scheduled now
-        while (tasks[0].cycles <= globalCycles)
-        {
-            (*tasks[0].task)();
-            tasks.erase(tasks.begin());
-        }
-    }
-}
-
-void Core::runNdsFrame()
-{
-    // Run a frame in NDS mode
-    while (running.exchange(true))
-    {
-        // Run the CPUs until the next scheduled task
-        while (tasks[0].cycles > globalCycles)
-        {
-            // Run the ARM9
-            if (interpreter[0].shouldRun() && globalCycles >= arm9Cycles)
-                arm9Cycles = globalCycles + interpreter[0].runOpcode();
-
-            // Run the ARM7 at half the speed of the ARM9
-            if (interpreter[1].shouldRun() && globalCycles >= arm7Cycles)
-                arm7Cycles = globalCycles + (interpreter[1].runOpcode() << 1);
-
-            // Count cycles up to the next soonest event
-            globalCycles = std::min<uint32_t>((interpreter[0].shouldRun() ? arm9Cycles : -1),
-                (interpreter[1].shouldRun() ? arm7Cycles : -1));
-        }
-
-        // Jump to the next scheduled task
-        globalCycles = tasks[0].cycles;
-
-        // Run all tasks that are scheduled now
-        while (tasks[0].cycles <= globalCycles)
-        {
-            (*tasks[0].task)();
-            tasks.erase(tasks.begin());
-        }
-    }
 }
 
 void Core::schedule(Task task)
@@ -211,7 +154,7 @@ void Core::enterGbaMode()
 {
     // Switch to GBA mode
     gbaMode = true;
-    runFunc = &Core::runGbaFrame;
+    runFunc = &Interpreter::runGbaFrame;
     running.store(false);
 
     // Reset the scheduler and schedule initial tasks for GBA mode
@@ -250,33 +193,4 @@ void Core::endFrame()
     // Schedule WiFi updates only when needed
     if (wifi.shouldSchedule())
         wifi.scheduleInit();
-}
-
-FORCE_INLINE int Interpreter::runOpcode()
-{
-    // Push the next opcode through the pipeline
-    uint32_t opcode = pipeline[0];
-    pipeline[0] = pipeline[1];
-
-    // Execute an instruction
-    if (cpsr & BIT(5)) // THUMB mode
-    {
-        // Fill the pipeline, incrementing the program counter
-        pipeline[1] = core->memory.read<uint16_t>(cpu, *registers[15] += 2);
-
-        return (this->*thumbInstrs[(opcode >> 6) & 0x3FF])(opcode);
-    }
-    else // ARM mode
-    {
-        // Fill the pipeline, incrementing the program counter
-        pipeline[1] = core->memory.read<uint32_t>(cpu, *registers[15] += 4);
-
-        // Evaluate the current opcode's condition
-        switch (condition[((opcode >> 24) & 0xF0) | (cpsr >> 28)])
-        {
-            case 0:  return 1;                      // False
-            case 2:  return handleReserved(opcode); // Reserved
-            default: return (this->*armInstrs[((opcode >> 16) & 0xFF0) | ((opcode >> 4) & 0xF)])(opcode);
-        }
-    }
 }

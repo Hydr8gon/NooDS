@@ -71,7 +71,7 @@ void NooCanvas::draw(wxPaintEvent &event)
     if (frame->getCore())
     {
         // Update the layout if GBA mode changed
-        bool gba = (frame->getCore()->isGbaMode() && ScreenLayout::gbaCrop);
+        bool gba = (frame->getCore()->gbaMode && ScreenLayout::gbaCrop);
         if (gbaMode != gba)
         {
             gbaMode = gba;

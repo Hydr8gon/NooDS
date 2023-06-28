@@ -63,11 +63,11 @@ bool Spi::loadFirmware()
         fread(firmware, sizeof(uint8_t), firmSize, file);
         fclose(file);
 
-        if (core->getId() > 0)
+        if (core->id > 0)
         {
             // Increment the MAC address based on the instance ID
             // This allows instances to be detected as separate systems
-            firmware[0x36] += core->getId();
+            firmware[0x36] += core->id;
 
             // Recalculate the WiFi config CRC
             uint16_t crc = crc16(0, &firmware[0x2C], 0x138);
@@ -90,7 +90,7 @@ bool Spi::loadFirmware()
     // Set some WiFi config data
     firmware[0x2C] = 0x38; // Config length, byte 1
     firmware[0x2D] = 0x01; // Config length, byte 2
-    firmware[0x36] = core->getId(); // MAC address, byte 1
+    firmware[0x36] = core->id; // MAC address, byte 1
     firmware[0x37] = 0x09; // MAC address, byte 2
     firmware[0x38] = 0xBF; // MAC address, byte 3
     firmware[0x39] = 0x12; // MAC address, byte 4
@@ -203,7 +203,7 @@ void Spi::sendMicData(const int16_t* samples, size_t count, size_t rate)
     micBufSize = count;
 
     // Set the cycle start time of the microphone buffer, and the number of cycles per sample
-    micCycles = core->getGlobalCycles();
+    micCycles = core->globalCycles;
     micStep = (60 * 263 * 355 * 6) / rate;
 
     mutex.unlock();
@@ -285,7 +285,7 @@ void Spi::writeSpiData(uint8_t value)
                             // Load a sample based on cycle time since the buffer was sent
                             // The sample is converted to an unsigned 12-bit value
                             mutex.lock();
-                            size_t index = std::min<size_t>((core->getGlobalCycles() - micCycles) / micStep, micBufSize);
+                            size_t index = std::min<size_t>((core->globalCycles - micCycles) / micStep, micBufSize);
                             micSample = (micBufSize > 0) ? ((micBuffer[index] >> 4) + 0x800) : 0;
                             mutex.unlock();
 

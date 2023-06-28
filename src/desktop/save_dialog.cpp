@@ -85,7 +85,7 @@ int SaveDialog::sizeToSelection(int size)
 SaveDialog::SaveDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Change Save Type"), frame(frame)
 {
     // Check the current emulation mode and get the corresponding cartridge
-    gba = frame->getCore()->isGbaMode();
+    gba = frame->getCore()->gbaMode;
     cartridge = gba ? (Cartridge*)&frame->getCore()->cartridgeGba : (Cartridge*)&frame->getCore()->cartridgeNds;
 
     // Determine the height of a button

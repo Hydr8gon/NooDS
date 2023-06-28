@@ -133,7 +133,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                     out[y * 240 + x] = rgb5ToRgb8(buffers.framebuffer[y * 256 + x]);
         }
     }
-    else if (core->isGbaMode())
+    else if (core->gbaMode)
     {
         int offset = (powCnt1 & BIT(15)) ? 0 : (256 * 192); // Display swap
         uint32_t base = 0x6800000 + gbaBlock * 0x20000;

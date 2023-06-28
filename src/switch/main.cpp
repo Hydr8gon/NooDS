@@ -454,7 +454,7 @@ bool saveTypeMenu()
     unsigned int index = 0;
     std::vector<ListItem> items;
 
-    if (core->isGbaMode())
+    if (core->gbaMode)
     {
         // Set up list items for GBA save types
         items.push_back(ListItem("None"));
@@ -493,7 +493,7 @@ bool saveTypeMenu()
                 continue;
 
             // Apply the change
-            if (core->isGbaMode())
+            if (core->gbaMode)
             {
                 switch (index)
                 {
@@ -678,7 +678,7 @@ int main(int argc, char **argv)
         }
 
         // Update the layout if GBA mode changed
-        if (gbaMode != (core->isGbaMode() && ScreenLayout::gbaCrop))
+        if (gbaMode != (core->gbaMode && ScreenLayout::gbaCrop))
         {
             gbaMode = !gbaMode;
             layout.update(1280, 720, gbaMode);
@@ -813,7 +813,7 @@ int main(int argc, char **argv)
 
         // Draw the FPS counter if enabled
         if (showFpsCounter)
-            SwitchUI::drawString(std::to_string(core->getFps()) + " FPS", 5, 0, 48, Color(255, 255, 255));
+            SwitchUI::drawString(std::to_string(core->fps) + " FPS", 5, 0, 48, Color(255, 255, 255));
 
         SwitchUI::update();
 

@@ -46,7 +46,7 @@ bool Cartridge::loadRom(std::string path)
 
     // Choose the save extension based on the instance ID
     // This ensures multiple instances don't write over the same file
-    std::string ext = core->getId() ? (".sv" + std::to_string(core->getId() + 1)) : ".sav";
+    std::string ext = core->id ? (".sv" + std::to_string(core->id + 1)) : ".sav";
 
     // Attempt to load the ROM's save into memory
     saveName = path.substr(0, path.rfind(".")) + ext;

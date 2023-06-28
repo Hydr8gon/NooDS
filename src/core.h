@@ -56,30 +56,22 @@ enum CoreError
 
 struct Task
 {
-    Task(std::function<void()> *task, uint32_t cycles): task(task), cycles(cycles) {}
-
     std::function<void()> *task;
     uint32_t cycles;
 
-    bool operator<(const Task &task) const { return cycles < task.cycles; }
+    Task(std::function<void()> *task, uint32_t cycles):
+        task(task), cycles(cycles) {}
+
+    bool operator<(const Task &task) const
+        { return cycles < task.cycles; }
 };
 
 class Core
 {
     public:
-        Core(std::string ndsPath = "", std::string gbaPath = "", int id = 0);
-
-        void runFrame() { (this->*runFunc)(); }
-
-        bool isGbaMode() { return gbaMode; }
-        int  getId()     { return id;      }
-        int  getFps()    { return fps;     }
-
-        uint32_t getGlobalCycles() { return globalCycles; }
-
-        void schedule(Task task);
-        void enterGbaMode();
-        void endFrame();
+        int id = 0;
+        bool gbaMode = false;
+        int fps = 0;
 
         Bios9 bios9;
         Bios7 bios7;
@@ -103,25 +95,26 @@ class Core
         Timers timers[2];
         Wifi wifi;
 
-    private:
-        void (Core::*runFunc)() = &Core::runNdsFrame;
-        bool gbaMode = false;
-        int id = 0;
-
+        std::atomic<bool> running;
         std::vector<Task> tasks;
         uint32_t globalCycles = 0;
-        uint32_t arm9Cycles = 0, arm7Cycles = 0;
 
-        std::atomic<bool> running;
-        int fps = 0, fpsCount = 0;
+        Core(std::string ndsPath = "", std::string gbaPath = "", int id = 0);
+
+        void runFrame() { (*runFunc)(*this); }
+
+        void schedule(Task task);
+        void enterGbaMode();
+        void endFrame();
+
+    private:
+        void (*runFunc)(Core&) = &Interpreter::runNdsFrame;
         std::chrono::steady_clock::time_point lastFpsTime;
+        int fpsCount = 0;
 
         std::function<void()> resetCyclesTask;
 
         void resetCycles();
-
-        void runNdsFrame();
-        void runGbaFrame();
 };
 
 #endif // CORE_H

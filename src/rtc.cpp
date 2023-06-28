@@ -79,7 +79,7 @@ void Rtc::updateDateTime()
     time->tm_mon++; // The DS starts month values at 1, not 0
 
     // Convert to 12-hour format if enabled
-    if (!(control & BIT(core->isGbaMode() ? 6 : 1)))
+    if (!(control & BIT(core->gbaMode ? 6 : 1)))
         time->tm_hour %= 12;
 
     // Save to the date and time registers in BCD format
@@ -93,7 +93,7 @@ void Rtc::updateDateTime()
 
     // Set the AM/PM bit
     if (time->tm_hour >= 12)
-        dateTime[4] |= BIT(6 << core->isGbaMode());
+        dateTime[4] |= BIT(6 << core->gbaMode);
 }
 
 void Rtc::reset()
@@ -108,7 +108,7 @@ void Rtc::reset()
 
 bool Rtc::readRegister(uint8_t index)
 {
-    if (core->isGbaMode())
+    if (core->gbaMode)
     {
         // Read a bit from a GBA RTC register
         switch (index)
@@ -156,7 +156,7 @@ bool Rtc::readRegister(uint8_t index)
 
 void Rtc::writeRegister(uint8_t index, bool value)
 {
-    if (core->isGbaMode())
+    if (core->gbaMode)
     {
         // Read a bit from a GBA RTC register
         switch (index)

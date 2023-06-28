@@ -227,7 +227,7 @@ void NooFrame::Refresh()
     // Override the refresh function to also update the FPS counter
     wxString label = "NooDS";
     if (id > 0)  label += wxString::Format(" (%d)", id + 1);
-    if (running) label += wxString::Format(" - %d FPS", core->getFps());
+    if (running) label += wxString::Format(" - %d FPS", core->fps);
     SetLabel(label);
 }
 
@@ -499,7 +499,7 @@ void NooFrame::bootFirmware(wxCommandEvent &event)
 
 void NooFrame::trimRom(wxCommandEvent &event)
 {
-    bool gba = core->isGbaMode();
+    bool gba = core->gbaMode;
 
     // Confirm that the current ROM should be trimmed
     wxMessageDialog dialog(this, "Trim the current ROM to save space?", "Trimming ROM", wxYES_NO | wxICON_NONE);

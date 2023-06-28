@@ -35,16 +35,17 @@ class Interpreter
 
         void init();
         void directBoot();
+        void resetCycles();
 
-        int runOpcode();
+        static void runNdsFrame(Core &core);
+        static void runGbaFrame(Core &core);
 
         void halt(int bit)   { halted |=  BIT(bit); }
         void unhalt(int bit) { halted &= ~BIT(bit); }
         void sendInterrupt(int bit);
 
-        bool     shouldRun() { return !halted;        }
-        bool     isThumb()   { return cpsr & BIT(5);  }
-        uint32_t getPC()     { return *registers[15]; }
+        bool     isThumb() { return cpsr & BIT(5);  }
+        uint32_t getPC()   { return *registers[15]; }
 
         void setBios(Bios *bios) { this->bios = bios; }
         int handleHleIrq();
@@ -79,6 +80,7 @@ class Interpreter
         uint32_t spsrFiq = 0, spsrSvc = 0, spsrAbt = 0, spsrIrq = 0, spsrUnd = 0;
 
         uint8_t halted = 0;
+        uint32_t cycles = 0;
 
         uint8_t ime = 0;
         uint32_t ie = 0, irf = 0;
@@ -92,6 +94,7 @@ class Interpreter
 
         std::function<void()> interruptTask;
 
+        int runOpcode();
         void interrupt();
         int exception(uint8_t vector);
         void flushPipeline();

@@ -35,7 +35,7 @@ void Dma::transfer(int channel)
     int gxFifoCount = 0;
 
     // Perform the transfer
-    if (core->isGbaMode() && mode == 6 && (channel == 1 || channel == 2)) // GBA sound DMA
+    if (core->gbaMode && mode == 6 && (channel == 1 || channel == 2)) // GBA sound DMA
     {
         for (unsigned int i = 0; i < 4; i++)
         {
@@ -198,5 +198,5 @@ uint32_t Dma::readDmaCnt(int channel)
 {
     // Read from one of the DMACNT registers
     // The lower half-word isn't readable in GBA mode
-    return dmaCnt[channel] & ~(core->isGbaMode() ? 0x0000FFFF : 0x00000000);
+    return dmaCnt[channel] & ~(core->gbaMode ? 0x0000FFFF : 0x00000000);
 }

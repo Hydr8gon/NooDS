@@ -217,7 +217,7 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
         uint8_t *&write = writeMap7[address >> 12];
         read = write = nullptr;
 
-        if (core->isGbaMode()) // GBA
+        if (core->gbaMode) // GBA
         {
             // Map a 4KB block to the corresponding GBA memory, excluding special cases
             switch (address & 0xFF000000)
@@ -337,7 +337,7 @@ template <typename T> T Memory::readFallback(bool cpu, uint32_t address)
                 return core->cartridgeGba.sramRead(address + 0x4000000);
         }
     }
-    else if (core->isGbaMode()) // GBA
+    else if (core->gbaMode) // GBA
     {
         switch (address & 0xFF000000)
         {
@@ -404,7 +404,7 @@ template <typename T> T Memory::readFallback(bool cpu, uint32_t address)
         return value;
     }
 
-    if (!core->isGbaMode())
+    if (!core->gbaMode)
     {
         LOG("Unmapped ARM%d memory read: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
         return 0;
@@ -459,7 +459,7 @@ template <typename T> void Memory::writeFallback(bool cpu, uint32_t address, T v
                 return;
         }
     }
-    else if (core->isGbaMode()) // GBA
+    else if (core->gbaMode) // GBA
     {
         switch (address & 0xFF000000)
         {
@@ -520,7 +520,7 @@ template <typename T> void Memory::writeFallback(bool cpu, uint32_t address, T v
         return;
     }
 
-    if (!core->isGbaMode())
+    if (!core->gbaMode)
         LOG("Unmapped ARM%d memory write: 0x%X\n", ((cpu == 0) ? 9 : 7), address);
     else
         LOG("Unmapped GBA memory write: 0x%X\n", address);
