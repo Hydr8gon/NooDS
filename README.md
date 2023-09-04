@@ -26,6 +26,9 @@ The easiest way to build for Android would be with [Android Studio](https://deve
 [MSYS2](https://www.msys2.org) is needed to build for Windows. You can install every needed package by running `pacman -S mingw-w64-x86_64-{gcc,pkg-config,wxWidgets,portaudio,jbigkit} make` once you have that set up and running. It might also be a good idea to run `pacman -Syu` to ensure everything is 
 up to date. You can then run `make` in the project root directory to build.
 
+### Contributing
+While I appreciate anyone who wants to contribute, my goal with this project is to challenge myself and not to review code. I feel guilty rejecting a change that someone spent time on, but I also don't feel great accepting changes that I didn't ask for. For this reason, I've decided to stop accepting pull requests. You're of course still free to do anything with the code that's allowed by the license, but if you submit a pull request it will likely be ignored. I hope this is understandable!
+
 ### References
 * [GBATEK](https://problemkaputt.de/gbatek.htm) by Martin Korth - It's where most of my information came from
 * [GBATEK addendum](https://melonds.kuribo64.net/board/thread.php?id=13) by Arisotura - Some information came from here too as GBATEK isn't perfect
