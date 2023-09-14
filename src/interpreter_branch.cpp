@@ -22,71 +22,54 @@
 
 int Interpreter::bx(uint32_t opcode) // BX Rn
 {
-    // Decode the operand
-    uint32_t op0 = *registers[opcode & 0x0000000F];
-
     // Branch to address and switch to THUMB if bit 0 is set
-    if (op0 & BIT(0)) cpsr |= BIT(5);
+    uint32_t op0 = *registers[opcode & 0xF];
+    cpsr |= (op0 & BIT(0)) << 5;
     *registers[15] = op0;
     flushPipeline();
-
     return 3;
 }
 
 int Interpreter::blxReg(uint32_t opcode) // BLX Rn
 {
-    if (cpu == 1) return 1; // ARM9 exclusive
-
-    // Decode the operand
-    uint32_t op0 = *registers[opcode & 0x0000000F];
-
     // Branch to address with link and switch to THUMB if bit 0 is set
-    if (op0 & BIT(0)) cpsr |= BIT(5);
+    if (arm7) return 1; // ARM9 exclusive
+    uint32_t op0 = *registers[opcode & 0xF];
+    cpsr |= (op0 & BIT(0)) << 5;
     *registers[14] = *registers[15] - 4;
     *registers[15] = op0;
     flushPipeline();
-
     return 3;
 }
 
 int Interpreter::b(uint32_t opcode) // B label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(23)) ? 0xFC000000 : 0) | ((opcode & 0x00FFFFFF) << 2);
-
     // Branch to offset
+    int32_t op0 = (int32_t)(opcode << 8) >> 6;
     *registers[15] += op0;
     flushPipeline();
-
     return 3;
 }
 
 int Interpreter::bl(uint32_t opcode) // BL label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(23)) ? 0xFC000000 : 0) | ((opcode & 0x00FFFFFF) << 2);
-
     // Branch to offset with link
+    int32_t op0 = (int32_t)(opcode << 8) >> 6;
     *registers[14] = *registers[15] - 4;
     *registers[15] += op0;
     flushPipeline();
-
     return 3;
 }
 
 int Interpreter::blx(uint32_t opcode) // BLX label
 {
-    if (cpu == 1) return 1; // ARM9 exclusive
-
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(23)) ? 0xFC000000 : 0) | ((opcode & 0x00FFFFFF) << 2) | ((opcode & BIT(24)) >> 23);
-
     // Branch to offset with link and switch to THUMB
+    if (arm7) return 1; // ARM9 exclusive
+    int32_t op0 = ((int32_t)(opcode << 8) >> 6) | ((opcode & BIT(24)) >> 23);
     cpsr |= BIT(5);
     *registers[14] = *registers[15] - 4;
     *registers[15] += op0;
     flushPipeline();
-
     return 3;
 }
 
@@ -99,314 +82,210 @@ int Interpreter::swi(uint32_t opcode) // SWI #i
 
 int Interpreter::bxRegT(uint16_t opcode) // BX Rs
 {
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x0078) >> 3];
-
-    // Branch to address and switch to ARM mode if bit 0 is cleared
-    if (!(op0 & BIT(0))) cpsr &= ~BIT(5);
+    // Branch to address and switch to ARM mode if bit 0 is cleared (THUMB)
+    uint32_t op0 = *registers[(opcode >> 3) & 0xF];
+    cpsr &= ~((~op0 & BIT(0)) << 5);
     *registers[15] = op0;
     flushPipeline();
-
     return 3;
 }
 
 int Interpreter::blxRegT(uint16_t opcode) // BLX Rs
 {
-    if (cpu == 1) return 1; // ARM9 exclusive
-
-    // Decode the operand
-    uint32_t op0 = *registers[(opcode & 0x0078) >> 3];
-
-    // Branch to address with link and switch to ARM mode if bit 0 is cleared
-    if (!(op0 & BIT(0))) cpsr &= ~BIT(5);
+    // Branch to address with link and switch to ARM mode if bit 0 is cleared (THUMB)
+    if (arm7) return 1; // ARM9 exclusive
+    uint32_t op0 = *registers[(opcode >> 3) & 0xF];
+    cpsr &= ~((~op0 & BIT(0)) << 5);
     *registers[14] = *registers[15] - 1;
     *registers[15] = op0;
     flushPipeline();
-
     return 3;
 }
 
 int Interpreter::beqT(uint16_t opcode) // BEQ label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if equal
-    if (cpsr & BIT(30))
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if equal (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (~cpsr & BIT(30)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bneT(uint16_t opcode) // BNE label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if not equal
-    if (!(cpsr & BIT(30)))
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if not equal (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (cpsr & BIT(30)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bcsT(uint16_t opcode) // BCS label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if carry set
-    if (cpsr & BIT(29))
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if carry set (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (~cpsr & BIT(29)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bccT(uint16_t opcode) // BCC label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if carry clear
-    if (!(cpsr & BIT(29)))
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if carry clear (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (cpsr & BIT(29)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bmiT(uint16_t opcode) // BMI label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if negative
-    if (cpsr & BIT(31))
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if negative (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (~cpsr & BIT(31)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bplT(uint16_t opcode) // BPL label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if positive
-    if (!(cpsr & BIT(31)))
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if positive (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (cpsr & BIT(31)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bvsT(uint16_t opcode) // BVS label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if overflow set
-    if (cpsr & BIT(28))
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if overflow set (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (~cpsr & BIT(28)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bvcT(uint16_t opcode) // BVC label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if overflow clear
-    if (!(cpsr & BIT(28)))
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if overflow clear (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (cpsr & BIT(28)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bhiT(uint16_t opcode) // BHI label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if higher
-    if ((cpsr & BIT(29)) && !(cpsr & BIT(30)))
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if higher (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if ((cpsr & 0x60000000) != 0x20000000) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::blsT(uint16_t opcode) // BLS label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if lower or same
-    if (!(cpsr & BIT(29)) || (cpsr & BIT(30)))
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if lower or same (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if ((cpsr & 0x60000000) == 0x20000000) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bgeT(uint16_t opcode) // BGE label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if signed greater or equal
-    if ((cpsr & BIT(31)) == (cpsr & BIT(28)) << 3)
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if signed greater or equal (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if ((cpsr ^ (cpsr << 3)) & BIT(31)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bltT(uint16_t opcode) // BLT label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if signed less than
-    if ((cpsr & BIT(31)) != (cpsr & BIT(28)) << 3)
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if signed less than (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (~(cpsr ^ (cpsr << 3)) & BIT(31)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bgtT(uint16_t opcode) // BGT label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if signed greater than
-    if (!(cpsr & BIT(30)) && (cpsr & BIT(31)) == (cpsr & BIT(28)) << 3)
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if signed greater than (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (((cpsr ^ (cpsr << 3)) | (cpsr << 1)) & BIT(31)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bleT(uint16_t opcode) // BLE label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(7)) ? 0xFFFFFE00 : 0) | ((opcode & 0x00FF) << 1);
-
-    // Branch to offset if signed less or equal
-    if ((cpsr & BIT(30)) || (cpsr & BIT(31)) != (cpsr & BIT(28)) << 3)
-    {
-        *registers[15] += op0;
-        flushPipeline();
-        return 3;
-    }
-
-    return 1;
+    // Branch to offset if signed less or equal (THUMB)
+    int32_t op0 = (int8_t)opcode << 1;
+    if (~((cpsr ^ (cpsr << 3)) | (cpsr << 1)) & BIT(31)) return 1;
+    *registers[15] += op0;
+    flushPipeline();
+    return 3;
 }
 
 int Interpreter::bT(uint16_t opcode) // B label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(10)) ? 0xFFFFF000 : 0) | ((opcode & 0x07FF) << 1);
-
-    // Branch to offset
+    // Branch to offset (THUMB)
+    int32_t op0 = (int16_t)(opcode << 5) >> 4;
     *registers[15] += op0;
     flushPipeline();
-
     return 3;
 }
 
 int Interpreter::blSetupT(uint16_t opcode) // BL/BLX label
 {
-    // Decode the operand
-    uint32_t op0 = ((opcode & BIT(10)) ? 0xFFFFF000 : 0) | ((opcode & 0x07FF) << 1);
-
-    // Set the upper 11 bits of the target address for a long BL/BLX
+    // Set the upper 11 bits of the target address for a long BL/BLX (THUMB)
+    int32_t op0 = (int16_t)(opcode << 5) >> 4;
     *registers[14] = *registers[15] + (op0 << 11);
-
     return 1;
 }
 
 int Interpreter::blOffT(uint16_t opcode) // BL label
 {
-    // Decode the operand
-    uint32_t op0 = (opcode & 0x07FF) << 1;
-
-    // Long branch to offset with link
+    // Long branch to offset with link (THUMB)
+    uint32_t op0 = (opcode & 0x7FF) << 1;
     uint32_t ret = *registers[15] - 1;
     *registers[15] = *registers[14] + op0;
     *registers[14] = ret;
     flushPipeline();
-
     return 3;
 }
 
 int Interpreter::blxOffT(uint16_t opcode) // BLX label
 {
-    if (cpu == 1) return 1; // ARM9 exclusive
-
-    // Decode the operand
-    uint32_t op0 = (opcode & 0x07FF) << 1;
-
-    // Long branch to offset with link and switch to ARM mode
+    // Long branch to offset with link and switch to ARM mode (THUMB)
+    if (arm7) return 1; // ARM9 exclusive
+    uint32_t op0 = (opcode & 0x7FF) << 1;
     cpsr &= ~BIT(5);
     uint32_t ret = *registers[15] - 1;
     *registers[15] = *registers[14] + op0;
     *registers[14] = ret;
     flushPipeline();
-
     return 3;
 }
 
 int Interpreter::swiT(uint16_t opcode) // SWI #i
 {
-    // Software interrupt
+    // Software interrupt (THUMB)
     *registers[15] -= 4;
     return exception(0x08);
 }

@@ -20,10 +20,11 @@
 #include "interpreter.h"
 #include "core.h"
 
-Interpreter::Interpreter(Core *core, bool cpu): core(core), cpu(cpu)
+Interpreter::Interpreter(Core *core, bool arm7): core(core), arm7(arm7)
 {
-    for (int i = 0; i < 16; i++)
-        registers[i] = &registersUsr[i];
+    // Initialize the registers for user mode
+    for (int i = 0; i < 32; i++)
+        registers[i] = &registersUsr[i & 0xF];
 
     // Prepare tasks to be used with the scheduler
     interruptTask = std::bind(&Interpreter::interrupt, this);
@@ -33,10 +34,10 @@ void Interpreter::init()
 {
     // Prepare to boot the BIOS
     setCpsr(0x000000D3); // Supervisor, interrupts off
-    registersUsr[15] = (cpu == 0) ? 0xFFFF0000 : 0x00000000;
+    registersUsr[15] = arm7 ? 0x00000000 : 0xFFFF0000;
     flushPipeline();
 
-    // Reset the registers
+    // Reset the I/O registers
     ime = 0;
     ie = irf = 0;
     postFlg = 0;
@@ -44,28 +45,14 @@ void Interpreter::init()
 
 void Interpreter::directBoot()
 {
-    uint32_t entryAddr;
-
     // Prepare to directly boot an NDS ROM
-    if (cpu == 0) // ARM9
-    {
-        entryAddr = core->memory.read<uint32_t>(0, 0x27FFE24);
-        registersUsr[13] = 0x03002F7C;
-        registersIrq[0]  = 0x03003F80;
-        registersSvc[0]  = 0x03003FC0;
-    }
-    else // ARM7
-    {
-        entryAddr = core->memory.read<uint32_t>(0, 0x27FFE34);
-        registersUsr[13] = 0x0380FD80;
-        registersIrq[0]  = 0x0380FF80;
-        registersSvc[0]  = 0x0380FFC0;
-    }
-
     setCpsr(0x000000DF); // System, interrupts off
-    registersUsr[12] = entryAddr;
-    registersUsr[14] = entryAddr;
-    registersUsr[15] = entryAddr;
+    registersUsr[15] = core->memory.read<uint32_t>(arm7, 0x27FFE24 + (arm7 << 4));
+    registersUsr[14] = registersUsr[15];
+    registersUsr[12] = registersUsr[15];
+    registersUsr[13] = arm7 ? 0x0380FD80 : 0x03002F7C;
+    registersIrq[0]  = arm7 ? 0x0380FF80 : 0x03003F80;
+    registersSvc[0]  = arm7 ? 0x0380FFC0 : 0x03003FC0;
     flushPipeline();
 }
 
@@ -95,8 +82,7 @@ void Interpreter::runNdsFrame(Core &core)
                 arm7.cycles = core.globalCycles + (arm7.runOpcode() << 1);
 
             // Count cycles up to the next soonest event
-            core.globalCycles = std::min<uint32_t>((arm9.halted ? -1 : arm9.cycles),
-                (arm7.halted ? -1 : arm7.cycles));
+            core.globalCycles = std::min<uint32_t>((arm9.halted ? -1 : arm9.cycles), (arm7.halted ? -1 : arm7.cycles));
         }
 
         // Jump to the next scheduled task
@@ -145,16 +131,17 @@ FORCE_INLINE int Interpreter::runOpcode()
     if (cpsr & BIT(5)) // THUMB mode
     {
         // Fill the pipeline, incrementing the program counter
-        pipeline[1] = core->memory.read<uint16_t>(cpu, *registers[15] += 2);
+        pipeline[1] = core->memory.read<uint16_t>(arm7, *registers[15] += 2);
 
+        // Execute a THUMB instruction
         return (this->*thumbInstrs[(opcode >> 6) & 0x3FF])(opcode);
     }
     else // ARM mode
     {
         // Fill the pipeline, incrementing the program counter
-        pipeline[1] = core->memory.read<uint32_t>(cpu, *registers[15] += 4);
+        pipeline[1] = core->memory.read<uint32_t>(arm7, *registers[15] += 4);
 
-        // Evaluate the current opcode's condition
+        // Execute an ARM instruction based on its condition
         switch (condition[((opcode >> 24) & 0xF0) | (cpsr >> 28)])
         {
             case 0:  return 1;                      // False
@@ -174,8 +161,8 @@ void Interpreter::sendInterrupt(int bit)
     if (ie & irf)
     {
         if (ime && !(cpsr & BIT(7)))
-            core->schedule(Task(&interruptTask, (cpu == 1 && !core->gbaMode) ? 2 : 1));
-        else if (ime || cpu == 1)
+            core->schedule(Task(&interruptTask, (arm7 && !core->gbaMode) + 1));
+        else if (ime || arm7)
             halted &= ~BIT(0);
     }
 }
@@ -193,14 +180,14 @@ void Interpreter::interrupt()
 int Interpreter::exception(uint8_t vector)
 {
     // Forward the call to HLE BIOS if enabled, unless on ARM9 with the exception address changed
-    if (bios && (cpu || core->cp15.getExceptionAddr()))
-        return bios->execute(vector, cpu, registers);
+    if (bios && (arm7 || core->cp15.getExceptionAddr()))
+        return bios->execute(vector, arm7, registers);
 
     // Switch the CPU mode, save the return address, and jump to the exception vector
-    static uint8_t modes[] = { 0x13, 0x1B, 0x13, 0x17, 0x17, 0x13, 0x12, 0x11 };
+    static const uint8_t modes[] = { 0x13, 0x1B, 0x13, 0x17, 0x17, 0x13, 0x12, 0x11 };
     setCpsr((cpsr & ~0x3F) | BIT(7) | modes[vector >> 2], true); // ARM, interrupts off, new mode
-    *registers[14] = *registers[15] + ((*spsr & BIT(5)) ? 2 : 0);
-    *registers[15] = (cpu ? 0 : core->cp15.getExceptionAddr()) + vector;
+    *registers[14] = *registers[15] + ((*spsr & BIT(5)) >> 4);
+    *registers[15] = (arm7 ? 0 : core->cp15.getExceptionAddr()) + vector;
     flushPipeline();
     return 3;
 }
@@ -210,15 +197,15 @@ void Interpreter::flushPipeline()
     // Adjust the program counter and refill the pipeline after a jump
     if (cpsr & BIT(5)) // THUMB mode
     {
-        *registers[15] = (*registers[15] & ~1) + 2;
-        pipeline[0] = core->memory.read<uint16_t>(cpu, *registers[15] - 2);
-        pipeline[1] = core->memory.read<uint16_t>(cpu, *registers[15]);
+        *registers[15] = (*registers[15] & ~0x1) + 2;
+        pipeline[0] = core->memory.read<uint16_t>(arm7, *registers[15] - 2);
+        pipeline[1] = core->memory.read<uint16_t>(arm7, *registers[15]);
     }
     else // ARM mode
     {
-        *registers[15] = (*registers[15] & ~3) + 4;
-        pipeline[0] = core->memory.read<uint32_t>(cpu, *registers[15] - 4);
-        pipeline[1] = core->memory.read<uint32_t>(cpu, *registers[15]);
+        *registers[15] = (*registers[15] & ~0x3) + 4;
+        pipeline[0] = core->memory.read<uint32_t>(arm7, *registers[15] - 4);
+        pipeline[1] = core->memory.read<uint32_t>(arm7, *registers[15]);
     }
 }
 
@@ -297,7 +284,7 @@ void Interpreter::setCpsr(uint32_t value, bool save)
                 break;
 
             default:
-                LOG("Unknown ARM%d CPU mode: 0x%X\n", ((cpu == 0) ? 9 : 7), value & 0x1F);
+                LOG("Unknown ARM%d CPU mode: 0x%X\n", arm7 ? 7 : 9, value & 0x1F);
                 break;
         }
     }
@@ -308,13 +295,13 @@ void Interpreter::setCpsr(uint32_t value, bool save)
 
     // Trigger an interrupt if the conditions are met
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
-        core->schedule(Task(&interruptTask, (cpu == 1 && !core->gbaMode) ? 2 : 1));
+        core->schedule(Task(&interruptTask, (arm7 && !core->gbaMode) ? 2 : 1));
 }
 
 int Interpreter::handleReserved(uint32_t opcode)
 {
     // The ARM9-exclusive BLX instruction uses the reserved condition code, so let it run
-    if ((opcode & 0x0E000000) == 0x0A000000)
+    if ((opcode & 0xE000000) == 0xA000000)
         return blx(opcode); // BLX label
 
     // If the special HLE BIOS opcode was jumped to, return from an HLE interrupt
@@ -324,18 +311,20 @@ int Interpreter::handleReserved(uint32_t opcode)
     // If a DLDI function was jumped to, HLE it and return
     if (core->dldi.isPatched())
     {
+        uint32_t **r = registers;
         switch (opcode)
         {
-            case DLDI_START:  *registers[0] = core->dldi.startup();                                                      break;
-            case DLDI_INSERT: *registers[0] = core->dldi.isInserted();                                                   break;
-            case DLDI_READ:   *registers[0] = core->dldi.readSectors(cpu, *registers[0], *registers[1], *registers[2]);  break;
-            case DLDI_WRITE:  *registers[0] = core->dldi.writeSectors(cpu, *registers[0], *registers[1], *registers[2]); break;
-            case DLDI_CLEAR:  *registers[0] = core->dldi.clearStatus();                                                  break;
-            case DLDI_STOP:   *registers[0] = core->dldi.shutdown();                                                     break;
+            case DLDI_START:  *r[0] = core->dldi.startup();                               break;
+            case DLDI_INSERT: *r[0] = core->dldi.isInserted();                            break;
+            case DLDI_READ:   *r[0] = core->dldi.readSectors(arm7, *r[0], *r[1], *r[2]);  break;
+            case DLDI_WRITE:  *r[0] = core->dldi.writeSectors(arm7, *r[0], *r[1], *r[2]); break;
+            case DLDI_CLEAR:  *r[0] = core->dldi.clearStatus();                           break;
+            case DLDI_STOP:   *r[0] = core->dldi.shutdown();                              break;
         }
         return bx(14);
     }
 
+    // Treat anything else as an unknown opcode
     return unkArm(opcode);
 }
 
@@ -347,8 +336,8 @@ int Interpreter::handleHleIrq()
     stmdbW((13 << 16) | BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(12) | BIT(14));
 
     // Set the return address to the special HLE BIOS opcode amd jump to the interrupt handler
-    *registers[14] = cpu ? 0x00000000 : 0xFFFF0000;
-    *registers[15] = core->memory.read<uint32_t>(cpu, cpu ? 0x3FFFFFC : (core->cp15.getDtcmAddr() + 0x3FFC));
+    *registers[14] = arm7 ? 0x00000000 : 0xFFFF0000;
+    *registers[15] = core->memory.read<uint32_t>(arm7, arm7 ? 0x3FFFFFC : (core->cp15.getDtcmAddr() + 0x3FFC));
     flushPipeline();
     return 3;
 }
@@ -357,7 +346,7 @@ int Interpreter::finishHleIrq()
 {
     // Update the wait flags if in the middle of an HLE IntrWait function
     if (bios->shouldCheck())
-        bios->checkWaitFlags(cpu);
+        bios->checkWaitFlags(arm7);
 
     // Pop registers from the stack, jump to the return address, and restore the mode
     ldmiaW((13 << 16) | BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(12) | BIT(14));
@@ -370,14 +359,14 @@ int Interpreter::finishHleIrq()
 int Interpreter::unkArm(uint32_t opcode)
 {
     // Handle an unknown ARM opcode
-    LOG("Unknown ARM%d ARM opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
+    LOG("Unknown ARM%d ARM opcode: 0x%X\n", arm7 ? 7 : 9, opcode);
     return 1;
 }
 
 int Interpreter::unkThumb(uint16_t opcode)
 {
     // Handle an unknown THUMB opcode
-    LOG("Unknown ARM%d THUMB opcode: 0x%X\n", ((cpu == 0) ? 9 : 7), opcode);
+    LOG("Unknown ARM%d THUMB opcode: 0x%X\n", arm7 ? 7 : 9, opcode);
     return 1;
 }
 
@@ -388,18 +377,18 @@ void Interpreter::writeIme(uint8_t value)
 
     // Trigger an interrupt if the conditions are met
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
-        core->schedule(Task(&interruptTask, (cpu == 1 && !core->gbaMode) ? 2 : 1));
+        core->schedule(Task(&interruptTask, (arm7 && !core->gbaMode) ? 2 : 1));
 }
 
 void Interpreter::writeIe(uint32_t mask, uint32_t value)
 {
     // Write to the IE register
-    mask &= ((cpu == 0) ? 0x003F3F7F : (core->gbaMode ? 0x3FFF : 0x01FF3FFF));
+    mask &= (arm7 ? (core->gbaMode ? 0x3FFF : 0x01FF3FFF) : 0x003F3F7F);
     ie = (ie & ~mask) | (value & mask);
 
     // Trigger an interrupt if the conditions are met
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
-        core->schedule(Task(&interruptTask, (cpu == 1 && !core->gbaMode) ? 2 : 1));
+        core->schedule(Task(&interruptTask, (arm7 && !core->gbaMode) ? 2 : 1));
 }
 
 void Interpreter::writeIrf(uint32_t mask, uint32_t value)
@@ -415,5 +404,5 @@ void Interpreter::writePostFlg(uint8_t value)
     // The first bit can be set, but never cleared
     // For some reason, the second bit is writable on the ARM9
     postFlg |= value & 0x01;
-    if (cpu == 0) postFlg = (postFlg & ~0x02) | (value & 0x02);
+    if (!arm7) postFlg = (postFlg & ~0x02) | (value & 0x02);
 }

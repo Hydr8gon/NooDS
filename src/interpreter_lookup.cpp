@@ -23,10 +23,10 @@
 // Uses bits 27-20 and 7-4 of an opcode to find the appropriate instruction
 int (Interpreter::*Interpreter::armInstrs[])(uint32_t) =
 {
-    &Interpreter::andLli,     &Interpreter::andLlr,     &Interpreter::andLri,     &Interpreter::andLrr,     // 0x000-0x003
-    &Interpreter::andAri,     &Interpreter::andArr,     &Interpreter::andRri,     &Interpreter::andRrr,     // 0x004-0x007
-    &Interpreter::andLli,     &Interpreter::mul,        &Interpreter::andLri,     &Interpreter::strhPtrm,   // 0x008-0x00B
-    &Interpreter::andAri,     &Interpreter::ldrdPtrm,   &Interpreter::andRri,     &Interpreter::strdPtrm,   // 0x00C-0x00F
+    &Interpreter::_andLli,    &Interpreter::_andLlr,    &Interpreter::_andLri,    &Interpreter::_andLrr,    // 0x000-0x003
+    &Interpreter::_andAri,    &Interpreter::_andArr,    &Interpreter::_andRri,    &Interpreter::_andRrr,    // 0x004-0x007
+    &Interpreter::_andLli,    &Interpreter::mul,        &Interpreter::_andLri,    &Interpreter::strhPtrm,   // 0x008-0x00B
+    &Interpreter::_andAri,    &Interpreter::ldrdPtrm,   &Interpreter::_andRri,    &Interpreter::strdPtrm,   // 0x00C-0x00F
     &Interpreter::andsLli,    &Interpreter::andsLlr,    &Interpreter::andsLri,    &Interpreter::andsLrr,    // 0x010-0x013
     &Interpreter::andsAri,    &Interpreter::andsArr,    &Interpreter::andsRri,    &Interpreter::andsRrr,    // 0x014-0x017
     &Interpreter::andsLli,    &Interpreter::muls,       &Interpreter::andsLri,    &Interpreter::ldrhPtrm,   // 0x018-0x01B
@@ -151,10 +151,10 @@ int (Interpreter::*Interpreter::armInstrs[])(uint32_t) =
     &Interpreter::mvnsAri,    &Interpreter::mvnsArr,    &Interpreter::mvnsRri,    &Interpreter::mvnsRrr,    // 0x1F4-0x1F7
     &Interpreter::mvnsLli,    &Interpreter::unkArm,     &Interpreter::mvnsLri,    &Interpreter::ldrhPrip,   // 0x1F8-0x1FB
     &Interpreter::mvnsAri,    &Interpreter::ldrsbPrip,  &Interpreter::mvnsRri,    &Interpreter::ldrshPrip,  // 0x1FC-0x1FF
-    &Interpreter::andImm,     &Interpreter::andImm,     &Interpreter::andImm,     &Interpreter::andImm,     // 0x200-0x203
-    &Interpreter::andImm,     &Interpreter::andImm,     &Interpreter::andImm,     &Interpreter::andImm,     // 0x204-0x207
-    &Interpreter::andImm,     &Interpreter::andImm,     &Interpreter::andImm,     &Interpreter::andImm,     // 0x208-0x20B
-    &Interpreter::andImm,     &Interpreter::andImm,     &Interpreter::andImm,     &Interpreter::andImm,     // 0x20C-0x20F
+    &Interpreter::_andImm,    &Interpreter::_andImm,    &Interpreter::_andImm,    &Interpreter::_andImm,    // 0x200-0x203
+    &Interpreter::_andImm,    &Interpreter::_andImm,    &Interpreter::_andImm,    &Interpreter::_andImm,    // 0x204-0x207
+    &Interpreter::_andImm,    &Interpreter::_andImm,    &Interpreter::_andImm,    &Interpreter::_andImm,    // 0x208-0x20B
+    &Interpreter::_andImm,    &Interpreter::_andImm,    &Interpreter::_andImm,    &Interpreter::_andImm,    // 0x20C-0x20F
     &Interpreter::andsImm,    &Interpreter::andsImm,    &Interpreter::andsImm,    &Interpreter::andsImm,    // 0x210-0x213
     &Interpreter::andsImm,    &Interpreter::andsImm,    &Interpreter::andsImm,    &Interpreter::andsImm,    // 0x214-0x217
     &Interpreter::andsImm,    &Interpreter::andsImm,    &Interpreter::andsImm,    &Interpreter::andsImm,    // 0x218-0x21B
@@ -1330,4 +1330,25 @@ const uint8_t Interpreter::condition[] =
     0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, // LE
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // AL
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2  // Reserved
+};
+
+// Precomputed bit counts corresponding to index
+const uint8_t Interpreter::bitCount[] =
+{
+    0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+    1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+    2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+    3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+    4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8
 };

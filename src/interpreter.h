@@ -31,7 +31,7 @@ class Bios;
 class Interpreter
 {
     public:
-        Interpreter(Core *core, bool cpu);
+        Interpreter(Core *core, bool arm7);
 
         void init();
         void directBoot();
@@ -62,13 +62,12 @@ class Interpreter
 
     private:
         Core *core;
-        bool cpu;
+        bool arm7;
 
         Bios *bios = nullptr;
-
         uint32_t pipeline[2] = {};
 
-        uint32_t *registers[16]   = {};
+        uint32_t *registers[32]   = {};
         uint32_t registersUsr[16] = {};
         uint32_t registersFiq[7]  = {};
         uint32_t registersSvc[2]  = {};
@@ -104,6 +103,8 @@ class Interpreter
 
         int unkArm(uint32_t opcode);
         int unkThumb(uint16_t opcode);
+
+        int32_t clampQ(int64_t value);
 
         uint32_t lli(uint32_t opcode);
         uint32_t llr(uint32_t opcode);
@@ -153,15 +154,15 @@ class Interpreter
         int bics(uint32_t opcode, uint32_t op2);
         int mvns(uint32_t opcode, uint32_t op2);
 
-        int andLli(uint32_t opcode);
-        int andLlr(uint32_t opcode);
-        int andLri(uint32_t opcode);
-        int andLrr(uint32_t opcode);
-        int andAri(uint32_t opcode);
-        int andArr(uint32_t opcode);
-        int andRri(uint32_t opcode);
-        int andRrr(uint32_t opcode);
-        int andImm(uint32_t opcode);
+        int _andLli(uint32_t opcode);
+        int _andLlr(uint32_t opcode);
+        int _andLri(uint32_t opcode);
+        int _andLrr(uint32_t opcode);
+        int _andAri(uint32_t opcode);
+        int _andArr(uint32_t opcode);
+        int _andRri(uint32_t opcode);
+        int _andRrr(uint32_t opcode);
+        int _andImm(uint32_t opcode);
         int andsLli(uint32_t opcode);
         int andsLlr(uint32_t opcode);
         int andsLri(uint32_t opcode);
