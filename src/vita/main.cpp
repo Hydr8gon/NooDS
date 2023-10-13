@@ -21,6 +21,7 @@
 #include <cstring>
 #include <thread>
 
+#include <psp2/appmgr.h>
 #include <psp2/audioout.h>
 #include <psp2/ctrl.h>
 #include <psp2/display.h>
@@ -718,20 +719,14 @@ int main()
     // Initialize audio output
     audioPort = sceAudioOutOpenPort(SCE_AUDIO_OUT_PORT_TYPE_BGM, 1024, 48000, SCE_AUDIO_OUT_MODE_STEREO);
 
-    if (FILE *args = fopen("ux0:/data/noods/args.txt", "r"))
+    // Get the launch parameters
+    char params[1024], *path;
+    sceAppMgrGetAppParam(params);
+
+    if (strstr(params, "psgm:play") && (path = strstr(params, "&param=")))
     {
-        // If an arguments file exists, read and delete it
-        char line[512];
-        fgets(line, sizeof(line), args);
-        fclose(args);
-        remove("ux0:/data/noods/args.txt");
-
-        // Remove trailing whitespace
-        std::string path = line;
-        path = path.substr(0, path.length() - 1);
-
         // Open the file browser if a ROM can't be loaded from arguments
-        if (setPath(path) < 2)
+        if (setPath(path + 7) < 2)
             fileBrowser();
     }
     else
