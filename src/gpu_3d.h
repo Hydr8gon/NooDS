@@ -183,6 +183,7 @@ class Gpu3D
         Vertex vertices1[6144], vertices2[6144];
         Vertex *verticesIn = vertices1, *verticesOut = vertices2;
         int vertexCountIn = 0, vertexCountOut = 0;
+        int processCount = 0;
 
         _Polygon polygons1[2048], polygons2[2048];
         _Polygon *polygonsIn = polygons1, *polygonsOut = polygons2;
@@ -208,8 +209,8 @@ class Gpu3D
         uint32_t lightColor[4] = {};
         uint8_t shininess[128] = {};
 
-        uint16_t viewportX = 0, viewportY = 0;
-        uint16_t viewportWidth = 256, viewportHeight = 192;
+        uint16_t viewport[4] = { 0, 0, 256, 192 };
+        uint16_t viewportNext[4] = { 0, 0, 256, 192 };
 
         uint32_t gxFifo = 0x00000000;
         uint32_t gxStat = 0x04000000;
@@ -226,6 +227,7 @@ class Gpu3D
         static bool clipPolygon(Vertex *unclipped, Vertex *clipped, int *size);
 
         void runCommand();
+        void processVertices();
 
         void addVertex();
         void addPolygon();

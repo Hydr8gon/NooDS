@@ -292,21 +292,21 @@ void Gpu3D::runCommand()
     }
 }
 
-void Gpu3D::swapBuffers()
+void Gpu3D::processVertices()
 {
     // Scale the viewport based on the high-res 3D setting
     bool resShift = Settings::highRes3D;
-    uint16_t x = viewportX      << resShift;
-    uint16_t y = viewportY      << resShift;
-    uint16_t w = viewportWidth  << resShift;
-    uint16_t h = viewportHeight << resShift;
+    uint16_t x = viewport[0] << resShift;
+    uint16_t y = viewport[1] << resShift;
+    uint16_t w = viewport[2] << resShift;
+    uint16_t h = viewport[3] << resShift;
     uint16_t xMask = (0x200 << resShift) - 1;
     uint16_t yMask = (0x100 << resShift) - 1;
 
-    // Normalize and scale the vertices to the viewport
+    // Normalize and scale new vertices to the viewport
     // X coordinates are 9-bit and Y coordinates are 8-bit; invalid viewports can cause wraparound
     // Z coordinates (and depth values in general) are 24-bit
-    for (int i = 0; i < vertexCountIn; i++)
+    for (int i = processCount; i < vertexCountIn; i++)
     {
         if (verticesIn[i].w != 0)
         {
@@ -315,6 +315,17 @@ void Gpu3D::swapBuffers()
             verticesIn[i].z = (((((int64_t)verticesIn[i].z << 14) / verticesIn[i].w) + 0x3FFF) << 9);
         }
     }
+
+    // Count vertices as processed and update the viewport
+    processCount = vertexCountIn;
+    memcpy(viewport, viewportNext, sizeof(viewport));
+}
+
+void Gpu3D::swapBuffers()
+{
+    // Process final vertices and reset the count
+    processVertices();
+    processCount = 0;
 
     // Determine each polygon's W-shift value to be used for reducing (or expanding) W values to 16 bits
     for (int i = 0; i < polygonCountIn; i++)
@@ -1357,7 +1368,8 @@ void Gpu3D::beginVtxsCmd(uint32_t param)
     if (vertexCount < 3 + (polygonType & 1))
         vertexCountIn -= vertexCount;
 
-    // Begin a new vertex list
+    // Process the previous vertex list and start a new one
+    processVertices();
     polygonType = param & 0x00000003;
     vertexCount = 0;
     clockwise = false;
@@ -1387,11 +1399,11 @@ void Gpu3D::swapBuffersCmd(uint32_t param)
 
 void Gpu3D::viewportCmd(uint32_t param)
 {
-    // Set the viewport dimensions
-    viewportX      =         ((param & 0x000000FF) >>  0)                   & 0x1FF;
-    viewportY      =  (191 - ((param & 0xFF000000) >> 24))                  &  0xFF;
-    viewportWidth  =        (((param & 0x00FF0000) >> 16)  - viewportX + 1) & 0x1FF;
-    viewportHeight = ((191 - ((param & 0x0000FF00) >>  8)) - viewportY + 1) &  0xFF;
+    // Set the viewport dimensions to apply for the next vertex list
+    viewportNext[0] = ((param >> 0) & 0xFF) & 0x1FF;
+    viewportNext[1] = (191 - ((param >> 24) & 0xFF)) & 0xFF;
+    viewportNext[2] = (((param >> 16) & 0xFF) - viewportNext[0] + 1) & 0x1FF;
+    viewportNext[3] = ((191 - ((param >> 8) & 0xFF)) - viewportNext[1] + 1) & 0xFF;
 }
 
 void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
