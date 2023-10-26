@@ -28,22 +28,22 @@ import android.widget.Button;
 
 public class NooButton extends Button
 {
-    private int id;
+    private int[] ids;
 
-    public NooButton(Context context, int resId, int btnId, int x, int y, int width, int height)
+    public NooButton(Context context, int resId, int[] btnIds, int x, int y, int width, int height)
     {
         super(context);
 
         // Set the button parameters
         setBackgroundResource(resId);
-        id = btnId;
+        ids = btnIds;
         setX(x);
         setY(y);
         setLayoutParams(new LayoutParams(width, height));
         setAlpha(0.5f);
 
         // Handle button touches
-        if (id >= 4 && id <= 7) // D-pad
+        if (ids.length >= 4) // D-pad
         {
             setOnTouchListener(new Button.OnTouchListener()
             {
@@ -54,45 +54,37 @@ public class NooButton extends Button
                     {
                         case MotionEvent.ACTION_DOWN:
                         case MotionEvent.ACTION_MOVE:
-                        {
                             // Press the right key if in range, otherwise release
                             if (event.getX() > view.getWidth() * 2 / 3)
-                                pressKey(4);
+                                pressKey(ids[0]);
                             else
-                                releaseKey(4);
+                                releaseKey(ids[0]);
 
                             // Press the left key if in range, otherwise release
                             if (event.getX() < view.getWidth() * 1 / 3)
-                                pressKey(5);
+                                pressKey(ids[1]);
                             else
-                                releaseKey(5);
+                                releaseKey(ids[1]);
 
                             // Press the up key if in range, otherwise release
                             if (event.getY() < view.getHeight() * 1 / 3)
-                                pressKey(6);
+                                pressKey(ids[2]);
                             else
-                                releaseKey(6);
+                                releaseKey(ids[2]);
 
                             // Press the down key if in range, otherwise release
                             if (event.getY() > view.getHeight() * 2 / 3)
-                                pressKey(7);
+                                pressKey(ids[3]);
                             else
-                                releaseKey(7);
-
+                                releaseKey(ids[3]);
                             break;
-                        }
 
                         case MotionEvent.ACTION_UP:
-                        {
                             // Release all directional keys
-                            releaseKey(4);
-                            releaseKey(5);
-                            releaseKey(6);
-                            releaseKey(7);
+                            for (int i = 0; i < 4; i++)
+                                releaseKey(ids[i]);
                             break;
-                        }
                     }
-
                     return true;
                 }
             });
@@ -107,10 +99,9 @@ public class NooButton extends Button
                     // Press or release the key specified by the ID
                     switch (event.getAction())
                     {
-                        case MotionEvent.ACTION_DOWN: pressKey(id); break;
-                        case MotionEvent.ACTION_UP: releaseKey(id); break;
+                        case MotionEvent.ACTION_DOWN: pressKey(ids[0]); break;
+                        case MotionEvent.ACTION_UP: releaseKey(ids[0]); break;
                     }
-
                     return true;
                 }
             });
