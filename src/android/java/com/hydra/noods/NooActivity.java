@@ -101,12 +101,18 @@ public class NooActivity extends AppCompatActivity
         final int h = getResources().getDisplayMetrics().heightPixels;
 
         // Create the buttons and place them based on the display information
-        buttons[0] = new NooButton(this, R.drawable.abxy, new int[] {0, 11, 10, 1}, w - (int)(d * 170), h - (int)(d * 190), (int)(d * 165), (int)(d * 165));
-        buttons[1] = new NooButton(this, R.drawable.dpad, new int[] {4, 5, 6, 7}, (int)(d * 5), h - (int)(d * 174), (int)(d * 132), (int)(d * 132));
-        buttons[2] = new NooButton(this, R.drawable.start, new int[] {3}, w / 2 + (int)(d * 16), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
-        buttons[3] = new NooButton(this, R.drawable.select, new int[] {2}, w / 2 - (int)(d * 49), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
-        buttons[4] = new NooButton(this, R.drawable.l, new int[] {9}, (int)(d * 5), h - (int)(d * 400), (int)(d * 110), (int)(d * 44));
-        buttons[5] = new NooButton(this, R.drawable.r, new int[] {8}, w - (int)(d * 115), h - (int)(d * 400), (int)(d * 110), (int)(d * 44));
+        buttons[0] = new NooButton(this, NooButton.resAbxy, new int[] {0, 11, 10, 1},
+            w - (int)(d * 170), h - (int)(d * 190), (int)(d * 165), (int)(d * 165));
+        buttons[1] = new NooButton(this, NooButton.resDpad, new int[] {4, 5, 6, 7},
+            (int)(d * 5), h - (int)(d * 174), (int)(d * 132), (int)(d * 132));
+        buttons[2] = new NooButton(this, new int[] {R.drawable.start, R.drawable.start_pressed},
+            new int[] {3}, w / 2 + (int)(d * 16), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
+        buttons[3] = new NooButton(this, new int[] {R.drawable.select, R.drawable.select_pressed},
+            new int[] {2}, w / 2 - (int)(d * 49), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
+        buttons[4] = new NooButton(this, new int[] {R.drawable.l, R.drawable.l_pressed},
+            new int[] {9}, (int)(d * 5), h - (int)(d * 400), (int)(d * 110), (int)(d * 44));
+        buttons[5] = new NooButton(this, new int[] {R.drawable.r, R.drawable.r_pressed},
+            new int[] {8}, w - (int)(d * 115), h - (int)(d * 400), (int)(d * 110), (int)(d * 44));
 
         // Add the buttons to the layout
         for (int i = 0; i < 6; i++)
