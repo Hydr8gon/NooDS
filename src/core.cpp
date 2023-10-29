@@ -24,29 +24,11 @@
 #include "core.h"
 #include "settings.h"
 
-Core::Core(std::string ndsPath, std::string gbaPath, int id):
-    id(id),
-    bios9(this),
-    bios7(this),
-    cartridgeNds(this),
-    cartridgeGba(this),
-    cp15(this),
-    divSqrt(this),
-    dldi(this),
-    dma { Dma(this, 0), Dma(this, 1) },
-    gpu(this),
-    gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) },
-    gpu3D(this),
-    gpu3DRenderer(this),
-    input(this),
-    interpreter { Interpreter(this, 0), Interpreter(this, 1) },
-    ipc(this),
-    memory(this),
-    rtc(this),
-    spi(this),
-    spu(this),
-    timers { Timers(this, 0), Timers(this, 1) },
-    wifi(this)
+Core::Core(std::string ndsPath, std::string gbaPath, int id, std::string ndsSave, std::string gbaSave):
+    id(id), bios9(this), bios7(this), cartridgeNds(this), cartridgeGba(this), cp15(this), divSqrt(this), dldi(this),
+    dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) }, gpu3D(this),
+    gpu3DRenderer(this), input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this),
+    memory(this), rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
 {
     // Try to load the ARM9 BIOS; require it when not direct booting
     if (!memory.loadBios9() && (!Settings::directBoot || (ndsPath == "" && gbaPath == "")))
@@ -79,7 +61,7 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id):
     if (gbaPath != "")
     {
         // Load a GBA ROM
-        if (!cartridgeGba.loadRom(gbaPath))
+        if (!cartridgeGba.loadRom(gbaPath, gbaSave))
             throw ERROR_ROM;
 
         // Enable GBA mode right away if direct boot is enabled
@@ -93,7 +75,7 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id):
     if (ndsPath != "")
     {
         // Load an NDS ROM
-        if (!cartridgeNds.loadRom(ndsPath))
+        if (!cartridgeNds.loadRom(ndsPath, ndsSave))
             throw ERROR_ROM;
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled

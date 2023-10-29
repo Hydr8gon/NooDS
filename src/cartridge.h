@@ -24,6 +24,7 @@
 #include <functional>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "defines.h"
 
@@ -44,7 +45,7 @@ class Cartridge
         Cartridge(Core *core): core(core) {}
         ~Cartridge();
 
-        virtual bool loadRom(std::string path);
+        virtual bool loadRom(std::string romPath, std::string savePath);
         void writeSave();
 
         void trimRom();
@@ -58,10 +59,11 @@ class Cartridge
 
         FILE *romFile = nullptr;
         uint8_t *rom = nullptr, *save = nullptr;
-        int romSize = 0, saveSize = 0;
+        int romSize = 0, saveSize = -1;
         bool saveDirty = false;
         std::mutex mutex;
 
+        std::vector<uint32_t> saveSizes;
         uint32_t romMask = 0;
 
         void loadRomSection(size_t offset, size_t size);
@@ -75,7 +77,7 @@ class CartridgeNds: public Cartridge
     public:
         CartridgeNds(Core *core);
 
-        bool loadRom(std::string path);
+        bool loadRom(std::string romPath, std::string savePath);
         void directBoot();
 
         uint16_t readAuxSpiCnt(bool cpu)  { return auxSpiCnt[cpu];  }
@@ -126,7 +128,7 @@ class CartridgeGba: public Cartridge
     public:
         CartridgeGba(Core *core): Cartridge(core) {}
 
-        bool loadRom(std::string path);
+        bool loadRom(std::string romPath, std::string savePath);
 
         uint8_t *getRom(uint32_t address);
         bool isEeprom(uint32_t address);

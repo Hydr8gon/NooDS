@@ -32,7 +32,8 @@ int screenFilter = 1;
 int showFpsCounter = 0;
 int keyBinds[12] = {};
 
-std::string ndsPath, gbaPath;
+std::string ndsPath = "", gbaPath = "";
+std::string ndsSave = "", gbaSave = "";
 Core *core = nullptr;
 ScreenLayout layout;
 uint32_t framebuffer[256 * 192 * 8];
@@ -94,13 +95,13 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(
 
     // Load the settings
     // If this is the first time, set the path settings based on the root storage path
-    if (!Settings::load(path + "/noods/noods.ini"))
+    if (!Settings::load(path + "/noods.ini"))
     {
-        Settings::bios7Path = path + "/noods/bios7.bin";
-        Settings::bios9Path = path + "/noods/bios9.bin";
-        Settings::firmwarePath = path + "/noods/firmware.bin";
-        Settings::gbaBiosPath = path + "/noods/gba_bios.bin";
-        Settings::sdImagePath = path + "/noods/sd.img";
+        Settings::bios7Path = path + "/bios7.bin";
+        Settings::bios9Path = path + "/bios9.bin";
+        Settings::firmwarePath = path + "/firmware.bin";
+        Settings::gbaBiosPath = path + "/gba_bios.bin";
+        Settings::sdImagePath = path + "/sd.img";
         Settings::save();
     }
 }
@@ -125,7 +126,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_startCore(JNI
     try
     {
         if (core) delete core;
-        core = new Core(ndsPath, gbaPath);
+        core = new Core(ndsPath, gbaPath, 0, ndsSave, gbaSave);
         return 0;
     }
     catch (CoreError e)
@@ -155,6 +156,20 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaPath(JN
 {
     const char *str = env->GetStringUTFChars(value, nullptr);
     gbaPath = str;
+    env->ReleaseStringUTFChars(value, str);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsSave(JNIEnv* env, jobject obj, jstring value)
+{
+    const char *str = env->GetStringUTFChars(value, nullptr);
+    ndsSave = str;
+    env->ReleaseStringUTFChars(value, str);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaSave(JNIEnv* env, jobject obj, jstring value)
+{
+    const char *str = env->GetStringUTFChars(value, nullptr);
+    gbaSave = str;
     env->ReleaseStringUTFChars(value, str);
 }
 
@@ -419,7 +434,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_writeSave(JNI
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_restartCore(JNIEnv *env, jobject obj)
 {
     if (core) delete core;
-    core = new Core(ndsPath, gbaPath);
+    core = new Core(ndsPath, gbaPath, 0, ndsSave, gbaSave);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_pressScreen(JNIEnv *env, jobject obj, jint x, jint y)

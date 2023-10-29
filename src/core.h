@@ -99,7 +99,8 @@ class Core
         std::vector<Task> tasks;
         uint32_t globalCycles = 0;
 
-        Core(std::string ndsPath = "", std::string gbaPath = "", int id = 0);
+        Core(std::string ndsPath = "", std::string gbaPath = "", int id = 0,
+             std::string ndsSave = "", std::string gbaSave = "");
 
         void runFrame() { (*runFunc)(*this); }
 

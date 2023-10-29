@@ -34,24 +34,22 @@ Cartridge::~Cartridge()
     if (save) delete[] save;
 }
 
-bool Cartridge::loadRom(std::string path)
+bool Cartridge::loadRom(std::string romPath, std::string savePath)
 {
     // Attempt to open a ROM file
-    romName = path;
+    romName = romPath;
     romFile = fopen(romName.c_str(), "rb");
     if (!romFile) return false;
     fseek(romFile, 0, SEEK_END);
     romSize = ftell(romFile);
     fseek(romFile, 0, SEEK_SET);
 
-    // Choose the save extension based on the instance ID
-    // This ensures multiple instances don't write over the same file
+    // Set the save path based on instance ID, or override if a path is provided
     std::string ext = core->id ? (".sv" + std::to_string(core->id + 1)) : ".sav";
+    saveName = (savePath == "" ? romPath.substr(0, romPath.rfind(".")) + ext : savePath);
 
     // Attempt to load the ROM's save into memory
-    saveName = path.substr(0, path.rfind(".")) + ext;
-    FILE *saveFile = fopen(saveName.c_str(), "rb");
-    if (saveFile)
+    if (FILE *saveFile = fopen(saveName.c_str(), "rb"))
     {
         fseek(saveFile, 0, SEEK_END);
         saveSize = ftell(saveFile);
@@ -61,6 +59,10 @@ bool Cartridge::loadRom(std::string path)
         fclose(saveFile);
     }
 
+    // Verify the save size; invalid sizes fall back to auto-detection
+    for (size_t i = 0; i < saveSizes.size(); i++)
+        if (saveSize == saveSizes[i]) return true;
+    saveSize = -1;
     return true;
 }
 
@@ -155,9 +157,24 @@ CartridgeNds::CartridgeNds(Core *core): Cartridge(core)
     wordReadyTasks[1] = std::bind(&CartridgeNds::wordReady, this, 1);
 }
 
-bool CartridgeNds::loadRom(std::string path)
+bool CartridgeNds::loadRom(std::string romPath, std::string savePath)
 {
-    bool res = Cartridge::loadRom(path);
+    // Set the valid NDS save sizes
+    if (saveSizes.empty())
+    {
+        saveSizes.push_back(0x000000); // None
+        saveSizes.push_back(0x000200); // EEPROM 0.5KB
+        saveSizes.push_back(0x002000); // EEPROM 8KB
+        saveSizes.push_back(0x008000); // FRAM 32KB
+        saveSizes.push_back(0x010000); // EEPROM 64KB
+        saveSizes.push_back(0x020000); // EEPROM 128KB
+        saveSizes.push_back(0x040000); // FLASH 256KB
+        saveSizes.push_back(0x080000); // FLASH 512KB
+        saveSizes.push_back(0x100000); // FLASH 1024KB
+        saveSizes.push_back(0x800000); // FLASH 8192KB
+    }
+
+    bool res = Cartridge::loadRom(romPath, savePath);
 
     // If the ROM is 512MB or smaller, try to load it into memory; otherwise fall back to file-based loading
     if (romSize <= 0x20000000) // 512MB
@@ -202,11 +219,6 @@ bool CartridgeNds::loadRom(std::string path)
             romEncrypted = true;
         }
     }
-
-    // If the save size is unknown, it must be guessed based on how the game uses it
-    if (!save)
-        saveSize = -1;
-
     return res;
 }
 
@@ -959,9 +971,20 @@ bool CartridgeGba::findString(std::string string)
     return false;
 }
 
-bool CartridgeGba::loadRom(std::string path)
+bool CartridgeGba::loadRom(std::string romPath, std::string savePath)
 {
-    bool res = Cartridge::loadRom(path);
+    // Set the valid GBA save sizes
+    if (saveSizes.empty())
+    {
+        saveSizes.push_back(0x00000); // None
+        saveSizes.push_back(0x00200); // EEPROM 0.5KB
+        saveSizes.push_back(0x02000); // EEPROM 8KB
+        saveSizes.push_back(0x08000); // SRAM 32KB
+        saveSizes.push_back(0x10000); // FLASH 64KB
+        saveSizes.push_back(0x20000); // FLASH 128KB
+    }
+
+    bool res = Cartridge::loadRom(romPath, savePath);
 
     // Load the ROM into memory
     loadRomSection(0, romSize);
@@ -990,7 +1013,7 @@ bool CartridgeGba::loadRom(std::string path)
     core->memory.updateMap7(0x08000000, 0x0D000000);
 
     // If the save size is unknown, try to detect it
-    if (!save)
+    if (saveSize == -1)
     {
         const std::string saveStrs[] = { "EEPROM_V", "SRAM_V", "FLASH_V", "FLASH512_V", "FLASH1M_V" };
 
@@ -1006,7 +1029,6 @@ bool CartridgeGba::loadRom(std::string path)
             {
                 case 0: // EEPROM
                     // EEPROM can be either 0.5KB or 8KB, so it must be guessed based on how the game uses it
-                    saveSize = -1;
                     return res;
 
                 case 1: // SRAM 32KB
