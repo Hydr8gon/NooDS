@@ -439,12 +439,14 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_restartCore(J
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_pressScreen(JNIEnv *env, jobject obj, jint x, jint y)
 {
+    if (core->gbaMode) return;
     core->input.pressScreen();
     core->spi.setTouch(layout.getTouchX(x, y), layout.getTouchY(x, y));
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_releaseScreen(JNIEnv *env, jobject obj)
 {
+    if (core->gbaMode) return;
     core->input.releaseScreen();
     core->spi.clearTouch();
 }
