@@ -73,8 +73,7 @@ class Core
         bool gbaMode = false;
         int fps = 0;
 
-        Bios9 bios9;
-        Bios7 bios7;
+        Bios bios[3];
         CartridgeNds cartridgeNds;
         CartridgeGba cartridgeGba;
         Cp15 cp15;
@@ -109,6 +108,7 @@ class Core
         void endFrame();
 
     private:
+        bool realGbaBios;
         void (*runFunc)(Core&) = &Interpreter::runNdsFrame;
         std::chrono::steady_clock::time_point lastFpsTime;
         int fpsCount = 0;

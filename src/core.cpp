@@ -25,10 +25,11 @@
 #include "settings.h"
 
 Core::Core(std::string ndsPath, std::string gbaPath, int id, std::string ndsSave, std::string gbaSave):
-    id(id), bios9(this), bios7(this), cartridgeNds(this), cartridgeGba(this), cp15(this), divSqrt(this), dldi(this),
-    dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) }, gpu3D(this),
-    gpu3DRenderer(this), input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this),
-    memory(this), rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
+    id(id), bios { Bios(this, 0, Bios::swiTable9), Bios(this, 1, Bios::swiTable7), Bios(this, 1, Bios::swiTableGba) },
+    cartridgeNds(this), cartridgeGba(this), cp15(this), divSqrt(this), dldi(this), dma { Dma(this, 0),
+    Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this),
+    input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this),
+    rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
 {
     // Try to load the ARM9 BIOS; require it when not direct booting
     if (!memory.loadBios9() && (!Settings::directBoot || (ndsPath == "" && gbaPath == "")))
@@ -42,9 +43,8 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id, std::string ndsSave
     if (!spi.loadFirmware() && (!Settings::directBoot || (ndsPath == "" && gbaPath == "")))
         throw ERROR_FIRM;
 
-    // Try to load the GBA BIOS; require it when booting a GBA ROM
-    if (!memory.loadGbaBios() && (gbaPath != "" && (ndsPath == "" || !Settings::directBoot)))
-        throw ERROR_BIOS;
+    // Try to load the GBA BIOS
+    realGbaBios = memory.loadGbaBios();
 
     // Schedule initial tasks for NDS mode
     resetCyclesTask = std::bind(&Core::resetCycles, this);
@@ -148,13 +148,21 @@ void Core::enterGbaMode()
     // Reset the system for GBA mode
     memory.updateMap7(0x00000000, 0xFFFFFFFF);
     interpreter[1].init();
-    interpreter[1].setBios(nullptr);
     rtc.reset();
 
     // Set VRAM blocks A and B to plain access mode
     // This is used by the GPU to access the VRAM borders
     memory.write<uint8_t>(0, 0x4000240, 0x80); // VRAMCNT_A
     memory.write<uint8_t>(0, 0x4000241, 0x80); // VRAMCNT_B
+
+    // Disable HLE BIOS if a real one was loaded
+    if (realGbaBios)
+        return interpreter[1].setBios(nullptr);
+
+    // Enable HLE BIOS and boot the GBA ROM directly
+    interpreter[1].setBios(&bios[2]);
+    interpreter[1].directBoot();
+    memory.write<uint16_t>(1, 0x4000088, 0x200); // SOUNDBIAS
 }
 
 void Core::endFrame()

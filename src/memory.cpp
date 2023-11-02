@@ -97,7 +97,7 @@ bool Memory::loadBios9()
 
     // Prepare HLE BIOS with a special opcode for interrupt return
     bios9[3] = 0xFF;
-    core->interpreter[0].setBios(&core->bios9);
+    core->interpreter[0].setBios(&core->bios[0]);
     return false;
 }
 
@@ -113,7 +113,7 @@ bool Memory::loadBios7()
 
     // Prepare HLE BIOS with a special opcode for interrupt return
     bios7[3] = 0xFF;
-    core->interpreter[1].setBios(&core->bios7);
+    core->interpreter[1].setBios(&core->bios[1]);
     return false;
 }
 
@@ -127,6 +127,8 @@ bool Memory::loadGbaBios()
         return true;
     }
 
+    // Prepare HLE BIOS with a special opcode for interrupt return
+    gbaBios[3] = 0xFF;
     return false;
 }
 
@@ -412,6 +414,7 @@ template <typename T> T Memory::readFallback(bool cpu, uint32_t address)
     else
     {
         LOG("Unmapped GBA memory read: 0x%X\n", address);
+        if (address == core->interpreter[1].getPC()) return 0;
         return read<T>(cpu, core->interpreter[1].getPC()); // Open bus (last prefetched opcode)
     }
 }

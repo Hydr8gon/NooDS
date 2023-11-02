@@ -45,14 +45,14 @@ void Interpreter::init()
 
 void Interpreter::directBoot()
 {
-    // Prepare to directly boot an NDS ROM
+    // Prepare to directly boot a ROM
     setCpsr(0x000000DF); // System, interrupts off
-    registersUsr[15] = core->memory.read<uint32_t>(arm7, 0x27FFE24 + (arm7 << 4));
+    registersUsr[15] = core->gbaMode ? 0x8000000 : core->memory.read<uint32_t>(arm7, 0x27FFE24 + (arm7 << 4));
     registersUsr[14] = registersUsr[15];
     registersUsr[12] = registersUsr[15];
-    registersUsr[13] = arm7 ? 0x0380FD80 : 0x03002F7C;
-    registersIrq[0]  = arm7 ? 0x0380FF80 : 0x03003F80;
-    registersSvc[0]  = arm7 ? 0x0380FFC0 : 0x03003FC0;
+    registersUsr[13] = arm7 ? (core->gbaMode ? 0x3007F00 : 0x380FD80) : 0x3002F7C;
+    registersIrq[0] = arm7 ? (core->gbaMode ? 0x3007FA0 : 0x380FF80) : 0x3003F80;
+    registersSvc[0] = arm7 ? (core->gbaMode ? 0x3007FE0 : 0x380FFC0) : 0x3003FC0;
     flushPipeline();
 }
 
@@ -181,7 +181,7 @@ int Interpreter::exception(uint8_t vector)
 {
     // Forward the call to HLE BIOS if enabled, unless on ARM9 with the exception address changed
     if (bios && (arm7 || core->cp15.getExceptionAddr()))
-        return bios->execute(vector, arm7, registers);
+        return bios->execute(vector, registers);
 
     // Switch the CPU mode, save the return address, and jump to the exception vector
     static const uint8_t modes[] = { 0x13, 0x1B, 0x13, 0x17, 0x17, 0x13, 0x12, 0x11 };
@@ -346,7 +346,7 @@ int Interpreter::finishHleIrq()
 {
     // Update the wait flags if in the middle of an HLE IntrWait function
     if (bios->shouldCheck())
-        bios->checkWaitFlags(arm7);
+        bios->checkWaitFlags();
 
     // Pop registers from the stack, jump to the return address, and restore the mode
     ldmiaW((13 << 16) | BIT(0) | BIT(1) | BIT(2) | BIT(3) | BIT(12) | BIT(14));
