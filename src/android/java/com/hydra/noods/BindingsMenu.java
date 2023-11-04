@@ -50,9 +50,7 @@ public class BindingsMenu extends AppCompatActivity
     public void onBackPressed()
     {
         // Save the bindings and return to the previous activity
-        saveSettings();
+        SettingsMenu.saveSettings();
         finish();
     }
-
-    public static native void saveSettings();
 }

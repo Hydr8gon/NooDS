@@ -63,6 +63,9 @@ public class SettingsMenu extends AppCompatActivity
         editor.putBoolean("gba_crop", (getGbaCrop() == 0) ? false : true);
         editor.putBoolean("screen_filter", (getScreenFilter() == 0) ? false : true);
         editor.putBoolean("show_fps_counter", (getShowFpsCounter() == 0) ? false : true);
+        editor.putInt("button_scale", getButtonScale());
+        editor.putInt("button_spacing", getButtonSpacing());
+        editor.putInt("vibrate_strength", getVibrateStrength());
         editor.commit();
 
         // Populate the settings UI
@@ -89,6 +92,9 @@ public class SettingsMenu extends AppCompatActivity
         setGbaCrop(prefs.getBoolean("gba_crop", true) ? 1 : 0);
         setScreenFilter(prefs.getBoolean("screen_filter", true) ? 1 : 0);
         setShowFpsCounter(prefs.getBoolean("show_fps_counter", false) ? 1 : 0);
+        setButtonScale(prefs.getInt("button_scale", 5));
+        setButtonSpacing(prefs.getInt("button_spacing", 10));
+        setVibrateStrength(prefs.getInt("vibrate_strength", 1));
         saveSettings();
 
         // Return to the previous activity
@@ -109,6 +115,9 @@ public class SettingsMenu extends AppCompatActivity
     public static native int getGbaCrop();
     public static native int getScreenFilter();
     public static native int getShowFpsCounter();
+    public static native int getButtonScale();
+    public static native int getButtonSpacing();
+    public static native int getVibrateStrength();
     public static native void setDirectBoot(int value);
     public static native void setFpsLimiter(int value);
     public static native void setThreaded2D(int value);
@@ -123,5 +132,8 @@ public class SettingsMenu extends AppCompatActivity
     public static native void setGbaCrop(int value);
     public static native void setScreenFilter(int value);
     public static native void setShowFpsCounter(int value);
+    public static native void setButtonScale(int value);
+    public static native void setButtonSpacing(int value);
+    public static native void setVibrateStrength(int value);
     public static native void saveSettings();
 }

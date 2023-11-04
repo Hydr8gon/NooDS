@@ -20,6 +20,7 @@
 package com.hydra.noods;
 
 import android.content.Context;
+import android.os.Vibrator;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -28,9 +29,11 @@ import android.widget.Button;
 
 public class NooButton extends Button
 {
+    private Vibrator vibrator;
     private int[] resIds;
     private int[] btnIds;
     private int state = 0;
+    private int lastState = 0;
 
     public static int[] resAbxy =
     {
@@ -51,10 +54,11 @@ public class NooButton extends Button
     public NooButton(Context context, int[] resIds, int[] btnIds, int x, int y, int width, int height)
     {
         super(context);
-
-        // Set the button parameters
+        vibrator = (Vibrator)context.getSystemService(Context.VIBRATOR_SERVICE);
         this.resIds = resIds;
         this.btnIds = btnIds;
+
+        // Set the button parameters
         setBackgroundResource(resIds[0]);
         setX(x);
         setY(y);
@@ -97,8 +101,12 @@ public class NooButton extends Button
                             else
                                 releaseKey(btnIds[3]);
 
-                            // Update the image based on pressed directions
-                            setBackgroundResource(resIds[state]);
+                            // Update the image and vibrate
+                            if (state != lastState)
+                                setBackgroundResource(resIds[state]);
+                            if ((state & ~lastState) != 0)
+                                vibrator.vibrate(SettingsMenu.getVibrateStrength() * 4);
+                            lastState = state;
                             state = 0;
                             break;
 
@@ -107,6 +115,7 @@ public class NooButton extends Button
                             for (int i = 0; i < 4; i++)
                                 releaseKey(btnIds[i]);
                             setBackgroundResource(resIds[0]);
+                            lastState = state = 0;
                             break;
                     }
                     return true;
@@ -123,9 +132,10 @@ public class NooButton extends Button
                     switch (event.getAction())
                     {
                         case MotionEvent.ACTION_DOWN:
-                            // Press a key and update the image
+                            // Press a key, update the image, and vibrate
                             pressKey(btnIds[0]);
                             setBackgroundResource(resIds[1]);
+                            vibrator.vibrate(SettingsMenu.getVibrateStrength() * 4);
                             break;
 
                         case MotionEvent.ACTION_UP:

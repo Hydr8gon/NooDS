@@ -1,11 +1,11 @@
 diff --git a/src/android/AndroidManifest.xml b/src/android/AndroidManifest.xml
-index ce5e4c8..e2bf9b5 100644
+index 461b731..a196097 100644
 --- a/src/android/AndroidManifest.xml
 +++ b/src/android/AndroidManifest.xml
-@@ -2,15 +2,13 @@
- <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+@@ -3,16 +3,14 @@
      package="com.hydra.noods">
  
+     <uses-permission android:name="android.permission.VIBRATE" />
 -    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
 -    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
 -    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" android:minSdkVersion="30" />
@@ -15,14 +15,15 @@ index ce5e4c8..e2bf9b5 100644
      <uses-feature android:glEsVersion="0x00020000" android:required="true" />
  
      <application android:label="NooDS"
--        android:icon="@drawable/icon"
+         android:icon="@drawable/icon"
+-        android:hasFragileUserData="true"
 -        android:requestLegacyExternalStorage="true">
-+        android:icon="@drawable/icon">
++        android:hasFragileUserData="true">
  
          <activity android:name=".FileBrowser"
              android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
 diff --git a/src/android/java/com/hydra/noods/FileBrowser.java b/src/android/java/com/hydra/noods/FileBrowser.java
-index 1c13926..b07da33 100644
+index cc8155a..e7e7d43 100644
 --- a/src/android/java/com/hydra/noods/FileBrowser.java
 +++ b/src/android/java/com/hydra/noods/FileBrowser.java
 @@ -76,7 +76,9 @@ public class FileBrowser extends AppCompatActivity

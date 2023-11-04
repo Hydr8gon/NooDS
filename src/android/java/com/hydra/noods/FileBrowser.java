@@ -65,7 +65,7 @@ public class FileBrowser extends AppCompatActivity
     private Uri uriPath;
     private int curStorage;
     private int curDepth;
-    private boolean scoped = false;
+    private boolean scoped;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)

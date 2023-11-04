@@ -30,6 +30,9 @@
 
 int screenFilter = 1;
 int showFpsCounter = 0;
+int buttonScale = 5;
+int buttonSpacing = 10;
+int vibrateStrength = 1;
 int keyBinds[12] = {};
 
 std::string ndsPath = "", gbaPath = "";
@@ -73,20 +76,23 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
-        Setting("screenFilter",   &screenFilter,   false),
-        Setting("showFpsCounter", &showFpsCounter, false),
-        Setting("keyA",           &keyBinds[0],    false),
-        Setting("keyB",           &keyBinds[1],    false),
-        Setting("keySelect",      &keyBinds[2],    false),
-        Setting("keyStart",       &keyBinds[3],    false),
-        Setting("keyRight",       &keyBinds[4],    false),
-        Setting("keyLeft",        &keyBinds[5],    false),
-        Setting("keyUp",          &keyBinds[6],    false),
-        Setting("keyDown",        &keyBinds[7],    false),
-        Setting("keyR",           &keyBinds[8],    false),
-        Setting("keyL",           &keyBinds[9],    false),
-        Setting("keyX",           &keyBinds[10],   false),
-        Setting("keyY",           &keyBinds[11],   false)
+        Setting("screenFilter",    &screenFilter,    false),
+        Setting("showFpsCounter",  &showFpsCounter,  false),
+        Setting("buttonScale",     &buttonScale,     false),
+        Setting("buttonSpacing",   &buttonSpacing,   false),
+        Setting("vibrateStrength", &vibrateStrength, false),
+        Setting("keyA",            &keyBinds[0],     false),
+        Setting("keyB",            &keyBinds[1],     false),
+        Setting("keySelect",       &keyBinds[2],     false),
+        Setting("keyStart",        &keyBinds[3],     false),
+        Setting("keyRight",        &keyBinds[4],     false),
+        Setting("keyLeft",         &keyBinds[5],     false),
+        Setting("keyUp",           &keyBinds[6],     false),
+        Setting("keyDown",         &keyBinds[7],     false),
+        Setting("keyR",            &keyBinds[8],     false),
+        Setting("keyL",            &keyBinds[9],     false),
+        Setting("keyX",            &keyBinds[10],    false),
+        Setting("keyY",            &keyBinds[11],    false)
     };
 
     // Add the platform settings
@@ -250,11 +256,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_BindingsPreference_setKey
     keyBinds[index] = value;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_BindingsMenu_saveSettings(JNIEnv* env, jobject obj)
-{
-    Settings::save();
-}
-
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getDirectBoot(JNIEnv* env, jobject obj)
 {
     return Settings::directBoot;
@@ -323,6 +324,21 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenFil
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getShowFpsCounter(JNIEnv* env, jobject obj)
 {
     return showFpsCounter;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getButtonScale(JNIEnv* env, jobject obj)
+{
+    return buttonScale;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getButtonSpacing(JNIEnv* env, jobject obj)
+{
+    return buttonSpacing;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getVibrateStrength(JNIEnv* env, jobject obj)
+{
+    return vibrateStrength;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setDirectBoot(JNIEnv* env, jobject obj, jint value)
@@ -395,19 +411,24 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowFpsCo
     showFpsCounter = value;
 }
 
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setButtonScale(JNIEnv* env, jobject obj, jint value)
+{
+    buttonScale = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setButtonSpacing(JNIEnv* env, jobject obj, jint value)
+{
+    buttonSpacing = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setVibrateStrength(JNIEnv* env, jobject obj, jint value)
+{
+    vibrateStrength = value;
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_saveSettings(JNIEnv* env, jobject obj)
 {
     Settings::save();
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooActivity_getKeyBind(JNIEnv* env, jobject obj, jint index)
-{
-    return keyBinds[index];
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooActivity_getShowFpsCounter(JNIEnv* env, jobject obj)
-{
-    return showFpsCounter;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooActivity_getFps(JNIEnv *env, jobject obj)
@@ -459,26 +480,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_resizeGbaSave
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_resizeNdsSave(JNIEnv *env, jobject obj, jint size)
 {
     core->cartridgeNds.resizeSave(size);
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getHighRes3D(JNIEnv* env, jobject obj)
-{
-    return Settings::highRes3D;
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenRotation(JNIEnv* env, jobject obj)
-{
-    return ScreenLayout::screenRotation;
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getGbaCrop(JNIEnv* env, jobject obj)
-{
-    return ScreenLayout::gbaCrop;
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooRenderer_getScreenFilter(JNIEnv* env, jobject obj)
-{
-    return screenFilter;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooRenderer_updateLayout(JNIEnv *env, jobject obj, jint width, jint height)

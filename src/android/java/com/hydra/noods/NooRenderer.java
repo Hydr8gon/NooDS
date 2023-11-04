@@ -98,8 +98,9 @@ public class NooRenderer implements GLSurfaceView.Renderer
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, (getScreenFilter() == 1) ? GLES20.GL_LINEAR : GLES20.GL_NEAREST);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, (getScreenFilter() == 1) ? GLES20.GL_LINEAR : GLES20.GL_NEAREST);
+        int filter = (SettingsMenu.getScreenFilter() == 1) ? GLES20.GL_LINEAR : GLES20.GL_NEAREST;
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, filter);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, filter);
 
         bitmap = Bitmap.createBitmap(256, 192 * 2, Bitmap.Config.ARGB_8888);
         highRes3D = 0;
@@ -135,15 +136,15 @@ public class NooRenderer implements GLSurfaceView.Renderer
     public void onDrawFrame(GL10 unused)
     {
         // Update the resolution if the high-res 3D setting changed
-        if (highRes3D != getHighRes3D())
+        if (highRes3D != SettingsMenu.getHighRes3D())
         {
-            highRes3D = getHighRes3D();
+            highRes3D = SettingsMenu.getHighRes3D();
             bitmap = Bitmap.createBitmap((gbaMode ? 240 : 256) << highRes3D,
                 (gbaMode ? 160 : (192 * 2)) << highRes3D, Bitmap.Config.ARGB_8888);
         }
 
         // Update the layout if GBA mode changed
-        if (gbaMode != (activity.isGbaMode() && getGbaCrop() != 0))
+        if (gbaMode != (activity.isGbaMode() && SettingsMenu.getGbaCrop() != 0))
         {
             gbaMode = !gbaMode;
             updateLayout(width, height);
@@ -175,7 +176,7 @@ public class NooRenderer implements GLSurfaceView.Renderer
 
     private void drawScreen(float x, float y, float w, float h, float s1, float t1, float s2, float t2)
     {
-        final int rot = getScreenRotation();
+        final int rot = SettingsMenu.getScreenRotation();
 
         // Arrange the S coordinates for rotation
         final float s[][] =
@@ -221,10 +222,6 @@ public class NooRenderer implements GLSurfaceView.Renderer
     }
 
     public static native boolean copyFramebuffer(Bitmap bitmap, boolean gbaCrop);
-    public static native int getHighRes3D();
-    public static native int getScreenRotation();
-    public static native int getGbaCrop();
-    public static native int getScreenFilter();
     public static native void updateLayout(int width, int height);
     public static native int getTopX();
     public static native int getBotX();

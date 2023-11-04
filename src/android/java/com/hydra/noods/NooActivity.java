@@ -92,39 +92,17 @@ public class NooActivity extends AppCompatActivity
             }
         });
 
-        // Add the view to the layout
+        // Add the view and buttons to the layout
         layout.addView(view);
-
-        // Get the display density and dimensions
-        final float d = getResources().getDisplayMetrics().density;
-        final int w = getResources().getDisplayMetrics().widthPixels;
-        final int h = getResources().getDisplayMetrics().heightPixels;
-
-        // Create the buttons and place them based on the display information
-        buttons[0] = new NooButton(this, NooButton.resAbxy, new int[] {0, 11, 10, 1},
-            w - (int)(d * 170), h - (int)(d * 190), (int)(d * 165), (int)(d * 165));
-        buttons[1] = new NooButton(this, NooButton.resDpad, new int[] {4, 5, 6, 7},
-            (int)(d * 5), h - (int)(d * 174), (int)(d * 132), (int)(d * 132));
-        buttons[2] = new NooButton(this, new int[] {R.drawable.start, R.drawable.start_pressed},
-            new int[] {3}, w / 2 + (int)(d * 16), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
-        buttons[3] = new NooButton(this, new int[] {R.drawable.select, R.drawable.select_pressed},
-            new int[] {2}, w / 2 - (int)(d * 49), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
-        buttons[4] = new NooButton(this, new int[] {R.drawable.l, R.drawable.l_pressed},
-            new int[] {9}, (int)(d * 5), h - (int)(d * 400), (int)(d * 110), (int)(d * 44));
-        buttons[5] = new NooButton(this, new int[] {R.drawable.r, R.drawable.r_pressed},
-            new int[] {8}, w - (int)(d * 115), h - (int)(d * 400), (int)(d * 110), (int)(d * 44));
-
-        // Add the buttons to the layout
-        for (int i = 0; i < 6; i++)
-            layout.addView(buttons[i]);
         showingButtons = true;
+        updateButtons(true);
 
         // Create the FPS counter
         fpsCounter.setTextSize(24);
         fpsCounter.setTextColor(Color.WHITE);
 
         // Add the FPS counter to the layout if enabled
-        if (showingFps = (getShowFpsCounter() != 0))
+        if (showingFps = (SettingsMenu.getShowFpsCounter() != 0))
             layout.addView(fpsCounter);
 
         setContentView(layout);
@@ -141,11 +119,14 @@ public class NooActivity extends AppCompatActivity
     protected void onResume()
     {
         resumeCore();
+        updateButtons(false);
         super.onResume();
 
-        // Hide the status bar
+        // Hide the status and navigation bars
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
-            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
     }
 
     @Override
@@ -249,9 +230,11 @@ public class NooActivity extends AppCompatActivity
     {
         super.onOptionsMenuClosed(menu);
 
-        // Rehide the status bar
+        // Rehide the status and navigation bars
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
-            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
     }
 
     @Override
@@ -260,7 +243,7 @@ public class NooActivity extends AppCompatActivity
         // Trigger a key press if a mapped key was pressed
         for (int i = 0; i < 12; i++)
         {
-            if (keyCode == getKeyBind(i) - 1)
+            if (keyCode == BindingsPreference.getKeyBind(i) - 1)
             {
                 NooButton.pressKey(i);
                 return true;
@@ -276,7 +259,7 @@ public class NooActivity extends AppCompatActivity
         // Trigger a key release if a mapped key was released
         for (int i = 0; i < 12; i++)
         {
-            if (keyCode == getKeyBind(i) - 1)
+            if (keyCode == BindingsPreference.getKeyBind(i) - 1)
             {
                 NooButton.releaseKey(i);
                 return true;
@@ -295,6 +278,51 @@ public class NooActivity extends AppCompatActivity
         inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MENU));
     }
 
+    private void updateButtons(boolean init)
+    {
+        // Remove old buttons from the layout if visible
+        if (!init && showingButtons)
+        {
+            for (int i = 0; i < 6; i++)
+                layout.removeView(buttons[i]);
+        }
+
+        // Set layout parameters based on display and settings
+        DisplayMetrics metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
+        float d = metrics.density * (SettingsMenu.getButtonScale() + 10) / 15;
+        int w = metrics.widthPixels, h = metrics.heightPixels;
+        int b = Math.min(((w > h) ? w : h) * (SettingsMenu.getButtonSpacing() + 10) / 40, h);
+
+        // Create D-pad and ABXY buttons, placed 2/3rds down the virtual controller
+        int x = Math.min(h - b / 3 - (int)(d * 82.5), h - (int)(d * 170));
+        buttons[0] = new NooButton(this, NooButton.resAbxy, new int[] {0, 11, 10, 1},
+            w - (int)(d * 170), x, (int)(d * 165), (int)(d * 165));
+        buttons[1] = new NooButton(this, NooButton.resDpad, new int[] {4, 5, 6, 7},
+            (int)(d * 21.5), x + (int)(d * 16.5), (int)(d * 132), (int)(d * 132));
+
+        // Create start and select buttons, placed along the bottom of the virtual controller
+        int y = Math.min(b, w / 2) - (int)(d * 33);
+        buttons[2] = new NooButton(this, new int[] {R.drawable.start, R.drawable.start_pressed},
+            new int[] {3}, w - y - (int)(d * 16.5), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
+        buttons[3] = new NooButton(this, new int[] {R.drawable.select, R.drawable.select_pressed},
+            new int[] {2}, y - (int)(d * 16.5), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
+
+        // Create L and R buttons, placed in the top corners of the virtual controller
+        int z = Math.min(h - b + (int)(d * 5), x - (int)(d * 49));
+        buttons[4] = new NooButton(this, new int[] {R.drawable.l, R.drawable.l_pressed},
+            new int[] {9}, (int)(d * 5), z, (int)(d * 110), (int)(d * 44));
+        buttons[5] = new NooButton(this, new int[] {R.drawable.r, R.drawable.r_pressed},
+            new int[] {8}, w - (int)(d * 115), z, (int)(d * 110), (int)(d * 44));
+
+        // Add new buttons to the layout if visible
+        if (init || showingButtons)
+        {
+            for (int i = 0; i < 6; i++)
+                layout.addView(buttons[i]);
+        }
+    }
+
     private void pauseCore()
     {
         running = false;
@@ -306,7 +334,7 @@ public class NooActivity extends AppCompatActivity
             coreThread.join();
             saveThread.interrupt();
             saveThread.join();
-            if (getShowFpsCounter() != 0)
+            if (SettingsMenu.getShowFpsCounter() != 0)
             {
                 fpsThread.interrupt();
                 fpsThread.join();
@@ -365,7 +393,7 @@ public class NooActivity extends AppCompatActivity
         saveThread.setPriority(Thread.MIN_PRIORITY);
         saveThread.start();
 
-        if (getShowFpsCounter() != 0)
+        if (SettingsMenu.getShowFpsCounter() != 0)
         {
             // Add the FPS counter to the layout if enabled
             if (!showingFps)
@@ -423,8 +451,6 @@ public class NooActivity extends AppCompatActivity
 
     public static native void startAudio();
     public static native void stopAudio();
-    public static native int getKeyBind(int index);
-    public static native int getShowFpsCounter();
     public static native int getFps();
     public static native boolean isGbaMode();
     public static native void runFrame();
