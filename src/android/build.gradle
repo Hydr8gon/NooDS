@@ -17,7 +17,7 @@ android {
         applicationId "com.hydra.noods"
         minSdkVersion 16
         targetSdkVersion 33
-        versionCode 1
+        versionCode "git rev-list HEAD --count".execute().text.toInteger()
         versionName "0.1"
     }
 

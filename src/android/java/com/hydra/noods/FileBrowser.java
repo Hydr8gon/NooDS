@@ -51,6 +51,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Stack;
 
 public class FileBrowser extends AppCompatActivity
 {
@@ -68,8 +69,8 @@ public class FileBrowser extends AppCompatActivity
     private ArrayList<Uri> fileUris;
     private ListView fileView;
 
+    private Stack<Uri> pathUris;
     private String path;
-    private Uri uriPath;
     private int curStorage;
     private int curDepth;
     private boolean scoped;
@@ -157,7 +158,7 @@ public class FileBrowser extends AppCompatActivity
         {
             // Navigate to the previous directory
             if (scoped)
-                uriPath = Uri.parse(uriPath.toString().substring(0, uriPath.toString().lastIndexOf('/')));
+                pathUris.pop();
             else
                 path = path.substring(0, path.lastIndexOf('/'));
             curDepth--;
@@ -185,7 +186,8 @@ public class FileBrowser extends AppCompatActivity
 
             case 2: // Scoped directory selection
                 // Set the initial path for scoped storage mode
-                uriPath = resultData.getData();
+                pathUris = new Stack<Uri>();
+                pathUris.push(resultData.getData());
                 scoped = true;
                 init();
                 return;
@@ -198,7 +200,7 @@ public class FileBrowser extends AppCompatActivity
         TextView view = new TextView(this);
         float d = getResources().getDisplayMetrics().density;
         view.setTextColor(Color.BLACK);
-        view.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         view.setPadding((int)(d * 25), (int)(d * 5), (int)(d * 25), (int)(d * 5));
         view.setSingleLine(false);
         view.setMovementMethod(LinkMovementMethod.getInstance());
@@ -312,7 +314,7 @@ public class FileBrowser extends AppCompatActivity
             {
                 // Navigate to the selected directory
                 if (scoped)
-                    uriPath = fileUris.get(position);
+                    pathUris.push(fileUris.get(position));
                 else
                     path += "/" + fileNames.get(position);
                 curDepth++;
@@ -371,14 +373,13 @@ public class FileBrowser extends AppCompatActivity
             }
 
             builder.create().show();
-            if (scoped) curDepth--;
-            else onBackPressed();
+            onBackPressed();
         }
     }
 
     private void update()
     {
-        DocumentFile file = scoped ? DocumentFile.fromTreeUri(this, uriPath) : DocumentFile.fromFile(new File(path));
+        DocumentFile file = scoped ? DocumentFile.fromTreeUri(this, pathUris.peek()) : DocumentFile.fromFile(new File(path));
         String ext = (file.getName().length() >= 4) ? file.getName().substring(file.getName().length() - 4) : "";
 
         // Check if the current file is a ROM
@@ -564,8 +565,7 @@ public class FileBrowser extends AppCompatActivity
         {
             // Create a new save file if one doesn't exist
             String str2 = file.getName().toString();
-            Uri uri2 = Uri.parse(str.substring(0, str.lastIndexOf('/')));
-            DocumentFile file2 = DocumentFile.fromTreeUri(this, uri2);
+            DocumentFile file2 = DocumentFile.fromTreeUri(this, pathUris.get(pathUris.size() - 2));
             file2.createFile("application/sav", str2.substring(0, str2.length() - 4) + ".sav");
 
             try
