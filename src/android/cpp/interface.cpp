@@ -66,7 +66,7 @@ void audioCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
     delete[] original;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(JNIEnv* env, jobject obj, jstring rootPath)
+extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(JNIEnv* env, jobject obj, jstring rootPath)
 {
     // Convert the Java string to a C++ string
     const char *str = env->GetStringUTFChars(rootPath, nullptr);
@@ -100,16 +100,17 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(
     Settings::add(platformSettings);
 
     // Load the settings
+    if (Settings::load(path + "/noods.ini"))
+        return true;
+
     // If this is the first time, set the path settings based on the root storage path
-    if (!Settings::load(path + "/noods.ini"))
-    {
-        Settings::bios7Path = path + "/bios7.bin";
-        Settings::bios9Path = path + "/bios9.bin";
-        Settings::firmwarePath = path + "/firmware.bin";
-        Settings::gbaBiosPath = path + "/gba_bios.bin";
-        Settings::sdImagePath = path + "/sd.img";
-        Settings::save();
-    }
+    Settings::bios7Path = path + "/bios7.bin";
+    Settings::bios9Path = path + "/bios9.bin";
+    Settings::firmwarePath = path + "/firmware.bin";
+    Settings::gbaBiosPath = path + "/gba_bios.bin";
+    Settings::sdImagePath = path + "/sd.img";
+    Settings::save();
+    return false;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_getNdsIcon(JNIEnv *env, jobject obj, jstring romName, jobject bitmap)

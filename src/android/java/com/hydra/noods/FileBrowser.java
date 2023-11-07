@@ -30,16 +30,21 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.Settings;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import java.io.File;
 import java.io.OutputStream;
@@ -54,6 +59,8 @@ public class FileBrowser extends AppCompatActivity
         // Load the native library
         System.loadLibrary("noods-core");
     }
+
+    private static final boolean PLAY_STORE = false;
 
     private ArrayList<String> storagePaths;
     private ArrayList<String> fileNames;
@@ -72,11 +79,14 @@ public class FileBrowser extends AppCompatActivity
     {
         // Storage paths can be checked without permissions; prepare them for the options menu
         updateStoragePaths();
-
         super.onCreate(savedInstanceState);
 
-        // Request storage permissions if they haven't been given
-        if (checkPermissions())
+        // Load settings and request storage permissions based on environment
+        if (!loadSettings(getExternalFilesDir(null).getPath()) && PLAY_STORE)
+            showInfo(true);
+        else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && PLAY_STORE)
+            startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
+        else if (checkPermissions())
             init();
         else
             requestPermissions();
@@ -112,6 +122,11 @@ public class FileBrowser extends AppCompatActivity
     {
         switch (item.getItemId())
         {
+            case R.id.info_action:
+                // Show the Play Store information dialog
+                showInfo(false);
+                break;
+
             case R.id.storage_action:
                 // Switch to the next storage device
                 if (scoped) break;
@@ -175,6 +190,47 @@ public class FileBrowser extends AppCompatActivity
                 init();
                 return;
         }
+    }
+
+    private void showInfo(final boolean start)
+    {
+        // Create the Play Store information text
+        TextView view = new TextView(this);
+        float d = getResources().getDisplayMetrics().density;
+        view.setTextColor(Color.BLACK);
+        view.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        view.setPadding((int)(d * 25), (int)(d * 5), (int)(d * 25), (int)(d * 5));
+        view.setSingleLine(false);
+        view.setMovementMethod(LinkMovementMethod.getInstance());
+        view.setText(Html.fromHtml("Thanks for using my emulator! This is the Google Play version of NooDS, which " +
+            "is limited to scoped storage on Android 10 and above. When starting the app, you'll be asked to " +
+            "choose a folder that contains DS or GBA ROMs. If you have trouble accessing files, try using " +
+            "<a href=\"https://github.com/Hydr8gon/NooDS/releases\">the GitHub version</a> instead.<br><br>" +
+            "My projects are free and open-source, but donations help me continue to work on them. If you're " +
+            "feeling generous, here are some ways to support me: <a href=\"https://paypal.me/Hydr8gon\">one-time " +
+            "via PayPal</a> or <a href=\"https://www.patreon.com/Hydr8gon\">monthly via Patreon</a>."));
+
+        // Create the Play Store information dialog
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Welcome to NooDS");
+        builder.setView(view);
+        builder.setCancelable(!start);
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
+        {
+            @Override
+            public void onClick(DialogInterface dialog, int id)
+            {
+                // Request storage permissions if this was run on start
+                if (!start)
+                    return;
+                else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q)
+                    startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
+                else if (checkPermissions())
+                    init();
+                else
+                    requestPermissions();
+            }
+        }).create().show();
     }
 
     private boolean checkPermissions()
@@ -263,9 +319,6 @@ public class FileBrowser extends AppCompatActivity
                 update();
             }
         });
-
-        // Load settings from the private app folder
-        loadSettings(getExternalFilesDir(null).getPath());
 
         // Set a custom launch path if one is specified
         Bundle extras = getIntent().getExtras();
@@ -531,7 +584,7 @@ public class FileBrowser extends AppCompatActivity
         }
     }
 
-    public static native void loadSettings(String rootPath);
+    public static native boolean loadSettings(String rootPath);
     public static native void getNdsIcon(String romPath, Bitmap bitmap);
     public static native int startCore();
     public static native String getNdsPath();

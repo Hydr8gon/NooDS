@@ -23,17 +23,27 @@ index 461b731..a196097 100644
          <activity android:name=".FileBrowser"
              android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
 diff --git a/src/android/java/com/hydra/noods/FileBrowser.java b/src/android/java/com/hydra/noods/FileBrowser.java
-index cc8155a..e7e7d43 100644
+index 3b16dd2..52ee155 100644
 --- a/src/android/java/com/hydra/noods/FileBrowser.java
 +++ b/src/android/java/com/hydra/noods/FileBrowser.java
-@@ -76,7 +76,9 @@ public class FileBrowser extends AppCompatActivity
-         super.onCreate(savedInstanceState);
+@@ -60,7 +60,7 @@ public class FileBrowser extends AppCompatActivity
+         System.loadLibrary("noods-core");
+     }
  
-         // Request storage permissions if they haven't been given
--        if (checkPermissions())
-+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q)
-+            startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
-+        else if (checkPermissions())
-             init();
-         else
-             requestPermissions();
+-    private static final boolean PLAY_STORE = false;
++    private static final boolean PLAY_STORE = true;
+ 
+     private ArrayList<String> storagePaths;
+     private ArrayList<String> fileNames;
+diff --git a/src/android/res/menu/file_menu.xml b/src/android/res/menu/file_menu.xml
+index 8a21009..e6d55ce 100644
+--- a/src/android/res/menu/file_menu.xml
++++ b/src/android/res/menu/file_menu.xml
+@@ -5,7 +5,6 @@
+     <item android:id="@+id/info_action"
+         android:icon="@drawable/info"
+         android:title="Information"
+-        android:visible="false"
+         app:showAsAction="always" />
+ 
+     <item android:id="@+id/storage_action"

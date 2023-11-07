@@ -2,11 +2,17 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <item android:id="@+id/info_action"
+        android:icon="@drawable/info"
+        android:title="Information"
+        android:visible="false"
+        app:showAsAction="always" />
+
     <item android:id="@+id/storage_action"
         android:icon="@drawable/storage"
         android:title="Change Storage"
-        app:showAsAction="always"
-        android:visible="false" />
+        android:visible="false"
+        app:showAsAction="always" />
 
     <item android:id="@+id/bindings_action"
         android:icon="@drawable/bindings"
