@@ -21,7 +21,6 @@
 #define WIFI_H
 
 #include <cstdint>
-#include <functional>
 #include <mutex>
 #include <vector>
 
@@ -32,11 +31,12 @@ class Wifi
     public:
         Wifi(Core *core);
 
-        bool shouldSchedule() { return (!connections.empty() || wUsCountcnt) && !scheduled; }
-        void scheduleInit();
-
         void addConnection(Core *core);
         void remConnection(Core *core);
+
+        bool shouldSchedule() { return (!connections.empty() || wUsCountcnt) && !scheduled; }
+        void scheduleInit();
+        void countMs();
 
         uint16_t readWModeWep()           { return wModeWep;         }
         uint16_t readWIrf()               { return wIrf;             }
@@ -158,10 +158,7 @@ class Wifi
             0x0016, 0x0016, 0x162C, 0x0204, 0x0058
         };
 
-        std::function<void()> countMsTask;
-
         void sendInterrupt(int bit);
-        void countMs();
         void processPackets();
         void transfer(int index);
 };

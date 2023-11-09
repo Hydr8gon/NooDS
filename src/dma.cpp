@@ -20,13 +20,6 @@
 #include "dma.h"
 #include "core.h"
 
-Dma::Dma(Core *core, bool cpu): core(core), cpu(cpu)
-{
-    // Prepare tasks to be used with the scheduler
-    for (int i = 0; i < 4; i++)
-        transferTask[i] = std::bind(&Dma::transfer, this, i);
-}
-
 void Dma::transfer(int channel)
 {
     int dstAddrCnt = (dmaCnt[channel] & 0x00600000) >> 21;
@@ -110,7 +103,7 @@ void Dma::transfer(int channel)
         {
             // Schedule another transfer immediately if the FIFO is still half empty
             if (core->gpu3D.readGxStat() & BIT(25))
-                core->schedule(Task(&transferTask[channel], 1));
+                core->schedule(SchedTask(DMA9_TRANSFER0 + (cpu << 2) + channel), 1);
             return;
         }
     }
@@ -124,7 +117,7 @@ void Dma::transfer(int channel)
 
         // In GXFIFO mode, schedule another transfer immediately if the FIFO is still half empty
         if (mode == 7 && core->gpu3D.readGxStat() & BIT(25))
-            core->schedule(Task(&transferTask[channel], 1));
+            core->schedule(SchedTask(DMA9_TRANSFER0 + (cpu << 2) + channel), 1);
     }
     else
     {
@@ -146,7 +139,7 @@ void Dma::trigger(int mode, uint8_t channels)
     for (int i = 0; i < 4; i++)
     {
         if ((channels & BIT(i)) && (dmaCnt[i] & BIT(31)) && ((dmaCnt[i] & 0x38000000) >> 27) == mode)
-            core->schedule(Task(&transferTask[i], 1));
+            core->schedule(SchedTask(DMA9_TRANSFER0 + (cpu << 2) + i), 1);
     }
 }
 
@@ -176,7 +169,7 @@ void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value)
     // All other modes are only triggered at the moment when the event happens
     // For example, if a word from the DS cart is ready before starting a DMA, the DMA will not be triggered
     if ((dmaCnt[channel] & BIT(31)) && ((dmaCnt[channel] & 0x38000000) >> 27) == 7 && (core->gpu3D.readGxStat() & BIT(25)))
-        core->schedule(Task(&transferTask[channel], 1));
+        core->schedule(SchedTask(DMA9_TRANSFER0 + (cpu << 2) + channel), 1);
 
     // Don't reload the internal registers unless the enable bit changed from 0 to 1
     if ((old & BIT(31)) || !(dmaCnt[channel] & BIT(31)))
@@ -191,7 +184,7 @@ void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value)
     // Reloading seems to be the only trigger for this, so an enabled channel changed to immediate will never transfer
     // This also means that repeating doesn't work; in this case, the enabled bit is cleared after only one transfer
     if (((dmaCnt[channel] & 0x38000000) >> 27) == 0)
-        core->schedule(Task(&transferTask[channel], 1));
+        core->schedule(SchedTask(DMA9_TRANSFER0 + (cpu << 2) + channel), 1);
 }
 
 uint32_t Dma::readDmaCnt(int channel)

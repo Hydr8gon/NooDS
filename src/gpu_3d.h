@@ -21,7 +21,6 @@
 #define GPU_3D_H
 
 #include <cstdint>
-#include <functional>
 #include <queue>
 #include <vector>
 
@@ -103,8 +102,9 @@ struct _Polygon
 class Gpu3D
 {
     public:
-        Gpu3D(Core *core);
+        Gpu3D(Core *core): core(core) {}
 
+        void runCommand();
         void swapBuffers();
 
         bool shouldSwap() { return state == GX_HALTED; }
@@ -219,16 +219,11 @@ class Gpu3D
 
         int gxFifoCount = 0;
 
-        std::function<void()> runCommandTask;
-
         static uint32_t rgb5ToRgb6(uint16_t color);
-
         static Vertex intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2);
         static bool clipPolygon(Vertex *unclipped, Vertex *clipped, int *size);
 
-        void runCommand();
         void processVertices();
-
         void addVertex();
         void addPolygon();
 

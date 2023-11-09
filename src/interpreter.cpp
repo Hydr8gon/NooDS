@@ -25,9 +25,6 @@ Interpreter::Interpreter(Core *core, bool arm7): core(core), arm7(arm7)
     // Initialize the registers for user mode
     for (int i = 0; i < 32; i++)
         registers[i] = &registersUsr[i & 0xF];
-
-    // Prepare tasks to be used with the scheduler
-    interruptTask = std::bind(&Interpreter::interrupt, this);
 }
 
 void Interpreter::init()
@@ -71,7 +68,7 @@ void Interpreter::runNdsFrame(Core &core)
     while (core.running.exchange(true))
     {
         // Run the CPUs until the next scheduled task
-        while (core.tasks[0].cycles > core.globalCycles)
+        while (core.events[0].cycles > core.globalCycles)
         {
             // Run the ARM9
             if (!arm9.halted && core.globalCycles >= arm9.cycles)
@@ -86,13 +83,13 @@ void Interpreter::runNdsFrame(Core &core)
         }
 
         // Jump to the next scheduled task
-        core.globalCycles = core.tasks[0].cycles;
+        core.globalCycles = core.events[0].cycles;
 
         // Run all tasks that are scheduled now
-        while (core.tasks[0].cycles <= core.globalCycles)
+        while (core.events[0].cycles <= core.globalCycles)
         {
-            (*core.tasks[0].task)();
-            core.tasks.erase(core.tasks.begin());
+            (*core.events[0].task)();
+            core.events.erase(core.events.begin());
         }
     }
 }
@@ -106,17 +103,17 @@ void Interpreter::runGbaFrame(Core &core)
     {
         // Run the ARM7 until the next scheduled task
         if (arm7.cycles > core.globalCycles) core.globalCycles = arm7.cycles;
-        while (!arm7.halted && core.tasks[0].cycles > arm7.cycles)
+        while (!arm7.halted && core.events[0].cycles > arm7.cycles)
             arm7.cycles = (core.globalCycles += arm7.runOpcode());
 
         // Jump to the next scheduled task
-        core.globalCycles = core.tasks[0].cycles;
+        core.globalCycles = core.events[0].cycles;
 
         // Run all tasks that are scheduled now
-        while (core.tasks[0].cycles <= core.globalCycles)
+        while (core.events[0].cycles <= core.globalCycles)
         {
-            (*core.tasks[0].task)();
-            core.tasks.erase(core.tasks.begin());
+            (*core.events[0].task)();
+            core.events.erase(core.events.begin());
         }
     }
 }
@@ -161,7 +158,7 @@ void Interpreter::sendInterrupt(int bit)
     if (ie & irf)
     {
         if (ime && !(cpsr & BIT(7)))
-            core->schedule(Task(&interruptTask, (arm7 && !core->gbaMode) + 1));
+            core->schedule(SchedTask(ARM9_INTERRUPT + arm7), (arm7 && !core->gbaMode) + 1);
         else if (ime || arm7)
             halted &= ~BIT(0);
     }
@@ -295,7 +292,7 @@ void Interpreter::setCpsr(uint32_t value, bool save)
 
     // Trigger an interrupt if the conditions are met
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
-        core->schedule(Task(&interruptTask, (arm7 && !core->gbaMode) ? 2 : 1));
+        core->schedule(SchedTask(ARM9_INTERRUPT + arm7), (arm7 && !core->gbaMode) + 1);
 }
 
 int Interpreter::handleReserved(uint32_t opcode)
@@ -377,7 +374,7 @@ void Interpreter::writeIme(uint8_t value)
 
     // Trigger an interrupt if the conditions are met
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
-        core->schedule(Task(&interruptTask, (arm7 && !core->gbaMode) ? 2 : 1));
+        core->schedule(SchedTask(ARM9_INTERRUPT + arm7), (arm7 && !core->gbaMode) + 1);
 }
 
 void Interpreter::writeIe(uint32_t mask, uint32_t value)
@@ -388,7 +385,7 @@ void Interpreter::writeIe(uint32_t mask, uint32_t value)
 
     // Trigger an interrupt if the conditions are met
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
-        core->schedule(Task(&interruptTask, (arm7 && !core->gbaMode) ? 2 : 1));
+        core->schedule(SchedTask(ARM9_INTERRUPT + arm7), (arm7 && !core->gbaMode) + 1);
 }
 
 void Interpreter::writeIrf(uint32_t mask, uint32_t value)

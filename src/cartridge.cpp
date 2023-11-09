@@ -150,13 +150,6 @@ void Cartridge::resizeSave(int newSize, bool dirty)
     mutex.unlock();
 }
 
-CartridgeNds::CartridgeNds(Core *core): Cartridge(core)
-{
-    // Prepare tasks to be used with the scheduler
-    wordReadyTasks[0] = std::bind(&CartridgeNds::wordReady, this, 0);
-    wordReadyTasks[1] = std::bind(&CartridgeNds::wordReady, this, 1);
-}
-
 bool CartridgeNds::loadRom(std::string romPath, std::string savePath)
 {
     // Set the valid NDS save sizes
@@ -420,6 +413,15 @@ void CartridgeNds::applyKeycode()
         encTable[i + 0] = scratch >> 32;
         encTable[i + 1] = scratch;
     }
+}
+
+void CartridgeNds::wordReady(bool cpu)
+{
+    // Indicate that a word is ready
+    romCtrl[cpu] |= BIT(23);
+
+    // Trigger DS cartridge DMA transfers
+    core->dma[cpu].trigger((cpu == 0) ? 5 : 2);
 }
 
 void CartridgeNds::writeAuxSpiCnt(bool cpu, uint16_t mask, uint16_t value)
@@ -851,18 +853,9 @@ void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
     else
     {
         // Schedule the first word to be ready
-        core->schedule(Task(&wordReadyTasks[cpu], wordCycles[cpu]));
+        core->schedule(SchedTask(CART9_WORD_READY + cpu), wordCycles[cpu]);
         readCount[cpu] = 0;
     }
-}
-
-void CartridgeNds::wordReady(bool cpu)
-{
-    // Indicate that a word is ready
-    romCtrl[cpu] |= BIT(23);
-
-    // Trigger DS cartridge DMA transfers
-    core->dma[cpu].trigger((cpu == 0) ? 5 : 2);
 }
 
 uint32_t CartridgeNds::readRomDataIn(bool cpu)
@@ -887,7 +880,7 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
     else
     {
         // Schedule the next word to be ready
-        core->schedule(Task(&wordReadyTasks[cpu], wordCycles[cpu]));
+        core->schedule(SchedTask(CART9_WORD_READY + cpu), wordCycles[cpu]);
     }
 
     // Return a value from the cart depending on the current command

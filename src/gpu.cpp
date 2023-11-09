@@ -28,12 +28,6 @@ Gpu::Gpu(Core *core): core(core)
     // Mark the thread as not drawing to start
     ready.store(false);
     drawing.store(0);
-
-    // Prepare tasks to be used with the scheduler
-    gbaScanline240Task = std::bind(&Gpu::gbaScanline240, this);
-    gbaScanline308Task = std::bind(&Gpu::gbaScanline308, this);
-    scanline256Task = std::bind(&Gpu::scanline256, this);
-    scanline355Task = std::bind(&Gpu::scanline355, this);
 }
 
 Gpu::~Gpu()
@@ -54,20 +48,6 @@ Gpu::~Gpu()
         delete[] buffers.hiRes3D;
         framebuffers.pop();
     }
-}
-
-void Gpu::scheduleInit()
-{
-    // Schedule initial NDS GPU tasks (these will reschedule themselves indefinitely)
-    core->schedule(Task(&scanline256Task, 256 * 6));
-    core->schedule(Task(&scanline355Task, 355 * 6));
-}
-
-void Gpu::gbaScheduleInit()
-{
-    // Schedule initial GBA GPU tasks (these will reschedule themselves indefinitely)
-    core->schedule(Task(&gbaScanline240Task, 240 * 4));
-    core->schedule(Task(&gbaScanline308Task, 308 * 4));
 }
 
 uint32_t Gpu::rgb5ToRgb8(uint32_t color)
@@ -281,7 +261,7 @@ void Gpu::gbaScanline240()
         core->interpreter[1].sendInterrupt(1);
 
     // Reschedule the task for the next scanline
-    core->schedule(Task(&gbaScanline240Task, 308 * 4));
+    core->schedule(GBA_SCANLINE240, 308 * 4);
 }
 
 void Gpu::gbaScanline308()
@@ -293,7 +273,6 @@ void Gpu::gbaScanline308()
     switch (++vCount)
     {
         case 160: // End of visible scanlines
-        {
             // Stop the thread now that the frame has been drawn
             if (thread)
             {
@@ -327,22 +306,18 @@ void Gpu::gbaScanline308()
                 ready.store(true);
                 mutex.unlock();
             }
-
             break;
-        }
 
         case 227: // Last scanline
-        {
             // Clear the V-blank flag
             dispStat[1] &= ~BIT(0);
             core->endFrame();
             break;
-        }
 
         case 228: // End of frame
-        {
             // Start the next frame
             vCount = 0;
+            core->gpu2D[0].reloadRegisters();
 
             // Start the 2D thread if enabled
             if (Settings::threaded2D && !thread)
@@ -350,9 +325,7 @@ void Gpu::gbaScanline308()
                 running = true;
                 thread = new std::thread(&Gpu::drawGbaThreaded, this);
             }
-
             break;
-        }
     }
 
     // Signal that the next scanline should start drawing
@@ -376,7 +349,7 @@ void Gpu::gbaScanline308()
     }
 
     // Reschedule the task for the next scanline
-    core->schedule(Task(&gbaScanline308Task, 308 * 4));
+    core->schedule(GBA_SCANLINE308, 308 * 4);
 }
 
 void Gpu::scanline256()
@@ -541,7 +514,7 @@ void Gpu::scanline256()
     }
 
     // Reschedule the task for the next scanline
-    core->schedule(Task(&scanline256Task, 355 * 6));
+    core->schedule(NDS_SCANLINE256, 355 * 6);
 }
 
 void Gpu::scanline355()
@@ -550,7 +523,6 @@ void Gpu::scanline355()
     switch (++vCount)
     {
         case 192: // End of visible scanlines
-        {
             // Stop the thread now that the frame has been drawn
             if (thread)
             {
@@ -616,23 +588,20 @@ void Gpu::scanline355()
                 ready.store(true);
                 mutex.unlock();
             }
-
             break;
-        }
 
         case 262: // Last scanline
-        {
-            // Clear the V-blank flag
-            for (int i = 0; i < 2; i++)
-                dispStat[i] &= ~BIT(0);
+            // Clear the V-blank flags
+            dispStat[0] &= ~BIT(0);
+            dispStat[1] &= ~BIT(0);
             core->endFrame();
             break;
-        }
 
         case 263: // End of frame
-        {
             // Start the next frame
             vCount = 0;
+            core->gpu2D[0].reloadRegisters();
+            core->gpu2D[1].reloadRegisters();
 
             // Start the 2D thread if enabled
             if (Settings::threaded2D && !thread)
@@ -640,9 +609,7 @@ void Gpu::scanline355()
                 running = true;
                 thread = new std::thread(&Gpu::drawThreaded, this);
             }
-
             break;
-        }
     }
 
     // Signal that the next scanline should start drawing
@@ -672,7 +639,7 @@ void Gpu::scanline355()
     }
 
     // Reschedule the task for the next scanline
-    core->schedule(Task(&scanline355Task, 355 * 6));
+    core->schedule(NDS_SCANLINE355, 355 * 6);
 }
 
 void Gpu::drawGbaThreaded()

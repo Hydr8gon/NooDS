@@ -29,6 +29,7 @@ class Gpu2D
     public:
         Gpu2D(Core *core, bool engine);
 
+        void reloadRegisters();
         void drawGbaScanline(int line);
         void drawScanline(int line);
 

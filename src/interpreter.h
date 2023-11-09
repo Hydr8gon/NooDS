@@ -21,7 +21,6 @@
 #define INTERPRETER_H
 
 #include <cstdint>
-#include <functional>
 
 #include "defines.h"
 
@@ -43,6 +42,7 @@ class Interpreter
         void halt(int bit)   { halted |=  BIT(bit); }
         void unhalt(int bit) { halted &= ~BIT(bit); }
         void sendInterrupt(int bit);
+        void interrupt();
 
         bool     isThumb() { return cpsr & BIT(5);  }
         uint32_t getPC()   { return *registers[15]; }
@@ -91,10 +91,7 @@ class Interpreter
         static const uint8_t condition[0x100];
         static const uint8_t bitCount[0x100];
 
-        std::function<void()> interruptTask;
-
         int runOpcode();
-        void interrupt();
         int exception(uint8_t vector);
         void flushPipeline();
         void setCpsr(uint32_t value, bool save = false);

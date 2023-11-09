@@ -30,16 +30,6 @@ Wifi::Wifi(Core *core): core(core)
     bbRegisters[0x00] = 0x6D;
     bbRegisters[0x5D] = 0x01;
     bbRegisters[0x64] = 0xFF;
-
-    // Prepare tasks to be used with the scheduler
-    countMsTask = std::bind(&Wifi::countMs, this);
-}
-
-void Wifi::scheduleInit()
-{
-    // Schedule an initial millisecond tick (this will reschedule itself as needed)
-    core->schedule(Task(&countMsTask, MS_CYCLES));
-    scheduled = true;
 }
 
 void Wifi::addConnection(Core *core)
@@ -70,21 +60,11 @@ void Wifi::remConnection(Core *core)
     core->wifi.mutex.unlock();
 }
 
-void Wifi::sendInterrupt(int bit)
+void Wifi::scheduleInit()
 {
-    // Trigger a WiFi interrupt if W_IF & W_IE changes from zero
-    if (!(wIe & wIrf) && (wIe & BIT(bit)))
-        core->interpreter[1].sendInterrupt(24);
-
-    // Set the interrupt's request bit
-    wIrf |= BIT(bit);
-
-    // Perform additional actions for beacon interrupts
-    if (bit == 14)
-    {
-        wPostBeacon = 0xFFFF;
-        wTxreqRead &= 0xFFF2;
-    }
+    // Schedule an initial millisecond tick (this will reschedule itself as needed)
+    core->schedule(WIFI_COUNT_MS, MS_CYCLES);
+    scheduled = true;
 }
 
 void Wifi::countMs()
@@ -119,9 +99,26 @@ void Wifi::countMs()
 
     // Reschedule the task as long as something is active
     if (!connections.empty() || wUsCountcnt)
-        core->schedule(Task(&countMsTask, MS_CYCLES));
+        core->schedule(WIFI_COUNT_MS, MS_CYCLES);
     else
         scheduled = false;
+}
+
+void Wifi::sendInterrupt(int bit)
+{
+    // Trigger a WiFi interrupt if W_IF & W_IE changes from zero
+    if (!(wIe & wIrf) && (wIe & BIT(bit)))
+        core->interpreter[1].sendInterrupt(24);
+
+    // Set the interrupt's request bit
+    wIrf |= BIT(bit);
+
+    // Perform additional actions for beacon interrupts
+    if (bit == 14)
+    {
+        wPostBeacon = 0xFFFF;
+        wTxreqRead &= 0xFFF2;
+    }
 }
 
 void Wifi::processPackets()

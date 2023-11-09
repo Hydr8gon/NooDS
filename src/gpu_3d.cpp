@@ -83,12 +83,6 @@ const uint8_t Gpu3D::paramCounts[] =
     3,  2,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x70-0x7F
 };
 
-Gpu3D::Gpu3D(Core *core): core(core)
-{
-    // Prepare tasks to be used with the scheduler
-    runCommandTask = std::bind(&Gpu3D::runCommand, this);
-}
-
 uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
 {
     // Convert an RGB5 value to an RGB6 value (the way the 3D engine does it)
@@ -286,7 +280,7 @@ void Gpu3D::runCommand()
     if (state != GX_HALTED)
     {
         if (!fifo.empty() && fifo.size() >= paramCounts[fifo.front().command])
-            core->schedule(Task(&runCommandTask, 2));
+            core->schedule(GPU3D_COMMAND, 2);
         else
             state = GX_IDLE;
     }
@@ -369,7 +363,7 @@ void Gpu3D::swapBuffers()
     // Unhalt the GXFIFO, and start executing commands if one is ready
     if (!fifo.empty() && fifo.size() >= paramCounts[fifo.front().command])
     {
-        core->schedule(Task(&runCommandTask, 2));
+        core->schedule(GPU3D_COMMAND, 2);
         state = GX_RUNNING;
     }
     else
@@ -1580,7 +1574,7 @@ void Gpu3D::addEntry(Entry entry)
     // Start executing commands if one is ready
     if (state == GX_IDLE && fifo.size() >= paramCounts[fifo.front().command])
     {
-        core->schedule(Task(&runCommandTask, 2));
+        core->schedule(GPU3D_COMMAND, 2);
         state = GX_RUNNING;
     }
 }

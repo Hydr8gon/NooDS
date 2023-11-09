@@ -49,21 +49,52 @@
 
 enum CoreError
 {
-    ERROR_BIOS = 1,
+    ERROR_BIOS,
     ERROR_FIRM,
     ERROR_ROM
 };
 
-struct Task
+enum SchedTask
+{
+    RESET_CYCLES,
+    CART9_WORD_READY,
+    CART7_WORD_READY,
+    DMA9_TRANSFER0,
+    DMA9_TRANSFER1,
+    DMA9_TRANSFER2,
+    DMA9_TRANSFER3,
+    DMA7_TRANSFER0,
+    DMA7_TRANSFER1,
+    DMA7_TRANSFER2,
+    DMA7_TRANSFER3,
+    NDS_SCANLINE256,
+    NDS_SCANLINE355,
+    GBA_SCANLINE240,
+    GBA_SCANLINE308,
+    GPU3D_COMMAND,
+    ARM9_INTERRUPT,
+    ARM7_INTERRUPT,
+    NDS_SPU_SAMPLE,
+    GBA_SPU_SAMPLE,
+    TIMER9_OVERFLOW0,
+    TIMER9_OVERFLOW1,
+    TIMER9_OVERFLOW2,
+    TIMER9_OVERFLOW3,
+    TIMER7_OVERFLOW0,
+    TIMER7_OVERFLOW1,
+    TIMER7_OVERFLOW2,
+    TIMER7_OVERFLOW3,
+    WIFI_COUNT_MS,
+    MAX_TASKS
+};
+
+struct SchedEvent
 {
     std::function<void()> *task;
     uint32_t cycles;
 
-    Task(std::function<void()> *task, uint32_t cycles):
-        task(task), cycles(cycles) {}
-
-    bool operator<(const Task &task) const
-        { return cycles < task.cycles; }
+    SchedEvent(std::function<void()> *task, uint32_t cycles): task(task), cycles(cycles) {}
+    bool operator<(const SchedEvent &event) const { return cycles < event.cycles; }
 };
 
 class Core
@@ -95,25 +126,23 @@ class Core
         Wifi wifi;
 
         std::atomic<bool> running;
-        std::vector<Task> tasks;
+        std::vector<SchedEvent> events;
         uint32_t globalCycles = 0;
 
         Core(std::string ndsPath = "", std::string gbaPath = "", int id = 0,
              std::string ndsSave = "", std::string gbaSave = "");
 
         void runFrame() { (*runFunc)(*this); }
-
-        void schedule(Task task);
+        void schedule(SchedTask task, uint32_t cycles);
         void enterGbaMode();
         void endFrame();
 
     private:
         bool realGbaBios;
+        std::function<void()> tasks[MAX_TASKS];
         void (*runFunc)(Core&) = &Interpreter::runNdsFrame;
         std::chrono::steady_clock::time_point lastFpsTime;
         int fpsCount = 0;
-
-        std::function<void()> resetCyclesTask;
 
         void resetCycles();
 };

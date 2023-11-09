@@ -45,10 +45,6 @@ Spu::Spu(Core *core): core(core)
 {
     // Mark the buffer as not ready
     ready.store(false);
-
-    // Prepare tasks to be used with the scheduler
-    runGbaSampleTask = std::bind(&Spu::runGbaSample, this);
-    runSampleTask = std::bind(&Spu::runSample, this);
 }
 
 Spu::~Spu()
@@ -56,18 +52,6 @@ Spu::~Spu()
     // Free the buffers
     delete[] bufferIn;
     delete[] bufferOut;
-}
-
-void Spu::scheduleInit()
-{
-    // Schedule the initial NDS SPU task (this will reschedule itself indefinitely)
-    core->schedule(Task(&runSampleTask, 512 * 2));
-}
-
-void Spu::gbaScheduleInit()
-{
-    // Schedule the initial GBA SPU task (this will reschedule itself indefinitely)
-    core->schedule(Task(&runGbaSampleTask, 512));
 }
 
 uint32_t *Spu::getSamples(int count)
@@ -405,7 +389,7 @@ void Spu::runGbaSample()
     }
 
     // Reschedule the task for the next sample
-    core->schedule(Task(&runGbaSampleTask, 512));
+    core->schedule(GBA_SPU_SAMPLE, 512);
 }
 
 void Spu::runSample()
@@ -708,7 +692,7 @@ void Spu::runSample()
     }
 
     // Reschedule the task for the next sample
-    core->schedule(Task(&runSampleTask, 512 * 2));
+    core->schedule(NDS_SPU_SAMPLE, 512 * 2);
 }
 
 void Spu::swapBuffers()

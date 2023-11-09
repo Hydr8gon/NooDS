@@ -46,11 +46,42 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id, std::string ndsSave
     // Try to load the GBA BIOS
     realGbaBios = memory.loadGbaBios();
 
+    // Define the tasks that can be scheduled
+    tasks[RESET_CYCLES] = std::bind(&Core::resetCycles, this);
+    tasks[CART9_WORD_READY] = std::bind(&CartridgeNds::wordReady, &cartridgeNds, 0);
+    tasks[CART7_WORD_READY] = std::bind(&CartridgeNds::wordReady, &cartridgeNds, 1);
+    tasks[DMA9_TRANSFER0] = std::bind(&Dma::transfer, &dma[0], 0);
+    tasks[DMA9_TRANSFER1] = std::bind(&Dma::transfer, &dma[0], 1);
+    tasks[DMA9_TRANSFER2] = std::bind(&Dma::transfer, &dma[0], 2);
+    tasks[DMA9_TRANSFER3] = std::bind(&Dma::transfer, &dma[0], 3);
+    tasks[DMA7_TRANSFER0] = std::bind(&Dma::transfer, &dma[1], 0);
+    tasks[DMA7_TRANSFER1] = std::bind(&Dma::transfer, &dma[1], 1);
+    tasks[DMA7_TRANSFER2] = std::bind(&Dma::transfer, &dma[1], 2);
+    tasks[DMA7_TRANSFER3] = std::bind(&Dma::transfer, &dma[1], 3);
+    tasks[NDS_SCANLINE256] = std::bind(&Gpu::scanline256, &gpu);
+    tasks[NDS_SCANLINE355] = std::bind(&Gpu::scanline355, &gpu);
+    tasks[GBA_SCANLINE240] = std::bind(&Gpu::gbaScanline240, &gpu);
+    tasks[GBA_SCANLINE308] = std::bind(&Gpu::gbaScanline308, &gpu);
+    tasks[GPU3D_COMMAND] = std::bind(&Gpu3D::runCommand, &gpu3D);
+    tasks[ARM9_INTERRUPT] = std::bind(&Interpreter::interrupt, &interpreter[0]);
+    tasks[ARM7_INTERRUPT] = std::bind(&Interpreter::interrupt, &interpreter[1]);
+    tasks[NDS_SPU_SAMPLE] = std::bind(&Spu::runSample, &spu);
+    tasks[GBA_SPU_SAMPLE] = std::bind(&Spu::runGbaSample, &spu);
+    tasks[TIMER9_OVERFLOW0] = std::bind(&Timers::overflow, &timers[0], 0);
+    tasks[TIMER9_OVERFLOW1] = std::bind(&Timers::overflow, &timers[0], 1);
+    tasks[TIMER9_OVERFLOW2] = std::bind(&Timers::overflow, &timers[0], 2);
+    tasks[TIMER9_OVERFLOW3] = std::bind(&Timers::overflow, &timers[0], 3);
+    tasks[TIMER7_OVERFLOW0] = std::bind(&Timers::overflow, &timers[1], 0);
+    tasks[TIMER7_OVERFLOW1] = std::bind(&Timers::overflow, &timers[1], 1);
+    tasks[TIMER7_OVERFLOW2] = std::bind(&Timers::overflow, &timers[1], 2);
+    tasks[TIMER7_OVERFLOW3] = std::bind(&Timers::overflow, &timers[1], 3);
+    tasks[WIFI_COUNT_MS] = std::bind(&Wifi::countMs, &wifi);
+
     // Schedule initial tasks for NDS mode
-    resetCyclesTask = std::bind(&Core::resetCycles, this);
-    schedule(Task(&resetCyclesTask, 0x7FFFFFFF));
-    gpu.scheduleInit();
-    spu.scheduleInit();
+    schedule(RESET_CYCLES, 0x7FFFFFFF);
+    schedule(NDS_SCANLINE256, 256 * 6);
+    schedule(NDS_SCANLINE355, 355 * 6);
+    schedule(NDS_SPU_SAMPLE, 512 * 2);
 
     // Initialize the memory and CPUs
     memory.updateMap9<false>(0x00000000, 0xFFFFFFFF);
@@ -116,20 +147,20 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id, std::string ndsSave
 void Core::resetCycles()
 {
     // Reset the global cycle count periodically to prevent overflow
-    for (size_t i = 0; i < tasks.size(); i++)
-        tasks[i].cycles -= globalCycles;
+    for (size_t i = 0; i < events.size(); i++)
+        events[i].cycles -= globalCycles;
     for (int i = 0; i < 2; i++)
         interpreter[i].resetCycles(), timers[i].resetCycles();
     globalCycles -= globalCycles;
-    schedule(Task(&resetCyclesTask, 0x7FFFFFFF));
+    schedule(RESET_CYCLES, 0x7FFFFFFF);
 }
 
-void Core::schedule(Task task)
+void Core::schedule(SchedTask task, uint32_t cycles)
 {
     // Add a task to the scheduler, sorted by least to most cycles until execution
-    task.cycles += globalCycles;
-    auto it = std::upper_bound(tasks.cbegin(), tasks.cend(), task);
-    tasks.insert(it, task);
+    SchedEvent event(&tasks[task], globalCycles + cycles);
+    auto it = std::upper_bound(events.cbegin(), events.cend(), event);
+    events.insert(it, event);
 }
 
 void Core::enterGbaMode()
@@ -140,10 +171,11 @@ void Core::enterGbaMode()
     running.store(false);
 
     // Reset the scheduler and schedule initial tasks for GBA mode
-    tasks.clear();
-    schedule(Task(&resetCyclesTask, 1));
-    gpu.gbaScheduleInit();
-    spu.gbaScheduleInit();
+    events.clear();
+    schedule(RESET_CYCLES, 1);
+    schedule(GBA_SCANLINE240, 240 * 4);
+    schedule(GBA_SCANLINE308, 308 * 4);
+    schedule(GBA_SPU_SAMPLE, 512);
 
     // Reset the system for GBA mode
     memory.updateMap7(0x00000000, 0xFFFFFFFF);

@@ -55,25 +55,23 @@ uint32_t Gpu2D::rgb5ToRgb6(uint32_t color)
     return (color & 0xFFFC0000) | (b << 12) | (g << 6) | r;
 }
 
+void Gpu2D::reloadRegisters()
+{
+    // Reload internal registers at the start of a frame
+    internalX[0] = bgX[0];
+    internalX[1] = bgX[1];
+    internalY[0] = bgY[0];
+    internalY[1] = bgY[1];
+}
+
 void Gpu2D::drawGbaScanline(int line)
 {
-    // Reload the internal registers at the start of the frame
-    if (line == 0)
-    {
-        internalX[0] = bgX[0];
-        internalX[1] = bgX[1];
-        internalY[0] = bgY[0];
-        internalY[1] = bgY[1];
-    }
-
-    // Clear the layers with the backdrop (first palette index)
-    uint16_t backdrop = U8TO16(palette, 0) & ~BIT(15);
-    for (int i = 0; i < 2; i++)
-    {
-        for (int j = 0; j < 240; j++) layers[i][j] = backdrop;
-        memset(priorities[i], 4, 240 * sizeof(uint8_t));
-        memset(blendBits[i],  5, 240 * sizeof(uint8_t));
-    }
+    // Clear layers with the backdrop (first palette index)
+    uint32_t backdrop = U8TO16(palette, 0) & ~BIT(15);
+    for (int i = 0; i < 240; i++) layers[0][i] = backdrop;
+    memcpy(layers[1], layers[0], 240 * sizeof(uint32_t));
+    memset(priorities, 4, sizeof(priorities));
+    memset(blendBits, 5, sizeof(blendBits));
 
     // Draw the objects, object window first if enabled
     if (dispCnt & BIT(12))
@@ -190,23 +188,12 @@ void Gpu2D::drawGbaScanline(int line)
 
 void Gpu2D::drawScanline(int line)
 {
-    // Reload the internal registers at the start of the frame
-    if (line == 0)
-    {
-        internalX[0] = bgX[0];
-        internalX[1] = bgX[1];
-        internalY[0] = bgY[0];
-        internalY[1] = bgY[1];
-    }
-
-    // Clear the layers with the backdrop (first palette index)
-    uint16_t backdrop = U8TO16(palette, 0) & ~BIT(15);
-    for (int i = 0; i < 2; i++)
-    {
-        for (int j = 0; j < 256; j++) layers[i][j] = backdrop;
-        memset(priorities[i], 4, 256 * sizeof(uint8_t));
-        memset(blendBits[i],  5, 256 * sizeof(uint8_t));
-    }
+    // Clear layers with the backdrop (first palette index)
+    uint32_t backdrop = U8TO16(palette, 0) & ~BIT(15);
+    for (int i = 0; i < 256; i++) layers[0][i] = backdrop;
+    memcpy(layers[1], layers[0], sizeof(layers[0]));
+    memset(priorities, 4, sizeof(priorities));
+    memset(blendBits, 5, sizeof(blendBits));
 
     // Draw the objects, object window first if enabled
     if (dispCnt & BIT(12))

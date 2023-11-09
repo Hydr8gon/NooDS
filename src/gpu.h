@@ -22,7 +22,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <functional>
 #include <thread>
 #include <mutex>
 #include <queue>
@@ -37,12 +36,13 @@ class Gpu
         Gpu(Core *core);
         ~Gpu();
 
-        void scheduleInit();
-        void gbaScheduleInit();
-
         bool getFrame(uint32_t *out, bool gbaCrop);
-
         void invalidate3D() { dirty3D |= BIT(0); }
+
+        void gbaScanline240();
+        void gbaScanline308();
+        void scanline256();
+        void scanline355();
 
         uint16_t readDispStat(bool cpu) { return dispStat[cpu]; }
         uint16_t readVCount()           { return vCount;        }
@@ -80,19 +80,9 @@ class Gpu
         uint32_t dispCapCnt = 0;
         uint16_t powCnt1 = 0;
 
-        std::function<void()> gbaScanline240Task;
-        std::function<void()> gbaScanline308Task;
-        std::function<void()> scanline256Task;
-        std::function<void()> scanline355Task;
-
         static uint32_t rgb5ToRgb8(uint32_t color);
         static uint32_t rgb6ToRgb8(uint32_t color);
         static uint16_t rgb6ToRgb5(uint32_t color);
-
-        void gbaScanline240();
-        void gbaScanline308();
-        void scanline256();
-        void scanline355();
 
         void drawGbaThreaded();
         void drawThreaded();
