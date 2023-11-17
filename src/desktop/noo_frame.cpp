@@ -709,5 +709,6 @@ void NooFrame::close(wxCloseEvent &event)
     // Properly shut down the emulator
     stopCore(true);
     app->removeFrame(id);
+    canvas->finish();
     event.Skip(true);
 }

@@ -17,17 +17,19 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <wx/rawbmp.h>
+
 #include "noo_canvas.h"
 #include "noo_app.h"
 #include "noo_frame.h"
 #include "../settings.h"
 
-#ifdef _WIN32
+#if defined(_WIN32) && defined(USE_GL_CANVAS)
 #include <GL/gl.h>
 #include <GL/glext.h>
 #endif
 
-wxBEGIN_EVENT_TABLE(NooCanvas, wxGLCanvas)
+wxBEGIN_EVENT_TABLE(NooCanvas, CANVAS_CLASS)
 EVT_PAINT(NooCanvas::draw)
 EVT_SIZE(NooCanvas::resize)
 EVT_KEY_DOWN(NooCanvas::pressKey)
@@ -37,8 +39,9 @@ EVT_MOTION(NooCanvas::pressScreen)
 EVT_LEFT_UP(NooCanvas::releaseScreen)
 wxEND_EVENT_TABLE()
 
-NooCanvas::NooCanvas(NooFrame *frame): wxGLCanvas(frame, wxID_ANY, nullptr), frame(frame)
+NooCanvas::NooCanvas(NooFrame *frame): CANVAS_CLASS(frame, wxID_ANY, CANVAS_PARAM), frame(frame)
 {
+#ifdef USE_GL_CANVAS
     // Prepare the OpenGL context
     context = new wxGLContext(this);
     SetCurrent(*context);
@@ -50,23 +53,75 @@ NooCanvas::NooCanvas(NooFrame *frame): wxGLCanvas(frame, wxID_ANY, nullptr), fra
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+#endif
 
     // Set focus so that key presses will be registered
     SetFocus();
-
     frame->SendSizeEvent();
+}
+
+void NooCanvas::drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t *buf)
+{
+#ifdef USE_GL_CANVAS
+    // Set texture coordinates based on rotation
+    static const uint8_t texCoords[] = { 0x4B, 0x2D, 0xD2 };
+    uint8_t coords = texCoords[ScreenLayout::screenRotation];
+
+    // Draw a screen with the given information
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, wb, hb, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+    glBegin(GL_QUADS);
+    glTexCoord2i((coords >> 0) & 1, (coords >> 1) & 1);
+    glVertex2i(x + w, y + h);
+    glTexCoord2i((coords >> 2) & 1, (coords >> 3) & 1);
+    glVertex2i(x, y + h);
+    glTexCoord2i((coords >> 4) & 1, (coords >> 5) & 1);
+    glVertex2i(x, y);
+    glTexCoord2i((coords >> 6) & 1, (coords >> 7) & 1);
+    glVertex2i(x + w, y);
+    glEnd();
+#else
+    // Create a bitmap for the screen
+    wxBitmap bmp(wb, hb, 24);
+    wxNativePixelData data(bmp);
+    wxNativePixelData::Iterator iter(data);
+
+    // Copy buffer data to the bitmap
+    for (int i = 0; i < hb; i++)
+    {
+        wxNativePixelData::Iterator pixel = iter;
+        for (int j = 0; j < wb; j++, pixel++)
+        {
+            uint32_t color = buf[i * wb + j];
+            pixel.Red() = ((color >> 0) & 0xFF);
+            pixel.Green() = ((color >> 8) & 0xFF);
+            pixel.Blue() = ((color >> 16) & 0xFF);
+        }
+        iter.OffsetY(data, 1);
+    }
+
+    // Draw the bitmap, rotated and scaled
+    wxPaintDC dc(this);
+    wxImage img = bmp.ConvertToImage();
+    if (ScreenLayout::screenRotation > 0)
+        img = img.Rotate90(ScreenLayout::screenRotation == 1);
+    img.Rescale(w, h, NooApp::screenFilter ? wxIMAGE_QUALITY_BILINEAR : wxIMAGE_QUALITY_NEAREST);
+    bmp = wxBitmap(img);
+    dc.DrawBitmap(bmp, wxPoint(x, y));
+#endif
 }
 
 void NooCanvas::draw(wxPaintEvent &event)
 {
-    // Continuous rendering can prevent the canvas from closing, so only render when needed
-    if (!frame->getCore() && !display) return;
+    // Stop rendering if the program is closing
+    if (finished)
+        return;
 
+#ifdef USE_GL_CANVAS
+    // Clear the frame
     SetCurrent(*context);
-
-    // Clear the window
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+#endif
 
     if (frame->getCore())
     {
@@ -84,72 +139,23 @@ void NooCanvas::draw(wxPaintEvent &event)
         if (++frameCount >= swapInterval && frame->getCore()->gpu.getFrame(framebuffer, gba))
             frameCount = 0;
 
-        // Rotate the texture coordinates
-        uint8_t texCoords;
-        switch (ScreenLayout::screenRotation)
-        {
-            case 0: texCoords = 0x4B; break; // None
-            case 1: texCoords = 0x2D; break; // Clockwise
-            case 2: texCoords = 0xD2; break; // Counter-clockwise
-        }
-
         // Shift the screen resolutions if high-res is enabled
         bool resShift = Settings::highRes3D;
 
         if (gbaMode)
         {
             // Draw the GBA screen
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 240 << resShift, 160 << resShift, 0,
-                GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
-            glBegin(GL_QUADS);
-            glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
-            glVertex2i(layout.topX + layout.topWidth, layout.topY + layout.topHeight);
-            glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1);
-            glVertex2i(layout.topX, layout.topY + layout.topHeight);
-            glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1);
-            glVertex2i(layout.topX, layout.topY);
-            glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1);
-            glVertex2i(layout.topX + layout.topWidth, layout.topY);
-            glEnd();
+            drawScreen(layout.topX, layout.topY, layout.topWidth, layout.topHeight,
+               240 << resShift, 160 << resShift, &framebuffer[0]);
         }
-        else // NDS mode
+        else
         {
-            // Draw the DS top screen
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256 << resShift, 192 << resShift, 0,
-                GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[0]);
-            glBegin(GL_QUADS);
-            glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
-            glVertex2i(layout.topX + layout.topWidth, layout.topY + layout.topHeight);
-            glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1);
-            glVertex2i(layout.topX, layout.topY + layout.topHeight);
-            glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1);
-            glVertex2i(layout.topX, layout.topY);
-            glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1);
-            glVertex2i(layout.topX + layout.topWidth, layout.topY);
-            glEnd();
-
-            // Draw the DS bottom screen
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256 << resShift, 192 << resShift, 0,
-                GL_RGBA, GL_UNSIGNED_BYTE, &framebuffer[(256 * 192) << (resShift * 2)]);
-            glBegin(GL_QUADS);
-            glTexCoord2i((texCoords >> 0) & 1, (texCoords >> 1) & 1);
-            glVertex2i(layout.botX + layout.botWidth, layout.botY + layout.botHeight);
-            glTexCoord2i((texCoords >> 2) & 1, (texCoords >> 3) & 1);
-            glVertex2i(layout.botX, layout.botY + layout.botHeight);
-            glTexCoord2i((texCoords >> 4) & 1, (texCoords >> 5) & 1);
-            glVertex2i(layout.botX, layout.botY);
-            glTexCoord2i((texCoords >> 6) & 1, (texCoords >> 7) & 1);
-            glVertex2i(layout.botX + layout.botWidth, layout.botY);
-            glEnd();
+            // Draw the DS top and bottom screens
+            drawScreen(layout.topX, layout.topY, layout.topWidth, layout.topHeight,
+               256 << resShift, 192 << resShift, &framebuffer[0]);
+            drawScreen(layout.botX, layout.botY, layout.botWidth, layout.botHeight,
+               256 << resShift, 192 << resShift, &framebuffer[(256 * 192) << (resShift * 2)]);
         }
-
-        display = true;
-    }
-    else
-    {
-        // Stop rendering until the core is running again
-        // The current frame will clear the window
-        display = false;
     }
 
     // Track the refresh rate and update the swap interval every second
@@ -162,8 +168,11 @@ void NooCanvas::draw(wxPaintEvent &event)
         lastRateTime = std::chrono::steady_clock::now();
     }
 
+#ifdef USE_GL_CANVAS
+    // Display the finished frame
     glFinish();
     SwapBuffers();
+#endif
 }
 
 void NooCanvas::resize(wxSizeEvent &event)
@@ -172,22 +181,14 @@ void NooCanvas::resize(wxSizeEvent &event)
     wxSize size = GetSize();
     layout.update(size.x, size.y, gbaMode);
 
-    // Prevent resizing smaller than the minimum layout size
-    // The minimum size breaks when returning from full screen, but fixes when changing to a different value
-    // As a workaround, the minimum size is cleared when returning from full screen and reset on the next resize
-    if (frameReset)
-    {
-        frame->SetMinClientSize(wxSize(0, 0));
-        frameReset = false;
-    }
-    else
-    {
-        frame->SetMinClientSize(wxSize(layout.minWidth, layout.minHeight));
-    }
+    // Full screen breaks the minimum frame size, but changing to a different value fixes it
+    // As a workaround, clear the minimum size on full screen and reset it shortly after
+    frame->SetMinClientSize(sizeReset ? wxSize(0, 0) : wxSize(layout.minWidth, layout.minHeight));
+    sizeReset -= (bool)sizeReset;
 
-    SetCurrent(*context);
-
+#ifdef USE_GL_CANVAS
     // Update the display dimensions
+    SetCurrent(*context);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(0, size.x, size.y, 0, -1, 1);
@@ -196,6 +197,7 @@ void NooCanvas::resize(wxSizeEvent &event)
     // Set filtering
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, NooApp::screenFilter ? GL_LINEAR : GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, NooApp::screenFilter ? GL_LINEAR : GL_NEAREST);
+#endif
 }
 
 void NooCanvas::pressKey(wxKeyEvent &event)

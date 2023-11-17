@@ -22,18 +22,28 @@
 
 #include <chrono>
 #include <wx/wx.h>
-#include <wx/glcanvas.h>
 
 #include "../common/screen_layout.h"
 
 class NooFrame;
 
-class NooCanvas: public wxGLCanvas
+#ifdef USE_GL_CANVAS
+#include <wx/glcanvas.h>
+#define CANVAS_CLASS wxGLCanvas
+#define CANVAS_PARAM nullptr
+#else
+class wxGLContext;
+#define CANVAS_CLASS wxPanel
+#define CANVAS_PARAM wxDefaultPosition
+#endif
+
+class NooCanvas: public CANVAS_CLASS
 {
     public:
         NooCanvas(NooFrame *frame);
 
-        void resetFrame() { frameReset = true; }
+        void resetFrame() { sizeReset = 2; }
+        void finish() { finished = true; }
 
     private:
         NooFrame *frame;
@@ -42,15 +52,15 @@ class NooCanvas: public wxGLCanvas
         ScreenLayout layout;
         uint32_t framebuffer[256 * 192 * 8] = {};
         bool gbaMode = false;
-        bool display = true;
-        bool frameReset = false;
+        uint8_t sizeReset = 0;
+        bool finished = false;
 
         int frameCount = 0;
         int swapInterval = 0;
         int refreshRate = 0;
         std::chrono::steady_clock::time_point lastRateTime;
 
-        void resize();
+        void drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t *buf);
 
         void draw(wxPaintEvent &event);
         void resize(wxSizeEvent &event);

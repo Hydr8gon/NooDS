@@ -1,7 +1,7 @@
 NAME     := noods
 BUILD    := build
 SOURCES  := src src/common src/desktop
-ARGS     := -Ofast -flto -std=c++11 #-DDEBUG
+ARGS     := -Ofast -flto -std=c++11 -DUSE_GL_CANVAS #-DDEBUG
 LIBS     := $(shell pkg-config --libs portaudio-2.0)
 INCLUDES := $(shell pkg-config --cflags portaudio-2.0)
 
