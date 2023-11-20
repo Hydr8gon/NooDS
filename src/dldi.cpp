@@ -82,12 +82,12 @@ int Dldi::isInserted()
     return (sdImage ? 1 : 0);
 }
 
-int Dldi::readSectors(bool cpu, int sector, int numSectors, uint32_t buf)
+int Dldi::readSectors(bool cpu, uint32_t sector, uint32_t numSectors, uint32_t buf)
 {
+    // Get the SD offset and size in bytes
     if (!sdImage) return 0;
-
-    const int offset = sector * 0x200;
-    const int size = numSectors * 0x200;
+    const uint64_t offset = uint64_t(sector) << 9;
+    const uint64_t size = uint64_t(numSectors) << 9;
 
     // Read data from the SD image
     uint8_t *data = new uint8_t[size];
@@ -97,17 +97,16 @@ int Dldi::readSectors(bool cpu, int sector, int numSectors, uint32_t buf)
     // Write the data to memory
     for (int i = 0; i < size; i++)
         core->memory.write<uint8_t>(cpu, buf + i, data[i]);
-
     delete[] data;
     return 1;
 }
 
-int Dldi::writeSectors(bool cpu, int sector, int numSectors, uint32_t buf)
+int Dldi::writeSectors(bool cpu, uint32_t sector, uint32_t numSectors, uint32_t buf)
 {
+    // Get the SD offset and size in bytes
     if (!sdImage) return 0;
-
-    const int offset = sector * 0x200;
-    const int size = numSectors * 0x200;
+    const uint64_t offset = uint64_t(sector) << 9;
+    const uint64_t size = uint64_t(numSectors) << 9;
 
     // Read data from memory
     uint8_t *data = new uint8_t[size];
@@ -117,7 +116,6 @@ int Dldi::writeSectors(bool cpu, int sector, int numSectors, uint32_t buf)
     // Write the data to the SD image
     fseek(sdImage, offset, SEEK_SET);
     fwrite(data, sizeof(uint8_t), size, sdImage);
-
     delete[] data;
     return 1;
 }
@@ -130,9 +128,8 @@ int Dldi::clearStatus()
 
 int Dldi::shutdown()
 {
-    if (!sdImage) return 0;
-
     // Close the SD image
+    if (!sdImage) return 0;
     fclose(sdImage);
     sdImage = nullptr;
     return 1;

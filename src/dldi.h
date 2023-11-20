@@ -46,8 +46,8 @@ class Dldi
 
         int startup();
         int isInserted();
-        int readSectors(bool cpu, int sector, int numSectors, uint32_t buf);
-        int writeSectors(bool cpu, int sector, int numSectors, uint32_t buf);
+        int readSectors(bool cpu, uint32_t sector, uint32_t numSectors, uint32_t buf);
+        int writeSectors(bool cpu, uint32_t sector, uint32_t numSectors, uint32_t buf);
         int clearStatus();
         int shutdown();
 
