@@ -33,14 +33,15 @@ import java.nio.FloatBuffer;
 
 public class NooRenderer implements GLSurfaceView.Renderer
 {
-    NooActivity activity;
+    public int width;
+    public int height;
 
+    private NooActivity activity;
     private int program;
     private int textures[];
     private Bitmap bitmap;
     private int highRes3D;
     private boolean gbaMode;
-    private int width, height;
 
     private final String vertexShader =
         "precision mediump float;"                                      +
@@ -125,11 +126,21 @@ public class NooRenderer implements GLSurfaceView.Renderer
         data.position(0);
         GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "uProjection"), 1, false, data);
 
-        // Update the layout
-        GLES20.glViewport(0, 0, width, height);
-        updateLayout(width, height);
+        // Update the screen layout
         this.width = width;
         this.height = height;
+        GLES20.glViewport(0, 0, width, height);
+        updateLayout(width, height);
+
+        // Update the button layout
+        activity.runOnUiThread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                activity.updateButtons();
+            }
+        });
     }
 
     @Override

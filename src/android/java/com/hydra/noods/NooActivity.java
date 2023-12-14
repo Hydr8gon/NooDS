@@ -47,7 +47,9 @@ public class NooActivity extends AppCompatActivity
     private NooRenderer renderer;
     private NooButton buttons[];
     private TextView fpsCounter;
-    private boolean showingButtons, showingFps;
+    private boolean initButtons = true;
+    private boolean showingButtons = true;
+    private boolean showingFps;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -92,10 +94,9 @@ public class NooActivity extends AppCompatActivity
             }
         });
 
-        // Add the view and buttons to the layout
+        // Add the view to the layout
+        setContentView(layout);
         layout.addView(view);
-        showingButtons = true;
-        updateButtons(true);
 
         // Create the FPS counter
         fpsCounter.setTextSize(24);
@@ -104,8 +105,6 @@ public class NooActivity extends AppCompatActivity
         // Add the FPS counter to the layout if enabled
         if (showingFps = (SettingsMenu.getShowFpsCounter() != 0))
             layout.addView(fpsCounter);
-
-        setContentView(layout);
     }
 
     @Override
@@ -119,7 +118,6 @@ public class NooActivity extends AppCompatActivity
     protected void onResume()
     {
         resumeCore();
-        updateButtons(false);
         super.onResume();
 
         // Hide the status and navigation bars
@@ -278,10 +276,10 @@ public class NooActivity extends AppCompatActivity
         inputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MENU));
     }
 
-    private void updateButtons(boolean init)
+    public void updateButtons()
     {
         // Remove old buttons from the layout if visible
-        if (!init && showingButtons)
+        if (!initButtons && showingButtons)
         {
             for (int i = 0; i < 6; i++)
                 layout.removeView(buttons[i]);
@@ -291,7 +289,7 @@ public class NooActivity extends AppCompatActivity
         DisplayMetrics metrics = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
         float d = metrics.density * (SettingsMenu.getButtonScale() + 10) / 15;
-        int w = metrics.widthPixels, h = metrics.heightPixels;
+        int w = renderer.width, h = renderer.height;
         int b = Math.min(((w > h) ? w : h) * (SettingsMenu.getButtonSpacing() + 10) / 40, h);
 
         // Create D-pad and ABXY buttons, placed 2/3rds down the virtual controller
@@ -301,25 +299,26 @@ public class NooActivity extends AppCompatActivity
         buttons[1] = new NooButton(this, NooButton.resDpad, new int[] {4, 5, 6, 7},
             (int)(d * 21.5), x + (int)(d * 16.5), (int)(d * 132), (int)(d * 132));
 
-        // Create start and select buttons, placed along the bottom of the virtual controller
-        int y = Math.min(b, w / 2) - (int)(d * 33);
-        buttons[2] = new NooButton(this, new int[] {R.drawable.start, R.drawable.start_pressed},
-            new int[] {3}, w - y - (int)(d * 16.5), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
-        buttons[3] = new NooButton(this, new int[] {R.drawable.select, R.drawable.select_pressed},
-            new int[] {2}, y - (int)(d * 16.5), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
-
         // Create L and R buttons, placed in the top corners of the virtual controller
-        int z = Math.min(h - b + (int)(d * 5), x - (int)(d * 49));
-        buttons[4] = new NooButton(this, new int[] {R.drawable.l, R.drawable.l_pressed},
-            new int[] {9}, (int)(d * 5), z, (int)(d * 110), (int)(d * 44));
-        buttons[5] = new NooButton(this, new int[] {R.drawable.r, R.drawable.r_pressed},
-            new int[] {8}, w - (int)(d * 115), z, (int)(d * 110), (int)(d * 44));
+        int y = Math.min(h - b + (int)(d * 5), x - (int)(d * 49));
+        buttons[2] = new NooButton(this, new int[] {R.drawable.l, R.drawable.l_pressed},
+            new int[] {9}, (int)(d * 5), y, (int)(d * 110), (int)(d * 44));
+        buttons[3] = new NooButton(this, new int[] {R.drawable.r, R.drawable.r_pressed},
+            new int[] {8}, w - (int)(d * 115), y, (int)(d * 110), (int)(d * 44));
+
+        // Create start and select buttons, placed along the bottom of the virtual controller
+        int z = Math.min(h - y, w / 2) - (int)(d * 49.5);
+        buttons[4] = new NooButton(this, new int[] {R.drawable.start, R.drawable.start_pressed},
+            new int[] {3}, w - z - (int)(d * 33), h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
+        buttons[5] = new NooButton(this, new int[] {R.drawable.select, R.drawable.select_pressed},
+            new int[] {2}, z, h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
 
         // Add new buttons to the layout if visible
-        if (init || showingButtons)
+        if (initButtons || showingButtons)
         {
             for (int i = 0; i < 6; i++)
                 layout.addView(buttons[i]);
+            initButtons = false;
         }
     }
 
