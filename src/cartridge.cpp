@@ -98,6 +98,13 @@ void Cartridge::writeSave()
     {
         if (FILE *saveFile = (saveFd == -1) ? fopen(savePath.c_str(), "wb") : fdopen(dup(saveFd), "wb"))
         {
+            // Overwrite and resize without closing the file descriptor
+            if (saveFd != -1)
+            {
+                fseek(saveFile, 0, SEEK_SET);
+                ftruncate(saveFd, saveSize);
+            }
+
             LOG("Writing save file to disk\n");
             fwrite(save, sizeof(uint8_t), saveSize, saveFile);
             fclose(saveFile);

@@ -32,6 +32,7 @@
 // Compatibility toggle for systems that don't have fdopen
 #ifdef NO_FDOPEN
 #define fdopen(...) (0)
+#define ftruncate(...) (0)
 #else
 #include <unistd.h>
 #endif

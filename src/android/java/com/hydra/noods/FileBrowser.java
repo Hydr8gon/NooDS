@@ -557,7 +557,7 @@ public class FileBrowser extends AppCompatActivity
         try
         {
             // Get a descriptor for the file in scoped mode
-            return getContentResolver().openFileDescriptor(uri, "r").detachFd();
+            return getContentResolver().openFileDescriptor(uri, "rw").detachFd();
         }
         catch (Exception e)
         {
