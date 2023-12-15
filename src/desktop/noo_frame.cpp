@@ -260,7 +260,7 @@ void NooFrame::startCore(bool full)
         try
         {
             // Attempt to boot the core
-            core = new Core(ndsPath, gbaPath, id);
+            core = new Core(ndsPath, gbaPath, "", "", id);
             app->connectCore(id);
         }
         catch (CoreError e)

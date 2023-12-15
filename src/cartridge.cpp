@@ -34,22 +34,36 @@ Cartridge::~Cartridge()
     if (save) delete[] save;
 }
 
-bool Cartridge::loadRom(std::string romPath, std::string savePath)
+bool Cartridge::setRom(std::string romPath, std::string savePath)
+{
+    // Set the save path based on instance ID, or override if a path is provided
+    std::string ext = core->id ? (".sv" + std::to_string(core->id + 1)) : ".sav";
+    this->savePath = (savePath == "") ? romPath.substr(0, romPath.rfind(".")) + ext : savePath;
+
+    // Load a ROM normally
+    this->romPath = romPath;
+    return loadRom();
+}
+
+bool Cartridge::setRom(int romFd, int saveFd)
+{
+    // Load a ROM using file descriptors; needed for scoped storage on Android
+    this->romFd = romFd;
+    this->saveFd = saveFd;
+    return loadRom();
+}
+
+bool Cartridge::loadRom()
 {
     // Attempt to open a ROM file
-    romName = romPath;
-    romFile = fopen(romName.c_str(), "rb");
+    romFile = (romFd == -1) ? fopen(romPath.c_str(), "rb") : fdopen(dup(romFd), "rb");
     if (!romFile) return false;
     fseek(romFile, 0, SEEK_END);
     romSize = ftell(romFile);
     fseek(romFile, 0, SEEK_SET);
 
-    // Set the save path based on instance ID, or override if a path is provided
-    std::string ext = core->id ? (".sv" + std::to_string(core->id + 1)) : ".sav";
-    saveName = (savePath == "" ? romPath.substr(0, romPath.rfind(".")) + ext : savePath);
-
     // Attempt to load the ROM's save into memory
-    if (FILE *saveFile = fopen(saveName.c_str(), "rb"))
+    if (FILE *saveFile = (saveFd == -1) ? fopen(savePath.c_str(), "rb") : fdopen(dup(saveFd), "rb"))
     {
         fseek(saveFile, 0, SEEK_END);
         saveSize = ftell(saveFile);
@@ -82,7 +96,7 @@ void Cartridge::writeSave()
     mutex.lock();
     if (saveDirty)
     {
-        if (FILE *saveFile = fopen(saveName.c_str(), "wb"))
+        if (FILE *saveFile = (saveFd == -1) ? fopen(savePath.c_str(), "wb") : fdopen(dup(saveFd), "wb"))
         {
             LOG("Writing save file to disk\n");
             fwrite(save, sizeof(uint8_t), saveSize, saveFile);
@@ -113,7 +127,7 @@ void Cartridge::trimRom()
         rom = newRom;
 
         // Update the ROM file
-        FILE *romFile = fopen(romName.c_str(), "wb");
+        FILE *romFile = (romFd == -1) ? fopen(romPath.c_str(), "wb") : fdopen(dup(romFd), "wb");
         if (romFile)
         {
             if (newSize > 0)
@@ -150,7 +164,7 @@ void Cartridge::resizeSave(int newSize, bool dirty)
     mutex.unlock();
 }
 
-bool CartridgeNds::loadRom(std::string romPath, std::string savePath)
+bool CartridgeNds::loadRom()
 {
     // Set the valid NDS save sizes
     if (saveSizes.empty())
@@ -167,10 +181,12 @@ bool CartridgeNds::loadRom(std::string romPath, std::string savePath)
         saveSizes.push_back(0x800000); // FLASH 8192KB
     }
 
-    bool res = Cartridge::loadRom(romPath, savePath);
-
     // If the ROM is 512MB or smaller, try to load it into memory; otherwise fall back to file-based loading
-    if (romSize <= 0x20000000) // 512MB
+    if (!Cartridge::loadRom())
+    {
+        return false;
+    }
+    else if (romSize <= 0x20000000) // 512MB
     {
         try
         {
@@ -212,7 +228,7 @@ bool CartridgeNds::loadRom(std::string romPath, std::string savePath)
             romEncrypted = true;
         }
     }
-    return res;
+    return true;
 }
 
 void CartridgeNds::directBoot()
@@ -964,7 +980,7 @@ bool CartridgeGba::findString(std::string string)
     return false;
 }
 
-bool CartridgeGba::loadRom(std::string romPath, std::string savePath)
+bool CartridgeGba::loadRom()
 {
     // Set the valid GBA save sizes
     if (saveSizes.empty())
@@ -977,9 +993,8 @@ bool CartridgeGba::loadRom(std::string romPath, std::string savePath)
         saveSizes.push_back(0x20000); // FLASH 128KB
     }
 
-    bool res = Cartridge::loadRom(romPath, savePath);
-
     // Load the ROM into memory
+    if (!Cartridge::loadRom()) return false;
     loadRomSection(0, romSize);
     fclose(romFile);
     romFile = nullptr;
@@ -1022,27 +1037,26 @@ bool CartridgeGba::loadRom(std::string romPath, std::string savePath)
             {
                 case 0: // EEPROM
                     // EEPROM can be either 0.5KB or 8KB, so it must be guessed based on how the game uses it
-                    return res;
+                    return true;
 
                 case 1: // SRAM 32KB
                     LOG("Detected SRAM 32KB save type\n");
                     resizeSave(0x8000, false);
-                    return res;
+                    return true;
 
                 case 2: case 3: // FLASH 64KB
                     LOG("Detected FLASH 64KB save type\n");
                     resizeSave(0x10000, false);
-                    return res;
+                    return true;
 
                 case 4: // FLASH 128KB
                     LOG("Detected FLASH 128KB save type\n");
                     resizeSave(0x20000, false);
-                    return res;
+                    return true;
             }
         }
     }
-
-    return res;
+    return true;
 }
 
 uint8_t CartridgeGba::eepromRead()

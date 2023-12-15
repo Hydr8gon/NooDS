@@ -29,6 +29,13 @@
 #define LOG(...) (0)
 #endif
 
+// Compatibility toggle for systems that don't have fdopen
+#ifdef NO_FDOPEN
+#define fdopen(...) (0)
+#else
+#include <unistd.h>
+#endif
+
 // Macro to force inlining
 #ifdef _MSC_VER
 #define FORCE_INLINE __forceinline

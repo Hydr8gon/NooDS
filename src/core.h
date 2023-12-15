@@ -129,8 +129,8 @@ class Core
         std::vector<SchedEvent> events;
         uint32_t globalCycles = 0;
 
-        Core(std::string ndsPath = "", std::string gbaPath = "", int id = 0,
-             std::string ndsSave = "", std::string gbaSave = "");
+        Core(std::string ndsRom = "", std::string gbaRom = "", std::string ndsSave = "", std::string gbaSave = "",
+             int id = 0, int ndsRomFd = -1, int gbaRomFd = -1, int ndsSaveFd = -1, int gbaSaveFd = -1);
 
         void runFrame() { (*runFunc)(*this); }
         void schedule(SchedTask task, uint32_t cycles);

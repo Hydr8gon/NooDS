@@ -36,7 +36,8 @@ int vibrateStrength = 1;
 int keyBinds[12] = {};
 
 std::string ndsPath = "", gbaPath = "";
-std::string ndsSave = "", gbaSave = "";
+int ndsRomFd = -1, gbaRomFd = -1;
+int ndsSaveFd = -1, gbaSaveFd = -1;
 Core *core = nullptr;
 ScreenLayout layout;
 uint32_t framebuffer[256 * 192 * 8];
@@ -113,15 +114,11 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_loadSetti
     return false;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_getNdsIcon(JNIEnv *env, jobject obj, jstring romName, jobject bitmap)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_getNdsIcon(JNIEnv *env, jobject obj, jint fd, jobject bitmap)
 {
-    // Get the NDS icon
-    const char *str = env->GetStringUTFChars(romName, nullptr);
-    NdsIcon icon(str);
-    env->ReleaseStringUTFChars(romName, str);
-
-    // Copy the data to the bitmap
+    // Read an NDS icon and copy its data to the bitmap
     uint32_t *data;
+    NdsIcon icon("", fd);
     AndroidBitmap_lockPixels(env, bitmap, (void**)&data);
     memcpy(data, icon.getIcon(), 32 * 32 * sizeof(uint32_t));
     AndroidBitmap_unlockPixels(env, bitmap);
@@ -133,7 +130,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_startCore(JNI
     try
     {
         if (core) delete core;
-        core = new Core(ndsPath, gbaPath, 0, ndsSave, gbaSave);
+        core = new Core(ndsPath, gbaPath, "", "", 0, ndsRomFd, gbaRomFd, ndsSaveFd, gbaSaveFd);
         return 0;
     }
     catch (CoreError e)
@@ -142,18 +139,21 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_startCore(JNI
     }
 }
 
-extern "C" JNIEXPORT jstring JNICALL Java_com_hydra_noods_FileBrowser_getNdsPath(JNIEnv* env, jobject obj)
+extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_isNdsLoaded(JNIEnv* env, jobject obj)
 {
-    return env->NewStringUTF(ndsPath.c_str());
+    // Check if an NDS ROM has been loaded
+    return ndsPath != "" || ndsRomFd != -1;
 }
 
-extern "C" JNIEXPORT jstring JNICALL Java_com_hydra_noods_FileBrowser_getGbaPath(JNIEnv* env, jobject obj)
+extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_isGbaLoaded(JNIEnv* env, jobject obj)
 {
-    return env->NewStringUTF(gbaPath.c_str());
+    // Check if a GBA ROM has been loaded
+    return gbaPath != "" || gbaRomFd != -1;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsPath(JNIEnv* env, jobject obj, jstring value)
 {
+    // Set the NDS ROM file path
     const char *str = env->GetStringUTFChars(value, nullptr);
     ndsPath = str;
     env->ReleaseStringUTFChars(value, str);
@@ -161,23 +161,24 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsPath(JN
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaPath(JNIEnv* env, jobject obj, jstring value)
 {
+    // Set the GBA ROM file path
     const char *str = env->GetStringUTFChars(value, nullptr);
     gbaPath = str;
     env->ReleaseStringUTFChars(value, str);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsSave(JNIEnv* env, jobject obj, jstring value)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsFds(JNIEnv* env, jobject obj, jint romFd, jint saveFd)
 {
-    const char *str = env->GetStringUTFChars(value, nullptr);
-    ndsSave = str;
-    env->ReleaseStringUTFChars(value, str);
+    // Set the NDS ROM file descriptors
+    ndsRomFd = romFd;
+    ndsSaveFd = saveFd;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaSave(JNIEnv* env, jobject obj, jstring value)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaFds(JNIEnv* env, jobject obj, jint romFd, jint saveFd)
 {
-    const char *str = env->GetStringUTFChars(value, nullptr);
-    gbaSave = str;
-    env->ReleaseStringUTFChars(value, str);
+    // Set the GBA ROM file descriptors
+    gbaRomFd = romFd;
+    gbaSaveFd = saveFd;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_startAudio(JNIEnv* env, jobject obj)
@@ -456,7 +457,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_writeSave(JNI
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_restartCore(JNIEnv *env, jobject obj)
 {
     if (core) delete core;
-    core = new Core(ndsPath, gbaPath, 0, ndsSave, gbaSave);
+    core = new Core(ndsPath, gbaPath, "", "", 0, ndsRomFd, gbaRomFd, ndsSaveFd, gbaSaveFd);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_pressScreen(JNIEnv *env, jobject obj, jint x, jint y)

@@ -29,7 +29,7 @@ INCLUDES	:=	src src/common src/wiiu
 CFLAGS	:=	-g -Wall -Ofast -flto -ffunction-sections -fpermissive \
 			$(MACHDEP)
 
-CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__
+CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -DNO_FDOPEN
 
 CXXFLAGS	:= $(CFLAGS)
 

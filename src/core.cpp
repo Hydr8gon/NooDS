@@ -24,26 +24,19 @@
 #include "core.h"
 #include "settings.h"
 
-Core::Core(std::string ndsPath, std::string gbaPath, int id, std::string ndsSave, std::string gbaSave):
+Core::Core(std::string ndsRom, std::string gbaRom, std::string ndsSave, std::string gbaSave,
+    int id, int ndsRomFd, int gbaRomFd, int ndsSaveFd, int gbaSaveFd):
     id(id), bios { Bios(this, 0, Bios::swiTable9), Bios(this, 1, Bios::swiTable7), Bios(this, 1, Bios::swiTableGba) },
     cartridgeNds(this), cartridgeGba(this), cp15(this), divSqrt(this), dldi(this), dma { Dma(this, 0),
     Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this),
     input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this),
     rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
 {
-    // Try to load the ARM9 BIOS; require it when not direct booting
-    if (!memory.loadBios9() && (!Settings::directBoot || (ndsPath == "" && gbaPath == "")))
-        throw ERROR_BIOS;
-
-    // Try to load the ARM7 BIOS; require it when not direct booting
-    if (!memory.loadBios7() && (!Settings::directBoot || (ndsPath == "" && gbaPath == "")))
-        throw ERROR_BIOS;
-
-    // Try to load the firmware; require it when not direct booting
-    if (!spi.loadFirmware() && (!Settings::directBoot || (ndsPath == "" && gbaPath == "")))
-        throw ERROR_FIRM;
-
-    // Try to load the GBA BIOS
+    // Try to load BIOS and firmware; require DS files when not direct booting
+    bool required = !Settings::directBoot || (ndsRom == "" && gbaRom == "" && ndsRomFd == -1 && gbaRomFd == -1);
+    if (!memory.loadBios9() && required) throw ERROR_BIOS;
+    if (!memory.loadBios7() && required) throw ERROR_BIOS;
+    if (!spi.loadFirmware() && required) throw ERROR_FIRM;
     realGbaBios = memory.loadGbaBios();
 
     // Define the tasks that can be scheduled
@@ -89,24 +82,24 @@ Core::Core(std::string ndsPath, std::string gbaPath, int id, std::string ndsSave
     interpreter[0].init();
     interpreter[1].init();
 
-    if (gbaPath != "")
+    if (gbaRom != "" || gbaRomFd != -1)
     {
         // Load a GBA ROM
-        if (!cartridgeGba.loadRom(gbaPath, gbaSave))
+        if (!cartridgeGba.setRom(gbaRom, gbaSave) && !cartridgeGba.setRom(gbaRomFd, gbaSaveFd))
             throw ERROR_ROM;
 
         // Enable GBA mode right away if direct boot is enabled
-        if (ndsPath == "" && Settings::directBoot)
+        if (Settings::directBoot && ndsRom == "" && ndsRomFd == -1)
         {
             memory.write<uint16_t>(0, 0x4000304, 0x8003); // POWCNT1
             enterGbaMode();
         }
     }
 
-    if (ndsPath != "")
+    if (ndsRom != "" || ndsRomFd != -1)
     {
         // Load an NDS ROM
-        if (!cartridgeNds.loadRom(ndsPath, ndsSave))
+        if (!cartridgeNds.setRom(ndsRom, ndsSave) && !cartridgeNds.setRom(ndsRomFd, ndsSaveFd))
             throw ERROR_ROM;
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled

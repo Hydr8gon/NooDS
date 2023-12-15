@@ -389,10 +389,12 @@ public class FileBrowser extends AppCompatActivity
             // If a ROM of the other type is already loaded, ask if it should be loaded alongside the new ROM
             if (ext.equals(".nds"))
             {
-                setNdsPath(getRomPath(file));
-                setNdsSave(getRomSave(file));
+                if (scoped)
+                    setNdsFds(getRomFd(file), getSaveFd(file));
+                else
+                    setNdsPath(file.getUri().getPath());
 
-                if (!getGbaPath().equals(""))
+                if (isGbaLoaded())
                 {
                     AlertDialog.Builder builder = new AlertDialog.Builder(this);
                     builder.setTitle("Loading NDS ROM");
@@ -413,6 +415,7 @@ public class FileBrowser extends AppCompatActivity
                         public void onClick(DialogInterface dialog, int id)
                         {
                             setGbaPath("");
+                            setGbaFds(-1, -1);
                             tryStartCore();
                         }
                     });
@@ -423,6 +426,7 @@ public class FileBrowser extends AppCompatActivity
                         public void onCancel(DialogInterface dialog)
                         {
                             setGbaPath("");
+                            setGbaFds(-1, -1);
                             tryStartCore();
                         }
                     });
@@ -433,10 +437,12 @@ public class FileBrowser extends AppCompatActivity
             }
             else
             {
-                setGbaPath(getRomPath(file));
-                setGbaSave(getRomSave(file));
+                if (scoped)
+                    setGbaFds(getRomFd(file), getSaveFd(file));
+                else
+                    setGbaPath(file.getUri().getPath());
 
-                if (!getNdsPath().equals(""))
+                if (isNdsLoaded())
                 {
                     AlertDialog.Builder builder = new AlertDialog.Builder(this);
                     builder.setTitle("Loading GBA ROM");
@@ -457,6 +463,7 @@ public class FileBrowser extends AppCompatActivity
                         public void onClick(DialogInterface dialog, int id)
                         {
                             setNdsPath("");
+                            setNdsFds(-1, -1);
                             tryStartCore();
                         }
                     });
@@ -467,6 +474,7 @@ public class FileBrowser extends AppCompatActivity
                         public void onCancel(DialogInterface dialog)
                         {
                             setNdsPath("");
+                            setNdsFds(-1, -1);
                             tryStartCore();
                         }
                     });
@@ -510,7 +518,7 @@ public class FileBrowser extends AppCompatActivity
                 {
                     fileNames.add(files[i].getName());
                     Bitmap bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
-                    getNdsIcon(getRomPath(files[i]), bitmap);
+                    getNdsIcon(getRomFd(files[i]), bitmap);
                     fileIcons.add(bitmap);
                     fileUris.add(files[i].getUri());
                 }
@@ -526,47 +534,37 @@ public class FileBrowser extends AppCompatActivity
         fileView.setAdapter(new FileAdapter(this, fileNames, fileIcons));
     }
 
-    private String getRomPath(DocumentFile file)
+    private int getRomFd(DocumentFile rom)
     {
-        // Get the raw file path in non-scoped mode
-        if (!scoped)
-            return file.getUri().getPath();
-
         try
         {
             // Get a descriptor for the file in scoped mode
-            ParcelFileDescriptor desc = getContentResolver().openFileDescriptor(file.getUri(), "r");
-            return "/proc/self/fd/" + desc.detachFd();
+            return getContentResolver().openFileDescriptor(rom.getUri(), "r").detachFd();
         }
         catch (Exception e)
         {
             // Oh well, I guess
-            return "";
+            return -1;
         }
     }
 
-    private String getRomSave(DocumentFile file)
+    private int getSaveFd(DocumentFile rom)
     {
-        // Let the core handle saves in non-scoped mode
-        if (!scoped)
-            return "";
-
         // Make a save file URI based on the ROM file URI
-        String str = file.getUri().toString();
+        String str = rom.getUri().toString();
         Uri uri = Uri.parse(str.substring(0, str.length() - 4) + ".sav");
 
         try
         {
             // Get a descriptor for the file in scoped mode
-            ParcelFileDescriptor desc = getContentResolver().openFileDescriptor(uri, "r");
-            return "/proc/self/fd/" + desc.detachFd();
+            return getContentResolver().openFileDescriptor(uri, "r").detachFd();
         }
         catch (Exception e)
         {
             // Create a new save file if one doesn't exist
-            String str2 = file.getName().toString();
-            DocumentFile file2 = DocumentFile.fromTreeUri(this, pathUris.get(pathUris.size() - 2));
-            file2.createFile("application/sav", str2.substring(0, str2.length() - 4) + ".sav");
+            str = rom.getName().toString();
+            DocumentFile save = DocumentFile.fromTreeUri(this, pathUris.get(pathUris.size() - 2));
+            save.createFile("application/sav", str.substring(0, str.length() - 4) + ".sav");
 
             try
             {
@@ -574,23 +572,23 @@ public class FileBrowser extends AppCompatActivity
                 OutputStream out = getContentResolver().openOutputStream(uri);
                 out.write(0xFF);
                 out.close();
-                return getRomSave(file);
+                return getSaveFd(rom);
             }
             catch (Exception e2)
             {
                 // Oh well, I guess
-                return "";
+                return -1;
             }
         }
     }
 
     public static native boolean loadSettings(String rootPath);
-    public static native void getNdsIcon(String romPath, Bitmap bitmap);
+    public static native void getNdsIcon(int fd, Bitmap bitmap);
     public static native int startCore();
-    public static native String getNdsPath();
-    public static native String getGbaPath();
+    public static native boolean isNdsLoaded();
+    public static native boolean isGbaLoaded();
     public static native void setNdsPath(String value);
     public static native void setGbaPath(String value);
-    public static native void setNdsSave(String value);
-    public static native void setGbaSave(String value);
+    public static native void setNdsFds(int romFd, int saveFd);
+    public static native void setGbaFds(int romFd, int saveFd);
 }

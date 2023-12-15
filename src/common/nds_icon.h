@@ -26,7 +26,7 @@
 class NdsIcon
 {
     public:
-        NdsIcon(std::string romPath);
+        NdsIcon(std::string path, int fd = -1);
 
         uint32_t *getIcon() { return icon; }
 

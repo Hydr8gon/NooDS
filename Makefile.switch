@@ -57,7 +57,7 @@ ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 CFLAGS	:=	-g -Wall -Ofast -flto -ffunction-sections \
 			$(ARCH) $(DEFINES)
 
-CFLAGS	+=	$(INCLUDE) -D__SWITCH__ #-DDEBUG
+CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -DNO_FDOPEN #-DDEBUG
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=c++11
 

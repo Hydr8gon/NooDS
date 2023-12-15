@@ -22,10 +22,10 @@
 #include "nds_icon.h"
 #include "../defines.h"
 
-NdsIcon::NdsIcon(std::string romPath)
+NdsIcon::NdsIcon(std::string path, int fd)
 {
     // Attempt to open the ROM
-    FILE *rom = fopen(romPath.c_str(), "rb");
+    FILE *rom = (fd == -1) ? fopen(path.c_str(), "rb") : fdopen(fd, "rb");
 
     // Create an empty icon if ROM loading failed
     if (!rom)

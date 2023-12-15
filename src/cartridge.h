@@ -44,7 +44,8 @@ class Cartridge
         Cartridge(Core *core): core(core) {}
         ~Cartridge();
 
-        virtual bool loadRom(std::string romPath, std::string savePath);
+        bool setRom(std::string romPath, std::string savePath = "");
+        bool setRom(int romFd, int saveFd);
         void writeSave();
 
         void trimRom();
@@ -65,10 +66,12 @@ class Cartridge
         std::vector<uint32_t> saveSizes;
         uint32_t romMask = 0;
 
+        virtual bool loadRom();
         void loadRomSection(size_t offset, size_t size);
 
     private:
-        std::string romName, saveName;
+        std::string romPath, savePath;
+        int romFd = -1, saveFd = -1;
 };
 
 class CartridgeNds: public Cartridge
@@ -76,7 +79,6 @@ class CartridgeNds: public Cartridge
     public:
         CartridgeNds(Core *core): Cartridge(core) {}
 
-        bool loadRom(std::string romPath, std::string savePath);
         void directBoot();
         void wordReady(bool cpu);
 
@@ -113,6 +115,8 @@ class CartridgeNds: public Cartridge
         uint32_t romCtrl[2] = {};
         uint64_t romCmdOut[2] = {};
 
+        virtual bool loadRom();
+
         uint64_t encrypt64(uint64_t value);
         uint64_t decrypt64(uint64_t value);
         void initKeycode(int level);
@@ -123,8 +127,6 @@ class CartridgeGba: public Cartridge
 {
     public:
         CartridgeGba(Core *core): Cartridge(core) {}
-
-        bool loadRom(std::string romPath, std::string savePath);
 
         uint8_t *getRom(uint32_t address);
         bool isEeprom(uint32_t address);
@@ -146,6 +148,7 @@ class CartridgeGba: public Cartridge
         bool flashErase = false;
 
         bool findString(std::string string);
+        virtual bool loadRom();
 };
 
 FORCE_INLINE uint8_t *CartridgeGba::getRom(uint32_t address)
