@@ -1480,13 +1480,6 @@ int Interpreter::ldrPcT(uint16_t opcode) // LDR Rd,[PC,#i]
     uint32_t op1 = *registers[15] & ~0x3;
     uint32_t op2 = (opcode & 0xFF) << 2;
     *op0 = core->memory.read<uint32_t>(arm7, op1 += op2);
-
-    // Rotate misaligned reads
-    if (op1 & 0x3)
-    {
-        uint8_t shift = (op1 & 0x3) << 3;
-        *op0 = (*op0 << (32 - shift)) | (*op0 >> shift);
-    }
     return (arm7 << 1) + 1;
 }
 
