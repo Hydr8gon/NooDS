@@ -1,9 +1,9 @@
-NAME     := noods
-BUILD    := build
-SOURCES  := src src/common src/desktop
-ARGS     := -Ofast -flto -std=c++11 -DUSE_GL_CANVAS #-DDEBUG
-LIBS     := $(shell pkg-config --libs portaudio-2.0)
-INCLUDES := $(shell pkg-config --cflags portaudio-2.0)
+NAME := noods
+BUILD := build
+SRCS := src src/common src/desktop
+ARGS := -Ofast -flto -std=c++11 -DUSE_GL_CANVAS #-DDEBUG
+LIBS := $(shell pkg-config --libs portaudio-2.0)
+INCS := $(shell pkg-config --cflags portaudio-2.0)
 
 APPNAME := NooDS
 PKGNAME := com.hydra.noods
@@ -12,10 +12,10 @@ DESTDIR ?= /usr
 ifeq ($(OS),Windows_NT)
   ARGS += -static -DWINDOWS
   LIBS += $(shell wx-config-static --libs --gl-libs) -lole32 -lsetupapi -lwinmm
-  INCLUDES += $(shell wx-config-static --cxxflags)
+  INCS += $(shell wx-config-static --cxxflags)
 else
   LIBS += $(shell wx-config --libs --gl-libs)
-  INCLUDES += $(shell wx-config --cxxflags)
+  INCS += $(shell wx-config --cxxflags)
   ifeq ($(shell uname -s),Darwin)
     ARGS += -DMACOS
     LIBS += -headerpad_max_install_names
@@ -25,9 +25,9 @@ else
   endif
 endif
 
-CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
-HFILES   := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.h))
-OFILES   := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
+CPPFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.cpp))
+HFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.h))
+OFILES := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
 
 ifeq ($(OS),Windows_NT)
   OFILES += $(BUILD)/icon-windows.o
@@ -74,17 +74,32 @@ $(NAME): $(OFILES)
 	g++ -o $@ $(ARGS) $^ $(LIBS)
 
 $(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
-	g++ -c -o $@ $(ARGS) $(INCLUDES) $<
+	g++ -c -o $@ $(ARGS) $(INCS) $<
 
 $(BUILD)/icon-windows.o:
 	windres $(shell wx-config-static --cppflags) icon/icon-windows.rc $@
 
 $(BUILD):
-	for dir in $(SOURCES); \
-	do \
-	mkdir -p $(BUILD)/$$dir; \
-	done
+	for dir in $(SRCS); do mkdir -p $(BUILD)/$$dir; done
+
+android-bundle:
+	git apply src/android/play-store.patch
+	./gradlew bundle
+	git apply -R src/android/play-store.patch
+	jarsigner -keystore keystore.jks -signedjar noods.aab build-android/outputs/bundle/release/android-release.aab keystore
+
+android:
+	./gradlew assembleDebug
+
+switch:
+	$(MAKE) -f Makefile.switch
+
+vita:
+	$(MAKE) -f Makefile.vita
 
 clean:
+	if [ -d "build-android" ]; then ./gradlew clean; fi
+	if [ -d "build-switch" ]; then $(MAKE) -f Makefile.switch clean; fi
+	if [ -d "build-vita" ]; then $(MAKE) -f Makefile.vita clean; fi
 	rm -rf $(BUILD)
 	rm -f $(NAME)
