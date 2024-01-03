@@ -21,24 +21,54 @@ package com.hydra.noods;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
+import androidx.preference.SwitchPreferenceCompat;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 
 public class SettingsMenu extends AppCompatActivity
 {
     private SharedPreferences prefs;
+    private SettingsFragment fragment;
 
     public static class SettingsFragment extends PreferenceFragmentCompat
     {
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
         {
+            // Load settings from the XML file
             setPreferencesFromResource(R.xml.settings, rootKey);
+
+            // Request the microphone permission if not granted when the setting is enabled
+            findPreference("mic_enable").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener()
+            {
+                @Override
+                public boolean onPreferenceClick(Preference pref)
+                {
+                    if (!((SwitchPreferenceCompat)pref).isChecked()) return true;
+                    String perm = android.Manifest.permission.RECORD_AUDIO;
+                    if (ContextCompat.checkSelfPermission(getActivity(), perm) != PackageManager.PERMISSION_GRANTED)
+                        ActivityCompat.requestPermissions(getActivity(), new String[] {perm}, 0);
+                    return true;
+                }
+            });
         }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)
+    {
+        // Disable the microphone setting if permission wasn't granted
+        int perm = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
+        if (perm != PackageManager.PERMISSION_GRANTED)
+            ((SwitchPreferenceCompat)fragment.findPreference("mic_enable")).setChecked(false);
     }
 
     @Override
@@ -62,6 +92,7 @@ public class SettingsMenu extends AppCompatActivity
         editor.putBoolean("integer_scale", (getIntegerScale() == 0) ? false : true);
         editor.putBoolean("gba_crop", (getGbaCrop() == 0) ? false : true);
         editor.putBoolean("screen_filter", (getScreenFilter() == 0) ? false : true);
+        editor.putBoolean("mic_enable", (getMicEnable() == 0) ? false : true);
         editor.putBoolean("show_fps_counter", (getShowFpsCounter() == 0) ? false : true);
         editor.putInt("button_scale", getButtonScale());
         editor.putInt("button_spacing", getButtonSpacing());
@@ -69,8 +100,9 @@ public class SettingsMenu extends AppCompatActivity
         editor.commit();
 
         // Populate the settings UI
+        fragment = new SettingsFragment();
         getSupportFragmentManager().beginTransaction()
-            .add(android.R.id.content, new SettingsFragment())
+            .add(android.R.id.content, fragment)
             .commit();
     }
 
@@ -91,6 +123,7 @@ public class SettingsMenu extends AppCompatActivity
         setIntegerScale(prefs.getBoolean("integer_scale", false) ? 1 : 0);
         setGbaCrop(prefs.getBoolean("gba_crop", true) ? 1 : 0);
         setScreenFilter(prefs.getBoolean("screen_filter", true) ? 1 : 0);
+        setMicEnable(prefs.getBoolean("mic_enable", false) ? 1 : 0);
         setShowFpsCounter(prefs.getBoolean("show_fps_counter", false) ? 1 : 0);
         setButtonScale(prefs.getInt("button_scale", 5));
         setButtonSpacing(prefs.getInt("button_spacing", 10));
@@ -114,6 +147,7 @@ public class SettingsMenu extends AppCompatActivity
     public static native int getIntegerScale();
     public static native int getGbaCrop();
     public static native int getScreenFilter();
+    public static native int getMicEnable();
     public static native int getShowFpsCounter();
     public static native int getButtonScale();
     public static native int getButtonSpacing();
@@ -131,6 +165,7 @@ public class SettingsMenu extends AppCompatActivity
     public static native void setIntegerScale(int value);
     public static native void setGbaCrop(int value);
     public static native void setScreenFilter(int value);
+    public static native void setMicEnable(int value);
     public static native void setShowFpsCounter(int value);
     public static native void setButtonScale(int value);
     public static native void setButtonSpacing(int value);

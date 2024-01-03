@@ -85,7 +85,7 @@ public class FileBrowser extends AppCompatActivity
         // Load settings and request storage permissions based on environment
         if (!loadSettings(getExternalFilesDir(null).getPath()) && PLAY_STORE)
             showInfo(true);
-        else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && PLAY_STORE)
+        else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R && PLAY_STORE)
             startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
         else if (checkPermissions())
             init();
@@ -205,7 +205,7 @@ public class FileBrowser extends AppCompatActivity
         view.setSingleLine(false);
         view.setMovementMethod(LinkMovementMethod.getInstance());
         view.setText(Html.fromHtml("Thanks for using my emulator! This is the Google Play version of NooDS, which " +
-            "is limited to scoped storage on Android 10 and above. When starting the app, you'll be asked to " +
+            "is limited to scoped storage on Android 11 and above. When starting the app, you'll be asked to " +
             "choose a folder that contains DS or GBA ROMs. If you have trouble accessing files, try using " +
             "<a href=\"https://github.com/Hydr8gon/NooDS/releases\">the GitHub version</a> instead.<br><br>" +
             "My projects are free and open-source, but donations help me continue to work on them. If you're " +
@@ -225,7 +225,7 @@ public class FileBrowser extends AppCompatActivity
                 // Request storage permissions if this was run on start
                 if (!start)
                     return;
-                else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q)
+                else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R)
                     startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
                 else if (checkPermissions())
                     init();

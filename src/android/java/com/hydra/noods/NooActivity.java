@@ -21,10 +21,12 @@ package com.hydra.noods;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.content.ContextCompat;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
@@ -322,10 +324,20 @@ public class NooActivity extends AppCompatActivity
         }
     }
 
+    private boolean canEnableMic()
+    {
+        // Check if the microphone is enabled and permission has been granted
+        int perm = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
+        return perm == PackageManager.PERMISSION_GRANTED && SettingsMenu.getMicEnable() == 1;
+    }
+
     private void pauseCore()
     {
+        // Stop audio output and input if enabled
         running = false;
-        stopAudio();
+        if (canEnableMic())
+            stopAudioRecorder();
+        stopAudioPlayer();
 
         // Wait for the emulator to stop
         try
@@ -349,8 +361,11 @@ public class NooActivity extends AppCompatActivity
 
     private void resumeCore()
     {
+        // Start audio output and input if enabled
         running = true;
-        startAudio();
+        startAudioPlayer();
+        if (canEnableMic())
+            startAudioRecorder();
 
         // Prepare the core thread
         coreThread = new Thread()
@@ -448,8 +463,10 @@ public class NooActivity extends AppCompatActivity
 
     public boolean isRunning() { return running; }
 
-    public static native void startAudio();
-    public static native void stopAudio();
+    public static native void startAudioPlayer();
+    public static native void startAudioRecorder();
+    public static native void stopAudioPlayer();
+    public static native void stopAudioRecorder();
     public static native int getFps();
     public static native boolean isGbaMode();
     public static native void runFrame();

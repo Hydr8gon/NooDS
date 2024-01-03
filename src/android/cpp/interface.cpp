@@ -29,6 +29,7 @@
 #include "../../common/screen_layout.h"
 
 int screenFilter = 1;
+int micEnable = 0;
 int showFpsCounter = 0;
 int buttonScale = 5;
 int buttonSpacing = 10;
@@ -46,11 +47,15 @@ SLEngineItf audioEngine;
 SLObjectItf audioEngineObj;
 SLObjectItf audioMixerObj;
 SLObjectItf audioPlayerObj;
+SLObjectItf audioRecorderObj;
 SLPlayItf audioPlayer;
-SLAndroidSimpleBufferQueueItf audioBufferQueue;
-int16_t audioBuffer[1024 * 2];
+SLRecordItf audioRecorder;
+SLAndroidSimpleBufferQueueItf audioPlayerQueue;
+SLAndroidSimpleBufferQueueItf audioRecorderQueue;
+int16_t audioPlayerBuffer[1024 * 2];
+int16_t audioRecorderBuffer[1024];
 
-void audioCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+void audioPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 {
     // Get 699 samples at 32768Hz, which is equal to approximately 1024 samples at 48000Hz
     uint32_t *original = core->spu.getSamples(699);
@@ -59,12 +64,19 @@ void audioCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
     for (int i = 0; i < 1024; i++)
     {
         uint32_t sample = original[i * 699 / 1024];
-        audioBuffer[i * 2 + 0] = sample >>  0;
-        audioBuffer[i * 2 + 1] = sample >> 16;
+        audioPlayerBuffer[i * 2 + 0] = sample >>  0;
+        audioPlayerBuffer[i * 2 + 1] = sample >> 16;
     }
 
-    (*audioBufferQueue)->Enqueue(audioBufferQueue, audioBuffer, sizeof(audioBuffer));
+    (*audioPlayerQueue)->Enqueue(audioPlayerQueue, audioPlayerBuffer, sizeof(audioPlayerBuffer));
     delete[] original;
+}
+
+void audioRecorderCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+{
+    // Send microphone samples to the core
+    core->spi.sendMicData(audioRecorderBuffer, 1024, 48000);
+    (*audioRecorderQueue)->Enqueue(audioRecorderQueue, audioRecorderBuffer, sizeof(audioRecorderBuffer));
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_loadSettings(JNIEnv* env, jobject obj, jstring rootPath)
@@ -78,6 +90,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_loadSetti
     std::vector<Setting> platformSettings =
     {
         Setting("screenFilter",    &screenFilter,    false),
+        Setting("micEnable",       &micEnable,       false),
         Setting("showFpsCounter",  &showFpsCounter,  false),
         Setting("buttonScale",     &buttonScale,     false),
         Setting("buttonSpacing",   &buttonSpacing,   false),
@@ -181,7 +194,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaFds(JNI
     gbaSaveFd = saveFd;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_startAudio(JNIEnv* env, jobject obj)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_startAudioPlayer(JNIEnv* env, jobject obj)
 {
     // Initialize the audio engine
     slCreateEngine(&audioEngineObj, 0, nullptr, 0, nullptr, nullptr);
@@ -190,8 +203,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_startAudio(JN
     (*audioEngine)->CreateOutputMix(audioEngine, &audioMixerObj, 0, 0, 0);
     (*audioMixerObj)->Realize(audioMixerObj, SL_BOOLEAN_FALSE);
 
-    // Define the audio source and format
-    SLDataLocator_AndroidSimpleBufferQueue audioBufferLoc = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
+    // Define the audio output format
     SLDataFormat_PCM audioFormat =
     {
         SL_DATAFORMAT_PCM,
@@ -202,33 +214,83 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_startAudio(JN
         SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,
         SL_BYTEORDER_LITTLEENDIAN
     };
-    SLDataSource audioSource = {&audioBufferLoc, &audioFormat};
 
     // Initialize the audio player
+    SLDataLocator_AndroidSimpleBufferQueue bufferLoc = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
+    SLDataSource audioSource = {&bufferLoc, &audioFormat};
     SLDataLocator_OutputMix audioMixer = {SL_DATALOCATOR_OUTPUTMIX, audioMixerObj};
     SLDataSink audioSink = {&audioMixer, nullptr};
     SLInterfaceID ids[2] = {SL_IID_BUFFERQUEUE, SL_IID_VOLUME};
-    SLboolean req[2] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE};
-    (*audioEngine)->CreateAudioPlayer(audioEngine, &audioPlayerObj, &audioSource, &audioSink, 2, ids, req);
+    SLboolean reqs[2] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE};
+    (*audioEngine)->CreateAudioPlayer(audioEngine, &audioPlayerObj, &audioSource, &audioSink, 2, ids, reqs);
 
-    // Set up the audio buffer queue and callback
+    // Set up the audio player queue and callback
     (*audioPlayerObj)->Realize(audioPlayerObj, SL_BOOLEAN_FALSE);
     (*audioPlayerObj)->GetInterface(audioPlayerObj, SL_IID_PLAY, &audioPlayer);
-    (*audioPlayerObj)->GetInterface(audioPlayerObj, SL_IID_BUFFERQUEUE, &audioBufferQueue);
-    (*audioBufferQueue)->RegisterCallback(audioBufferQueue, audioCallback, nullptr);
+    (*audioPlayerObj)->GetInterface(audioPlayerObj, SL_IID_BUFFERQUEUE, &audioPlayerQueue);
+    (*audioPlayerQueue)->RegisterCallback(audioPlayerQueue, audioPlayerCallback, nullptr);
     (*audioPlayer)->SetPlayState(audioPlayer, SL_PLAYSTATE_PLAYING);
 
     // Initiate playback with an empty buffer
-    memset(audioBuffer, 0, sizeof(audioBuffer));
-    (*audioBufferQueue)->Enqueue(audioBufferQueue, audioBuffer, sizeof(audioBuffer));
+    memset(audioPlayerBuffer, 0, sizeof(audioPlayerBuffer));
+    (*audioPlayerQueue)->Enqueue(audioPlayerQueue, audioPlayerBuffer, sizeof(audioPlayerBuffer));
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_stopAudio(JNIEnv* env, jobject obj)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_startAudioRecorder(JNIEnv* env, jobject obj)
 {
-    // Clean up the audio objects
+    // Define the audio input source
+    SLDataLocator_IODevice deviceLoc =
+    {
+        SL_DATALOCATOR_IODEVICE,
+        SL_IODEVICE_AUDIOINPUT,
+        SL_DEFAULTDEVICEID_AUDIOINPUT,
+        nullptr
+    };
+
+    // Define the audio input format
+    SLDataFormat_PCM audioFormat =
+    {
+        SL_DATAFORMAT_PCM,
+        1,
+        SL_SAMPLINGRATE_48,
+        SL_PCMSAMPLEFORMAT_FIXED_16,
+        SL_PCMSAMPLEFORMAT_FIXED_16,
+        SL_SPEAKER_FRONT_CENTER,
+        SL_BYTEORDER_LITTLEENDIAN
+    };
+
+    // Initialize the audio recorder
+    SLDataSource audioSource = {&deviceLoc, nullptr};
+    SLDataLocator_AndroidSimpleBufferQueue bufferLoc = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
+    SLDataSink audioSink = {&bufferLoc, &audioFormat};
+    SLInterfaceID id[1] = {SL_IID_ANDROIDSIMPLEBUFFERQUEUE};
+    SLboolean req[1] = {SL_BOOLEAN_TRUE};
+    (*audioEngine)->CreateAudioRecorder(audioEngine, &audioRecorderObj, &audioSource, &audioSink, 1, id, req);
+
+    // Set up the audio recorder queue and callback
+    (*audioRecorderObj)->Realize(audioRecorderObj, SL_BOOLEAN_FALSE);
+    (*audioRecorderObj)->GetInterface(audioRecorderObj, SL_IID_RECORD, &audioRecorder);
+    (*audioRecorderObj)->GetInterface(audioRecorderObj, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &audioRecorderQueue);
+    (*audioRecorderQueue)->RegisterCallback(audioRecorderQueue, audioRecorderCallback, nullptr);
+    (*audioRecorder)->SetRecordState(audioRecorder, SL_RECORDSTATE_RECORDING);
+
+    // Initiate recording with an empty buffer
+    memset(audioRecorderBuffer, 0, sizeof(audioRecorderBuffer));
+    (*audioRecorderQueue)->Enqueue(audioRecorderQueue, audioRecorderBuffer, sizeof(audioRecorderBuffer));
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_stopAudioPlayer(JNIEnv* env, jobject obj)
+{
+    // Clean up the audio player objects
     (*audioPlayerObj)->Destroy(audioPlayerObj);
     (*audioMixerObj)->Destroy(audioMixerObj);
     (*audioEngineObj)->Destroy(audioEngineObj);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_stopAudioRecorder(JNIEnv* env, jobject obj)
+{
+    // Clean up the audio recorder object
+    (*audioRecorderObj)->Destroy(audioRecorderObj);
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooRenderer_copyFramebuffer(JNIEnv *env, jobject obj, jobject bitmap, jboolean gbaCrop)
@@ -323,6 +385,11 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenFil
     return screenFilter;
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getMicEnable(JNIEnv* env, jobject obj)
+{
+    return micEnable;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getShowFpsCounter(JNIEnv* env, jobject obj)
 {
     return showFpsCounter;
@@ -406,6 +473,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setGbaCrop(J
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenFilter(JNIEnv* env, jobject obj, jint value)
 {
     screenFilter = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setMicEnable(JNIEnv* env, jobject obj, jint value)
+{
+    micEnable = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowFpsCounter(JNIEnv* env, jobject obj, jint value)

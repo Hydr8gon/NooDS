@@ -35,7 +35,7 @@ EVT_TIMER(UPDATE, NooApp::update)
 wxEND_EVENT_TABLE()
 
 int NooApp::screenFilter = 1;
-int NooApp::micEnable = 1;
+int NooApp::micEnable = 0;
 int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I', WXK_TAB, 0, WXK_ESCAPE, 0, WXK_BACK };
 
 bool NooApp::OnInit()
