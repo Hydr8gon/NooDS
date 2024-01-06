@@ -50,6 +50,7 @@ class Memory
         bool loadBios9();
         bool loadBios7();
         bool loadGbaBios();
+        void copyBiosLogo(uint8_t *logo);
 
         template <bool tcm> void updateMap9(uint32_t start, uint32_t end);
         void updateMap7(uint32_t start, uint32_t end);

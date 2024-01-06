@@ -211,6 +211,9 @@ bool CartridgeNds::loadRom()
         loadRomSection(0, 0x5000);
     }
 
+    // Get logo data from the ROM header
+    core->memory.copyBiosLogo(&rom[0xC0]);
+
     // Calculate the mask for ROM mirroring
     for (romMask = 1; romMask < romSize; romMask <<= 1);
     romMask -= 1;

@@ -132,6 +132,13 @@ bool Memory::loadGbaBios()
     return false;
 }
 
+void Memory::copyBiosLogo(uint8_t *logo)
+{
+    // Copy logo data to HLE BIOS so GBA ROMs can be verified
+    if (bios9[3] == 0xFF)
+        memcpy(&bios9[0x20], logo, 0x9C);
+}
+
 template <bool tcm> void Memory::updateMap9(uint32_t start, uint32_t end)
 {
     // Update the ARM9 read and write memory maps in the given range
