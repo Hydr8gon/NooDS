@@ -23,10 +23,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.documentfile.provider.DocumentFile;
+import androidx.preference.PreferenceManager;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -86,9 +88,9 @@ public class FileBrowser extends AppCompatActivity
         if (!loadSettings(getExternalFilesDir(null).getPath()) && PLAY_STORE)
             showInfo(true);
         else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R && PLAY_STORE)
-            startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
+            openScoped();
         else if (checkPermissions())
-            init();
+            initialize();
         else
             requestPermissions();
     }
@@ -98,7 +100,7 @@ public class FileBrowser extends AppCompatActivity
     {
         // Continue requesting storage permissions until they are given
         if (checkPermissions())
-            init();
+            initialize();
         else
             requestPermissions();
     }
@@ -106,15 +108,13 @@ public class FileBrowser extends AppCompatActivity
     @Override
     public boolean onCreateOptionsMenu(Menu menu)
     {
-        getMenuInflater().inflate(R.menu.file_menu, menu);
-
         // Only show the storage switcher if there are multiple storage paths
-        if (storagePaths.size() > 1)
+        getMenuInflater().inflate(R.menu.file_menu, menu);
+        if (storagePaths.size() > 1 || scoped)
         {
             MenuItem item = menu.findItem(R.id.storage_action);
             item.setVisible(true);
         }
-
         return true;
     }
 
@@ -129,8 +129,14 @@ public class FileBrowser extends AppCompatActivity
                 break;
 
             case R.id.storage_action:
+                // Open the scoped storage selector in scoped mode
+                if (scoped)
+                {
+                    startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
+                    break;
+                }
+
                 // Switch to the next storage device
-                if (scoped) break;
                 curStorage = (curStorage + 1) % storagePaths.size();
                 path = storagePaths.get(curStorage);
                 curDepth = 0;
@@ -179,17 +185,24 @@ public class FileBrowser extends AppCompatActivity
             case 1: // Manage files permission
                 // Fall back to scoped storage if permission wasn't granted
                 if (checkPermissions())
-                    init();
+                    initialize();
                 else
-                    startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
+                    openScoped();
                 return;
 
             case 2: // Scoped directory selection
-                // Set the initial path for scoped storage mode
+                // Save the returned URI with persistent permissions so it can be restored next time
+                SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
+                int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+                getContentResolver().takePersistableUriPermission(resultData.getData(), flags);
+                editor.putString("scoped_uri", resultData.getData().toString());
+                editor.commit();
+
+                // Initialize for scoped storage mode
                 pathUris = new Stack<Uri>();
                 pathUris.push(resultData.getData());
                 scoped = true;
-                init();
+                initialize();
                 return;
         }
     }
@@ -205,8 +218,8 @@ public class FileBrowser extends AppCompatActivity
         view.setSingleLine(false);
         view.setMovementMethod(LinkMovementMethod.getInstance());
         view.setText(Html.fromHtml("Thanks for using my emulator! This is the Google Play version of NooDS, which " +
-            "is limited to scoped storage on Android 11 and above. When starting the app, you'll be asked to " +
-            "choose a folder that contains DS or GBA ROMs. If you have trouble accessing files, try using " +
+            "is limited to scoped storage on Android 11 and above. You can select a folder that the app will have " +
+            "access to; it should contain DS or GBA ROMs. If you have trouble accessing files, try using " +
             "<a href=\"https://github.com/Hydr8gon/NooDS/releases\">the GitHub version</a> instead.<br><br>" +
             "My projects are free and open-source, but donations help me continue to work on them. If you're " +
             "feeling generous, here are some ways to support me: <a href=\"https://paypal.me/Hydr8gon\">one-time " +
@@ -226,13 +239,34 @@ public class FileBrowser extends AppCompatActivity
                 if (!start)
                     return;
                 else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R)
-                    startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
+                    openScoped();
                 else if (checkPermissions())
-                    init();
+                    initialize();
                 else
                     requestPermissions();
             }
         }).create().show();
+    }
+
+    private void openScoped()
+    {
+        // Try to restore the previous URI and initialize for scoped storage mode
+        try
+        {
+            Uri scopedUri = Uri.parse(PreferenceManager.getDefaultSharedPreferences(this).getString("scoped_uri", ""));
+            if (DocumentFile.fromTreeUri(this, scopedUri).isDirectory())
+            {
+                pathUris = new Stack<Uri>();
+                pathUris.push(scopedUri);
+                scoped = true;
+                initialize();
+                return;
+            }
+        }
+        catch (Exception e) {}
+
+        // Open the scoped storage selector if restoring failed
+        startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
     }
 
     private boolean checkPermissions()
@@ -297,7 +331,7 @@ public class FileBrowser extends AppCompatActivity
         }
     }
 
-    private void init()
+    private void initialize()
     {
         fileNames = new ArrayList<String>();
         fileIcons = new ArrayList<Bitmap>();
