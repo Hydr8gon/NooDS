@@ -21,6 +21,7 @@ package com.hydra.noods;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,21 +33,30 @@ import java.util.ArrayList;
 
 public class FileAdapter extends BaseAdapter
 {
-    private Context context;
-    private ArrayList<String> names;
-    private ArrayList<Bitmap> icons;
+    public class FileInfo
+    {
+        public String name;
+        public Bitmap icon;
+        public Uri uri;
+    }
 
-    public FileAdapter(Context context, ArrayList<String> names, ArrayList<Bitmap> icons)
+    private Context context;
+    private ArrayList<FileInfo> info;
+
+    public FileAdapter(Context context)
     {
         this.context = context;
-        this.names   = names;
-        this.icons   = icons;
+    }
+
+    public void setInfo(ArrayList<FileInfo> info)
+    {
+        this.info = info;
     }
 
     @Override
     public int getCount()
     {
-        return names.size();
+        return info.size();
     }
 
     @Override
@@ -71,14 +81,11 @@ public class FileAdapter extends BaseAdapter
             convertView = inflater.inflate(R.layout.file_row, parent, false);
         }
 
-        // Set the file title
+        // Set the file title and icon
         TextView title = (TextView)convertView.findViewById(R.id.name);
-        title.setText(names.get(position));
-
-        // Set the file icon
+        title.setText(info.get(position).name);
         ImageView icon = (ImageView)convertView.findViewById(R.id.icon);
-        icon.setImageBitmap(icons.get(position));
-
+        icon.setImageBitmap(info.get(position).icon);
         return convertView;
     }
 }

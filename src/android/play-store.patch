@@ -22,7 +22,7 @@ index 404f5dd..841fa39 100644
 +    private static final boolean PLAY_STORE = true;
  
      private ArrayList<String> storagePaths;
-     private ArrayList<String> fileNames;
+     private ArrayList<FileAdapter.FileInfo> fileInfo;
 diff --git a/src/android/res/menu/file_menu.xml b/src/android/res/menu/file_menu.xml
 index 8a21009..e6d55ce 100644
 --- a/src/android/res/menu/file_menu.xml

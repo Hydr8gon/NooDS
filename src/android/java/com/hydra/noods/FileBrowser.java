@@ -30,6 +30,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -37,6 +38,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
+import android.provider.DocumentsContract;
 import android.provider.Settings;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
@@ -52,6 +54,7 @@ import java.io.File;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Stack;
 
@@ -66,9 +69,7 @@ public class FileBrowser extends AppCompatActivity
     private static final boolean PLAY_STORE = false;
 
     private ArrayList<String> storagePaths;
-    private ArrayList<String> fileNames;
-    private ArrayList<Bitmap> fileIcons;
-    private ArrayList<Uri> fileUris;
+    private ArrayList<FileAdapter.FileInfo> fileInfo;
     private ListView fileView;
 
     private Stack<Uri> pathUris;
@@ -333,9 +334,6 @@ public class FileBrowser extends AppCompatActivity
 
     private void initialize()
     {
-        fileNames = new ArrayList<String>();
-        fileIcons = new ArrayList<Bitmap>();
-        fileUris = new ArrayList<Uri>();
         fileView = new ListView(this);
         path = storagePaths.get(0);
         curStorage = 0;
@@ -348,9 +346,9 @@ public class FileBrowser extends AppCompatActivity
             {
                 // Navigate to the selected directory
                 if (scoped)
-                    pathUris.push(fileUris.get(position));
+                    pathUris.push(fileInfo.get(position).uri);
                 else
-                    path += "/" + fileNames.get(position);
+                    path += "/" + fileInfo.get(position).name;
                 curDepth++;
                 update();
             }
@@ -424,7 +422,7 @@ public class FileBrowser extends AppCompatActivity
             if (ext.equals(".nds"))
             {
                 if (scoped)
-                    setNdsFds(getRomFd(file), getSaveFd(file));
+                    setNdsFds(getRomFd(file.getUri()), getSaveFd(file));
                 else
                     setNdsPath(file.getUri().getPath());
 
@@ -472,7 +470,7 @@ public class FileBrowser extends AppCompatActivity
             else
             {
                 if (scoped)
-                    setGbaFds(getRomFd(file), getSaveFd(file));
+                    setGbaFds(getRomFd(file.getUri()), getSaveFd(file));
                 else
                     setGbaPath(file.getUri().getPath());
 
@@ -522,58 +520,86 @@ public class FileBrowser extends AppCompatActivity
             return;
         }
 
-        // Sort all files in the current directory
-        DocumentFile[] files = file.listFiles();
-        Arrays.sort(files, new Comparator<DocumentFile>()
-        {
-            public int compare(DocumentFile f1, DocumentFile f2)
-            {
-                return f1.getName().compareTo(f2.getName());
-            }
-        });
+        FileAdapter fileAdapter = new FileAdapter(this);
+        fileInfo = new ArrayList<FileAdapter.FileInfo>();
 
-        fileNames.clear();
-        fileIcons.clear();
-        fileUris.clear();
-
-        // Get file names and icons for all folders and ROMs at the current path
-        for (int i = 0; i < files.length; i++)
+        if (scoped)
         {
-            if (files[i].isDirectory())
+            // Populate the file list in a way optimized for scoped storage
+            Uri uri = file.getUri();
+            String docId = DocumentsContract.getDocumentId(uri);
+            Uri childUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, docId);
+            String[] fields = new String[] {DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE};
+            Cursor cursor = getContentResolver().query(childUri, fields, null, null, null);
+            while (cursor.moveToNext())
             {
-                fileNames.add(files[i].getName());
-                fileIcons.add(BitmapFactory.decodeResource(getResources(), R.drawable.folder));
-                fileUris.add(files[i].getUri());
+                FileAdapter.FileInfo info = fileAdapter.new FileInfo();
+                info.name = cursor.getString(1);
+                info.uri = DocumentsContract.buildDocumentUriUsingTree(uri, cursor.getString(0));
+                boolean directory = cursor.getString(2).equals(DocumentsContract.Document.MIME_TYPE_DIR);
+                processFile(info, directory);
             }
-            else
+        }
+        else
+        {
+            // Populate the file list normally
+            DocumentFile[] files = file.listFiles();
+            for (int i = 0; i < files.length; i++)
             {
-                ext = (files[i].getName().length() >= 4) ? files[i].getName().substring(files[i].getName().length() - 4) : "";
-                if (ext.equals(".nds"))
-                {
-                    fileNames.add(files[i].getName());
-                    Bitmap bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
-                    getNdsIcon(getRomFd(files[i]), bitmap);
-                    fileIcons.add(bitmap);
-                    fileUris.add(files[i].getUri());
-                }
-                else if (ext.equals(".gba"))
-                {
-                    fileNames.add(files[i].getName());
-                    fileIcons.add(BitmapFactory.decodeResource(getResources(), R.drawable.file));
-                    fileUris.add(files[i].getUri());
-                }
+                FileAdapter.FileInfo info = fileAdapter.new FileInfo();
+                info.name = files[i].getName();
+                info.uri = files[i].getUri();
+                boolean directory = files[i].isDirectory();
+                processFile(info, directory);
             }
         }
 
-        fileView.setAdapter(new FileAdapter(this, fileNames, fileIcons));
+        // Sort the file list by name
+        Collections.sort(fileInfo, new Comparator<FileAdapter.FileInfo>()
+        {
+            public int compare(FileAdapter.FileInfo f1, FileAdapter.FileInfo f2)
+            {
+                return f1.name.compareTo(f2.name);
+            }
+        });
+
+        fileAdapter.setInfo(fileInfo);
+        fileView.setAdapter(fileAdapter);
     }
 
-    private int getRomFd(DocumentFile rom)
+    private void processFile(FileAdapter.FileInfo info, boolean directory)
+    {
+        // Add a directory with icon to the file list
+        if (directory)
+        {
+            info.icon = BitmapFactory.decodeResource(getResources(), R.drawable.folder);
+            fileInfo.add(info);
+            return;
+        }
+
+        // Add a DS or GBA ROM with icon to the file list
+        String ext = (info.name.length() >= 4) ? info.name.substring(info.name.length() - 4) : "";
+        if (ext.equals(".nds"))
+        {
+            Bitmap bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
+            getNdsIcon(getRomFd(info.uri), bitmap);
+            info.icon = bitmap;
+            fileInfo.add(info);
+        }
+        else if (ext.equals(".gba"))
+        {
+            info.icon = BitmapFactory.decodeResource(getResources(), R.drawable.file);
+            fileInfo.add(info);
+        }
+    }
+
+    private int getRomFd(Uri romUri)
     {
         try
         {
             // Get a descriptor for the file in scoped mode
-            return getContentResolver().openFileDescriptor(rom.getUri(), "r").detachFd();
+            return getContentResolver().openFileDescriptor(romUri, "r").detachFd();
         }
         catch (Exception e)
         {
