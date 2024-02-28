@@ -48,6 +48,10 @@ void ScreenLayout::addSettings()
 
 void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
 {
+    // Update the window dimensions
+    this->winWidth = winWidth;
+    this->winHeight = winHeight;
+
     if (gbaMode && gbaCrop)
     {
         // Determine the screen dimensions based on the current rotation

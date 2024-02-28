@@ -31,6 +31,7 @@ class ScreenLayout
         static int integerScale;
         static int gbaCrop;
 
+        int winWidth = 0, winHeight = 0;
         int minWidth = 0, minHeight = 0;
         int topX = 0, botX = 0;
         int topY = 0, botY = 0;

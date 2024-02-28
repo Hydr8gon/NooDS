@@ -1,140 +1,61 @@
-#-------------------------------------------------------------------------------
-.SUFFIXES:
-#-------------------------------------------------------------------------------
-
 ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
 endif
 
-TOPDIR ?= $(CURDIR)
-
 include $(DEVKITPRO)/wut/share/wut_rules
 
-#-------------------------------------------------------------------------------
-# TARGET is the name of the output
-# BUILD is the directory where object files & intermediate files will be placed
-# SOURCES is a list of directories containing source code
-# DATA is a list of directories containing data files
-# INCLUDES is a list of directories containing header files
-#-------------------------------------------------------------------------------
-TARGET		:=	noods
-BUILD		:=	build-wiiu
-SOURCES		:=	src src/common src/wiiu
-DATA		:=	src/wiiu/shader
-INCLUDES	:=	src src/common src/wiiu
+NAME := noods
+BUILD := build-wiiu
+SRCS := src src/common src/console
+DATA := src/console/images src/console/shaders
+LIBS := -lwut -lSDL2
+INCS := $(PORTLIBS) $(WUT_ROOT)
 
-#-------------------------------------------------------------------------------
-# options for code generation
-#-------------------------------------------------------------------------------
-CFLAGS	:=	-g -Wall -Ofast -flto -ffunction-sections -fpermissive \
-			$(MACHDEP)
+CXXFLAGS := -g -Ofast -flto -ffunction-sections $(MACHDEP) $(INCLUDE) -D__WIIU__ -D__WUT__ -DNO_FDOPEN
+LDFLAGS = -g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
-CFLAGS	+=	$(INCLUDE) -D__WIIU__ -D__WUT__ -DNO_FDOPEN
-
-CXXFLAGS	:= $(CFLAGS)
-
-ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
-
-LIBS	:= -lwut -lSDL2
-
-#-------------------------------------------------------------------------------
-# list of directories containing libraries, this must be the top level
-# containing include and lib
-#-------------------------------------------------------------------------------
-LIBDIRS	:= $(PORTLIBS) $(WUT_ROOT)
-
-
-#-------------------------------------------------------------------------------
-# no real need to edit anything past this point unless you need to add additional
-# rules for different file extensions
-#-------------------------------------------------------------------------------
 ifneq ($(BUILD),$(notdir $(CURDIR)))
-#-------------------------------------------------------------------------------
 
-export OUTPUT	:=	$(CURDIR)/$(TARGET)
-export TOPDIR	:=	$(CURDIR)
+export LD := $(CXX)
+export OUTPUT := $(CURDIR)/$(NAME)
+export DEPSDIR := $(CURDIR)/$(BUILD)
+export LIBPATHS := $(foreach dir,$(INCS),-L$(dir)/lib)
+export VPATH := $(foreach dir,$(SRCS),$(CURDIR)/$(dir)) $(foreach dir,$(DATA),$(CURDIR)/$(dir))
+export INCLUDE := $(foreach dir,$(SRCS),-I$(CURDIR)/$(dir)) $(foreach dir,$(INCS),-I$(dir)/include)
 
-export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
-			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+CPPFILES := $(foreach dir,$(SRCS),$(notdir $(wildcard $(dir)/*.cpp)))
+BMPFILES := $(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.bmp)))
+GSHFILES := $(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.gsh)))
+export OFILES := $(CPPFILES:.cpp=.o) $(BMPFILES:.bmp=.o) $(addsuffix .o,$(GSHFILES))
 
-export DEPSDIR	:=	$(CURDIR)/$(BUILD)
-
-CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
-SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.gsh)))
-
-#-------------------------------------------------------------------------------
-# use CXX for linking C++ projects, CC for standard C
-#-------------------------------------------------------------------------------
-ifeq ($(strip $(CPPFILES)),)
-#-------------------------------------------------------------------------------
-	export LD	:=	$(CC)
-#-------------------------------------------------------------------------------
-else
-#-------------------------------------------------------------------------------
-	export LD	:=	$(CXX)
-#-------------------------------------------------------------------------------
-endif
-#-------------------------------------------------------------------------------
-
-export OFILES_BIN	:=	$(addsuffix .o,$(BINFILES))
-export OFILES_SRC	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
-export OFILES 	:=	$(OFILES_BIN) $(OFILES_SRC)
-export HFILES_BIN	:=	$(addsuffix .h,$(subst .,_,$(BINFILES)))
-
-export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-			-I$(CURDIR)/$(BUILD)
-
-export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
-
-.PHONY: $(BUILD) clean all
-
-#-------------------------------------------------------------------------------
+.PHONY: $(BUILD)
 all: $(BUILD)
 
 $(BUILD):
-	@[ -d $@ ] || mkdir -p $@
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile.wiiu
+	mkdir -p $@
+	$(MAKE) -C $(BUILD) -f $(CURDIR)/Makefile.wiiu
 
-DIR := src/wiiu/shader
 build-shader:
-	@echo Building shader...
-	$(shell $(DIR)/latte-assembler compile $(DIR)/texture_shader.gsh --vsh $(DIR)/texture_shader.vsh --psh $(DIR)/texture_shader.psh)
+	cd src/console/shaders; ./latte-assembler compile shader_wiiu.gsh --vsh shader_wiiu.vsh --psh shader_wiiu.psh
 
-#-------------------------------------------------------------------------------
 clean:
-	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).rpx $(TARGET).elf
+	rm -rf $(BUILD) $(NAME).rpx $(NAME).elf
 
-#-------------------------------------------------------------------------------
 else
-.PHONY:	all
 
-DEPENDS	:=	$(OFILES:.o=.d)
+all: $(OUTPUT).rpx
+$(OUTPUT).rpx: $(OUTPUT).elf
+$(OUTPUT).elf: $(OFILES)
 
-#-------------------------------------------------------------------------------
-# main targets
-#-------------------------------------------------------------------------------
-all	:	$(OUTPUT).rpx
+%.o: %.bmp
+	@echo $(notdir $<)
+	@cd ..; $(PREFIX)ld -r -b binary -o $(BUILD)/$@ src/console/images/$*.bmp
 
-$(OUTPUT).rpx	:	$(OUTPUT).elf
-$(OUTPUT).elf	:	$(OFILES)
-
-$(OFILES_SRC)	: $(HFILES_BIN)
-
-#-------------------------------------------------------------------------------
-# you need a rule like this for each extension you use as binary data
-#-------------------------------------------------------------------------------
-%.gsh.o	%_gsh.h :	%.gsh
-#-------------------------------------------------------------------------------
+%.gsh.o: %.gsh
 	@echo $(notdir $<)
 	@$(bin2o)
 
+DEPENDS := $(OFILES:.o=.d)
 -include $(DEPENDS)
 
-#-------------------------------------------------------------------------------
 endif
-#-------------------------------------------------------------------------------

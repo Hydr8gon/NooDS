@@ -36,19 +36,19 @@ NdsIcon::NdsIcon(std::string path, int fd)
     }
 
     // Get the icon offset
-    uint32_t offset;
+    uint8_t offset[4];
     fseek(rom, 0x68, SEEK_SET);
-    fread(&offset, sizeof(uint32_t), 1, rom);
+    fread(offset, sizeof(uint8_t), 4, rom);
 
     // Get the icon data
     uint8_t data[512];
-    fseek(rom, offset + 0x20, SEEK_SET);
+    fseek(rom, U8TO32(offset, 0) + 0x20, SEEK_SET);
     fread(data, sizeof(uint8_t), 512, rom);
 
     // Get the icon palette
-    uint16_t palette[16];
-    fseek(rom, offset + 0x220, SEEK_SET);
-    fread(palette, sizeof(uint16_t), 16, rom);
+    uint8_t palette[32];
+    fseek(rom, U8TO32(offset, 0) + 0x220, SEEK_SET);
+    fread(palette, sizeof(uint8_t), 32, rom);
 
     fclose(rom);
 
@@ -57,9 +57,10 @@ NdsIcon::NdsIcon(std::string path, int fd)
     for (int i = 0; i < 32 * 32; i++)
     {
         uint8_t index = (i & 1) ? ((data[i / 2] & 0xF0) >> 4) : (data[i / 2] & 0x0F);
-        uint8_t r = index ? (((palette[index] >>  0) & 0x1F) * 255 / 31) : 0xFF;
-        uint8_t g = index ? (((palette[index] >>  5) & 0x1F) * 255 / 31) : 0xFF;
-        uint8_t b = index ? (((palette[index] >> 10) & 0x1F) * 255 / 31) : 0xFF;
+        uint16_t color = index ? U8TO16(palette, index * 2) : 0xFFFF;
+        uint8_t r = ((color >>  0) & 0x1F) * 255 / 31;
+        uint8_t g = ((color >>  5) & 0x1F) * 255 / 31;
+        uint8_t b = ((color >> 10) & 0x1F) * 255 / 31;
         tiles[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
     }
 

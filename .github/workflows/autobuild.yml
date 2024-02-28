@@ -6,46 +6,6 @@ on:
     - master
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Install Flatpak and SDK
-      run: |
-        sudo apt update
-        sudo apt install flatpak flatpak-builder -y
-        sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-        sudo flatpak install flathub org.freedesktop.Platform//21.08 org.freedesktop.Sdk//21.08 -y
-    - name: Checkout
-      uses: actions/checkout@v1
-    - name: Compile
-      run: |
-        git config --global protocol.file.allow always
-        make flatpak
-    - name: Upload
-      uses: actions/upload-artifact@v2
-      with:
-        name: noods-linux
-        path: noods.flatpak
-
-  build-mac:
-    runs-on: macos-latest
-
-    steps:
-    - name: Install wxWidgets and PortAudio
-      run: brew install wxmac portaudio
-    - name: Checkout
-      uses: actions/checkout@v1
-    - name: Compile
-      run: |
-        make -j$(sysctl -n hw.logicalcpu)
-        ./mac-bundle.sh --dmg
-    - name: Upload
-      uses: actions/upload-artifact@v2
-      with:
-        name: noods-mac
-        path: NooDS.dmg
-
   build-windows:
     runs-on: windows-latest
 
@@ -72,35 +32,45 @@ jobs:
         name: noods-windows
         path: noods.exe
 
-  build-switch:
-    runs-on: ubuntu-latest
-    container: devkitpro/devkita64:latest
+  build-mac:
+    runs-on: macos-latest
 
     steps:
+    - name: Install wxWidgets and PortAudio
+      run: brew install wxmac portaudio
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: make -f Makefile.switch -j$(nproc)
+      run: |
+        make -j$(sysctl -n hw.logicalcpu)
+        ./mac-bundle.sh --dmg
     - name: Upload
       uses: actions/upload-artifact@v2
       with:
-        name: noods-switch
-        path: noods.nro
+        name: noods-mac
+        path: NooDS.dmg
 
-  build-vita:
+  build-linux:
     runs-on: ubuntu-latest
-    container: vitasdk/vitasdk:latest
 
     steps:
+    - name: Install Flatpak and SDK
+      run: |
+        sudo apt update
+        sudo apt install flatpak flatpak-builder -y
+        sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+        sudo flatpak install flathub org.freedesktop.Platform//21.08 org.freedesktop.Sdk//21.08 -y
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: make -f Makefile.vita -j$(nproc)
+      run: |
+        git config --global protocol.file.allow always
+        make flatpak
     - name: Upload
       uses: actions/upload-artifact@v2
       with:
-        name: noods-vita
-        path: noods.vpk
+        name: noods-linux
+        path: noods.flatpak
 
   build-android:
     runs-on: ubuntu-latest
@@ -122,9 +92,60 @@ jobs:
         name: noods-android
         path: noods.apk
 
+  build-switch:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Compile
+      run: make switch -j$(nproc)
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        name: noods-switch
+        path: noods.nro
+
+  build-wiiu:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Compile
+      run: |
+        make wiiu -j$(nproc)
+        mv icon/icon-wiiu.png icon.png
+        mv icon/meta.xml meta.xml
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        name: noods-wiiu
+        path: |
+          icon.png
+          meta.xml
+          noods.rpx
+
+  build-vita:
+    runs-on: ubuntu-latest
+    container: vitasdk/vitasdk:latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Compile
+      run: make vita -j$(nproc)
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        name: noods-vita
+        path: noods.vpk
+
   update-release:
     runs-on: ubuntu-latest
-    needs: [build-linux, build-mac, build-windows, build-switch, build-vita, build-android]
+    needs: [build-windows, build-mac, build-linux, build-android, build-switch, build-wiiu, build-vita]
 
     steps:
     - name: Delete old release

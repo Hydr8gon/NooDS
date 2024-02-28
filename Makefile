@@ -94,12 +94,16 @@ android:
 switch:
 	$(MAKE) -f Makefile.switch
 
+wiiu:
+	$(MAKE) -f Makefile.wiiu
+
 vita:
 	$(MAKE) -f Makefile.vita
 
 clean:
 	if [ -d "build-android" ]; then ./gradlew clean; fi
 	if [ -d "build-switch" ]; then $(MAKE) -f Makefile.switch clean; fi
+	if [ -d "build-wiiu" ]; then $(MAKE) -f Makefile.wiiu clean; fi
 	if [ -d "build-vita" ]; then $(MAKE) -f Makefile.vita clean; fi
 	rm -rf $(BUILD)
 	rm -f $(NAME)

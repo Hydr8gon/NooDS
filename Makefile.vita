@@ -1,33 +1,35 @@
-NAME    := noods
-BUILD   := build-vita
-SOURCES := src src/common src/vita
-ARGS    := -Ofast -flto -std=c++11 -march=armv7-a -mtune=generic-armv7-a -DNO_FDOPEN #-DDEBUG
-LIBS    := -Wl,-q -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -lvita2d -lSceAppMgr_stub -lSceAudio_stub -lSceCommonDialog_stub \
-           -lSceCtrl_stub -lSceDisplay_stub -lSceGxm_stub -lSceRegistryMgr_stub -lSceSysmodule_stub -lScePgf_stub -lSceTouch_stub -lScePower_stub
-
-APPNAME := NooDS
-TITLEID := NOODSVITA
-
-CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
-HFILES   := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.h))
-OFILES   := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
-
 ifeq ($(strip $(VITASDK)),)
 $(error "Please define VITASDK to point to your SDK path!")
 endif
 
-CXX       := $(VITASDK)/bin/arm-vita-eabi-g++
-PACKVPK   := $(VITASDK)/bin/vita-pack-vpk
+NAME := noods
+BUILD := build-vita
+SRCS := src src/common src/console
+DATA := src/console/images
+ARGS := -Ofast -flto -std=c++11 -march=armv7-a -mtune=generic-armv7-a -D__VITA__ -DNO_FDOPEN #-DDEBUG
+LIBS := -Wl,-q -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -lvita2d -lSceAppMgr_stub -lSceAudio_stub \
+    -lSceCommonDialog_stub -lSceCtrl_stub -lSceDisplay_stub -lSceGxm_stub -lSceSysmodule_stub -lSceTouch_stub \
+    -lScePower_stub
+
+APPNAME := NooDS
+TITLEID := NOODSVITA
+
+CPPFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.cpp))
+BMPFILES := $(foreach dir,$(DATA),$(wildcard $(dir)/*.bmp))
+HFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.h))
+OFILES := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES)) $(patsubst %.bmp,$(BUILD)/%.o,$(BMPFILES))
+
+CXX := $(VITASDK)/bin/arm-vita-eabi-g++
+LD := $(VITASDK)/bin/arm-vita-eabi-ld
+PACKVPK := $(VITASDK)/bin/vita-pack-vpk
 MAKEFSELF := $(VITASDK)/bin/vita-make-fself 
-MKSFOEX   := $(VITASDK)/bin/vita-mksfoex
+MKSFOEX := $(VITASDK)/bin/vita-mksfoex
 ELFCREATE := $(VITASDK)/bin/vita-elf-create
 
 all: $(NAME).vpk
 
 $(NAME).vpk: eboot.bin param.sfo
-	$(PACKVPK) -b eboot.bin -s param.sfo \
-		--add icon/icon-vita.png=sce_sys/icon0.png \
-		$@
+	$(PACKVPK) -b eboot.bin -s param.sfo --add icon/icon-vita.png=sce_sys/icon0.png $@
 
 eboot.bin: $(NAME).velf
 	$(MAKEFSELF) -c $< $@
@@ -44,11 +46,11 @@ $(NAME).elf: $(OFILES)
 $(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
 	$(CXX) -c -o $@ $(ARGS) $<
 
+$(BUILD)/%.o: %.bmp $(BUILD)
+	$(LD) -r -b binary -o $@ $<
+
 $(BUILD):
-	for dir in $(SOURCES); \
-	do \
-	mkdir -p $(BUILD)/$$dir; \
-	done
+	for dir in $(SRCS) $(DATA); do mkdir -p $(BUILD)/$$dir; done
 
 clean:
 	rm -f $(NAME).velf $(NAME).elf $(NAME).vpk param.sfo eboot.bin

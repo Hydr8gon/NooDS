@@ -7,8 +7,8 @@ upscaling, and can take advantage of multiple cores for better performance. I st
 learning experience, and I'd like to keep it that way. If people are interested and get use out of it, that's a bonus!
 
 ### Downloads
-NooDS is available for Windows, macOS, Linux, Android, Switch, and Vita. The latest builds are automatically provided
-via GitHub Actions, and can be downloaded from the [releases page](https://github.com/Hydr8gon/NooDS/releases).
+NooDS is available for Windows, macOS, Linux, Android, Switch, Wii U, and Vita. The latest builds are automatically
+provided via GitHub Actions, and can be downloaded from the [releases page](https://github.com/Hydr8gon/NooDS/releases).
 
 ### Usage
 NooDS should be able to run most things without any setup. DS BIOS and firmware files must be provided to boot the
@@ -38,6 +38,9 @@ or a built-in package manager on Linux. Run `make -j$(nproc)` in the project roo
 
 **Switch:** Install [devkitPro](https://devkitpro.org/wiki/Getting_Started) and its `switch-dev` package. Run
 `make switch -j$(nproc)` in the project root directory to start building.
+
+**Wii U:** Install [devkitPro](https://devkitpro.org/wiki/Getting_Started) and its `wiiu-dev` package. Run
+`make wiiu -j$(nproc)` in the project root directory to start building.
 
 **Vita:** Install [Vita SDK](https://vitasdk.org) and run `make vita -j$(nproc)` in the project root directory to
 start building.
