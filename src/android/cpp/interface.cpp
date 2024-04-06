@@ -34,6 +34,7 @@ int showFpsCounter = 0;
 int buttonScale = 5;
 int buttonSpacing = 10;
 int vibrateStrength = 1;
+int showButtons = 1;
 int keyBinds[12] = {};
 
 std::string ndsPath = "", gbaPath = "";
@@ -92,6 +93,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_loadSetti
         Setting("screenFilter",    &screenFilter,    false),
         Setting("micEnable",       &micEnable,       false),
         Setting("showFpsCounter",  &showFpsCounter,  false),
+        Setting("showButtons",     &showButtons,     false),
         Setting("buttonScale",     &buttonScale,     false),
         Setting("buttonSpacing",   &buttonSpacing,   false),
         Setting("vibrateStrength", &vibrateStrength, false),
@@ -395,6 +397,11 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getShowFpsCo
     return showFpsCounter;
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getShowButtons(JNIEnv* env, jobject obj)
+{
+    return showButtons;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getButtonScale(JNIEnv* env, jobject obj)
 {
     return buttonScale;
@@ -483,6 +490,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setMicEnable
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowFpsCounter(JNIEnv* env, jobject obj, jint value)
 {
     showFpsCounter = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowButtons(JNIEnv* env, jobject obj, jint value)
+{
+    showButtons = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setButtonScale(JNIEnv* env, jobject obj, jint value)
