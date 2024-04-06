@@ -94,6 +94,7 @@ public class SettingsMenu extends AppCompatActivity
         editor.putBoolean("screen_filter", (getScreenFilter() == 0) ? false : true);
         editor.putBoolean("mic_enable", (getMicEnable() == 0) ? false : true);
         editor.putBoolean("show_fps_counter", (getShowFpsCounter() == 0) ? false : true);
+        editor.putBoolean("show_buttons", (getShowButtons() == 0) ? false : true);
         editor.putInt("button_scale", getButtonScale());
         editor.putInt("button_spacing", getButtonSpacing());
         editor.putInt("vibrate_strength", getVibrateStrength());
@@ -125,6 +126,7 @@ public class SettingsMenu extends AppCompatActivity
         setScreenFilter(prefs.getBoolean("screen_filter", true) ? 1 : 0);
         setMicEnable(prefs.getBoolean("mic_enable", false) ? 1 : 0);
         setShowFpsCounter(prefs.getBoolean("show_fps_counter", false) ? 1 : 0);
+        setShowButtons(prefs.getBoolean("show_buttons", false) ? 1 : 0);
         setButtonScale(prefs.getInt("button_scale", 5));
         setButtonSpacing(prefs.getInt("button_spacing", 10));
         setVibrateStrength(prefs.getInt("vibrate_strength", 1));
@@ -149,6 +151,7 @@ public class SettingsMenu extends AppCompatActivity
     public static native int getScreenFilter();
     public static native int getMicEnable();
     public static native int getShowFpsCounter();
+    public static native int getShowButtons();
     public static native int getButtonScale();
     public static native int getButtonSpacing();
     public static native int getVibrateStrength();
@@ -167,6 +170,7 @@ public class SettingsMenu extends AppCompatActivity
     public static native void setScreenFilter(int value);
     public static native void setMicEnable(int value);
     public static native void setShowFpsCounter(int value);
+    public static native void setShowButtons(int value);
     public static native void setButtonScale(int value);
     public static native void setButtonSpacing(int value);
     public static native void setVibrateStrength(int value);
