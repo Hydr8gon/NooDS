@@ -142,7 +142,9 @@ public class NooActivity extends AppCompatActivity
         switch (item.getItemId())
         {
             case R.id.controls_action:
+
                 // Toggle hiding the on-screen buttons
+
                 if (showingButtons = !showingButtons)
                 {
                     for (int i = 0; i < 6; i++)
@@ -154,6 +156,8 @@ public class NooActivity extends AppCompatActivity
                         layout.removeView(buttons[i]);
                 }
                 return true;
+                
+                
 
             case R.id.save_action:
                 final boolean gba = isGbaMode();
@@ -321,6 +325,14 @@ public class NooActivity extends AppCompatActivity
             for (int i = 0; i < 6; i++)
                 layout.addView(buttons[i]);
             initButtons = false;
+        }
+
+        // Remove buttons from layout if disabled
+        if (SettingsMenu.getShowButtons() == 0)
+        {
+            for (int i = 0; i < 6; i++)
+                layout.removeView(buttons[i]);
+            showingButtons = false;
         }
     }
 
