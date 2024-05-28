@@ -206,7 +206,7 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
 
     // Override the gamepad screen texture with the other screen in single screen mode
     GX2Texture *tempTexture = nullptr;
-    if (running && tw >= 240 && ScreenLayout::screenArrangement == 3)
+    if (running && tw >= 240 && !(ConsoleUI::gbaMode && ScreenLayout::gbaCrop) && ScreenLayout::screenArrangement == 3)
     {
         int shift = Settings::highRes3D;
         uint32_t *data = &ConsoleUI::framebuffer[(256 * 192 * (ScreenLayout::screenSizing < 2)) << (shift * 2)];
