@@ -35,6 +35,7 @@ enum LayoutEvent
     ARRANGE_AUTO,
     ARRANGE_VERT,
     ARRANGE_HORI,
+    ARRANGE_SING,
     SIZE_EVEN,
     SIZE_TOP,
     SIZE_BOT,
@@ -59,6 +60,7 @@ EVT_RADIOBUTTON(ROTATE_CCW,   LayoutDialog::rotateCcw)
 EVT_RADIOBUTTON(ARRANGE_AUTO, LayoutDialog::arrangeAuto)
 EVT_RADIOBUTTON(ARRANGE_VERT, LayoutDialog::arrangeVert)
 EVT_RADIOBUTTON(ARRANGE_HORI, LayoutDialog::arrangeHori)
+EVT_RADIOBUTTON(ARRANGE_SING, LayoutDialog::arrangeSing)
 EVT_RADIOBUTTON(SIZE_EVEN,    LayoutDialog::sizeEven)
 EVT_RADIOBUTTON(SIZE_TOP,     LayoutDialog::sizeTop)
 EVT_RADIOBUTTON(SIZE_BOT,     LayoutDialog::sizeBot)
@@ -106,14 +108,14 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     wxRadioButton *rotateBtns[3];
     wxBoxSizer *rotateSizer = new wxBoxSizer(wxHORIZONTAL);
     rotateSizer->Add(new wxStaticText(this, wxID_ANY, "Rotation:", wxDefaultPosition,
-        wxSize(wxDefaultSize.GetWidth(), size)), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
+        wxSize(wxDefaultSize.GetWidth(), size)), 0, wxALIGN_CENTRE | wxRIGHT, size / 8);
     rotateSizer->Add(rotateBtns[0] = new wxRadioButton(this, ROTATE_NONE, "None",
         wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
     rotateSizer->Add(rotateBtns[1] = new wxRadioButton(this, ROTATE_CW,  "Clockwise"),         0, wxLEFT, size / 8);
     rotateSizer->Add(rotateBtns[2] = new wxRadioButton(this, ROTATE_CCW, "Counter-Clockwise"), 0, wxLEFT, size / 8);
 
     // Set up the arrangement settings
-    wxRadioButton *arrangeBtns[3];
+    wxRadioButton *arrangeBtns[4];
     wxBoxSizer *arrangeSizer = new wxBoxSizer(wxHORIZONTAL);
     arrangeSizer->Add(new wxStaticText(this, wxID_ANY, "Arrangement:", wxDefaultPosition,
         wxSize(wxDefaultSize.GetWidth(), size)), 0, wxALIGN_CENTRE | wxRIGHT, size / 8);
@@ -121,6 +123,7 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
         wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
     arrangeSizer->Add(arrangeBtns[1] = new wxRadioButton(this, ARRANGE_VERT, "Vertical"),   0, wxLEFT, size / 8);
     arrangeSizer->Add(arrangeBtns[2] = new wxRadioButton(this, ARRANGE_HORI, "Horizontal"), 0, wxLEFT, size / 8);
+    arrangeSizer->Add(arrangeBtns[3] = new wxRadioButton(this, ARRANGE_SING, "Single Screen"), 0, wxLEFT, size / 8);
 
     // Set up the sizing settings
     wxRadioButton *sizeBtns[3];
@@ -155,7 +158,7 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
         posBtns[ScreenLayout::screenPosition]->SetValue(true);
     if (ScreenLayout::screenRotation < 3)
         rotateBtns[ScreenLayout::screenRotation]->SetValue(true);
-    if (ScreenLayout::screenArrangement < 3)
+    if (ScreenLayout::screenArrangement < 4)
         arrangeBtns[ScreenLayout::screenArrangement]->SetValue(true);
     if (ScreenLayout::screenSizing < 3)
         sizeBtns[ScreenLayout::screenSizing]->SetValue(true);
@@ -268,6 +271,13 @@ void LayoutDialog::arrangeHori(wxCommandEvent &event)
 {
     // Set the screen arrangement setting to horizontal
     ScreenLayout::screenArrangement = 2;
+    app->updateLayouts();
+}
+
+void LayoutDialog::arrangeSing(wxCommandEvent &event)
+{
+    // Set the screen arrangement setting to single screen
+    ScreenLayout::screenArrangement = 3;
     app->updateLayouts();
 }
 

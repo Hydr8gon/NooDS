@@ -32,6 +32,7 @@
         <item>Automatic</item>
         <item>Vertical</item>
         <item>Horizontal</item>
+        <item>Single Screen</item>
     </string-array>
 
     <string-array name="screen_sizing_entries">

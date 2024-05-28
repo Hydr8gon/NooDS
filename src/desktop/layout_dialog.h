@@ -45,6 +45,7 @@ class LayoutDialog: public wxDialog
         void arrangeAuto(wxCommandEvent &event);
         void arrangeVert(wxCommandEvent &event);
         void arrangeHori(wxCommandEvent &event);
+        void arrangeSing(wxCommandEvent &event);
         void sizeEven(wxCommandEvent &event);
         void sizeTop(wxCommandEvent &event);
         void sizeBot(wxCommandEvent &event);

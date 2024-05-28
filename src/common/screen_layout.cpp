@@ -52,11 +52,11 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
     this->winWidth = winWidth;
     this->winHeight = winHeight;
 
-    if (gbaMode && gbaCrop)
+    if (screenArrangement == 3 || (gbaMode && gbaCrop)) // Single screen
     {
         // Determine the screen dimensions based on the current rotation
-        int width  = (screenRotation ? 160 : 240);
-        int height = (screenRotation ? 240 : 160);
+        int width = (gbaMode && gbaCrop) ? (screenRotation ? 160 : 240) : (screenRotation ? 192 : 256);
+        int height = (gbaMode && gbaCrop) ? (screenRotation ? 240 : 160) : (screenRotation ? 256 : 192);
 
         // Set the minimum dimensions for the layout
         minWidth  = width;
@@ -71,26 +71,26 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
         if (integerScale) scale = (int)scale;
 
         // Calculate the dimensions of the screen
-        topWidth  = scale * width;
-        topHeight = scale * height;
+        topWidth = botWidth = scale * width;
+        topHeight = botHeight = scale * height;
 
         // Position the screen horizontally
         if (screenPosition == 3) // Left
-            topX = 0;
+            topX = botX = 0;
         else if (screenPosition == 4) // Right
-            topX = winWidth - topWidth;
+            topX = botX = winWidth - topWidth;
         else // Center, Top, Bottom
-            topX = (winWidth - topWidth) / 2;
+            topX = botX = (winWidth - topWidth) / 2;
 
         // Position the screen vertically
         if (screenPosition == 1) // Top
-            topY = 0;
+            topY = botY = 0;
         else if (screenPosition == 2) // Bottom
-            topY = winHeight - topHeight;
+            topY = botY = winHeight - topHeight;
         else // Center, Left, Right
-            topY = (winHeight - topHeight) / 2;
+            topY = botY = (winHeight - topHeight) / 2;
     }
-    else // NDS mode
+    else // Dual screens
     {
         // Determine the screen arrangement based on the current settings
         // In automatic mode, the arrangement is horizontal if rotated and vertical otherwise

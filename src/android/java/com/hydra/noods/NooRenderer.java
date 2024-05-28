@@ -180,8 +180,10 @@ public class NooRenderer implements GLSurfaceView.Renderer
         else
         {
             // Draw the DS top and bottom screens
-            drawScreen(getTopX(), getTopY(), getTopWidth(), getTopHeight(), 0.0f, 0.0f, 1.0f, 0.5f);
-            drawScreen(getBotX(), getBotY(), getBotWidth(), getBotHeight(), 0.0f, 0.5f, 1.0f, 1.0f);
+            if (SettingsMenu.getScreenArrangement() != 3 || SettingsMenu.getScreenSizing() < 2)
+                drawScreen(getTopX(), getTopY(), getTopWidth(), getTopHeight(), 0.0f, 0.0f, 1.0f, 0.5f);
+            if (SettingsMenu.getScreenArrangement() != 3 || SettingsMenu.getScreenSizing() == 2)
+                drawScreen(getBotX(), getBotY(), getBotWidth(), getBotHeight(), 0.0f, 0.5f, 1.0f, 1.0f);
         }
     }
 

@@ -53,8 +53,8 @@ bool ConsoleUI::running;
 std::string ConsoleUI::ndsPath, ConsoleUI::gbaPath;
 std::string ConsoleUI::basePath, ConsoleUI::curPath;
 
-ScreenLayout ConsoleUI::layout;
 uint32_t ConsoleUI::framebuffer[256 * 192 * 8];
+ScreenLayout ConsoleUI::layout;
 bool ConsoleUI::gbaMode;
 bool ConsoleUI::changed;
 
@@ -249,14 +249,20 @@ void ConsoleUI::mainLoop(MenuTouch (*specialTouch)(), ScreenLayout *touchLayout)
         else // DS mode
         {
             // Draw the DS top screen
-            topTexture = createTexture(&framebuffer[0], 256 << shift, 192 << shift);
-            drawTexture(topTexture, 0, 0, 256 << shift, 192 << shift, layout.topX, layout.topY,
-                layout.topWidth, layout.topHeight, screenFilter, ScreenLayout::screenRotation);
+            if (ScreenLayout::screenArrangement != 3 || ScreenLayout::screenSizing < 2)
+            {
+                topTexture = createTexture(&framebuffer[0], 256 << shift, 192 << shift);
+                drawTexture(topTexture, 0, 0, 256 << shift, 192 << shift, layout.topX, layout.topY,
+                    layout.topWidth, layout.topHeight, screenFilter, ScreenLayout::screenRotation);
+            }
 
             // Draw the DS bottom screen
-            botTexture = createTexture(&framebuffer[(256 * 192) << (shift * 2)], 256 << shift, 192 << shift);
-            drawTexture(botTexture, 0, 0, 256 << shift, 192 << shift, layout.botX, layout.botY,
-                layout.botWidth, layout.botHeight, screenFilter, ScreenLayout::screenRotation);
+            if (ScreenLayout::screenArrangement != 3 || ScreenLayout::screenSizing == 2)
+            {
+                botTexture = createTexture(&framebuffer[(256 * 192) << (shift * 2)], 256 << shift, 192 << shift);
+                drawTexture(botTexture, 0, 0, 256 << shift, 192 << shift, layout.botX, layout.botY,
+                    layout.botWidth, layout.botHeight, screenFilter, ScreenLayout::screenRotation);
+            }
         }
 
         // Draw the FPS counter if enabled
@@ -755,7 +761,7 @@ void ConsoleUI::settingsMenu()
     const std::vector<std::string> toggle = { "Off", "On" };
     const std::vector<std::string> position = { "Center", "Top", "Bottom", "Left", "Right" };
     const std::vector<std::string> rotation = { "None", "Clockwise", "Counter-Clockwise" };
-    const std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal" };
+    const std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal", "Single Screen" };
     const std::vector<std::string> sizing = { "Even", "Enlarge Top", "Enlarge Bottom" };
     const std::vector<std::string> gap = { "None", "Quarter", "Half", "Full" };
     const std::vector<std::string> theme = { "Dark", "Light" };
@@ -799,7 +805,7 @@ void ConsoleUI::settingsMenu()
                 case 4: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
                 case 5: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
                 case 6: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
-                case 7: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 3; break;
+                case 7: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
                 case 8: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
                 case 9: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
                 case 10: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;

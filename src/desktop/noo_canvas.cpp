@@ -151,10 +151,12 @@ void NooCanvas::draw(wxPaintEvent &event)
         else
         {
             // Draw the DS top and bottom screens
-            drawScreen(layout.topX, layout.topY, layout.topWidth, layout.topHeight,
-               256 << resShift, 192 << resShift, &framebuffer[0]);
-            drawScreen(layout.botX, layout.botY, layout.botWidth, layout.botHeight,
-               256 << resShift, 192 << resShift, &framebuffer[(256 * 192) << (resShift * 2)]);
+            if (ScreenLayout::screenArrangement != 3 || ScreenLayout::screenSizing < 2)
+                drawScreen(layout.topX, layout.topY, layout.topWidth, layout.topHeight,
+                   256 << resShift, 192 << resShift, &framebuffer[0]);
+            if (ScreenLayout::screenArrangement != 3 || ScreenLayout::screenSizing == 2)
+                drawScreen(layout.botX, layout.botY, layout.botWidth, layout.botHeight,
+                   256 << resShift, 192 << resShift, &framebuffer[(256 * 192) << (resShift * 2)]);
         }
     }
 

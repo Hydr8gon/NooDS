@@ -32,10 +32,13 @@
 #include <SDL2/SDL.h>
 
 #include "console_ui.h"
+#include "../settings.h"
+
 #define MAX_DRAWS 1024
 extern const uint8_t shader_wiiu_gsh[];
 
 ScreenLayout gpLayout;
+GX2Texture *gpTexture;
 int tvWidth, tvHeight;
 int bufOffset;
 bool firstScreen;
@@ -71,6 +74,13 @@ void ConsoleUI::endFrame()
     WHBGfxFinishRenderTV();
     WHBGfxFinishRenderDRC();
     WHBGfxFinishRender();
+
+    // Free the gamepad screen texture if it was overridden
+    if (gpTexture)
+    {
+        destroyTexture(gpTexture);
+        gpTexture = nullptr;
+    }
 
     // Reset the frame status
     bufOffset = 0;
@@ -194,12 +204,21 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
     GX2SetPixelSampler(&samplers[filter], group.pixelShader->samplerVars[0].location);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
 
+    // Override the gamepad screen texture with the other screen in single screen mode
+    GX2Texture *tempTexture = nullptr;
+    if (running && tw >= 240 && ScreenLayout::screenArrangement == 3)
+    {
+        int shift = Settings::highRes3D;
+        uint32_t *data = &ConsoleUI::framebuffer[(256 * 192 * (ScreenLayout::screenSizing < 2)) << (shift * 2)];
+        tempTexture = gpTexture = (GX2Texture*)createTexture(data, 256 << shift, 192 << shift);
+    }
+
     // Draw a texture on the gamepad
     WHBGfxBeginRenderDRC();
     GX2RSetAttributeBuffer(&posBuffer, 0, posBuffer.elemSize, bufOffset * 2 + 8 * sizeof(float));
     GX2RSetAttributeBuffer(&texBuffer, 1, texBuffer.elemSize, bufOffset);
     GX2RSetAttributeBuffer(&colBuffer, 2, colBuffer.elemSize, bufOffset * 2);
-    GX2SetPixelTexture((GX2Texture*)texture, group.pixelShader->samplerVars[0].location);
+    GX2SetPixelTexture(tempTexture ? tempTexture : (GX2Texture*)texture, group.pixelShader->samplerVars[0].location);
     GX2SetPixelSampler(&samplers[filter], group.pixelShader->samplerVars[0].location);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
 

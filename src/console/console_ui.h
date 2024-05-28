@@ -71,6 +71,7 @@ class ConsoleUI
     public:
         static Core *core;
         static bool running;
+        static uint32_t framebuffer[256 * 192 * 8];
         static ScreenLayout layout;
         static bool gbaMode;
 
@@ -111,7 +112,6 @@ class ConsoleUI
 
         static std::string ndsPath, gbaPath;
         static std::string basePath, curPath;
-        static uint32_t framebuffer[256 * 192 * 8];
         static bool changed;
 
         static std::thread *coreThread, *saveThread;
