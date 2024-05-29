@@ -58,6 +58,13 @@
             app:key="show_fps_counter"
             app:title="Show FPS Counter"
             app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+
+        <SwitchPreferenceCompat
+            app:key="show_buttons"
+            app:title="Show On-Screen Buttons"
+            app:iconSpaceReserved="false"
             app:allowDividerAbove="true" />
     </PreferenceCategory>
 
