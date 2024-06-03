@@ -21,6 +21,7 @@
 #define GPU_2D_H
 
 #include <cstdint>
+#include <cstdio>
 
 class Core;
 
@@ -28,6 +29,8 @@ class Gpu2D
 {
     public:
         Gpu2D(Core *core, bool engine);
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         void reloadRegisters();
         void drawGbaScanline(int line);

@@ -24,13 +24,13 @@
 #include "core.h"
 #include "settings.h"
 
-Core::Core(std::string ndsRom, std::string gbaRom, std::string ndsSave, std::string gbaSave,
-    int id, int ndsRomFd, int gbaRomFd, int ndsSaveFd, int gbaSaveFd):
+Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd,
+    int gbaRomFd, int ndsSaveFd, int gbaSaveFd, int ndsStateFd, int gbaStateFd):
     id(id), bios { Bios(this, 0, Bios::swiTable9), Bios(this, 1, Bios::swiTable7), Bios(this, 1, Bios::swiTableGba) },
-    cartridgeNds(this), cartridgeGba(this), cp15(this), divSqrt(this), dldi(this), dma { Dma(this, 0),
+    cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this), dldi(this), dma { Dma(this, 0),
     Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this),
     input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this),
-    rtc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
+    rtc(this), saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
 {
     // Try to load BIOS and firmware; require DS files when not direct booting
     bool required = !Settings::directBoot || (ndsRom == "" && gbaRom == "" && ndsRomFd == -1 && gbaRomFd == -1);
@@ -85,7 +85,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, std::string ndsSave, std::str
     if (gbaRom != "" || gbaRomFd != -1)
     {
         // Load a GBA ROM
-        if (!cartridgeGba.setRom(gbaRom, gbaSave) && !cartridgeGba.setRom(gbaRomFd, gbaSaveFd))
+        if (!cartridgeGba.setRom(gbaRom) && !cartridgeGba.setRom(gbaRomFd, gbaSaveFd, gbaStateFd))
             throw ERROR_ROM;
 
         // Enable GBA mode right away if direct boot is enabled
@@ -99,7 +99,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, std::string ndsSave, std::str
     if (ndsRom != "" || ndsRomFd != -1)
     {
         // Load an NDS ROM
-        if (!cartridgeNds.setRom(ndsRom, ndsSave) && !cartridgeNds.setRom(ndsRomFd, ndsSaveFd))
+        if (!cartridgeNds.setRom(ndsRom) && !cartridgeNds.setRom(ndsRomFd, ndsSaveFd, ndsStateFd))
             throw ERROR_ROM;
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled
@@ -137,6 +137,40 @@ Core::Core(std::string ndsRom, std::string gbaRom, std::string ndsSave, std::str
     running.store(true);
 }
 
+void Core::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&gbaMode, sizeof(gbaMode), 1, file);
+    fwrite(&globalCycles, sizeof(globalCycles), 1, file);
+
+    // Parse the scheduler and save its events
+    uint32_t count = events.size();
+    fwrite(&count, sizeof(count), 1, file);
+    for (uint32_t i = 0; i < count; i++)
+        fwrite(&events[i], sizeof(events[i]), 1, file);
+}
+
+void Core::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(&gbaMode, sizeof(gbaMode), 1, file);
+    fread(&globalCycles, sizeof(globalCycles), 1, file);
+
+    // Reset the scheduler and refill it with loaded events
+    events.clear();
+    uint32_t count;
+    SchedEvent event(MAX_TASKS, 0);
+    fread(&count, sizeof(count), 1, file);
+    for (uint32_t i = 0; i < count; i++)
+    {
+        fread(&event, sizeof(event), 1, file);
+        events.push_back(event);
+    }
+
+    // Update the run function pointer
+    runFunc = gbaMode ? &Interpreter::runGbaFrame : &Interpreter::runNdsFrame;
+}
+
 void Core::resetCycles()
 {
     // Reset the global cycle count periodically to prevent overflow
@@ -151,7 +185,7 @@ void Core::resetCycles()
 void Core::schedule(SchedTask task, uint32_t cycles)
 {
     // Add a task to the scheduler, sorted by least to most cycles until execution
-    SchedEvent event(&tasks[task], globalCycles + cycles);
+    SchedEvent event(task, globalCycles + cycles);
     auto it = std::upper_bound(events.cbegin(), events.cend(), event);
     events.insert(it, event);
 }

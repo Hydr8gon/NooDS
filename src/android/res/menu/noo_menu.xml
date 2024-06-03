@@ -8,7 +8,13 @@
     <item android:id="@+id/restart_action"
         android:title="Restart" />
 
-    <item android:id="@+id/save_action"
+    <item android:id="@+id/save_state_action"
+        android:title="Save State" />
+
+    <item android:id="@+id/load_state_action"
+        android:title="Load State" />
+
+    <item android:id="@+id/save_type_action"
         android:title="Change Save Type" />
 
     <item android:id="@+id/bindings_action"

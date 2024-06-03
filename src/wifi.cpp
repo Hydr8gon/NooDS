@@ -32,6 +32,86 @@ Wifi::Wifi(Core *core): core(core)
     bbRegisters[0x64] = 0xFF;
 }
 
+void Wifi::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&scheduled, sizeof(scheduled), 1, file);
+    fwrite(bbRegisters, 1, sizeof(bbRegisters), file);
+    fwrite(&wModeWep, sizeof(wModeWep), 1, file);
+    fwrite(&wIrf, sizeof(wIrf), 1, file);
+    fwrite(&wIe, sizeof(wIe), 1, file);
+    fwrite(wMacaddr, 2, sizeof(wMacaddr) / 2, file);
+    fwrite(wBssid, 2, sizeof(wBssid) / 2, file);
+    fwrite(&wAidFull, sizeof(wAidFull), 1, file);
+    fwrite(&wRxcnt, sizeof(wRxcnt), 1, file);
+    fwrite(&wPowerstate, sizeof(wPowerstate), 1, file);
+    fwrite(&wPowerforce, sizeof(wPowerforce), 1, file);
+    fwrite(&wRxbufBegin, sizeof(wRxbufBegin), 1, file);
+    fwrite(&wRxbufEnd, sizeof(wRxbufEnd), 1, file);
+    fwrite(&wRxbufWrcsr, sizeof(wRxbufWrcsr), 1, file);
+    fwrite(&wRxbufWrAddr, sizeof(wRxbufWrAddr), 1, file);
+    fwrite(&wRxbufRdAddr, sizeof(wRxbufRdAddr), 1, file);
+    fwrite(&wRxbufReadcsr, sizeof(wRxbufReadcsr), 1, file);
+    fwrite(&wRxbufGap, sizeof(wRxbufGap), 1, file);
+    fwrite(&wRxbufGapdisp, sizeof(wRxbufGapdisp), 1, file);
+    fwrite(wTxbufLoc, 2, sizeof(wTxbufLoc) / 2, file);
+    fwrite(&wBeaconInt, sizeof(wBeaconInt), 1, file);
+    fwrite(&wTxreqRead, sizeof(wTxreqRead), 1, file);
+    fwrite(&wUsCountcnt, sizeof(wUsCountcnt), 1, file);
+    fwrite(&wUsComparecnt, sizeof(wUsComparecnt), 1, file);
+    fwrite(&wPreBeacon, sizeof(wPreBeacon), 1, file);
+    fwrite(&wBeaconCount, sizeof(wBeaconCount), 1, file);
+    fwrite(&wRxbufCount, sizeof(wRxbufCount), 1, file);
+    fwrite(&wTxbufWrAddr, sizeof(wTxbufWrAddr), 1, file);
+    fwrite(&wTxbufCount, sizeof(wTxbufCount), 1, file);
+    fwrite(&wTxbufGap, sizeof(wTxbufGap), 1, file);
+    fwrite(&wTxbufGapdisp, sizeof(wTxbufGapdisp), 1, file);
+    fwrite(&wPostBeacon, sizeof(wPostBeacon), 1, file);
+    fwrite(&wBbWrite, sizeof(wBbWrite), 1, file);
+    fwrite(&wBbRead, sizeof(wBbRead), 1, file);
+    fwrite(wConfig, 2, sizeof(wConfig) / 2, file);
+}
+
+void Wifi::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(&scheduled, sizeof(scheduled), 1, file);
+    fread(bbRegisters, 1, sizeof(bbRegisters), file);
+    fread(&wModeWep, sizeof(wModeWep), 1, file);
+    fread(&wIrf, sizeof(wIrf), 1, file);
+    fread(&wIe, sizeof(wIe), 1, file);
+    fread(wMacaddr, 2, sizeof(wMacaddr) / 2, file);
+    fread(wBssid, 2, sizeof(wBssid) / 2, file);
+    fread(&wAidFull, sizeof(wAidFull), 1, file);
+    fread(&wRxcnt, sizeof(wRxcnt), 1, file);
+    fread(&wPowerstate, sizeof(wPowerstate), 1, file);
+    fread(&wPowerforce, sizeof(wPowerforce), 1, file);
+    fread(&wRxbufBegin, sizeof(wRxbufBegin), 1, file);
+    fread(&wRxbufEnd, sizeof(wRxbufEnd), 1, file);
+    fread(&wRxbufWrcsr, sizeof(wRxbufWrcsr), 1, file);
+    fread(&wRxbufWrAddr, sizeof(wRxbufWrAddr), 1, file);
+    fread(&wRxbufRdAddr, sizeof(wRxbufRdAddr), 1, file);
+    fread(&wRxbufReadcsr, sizeof(wRxbufReadcsr), 1, file);
+    fread(&wRxbufGap, sizeof(wRxbufGap), 1, file);
+    fread(&wRxbufGapdisp, sizeof(wRxbufGapdisp), 1, file);
+    fread(wTxbufLoc, 2, sizeof(wTxbufLoc) / 2, file);
+    fread(&wBeaconInt, sizeof(wBeaconInt), 1, file);
+    fread(&wTxreqRead, sizeof(wTxreqRead), 1, file);
+    fread(&wUsCountcnt, sizeof(wUsCountcnt), 1, file);
+    fread(&wUsComparecnt, sizeof(wUsComparecnt), 1, file);
+    fread(&wPreBeacon, sizeof(wPreBeacon), 1, file);
+    fread(&wBeaconCount, sizeof(wBeaconCount), 1, file);
+    fread(&wRxbufCount, sizeof(wRxbufCount), 1, file);
+    fread(&wTxbufWrAddr, sizeof(wTxbufWrAddr), 1, file);
+    fread(&wTxbufCount, sizeof(wTxbufCount), 1, file);
+    fread(&wTxbufGap, sizeof(wTxbufGap), 1, file);
+    fread(&wTxbufGapdisp, sizeof(wTxbufGapdisp), 1, file);
+    fread(&wPostBeacon, sizeof(wPostBeacon), 1, file);
+    fread(&wBbWrite, sizeof(wBbWrite), 1, file);
+    fread(&wBbRead, sizeof(wBbRead), 1, file);
+    fread(wConfig, 2, sizeof(wConfig) / 2, file);
+}
+
 void Wifi::addConnection(Core *core)
 {
     // Add an external core to this one's connection list

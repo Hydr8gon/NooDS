@@ -31,6 +31,8 @@ class Interpreter
 {
     public:
         Interpreter(Core *core, bool arm7);
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         void init();
         void directBoot();
@@ -94,6 +96,7 @@ class Interpreter
         int runOpcode();
         int exception(uint8_t vector);
         void flushPipeline();
+        void swapRegisters(uint32_t value);
         void setCpsr(uint32_t value, bool save = false);
         int handleReserved(uint32_t opcode);
         int finishHleIrq();

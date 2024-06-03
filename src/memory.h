@@ -46,6 +46,8 @@ class Memory
 {
     public:
         Memory(Core *core): core(core) {};
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         bool loadBios9();
         bool loadBios7();
@@ -54,6 +56,7 @@ class Memory
 
         template <bool tcm> void updateMap9(uint32_t start, uint32_t end);
         void updateMap7(uint32_t start, uint32_t end);
+        void updateVram();
 
         template <typename T> T read(bool cpu, uint32_t address, bool tcm = true);
         template <typename T> void write(bool cpu, uint32_t address, T value, bool tcm = true);
@@ -111,7 +114,7 @@ class Memory
         uint8_t *tex3D[4]      = {};
         uint8_t *pal3D[6]      = {};
 
-        uint8_t *lastGbaBios = nullptr;
+        uint32_t gbaBiosAddr = 0;
 
         uint32_t dmaFill[4] = {};
         uint8_t vramCnt[9] = {};

@@ -45,6 +45,62 @@ Gpu2D::Gpu2D(Core *core, bool engine): core(core), engine(engine)
     }
 }
 
+void Gpu2D::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(winHFlip, sizeof(bool), sizeof(winHFlip) / sizeof(bool), file);
+    fwrite(winVFlip, sizeof(bool), sizeof(winVFlip) / sizeof(bool), file);
+    fwrite(&dispCnt, sizeof(dispCnt), 1, file);
+    fwrite(bgCnt, 2, sizeof(bgCnt) / 2, file);
+    fwrite(bgHOfs, 2, sizeof(bgHOfs) / 2, file);
+    fwrite(bgVOfs, 2, sizeof(bgVOfs) / 2, file);
+    fwrite(bgPA, 2, sizeof(bgPA) / 2, file);
+    fwrite(bgPB, 2, sizeof(bgPB) / 2, file);
+    fwrite(bgPC, 2, sizeof(bgPC) / 2, file);
+    fwrite(bgPD, 2, sizeof(bgPD) / 2, file);
+    fwrite(bgX, 4, sizeof(bgX) / 4, file);
+    fwrite(bgY, 4, sizeof(bgY) / 4, file);
+    fwrite(winX1, 2, sizeof(winX1) / 2, file);
+    fwrite(winX2, 2, sizeof(winX2) / 2, file);
+    fwrite(winY1, 2, sizeof(winY1) / 2, file);
+    fwrite(winY2, 2, sizeof(winY2) / 2, file);
+    fwrite(&winIn, sizeof(winIn), 1, file);
+    fwrite(&winOut, sizeof(winOut), 1, file);
+    fwrite(&bldCnt, sizeof(bldCnt), 1, file);
+    fwrite(&mosaic, sizeof(mosaic), 1, file);
+    fwrite(&bldAlpha, sizeof(bldAlpha), 1, file);
+    fwrite(&bldY, sizeof(bldY), 1, file);
+    fwrite(&masterBright, sizeof(masterBright), 1, file);
+}
+
+void Gpu2D::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(winHFlip, sizeof(bool), sizeof(winHFlip) / sizeof(bool), file);
+    fread(winVFlip, sizeof(bool), sizeof(winVFlip) / sizeof(bool), file);
+    fread(&dispCnt, sizeof(dispCnt), 1, file);
+    fread(bgCnt, 2, sizeof(bgCnt) / 2, file);
+    fread(bgHOfs, 2, sizeof(bgHOfs) / 2, file);
+    fread(bgVOfs, 2, sizeof(bgVOfs) / 2, file);
+    fread(bgPA, 2, sizeof(bgPA) / 2, file);
+    fread(bgPB, 2, sizeof(bgPB) / 2, file);
+    fread(bgPC, 2, sizeof(bgPC) / 2, file);
+    fread(bgPD, 2, sizeof(bgPD) / 2, file);
+    fread(bgX, 4, sizeof(bgX) / 4, file);
+    fread(bgY, 4, sizeof(bgY) / 4, file);
+    fread(winX1, 2, sizeof(winX1) / 2, file);
+    fread(winX2, 2, sizeof(winX2) / 2, file);
+    fread(winY1, 2, sizeof(winY1) / 2, file);
+    fread(winY2, 2, sizeof(winY2) / 2, file);
+    fread(&winIn, sizeof(winIn), 1, file);
+    fread(&winOut, sizeof(winOut), 1, file);
+    fread(&bldCnt, sizeof(bldCnt), 1, file);
+    fread(&mosaic, sizeof(mosaic), 1, file);
+    fread(&bldAlpha, sizeof(bldAlpha), 1, file);
+    fread(&bldY, sizeof(bldY), 1, file);
+    fread(&masterBright, sizeof(masterBright), 1, file);
+}
+
 uint32_t Gpu2D::rgb5ToRgb6(uint32_t color)
 {
     // Convert an RGB5 value to an RGB6 value (the way the 2D engine does it)

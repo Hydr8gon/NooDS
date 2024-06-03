@@ -45,6 +45,32 @@ Gpu3DRenderer::~Gpu3DRenderer()
     }
 }
 
+void Gpu3DRenderer::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&disp3DCnt, sizeof(disp3DCnt), 1, file);
+    fwrite(edgeColor, 2, sizeof(edgeColor) / 2, file);
+    fwrite(&clearColor, sizeof(clearColor), 1, file);
+    fwrite(&clearDepth, sizeof(clearDepth), 1, file);
+    fwrite(&fogColor, sizeof(fogColor), 1, file);
+    fwrite(&fogOffset, sizeof(fogOffset), 1, file);
+    fwrite(fogTable, 1, sizeof(fogTable), file);
+    fwrite(toonTable, 2, sizeof(toonTable) / 2, file);
+}
+
+void Gpu3DRenderer::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(&disp3DCnt, sizeof(disp3DCnt), 1, file);
+    fread(edgeColor, 2, sizeof(edgeColor) / 2, file);
+    fread(&clearColor, sizeof(clearColor), 1, file);
+    fread(&clearDepth, sizeof(clearDepth), 1, file);
+    fread(&fogColor, sizeof(fogColor), 1, file);
+    fread(&fogOffset, sizeof(fogOffset), 1, file);
+    fread(fogTable, 1, sizeof(fogTable), file);
+    fread(toonTable, 2, sizeof(toonTable) / 2, file);
+}
+
 uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 {
     // Convert an RGBA5 value to an RGBA6 value (the way the 3D engine does it)

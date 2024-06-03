@@ -20,6 +20,26 @@
 #include "timers.h"
 #include "core.h"
 
+void Timers::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(timers, 2, sizeof(timers) / 2, file);
+    fwrite(shifts, 1, sizeof(shifts), file);
+    fwrite(endCycles, 4, sizeof(endCycles) / 4, file);
+    fwrite(tmCntL, 2, sizeof(tmCntL) / 2, file);
+    fwrite(tmCntH, 2, sizeof(tmCntH) / 2, file);
+}
+
+void Timers::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(timers, 2, sizeof(timers) / 2, file);
+    fread(shifts, 1, sizeof(shifts), file);
+    fread(endCycles, 4, sizeof(endCycles) / 4, file);
+    fread(tmCntL, 2, sizeof(tmCntL) / 2, file);
+    fread(tmCntH, 2, sizeof(tmCntH) / 2, file);
+}
+
 void Timers::resetCycles()
 {
     // Adjust timer end cycles for a global cycle reset

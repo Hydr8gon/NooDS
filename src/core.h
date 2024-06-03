@@ -42,6 +42,7 @@
 #include "ipc.h"
 #include "memory.h"
 #include "rtc.h"
+#include "save_states.h"
 #include "spi.h"
 #include "spu.h"
 #include "timers.h"
@@ -90,10 +91,10 @@ enum SchedTask
 
 struct SchedEvent
 {
-    std::function<void()> *task;
+    SchedTask task;
     uint32_t cycles;
 
-    SchedEvent(std::function<void()> *task, uint32_t cycles): task(task), cycles(cycles) {}
+    SchedEvent(SchedTask task, uint32_t cycles): task(task), cycles(cycles) {}
     bool operator<(const SchedEvent &event) const { return cycles < event.cycles; }
 };
 
@@ -105,8 +106,8 @@ class Core
         int fps = 0;
 
         Bios bios[3];
-        CartridgeNds cartridgeNds;
         CartridgeGba cartridgeGba;
+        CartridgeNds cartridgeNds;
         Cp15 cp15;
         DivSqrt divSqrt;
         Dldi dldi;
@@ -120,6 +121,7 @@ class Core
         Ipc ipc;
         Memory memory;
         Rtc rtc;
+        SaveStates saveStates;
         Spi spi;
         Spu spu;
         Timers timers[2];
@@ -127,10 +129,13 @@ class Core
 
         std::atomic<bool> running;
         std::vector<SchedEvent> events;
+        std::function<void()> tasks[MAX_TASKS];
         uint32_t globalCycles = 0;
 
-        Core(std::string ndsRom = "", std::string gbaRom = "", std::string ndsSave = "", std::string gbaSave = "",
-             int id = 0, int ndsRomFd = -1, int gbaRomFd = -1, int ndsSaveFd = -1, int gbaSaveFd = -1);
+        Core(std::string ndsRom = "", std::string gbaRom = "", int id = 0, int ndsRomFd = -1, int gbaRomFd = -1,
+             int ndsSaveFd = -1, int gbaSaveFd = -1, int ndsStateFd = -1, int gbaStateFd = -1);
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         void runFrame() { (*runFunc)(*this); }
         void schedule(SchedTask task, uint32_t cycles);
@@ -139,7 +144,6 @@ class Core
 
     private:
         bool realGbaBios;
-        std::function<void()> tasks[MAX_TASKS];
         void (*runFunc)(Core&) = &Interpreter::runNdsFrame;
         std::chrono::steady_clock::time_point lastFpsTime;
         int fpsCount = 0;

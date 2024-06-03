@@ -32,6 +32,26 @@ Spi::~Spi()
     if (micBuffer) delete[] micBuffer;
 }
 
+void Spi::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&writeCount, sizeof(writeCount), 1, file);
+    fwrite(&address, sizeof(address), 1, file);
+    fwrite(&command, sizeof(command), 1, file);
+    fwrite(&spiCnt, sizeof(spiCnt), 1, file);
+    fwrite(&spiData, sizeof(spiData), 1, file);
+}
+
+void Spi::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(&writeCount, sizeof(writeCount), 1, file);
+    fread(&address, sizeof(address), 1, file);
+    fread(&command, sizeof(command), 1, file);
+    fread(&spiCnt, sizeof(spiCnt), 1, file);
+    fread(&spiData, sizeof(spiData), 1, file);
+}
+
 uint16_t Spi::crc16(uint32_t value, uint8_t *data, size_t size)
 {
     static const uint16_t table[] = { 0xC0C1, 0xC181, 0xC301, 0xC601, 0xCC01, 0xD801, 0xF001, 0xA001 };

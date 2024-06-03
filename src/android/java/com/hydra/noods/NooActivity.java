@@ -155,27 +155,102 @@ public class NooActivity extends AppCompatActivity
                 }
                 return true;
 
-            case R.id.save_action:
+            case R.id.restart_action:
+                // Restart the core
+                pauseCore();
+                restartCore();
+                resumeCore();
+                return true;
+
+            case R.id.save_state_action:
+                // Create a confirmation dialog
+                AlertDialog.Builder builder = new AlertDialog.Builder(NooActivity.this);
+                builder.setTitle("Save State");
+                builder.setNegativeButton("Cancel", null);
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int id)
+                    {
+                        // Save the state if confirmed
+                        pauseCore();
+                        saveState();
+                        resumeCore();
+                    }
+                });
+
+                // Use the message with extra information if a state file doesn't exist yet
+                if (checkState() == 1) // File fail
+                    builder.setMessage("Saving and loading states is dangerous and can lead to data " +
+                        "loss. States are also not guaranteed to be compatible across emulator " +
+                        "versions. Please rely on in-game saving to keep your progress, and back up " +
+                        ".sav files before using this feature. Do you want to save the current state?");
+                else
+                    builder.setMessage("Do you want to overwrite the saved " +
+                        "state with the current state? This can't be undone!");
+                builder.create().show();
+                return true;
+
+            case R.id.load_state_action:
+                // Create a confirmation dialog, or an error if something went wrong
+                AlertDialog.Builder builder2 = new AlertDialog.Builder(NooActivity.this);
+                builder2.setTitle("Load State");
+                switch (checkState())
+                {
+                    case 0: // Success
+                        builder2.setMessage("Do you want to load the saved state " +
+                            "and lose the current state? This can't be undone!");
+                        builder2.setNegativeButton("Cancel", null);
+                        builder2.setPositiveButton("OK", new DialogInterface.OnClickListener()
+                        {
+                            @Override
+                            public void onClick(DialogInterface dialog, int id)
+                            {
+                                // Load the state if confirmed
+                                pauseCore();
+                                loadState();
+                                resumeCore();
+                            }
+                        });
+                        break;
+
+                    case 1: // File fail
+                        builder2.setMessage("The state file doesn't exist or couldn't be opened.");
+                        builder2.setNegativeButton("OK", null);
+                        break;
+
+                    case 2: // Format fail
+                        builder2.setMessage("The state file doesn't have a valid format.");
+                        builder2.setNegativeButton("OK", null);
+                        break;
+
+                    case 3: // Version fail
+                        builder2.setMessage("The state file isn't compatible with this version of NooDS.");
+                        builder2.setPositiveButton("OK", null);
+                        break;
+                }
+                builder2.create().show();
+                return true;
+
+            case R.id.save_type_action:
                 final boolean gba = isGbaMode();
                 final String[] names = getResources().getStringArray(gba ? R.array.save_entries_gba : R.array.save_entries_nds);
                 final int[] values = getResources().getIntArray(gba ? R.array.save_values_gba : R.array.save_values_nds);
 
                 // Create the save type dialog
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("Change Save Type");
-
-                builder.setItems(names, new DialogInterface.OnClickListener()
+                AlertDialog.Builder builder3 = new AlertDialog.Builder(this);
+                builder3.setTitle("Change Save Type");
+                builder3.setItems(names, new DialogInterface.OnClickListener()
                 {
                     @Override
                     public void onClick(DialogInterface dialog, final int which)
                     {
                         // Confirm the change because accidentally resizing a working save file could be bad!
-                        AlertDialog.Builder builder2 = new AlertDialog.Builder(NooActivity.this);
-                        builder2.setTitle("Changing Save Type");
-                        builder2.setMessage("Are you sure? This may result in data loss!");
-                        builder2.setNegativeButton("Cancel", null);
-
-                        builder2.setPositiveButton("OK", new DialogInterface.OnClickListener()
+                        AlertDialog.Builder builder4 = new AlertDialog.Builder(NooActivity.this);
+                        builder4.setTitle("Changing Save Type");
+                        builder4.setMessage("Are you sure? This may result in data loss!");
+                        builder4.setNegativeButton("Cancel", null);
+                        builder4.setPositiveButton("OK", new DialogInterface.OnClickListener()
                         {
                             @Override
                             public void onClick(DialogInterface dialog, int id)
@@ -190,19 +265,10 @@ public class NooActivity extends AppCompatActivity
                                 resumeCore();
                             }
                         });
-
-                        builder2.create().show();
+                        builder4.create().show();
                     }
                 });
-
-                builder.create().show();
-                return true;
-
-            case R.id.restart_action:
-                // Restart the core
-                pauseCore();
-                restartCore();
-                resumeCore();
+                builder3.create().show();
                 return true;
 
             case R.id.bindings_action:
@@ -472,6 +538,9 @@ public class NooActivity extends AppCompatActivity
     public static native void runFrame();
     public static native void writeSave();
     public static native void restartCore();
+    public static native int checkState();
+    public static native boolean saveState();
+    public static native boolean loadState();
     public static native void pressScreen(int x, int y);
     public static native void releaseScreen();
     public static native void resizeGbaSave(int size);

@@ -21,6 +21,7 @@
 #define SPI_H
 
 #include <cstdint>
+#include <cstdio>
 #include <mutex>
 
 enum Language
@@ -40,6 +41,9 @@ class Spi
     public:
         Spi(Core *core): core(core) {}
         ~Spi();
+
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         bool loadFirmware();
         void directBoot();
@@ -70,7 +74,7 @@ class Spi
         uint16_t micSample = 0;
         std::mutex mutex;
 
-        unsigned int writeCount = 0;
+        uint32_t writeCount = 0;
         uint32_t address = 0;
         uint8_t command = 0;
 

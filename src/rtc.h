@@ -30,6 +30,8 @@ class Rtc
 {
     public:
         Rtc(Core *core): core(core) {}
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         void enableGpRtc() { gpRtc = true; }
         void reset();

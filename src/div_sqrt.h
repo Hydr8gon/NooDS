@@ -21,6 +21,7 @@
 #define DIV_SQRT_H
 
 #include <cstdint>
+#include <cstdio>
 
 class Core;
 
@@ -28,6 +29,8 @@ class DivSqrt
 {
     public:
         DivSqrt(Core *core): core(core) {}
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         uint16_t readDivCnt()        { return divCnt;             }
         uint32_t readDivNumerL()     { return divNumer;           }

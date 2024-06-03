@@ -34,22 +34,25 @@ Cartridge::~Cartridge()
     if (save) delete[] save;
 }
 
-bool Cartridge::setRom(std::string romPath, std::string savePath)
+bool Cartridge::setRom(std::string romPath)
 {
-    // Set the save path based on instance ID, or override if a path is provided
-    std::string ext = core->id ? (".sv" + std::to_string(core->id + 1)) : ".sav";
-    this->savePath = (savePath == "") ? romPath.substr(0, romPath.rfind(".")) + ext : savePath;
+    // Set the save and state paths based on instance ID
+    std::string sav = core->id ? (".sv" + std::to_string(core->id + 1)) : ".sav";
+    std::string noo = core->id ? (".no" + std::to_string(core->id + 1)) : ".noo";
+    savePath = romPath.substr(0, romPath.rfind(".")) + sav;
+    core->saveStates.setState(romPath.substr(0, romPath.rfind(".")) + noo, this == &core->cartridgeGba);
 
     // Load a ROM normally
     this->romPath = romPath;
     return loadRom();
 }
 
-bool Cartridge::setRom(int romFd, int saveFd)
+bool Cartridge::setRom(int romFd, int saveFd, int stateFd)
 {
     // Load a ROM using file descriptors; needed for scoped storage on Android
     this->romFd = romFd;
     this->saveFd = saveFd;
+    core->saveStates.setState(stateFd, this == &core->cartridgeGba);
     return loadRom();
 }
 
@@ -169,6 +172,55 @@ void Cartridge::resizeSave(int newSize, bool dirty)
     saveSize = newSize;
     if (dirty) saveDirty = true;
     mutex.unlock();
+}
+
+void CartridgeNds::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&saveSize, sizeof(saveSize), 1, file);
+    if (saveSize > 0) fwrite(save, 1, saveSize, file);
+    fwrite(&cmdMode, sizeof(cmdMode), 1, file);
+    fwrite(encTable, 4, sizeof(encTable) / 4, file);
+    fwrite(encCode, 4, sizeof(encCode) / 4, file);
+    fwrite(romAddrReal, 4, sizeof(romAddrReal) / 4, file);
+    fwrite(romAddrVirt, 4, sizeof(romAddrVirt) / 4, file);
+    fwrite(blockSize, 2, sizeof(blockSize) / 2, file);
+    fwrite(readCount, 2, sizeof(readCount) / 2, file);
+    fwrite(wordCycles, 4, sizeof(wordCycles) / 4, file);
+    fwrite(encrypted, sizeof(bool), sizeof(encrypted) / sizeof(bool), file);
+    fwrite(auxCommand, 1, sizeof(auxCommand), file);
+    fwrite(auxAddress, 4, sizeof(auxAddress) / 4, file);
+    fwrite(auxWriteCount, 4, sizeof(auxWriteCount) / 4, file);
+    fwrite(auxSpiCnt, 2, sizeof(auxSpiCnt) / 2, file);
+    fwrite(auxSpiData, 1, sizeof(auxSpiData), file);
+    fwrite(romCtrl, 4, sizeof(romCtrl) / 4, file);
+    fwrite(romCmdOut, 8, sizeof(romCmdOut) / 8, file);
+}
+
+void CartridgeNds::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(&saveSize, sizeof(saveSize), 1, file);
+    if (saveSize > 0) fread(save, 1, saveSize, file);
+    fread(&cmdMode, sizeof(cmdMode), 1, file);
+    fread(encTable, 4, sizeof(encTable) / 4, file);
+    fread(encCode, 4, sizeof(encCode) / 4, file);
+    fread(romAddrReal, 4, sizeof(romAddrReal) / 4, file);
+    fread(romAddrVirt, 4, sizeof(romAddrVirt) / 4, file);
+    fread(blockSize, 2, sizeof(blockSize) / 2, file);
+    fread(readCount, 2, sizeof(readCount) / 2, file);
+    fread(wordCycles, 4, sizeof(wordCycles) / 4, file);
+    fread(encrypted, sizeof(bool), sizeof(encrypted) / sizeof(bool), file);
+    fread(auxCommand, 1, sizeof(auxCommand), file);
+    fread(auxAddress, 4, sizeof(auxAddress) / 4, file);
+    fread(auxWriteCount, 4, sizeof(auxWriteCount) / 4, file);
+    fread(auxSpiCnt, 2, sizeof(auxSpiCnt) / 2, file);
+    fread(auxSpiData, 1, sizeof(auxSpiData), file);
+    fread(romCtrl, 4, sizeof(romCtrl) / 4, file);
+    fread(romCmdOut, 8, sizeof(romCmdOut) / 8, file);
+
+    // Don't overwrite the save file right away; wait until it's modified
+    saveDirty = false;
 }
 
 bool CartridgeNds::loadRom()
@@ -967,6 +1019,37 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
     return 0xFFFFFFFF;
 }
 
+void CartridgeGba::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&saveSize, sizeof(saveSize), 1, file);
+    if (saveSize > 0) fwrite(save, 1, saveSize, file);
+    fwrite(&eepromCount, sizeof(eepromCount), 1, file);
+    fwrite(&eepromCmd, sizeof(eepromCmd), 1, file);
+    fwrite(&eepromData, sizeof(eepromData), 1, file);
+    fwrite(&eepromDone, sizeof(eepromDone), 1, file);
+    fwrite(&flashCmd, sizeof(flashCmd), 1, file);
+    fwrite(&bankSwap, sizeof(bankSwap), 1, file);
+    fwrite(&flashErase, sizeof(flashErase), 1, file);
+}
+
+void CartridgeGba::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(&saveSize, sizeof(saveSize), 1, file);
+    if (saveSize > 0) fread(save, 1, saveSize, file);
+    fread(&eepromCount, sizeof(eepromCount), 1, file);
+    fread(&eepromCmd, sizeof(eepromCmd), 1, file);
+    fread(&eepromData, sizeof(eepromData), 1, file);
+    fread(&eepromDone, sizeof(eepromDone), 1, file);
+    fread(&flashCmd, sizeof(flashCmd), 1, file);
+    fread(&bankSwap, sizeof(bankSwap), 1, file);
+    fread(&flashErase, sizeof(flashErase), 1, file);
+
+    // Don't overwrite the save file right away; wait until it's modified
+    saveDirty = false;
+}
+
 bool CartridgeGba::findString(std::string string)
 {
     // Scan a GBA ROM for a string and report if it was found
@@ -1087,7 +1170,7 @@ uint8_t CartridgeGba::eepromRead()
     }
 
     // EEPROM 0.5KB uses 8-bit commands, and EEPROM 8KB uses 16-bit commands
-    int length = (saveSize == 0x200) ? 8 : 16;
+    uint8_t length = (saveSize == 0x200) ? 8 : 16;
 
     if (((eepromCmd & 0xC000) >> 14) == 0x3 && eepromCount >= length + 1) // Read
     {
@@ -1123,7 +1206,7 @@ void CartridgeGba::eepromWrite(uint8_t value)
     eepromDone = false;
 
     // EEPROM 0.5KB uses 8-bit commands, and EEPROM 8KB uses 16-bit commands
-    int length = (saveSize == 0x200) ? 8 : 16;
+    uint8_t length = (saveSize == 0x200) ? 8 : 16;
 
     if (eepromCount < length)
     {

@@ -27,6 +27,7 @@ add_library(noods-core SHARED
             ../ipc.cpp
             ../memory.cpp
             ../rtc.cpp
+            ../save_states.cpp
             ../settings.cpp
             ../spi.cpp
             ../spu.cpp

@@ -20,6 +20,28 @@
 #include "dma.h"
 #include "core.h"
 
+void Dma::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(srcAddrs, 4, sizeof(srcAddrs) / 4, file);
+    fwrite(dstAddrs, 4, sizeof(dstAddrs) / 4, file);
+    fwrite(wordCounts, 4, sizeof(wordCounts) / 4, file);
+    fwrite(dmaSad, 4, sizeof(dmaSad) / 4, file);
+    fwrite(dmaDad, 4, sizeof(dmaDad) / 4, file);
+    fwrite(dmaCnt, 4, sizeof(dmaCnt) / 4, file);
+}
+
+void Dma::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(srcAddrs, 4, sizeof(srcAddrs) / 4, file);
+    fread(dstAddrs, 4, sizeof(dstAddrs) / 4, file);
+    fread(wordCounts, 4, sizeof(wordCounts) / 4, file);
+    fread(dmaSad, 4, sizeof(dmaSad) / 4, file);
+    fread(dmaDad, 4, sizeof(dmaDad) / 4, file);
+    fread(dmaCnt, 4, sizeof(dmaCnt) / 4, file);
+}
+
 void Dma::transfer(int channel)
 {
     int dstAddrCnt = (dmaCnt[channel] & 0x00600000) >> 21;

@@ -64,6 +64,18 @@ int (Bios::*Bios::swiTableGba[])(uint32_t**) =
     &Bios::swiUnknown                                                                                 // 0x20
 };
 
+void Bios::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&waitFlags, sizeof(waitFlags), 1, file);
+}
+
+void Bios::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(&waitFlags, sizeof(waitFlags), 1, file);
+}
+
 int Bios::execute(uint8_t vector, uint32_t **registers)
 {
     // Execute the HLE version of the given exception vector

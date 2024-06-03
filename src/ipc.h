@@ -21,6 +21,8 @@
 #define IPC_H
 
 #include <cstdint>
+#include <cstdio>
+#include <cstdio>
 #include <queue>
 
 class Core;
@@ -29,6 +31,8 @@ class Ipc
 {
     public:
         Ipc(Core *core): core(core) {}
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         uint16_t readIpcSync(bool cpu)    { return ipcSync[cpu];    }
         uint16_t readIpcFifoCnt(bool cpu) { return ipcFifoCnt[cpu]; }
@@ -41,7 +45,7 @@ class Ipc
     private:
         Core *core;
 
-        std::queue<uint32_t> fifos[2];
+        std::deque<uint32_t> fifos[2];
 
         uint16_t ipcSync[2] = {};
         uint16_t ipcFifoCnt[2] = { 0x0101, 0x0101 };

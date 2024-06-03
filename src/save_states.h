@@ -17,40 +17,42 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef TIMERS_H
-#define TIMERS_H
+#ifndef SAVE_STATES_H
+#define SAVE_STATES_H
 
 #include <cstdint>
-#include <cstdio>
+#include <string>
 
 class Core;
 
-class Timers
+enum StateResult
+{
+    STATE_SUCCESS,
+    STATE_FILE_FAIL,
+    STATE_FORMAT_FAIL,
+    STATE_VERSION_FAIL
+};
+
+class SaveStates
 {
     public:
-        Timers(Core *core, bool cpu): core(core), cpu(cpu) {}
-        void saveState(FILE *file);
-        void loadState(FILE *file);
+        SaveStates(Core *core): core(core) {}
+        void setState(std::string path, bool gba);
+        void setState(int fd, bool gba);
 
-        void resetCycles();
-        void overflow(int timer);
-
-        uint16_t readTmCntH(int timer) { return tmCntH[timer]; }
-        uint16_t readTmCntL(int timer);
-
-        void writeTmCntL(int timer, uint16_t mask, uint16_t value);
-        void writeTmCntH(int timer, uint16_t mask, uint16_t value);
+        StateResult checkState();
+        bool saveState();
+        bool loadState();
 
     private:
         Core *core;
-        bool cpu;
+        std::string ndsPath, gbaPath;
+        int ndsFd = -1, gbaFd = -1;
 
-        uint16_t timers[4] = {};
-        uint8_t shifts[4] = {};
-        uint32_t endCycles[4] = {};
+        static const char *stateTag;
+        static const uint32_t stateVersion;
 
-        uint16_t tmCntL[4] = {};
-        uint16_t tmCntH[4] = {};
+        FILE *openFile(const char *mode);
 };
 
-#endif // TIMERS_H
+#endif // SAVE_STATES_H

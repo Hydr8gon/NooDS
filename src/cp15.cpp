@@ -20,6 +20,28 @@
 #include "cp15.h"
 #include "core.h"
 
+void Cp15::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&ctrlReg, sizeof(ctrlReg), 1, file);
+    fwrite(&dtcmReg, sizeof(dtcmReg), 1, file);
+    fwrite(&itcmReg, sizeof(itcmReg), 1, file);
+}
+
+void Cp15::loadState(FILE *file)
+{
+    // Read state data from the file
+    uint32_t ctrl, dtcm, itcm;
+    fread(&ctrl, sizeof(ctrl), 1, file);
+    fread(&dtcm, sizeof(dtcm), 1, file);
+    fread(&itcm, sizeof(itcm), 1, file);
+
+    // Set registers along with values based on them
+    write(1, 0, 0, ctrl);
+    write(9, 1, 0, dtcm);
+    write(9, 1, 1, itcm);
+}
+
 uint32_t Cp15::read(int cn, int cm, int cp)
 {
     // Read a value from a CP15 register

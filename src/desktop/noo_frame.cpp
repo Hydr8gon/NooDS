@@ -32,6 +32,8 @@ enum FrameEvent
 {
     LOAD_ROM = 1,
     BOOT_FIRMWARE,
+    SAVE_STATE,
+    LOAD_STATE,
     TRIM_ROM,
     CHANGE_SAVE,
     QUIT,
@@ -57,30 +59,32 @@ enum FrameEvent
 };
 
 wxBEGIN_EVENT_TABLE(NooFrame, wxFrame)
-EVT_MENU(LOAD_ROM,       NooFrame::loadRom)
-EVT_MENU(BOOT_FIRMWARE,  NooFrame::bootFirmware)
-EVT_MENU(TRIM_ROM,       NooFrame::trimRom)
-EVT_MENU(CHANGE_SAVE,    NooFrame::changeSave)
-EVT_MENU(QUIT,           NooFrame::quit)
-EVT_MENU(PAUSE,          NooFrame::pause)
-EVT_MENU(RESTART,        NooFrame::restart)
-EVT_MENU(STOP,           NooFrame::stop)
-EVT_MENU(ADD_SYSTEM,     NooFrame::addSystem)
-EVT_MENU(PATH_SETTINGS,  NooFrame::pathSettings)
+EVT_MENU(LOAD_ROM, NooFrame::loadRom)
+EVT_MENU(BOOT_FIRMWARE, NooFrame::bootFirmware)
+EVT_MENU(SAVE_STATE, NooFrame::saveState)
+EVT_MENU(LOAD_STATE, NooFrame::loadState)
+EVT_MENU(TRIM_ROM, NooFrame::trimRom)
+EVT_MENU(CHANGE_SAVE, NooFrame::changeSave)
+EVT_MENU(QUIT, NooFrame::quit)
+EVT_MENU(PAUSE, NooFrame::pause)
+EVT_MENU(RESTART, NooFrame::restart)
+EVT_MENU(STOP, NooFrame::stop)
+EVT_MENU(ADD_SYSTEM, NooFrame::addSystem)
+EVT_MENU(PATH_SETTINGS, NooFrame::pathSettings)
 EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
-EVT_MENU(SCREEN_LAYOUT,  NooFrame::layoutSettings)
-EVT_MENU(DIRECT_BOOT,    NooFrame::directBootToggle)
-EVT_MENU(FPS_DISABLED,   NooFrame::fpsDisabled)
-EVT_MENU(FPS_LIGHT,      NooFrame::fpsLight)
-EVT_MENU(FPS_ACCURATE,   NooFrame::fpsAccurate)
-EVT_MENU(THREADED_2D,    NooFrame::threaded2D)
-EVT_MENU(THREADED_3D_0,  NooFrame::threaded3D0)
-EVT_MENU(THREADED_3D_1,  NooFrame::threaded3D1)
-EVT_MENU(THREADED_3D_2,  NooFrame::threaded3D2)
-EVT_MENU(THREADED_3D_3,  NooFrame::threaded3D3)
-EVT_MENU(HIGH_RES_3D,    NooFrame::highRes3D)
-EVT_MENU(MIC_ENABLE,     NooFrame::micEnable)
-EVT_TIMER(UPDATE_JOY,    NooFrame::updateJoystick)
+EVT_MENU(SCREEN_LAYOUT, NooFrame::layoutSettings)
+EVT_MENU(DIRECT_BOOT, NooFrame::directBootToggle)
+EVT_MENU(FPS_DISABLED, NooFrame::fpsDisabled)
+EVT_MENU(FPS_LIGHT, NooFrame::fpsLight)
+EVT_MENU(FPS_ACCURATE, NooFrame::fpsAccurate)
+EVT_MENU(THREADED_2D, NooFrame::threaded2D)
+EVT_MENU(THREADED_3D_0, NooFrame::threaded3D0)
+EVT_MENU(THREADED_3D_1, NooFrame::threaded3D1)
+EVT_MENU(THREADED_3D_2, NooFrame::threaded3D2)
+EVT_MENU(THREADED_3D_3, NooFrame::threaded3D3)
+EVT_MENU(HIGH_RES_3D, NooFrame::highRes3D)
+EVT_MENU(MIC_ENABLE, NooFrame::micEnable)
+EVT_TIMER(UPDATE_JOY, NooFrame::updateJoystick)
 EVT_DROP_FILES(NooFrame::dropFiles)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
@@ -94,28 +98,33 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path):
 
     // Set up the File menu
     fileMenu = new wxMenu();
-    fileMenu->Append(LOAD_ROM,      "&Load ROM");
+    fileMenu->Append(LOAD_ROM, "&Load ROM");
     fileMenu->Append(BOOT_FIRMWARE, "&Boot Firmware");
     fileMenu->AppendSeparator();
-    fileMenu->Append(TRIM_ROM,      "&Trim ROM");
-    fileMenu->Append(CHANGE_SAVE,   "&Change Save Type");
+    fileMenu->Append(SAVE_STATE, "&Save State");
+    fileMenu->Append(LOAD_STATE, "&Load State");
     fileMenu->AppendSeparator();
-    fileMenu->Append(QUIT,          "&Quit");
+    fileMenu->Append(TRIM_ROM, "&Trim ROM");
+    fileMenu->Append(CHANGE_SAVE, "&Change Save Type");
+    fileMenu->AppendSeparator();
+    fileMenu->Append(QUIT, "&Quit");
 
     // Set up the System menu
     systemMenu = new wxMenu();
-    systemMenu->Append(PAUSE,      "&Resume");
-    systemMenu->Append(RESTART,    "&Restart");
-    systemMenu->Append(STOP,       "&Stop");
+    systemMenu->Append(PAUSE, "&Resume");
+    systemMenu->Append(RESTART, "&Restart");
+    systemMenu->Append(STOP, "&Stop");
     systemMenu->AppendSeparator();
     systemMenu->Append(ADD_SYSTEM, "&Add System");
 
     // Disable some menu items until the core is running
-    fileMenu->Enable(TRIM_ROM,    false);
+    fileMenu->Enable(TRIM_ROM, false);
     fileMenu->Enable(CHANGE_SAVE, false);
-    systemMenu->Enable(PAUSE,     false);
-    systemMenu->Enable(RESTART,   false);
-    systemMenu->Enable(STOP,      false);
+    fileMenu->Enable(SAVE_STATE, false);
+    fileMenu->Enable(LOAD_STATE, false);
+    systemMenu->Enable(PAUSE, false);
+    systemMenu->Enable(RESTART, false);
+    systemMenu->Enable(STOP, false);
 
     // Set up the FPS Limiter submenu
     wxMenu *fpsLimiter = new wxMenu();
@@ -260,7 +269,7 @@ void NooFrame::startCore(bool full)
         try
         {
             // Attempt to boot the core
-            core = new Core(ndsPath, gbaPath, "", "", id);
+            core = new Core(ndsPath, gbaPath, id);
             app->connectCore(id);
         }
         catch (CoreError e)
@@ -288,17 +297,20 @@ void NooFrame::startCore(bool full)
 
     if (core)
     {
-        systemMenu->SetLabel(PAUSE, "&Pause");
-
-        // Enable some menu items
+        // Enable some file menu items if a ROM is loaded
         if (ndsPath != "" || gbaPath != "")
         {
-            fileMenu->Enable(TRIM_ROM,    true);
+            fileMenu->Enable(TRIM_ROM, true);
             fileMenu->Enable(CHANGE_SAVE, true);
+            fileMenu->Enable(SAVE_STATE, true);
+            fileMenu->Enable(LOAD_STATE, true);
         }
-        systemMenu->Enable(PAUSE,   true);
+
+        // Update the system menu for running
+        systemMenu->SetLabel(PAUSE, "&Pause");
+        systemMenu->Enable(PAUSE, true);
         systemMenu->Enable(RESTART, true);
-        systemMenu->Enable(STOP,    true);
+        systemMenu->Enable(STOP, true);
 
         // Start the threads
         running = true;
@@ -332,16 +344,19 @@ void NooFrame::stopCore(bool full)
         saveThread = nullptr;
     }
 
+    // Update the system menu for being paused
     systemMenu->SetLabel(PAUSE, "&Resume");
 
     if (full)
     {
         // Disable some menu items
-        fileMenu->Enable(TRIM_ROM,    false);
+        fileMenu->Enable(TRIM_ROM, false);
         fileMenu->Enable(CHANGE_SAVE, false);
-        systemMenu->Enable(PAUSE,     false);
-        systemMenu->Enable(RESTART,   false);
-        systemMenu->Enable(STOP,      false);
+        fileMenu->Enable(SAVE_STATE, false);
+        fileMenu->Enable(LOAD_STATE, false);
+        systemMenu->Enable(PAUSE, false);
+        systemMenu->Enable(RESTART, false);
+        systemMenu->Enable(STOP, false);
 
         // Shut down the core
         if (core)
@@ -530,6 +545,72 @@ void NooFrame::changeSave(wxCommandEvent &event)
     // Show the save dialog
     SaveDialog saveDialog(this);
     saveDialog.ShowModal();
+}
+
+void NooFrame::saveState(wxCommandEvent &event)
+{
+    // Create a confirmation dialog, with extra information if a state file doesn't exist yet
+    wxMessageDialog *dialog;
+    switch (core->saveStates.checkState())
+    {
+        case STATE_FILE_FAIL:
+            dialog = new wxMessageDialog(this, "Saving and loading states is dangerous and can lead to data "
+                "loss. States are also not guaranteed to be compatible across emulator versions. Please "
+                "rely on in-game saving to keep your progress, and back up .sav files before using this "
+                "feature. Do you want to save the current state?", "Save State", wxYES_NO | wxICON_NONE);
+            break;
+
+        default:
+            dialog = new wxMessageDialog(this, "Do you want to overwrite the saved state with the "
+                "current state? This can't be undone!", "Save State", wxYES_NO | wxICON_NONE);
+            break;
+    }
+
+    // Show the dialog and save the state if confirmed
+    if (dialog->ShowModal() == wxID_YES)
+    {
+        stopCore(false);
+        core->saveStates.saveState();
+        startCore(false);
+    }
+    delete dialog;
+}
+
+void NooFrame::loadState(wxCommandEvent &event)
+{
+    // Create a confirmation dialog, or an error if something went wrong
+    wxMessageDialog *dialog;
+    switch (core->saveStates.checkState())
+    {
+        case STATE_SUCCESS:
+            dialog = new wxMessageDialog(this, "Do you want to load the saved state and lose the "
+                "current state? This can't be undone!", "Load State", wxYES_NO | wxICON_NONE);
+            break;
+
+        case STATE_FILE_FAIL:
+            dialog = new wxMessageDialog(this, "The state file doesn't "
+                "exist or couldn't be opened.", "Error", wxICON_NONE);
+            break;
+
+        case STATE_FORMAT_FAIL:
+            dialog = new wxMessageDialog(this, "The state file "
+                "doesn't have a valid format.", "Error", wxICON_NONE);
+            break;
+
+        case STATE_VERSION_FAIL:
+            dialog = new wxMessageDialog(this, "The state file isn't "
+                "compatible with this version of NooDS.", "Error", wxICON_NONE);
+            break;
+    }
+
+    // Show the dialog and load the state if confirmed
+    if (dialog->ShowModal() == wxID_YES)
+    {
+        stopCore(false);
+        core->saveStates.loadState();
+        startCore(false);
+    }
+    delete dialog;
 }
 
 void NooFrame::quit(wxCommandEvent &event)

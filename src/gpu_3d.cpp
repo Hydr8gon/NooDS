@@ -83,6 +83,143 @@ const uint8_t Gpu3D::paramCounts[] =
     3,  2,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x70-0x7F
 };
 
+void Gpu3D::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&state, sizeof(state), 1, file);
+    fwrite(&pipeSize, sizeof(pipeSize), 1, file);
+    fwrite(&testQueue, sizeof(testQueue), 1, file);
+    fwrite(&matrixQueue, sizeof(matrixQueue), 1, file);
+    fwrite(&matrixMode, sizeof(matrixMode), 1, file);
+    fwrite(&clipDirty, sizeof(clipDirty), 1, file);
+    fwrite(&projection, sizeof(projection), 1, file);
+    fwrite(&projectionStack, sizeof(projectionStack), 1, file);
+    fwrite(&coordinate, sizeof(coordinate), 1, file);
+    fwrite(coordinateStack, sizeof(Matrix), sizeof(coordinateStack) / sizeof(Matrix), file);
+    fwrite(&direction, sizeof(direction), 1, file);
+    fwrite(directionStack, sizeof(Matrix), sizeof(coordinateStack) / sizeof(Matrix), file);
+    fwrite(&texture, sizeof(texture), 1, file);
+    fwrite(&textureStack, sizeof(textureStack), 1, file);
+    fwrite(&clip, sizeof(clip), 1, file);
+    fwrite(verticesIn, sizeof(Vertex), sizeof(vertices1) / sizeof(Vertex), file);
+    fwrite(verticesOut, sizeof(Vertex), sizeof(vertices2) / sizeof(Vertex), file);
+    fwrite(&vertexCountIn, sizeof(vertexCountIn), 1, file);
+    fwrite(&vertexCountOut, sizeof(vertexCountOut), 1, file);
+    fwrite(&processCount, sizeof(processCount), 1, file);
+    fwrite(polygonsIn, sizeof(_Polygon), sizeof(polygons1) / sizeof(_Polygon), file);
+    fwrite(polygonsOut, sizeof(_Polygon), sizeof(polygons2) / sizeof(_Polygon), file);
+    fwrite(&polygonCountIn, sizeof(polygonCountIn), 1, file);
+    fwrite(&polygonCountOut, sizeof(polygonCountOut), 1, file);
+    fwrite(&savedVertex, sizeof(savedVertex), 1, file);
+    fwrite(&savedPolygon, sizeof(savedPolygon), 1, file);
+    fwrite(&s, sizeof(s), 1, file);
+    fwrite(&t, sizeof(t), 1, file);
+    fwrite(&vertexCount, sizeof(vertexCount), 1, file);
+    fwrite(&clockwise, sizeof(clockwise), 1, file);
+    fwrite(&polygonType, sizeof(polygonType), 1, file);
+    fwrite(&textureCoordMode, sizeof(textureCoordMode), 1, file);
+    fwrite(&polygonAttr, sizeof(polygonAttr), 1, file);
+    fwrite(&enabledLights, sizeof(enabledLights), 1, file);
+    fwrite(&renderBack, sizeof(renderBack), 1, file);
+    fwrite(&renderFront, sizeof(renderFront), 1, file);
+    fwrite(&diffuseColor, sizeof(diffuseColor), 1, file);
+    fwrite(&ambientColor, sizeof(ambientColor), 1, file);
+    fwrite(&specularColor, sizeof(specularColor), 1, file);
+    fwrite(&emissionColor, sizeof(emissionColor), 1, file);
+    fwrite(&shininessEnabled, sizeof(shininessEnabled), 1, file);
+    fwrite(lightVector, sizeof(Vector), sizeof(lightVector) / sizeof(Vector), file);
+    fwrite(halfVector, sizeof(Vector), sizeof(halfVector) / sizeof(Vector), file);
+    fwrite(lightColor, 4, sizeof(lightColor) / 4, file);
+    fwrite(shininess, 1, sizeof(shininess), file);
+    fwrite(viewport, 2, sizeof(viewport) / 2, file);
+    fwrite(viewportNext, 2, sizeof(viewportNext) / 2, file);
+    fwrite(&gxFifo, sizeof(gxFifo), 1, file);
+    fwrite(&gxStat, sizeof(gxStat), 1, file);
+    fwrite(posResult, 4, sizeof(posResult) / 4, file);
+    fwrite(vecResult, 2, sizeof(vecResult) / 2, file);
+    fwrite(&gxFifoCount, sizeof(gxFifoCount), 1, file);
+
+    // Parse the FIFO and save its entries
+    uint32_t count = fifo.size();
+    fwrite(&count, sizeof(count), 1, file);
+    for (uint32_t i = 0; i < count; i++)
+        fwrite(&fifo[i], sizeof(fifo[i]), 1, file);
+}
+
+void Gpu3D::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(&state, sizeof(state), 1, file);
+    fread(&pipeSize, sizeof(pipeSize), 1, file);
+    fread(&testQueue, sizeof(testQueue), 1, file);
+    fread(&matrixQueue, sizeof(matrixQueue), 1, file);
+    fread(&matrixMode, sizeof(matrixMode), 1, file);
+    fread(&clipDirty, sizeof(clipDirty), 1, file);
+    fread(&projection, sizeof(projection), 1, file);
+    fread(&projectionStack, sizeof(projectionStack), 1, file);
+    fread(&coordinate, sizeof(coordinate), 1, file);
+    fread(coordinateStack, sizeof(Matrix), sizeof(coordinateStack) / sizeof(Matrix), file);
+    fread(&direction, sizeof(direction), 1, file);
+    fread(directionStack, sizeof(Matrix), sizeof(coordinateStack) / sizeof(Matrix), file);
+    fread(&texture, sizeof(texture), 1, file);
+    fread(&textureStack, sizeof(textureStack), 1, file);
+    fread(&clip, sizeof(clip), 1, file);
+    fread(vertices1, sizeof(Vertex), sizeof(vertices1) / sizeof(Vertex), file);
+    fread(vertices2, sizeof(Vertex), sizeof(vertices2) / sizeof(Vertex), file);
+    fread(&vertexCountIn, sizeof(vertexCountIn), 1, file);
+    fread(&vertexCountOut, sizeof(vertexCountOut), 1, file);
+    fread(&processCount, sizeof(processCount), 1, file);
+    fread(polygons1, sizeof(_Polygon), sizeof(polygons1) / sizeof(_Polygon), file);
+    fread(polygons2, sizeof(_Polygon), sizeof(polygons2) / sizeof(_Polygon), file);
+    fread(&polygonCountIn, sizeof(polygonCountIn), 1, file);
+    fread(&polygonCountOut, sizeof(polygonCountOut), 1, file);
+    fread(&savedVertex, sizeof(savedVertex), 1, file);
+    fread(&savedPolygon, sizeof(savedPolygon), 1, file);
+    fread(&s, sizeof(s), 1, file);
+    fread(&t, sizeof(t), 1, file);
+    fread(&vertexCount, sizeof(vertexCount), 1, file);
+    fread(&clockwise, sizeof(clockwise), 1, file);
+    fread(&polygonType, sizeof(polygonType), 1, file);
+    fread(&textureCoordMode, sizeof(textureCoordMode), 1, file);
+    fread(&polygonAttr, sizeof(polygonAttr), 1, file);
+    fread(&enabledLights, sizeof(enabledLights), 1, file);
+    fread(&renderBack, sizeof(renderBack), 1, file);
+    fread(&renderFront, sizeof(renderFront), 1, file);
+    fread(&diffuseColor, sizeof(diffuseColor), 1, file);
+    fread(&ambientColor, sizeof(ambientColor), 1, file);
+    fread(&specularColor, sizeof(specularColor), 1, file);
+    fread(&emissionColor, sizeof(emissionColor), 1, file);
+    fread(&shininessEnabled, sizeof(shininessEnabled), 1, file);
+    fread(lightVector, sizeof(Vector), sizeof(lightVector) / sizeof(Vector), file);
+    fread(halfVector, sizeof(Vector), sizeof(halfVector) / sizeof(Vector), file);
+    fread(lightColor, 4, sizeof(lightColor) / 4, file);
+    fread(shininess, 1, sizeof(shininess), file);
+    fread(viewport, 2, sizeof(viewport) / 2, file);
+    fread(viewportNext, 2, sizeof(viewportNext) / 2, file);
+    fread(&gxFifo, sizeof(gxFifo), 1, file);
+    fread(&gxStat, sizeof(gxStat), 1, file);
+    fread(posResult, 4, sizeof(posResult) / 4, file);
+    fread(vecResult, 2, sizeof(vecResult) / 2, file);
+    fread(&gxFifoCount, sizeof(gxFifoCount), 1, file);
+
+    // Reset vertex and polygon buffers
+    verticesIn = vertices1;
+    verticesOut = vertices2;
+    polygonsIn = polygons1;
+    polygonsOut = polygons2;
+
+    // Reset the FIFO and refill it with loaded entries
+    fifo.clear();
+    uint32_t count;
+    Entry entry(0, 0);
+    fread(&count, sizeof(count), 1, file);
+    for (uint32_t j = 0; j < count; j++)
+    {
+        fread(&entry, sizeof(entry), 1, file);
+        fifo.push_back(entry);
+    }
+}
+
 uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
 {
     // Convert an RGB5 value to an RGB6 value (the way the 3D engine does it)
@@ -189,13 +326,13 @@ void Gpu3D::runCommand()
         for (int i = 0; i < count; i++)
         {
             params.push_back(fifo.front().param);
-            fifo.pop();
+            fifo.pop_front();
         }
     }
     else
     {
         count = 1;
-        fifo.pop();
+        fifo.pop_front();
     }
 
     // Execute the geometry command
@@ -1532,7 +1669,7 @@ void Gpu3D::addEntry(Entry entry)
     if (fifo.size() - pipeSize == 0 && pipeSize < 4)
     {
         // Move data directly into the pipe if the FIFO is empty and the pipe isn't full
-        fifo.push(entry);
+        fifo.push_back(entry);
         pipeSize++;
 
         // Update the FIFO status
@@ -1545,7 +1682,7 @@ void Gpu3D::addEntry(Entry entry)
             core->interpreter[0].halt(1);
 
         // Move data into the FIFO
-        fifo.push(entry);
+        fifo.push_back(entry);
 
         // Update the FIFO status
         gxStat = (gxStat & ~0x01FF0000) | ((fifo.size() - pipeSize) << 16); // FIFO entries

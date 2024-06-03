@@ -103,6 +103,8 @@ class Gpu3D
 {
     public:
         Gpu3D(Core *core): core(core) {}
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         void runCommand();
         void swapBuffers();
@@ -164,10 +166,10 @@ class Gpu3D
 
         GXState state = GX_IDLE;
 
-        std::queue<Entry> fifo;
-        size_t pipeSize = 0;
-        size_t testQueue = 0;
-        size_t matrixQueue = 0;
+        std::deque<Entry> fifo;
+        uint32_t pipeSize = 0;
+        uint32_t testQueue = 0;
+        uint32_t matrixQueue = 0;
 
         static const uint8_t paramCounts[0x100];
 
@@ -182,12 +184,12 @@ class Gpu3D
 
         Vertex vertices1[6144], vertices2[6144];
         Vertex *verticesIn = vertices1, *verticesOut = vertices2;
-        int vertexCountIn = 0, vertexCountOut = 0;
-        int processCount = 0;
+        uint16_t vertexCountIn = 0, vertexCountOut = 0;
+        uint16_t processCount = 0;
 
         _Polygon polygons1[2048], polygons2[2048];
         _Polygon *polygonsIn = polygons1, *polygonsOut = polygons2;
-        int polygonCountIn = 0, polygonCountOut = 0;
+        uint16_t polygonCountIn = 0, polygonCountOut = 0;
 
         Vertex savedVertex;
         _Polygon savedPolygon;
@@ -217,7 +219,7 @@ class Gpu3D
         int32_t posResult[4] = {};
         int16_t vecResult[3] = {};
 
-        int gxFifoCount = 0;
+        uint8_t gxFifoCount = 0;
 
         static uint32_t rgb5ToRgb6(uint16_t color);
         static Vertex intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2);

@@ -840,6 +840,8 @@ void ConsoleUI::pauseMenu()
     {
         MenuItem("Resume"),
         MenuItem("Restart"),
+        MenuItem("Save State"),
+        MenuItem("Load State"),
         MenuItem("Change Save Type"),
         MenuItem("Settings"),
         MenuItem("File Browser")
@@ -867,18 +869,69 @@ void ConsoleUI::pauseMenu()
                     createCore() ? startCore() : fileBrowser();
                     return;
 
-                case 2: // Change Save Type
+                case 2: // Save State
+                    // Show a confirmation message, with extra information if a state file doesn't exist yet
+                    if (!message("Save State", (core->saveStates.checkState() == STATE_FILE_FAIL) ? "Saving and "
+                        "loading states is dangerous and can lead to data loss.\nStates are also not guaranteed to "
+                        "be compatible across emulator versions.\nPlease rely on in-game saving to keep your progress, "
+                        "and back up .sav files\nbefore using this feature. Do you want to save the current state?" :
+                        "Do you want to overwrite the saved state with the current state? This can't be undone!", true))
+                        break;
+
+                    // Save the state and return to emulation if confirmed
+                    core->saveStates.saveState();
+                    startCore();
+                    return;
+
+                case 3: // Load State
+                {
+                    // Show a confirmation message, or an error if something went wrong
+                    bool error = true;
+                    std::string title, text;
+                    switch (core->saveStates.checkState())
+                    {
+                        case STATE_SUCCESS:
+                            error = false;
+                            title = "Load State";
+                            text = "Do you want to load the saved state and "
+                                "lose the current state? This can't be undone!";
+                            break;
+
+                        case STATE_FILE_FAIL:
+                            title = "Error";
+                            text = "The state file doesn't exist or couldn't be opened.";
+                            break;
+
+                        case STATE_FORMAT_FAIL:
+                            title = "Error";
+                            text = "The state file doesn't have a valid format.";
+                            break;
+
+                        case STATE_VERSION_FAIL:
+                            title = "Error";
+                            text = "The state file isn't compatible with this version of NooDS.";
+                            break;
+                    }
+
+                    // Load the state and return to emulation if confirmed
+                    if (!message(title, text, !error) || error) break;
+                    core->saveStates.loadState();
+                    startCore();
+                    return;
+                }
+
+                case 4: // Change Save Type
                     // Open the save type menu and restart if the save changed
                     if (saveTypeMenu())
                         return createCore() ? startCore() : fileBrowser();
                     break;
 
-                case 3: // Settings
+                case 5: // Settings
                     // Open the settings menu
                     settingsMenu();
                     break;
 
-                case 4: // File Browser
+                case 6: // File Browser
                     // Open the file browser and close the pause menu
                     fileBrowser();
                     return;

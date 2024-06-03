@@ -22,6 +22,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <cstdio>
 #include <thread>
 
 class Core;
@@ -34,8 +35,10 @@ class Gpu3DRenderer
         Gpu3DRenderer(Core *core);
         ~Gpu3DRenderer();
 
-        void drawScanline(int line);
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
+        void drawScanline(int line);
         uint32_t *getLine(int line);
 
         uint16_t readDisp3DCnt() { return disp3DCnt; }

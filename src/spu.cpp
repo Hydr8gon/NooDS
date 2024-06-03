@@ -54,6 +54,117 @@ Spu::~Spu()
     delete[] bufferOut;
 }
 
+void Spu::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&gbaFrameSequencer, sizeof(gbaFrameSequencer), 1, file);
+    fwrite(gbaSoundTimers, 4, sizeof(gbaSoundTimers) / 4, file);
+    fwrite(gbaEnvelopes, 1, sizeof(gbaEnvelopes), file);
+    fwrite(gbaEnvTimers, 1, sizeof(gbaEnvTimers), file);
+    fwrite(&gbaSweepTimer, sizeof(gbaSweepTimer), 1, file);
+    fwrite(&gbaWaveDigit, sizeof(gbaWaveDigit), 1, file);
+    fwrite(&gbaNoiseValue, sizeof(gbaNoiseValue), 1, file);
+    fwrite(gbaWaveRam, 1, sizeof(gbaWaveRam), file);
+    fwrite(&gbaSampleA, sizeof(gbaSampleA), 1, file);
+    fwrite(&gbaSampleB, sizeof(gbaSampleB), 1, file);
+    fwrite(&enabled, sizeof(enabled), 1, file);
+    fwrite(adpcmValue, 4, sizeof(adpcmValue) / 4, file);
+    fwrite(adpcmLoopValue, 4, sizeof(adpcmLoopValue) / 4, file);
+    fwrite(adpcmIndex, 1, sizeof(adpcmIndex), file);
+    fwrite(adpcmLoopIndex, 1, sizeof(adpcmLoopIndex), file);
+    fwrite(adpcmToggle, sizeof(bool), sizeof(adpcmToggle) / sizeof(bool), file);
+    fwrite(dutyCycles, 1, sizeof(dutyCycles), file);
+    fwrite(noiseValues, 2, sizeof(noiseValues) / 2, file);
+    fwrite(soundCurrent, 4, sizeof(soundCurrent) / 4, file);
+    fwrite(soundTimers, 2, sizeof(soundTimers) / 2, file);
+    fwrite(sndCapCurrent, 4, sizeof(sndCapCurrent) / 4, file);
+    fwrite(sndCapTimers, 2, sizeof(sndCapTimers) / 2, file);
+    fwrite(gbaSoundCntL, 1, sizeof(gbaSoundCntL), file);
+    fwrite(gbaSoundCntH, 2, sizeof(gbaSoundCntH) / 2, file);
+    fwrite(gbaSoundCntX, 2, sizeof(gbaSoundCntX) / 2, file);
+    fwrite(&gbaMainSoundCntL, sizeof(gbaMainSoundCntL), 1, file);
+    fwrite(&gbaMainSoundCntH, sizeof(gbaMainSoundCntH), 1, file);
+    fwrite(&gbaMainSoundCntX, sizeof(gbaMainSoundCntX), 1, file);
+    fwrite(&gbaSoundBias, sizeof(gbaSoundBias), 1, file);
+    fwrite(soundCnt, 4, sizeof(soundCnt) / 4, file);
+    fwrite(soundSad, 4, sizeof(soundSad) / 4, file);
+    fwrite(soundTmr, 2, sizeof(soundTmr) / 2, file);
+    fwrite(soundPnt, 2, sizeof(soundPnt) / 2, file);
+    fwrite(soundLen, 4, sizeof(soundLen) / 4, file);
+    fwrite(&mainSoundCnt, sizeof(mainSoundCnt), 1, file);
+    fwrite(&soundBias, sizeof(soundBias), 1, file);
+    fwrite(sndCapCnt, 1, sizeof(sndCapCnt), file);
+    fwrite(sndCapDad, 4, sizeof(sndCapDad) / 4, file);
+    fwrite(sndCapLen, 2, sizeof(sndCapLen) / 2, file);
+
+    // Parse the FIFOs and save their values
+    for (int i = 0; i < 2; i++)
+    {
+        uint32_t count = gbaFifos[i].size();
+        fwrite(&count, sizeof(count), 1, file);
+        for (uint32_t j = 0; j < count; j++)
+            fwrite(&gbaFifos[i][j], sizeof(gbaFifos[i][j]), 1, file);
+    }
+}
+
+void Spu::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(&gbaFrameSequencer, sizeof(gbaFrameSequencer), 1, file);
+    fread(gbaSoundTimers, 4, sizeof(gbaSoundTimers) / 4, file);
+    fread(gbaEnvelopes, 1, sizeof(gbaEnvelopes), file);
+    fread(gbaEnvTimers, 1, sizeof(gbaEnvTimers), file);
+    fread(&gbaSweepTimer, sizeof(gbaSweepTimer), 1, file);
+    fread(&gbaWaveDigit, sizeof(gbaWaveDigit), 1, file);
+    fread(&gbaNoiseValue, sizeof(gbaNoiseValue), 1, file);
+    fread(gbaWaveRam, 1, sizeof(gbaWaveRam), file);
+    fread(&gbaSampleA, sizeof(gbaSampleA), 1, file);
+    fread(&gbaSampleB, sizeof(gbaSampleB), 1, file);
+    fread(&enabled, sizeof(enabled), 1, file);
+    fread(adpcmValue, 4, sizeof(adpcmValue) / 4, file);
+    fread(adpcmLoopValue, 4, sizeof(adpcmLoopValue) / 4, file);
+    fread(adpcmIndex, 1, sizeof(adpcmIndex), file);
+    fread(adpcmLoopIndex, 1, sizeof(adpcmLoopIndex), file);
+    fread(adpcmToggle, sizeof(bool), sizeof(adpcmToggle) / sizeof(bool), file);
+    fread(dutyCycles, 1, sizeof(dutyCycles), file);
+    fread(noiseValues, 2, sizeof(noiseValues) / 2, file);
+    fread(soundCurrent, 4, sizeof(soundCurrent) / 4, file);
+    fread(soundTimers, 2, sizeof(soundTimers) / 2, file);
+    fread(sndCapCurrent, 4, sizeof(sndCapCurrent) / 4, file);
+    fread(sndCapTimers, 2, sizeof(sndCapTimers) / 2, file);
+    fread(gbaSoundCntL, 1, sizeof(gbaSoundCntL), file);
+    fread(gbaSoundCntH, 2, sizeof(gbaSoundCntH) / 2, file);
+    fread(gbaSoundCntX, 2, sizeof(gbaSoundCntX) / 2, file);
+    fread(&gbaMainSoundCntL, sizeof(gbaMainSoundCntL), 1, file);
+    fread(&gbaMainSoundCntH, sizeof(gbaMainSoundCntH), 1, file);
+    fread(&gbaMainSoundCntX, sizeof(gbaMainSoundCntX), 1, file);
+    fread(&gbaSoundBias, sizeof(gbaSoundBias), 1, file);
+    fread(soundCnt, 4, sizeof(soundCnt) / 4, file);
+    fread(soundSad, 4, sizeof(soundSad) / 4, file);
+    fread(soundTmr, 2, sizeof(soundTmr) / 2, file);
+    fread(soundPnt, 2, sizeof(soundPnt) / 2, file);
+    fread(soundLen, 4, sizeof(soundLen) / 4, file);
+    fread(&mainSoundCnt, sizeof(mainSoundCnt), 1, file);
+    fread(&soundBias, sizeof(soundBias), 1, file);
+    fread(sndCapCnt, 1, sizeof(sndCapCnt), file);
+    fread(sndCapDad, 4, sizeof(sndCapDad) / 4, file);
+    fread(sndCapLen, 2, sizeof(sndCapLen) / 2, file);
+
+    // Reset the FIFOs and refill them with loaded values
+    for (int i = 0; i < 2; i++)
+    {
+        gbaFifos[i].clear();
+        uint32_t count;
+        int8_t value;
+        fread(&count, sizeof(count), 1, file);
+        for (uint32_t j = 0; j < count; j++)
+        {
+            fread(&value, sizeof(value), 1, file);
+            gbaFifos[i].push_back(value);
+        }
+    }
+}
+
 uint32_t *Spu::getSamples(int count)
 {
     // Initialize the buffers
@@ -433,7 +544,7 @@ void Spu::runSample()
                 if (i >= 8 && i <= 13) // Pulse waves
                 {
                     // Set the sample to low or high depending on the position in the duty cycle
-                    int duty = 7 - ((soundCnt[i] & 0x07000000) >> 24);
+                    uint8_t duty = 7 - ((soundCnt[i] & 0x07000000) >> 24);
                     data = (dutyCycles[i - 8] < duty) ? -0x7FFF : 0x7FFF;
                 }
                 else if (i >= 14) // Noise
@@ -764,28 +875,28 @@ void Spu::gbaFifoTimer(int timer)
     if (((gbaMainSoundCntH & BIT(10)) >> 10) == timer) // FIFO A
     {
         // Get a new sample
-        if (!gbaFifoA.empty())
+        if (!gbaFifos[0].empty())
         {
-            gbaSampleA = gbaFifoA.front();
-            gbaFifoA.pop();
+            gbaSampleA = gbaFifos[0].front();
+            gbaFifos[0].pop_front();
         }
 
         // Request more data from the DMA if half empty
-        if (gbaFifoA.size() <= 16)
+        if (gbaFifos[0].size() <= 16)
             core->dma[1].trigger(3, 0x02);
     }
 
     if (((gbaMainSoundCntH & BIT(14)) >> 14) == timer) // FIFO B
     {
         // Get a new sample
-        if (!gbaFifoB.empty())
+        if (!gbaFifos[1].empty())
         {
-            gbaSampleB = gbaFifoB.front();
-            gbaFifoB.pop();
+            gbaSampleB = gbaFifos[1].front();
+            gbaFifos[1].pop_front();
         }
 
         // Request more data from the DMA if half empty
-        if (gbaFifoB.size() <= 16)
+        if (gbaFifos[1].size() <= 16)
             core->dma[1].trigger(3, 0x04);
     }
 }
@@ -868,15 +979,15 @@ void Spu::writeGbaMainSoundCntH(uint16_t mask, uint16_t value)
     // Empty FIFO A if requested
     if (value & BIT(11))
     {
-        while (!gbaFifoA.empty())
-            gbaFifoA.pop();
+        while (!gbaFifos[0].empty())
+            gbaFifos[0].pop_front();
     }
 
     // Empty FIFO B if requested
     if (value & BIT(15))
     {
-        while (!gbaFifoB.empty())
-            gbaFifoB.pop();
+        while (!gbaFifos[1].empty())
+            gbaFifos[1].pop_front();
     }
 }
 
@@ -918,8 +1029,8 @@ void Spu::writeGbaFifoA(uint32_t mask, uint32_t value)
     // Push PCM8 data to the GBA sound FIFO A
     for (int i = 0; i < 32; i += 8)
     {
-        if (gbaFifoA.size() < 32 && (mask & (0xFF << i)))
-            gbaFifoA.push(value >> i);
+        if (gbaFifos[0].size() < 32 && (mask & (0xFF << i)))
+            gbaFifos[0].push_back(value >> i);
     }
 }
 
@@ -928,8 +1039,8 @@ void Spu::writeGbaFifoB(uint32_t mask, uint32_t value)
     // Push PCM8 data to the GBA sound FIFO B
     for (int i = 0; i < 32; i += 8)
     {
-        if (gbaFifoB.size() < 32 && (mask & (0xFF << i)))
-            gbaFifoB.push(value >> i);
+        if (gbaFifos[1].size() < 32 && (mask & (0xFF << i)))
+            gbaFifos[1].push_back(value >> i);
     }
 }
 

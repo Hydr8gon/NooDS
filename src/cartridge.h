@@ -44,8 +44,8 @@ class Cartridge
         Cartridge(Core *core): core(core) {}
         ~Cartridge();
 
-        bool setRom(std::string romPath, std::string savePath = "");
-        bool setRom(int romFd, int saveFd);
+        bool setRom(std::string romPath);
+        bool setRom(int romFd, int saveFd, int stateFd);
         void writeSave();
 
         void trimRom();
@@ -78,6 +78,8 @@ class CartridgeNds: public Cartridge
 {
     public:
         CartridgeNds(Core *core): Cartridge(core) {}
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         void directBoot();
         void wordReady(bool cpu);
@@ -108,7 +110,7 @@ class CartridgeNds: public Cartridge
 
         uint8_t auxCommand[2] = {};
         uint32_t auxAddress[2] = {};
-        int auxWriteCount[2] = {};
+        uint32_t auxWriteCount[2] = {};
 
         uint16_t auxSpiCnt[2] = {};
         uint8_t auxSpiData[2] = {};
@@ -127,6 +129,8 @@ class CartridgeGba: public Cartridge
 {
     public:
         CartridgeGba(Core *core): Cartridge(core) {}
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         uint8_t *getRom(uint32_t address);
         bool isEeprom(uint32_t address);
@@ -138,7 +142,7 @@ class CartridgeGba: public Cartridge
         void sramWrite(uint32_t address, uint8_t value);
 
     private:
-        int eepromCount = 0;
+        uint8_t eepromCount = 0;
         uint16_t eepromCmd = 0;
         uint64_t eepromData = 0;
         bool eepromDone = false;

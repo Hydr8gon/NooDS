@@ -20,6 +20,44 @@
 #include "ipc.h"
 #include "core.h"
 
+void Ipc::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(ipcSync, 2, sizeof(ipcSync) / 2, file);
+    fwrite(ipcFifoCnt, 2, sizeof(ipcFifoCnt) / 2, file);
+    fwrite(ipcFifoRecv, 4, sizeof(ipcFifoRecv) / 4, file);
+
+    // Parse the FIFOs and save their values
+    for (int i = 0; i < 2; i++)
+    {
+        uint32_t count = fifos[i].size();
+        fwrite(&count, sizeof(count), 1, file);
+        for (uint32_t j = 0; j < count; j++)
+            fwrite(&fifos[i][j], sizeof(fifos[i][j]), 1, file);
+    }
+}
+
+void Ipc::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(ipcSync, 2, sizeof(ipcSync) / 2, file);
+    fread(ipcFifoCnt, 2, sizeof(ipcFifoCnt) / 2, file);
+    fread(ipcFifoRecv, 4, sizeof(ipcFifoRecv) / 4, file);
+
+    // Reset the FIFOs and refill them with loaded values
+    for (int i = 0; i < 2; i++)
+    {
+        fifos[i].clear();
+        uint32_t count, value;
+        fread(&count, sizeof(count), 1, file);
+        for (uint32_t j = 0; j < count; j++)
+        {
+            fread(&value, sizeof(value), 1, file);
+            fifos[i].push_back(value);
+        }
+    }
+}
+
 void Ipc::writeIpcSync(bool cpu, uint16_t mask, uint16_t value)
 {
     // Write to one of the IPCSYNC registers
@@ -41,7 +79,7 @@ void Ipc::writeIpcFifoCnt(bool cpu, uint16_t mask, uint16_t value)
     {
         // Empty the FIFO
         while (!fifos[cpu].empty())
-            fifos[cpu].pop();
+            fifos[cpu].pop_front();
         ipcFifoRecv[!cpu] = 0;
 
         // Set the FIFO empty bits and clear the FIFO full bits
@@ -78,7 +116,7 @@ void Ipc::writeIpcFifoSend(bool cpu, uint32_t mask, uint32_t value)
         if (fifos[cpu].size() < 16) // FIFO not full
         {
             // Push a word to the FIFO
-            fifos[cpu].push(value & mask);
+            fifos[cpu].push_back(value & mask);
 
             if (fifos[cpu].size() == 1)
             {
@@ -115,7 +153,7 @@ uint32_t Ipc::readIpcFifoRecv(bool cpu)
         if (ipcFifoCnt[cpu] & BIT(15)) // FIFO enabled
         {
             // Remove the received word from the FIFO
-            fifos[!cpu].pop();
+            fifos[!cpu].pop_front();
 
             if (fifos[!cpu].empty())
             {

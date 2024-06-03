@@ -23,6 +23,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
+#include <cstdio>
 #include <queue>
 #include <mutex>
 
@@ -33,6 +34,9 @@ class Spu
     public:
         Spu(Core *core);
         ~Spu();
+
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         uint32_t *getSamples(int count);
         void runGbaSample();
@@ -80,22 +84,22 @@ class Spu
         Core *core;
 
         uint32_t *bufferIn = nullptr, *bufferOut = nullptr;
-        int bufferSize = 0, bufferPointer = 0;
+        uint32_t bufferSize = 0, bufferPointer = 0;
 
         std::condition_variable cond1, cond2;
         std::mutex mutex1, mutex2;
         std::atomic<bool> ready;
 
-        int gbaFrameSequencer = 0;
-        int gbaSoundTimers[4] = {};
-        int gbaEnvelopes[3] = {};
-        int gbaEnvTimers[3] = {};
-        int gbaSweepTimer = 0;
-        int gbaWaveDigit = 0;
+        int16_t gbaFrameSequencer = 0;
+        int32_t gbaSoundTimers[4] = {};
+        int8_t gbaEnvelopes[3] = {};
+        int8_t gbaEnvTimers[3] = {};
+        int8_t gbaSweepTimer = 0;
+        int8_t gbaWaveDigit = 0;
         uint16_t gbaNoiseValue = 0;
 
         uint8_t gbaWaveRam[2][16] = {};
-        std::queue<int8_t> gbaFifoA, gbaFifoB;
+        std::deque<int8_t> gbaFifos[2];
         int8_t gbaSampleA = 0, gbaSampleB = 0;
 
         uint16_t enabled = 0;
@@ -104,10 +108,10 @@ class Spu
         static const int16_t adpcmTable[89];
 
         int32_t adpcmValue[16] = {}, adpcmLoopValue[16] = {};
-        int adpcmIndex[16] = {}, adpcmLoopIndex[16] = {};
+        int8_t adpcmIndex[16] = {}, adpcmLoopIndex[16] = {};
         bool adpcmToggle[16] = {};
 
-        int dutyCycles[6] = {};
+        uint8_t dutyCycles[6] = {};
         uint16_t noiseValues[2] = {};
         uint32_t soundCurrent[16] = {};
         uint16_t soundTimers[16] = {};

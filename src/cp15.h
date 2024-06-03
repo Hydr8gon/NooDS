@@ -21,6 +21,7 @@
 #define CP15_H
 
 #include <cstdint>
+#include <cstdio>
 
 class Core;
 
@@ -28,6 +29,8 @@ class Cp15
 {
     public:
         Cp15(Core *core): core(core) {}
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         uint32_t read(int cn, int cm, int cp);
         void write(int cn, int cm, int cp, uint32_t value);

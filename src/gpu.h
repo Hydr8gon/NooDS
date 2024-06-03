@@ -36,6 +36,9 @@ class Gpu
         Gpu(Core *core);
         ~Gpu();
 
+        void saveState(FILE *file);
+        void loadState(FILE *file);
+
         bool getFrame(uint32_t *out, bool gbaCrop);
         void invalidate3D() { dirty3D |= BIT(0); }
 

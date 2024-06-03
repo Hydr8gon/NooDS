@@ -22,6 +22,32 @@
 #include "div_sqrt.h"
 #include "core.h"
 
+void DivSqrt::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(&divCnt, sizeof(divCnt), 1, file);
+    fwrite(&divNumer, sizeof(divNumer), 1, file);
+    fwrite(&divDenom, sizeof(divDenom), 1, file);
+    fwrite(&divResult, sizeof(divResult), 1, file);
+    fwrite(&divRemResult, sizeof(divRemResult), 1, file);
+    fwrite(&sqrtCnt, sizeof(sqrtCnt), 1, file);
+    fwrite(&sqrtResult, sizeof(sqrtResult), 1, file);
+    fwrite(&sqrtParam, sizeof(sqrtParam), 1, file);
+}
+
+void DivSqrt::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(&divCnt, sizeof(divCnt), 1, file);
+    fread(&divNumer, sizeof(divNumer), 1, file);
+    fread(&divDenom, sizeof(divDenom), 1, file);
+    fread(&divResult, sizeof(divResult), 1, file);
+    fread(&divRemResult, sizeof(divRemResult), 1, file);
+    fread(&sqrtCnt, sizeof(sqrtCnt), 1, file);
+    fread(&sqrtResult, sizeof(sqrtResult), 1, file);
+    fread(&sqrtParam, sizeof(sqrtParam), 1, file);
+}
+
 void DivSqrt::divide()
 {
     // Set the division by zero error bit

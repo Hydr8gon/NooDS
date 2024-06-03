@@ -21,6 +21,7 @@
 #define DMA_H
 
 #include <cstdint>
+#include <cstdio>
 
 class Core;
 
@@ -28,6 +29,8 @@ class Dma
 {
     public:
         Dma(Core *core, bool cpu): core(core), cpu(cpu) {}
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         void transfer(int channel);
         void trigger(int mode, uint8_t channels = 0xF);

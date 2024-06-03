@@ -50,6 +50,24 @@ Gpu::~Gpu()
     }
 }
 
+void Gpu::saveState(FILE *file)
+{
+    // Write state data to the file
+    fwrite(dispStat, 2, sizeof(dispStat) / 2, file);
+    fwrite(&vCount, sizeof(vCount), 1, file);
+    fwrite(&dispCapCnt, sizeof(dispCapCnt), 1, file);
+    fwrite(&powCnt1, sizeof(powCnt1), 1, file);
+}
+
+void Gpu::loadState(FILE *file)
+{
+    // Read state data from the file
+    fread(dispStat, 2, sizeof(dispStat) / 2, file);
+    fread(&vCount, sizeof(vCount), 1, file);
+    fread(&dispCapCnt, sizeof(dispCapCnt), 1, file);
+    fread(&powCnt1, sizeof(powCnt1), 1, file);
+}
+
 uint32_t Gpu::rgb5ToRgb8(uint32_t color)
 {
     // Convert an RGB5 value to an RGB8 value, with RGB6 as an intermediate
@@ -306,12 +324,14 @@ void Gpu::gbaScanline308()
                 ready.store(true);
                 mutex.unlock();
             }
+
+            // Stop execution here in case the frontend needs to do things
+            core->endFrame();
             break;
 
         case 227: // Last scanline
             // Clear the V-blank flag
             dispStat[1] &= ~BIT(0);
-            core->endFrame();
             break;
 
         case 228: // End of frame
@@ -588,13 +608,15 @@ void Gpu::scanline355()
                 ready.store(true);
                 mutex.unlock();
             }
+
+            // Stop execution here in case the frontend needs to do things
+            core->endFrame();
             break;
 
         case 262: // Last scanline
             // Clear the V-blank flags
             dispStat[0] &= ~BIT(0);
             dispStat[1] &= ~BIT(0);
-            core->endFrame();
             break;
 
         case 263: // End of frame

@@ -21,6 +21,7 @@
 #define BIOS_H
 
 #include <cstdint>
+#include <cstdio>
 
 class Core;
 
@@ -33,6 +34,8 @@ class Bios
 
         Bios(Core *core, bool arm7, int (Bios::**swiTable)(uint32_t**)):
             core(core), arm7(arm7), swiTable(swiTable) {}
+        void saveState(FILE *file);
+        void loadState(FILE *file);
 
         int execute(uint8_t vector, uint32_t **registers);
         void checkWaitFlags();
