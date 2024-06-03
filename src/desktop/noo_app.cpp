@@ -34,7 +34,6 @@ wxBEGIN_EVENT_TABLE(NooApp, wxApp)
 EVT_TIMER(UPDATE, NooApp::update)
 wxEND_EVENT_TABLE()
 
-int NooApp::screenFilter = 1;
 int NooApp::micEnable = 0;
 int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I', WXK_TAB, 0, WXK_ESCAPE, 0, WXK_BACK };
 
@@ -45,23 +44,22 @@ bool NooApp::OnInit()
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
-        Setting("screenFilter",   &screenFilter, false),
-        Setting("micEnable",      &micEnable,    false),
-        Setting("keyA",           &keyBinds[0],  false),
-        Setting("keyB",           &keyBinds[1],  false),
-        Setting("keySelect",      &keyBinds[2],  false),
-        Setting("keyStart",       &keyBinds[3],  false),
-        Setting("keyRight",       &keyBinds[4],  false),
-        Setting("keyLeft",        &keyBinds[5],  false),
-        Setting("keyUp",          &keyBinds[6],  false),
-        Setting("keyDown",        &keyBinds[7],  false),
-        Setting("keyR",           &keyBinds[8],  false),
-        Setting("keyL",           &keyBinds[9],  false),
-        Setting("keyX",           &keyBinds[10], false),
-        Setting("keyY",           &keyBinds[11], false),
-        Setting("keyFastHold",    &keyBinds[12], false),
-        Setting("keyFastToggle",  &keyBinds[13], false),
-        Setting("keyFullScreen",  &keyBinds[14], false),
+        Setting("micEnable", &micEnable, false),
+        Setting("keyA", &keyBinds[0], false),
+        Setting("keyB", &keyBinds[1], false),
+        Setting("keySelect", &keyBinds[2], false),
+        Setting("keyStart", &keyBinds[3], false),
+        Setting("keyRight", &keyBinds[4], false),
+        Setting("keyLeft", &keyBinds[5], false),
+        Setting("keyUp", &keyBinds[6], false),
+        Setting("keyDown", &keyBinds[7], false),
+        Setting("keyR", &keyBinds[8], false),
+        Setting("keyL", &keyBinds[9], false),
+        Setting("keyX", &keyBinds[10], false),
+        Setting("keyY", &keyBinds[11], false),
+        Setting("keyFastHold", &keyBinds[12], false),
+        Setting("keyFastToggle", &keyBinds[13], false),
+        Setting("keyFullScreen", &keyBinds[14], false),
         Setting("keyEnlargeSwap", &keyBinds[15], false),
         Setting("keySystemPause", &keyBinds[16], false)
     };

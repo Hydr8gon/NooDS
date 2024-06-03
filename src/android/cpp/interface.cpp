@@ -28,7 +28,6 @@
 #include "../../common/nds_icon.h"
 #include "../../common/screen_layout.h"
 
-int screenFilter = 1;
 int micEnable = 0;
 int showFpsCounter = 0;
 int buttonScale = 5;
@@ -90,24 +89,23 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_loadSetti
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
-        Setting("screenFilter",    &screenFilter,    false),
-        Setting("micEnable",       &micEnable,       false),
-        Setting("showFpsCounter",  &showFpsCounter,  false),
-        Setting("buttonScale",     &buttonScale,     false),
-        Setting("buttonSpacing",   &buttonSpacing,   false),
+        Setting("micEnable", &micEnable, false),
+        Setting("showFpsCounter", &showFpsCounter, false),
+        Setting("buttonScale", &buttonScale, false),
+        Setting("buttonSpacing", &buttonSpacing, false),
         Setting("vibrateStrength", &vibrateStrength, false),
-        Setting("keyA",            &keyBinds[0],     false),
-        Setting("keyB",            &keyBinds[1],     false),
-        Setting("keySelect",       &keyBinds[2],     false),
-        Setting("keyStart",        &keyBinds[3],     false),
-        Setting("keyRight",        &keyBinds[4],     false),
-        Setting("keyLeft",         &keyBinds[5],     false),
-        Setting("keyUp",           &keyBinds[6],     false),
-        Setting("keyDown",         &keyBinds[7],     false),
-        Setting("keyR",            &keyBinds[8],     false),
-        Setting("keyL",            &keyBinds[9],     false),
-        Setting("keyX",            &keyBinds[10],    false),
-        Setting("keyY",            &keyBinds[11],    false)
+        Setting("keyA", &keyBinds[0], false),
+        Setting("keyB", &keyBinds[1], false),
+        Setting("keySelect", &keyBinds[2], false),
+        Setting("keyStart", &keyBinds[3], false),
+        Setting("keyRight", &keyBinds[4], false),
+        Setting("keyLeft", &keyBinds[5], false),
+        Setting("keyUp", &keyBinds[6], false),
+        Setting("keyDown", &keyBinds[7], false),
+        Setting("keyR", &keyBinds[8], false),
+        Setting("keyL", &keyBinds[9], false),
+        Setting("keyX", &keyBinds[10], false),
+        Setting("keyY", &keyBinds[11], false)
     };
 
     // Add the platform settings
@@ -305,7 +303,8 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooRenderer_copyFrame
     // Copy the frame to the bitmap
     uint32_t *data;
     AndroidBitmap_lockPixels(env, bitmap, (void**)&data);
-    size_t count = (gbaCrop ? (240 * 160) : (256 * 192 * 2)) << (Settings::highRes3D * 2);
+    int shift = (Settings::highRes3D || Settings::screenFilter == 1) * 2;
+    size_t count = (gbaCrop ? (240 * 160) : (256 * 192 * 2)) << shift;
     memcpy(data, framebuffer, count * sizeof(uint32_t));
     AndroidBitmap_unlockPixels(env, bitmap);
     return true;
@@ -348,6 +347,11 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getHighRes3D
     return Settings::highRes3D;
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenFilter(JNIEnv* env, jobject obj)
+{
+    return Settings::screenFilter;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenPosition(JNIEnv* env, jobject obj)
 {
     return ScreenLayout::screenPosition;
@@ -381,11 +385,6 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getIntegerSc
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getGbaCrop(JNIEnv* env, jobject obj)
 {
     return ScreenLayout::gbaCrop;
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenFilter(JNIEnv* env, jobject obj)
-{
-    return screenFilter;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getMicEnable(JNIEnv* env, jobject obj)
@@ -438,6 +437,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setHighRes3D
     Settings::highRes3D = value;
 }
 
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenFilter(JNIEnv* env, jobject obj, jint value)
+{
+    Settings::screenFilter = value;
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenPosition(JNIEnv* env, jobject obj, jint value)
 {
     ScreenLayout::screenPosition = value;
@@ -471,11 +475,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setIntegerSc
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setGbaCrop(JNIEnv* env, jobject obj, jint value)
 {
     ScreenLayout::gbaCrop = value;
-}
-
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenFilter(JNIEnv* env, jobject obj, jint value)
-{
-    screenFilter = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setMicEnable(JNIEnv* env, jobject obj, jint value)

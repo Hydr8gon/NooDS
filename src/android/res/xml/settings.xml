@@ -66,6 +66,16 @@
         app:iconSpaceReserved="false">
 
         <ListPreference
+            app:key="screen_filter"
+            app:title="Screen Filter"
+            app:entries="@array/screen_filter_entries"
+            app:entryValues="@array/setting_values"
+            app:useSimpleSummaryProvider="true"
+            app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+
+        <ListPreference
             app:key="screen_position"
             app:title="Screen Position"
             app:entries="@array/screen_position_entries"
@@ -128,12 +138,6 @@
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
-
-        <SwitchPreferenceCompat
-            app:key="screen_filter"
-            app:title="Screen Filter"
-            app:iconSpaceReserved="false"
-            app:allowDividerAbove="true" />
     </PreferenceCategory>
 
     <PreferenceCategory

@@ -39,7 +39,6 @@ void *ConsoleUI::fileTextures[2];
 void *ConsoleUI::folderTextures[2];
 void *ConsoleUI::fontTexture;
 
-int ConsoleUI::screenFilter = 1;
 int ConsoleUI::showFpsCounter = 0;
 int ConsoleUI::menuTheme = 0;
 
@@ -183,7 +182,6 @@ void ConsoleUI::initialize(int width, int height, std::string root, std::string 
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
-        Setting("screenFilter", &screenFilter, false),
         Setting("showFpsCounter", &showFpsCounter, false),
         Setting("menuTheme", &menuTheme, false)
     };
@@ -235,7 +233,7 @@ void ConsoleUI::mainLoop(MenuTouch (*specialTouch)(), ScreenLayout *touchLayout)
 
         // Update the framebuffer and start rendering
         void *gbaTexture = nullptr, *topTexture = nullptr, *botTexture = nullptr;
-        int shift = Settings::highRes3D;
+        bool shift = (Settings::highRes3D || Settings::screenFilter == 1);
         core->gpu.getFrame(framebuffer, gbaMode);
         startFrame(0);
 
@@ -244,7 +242,7 @@ void ConsoleUI::mainLoop(MenuTouch (*specialTouch)(), ScreenLayout *touchLayout)
             // Draw the GBA screen
             gbaTexture = createTexture(&framebuffer[0], 240 << shift, 160 << shift);
             drawTexture(gbaTexture, 0, 0, 240 << shift, 160 << shift, layout.topX, layout.topY,
-                layout.topWidth, layout.topHeight, screenFilter, ScreenLayout::screenRotation);
+                layout.topWidth, layout.topHeight, Settings::screenFilter, ScreenLayout::screenRotation);
         }
         else // DS mode
         {
@@ -253,7 +251,7 @@ void ConsoleUI::mainLoop(MenuTouch (*specialTouch)(), ScreenLayout *touchLayout)
             {
                 topTexture = createTexture(&framebuffer[0], 256 << shift, 192 << shift);
                 drawTexture(topTexture, 0, 0, 256 << shift, 192 << shift, layout.topX, layout.topY,
-                    layout.topWidth, layout.topHeight, screenFilter, ScreenLayout::screenRotation);
+                    layout.topWidth, layout.topHeight, Settings::screenFilter, ScreenLayout::screenRotation);
             }
 
             // Draw the DS bottom screen
@@ -261,7 +259,7 @@ void ConsoleUI::mainLoop(MenuTouch (*specialTouch)(), ScreenLayout *touchLayout)
             {
                 botTexture = createTexture(&framebuffer[(256 * 192) << (shift * 2)], 256 << shift, 192 << shift);
                 drawTexture(botTexture, 0, 0, 256 << shift, 192 << shift, layout.botX, layout.botY,
-                    layout.botWidth, layout.botHeight, screenFilter, ScreenLayout::screenRotation);
+                    layout.botWidth, layout.botHeight, Settings::screenFilter, ScreenLayout::screenRotation);
             }
         }
 
@@ -759,6 +757,7 @@ void ConsoleUI::settingsMenu()
 {
     // Define possible values for settings
     const std::vector<std::string> toggle = { "Off", "On" };
+    const std::vector<std::string> filter = { "Nearest", "Upscaled", "Linear" };
     const std::vector<std::string> position = { "Center", "Top", "Bottom", "Left", "Right" };
     const std::vector<std::string> rotation = { "None", "Clockwise", "Counter-Clockwise" };
     const std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal", "Single Screen" };
@@ -777,6 +776,7 @@ void ConsoleUI::settingsMenu()
             MenuItem("Threaded 2D", toggle[Settings::threaded2D]),
             MenuItem("Threaded 3D", toggle[(bool)Settings::threaded3D]),
             MenuItem("High-Resolution 3D", toggle[Settings::highRes3D]),
+            MenuItem("Screen Filter", filter[Settings::screenFilter]),
             MenuItem("Screen Position", position[ScreenLayout::screenPosition]),
             MenuItem("Screen Rotation", rotation[ScreenLayout::screenRotation]),
             MenuItem("Screen Arrangement", arrangement[ScreenLayout::screenArrangement]),
@@ -784,7 +784,6 @@ void ConsoleUI::settingsMenu()
             MenuItem("Screen Gap", gap[ScreenLayout::screenGap]),
             MenuItem("Integer Scale", toggle[ScreenLayout::integerScale]),
             MenuItem("GBA Crop", toggle[ScreenLayout::gbaCrop]),
-            MenuItem("Screen Filter", toggle[screenFilter]),
             MenuItem("Show FPS Counter", toggle[showFpsCounter]),
             MenuItem("Menu Theme", theme[menuTheme])
         };
@@ -803,14 +802,14 @@ void ConsoleUI::settingsMenu()
                 case 2: Settings::threaded2D = (Settings::threaded2D + 1) % 2; break;
                 case 3: Settings::threaded3D = (Settings::threaded3D + 1) % 2; break;
                 case 4: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
-                case 5: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
-                case 6: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
-                case 7: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
-                case 8: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
-                case 9: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
-                case 10: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
-                case 11: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
-                case 12: screenFilter = (screenFilter + 1) % 2; break;
+                case 5: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
+                case 6: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
+                case 7: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
+                case 8: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
+                case 9: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
+                case 10: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
+                case 11: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
+                case 12: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
                 case 13: showFpsCounter = (showFpsCounter + 1) % 2; break;
 
                 case 14:

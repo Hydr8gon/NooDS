@@ -101,7 +101,6 @@ class ConsoleUI
         static void *folderTextures[2];
         static void *fontTexture;
 
-        static int screenFilter;
         static int showFpsCounter;
         static int menuTheme;
 

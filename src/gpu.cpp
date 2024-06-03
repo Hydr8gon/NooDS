@@ -107,7 +107,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     if (gbaCrop)
     {
         // Output the frame in RGB8 format, cropped for GBA
-        if (Settings::highRes3D)
+        if (Settings::highRes3D || Settings::screenFilter == 1)
         {
             // GBA doesn't have 3D, but draw the screen upscaled for consistency
             for (int y = 0; y < 160; y++)
@@ -140,7 +140,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
         // The DS draws the GBA screen by capturing it to alternating VRAM blocks and then displaying that
         // While not used officially, it's possible to copy images into VRAM before entering GBA mode to use as a border
         // Output the GBA frame, centered, with the current VRAM border around it
-        if (Settings::highRes3D)
+        if (Settings::highRes3D || Settings::screenFilter == 1)
         {
             // GBA doesn't have 3D, but draw the screen upscaled for consistency
             for (int y = 0; y < 192; y++)
@@ -181,7 +181,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     else
     {
         // Output the full frame in RGB8 format
-        if (Settings::highRes3D)
+        if (Settings::highRes3D || Settings::screenFilter == 1)
         {
             if (buffers.hiRes3D)
             {

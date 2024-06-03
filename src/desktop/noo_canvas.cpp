@@ -104,7 +104,7 @@ void NooCanvas::drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t 
     wxImage img = bmp.ConvertToImage();
     if (ScreenLayout::screenRotation > 0)
         img = img.Rotate90(ScreenLayout::screenRotation == 1);
-    img.Rescale(w, h, NooApp::screenFilter ? wxIMAGE_QUALITY_BILINEAR : wxIMAGE_QUALITY_NEAREST);
+    img.Rescale(w, h, Settings::screenFilter ? wxIMAGE_QUALITY_BILINEAR : wxIMAGE_QUALITY_NEAREST);
     bmp = wxBitmap(img);
     dc.DrawBitmap(bmp, wxPoint(x, y));
 #endif
@@ -140,23 +140,23 @@ void NooCanvas::draw(wxPaintEvent &event)
             frameCount = 0;
 
         // Shift the screen resolutions if high-res is enabled
-        bool resShift = Settings::highRes3D;
+        bool shift = (Settings::highRes3D || Settings::screenFilter == 1);
 
         if (gbaMode)
         {
             // Draw the GBA screen
-            drawScreen(layout.topX, layout.topY, layout.topWidth, layout.topHeight,
-               240 << resShift, 160 << resShift, &framebuffer[0]);
+            drawScreen(layout.topX, layout.topY, layout.topWidth,
+               layout.topHeight, 240 << shift, 160 << shift, &framebuffer[0]);
         }
         else
         {
             // Draw the DS top and bottom screens
             if (ScreenLayout::screenArrangement != 3 || ScreenLayout::screenSizing < 2)
-                drawScreen(layout.topX, layout.topY, layout.topWidth, layout.topHeight,
-                   256 << resShift, 192 << resShift, &framebuffer[0]);
+                drawScreen(layout.topX, layout.topY, layout.topWidth,
+                   layout.topHeight, 256 << shift, 192 << shift, &framebuffer[0]);
             if (ScreenLayout::screenArrangement != 3 || ScreenLayout::screenSizing == 2)
                 drawScreen(layout.botX, layout.botY, layout.botWidth, layout.botHeight,
-                   256 << resShift, 192 << resShift, &framebuffer[(256 * 192) << (resShift * 2)]);
+                   256 << shift, 192 << shift, &framebuffer[(256 * 192) << (shift * 2)]);
         }
     }
 
@@ -197,8 +197,8 @@ void NooCanvas::resize(wxSizeEvent &event)
     glViewport(0, 0, size.x, size.y);
 
     // Set filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, NooApp::screenFilter ? GL_LINEAR : GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, NooApp::screenFilter ? GL_LINEAR : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, Settings::screenFilter ? GL_LINEAR : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, Settings::screenFilter ? GL_LINEAR : GL_NEAREST);
 #endif
 }
 

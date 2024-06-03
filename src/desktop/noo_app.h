@@ -31,7 +31,6 @@ class NooFrame;
 class NooApp: public wxApp
 {
     public:
-        static int screenFilter;
         static int micEnable;
         static int keyBinds[MAX_KEYS];
 

@@ -24,7 +24,10 @@
 
 enum LayoutEvent
 {
-    POS_CENTER = 1,
+    FILT_NEAREST = 1,
+    FILT_UPSCALE,
+    FILT_LINEAR,
+    POS_CENTER,
     POS_TOP,
     POS_BOTTOM,
     POS_LEFT,
@@ -44,53 +47,64 @@ enum LayoutEvent
     GAP_HALF,
     GAP_FULL,
     INT_SCALE,
-    GBA_CROP,
-    FILTER
+    GBA_CROP
 };
 
 wxBEGIN_EVENT_TABLE(LayoutDialog, wxDialog)
-EVT_RADIOBUTTON(POS_CENTER,   LayoutDialog::posCenter)
-EVT_RADIOBUTTON(POS_TOP,      LayoutDialog::posTop)
-EVT_RADIOBUTTON(POS_BOTTOM,   LayoutDialog::posBottom)
-EVT_RADIOBUTTON(POS_LEFT,     LayoutDialog::posLeft)
-EVT_RADIOBUTTON(POS_RIGHT,    LayoutDialog::posRight)
-EVT_RADIOBUTTON(ROTATE_NONE,  LayoutDialog::rotateNone)
-EVT_RADIOBUTTON(ROTATE_CW,    LayoutDialog::rotateCw)
-EVT_RADIOBUTTON(ROTATE_CCW,   LayoutDialog::rotateCcw)
+EVT_RADIOBUTTON(FILT_NEAREST, LayoutDialog::filtNearest)
+EVT_RADIOBUTTON(FILT_UPSCALE, LayoutDialog::filtUpscale)
+EVT_RADIOBUTTON(FILT_LINEAR, LayoutDialog::filtLinear)
+EVT_RADIOBUTTON(POS_CENTER, LayoutDialog::posCenter)
+EVT_RADIOBUTTON(POS_TOP, LayoutDialog::posTop)
+EVT_RADIOBUTTON(POS_BOTTOM, LayoutDialog::posBottom)
+EVT_RADIOBUTTON(POS_LEFT, LayoutDialog::posLeft)
+EVT_RADIOBUTTON(POS_RIGHT, LayoutDialog::posRight)
+EVT_RADIOBUTTON(ROTATE_NONE, LayoutDialog::rotateNone)
+EVT_RADIOBUTTON(ROTATE_CW, LayoutDialog::rotateCw)
+EVT_RADIOBUTTON(ROTATE_CCW, LayoutDialog::rotateCcw)
 EVT_RADIOBUTTON(ARRANGE_AUTO, LayoutDialog::arrangeAuto)
 EVT_RADIOBUTTON(ARRANGE_VERT, LayoutDialog::arrangeVert)
 EVT_RADIOBUTTON(ARRANGE_HORI, LayoutDialog::arrangeHori)
 EVT_RADIOBUTTON(ARRANGE_SING, LayoutDialog::arrangeSing)
-EVT_RADIOBUTTON(SIZE_EVEN,    LayoutDialog::sizeEven)
-EVT_RADIOBUTTON(SIZE_TOP,     LayoutDialog::sizeTop)
-EVT_RADIOBUTTON(SIZE_BOT,     LayoutDialog::sizeBot)
-EVT_RADIOBUTTON(GAP_NONE,     LayoutDialog::gapNone)
-EVT_RADIOBUTTON(GAP_QUART,    LayoutDialog::gapQuart)
-EVT_RADIOBUTTON(GAP_HALF,     LayoutDialog::gapHalf)
-EVT_RADIOBUTTON(GAP_FULL,     LayoutDialog::gapFull)
-EVT_CHECKBOX(INT_SCALE,       LayoutDialog::intScale)
-EVT_CHECKBOX(GBA_CROP,        LayoutDialog::gbaCrop)
-EVT_CHECKBOX(FILTER,          LayoutDialog::filter)
-EVT_BUTTON(wxID_CANCEL,       LayoutDialog::cancel)
-EVT_BUTTON(wxID_OK,           LayoutDialog::confirm)
+EVT_RADIOBUTTON(SIZE_EVEN, LayoutDialog::sizeEven)
+EVT_RADIOBUTTON(SIZE_TOP, LayoutDialog::sizeTop)
+EVT_RADIOBUTTON(SIZE_BOT, LayoutDialog::sizeBot)
+EVT_RADIOBUTTON(GAP_NONE, LayoutDialog::gapNone)
+EVT_RADIOBUTTON(GAP_QUART, LayoutDialog::gapQuart)
+EVT_RADIOBUTTON(GAP_HALF, LayoutDialog::gapHalf)
+EVT_RADIOBUTTON(GAP_FULL, LayoutDialog::gapFull)
+EVT_CHECKBOX(INT_SCALE, LayoutDialog::intScale)
+EVT_CHECKBOX(GBA_CROP, LayoutDialog::gbaCrop)
+EVT_BUTTON(wxID_CANCEL, LayoutDialog::cancel)
+EVT_BUTTON(wxID_OK, LayoutDialog::confirm)
 wxEND_EVENT_TABLE()
 
 LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Layout"), app(app)
 {
     // Remember the previous settings in case the changes are discarded
-    prevSettings[0] = ScreenLayout::screenRotation;
-    prevSettings[1] = ScreenLayout::screenArrangement;
-    prevSettings[2] = ScreenLayout::screenSizing;
-    prevSettings[3] = ScreenLayout::screenGap;
-    prevSettings[4] = ScreenLayout::integerScale;
-    prevSettings[5] = ScreenLayout::gbaCrop;
-    prevSettings[6] = NooApp::screenFilter;
+    prevSettings[0] = Settings::screenFilter;
+    prevSettings[1] = ScreenLayout::screenRotation;
+    prevSettings[2] = ScreenLayout::screenArrangement;
+    prevSettings[3] = ScreenLayout::screenSizing;
+    prevSettings[4] = ScreenLayout::screenGap;
+    prevSettings[5] = ScreenLayout::integerScale;
+    prevSettings[6] = ScreenLayout::gbaCrop;
 
     // Determine the height of a button
     // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
     wxButton *dummy = new wxButton(this, wxID_ANY, "");
     int size = dummy->GetSize().y;
     delete dummy;
+
+    // Set up the filter settings
+    wxRadioButton *filtBtns[3];
+    wxBoxSizer *filtSizer = new wxBoxSizer(wxHORIZONTAL);
+    filtSizer->Add(new wxStaticText(this, wxID_ANY, "Filter:", wxDefaultPosition,
+        wxSize(wxDefaultSize.GetWidth(), size)), 0, wxALIGN_CENTRE | wxRIGHT, size / 8);
+    filtSizer->Add(filtBtns[0] = new wxRadioButton(this, FILT_NEAREST, "Nearest",
+        wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
+    filtSizer->Add(filtBtns[1] = new wxRadioButton(this, FILT_UPSCALE, "Upscaled"), 0, wxLEFT, size / 8);
+    filtSizer->Add(filtBtns[2] = new wxRadioButton(this, FILT_LINEAR, "Linear"), 0, wxLEFT, size / 8);
 
     // Set up the position settings
     wxRadioButton *posBtns[5];
@@ -99,10 +113,10 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
         wxSize(wxDefaultSize.GetWidth(), size)), 0, wxALIGN_CENTRE | wxRIGHT, size / 8);
     posSizer->Add(posBtns[0] = new wxRadioButton(this, POS_CENTER, "Center",
         wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
-    posSizer->Add(posBtns[1] = new wxRadioButton(this, POS_TOP,    "Top"),    0, wxLEFT, size / 8);
+    posSizer->Add(posBtns[1] = new wxRadioButton(this, POS_TOP, "Top"), 0, wxLEFT, size / 8);
     posSizer->Add(posBtns[2] = new wxRadioButton(this, POS_BOTTOM, "Bottom"), 0, wxLEFT, size / 8);
-    posSizer->Add(posBtns[3] = new wxRadioButton(this, POS_LEFT,   "Left"),   0, wxLEFT, size / 8);
-    posSizer->Add(posBtns[4] = new wxRadioButton(this, POS_RIGHT,  "Right"),  0, wxLEFT, size / 8);
+    posSizer->Add(posBtns[3] = new wxRadioButton(this, POS_LEFT, "Left"), 0, wxLEFT, size / 8);
+    posSizer->Add(posBtns[4] = new wxRadioButton(this, POS_RIGHT, "Right"), 0, wxLEFT, size / 8);
 
     // Set up the rotation settings
     wxRadioButton *rotateBtns[3];
@@ -111,7 +125,7 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
         wxSize(wxDefaultSize.GetWidth(), size)), 0, wxALIGN_CENTRE | wxRIGHT, size / 8);
     rotateSizer->Add(rotateBtns[0] = new wxRadioButton(this, ROTATE_NONE, "None",
         wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
-    rotateSizer->Add(rotateBtns[1] = new wxRadioButton(this, ROTATE_CW,  "Clockwise"),         0, wxLEFT, size / 8);
+    rotateSizer->Add(rotateBtns[1] = new wxRadioButton(this, ROTATE_CW, "Clockwise"), 0, wxLEFT, size / 8);
     rotateSizer->Add(rotateBtns[2] = new wxRadioButton(this, ROTATE_CCW, "Counter-Clockwise"), 0, wxLEFT, size / 8);
 
     // Set up the arrangement settings
@@ -121,7 +135,7 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
         wxSize(wxDefaultSize.GetWidth(), size)), 0, wxALIGN_CENTRE | wxRIGHT, size / 8);
     arrangeSizer->Add(arrangeBtns[0] = new wxRadioButton(this, ARRANGE_AUTO, "Automatic",
         wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
-    arrangeSizer->Add(arrangeBtns[1] = new wxRadioButton(this, ARRANGE_VERT, "Vertical"),   0, wxLEFT, size / 8);
+    arrangeSizer->Add(arrangeBtns[1] = new wxRadioButton(this, ARRANGE_VERT, "Vertical"), 0, wxLEFT, size / 8);
     arrangeSizer->Add(arrangeBtns[2] = new wxRadioButton(this, ARRANGE_HORI, "Horizontal"), 0, wxLEFT, size / 8);
     arrangeSizer->Add(arrangeBtns[3] = new wxRadioButton(this, ARRANGE_SING, "Single Screen"), 0, wxLEFT, size / 8);
 
@@ -132,7 +146,7 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
         wxSize(wxDefaultSize.GetWidth(), size)), 0, wxALIGN_CENTRE | wxRIGHT, size / 8);
     sizeSizer->Add(sizeBtns[0] = new wxRadioButton(this, SIZE_EVEN, "Even",
         wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
-    sizeSizer->Add(sizeBtns[1] = new wxRadioButton(this, SIZE_TOP, "Enlarge Top"),    0, wxLEFT, size / 8);
+    sizeSizer->Add(sizeBtns[1] = new wxRadioButton(this, SIZE_TOP, "Enlarge Top"), 0, wxLEFT, size / 8);
     sizeSizer->Add(sizeBtns[2] = new wxRadioButton(this, SIZE_BOT, "Enlarge Bottom"), 0, wxLEFT, size / 8);
 
     // Set up the gap settings
@@ -143,17 +157,18 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     gapSizer->Add(gapBtns[0] = new wxRadioButton(this, GAP_NONE, "None",
         wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
     gapSizer->Add(gapBtns[1] = new wxRadioButton(this, GAP_QUART, "Quarter"), 0, wxLEFT, size / 8);
-    gapSizer->Add(gapBtns[2] = new wxRadioButton(this, GAP_HALF,  "Half"),    0, wxLEFT, size / 8);
-    gapSizer->Add(gapBtns[3] = new wxRadioButton(this, GAP_FULL,  "Full"),    0, wxLEFT, size / 8);
+    gapSizer->Add(gapBtns[2] = new wxRadioButton(this, GAP_HALF, "Half"), 0, wxLEFT, size / 8);
+    gapSizer->Add(gapBtns[3] = new wxRadioButton(this, GAP_FULL, "Full"), 0, wxLEFT, size / 8);
 
     // Set up the checkbox settings
     wxCheckBox *boxes[3];
     wxBoxSizer *checkSizer = new wxBoxSizer(wxHORIZONTAL);
     checkSizer->Add(boxes[0] = new wxCheckBox(this, INT_SCALE, "Integer Scale"), 0, wxLEFT, size / 8);
-    checkSizer->Add(boxes[1] = new wxCheckBox(this, GBA_CROP,  "GBA Crop"),      0, wxLEFT, size / 8);
-    checkSizer->Add(boxes[2] = new wxCheckBox(this, FILTER,    "Filter"),        0, wxLEFT, size / 8);
+    checkSizer->Add(boxes[1] = new wxCheckBox(this, GBA_CROP, "GBA Crop"), 0, wxLEFT, size / 8);
 
     // Set the current values of the radio buttons
+    if (Settings::screenFilter < 3)
+        filtBtns[Settings::screenFilter]->SetValue(true);
     if (ScreenLayout::screenPosition < 5)
         posBtns[ScreenLayout::screenPosition]->SetValue(true);
     if (ScreenLayout::screenRotation < 3)
@@ -168,23 +183,23 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     // Set the current values of the checkboxes
     boxes[0]->SetValue(ScreenLayout::integerScale);
     boxes[1]->SetValue(ScreenLayout::gbaCrop);
-    boxes[2]->SetValue(NooApp::screenFilter);
 
     // Set up the cancel and confirm buttons
     wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
     buttonSizer->Add(new wxStaticText(this, wxID_ANY, ""), 1);
-    buttonSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"),  0, wxRIGHT, size / 16);
-    buttonSizer->Add(new wxButton(this, wxID_OK,     "Confirm"), 0, wxLEFT,  size / 16);
+    buttonSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"), 0, wxRIGHT, size / 16);
+    buttonSizer->Add(new wxButton(this, wxID_OK, "Confirm"), 0, wxLEFT, size / 16);
 
     // Combine all of the contents
     wxBoxSizer *contents = new wxBoxSizer(wxVERTICAL);
-    contents->Add(posSizer,     1, wxEXPAND);
-    contents->Add(rotateSizer,  1, wxEXPAND);
+    contents->Add(filtSizer, 1, wxEXPAND);
+    contents->Add(posSizer, 1, wxEXPAND);
+    contents->Add(rotateSizer, 1, wxEXPAND);
     contents->Add(arrangeSizer, 1, wxEXPAND);
-    contents->Add(sizeSizer,    1, wxEXPAND);
-    contents->Add(gapSizer,     1, wxEXPAND);
-    contents->Add(checkSizer,   1, wxEXPAND);
-    contents->Add(buttonSizer,  1, wxEXPAND);
+    contents->Add(sizeSizer, 1, wxEXPAND);
+    contents->Add(gapSizer, 1, wxEXPAND);
+    contents->Add(checkSizer, 1, wxEXPAND);
+    contents->Add(buttonSizer, 1, wxEXPAND);
 
     // Add a final border around everything
     wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -195,6 +210,27 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     sizer->Fit(this);
     SetMinSize(GetSize());
     SetMaxSize(GetSize());
+}
+
+void LayoutDialog::filtNearest(wxCommandEvent &event)
+{
+    // Set the screen filter setting to nearest
+    Settings::screenFilter = 0;
+    app->updateLayouts();
+}
+
+void LayoutDialog::filtUpscale(wxCommandEvent &event)
+{
+    // Set the screen filter setting to upscaled
+    Settings::screenFilter = 1;
+    app->updateLayouts();
+}
+
+void LayoutDialog::filtLinear(wxCommandEvent &event)
+{
+    // Set the screen filter setting to linear
+    Settings::screenFilter = 2;
+    app->updateLayouts();
 }
 
 void LayoutDialog::posCenter(wxCommandEvent &event)
@@ -344,25 +380,17 @@ void LayoutDialog::gbaCrop(wxCommandEvent &event)
     app->updateLayouts();
 }
 
-void LayoutDialog::filter(wxCommandEvent &event)
-{
-    // Toggle the screen filter setting
-    NooApp::screenFilter = !NooApp::screenFilter;
-    app->updateLayouts();
-}
-
 void LayoutDialog::cancel(wxCommandEvent &event)
 {
     // Reset the settings to their previous values
-    ScreenLayout::screenRotation = prevSettings[0];
-    ScreenLayout::screenArrangement = prevSettings[1];
-    ScreenLayout::screenSizing = prevSettings[2];
-    ScreenLayout::screenGap = prevSettings[3];
-    ScreenLayout::integerScale = prevSettings[4];
-    ScreenLayout::gbaCrop = prevSettings[5];
-    NooApp::screenFilter = prevSettings[6];
+    Settings::screenFilter = prevSettings[0];
+    ScreenLayout::screenRotation = prevSettings[1];
+    ScreenLayout::screenArrangement = prevSettings[2];
+    ScreenLayout::screenSizing = prevSettings[3];
+    ScreenLayout::screenGap = prevSettings[4];
+    ScreenLayout::integerScale = prevSettings[5];
+    ScreenLayout::gbaCrop = prevSettings[6];
     app->updateLayouts();
-
     event.Skip(true);
 }
 
@@ -370,6 +398,5 @@ void LayoutDialog::confirm(wxCommandEvent &event)
 {
     // Save the layout settings
     Settings::save();
-
     event.Skip(true);
 }
