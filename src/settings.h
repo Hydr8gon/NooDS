@@ -42,6 +42,7 @@ class Settings
         static int threaded3D;
         static int highRes3D;
         static int screenFilter;
+        static int screenGhost;
         static std::string bios9Path;
         static std::string bios7Path;
         static std::string firmwarePath;

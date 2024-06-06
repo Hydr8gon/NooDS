@@ -26,6 +26,7 @@ int Settings::threaded2D = 1;
 int Settings::threaded3D = 1;
 int Settings::highRes3D = 0;
 int Settings::screenFilter = 1;
+int Settings::screenGhost = 0;
 std::string Settings::bios9Path = "bios9.bin";
 std::string Settings::bios7Path = "bios7.bin";
 std::string Settings::firmwarePath = "firmware.bin";
@@ -42,6 +43,7 @@ std::vector<Setting> Settings::settings =
     Setting("threaded3D", &threaded3D, false),
     Setting("highRes3D", &highRes3D, false),
     Setting("screenFilter", &screenFilter, false),
+    Setting("screenGhost", &screenGhost, false),
     Setting("bios9Path", &bios9Path, true),
     Setting("bios7Path", &bios7Path, true),
     Setting("firmwarePath", &firmwarePath, true),

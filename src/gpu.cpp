@@ -112,15 +112,10 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
             // GBA doesn't have 3D, but draw the screen upscaled for consistency
             for (int y = 0; y < 160; y++)
             {
+                uint32_t *line = &out[y * 240 * 4];
                 for (int x = 0; x < 240; x++)
-                {
-                    uint32_t color = rgb5ToRgb8(buffers.framebuffer[y * 256 + x]);
-                    int i = (y * 2) * (240 * 2) + (x * 2);
-                    out[i + 0] = color;
-                    out[i + 1] = color;
-                    out[i + 480] = color;
-                    out[i + 481] = color;
-                }
+                    line[x * 2] = line[x * 2 + 1] = rgb5ToRgb8(buffers.framebuffer[y * 256 + x]);
+                memcpy(&line[240 * 2], line, 240 * 8);
             }
         }
         else
@@ -145,17 +140,11 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
             // GBA doesn't have 3D, but draw the screen upscaled for consistency
             for (int y = 0; y < 192; y++)
             {
+                uint32_t *line = &out[offset * 4 + y * 256 * 4];
                 for (int x = 0; x < 256; x++)
-                {
-                    uint32_t color = rgb5ToRgb8((x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16) ?
-                        buffers.framebuffer[(y - 16) * 256 + (x - 8)] :
-                        core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
-                    int i = (offset * 4) + (y * 2) * (256 * 2) + (x * 2);
-                    out[i + 0] = color;
-                    out[i + 1] = color;
-                    out[i + 512] = color;
-                    out[i + 513] = color;
-                }
+                    line[x * 2] = line[x * 2 + 1] = rgb5ToRgb8((x >= 8 && x < 248 && y >= 16 && y < 176) ? buffers.
+                        framebuffer[(y - 16) * 256 + x - 8] : core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
+                memcpy(&line[256 * 2], line, 256 * 8);
             }
 
             // Clear the secondary display
@@ -165,14 +154,9 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
         {
             // Draw to a native resolution buffer
             for (int y = 0; y < 192; y++)
-            {
                 for (int x = 0; x < 256; x++)
-                {
-                    out[offset + y * 256 + x] = rgb5ToRgb8((x >= 8 && x < 256 - 8 && y >= 16 && y < 192 - 16) ?
-                        buffers.framebuffer[(y - 16) * 256 + (x - 8)] :
-                        core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
-                }
-            }
+                    out[offset + y * 256 + x] = rgb5ToRgb8((x >= 8 && x < 248 && y >= 16 && y < 176) ? buffers.
+                        framebuffer[(y - 16) * 256 + x - 8] : core->memory.read<uint16_t>(0, base + (y * 256 + x) * 2));
 
             // Clear the secondary display
             memset(&out[256 * 192 - offset], 0, 256 * 192 * sizeof(uint32_t));
@@ -206,10 +190,8 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                         else
                         {
                             uint32_t color = rgb6ToRgb8(value);
-                            out[i + 0] = color;
-                            out[i + 1] = color;
-                            out[i + 512] = color;
-                            out[i + 513] = color;
+                            out[i + 0] = out[i + 1] = color;
+                            out[i + 512] = out[i + 513] = color;
                         }
                     }
                 }
@@ -219,15 +201,10 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                 // Even when 3D isn't enabled, draw the screens upscaled for consistency
                 for (int y = 0; y < 192 * 2; y++)
                 {
+                    uint32_t *line = &out[y * 256 * 4];
                     for (int x = 0; x < 256; x++)
-                    {
-                        uint32_t color = rgb6ToRgb8(buffers.framebuffer[y * 256 + x]);
-                        int i = (y * 2) * (256 * 2) + (x * 2);
-                        out[i + 0] = color;
-                        out[i + 1] = color;
-                        out[i + 512] = color;
-                        out[i + 513] = color;
-                    }
+                        line[x * 2] = line[x * 2 + 1] = rgb6ToRgb8(buffers.framebuffer[y * 256 + x]);
+                    memcpy(&line[256 * 2], line, 256 * 8);
                 }
             }
         }
@@ -242,6 +219,25 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     // Free the used buffers
     delete[] buffers.framebuffer;
     delete[] buffers.hiRes3D;
+
+    if (Settings::screenGhost)
+    {
+        // Get the size of the output framebuffer
+        static uint32_t prev[256 * 192 * 8];
+        uint32_t width = (gbaCrop ? 240 : 256) << (Settings::highRes3D || Settings::screenFilter == 1);
+        uint32_t height = (gbaCrop ? 160 : (192 * 2)) << (Settings::highRes3D || Settings::screenFilter == 1);
+        uint32_t size = width * height;
+
+        // Blend output with the previous frame if ghosting is enabled
+        for (uint32_t i = 0; i < size; i++)
+        {
+            uint8_t r = (((prev[i] >> 0) & 0xFF) + ((out[i] >> 0) & 0xFF)) >> 1;
+            uint8_t g = (((prev[i] >> 8) & 0xFF) + ((out[i] >> 8) & 0xFF)) >> 1;
+            uint8_t b = (((prev[i] >> 16) & 0xFF) + ((out[i] >> 16) & 0xFF)) >> 1;
+            prev[i] = out[i];
+            out[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+        }
+    }
 
     // Remove the frame from the queue
     mutex.lock();

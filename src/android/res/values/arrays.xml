@@ -14,12 +14,6 @@
         <item>3 Threads</item>
     </string-array>
 
-    <string-array name="screen_filter_entries">
-        <item>Nearest</item>
-        <item>Upscaled</item>
-        <item>Linear</item>
-    </string-array>
-
     <string-array name="screen_position_entries">
         <item>Center</item>
         <item>Top</item>
@@ -52,6 +46,12 @@
         <item>Quarter</item>
         <item>Half</item>
         <item>Full</item>
+    </string-array>
+
+    <string-array name="screen_filter_entries">
+        <item>Nearest</item>
+        <item>Upscaled</item>
+        <item>Linear</item>
     </string-array>
 
     <string-array name="setting_values">

@@ -757,12 +757,12 @@ void ConsoleUI::settingsMenu()
 {
     // Define possible values for settings
     const std::vector<std::string> toggle = { "Off", "On" };
-    const std::vector<std::string> filter = { "Nearest", "Upscaled", "Linear" };
     const std::vector<std::string> position = { "Center", "Top", "Bottom", "Left", "Right" };
     const std::vector<std::string> rotation = { "None", "Clockwise", "Counter-Clockwise" };
     const std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal", "Single Screen" };
     const std::vector<std::string> sizing = { "Even", "Enlarge Top", "Enlarge Bottom" };
     const std::vector<std::string> gap = { "None", "Quarter", "Half", "Full" };
+    const std::vector<std::string> filter = { "Nearest", "Upscaled", "Linear" };
     const std::vector<std::string> theme = { "Dark", "Light" };
 
     int index = 0;
@@ -776,14 +776,15 @@ void ConsoleUI::settingsMenu()
             MenuItem("Threaded 2D", toggle[Settings::threaded2D]),
             MenuItem("Threaded 3D", toggle[(bool)Settings::threaded3D]),
             MenuItem("High-Resolution 3D", toggle[Settings::highRes3D]),
-            MenuItem("Screen Filter", filter[Settings::screenFilter]),
             MenuItem("Screen Position", position[ScreenLayout::screenPosition]),
             MenuItem("Screen Rotation", rotation[ScreenLayout::screenRotation]),
             MenuItem("Screen Arrangement", arrangement[ScreenLayout::screenArrangement]),
             MenuItem("Screen Sizing", sizing[ScreenLayout::screenSizing]),
             MenuItem("Screen Gap", gap[ScreenLayout::screenGap]),
+            MenuItem("Screen Filter", filter[Settings::screenFilter]),
             MenuItem("Integer Scale", toggle[ScreenLayout::integerScale]),
             MenuItem("GBA Crop", toggle[ScreenLayout::gbaCrop]),
+            MenuItem("Simulate Ghosting", toggle[Settings::screenGhost]),
             MenuItem("Show FPS Counter", toggle[showFpsCounter]),
             MenuItem("Menu Theme", theme[menuTheme])
         };
@@ -802,17 +803,18 @@ void ConsoleUI::settingsMenu()
                 case 2: Settings::threaded2D = (Settings::threaded2D + 1) % 2; break;
                 case 3: Settings::threaded3D = (Settings::threaded3D + 1) % 2; break;
                 case 4: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
-                case 5: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
-                case 6: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
-                case 7: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
-                case 8: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
-                case 9: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
-                case 10: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
+                case 5: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
+                case 6: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
+                case 7: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
+                case 8: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
+                case 9: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
+                case 10: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
                 case 11: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
                 case 12: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
-                case 13: showFpsCounter = (showFpsCounter + 1) % 2; break;
+                case 13: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
+                case 14: showFpsCounter = (showFpsCounter + 1) % 2; break;
 
-                case 14:
+                case 15:
                     // Update the palette when changing themes
                     menuTheme = (menuTheme + 1) % 2;
                     palette = &themeColors[menuTheme * 6];
