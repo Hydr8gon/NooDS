@@ -208,7 +208,7 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
     GX2Texture *tempTexture = nullptr;
     if (running && tw >= 240 && !(ConsoleUI::gbaMode && ScreenLayout::gbaCrop) && ScreenLayout::screenArrangement == 3)
     {
-        int shift = Settings::highRes3D;
+        bool shift = (Settings::highRes3D || Settings::screenFilter == 1);
         uint32_t *data = &ConsoleUI::framebuffer[(256 * 192 * (ScreenLayout::screenSizing < 2)) << (shift * 2)];
         tempTexture = gpTexture = (GX2Texture*)createTexture(data, 256 << shift, 192 << shift);
     }
