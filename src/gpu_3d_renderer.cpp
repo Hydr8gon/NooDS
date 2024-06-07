@@ -410,14 +410,14 @@ void Gpu3DRenderer::finishScanline(int line)
 uint8_t *Gpu3DRenderer::getTexture(uint32_t address)
 {
     // Get a pointer to texture data
-    uint8_t *slot = core->memory.getTex3D()[address >> 17];
+    uint8_t *slot = core->memory.tex3D[address >> 17];
     return slot ? &slot[address & 0x1FFFF] : nullptr;
 }
 
 uint8_t *Gpu3DRenderer::getPalette(uint32_t address)
 {
     // Get a pointer to palette data
-    uint8_t *slot = core->memory.getPal3D()[address >> 14];
+    uint8_t *slot = core->memory.pal3D[address >> 14];
     return slot ? &slot[address & 0x3FFF] : nullptr;
 }
 

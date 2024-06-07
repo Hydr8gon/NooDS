@@ -28,7 +28,7 @@ Dldi::~Dldi()
         fclose(sdImage);
 }
 
-void Dldi::patchRom(uint8_t *rom, size_t offset, size_t size)
+void Dldi::patchRom(uint8_t *rom, uint32_t offset, uint32_t size)
 {
     // Scan the ROM for DLDI drivers and patch them if found
     for (size_t i = 0; i < size; i += 0x40)
@@ -47,21 +47,21 @@ void Dldi::patchRom(uint8_t *rom, size_t offset, size_t size)
         }
 
         // Patch the DLDI driver to use the HLE functions
-        rom[i + 0x0F] = 0x0E;                     // Size of driver in terms of 1 << n (16KB)
+        rom[i + 0x0F] = 0x0E; // Size of driver in terms of 1 << n (16KB)
         uint32_t address = U8TO32(rom, i + 0x40); // Address of driver
-        U32TO8(rom, i + 0x64, 0x00000023);        // Feature flags (read, write, NDS slot)
-        U32TO8(rom, i + 0x68, address + 0x80);    // Address of startup()
-        U32TO8(rom, i + 0x6C, address + 0x84);    // Address of isInserted()
-        U32TO8(rom, i + 0x70, address + 0x88);    // Address of readSectors(sector, numSectors, buf)
-        U32TO8(rom, i + 0x74, address + 0x8C);    // Address of writeSectors(sector, numSectors, buf)
-        U32TO8(rom, i + 0x78, address + 0x90);    // Address of clearStatus()
-        U32TO8(rom, i + 0x7C, address + 0x94);    // Address of shutdown()
-        U32TO8(rom, i + 0x80, DLDI_START);        // startup()
-        U32TO8(rom, i + 0x84, DLDI_INSERT);       // isInserted()
-        U32TO8(rom, i + 0x88, DLDI_READ);         // readSectors(sector, numSectors, buf)
-        U32TO8(rom, i + 0x8C, DLDI_WRITE);        // writeSectors(sector, numSectors, buf)
-        U32TO8(rom, i + 0x90, DLDI_CLEAR);        // clearStatus()
-        U32TO8(rom, i + 0x94, DLDI_STOP);         // shutdown()
+        U32TO8(rom, i + 0x64, 0x00000023); // Feature flags (read, write, NDS slot)
+        U32TO8(rom, i + 0x68, address + 0x80); // Address of startup()
+        U32TO8(rom, i + 0x6C, address + 0x84); // Address of isInserted()
+        U32TO8(rom, i + 0x70, address + 0x88); // Address of readSectors(sector, numSectors, buf)
+        U32TO8(rom, i + 0x74, address + 0x8C); // Address of writeSectors(sector, numSectors, buf)
+        U32TO8(rom, i + 0x78, address + 0x90); // Address of clearStatus()
+        U32TO8(rom, i + 0x7C, address + 0x94); // Address of shutdown()
+        U32TO8(rom, i + 0x80, DLDI_START); // startup()
+        U32TO8(rom, i + 0x84, DLDI_INSERT); // isInserted()
+        U32TO8(rom, i + 0x88, DLDI_READ); // readSectors(sector, numSectors, buf)
+        U32TO8(rom, i + 0x8C, DLDI_WRITE); // writeSectors(sector, numSectors, buf)
+        U32TO8(rom, i + 0x90, DLDI_CLEAR); // clearStatus()
+        U32TO8(rom, i + 0x94, DLDI_STOP); // shutdown()
 
         // Confirm that a driver has been patched
         LOG("Patched DLDI driver at ROM offset 0x%X\n", offset + i);
@@ -82,7 +82,7 @@ int Dldi::isInserted()
     return (sdImage ? 1 : 0);
 }
 
-int Dldi::readSectors(bool cpu, uint32_t sector, uint32_t numSectors, uint32_t buf)
+int Dldi::readSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf)
 {
     // Get the SD offset and size in bytes
     if (!sdImage) return 0;
@@ -96,12 +96,12 @@ int Dldi::readSectors(bool cpu, uint32_t sector, uint32_t numSectors, uint32_t b
 
     // Write the data to memory
     for (int i = 0; i < size; i++)
-        core->memory.write<uint8_t>(cpu, buf + i, data[i]);
+        core->memory.write<uint8_t>(arm7, buf + i, data[i]);
     delete[] data;
     return 1;
 }
 
-int Dldi::writeSectors(bool cpu, uint32_t sector, uint32_t numSectors, uint32_t buf)
+int Dldi::writeSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf)
 {
     // Get the SD offset and size in bytes
     if (!sdImage) return 0;
@@ -111,7 +111,7 @@ int Dldi::writeSectors(bool cpu, uint32_t sector, uint32_t numSectors, uint32_t 
     // Read data from memory
     uint8_t *data = new uint8_t[size];
     for (int i = 0; i < size; i++)
-        data[i] = core->memory.read<uint8_t>(cpu, buf + i);
+        data[i] = core->memory.read<uint8_t>(arm7, buf + i);
 
     // Write the data to the SD image
     fseek(sdImage, offset, SEEK_SET);

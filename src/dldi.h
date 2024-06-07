@@ -41,19 +41,18 @@ class Dldi
         Dldi(Core *core): core(core) {}
         ~Dldi();
 
-        void patchRom(uint8_t *rom, size_t offset, size_t size);
+        void patchRom(uint8_t *rom, uint32_t offset, uint32_t size);
         bool isPatched() { return patched; }
 
         int startup();
         int isInserted();
-        int readSectors(bool cpu, uint32_t sector, uint32_t numSectors, uint32_t buf);
-        int writeSectors(bool cpu, uint32_t sector, uint32_t numSectors, uint32_t buf);
+        int readSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf);
+        int writeSectors(bool arm7, uint32_t sector, uint32_t numSectors, uint32_t buf);
         int clearStatus();
         int shutdown();
 
     private:
         Core *core;
-
         bool patched = false;
         FILE *sdImage = nullptr;
 };

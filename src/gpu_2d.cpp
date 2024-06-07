@@ -30,18 +30,18 @@ Gpu2D::Gpu2D(Core *core, bool engine): core(core), engine(engine)
         // Set up 2D GPU engine A
         bgVramAddr = 0x6000000;
         objVramAddr = 0x6400000;
-        palette = core->memory.getPalette();
-        oam = core->memory.getOam();
-        extPalettes = core->memory.getEngAExtPal();
+        palette = core->memory.palette;
+        oam = core->memory.oam;
+        extPalettes = core->memory.engAExtPal;
     }
     else
     {
         // Set up 2D GPU engine B
         bgVramAddr = 0x6200000;
         objVramAddr = 0x6600000;
-        palette = core->memory.getPalette() + 0x400;
-        oam = core->memory.getOam() + 0x400;
-        extPalettes = core->memory.getEngBExtPal();
+        palette = core->memory.palette + 0x400;
+        oam = core->memory.oam + 0x400;
+        extPalettes = core->memory.engBExtPal;
     }
 }
 

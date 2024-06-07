@@ -228,14 +228,14 @@ void Interpreter::interrupt()
 int Interpreter::exception(uint8_t vector)
 {
     // Forward the call to HLE BIOS if enabled, unless on ARM9 with the exception address changed
-    if (bios && (arm7 || core->cp15.getExceptionAddr()))
+    if (bios && (arm7 || core->cp15.exceptionAddr))
         return bios->execute(vector, registers);
 
     // Switch the CPU mode, save the return address, and jump to the exception vector
     static const uint8_t modes[] = { 0x13, 0x1B, 0x13, 0x17, 0x17, 0x13, 0x12, 0x11 };
     setCpsr((cpsr & ~0x3F) | BIT(7) | modes[vector >> 2], true); // ARM, interrupts off, new mode
     *registers[14] = *registers[15] + ((*spsr & BIT(5)) >> 4);
-    *registers[15] = (arm7 ? 0 : core->cp15.getExceptionAddr()) + vector;
+    *registers[15] = (arm7 ? 0 : core->cp15.exceptionAddr) + vector;
     flushPipeline();
     return 3;
 }
@@ -389,7 +389,7 @@ int Interpreter::handleHleIrq()
 
     // Set the return address to the special HLE BIOS opcode amd jump to the interrupt handler
     *registers[14] = arm7 ? 0x00000000 : 0xFFFF0000;
-    *registers[15] = core->memory.read<uint32_t>(arm7, arm7 ? 0x3FFFFFC : (core->cp15.getDtcmAddr() + 0x3FFC));
+    *registers[15] = core->memory.read<uint32_t>(arm7, arm7 ? 0x3FFFFFC : (core->cp15.dtcmAddr + 0x3FFC));
     flushPipeline();
     return 3;
 }

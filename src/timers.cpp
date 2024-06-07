@@ -51,20 +51,20 @@ void Timers::overflow(int timer)
 {
     // Ensure the timer is enabled and the end cycle is correct if not in count-up mode
     // The end cycle check ensures that if a timer was changed while running, outdated events are ignored
-    if (!(tmCntH[timer] & BIT(7)) || ((timer == 0 || !(tmCntH[timer] & BIT(2))) && endCycles[timer] != core->globalCycles))
-        return;
+    if (!(tmCntH[timer] & BIT(7)) || ((timer == 0 || !(tmCntH[timer] & BIT(2)))
+        && endCycles[timer] != core->globalCycles)) return;
 
     // Reload the timer and schedule another overflow if not in count-up mode
     timers[timer] = tmCntL[timer];
     if (timer == 0 || !(tmCntH[timer] & BIT(2)))
     {
-        core->schedule(SchedTask(TIMER9_OVERFLOW0 + (cpu << 2) + timer), (0x10000 - timers[timer]) << shifts[timer]);
+        core->schedule(SchedTask(TIMER9_OVERFLOW0 + (arm7 << 2) + timer), (0x10000 - timers[timer]) << shifts[timer]);
         endCycles[timer] = core->globalCycles + ((0x10000 - timers[timer]) << shifts[timer]);
     }
 
     // Trigger a timer overflow IRQ if enabled
     if (tmCntH[timer] & BIT(6))
-        core->interpreter[cpu].sendInterrupt(3 + timer);
+        core->interpreter[arm7].sendInterrupt(3 + timer);
 
     // Trigger a GBA sound FIFO event
     if (core->gbaMode && timer < 2)
@@ -85,17 +85,16 @@ void Timers::writeTmCntL(int timer, uint16_t mask, uint16_t value)
 
 void Timers::writeTmCntH(int timer, uint16_t mask, uint16_t value)
 {
-    bool dirty = false;
-
     // Update the current timer value if it's running on the scheduler
+    bool dirty = false;
     if ((tmCntH[timer] & BIT(7)) && (timer == 0 || !(value & BIT(2))))
         timers[timer] = 0x10000 - ((endCycles[timer] - core->globalCycles) >> shifts[timer]);
 
     // Update the timer shift if the prescaler setting was changed
     // The prescaler allows timers to tick at frequencies of f/1, f/64, f/256, or f/1024 (when not in count-up mode)
-    if (mask & 0x00FF)
+    if (mask & 0xFF)
     {
-        int shift = (((value & 0x0003) && (timer == 0 || !(value & BIT(2)))) ? (4 + (value & 0x0003) * 2) : 0);
+        uint8_t shift = (((value & 0x3) && (timer == 0 || !(value & BIT(2)))) ? (4 + (value & 0x3) * 2) : 0);
         if (shifts[timer] != shift)
         {
             shifts[timer] = shift;
@@ -117,7 +116,7 @@ void Timers::writeTmCntH(int timer, uint16_t mask, uint16_t value)
     // Schedule a timer overflow if the timer changed and isn't in count-up mode
     if (dirty && (tmCntH[timer] & BIT(7)) && (timer == 0 || !(tmCntH[timer] & BIT(2))))
     {
-        core->schedule(SchedTask(TIMER9_OVERFLOW0 + (cpu << 2) + timer), (0x10000 - timers[timer]) << shifts[timer]);
+        core->schedule(SchedTask(TIMER9_OVERFLOW0 + (arm7 << 2) + timer), (0x10000 - timers[timer]) << shifts[timer]);
         endCycles[timer] = core->globalCycles + ((0x10000 - timers[timer]) << shifts[timer]);
     }
 }

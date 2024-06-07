@@ -28,34 +28,24 @@ class Core;
 class Cp15
 {
     public:
+        uint32_t exceptionAddr = 0;
+        bool dtcmCanRead = false, dtcmCanWrite = false;
+        bool itcmCanRead = false, itcmCanWrite = false;
+        uint32_t dtcmAddr = 0, dtcmSize = 0;
+        uint32_t itcmSize = 0;
+
         Cp15(Core *core): core(core) {}
         void saveState(FILE *file);
         void loadState(FILE *file);
 
-        uint32_t read(int cn, int cm, int cp);
-        void write(int cn, int cm, int cp, uint32_t value);
-
-        uint32_t getExceptionAddr() { return exceptionAddr;    }
-        bool getDtcmReadEnabled()   { return dtcmReadEnabled;  }
-        bool getDtcmWriteEnabled()  { return dtcmWriteEnabled; }
-        bool getItcmReadEnabled()   { return itcmReadEnabled;  }
-        bool getItcmWriteEnabled()  { return itcmWriteEnabled; }
-        uint32_t getDtcmAddr()      { return dtcmAddr;         }
-        uint32_t getDtcmSize()      { return dtcmSize;         }
-        uint32_t getItcmSize()      { return itcmSize;         }
+        uint32_t read(uint8_t cn, uint8_t cm, uint8_t cp);
+        void write(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value);
 
     private:
         Core *core;
-
-        uint32_t ctrlReg = 0x00000078;
-        uint32_t dtcmReg = 0x00000000;
-        uint32_t itcmReg = 0x00000000;
-
-        uint32_t exceptionAddr = 0;
-        bool dtcmReadEnabled = false, dtcmWriteEnabled = false;
-        bool itcmReadEnabled = false, itcmWriteEnabled = false;
-        uint32_t dtcmAddr = 0, dtcmSize = 0;
-        uint32_t itcmSize = 0;
+        uint32_t ctrlReg = 0x78;
+        uint32_t dtcmReg = 0x00;
+        uint32_t itcmReg = 0x00;
 };
 
 #endif // CP15_H

@@ -77,7 +77,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd,
     schedule(NDS_SPU_SAMPLE, 512 * 2);
 
     // Initialize the memory and CPUs
-    memory.updateMap9<false>(0x00000000, 0xFFFFFFFF);
+    memory.updateMap9(0x00000000, 0xFFFFFFFF);
     memory.updateMap7(0x00000000, 0xFFFFFFFF);
     interpreter[0].init();
     interpreter[1].init();

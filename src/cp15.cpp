@@ -42,91 +42,73 @@ void Cp15::loadState(FILE *file)
     write(9, 1, 1, itcm);
 }
 
-uint32_t Cp15::read(int cn, int cm, int cp)
+uint32_t Cp15::read(uint8_t cn, uint8_t cm, uint8_t cp)
 {
     // Read a value from a CP15 register
     switch ((cn << 16) | (cm << 8) | (cp << 0))
     {
         case 0x000000: return 0x41059461; // Main ID
         case 0x000001: return 0x0F0D2112; // Cache type
-        case 0x010000: return ctrlReg;    // Control
-        case 0x090100: return dtcmReg;    // Data TCM base/size
-        case 0x090101: return itcmReg;    // Instruction TCM size
+        case 0x010000: return ctrlReg; // Control
+        case 0x090100: return dtcmReg; // Data TCM base/size
+        case 0x090101: return itcmReg; // Instruction TCM size
 
         default:
-        {
             LOG("Unknown CP15 register read: C%d,C%d,%d\n", cn, cm, cp);
             return 0;
-        }
     }
 }
 
-void Cp15::write(int cn, int cm, int cp, uint32_t value)
+void Cp15::write(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value)
 {
     // Write a value to a CP15 register
+    uint32_t oldAddr, oldSize;
     switch ((cn << 16) | (cm << 8) | (cp << 0))
     {
         case 0x010000: // Control
-        {
-            // Some control bits are read only, so only set the writeable ones
-            ctrlReg = (ctrlReg & ~0x000FF085) | (value & 0x000FF085);
+            // Set writable control bits and update their state values
+            ctrlReg = (ctrlReg & ~0xFF085) | (value & 0xFF085);
             exceptionAddr = (ctrlReg & BIT(13)) ? 0xFFFF0000 : 0x00000000;
-            dtcmReadEnabled = (ctrlReg & BIT(16)) && !(ctrlReg & BIT(17));
-            dtcmWriteEnabled = (ctrlReg & BIT(16));
-            itcmReadEnabled = (ctrlReg & BIT(18)) && !(ctrlReg & BIT(19));
-            itcmWriteEnabled = (ctrlReg & BIT(18));
+            dtcmCanRead = (ctrlReg & BIT(16)) && !(ctrlReg & BIT(17));
+            dtcmCanWrite = (ctrlReg & BIT(16));
+            itcmCanRead = (ctrlReg & BIT(18)) && !(ctrlReg & BIT(19));
+            itcmCanWrite = (ctrlReg & BIT(18));
 
             // Update the memory map at the current TCM locations
-            core->memory.updateMap9<true>(dtcmAddr, dtcmAddr + dtcmSize);
-            core->memory.updateMap9<true>(0x00000000, itcmSize);
-
+            core->memory.updateMap9(dtcmAddr, dtcmAddr + dtcmSize, true);
+            core->memory.updateMap9(0x00000000, itcmSize, true);
             return;
-        }
 
         case 0x090100: // Data TCM base/size
-        {
-            uint32_t dtcmAddrOld = dtcmAddr;
-            uint32_t dtcmSizeOld = dtcmSize;
-
-            // DTCM size is calculated as 512 shifted left N bits, with a minimum of 4KB
+            // Set the DTCM register and update its address and size
             dtcmReg = value;
+            oldAddr = dtcmAddr;
+            oldSize = dtcmSize;
             dtcmAddr = dtcmReg & 0xFFFFF000;
-            dtcmSize = 0x200 << ((dtcmReg & 0x0000003E) >> 1);
-            if (dtcmSize < 0x1000) dtcmSize = 0x1000;
+            dtcmSize = std::max(0x1000, 0x200 << ((dtcmReg >> 1) & 0x1F)); // Min 4KB
 
-            // Update the memory map at the old and new DTCM locations
-            core->memory.updateMap9<true>(dtcmAddrOld, dtcmAddrOld + dtcmSizeOld);
-            core->memory.updateMap9<true>(dtcmAddr,    dtcmAddr    + dtcmSize);
-
+            // Update the memory map at the old and new DTCM areas
+            core->memory.updateMap9(oldAddr, oldAddr + oldSize, true);
+            core->memory.updateMap9(dtcmAddr, dtcmAddr + dtcmSize, true);
             return;
-        }
 
         case 0x070004: case 0x070802: // Wait for interrupt
-        {
+            // Halt the CPU
             core->interpreter[0].halt(0);
             return;
-        }
 
         case 0x090101: // Instruction TCM size
-        {
-            uint32_t itcmSizeOld = itcmSize;
-
-            // ITCM base is fixed, so that part of the value is unused
-            // ITCM size is calculated as 512 shifted left N bits, with a minimum of 4KB
+            // Set the ITCM register and update its size
             itcmReg = value;
-            itcmSize = 0x200 << ((itcmReg & 0x0000003E) >> 1);
-            if (itcmSize < 0x1000) itcmSize = 0x1000;
+            oldSize = itcmSize;
+            itcmSize = std::max(0x1000, 0x200 << ((itcmReg >> 1) & 0x1F)); // Min 4KB
 
-            // Update the memory map at the old and new ITCM locations
-            core->memory.updateMap9<true>(0x00000000, std::max(itcmSizeOld, itcmSize));
-
+            // Update the memory map at the old and new ITCM areas
+            core->memory.updateMap9(0x00000000, std::max(oldSize, itcmSize), true);
             return;
-        }
 
         default:
-        {
             LOG("Unknown CP15 register write: C%d,C%d,%d\n", cn, cm, cp);
             return;
-        }
     }
 }

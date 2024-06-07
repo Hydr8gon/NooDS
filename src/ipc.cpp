@@ -58,126 +58,125 @@ void Ipc::loadState(FILE *file)
     }
 }
 
-void Ipc::writeIpcSync(bool cpu, uint16_t mask, uint16_t value)
+void Ipc::writeIpcSync(bool arm7, uint16_t mask, uint16_t value)
 {
     // Write to one of the IPCSYNC registers
     mask &= 0x4F00;
-    ipcSync[cpu] = (ipcSync[cpu] & ~mask) | (value & mask);
+    ipcSync[arm7] = (ipcSync[arm7] & ~mask) | (value & mask);
 
     // Copy the input bits from this CPU to the output bits for the other CPU
-    ipcSync[!cpu] = (ipcSync[!cpu] & ~((mask >> 8) & 0x000F)) | (((value & mask) >> 8) & 0x000F);
+    ipcSync[!arm7] = (ipcSync[!arm7] & ~((mask >> 8) & 0xF)) | (((value & mask) >> 8) & 0xF);
 
     // Trigger a remote IRQ if enabled on both sides
-    if ((value & BIT(13)) && (ipcSync[!cpu] & BIT(14)))
-        core->interpreter[!cpu].sendInterrupt(16);
+    if ((value & BIT(13)) && (ipcSync[!arm7] & BIT(14)))
+        core->interpreter[!arm7].sendInterrupt(16);
 }
 
-void Ipc::writeIpcFifoCnt(bool cpu, uint16_t mask, uint16_t value)
+void Ipc::writeIpcFifoCnt(bool arm7, uint16_t mask, uint16_t value)
 {
     // Clear the FIFO if the clear bit is set
-    if ((value & BIT(3)) && !fifos[cpu].empty())
+    if ((value & BIT(3)) && !fifos[arm7].empty())
     {
         // Empty the FIFO
-        while (!fifos[cpu].empty())
-            fifos[cpu].pop_front();
-        ipcFifoRecv[!cpu] = 0;
+        while (!fifos[arm7].empty())
+            fifos[arm7].pop_front();
+        ipcFifoRecv[!arm7] = 0;
 
         // Set the FIFO empty bits and clear the FIFO full bits
-        ipcFifoCnt[cpu]  |=  BIT(0);
-        ipcFifoCnt[cpu]  &= ~BIT(1);
-        ipcFifoCnt[!cpu] |=  BIT(8);
-        ipcFifoCnt[!cpu] &= ~BIT(9);
+        ipcFifoCnt[arm7] |= BIT(0);
+        ipcFifoCnt[arm7] &= ~BIT(1);
+        ipcFifoCnt[!arm7] |= BIT(8);
+        ipcFifoCnt[!arm7] &= ~BIT(9);
 
         // Trigger a send FIFO empty IRQ if enabled
-        if (ipcFifoCnt[cpu] & BIT(2))
-            core->interpreter[cpu].sendInterrupt(17);
+        if (ipcFifoCnt[arm7] & BIT(2))
+            core->interpreter[arm7].sendInterrupt(17);
     }
 
     // Trigger a send FIFO empty IRQ if the enable bit is set and the FIFO is empty
-    if ((ipcFifoCnt[cpu] & BIT(0)) && !(ipcFifoCnt[cpu] & BIT(2)) && (value & BIT(2)))
-        core->interpreter[cpu].sendInterrupt(17);
+    if ((ipcFifoCnt[arm7] & BIT(0)) && !(ipcFifoCnt[arm7] & BIT(2)) && (value & BIT(2)))
+        core->interpreter[arm7].sendInterrupt(17);
 
     // Trigger a receive FIFO not empty IRQ if the enable bit is set and the FIFO isn't empty
-    if (!(ipcFifoCnt[cpu] & BIT(8)) && !(ipcFifoCnt[cpu] & BIT(10)) && (value & BIT(10)))
-        core->interpreter[cpu].sendInterrupt(18);
+    if (!(ipcFifoCnt[arm7] & BIT(8)) && !(ipcFifoCnt[arm7] & BIT(10)) && (value & BIT(10)))
+        core->interpreter[arm7].sendInterrupt(18);
 
     // If the error bit is set, acknowledge the error by clearing it
-    if (value & BIT(14)) ipcFifoCnt[cpu] &= ~BIT(14);
+    ipcFifoCnt[arm7] &= ~(value & BIT(14));
 
     // Write to one of the IPCFIFOCNT registers
     mask &= 0x8404;
-    ipcFifoCnt[cpu] = (ipcFifoCnt[cpu] & ~mask) | (value & mask);
+    ipcFifoCnt[arm7] = (ipcFifoCnt[arm7] & ~mask) | (value & mask);
 }
 
-void Ipc::writeIpcFifoSend(bool cpu, uint32_t mask, uint32_t value)
+void Ipc::writeIpcFifoSend(bool arm7, uint32_t mask, uint32_t value)
 {
-    if (ipcFifoCnt[cpu] & BIT(15)) // FIFO enabled
+    if (ipcFifoCnt[arm7] & BIT(15)) // FIFO enabled
     {
-        if (fifos[cpu].size() < 16) // FIFO not full
+        if (fifos[arm7].size() < 16) // FIFO not full
         {
             // Push a word to the FIFO
-            fifos[cpu].push_back(value & mask);
+            fifos[arm7].push_back(value & mask);
 
-            if (fifos[cpu].size() == 1)
+            if (fifos[arm7].size() == 1)
             {
                 // If the FIFO is no longer empty, clear the empty bits
-                ipcFifoCnt[cpu]  &= ~BIT(0);
-                ipcFifoCnt[!cpu] &= ~BIT(8);
+                ipcFifoCnt[arm7] &= ~BIT(0);
+                ipcFifoCnt[!arm7] &= ~BIT(8);
 
                 // Trigger a receive FIFO not empty IRQ if enabled
-                if (ipcFifoCnt[!cpu] & BIT(10))
-                    core->interpreter[!cpu].sendInterrupt(18);
+                if (ipcFifoCnt[!arm7] & BIT(10))
+                    core->interpreter[!arm7].sendInterrupt(18);
             }
-            else if (fifos[cpu].size() == 16)
+            else if (fifos[arm7].size() == 16)
             {
                 // If the FIFO is now full, set the full bits
-                ipcFifoCnt[cpu]  |= BIT(1);
-                ipcFifoCnt[!cpu] |= BIT(9);
+                ipcFifoCnt[arm7] |= BIT(1);
+                ipcFifoCnt[!arm7] |= BIT(9);
             }
         }
         else
         {
             // The FIFO can only hold 16 words, so indicate a send full error
-            ipcFifoCnt[cpu] |= BIT(14);
+            ipcFifoCnt[arm7] |= BIT(14);
         }
     }
 }
 
-uint32_t Ipc::readIpcFifoRecv(bool cpu)
+uint32_t Ipc::readIpcFifoRecv(bool arm7)
 {
-    if (!fifos[!cpu].empty())
+    if (!fifos[!arm7].empty())
     {
         // Receive a word from the FIFO
-        ipcFifoRecv[cpu] = fifos[!cpu].front();
+        ipcFifoRecv[arm7] = fifos[!arm7].front();
 
-        if (ipcFifoCnt[cpu] & BIT(15)) // FIFO enabled
+        if (ipcFifoCnt[arm7] & BIT(15)) // FIFO enabled
         {
             // Remove the received word from the FIFO
-            fifos[!cpu].pop_front();
+            fifos[!arm7].pop_front();
 
-            if (fifos[!cpu].empty())
+            if (fifos[!arm7].empty())
             {
                 // If the FIFO is now empty, set the empty bits
-                ipcFifoCnt[cpu]  |= BIT(8);
-                ipcFifoCnt[!cpu] |= BIT(0);
+                ipcFifoCnt[arm7] |= BIT(8);
+                ipcFifoCnt[!arm7] |= BIT(0);
 
                 // Trigger a receive FIFO empty IRQ if enabled
-                if (ipcFifoCnt[!cpu] & BIT(2))
-                    core->interpreter[!cpu].sendInterrupt(17);
+                if (ipcFifoCnt[!arm7] & BIT(2))
+                    core->interpreter[!arm7].sendInterrupt(17);
             }
-            else if (fifos[!cpu].size() == 15)
+            else if (fifos[!arm7].size() == 15)
             {
                 // If the FIFO is no longer full, clear the full bits
-                ipcFifoCnt[cpu]  &= ~BIT(9);
-                ipcFifoCnt[!cpu] &= ~BIT(1);
+                ipcFifoCnt[arm7] &= ~BIT(9);
+                ipcFifoCnt[!arm7] &= ~BIT(1);
             }
         }
     }
     else
     {
         // If the FIFO is empty, indicate a receive empty error
-        ipcFifoCnt[cpu] |= BIT(14);
+        ipcFifoCnt[arm7] |= BIT(14);
     }
-
-    return ipcFifoRecv[cpu];
+    return ipcFifoRecv[arm7];
 }

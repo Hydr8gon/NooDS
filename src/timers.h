@@ -28,7 +28,7 @@ class Core;
 class Timers
 {
     public:
-        Timers(Core *core, bool cpu): core(core), cpu(cpu) {}
+        Timers(Core *core, bool arm7): core(core), arm7(arm7) {}
         void saveState(FILE *file);
         void loadState(FILE *file);
 
@@ -43,7 +43,7 @@ class Timers
 
     private:
         Core *core;
-        bool cpu;
+        bool arm7;
 
         uint16_t timers[4] = {};
         uint8_t shifts[4] = {};

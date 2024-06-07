@@ -22,7 +22,6 @@
 
 #include <cstdint>
 #include <cstdio>
-#include <cstdio>
 #include <queue>
 
 class Core;
@@ -34,17 +33,16 @@ class Ipc
         void saveState(FILE *file);
         void loadState(FILE *file);
 
-        uint16_t readIpcSync(bool cpu)    { return ipcSync[cpu];    }
-        uint16_t readIpcFifoCnt(bool cpu) { return ipcFifoCnt[cpu]; }
-        uint32_t readIpcFifoRecv(bool cpu);
+        uint16_t readIpcSync(bool arm7) { return ipcSync[arm7]; }
+        uint16_t readIpcFifoCnt(bool arm7) { return ipcFifoCnt[arm7]; }
+        uint32_t readIpcFifoRecv(bool arm7);
 
-        void writeIpcSync(bool cpu, uint16_t mask, uint16_t value);
-        void writeIpcFifoCnt(bool cpu, uint16_t mask, uint16_t value);
-        void writeIpcFifoSend(bool cpu, uint32_t mask, uint32_t value);
+        void writeIpcSync(bool arm7, uint16_t mask, uint16_t value);
+        void writeIpcFifoCnt(bool arm7, uint16_t mask, uint16_t value);
+        void writeIpcFifoSend(bool arm7, uint32_t mask, uint32_t value);
 
     private:
         Core *core;
-
         std::deque<uint32_t> fifos[2];
 
         uint16_t ipcSync[2] = {};

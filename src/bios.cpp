@@ -105,7 +105,7 @@ int Bios::execute(uint8_t vector, uint32_t **registers)
 void Bios::checkWaitFlags()
 {
     // Read the BIOS interrupt flags from memory
-    uint32_t address = arm7 ? 0x3FFFFF8 : (core->cp15.getDtcmAddr() + 0x3FF8);
+    uint32_t address = arm7 ? 0x3FFFFF8 : (core->cp15.dtcmAddr + 0x3FF8);
     uint32_t flags = core->memory.read<uint32_t>(arm7, address);
 
     // If a flag being waited for is set, clear it and stop waiting

@@ -50,28 +50,27 @@ void DivSqrt::loadState(FILE *file)
 
 void DivSqrt::divide()
 {
-    // Set the division by zero error bit
-    // The bit only gets set if the full 64-bit denominator is zero, even in 32-bit mode
-    if (divDenom == 0) divCnt |= BIT(14); else divCnt &= ~BIT(14);
+    // Set the division by zero bit based on the full 64-bit denominator, even in 32-bit mode
+    divDenom ? (divCnt &= ~BIT(14)) : (divCnt |= BIT(14));
 
     // Calculate the division result and remainder
-    switch (divCnt & 0x0003) // Division mode
+    switch (divCnt & 0x3) // Division mode
     {
         case 0: // 32-bit / 32-bit
         {
             if ((int32_t)divNumer == INT32_MIN && (int32_t)divDenom == -1) // Overflow
             {
-                divResult    = (int32_t)divNumer ^ (0xFFFFFFFFULL << 32);
+                divResult = (int32_t)divNumer ^ (0xFFFFFFFFULL << 32);
                 divRemResult = 0;
             }
             else if ((int32_t)divDenom != 0)
             {
-                divResult    = (int32_t)divNumer / (int32_t)divDenom;
+                divResult = (int32_t)divNumer / (int32_t)divDenom;
                 divRemResult = (int32_t)divNumer % (int32_t)divDenom;
             }
             else // Division by 0
             {
-                divResult    = (((int32_t)divNumer < 0) ? 1 : -1) ^ (0xFFFFFFFFULL << 32);
+                divResult = (((int32_t)divNumer < 0) ? 1 : -1) ^ (0xFFFFFFFFULL << 32);
                 divRemResult = (int32_t)divNumer;
             }
             break;
@@ -81,17 +80,17 @@ void DivSqrt::divide()
         {
             if (divNumer == INT64_MIN && (int32_t)divDenom == -1) // Overflow
             {
-                divResult    = divNumer;
+                divResult = divNumer;
                 divRemResult = 0;
             }
             else if ((int32_t)divDenom != 0)
             {
-                divResult    = divNumer / (int32_t)divDenom;
+                divResult = divNumer / (int32_t)divDenom;
                 divRemResult = divNumer % (int32_t)divDenom;
             }
             else // Division by 0
             {
-                divResult    = (divNumer < 0) ? 1 : -1;
+                divResult = (divNumer < 0) ? 1 : -1;
                 divRemResult = divNumer;
             }
             break;
@@ -101,17 +100,17 @@ void DivSqrt::divide()
         {
             if (divNumer == INT64_MIN && divDenom == -1) // Overflow
             {
-                divResult    = divNumer;
+                divResult = divNumer;
                 divRemResult = 0;
             }
             else if (divDenom != 0)
             {
-                divResult    = divNumer / divDenom;
+                divResult = divNumer / divDenom;
                 divRemResult = divNumer % divDenom;
             }
             else // Division by 0
             {
-                divResult    = (divNumer < 0) ? 1 : -1;
+                divResult = (divNumer < 0) ? 1 : -1;
                 divRemResult = divNumer;
             }
             break;
@@ -122,7 +121,7 @@ void DivSqrt::divide()
 void DivSqrt::squareRoot()
 {
     // Calculate the square root result
-    switch (sqrtCnt & 0x0001) // Square root mode
+    switch (sqrtCnt & 0x1) // Square root mode
     {
         case 0: // 32-bit
             sqrtResult = sqrt((uint32_t)sqrtParam);
@@ -136,66 +135,58 @@ void DivSqrt::squareRoot()
 
 void DivSqrt::writeDivCnt(uint16_t mask, uint16_t value)
 {
-    // Write to the DIVCNT register
+    // Write to the DIVCNT register and update the division result
     mask &= 0x0003;
     divCnt = (divCnt & ~mask) | (value & mask);
-
     divide();
 }
 
 void DivSqrt::writeDivNumerL(uint32_t mask, uint32_t value)
 {
-    // Write to the DIVNUMER register
+    // Write to the DIVNUMER register and update the division result
     divNumer = (divNumer & ~((uint64_t)mask)) | (value & mask);
-
     divide();
 }
 
 void DivSqrt::writeDivNumerH(uint32_t mask, uint32_t value)
 {
-    // Write to the DIVNUMER register
+    // Write to the DIVNUMER register and update the division result
     divNumer = (divNumer & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
-
     divide();
 }
 
 void DivSqrt::writeDivDenomL(uint32_t mask, uint32_t value)
 {
-    // Write to the DIVDENOM register
+    // Write to the DIVDENOM register and update the division result
     divDenom = (divDenom & ~((uint64_t)mask)) | (value & mask);
-
     divide();
 }
 
 void DivSqrt::writeDivDenomH(uint32_t mask, uint32_t value)
 {
-    // Write to the DIVDENOM register
+    // Write to the DIVDENOM register and update the division result
     divDenom = (divDenom & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
-
     divide();
 }
 
 void DivSqrt::writeSqrtCnt(uint16_t mask, uint16_t value)
 {
-    // Write to the SQRTCNT register
+    // Write to the SQRTCNT register and update the square root result
     mask &= 0x0001;
     sqrtCnt = (sqrtCnt & ~mask) | (value & mask);
-
     squareRoot();
 }
 
 void DivSqrt::writeSqrtParamL(uint32_t mask, uint32_t value)
 {
-    // Write to the DIVDENOM register
+    // Write to the DIVDENOM register and update the square root result
     sqrtParam = (sqrtParam & ~((uint64_t)mask)) | (value & mask);
-
     squareRoot();
 }
 
 void DivSqrt::writeSqrtParamH(uint32_t mask, uint32_t value)
 {
-    // Write to the SQRTPARAM register
+    // Write to the SQRTPARAM register and update the square root result
     sqrtParam = (sqrtParam & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
-
     squareRoot();
 }
