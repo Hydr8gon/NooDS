@@ -51,7 +51,7 @@ class InputDialog: public wxDialog
         wxButton *keyFastHold;
         wxButton *keyFastToggle;
         wxButton *keyFullScreen;
-        wxButton *keyEnlargeSwap;
+        wxButton *keyScreenSwap;
         wxButton *keySystemPause;
 
         int keyBinds[MAX_KEYS];
@@ -60,7 +60,6 @@ class InputDialog: public wxDialog
         int keyIndex = 0;
 
         std::string keyToString(int key);
-
         void resetLabels();
 
         void remapA(wxCommandEvent &event);
@@ -78,7 +77,7 @@ class InputDialog: public wxDialog
         void remapFastHold(wxCommandEvent &event);
         void remapFastToggle(wxCommandEvent &event);
         void remapFullScreen(wxCommandEvent &event);
-        void remapEnlargeSwap(wxCommandEvent &event);
+        void remapScreenSwap(wxCommandEvent &event);
         void remapSystemPause(wxCommandEvent &event);
         void clearMap(wxCommandEvent &event);
         void updateJoystick(wxTimerEvent &event);

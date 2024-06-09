@@ -33,7 +33,7 @@ int showFpsCounter = 0;
 int buttonScale = 5;
 int buttonSpacing = 10;
 int vibrateStrength = 1;
-int keyBinds[12] = {};
+int keyBinds[15] = {};
 
 std::string ndsPath = "", gbaPath = "";
 int ndsRomFd = -1, gbaRomFd = -1;
@@ -105,7 +105,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_loadSetti
         Setting("keyR", &keyBinds[8], false),
         Setting("keyL", &keyBinds[9], false),
         Setting("keyX", &keyBinds[10], false),
-        Setting("keyY", &keyBinds[11], false)
+        Setting("keyY", &keyBinds[11], false),
+        Setting("keyFastHold", &keyBinds[12], false),
+        Setting("keyFastToggle", &keyBinds[13], false),
+        Setting("keyScreenSwap", &keyBinds[14], false)
     };
 
     // Add the platform settings

@@ -409,8 +409,8 @@ void NooFrame::pressKey(int key)
             if (!fullScreen) canvas->resetFrame();
             break;
 
-        case 15: // Enlarge Swap Toggle
-            // Toggle between enlarging the top or bottom screen
+        case 15: // Screen Swap Toggle
+            // Toggle between favoring the top or bottom screen
             if (!(hotkeyToggles & BIT(2)))
             {
                 ScreenLayout::screenSizing = (ScreenLayout::screenSizing == 1) ? 2 : 1;
@@ -451,7 +451,7 @@ void NooFrame::releaseKey(int key)
             break;
 
         case 13: // Fast Forward Toggle
-        case 15: // Enlarge Swap Toggle
+        case 15: // Screen Swap Toggle
         case 16: // System Pause Toggle
             // Clear a toggle bit so a hotkey can be used again
             hotkeyToggles &= ~BIT(key - 13);

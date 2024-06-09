@@ -60,7 +60,7 @@ bool NooApp::OnInit()
         Setting("keyFastHold", &keyBinds[12], false),
         Setting("keyFastToggle", &keyBinds[13], false),
         Setting("keyFullScreen", &keyBinds[14], false),
-        Setting("keyEnlargeSwap", &keyBinds[15], false),
+        Setting("keyScreenSwap", &keyBinds[15], false),
         Setting("keySystemPause", &keyBinds[16], false)
     };
 

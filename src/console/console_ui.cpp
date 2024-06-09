@@ -58,6 +58,7 @@ std::thread *ConsoleUI::coreThread, *ConsoleUI::saveThread;
 std::condition_variable ConsoleUI::cond;
 std::mutex ConsoleUI::mutex;
 
+int ConsoleUI::fpsLimiterBackup = 0;
 int ConsoleUI::showFpsCounter = 0;
 int ConsoleUI::menuTheme = 0;
 int ConsoleUI::keyBinds[] = {};
@@ -201,6 +202,10 @@ void ConsoleUI::initialize(int width, int height, std::string root, std::string 
         Setting("keyL", &keyBinds[INPUT_L], false),
         Setting("keyX", &keyBinds[INPUT_X], false),
         Setting("keyY", &keyBinds[INPUT_Y], false),
+        Setting("keyMenu", &keyBinds[INPUT_MENU], false),
+        Setting("keyFastHold", &keyBinds[INPUT_FAST_HOLD], false),
+        Setting("keyFastToggle", &keyBinds[INPUT_FAST_TOGG], false),
+        Setting("keyScreenSwap", &keyBinds[INPUT_SCRN_SWAP], false)
     };
 
     // Add the platform settings
@@ -289,7 +294,7 @@ void ConsoleUI::mainLoop(MenuTouch (*specialTouch)(), ScreenLayout *touchLayout)
         uint32_t held = getInputHeld();
 
         // Send input to the core
-        for (int i = 0; i < 12; i++)
+        for (int i = INPUT_A; i < INPUT_MENU; i++)
         {
             if (pressed & keyBinds[i])
                 core->input.pressKey(i);
@@ -326,9 +331,49 @@ void ConsoleUI::mainLoop(MenuTouch (*specialTouch)(), ScreenLayout *touchLayout)
         if (topTexture) destroyTexture(topTexture);
         if (botTexture) destroyTexture(botTexture);
 
-        // Open the pause menu if requested
-        if (held & keyBinds[INPUT_PAUSE])
+        // Restore the FPS limiter when pausing or releasing fast-forward hold
+        if ((fpsLimiterBackup && (pressed & keyBinds[INPUT_MENU])) ||
+            (uint32_t(fpsLimiterBackup - 1) < 0x100 && !(held & keyBinds[INPUT_FAST_HOLD])))
+        {
+            Settings::fpsLimiter = fpsLimiterBackup & 0xFF;
+            fpsLimiterBackup = 0;
+        }
+
+        // Handle pressing special hotkeys
+        if (pressed & keyBinds[INPUT_MENU])
+        {
+            // Open the pause menu
             pauseMenu();
+        }
+        else if (pressed & keyBinds[INPUT_FAST_HOLD])
+        {
+            // Disable the FPS limiter
+            if (Settings::fpsLimiter != 0)
+            {
+                fpsLimiterBackup = Settings::fpsLimiter;
+                Settings::fpsLimiter = 0;
+            }
+        }
+        else if (pressed & keyBinds[INPUT_FAST_TOGG])
+        {
+            // Toggle between disabling and restoring the FPS limiter
+            if (Settings::fpsLimiter != 0)
+            {
+                fpsLimiterBackup = Settings::fpsLimiter | 0x100;
+                Settings::fpsLimiter = 0;
+            }
+            else if (fpsLimiterBackup != 0)
+            {
+                Settings::fpsLimiter = fpsLimiterBackup & 0xFF;
+                fpsLimiterBackup = 0;
+            }
+        }
+        else if (pressed & keyBinds[INPUT_SCRN_SWAP])
+        {
+            // Toggle between favoring the top or bottom screen
+            ScreenLayout::screenSizing = (ScreenLayout::screenSizing == 1) ? 2 : 1;
+            changed = true;
+        }
     }
 }
 
@@ -865,7 +910,8 @@ void ConsoleUI::controlsMenu()
         {
             "A Button", "B Button", "Select Button", "Start Button",
             "Right Button", "Left Button", "Up Button", "Down Button",
-            "R Button", "L Button", "X Button", "Y Button", "Menu Button"
+            "R Button", "L Button", "X Button", "Y Button", "Menu Button",
+            "Fast Forward Hold", "Fast Forward Toggle", "Screen Swap Toggle"
         };
 
         // Build strings for the input bindings
@@ -900,7 +946,10 @@ void ConsoleUI::controlsMenu()
             MenuItem(names[INPUT_L], bindings[INPUT_L]),
             MenuItem(names[INPUT_X], bindings[INPUT_X]),
             MenuItem(names[INPUT_Y], bindings[INPUT_Y]),
-            MenuItem(names[INPUT_PAUSE], bindings[INPUT_PAUSE]),
+            MenuItem(names[INPUT_MENU], bindings[INPUT_MENU]),
+            MenuItem(names[INPUT_FAST_HOLD], bindings[INPUT_FAST_HOLD]),
+            MenuItem(names[INPUT_FAST_TOGG], bindings[INPUT_FAST_TOGG]),
+            MenuItem(names[INPUT_SCRN_SWAP], bindings[INPUT_SCRN_SWAP])
         };
 
         // Create the controls menu

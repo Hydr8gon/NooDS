@@ -39,33 +39,33 @@ enum InputEvent
     REMAP_FAST_HOLD,
     REMAP_FAST_TOGGLE,
     REMAP_FULL_SCREEN,
-    REMAP_ENLARGE_SWAP,
+    REMAP_SCREEN_SWAP,
     REMAP_SYSTEM_PAUSE,
     CLEAR_MAP,
     UPDATE_JOY
 };
 
 wxBEGIN_EVENT_TABLE(InputDialog, wxDialog)
-EVT_BUTTON(REMAP_A,            InputDialog::remapA)
-EVT_BUTTON(REMAP_B,            InputDialog::remapB)
-EVT_BUTTON(REMAP_X,            InputDialog::remapX)
-EVT_BUTTON(REMAP_Y,            InputDialog::remapY)
-EVT_BUTTON(REMAP_START,        InputDialog::remapStart)
-EVT_BUTTON(REMAP_SELECT,       InputDialog::remapSelect)
-EVT_BUTTON(REMAP_UP,           InputDialog::remapUp)
-EVT_BUTTON(REMAP_DOWN,         InputDialog::remapDown)
-EVT_BUTTON(REMAP_LEFT,         InputDialog::remapLeft)
-EVT_BUTTON(REMAP_RIGHT,        InputDialog::remapRight)
-EVT_BUTTON(REMAP_L,            InputDialog::remapL)
-EVT_BUTTON(REMAP_R,            InputDialog::remapR)
-EVT_BUTTON(REMAP_FAST_HOLD,    InputDialog::remapFastHold)
-EVT_BUTTON(REMAP_FAST_TOGGLE,  InputDialog::remapFastToggle)
-EVT_BUTTON(REMAP_FULL_SCREEN,  InputDialog::remapFullScreen)
-EVT_BUTTON(REMAP_ENLARGE_SWAP, InputDialog::remapEnlargeSwap)
+EVT_BUTTON(REMAP_A, InputDialog::remapA)
+EVT_BUTTON(REMAP_B, InputDialog::remapB)
+EVT_BUTTON(REMAP_X, InputDialog::remapX)
+EVT_BUTTON(REMAP_Y, InputDialog::remapY)
+EVT_BUTTON(REMAP_START, InputDialog::remapStart)
+EVT_BUTTON(REMAP_SELECT, InputDialog::remapSelect)
+EVT_BUTTON(REMAP_UP, InputDialog::remapUp)
+EVT_BUTTON(REMAP_DOWN, InputDialog::remapDown)
+EVT_BUTTON(REMAP_LEFT, InputDialog::remapLeft)
+EVT_BUTTON(REMAP_RIGHT, InputDialog::remapRight)
+EVT_BUTTON(REMAP_L, InputDialog::remapL)
+EVT_BUTTON(REMAP_R, InputDialog::remapR)
+EVT_BUTTON(REMAP_FAST_HOLD, InputDialog::remapFastHold)
+EVT_BUTTON(REMAP_FAST_TOGGLE, InputDialog::remapFastToggle)
+EVT_BUTTON(REMAP_FULL_SCREEN, InputDialog::remapFullScreen)
+EVT_BUTTON(REMAP_SCREEN_SWAP, InputDialog::remapScreenSwap)
 EVT_BUTTON(REMAP_SYSTEM_PAUSE, InputDialog::remapSystemPause)
-EVT_BUTTON(CLEAR_MAP,          InputDialog::clearMap)
-EVT_TIMER(UPDATE_JOY,          InputDialog::updateJoystick)
-EVT_BUTTON(wxID_OK,            InputDialog::confirm)
+EVT_BUTTON(CLEAR_MAP, InputDialog::clearMap)
+EVT_TIMER(UPDATE_JOY, InputDialog::updateJoystick)
+EVT_BUTTON(wxID_OK, InputDialog::confirm)
 EVT_CHAR_HOOK(InputDialog::pressKey)
 wxEND_EVENT_TABLE()
 
@@ -83,106 +83,106 @@ std::string InputDialog::keyToString(int key)
     // Convert special keys to words representing their respective keys
     switch (key)
     {
-        case 0:                    return "None";
-        case WXK_BACK:             return "Backspace";
-        case WXK_TAB:              return "Tab";
-        case WXK_RETURN:           return "Return";
-        case WXK_ESCAPE:           return "Escape";
-        case WXK_SPACE:            return "Space";
-        case WXK_DELETE:           return "Delete";
-        case WXK_START:            return "Start";
-        case WXK_LBUTTON:          return "Left Button";
-        case WXK_RBUTTON:          return "Right Button";
-        case WXK_CANCEL:           return "Cancel";
-        case WXK_MBUTTON:          return "Middle Button";
-        case WXK_CLEAR:            return "Clear";
-        case WXK_SHIFT:            return "Shift";
-        case WXK_ALT:              return "Alt";
-        case WXK_RAW_CONTROL:      return "Control";
-        case WXK_MENU:             return "Menu";
-        case WXK_PAUSE:            return "Pause";
-        case WXK_CAPITAL:          return "Caps Lock";
-        case WXK_END:              return "End";
-        case WXK_HOME:             return "Home";
-        case WXK_LEFT:             return "Left";
-        case WXK_UP:               return "Up";
-        case WXK_RIGHT:            return "Right";
-        case WXK_DOWN:             return "Down";
-        case WXK_SELECT:           return "Select";
-        case WXK_PRINT:            return "Print";
-        case WXK_EXECUTE:          return "Execute";
-        case WXK_SNAPSHOT:         return "Snapshot";
-        case WXK_INSERT:           return "Insert";
-        case WXK_HELP:             return "Help";
-        case WXK_NUMPAD0:          return "Numpad 0";
-        case WXK_NUMPAD1:          return "Numpad 1";
-        case WXK_NUMPAD2:          return "Numpad 2";
-        case WXK_NUMPAD3:          return "Numpad 3";
-        case WXK_NUMPAD4:          return "Numpad 4";
-        case WXK_NUMPAD5:          return "Numpad 5";
-        case WXK_NUMPAD6:          return "Numpad 6";
-        case WXK_NUMPAD7:          return "Numpad 7";
-        case WXK_NUMPAD8:          return "Numpad 8";
-        case WXK_NUMPAD9:          return "Numpad 9";
-        case WXK_MULTIPLY:         return "Multiply";
-        case WXK_ADD:              return "Add";
-        case WXK_SEPARATOR:        return "Separator";
-        case WXK_SUBTRACT:         return "Subtract";
-        case WXK_DECIMAL:          return "Decimal";
-        case WXK_DIVIDE:           return "Divide";
-        case WXK_F1:               return "F1";
-        case WXK_F2:               return "F2";
-        case WXK_F3:               return "F3";
-        case WXK_F4:               return "F4";
-        case WXK_F5:               return "F5";
-        case WXK_F6:               return "F6";
-        case WXK_F7:               return "F7";
-        case WXK_F8:               return "F8";
-        case WXK_F9:               return "F9";
-        case WXK_F10:              return "F10";
-        case WXK_F11:              return "F11";
-        case WXK_F12:              return "F12";
-        case WXK_F13:              return "F13";
-        case WXK_F14:              return "F14";
-        case WXK_F15:              return "F15";
-        case WXK_F16:              return "F16";
-        case WXK_F17:              return "F17";
-        case WXK_F18:              return "F18";
-        case WXK_F19:              return "F19";
-        case WXK_F20:              return "F20";
-        case WXK_F21:              return "F21";
-        case WXK_F22:              return "F22";
-        case WXK_F23:              return "F23";
-        case WXK_F24:              return "F24";
-        case WXK_NUMLOCK:          return "Numlock";
-        case WXK_SCROLL:           return "Scroll";
-        case WXK_PAGEUP:           return "Page Up";
-        case WXK_PAGEDOWN:         return "Page Down";
-        case WXK_NUMPAD_SPACE:     return "Numpad Space";
-        case WXK_NUMPAD_TAB:       return "Numpad Tab";
-        case WXK_NUMPAD_ENTER:     return "Numpad Enter";
-        case WXK_NUMPAD_F1:        return "Numpad F1";
-        case WXK_NUMPAD_F2:        return "Numpad F2";
-        case WXK_NUMPAD_F3:        return "Numpad F3";
-        case WXK_NUMPAD_F4:        return "Numpad F4";
-        case WXK_NUMPAD_HOME:      return "Numpad Home";
-        case WXK_NUMPAD_LEFT:      return "Numpad Left";
-        case WXK_NUMPAD_UP:        return "Numpad Up";
-        case WXK_NUMPAD_RIGHT:     return "Numpad Right";
-        case WXK_NUMPAD_DOWN:      return "Numpad Down";
-        case WXK_NUMPAD_PAGEUP:    return "Numpad Page Up";
-        case WXK_NUMPAD_PAGEDOWN:  return "Numpad Page Down";
-        case WXK_NUMPAD_END:       return "Numpad End";
-        case WXK_NUMPAD_BEGIN:     return "Numpad Begin";
-        case WXK_NUMPAD_INSERT:    return "Numpad Insert";
-        case WXK_NUMPAD_DELETE:    return "Numpad Delete";
-        case WXK_NUMPAD_EQUAL:     return "Numpad Equal";
-        case WXK_NUMPAD_MULTIPLY:  return "Numpad Multiply";
-        case WXK_NUMPAD_ADD:       return "Numpad Add";
+        case 0: return "None";
+        case WXK_BACK: return "Backspace";
+        case WXK_TAB: return "Tab";
+        case WXK_RETURN: return "Return";
+        case WXK_ESCAPE: return "Escape";
+        case WXK_SPACE: return "Space";
+        case WXK_DELETE: return "Delete";
+        case WXK_START: return "Start";
+        case WXK_LBUTTON: return "Left Button";
+        case WXK_RBUTTON: return "Right Button";
+        case WXK_CANCEL: return "Cancel";
+        case WXK_MBUTTON: return "Middle Button";
+        case WXK_CLEAR: return "Clear";
+        case WXK_SHIFT: return "Shift";
+        case WXK_ALT: return "Alt";
+        case WXK_RAW_CONTROL: return "Control";
+        case WXK_MENU: return "Menu";
+        case WXK_PAUSE: return "Pause";
+        case WXK_CAPITAL: return "Caps Lock";
+        case WXK_END: return "End";
+        case WXK_HOME: return "Home";
+        case WXK_LEFT: return "Left";
+        case WXK_UP: return "Up";
+        case WXK_RIGHT: return "Right";
+        case WXK_DOWN: return "Down";
+        case WXK_SELECT: return "Select";
+        case WXK_PRINT: return "Print";
+        case WXK_EXECUTE: return "Execute";
+        case WXK_SNAPSHOT: return "Snapshot";
+        case WXK_INSERT: return "Insert";
+        case WXK_HELP: return "Help";
+        case WXK_NUMPAD0: return "Numpad 0";
+        case WXK_NUMPAD1: return "Numpad 1";
+        case WXK_NUMPAD2: return "Numpad 2";
+        case WXK_NUMPAD3: return "Numpad 3";
+        case WXK_NUMPAD4: return "Numpad 4";
+        case WXK_NUMPAD5: return "Numpad 5";
+        case WXK_NUMPAD6: return "Numpad 6";
+        case WXK_NUMPAD7: return "Numpad 7";
+        case WXK_NUMPAD8: return "Numpad 8";
+        case WXK_NUMPAD9: return "Numpad 9";
+        case WXK_MULTIPLY: return "Multiply";
+        case WXK_ADD: return "Add";
+        case WXK_SEPARATOR: return "Separator";
+        case WXK_SUBTRACT: return "Subtract";
+        case WXK_DECIMAL: return "Decimal";
+        case WXK_DIVIDE: return "Divide";
+        case WXK_F1: return "F1";
+        case WXK_F2: return "F2";
+        case WXK_F3: return "F3";
+        case WXK_F4: return "F4";
+        case WXK_F5: return "F5";
+        case WXK_F6: return "F6";
+        case WXK_F7: return "F7";
+        case WXK_F8: return "F8";
+        case WXK_F9: return "F9";
+        case WXK_F10: return "F10";
+        case WXK_F11: return "F11";
+        case WXK_F12: return "F12";
+        case WXK_F13: return "F13";
+        case WXK_F14: return "F14";
+        case WXK_F15: return "F15";
+        case WXK_F16: return "F16";
+        case WXK_F17: return "F17";
+        case WXK_F18: return "F18";
+        case WXK_F19: return "F19";
+        case WXK_F20: return "F20";
+        case WXK_F21: return "F21";
+        case WXK_F22: return "F22";
+        case WXK_F23: return "F23";
+        case WXK_F24: return "F24";
+        case WXK_NUMLOCK: return "Numlock";
+        case WXK_SCROLL: return "Scroll";
+        case WXK_PAGEUP: return "Page Up";
+        case WXK_PAGEDOWN: return "Page Down";
+        case WXK_NUMPAD_SPACE: return "Numpad Space";
+        case WXK_NUMPAD_TAB: return "Numpad Tab";
+        case WXK_NUMPAD_ENTER: return "Numpad Enter";
+        case WXK_NUMPAD_F1: return "Numpad F1";
+        case WXK_NUMPAD_F2: return "Numpad F2";
+        case WXK_NUMPAD_F3: return "Numpad F3";
+        case WXK_NUMPAD_F4: return "Numpad F4";
+        case WXK_NUMPAD_HOME: return "Numpad Home";
+        case WXK_NUMPAD_LEFT: return "Numpad Left";
+        case WXK_NUMPAD_UP: return "Numpad Up";
+        case WXK_NUMPAD_RIGHT: return "Numpad Right";
+        case WXK_NUMPAD_DOWN: return "Numpad Down";
+        case WXK_NUMPAD_PAGEUP: return "Numpad Page Up";
+        case WXK_NUMPAD_PAGEDOWN: return "Numpad Page Down";
+        case WXK_NUMPAD_END: return "Numpad End";
+        case WXK_NUMPAD_BEGIN: return "Numpad Begin";
+        case WXK_NUMPAD_INSERT: return "Numpad Insert";
+        case WXK_NUMPAD_DELETE: return "Numpad Delete";
+        case WXK_NUMPAD_EQUAL: return "Numpad Equal";
+        case WXK_NUMPAD_MULTIPLY: return "Numpad Multiply";
+        case WXK_NUMPAD_ADD: return "Numpad Add";
         case WXK_NUMPAD_SEPARATOR: return "Numpad Separator";
-        case WXK_NUMPAD_SUBTRACT:  return "Numpad Subtract";
-        case WXK_NUMPAD_DECIMAL:   return "Numpad Decimal";
-        case WXK_NUMPAD_DIVIDE:    return "Numpad Divide";
+        case WXK_NUMPAD_SUBTRACT: return "Numpad Subtract";
+        case WXK_NUMPAD_DECIMAL: return "Numpad Decimal";
+        case WXK_NUMPAD_DIVIDE: return "Numpad Divide";
     }
 
     // Directly use the key character for regular keys
@@ -271,25 +271,25 @@ InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Inp
 
     // Combine all of the left button tab contents
     wxBoxSizer *leftContents = new wxBoxSizer(wxVERTICAL);
-    leftContents->Add(aSizer,      1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(bSizer,      1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(xSizer,      1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(ySizer,      1, wxEXPAND | wxALL, size / 8);
-    leftContents->Add(startSizer,  1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(aSizer, 1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(bSizer, 1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(xSizer, 1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(ySizer, 1, wxEXPAND | wxALL, size / 8);
+    leftContents->Add(startSizer, 1, wxEXPAND | wxALL, size / 8);
     leftContents->Add(selectSizer, 1, wxEXPAND | wxALL, size / 8);
 
     // Combine all of the right button tab contents
     wxBoxSizer *rightContents = new wxBoxSizer(wxVERTICAL);
-    rightContents->Add(upSizer,    1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(downSizer,  1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(leftSizer,  1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(upSizer, 1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(downSizer, 1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(leftSizer, 1, wxEXPAND | wxALL, size / 8);
     rightContents->Add(rightSizer, 1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(lSizer,     1, wxEXPAND | wxALL, size / 8);
-    rightContents->Add(rSizer,     1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(lSizer, 1, wxEXPAND | wxALL, size / 8);
+    rightContents->Add(rSizer, 1, wxEXPAND | wxALL, size / 8);
 
     // Combine the button tab contents and add a final border around it
     wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
-    buttonSizer->Add(leftContents,  1, wxEXPAND | wxALL, size / 8);
+    buttonSizer->Add(leftContents, 1, wxEXPAND | wxALL, size / 8);
     buttonSizer->Add(rightContents, 1, wxEXPAND | wxALL, size / 8);
     buttonTab->SetSizer(buttonSizer);
 
@@ -308,10 +308,10 @@ InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Inp
     fullScreenSizer->Add(new wxStaticText(hotkeyTab, wxID_ANY, "Full Screen Toggle:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
     fullScreenSizer->Add(keyFullScreen = new wxButton(hotkeyTab, REMAP_FULL_SCREEN, keyToString(keyBinds[14]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
-    // Set up the enlarge swap toggle hotkey setting
-    wxBoxSizer *enlargeSwapSizer = new wxBoxSizer(wxHORIZONTAL);
-    enlargeSwapSizer->Add(new wxStaticText(hotkeyTab, wxID_ANY, "Enlarge Swap Toggle:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
-    enlargeSwapSizer->Add(keyEnlargeSwap = new wxButton(hotkeyTab, REMAP_ENLARGE_SWAP, keyToString(keyBinds[15]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
+    // Set up the screen swap toggle hotkey setting
+    wxBoxSizer *screenSwapSizer = new wxBoxSizer(wxHORIZONTAL);
+    screenSwapSizer->Add(new wxStaticText(hotkeyTab, wxID_ANY, "Screen Swap Toggle:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 16);
+    screenSwapSizer->Add(keyScreenSwap = new wxButton(hotkeyTab, REMAP_SCREEN_SWAP, keyToString(keyBinds[15]), wxDefaultPosition, wxSize(size * 4, size)), 0, wxLEFT, size / 16);
 
     // Set up the system pause toggle hotkey setting
     wxBoxSizer *systemPauseSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -320,24 +320,24 @@ InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Inp
 
     // Combine all of the hotkey tab contents
     wxBoxSizer *hotkeyContents = new wxBoxSizer(wxVERTICAL);
-    hotkeyContents->Add(fastHoldSizer,    1, wxEXPAND | wxALL, size / 8);
-    hotkeyContents->Add(fastToggleSizer,  1, wxEXPAND | wxALL, size / 8);
-    hotkeyContents->Add(fullScreenSizer,  1, wxEXPAND | wxALL, size / 8);
-    hotkeyContents->Add(enlargeSwapSizer, 1, wxEXPAND | wxALL, size / 8);
+    hotkeyContents->Add(fastHoldSizer, 1, wxEXPAND | wxALL, size / 8);
+    hotkeyContents->Add(fastToggleSizer, 1, wxEXPAND | wxALL, size / 8);
+    hotkeyContents->Add(fullScreenSizer, 1, wxEXPAND | wxALL, size / 8);
+    hotkeyContents->Add(screenSwapSizer, 1, wxEXPAND | wxALL, size / 8);
     hotkeyContents->Add(systemPauseSizer, 1, wxEXPAND | wxALL, size / 8);
     hotkeyContents->Add(new wxStaticText(hotkeyTab, wxID_ANY, ""), 1);
 
     // Add a final border around the hotkey tab
     wxBoxSizer *hotkeySizer = new wxBoxSizer(wxHORIZONTAL);
-    hotkeySizer->Add(hotkeyContents,  1, wxEXPAND | wxALL, size / 8);
+    hotkeySizer->Add(hotkeyContents, 1, wxEXPAND | wxALL, size / 8);
     hotkeyTab->SetSizer(hotkeySizer);
 
     // Set up the common navigation buttons
     wxBoxSizer *naviSizer = new wxBoxSizer(wxHORIZONTAL);
     naviSizer->Add(new wxStaticText(this, wxID_ANY, ""), 1);
-    naviSizer->Add(new wxButton(this, CLEAR_MAP,   "Clear"),   0, wxRIGHT,          size / 16);
-    naviSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"),  0, wxLEFT | wxRIGHT, size / 16);
-    naviSizer->Add(new wxButton(this, wxID_OK,     "Confirm"), 0, wxLEFT,           size / 16);
+    naviSizer->Add(new wxButton(this, CLEAR_MAP, "Clear"), 0, wxRIGHT, size / 16);
+    naviSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"), 0, wxLEFT | wxRIGHT, size / 16);
+    naviSizer->Add(new wxButton(this, wxID_OK, "Confirm"), 0, wxLEFT, size / 16);
 
     // Populate the dialog
     wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
@@ -388,7 +388,7 @@ void InputDialog::resetLabels()
     keyFastHold->SetLabel(keyToString(keyBinds[12]));
     keyFastToggle->SetLabel(keyToString(keyBinds[13]));
     keyFullScreen->SetLabel(keyToString(keyBinds[14]));
-    keyEnlargeSwap->SetLabel(keyToString(keyBinds[15]));
+    keyScreenSwap->SetLabel(keyToString(keyBinds[15]));
     keySystemPause->SetLabel(keyToString(keyBinds[16]));
     current = nullptr;
 }
@@ -528,12 +528,12 @@ void InputDialog::remapFullScreen(wxCommandEvent &event)
     keyIndex = 14;
 }
 
-void InputDialog::remapEnlargeSwap(wxCommandEvent &event)
+void InputDialog::remapScreenSwap(wxCommandEvent &event)
 {
-    // Prepare the enlarge swap toggle hotkey for remapping
+    // Prepare the screen swap toggle hotkey for remapping
     resetLabels();
-    keyEnlargeSwap->SetLabel("Press a key");
-    current = keyEnlargeSwap;
+    keyScreenSwap->SetLabel("Press a key");
+    current = keyScreenSwap;
     keyIndex = 15;
 }
 
@@ -566,9 +566,8 @@ void InputDialog::clearMap(wxCommandEvent &event)
 
 void InputDialog::updateJoystick(wxTimerEvent &event)
 {
-    if (!current) return;
-
     // Map the current button to a joystick button if one is pressed
+    if (!current) return;
     for (int i = 0; i < joystick->GetNumberButtons(); i++)
     {
         if (joystick->GetButtonState(i))
@@ -610,9 +609,8 @@ void InputDialog::confirm(wxCommandEvent &event)
 
 void InputDialog::pressKey(wxKeyEvent &event)
 {
-    if (!current) return;
-
     // Map the current button to the pressed key
+    if (!current) return;
     keyBinds[keyIndex] = event.GetKeyCode();
     current->SetLabel(keyToString(keyBinds[keyIndex]));
     current = nullptr;

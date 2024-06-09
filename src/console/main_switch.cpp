@@ -204,7 +204,7 @@ uint32_t ConsoleUI::getInputHeld()
 
     // Return a mask of mappable keys, excluding pause keys if in gyro mode
     uint32_t value = padGetButtons(&pad) & 0xFFFFFF & ~(HidNpadButton_StickL | HidNpadButton_StickR);
-    if (toggle) value &= ~keyBinds[INPUT_PAUSE];
+    if (toggle) value &= ~keyBinds[INPUT_MENU];
     return value;
 }
 

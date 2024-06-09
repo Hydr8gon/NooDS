@@ -29,9 +29,12 @@ import androidx.preference.PreferenceManager;
 import androidx.preference.SwitchPreferenceCompat;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 
 public class SettingsMenu extends AppCompatActivity
 {
@@ -105,6 +108,26 @@ public class SettingsMenu extends AppCompatActivity
         getSupportFragmentManager().beginTransaction()
             .add(android.R.id.content, fragment)
             .commit();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
+        getMenuInflater().inflate(R.menu.settings_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        switch (item.getItemId())
+        {
+            case R.id.bindings_action:
+                // Open the input bindings menu
+                startActivity(new Intent(this, BindingsMenu.class));
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override

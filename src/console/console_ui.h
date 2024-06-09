@@ -42,7 +42,10 @@ enum MenuInputs
     INPUT_L,
     INPUT_X,
     INPUT_Y,
-    INPUT_PAUSE,
+    INPUT_MENU,
+    INPUT_FAST_HOLD,
+    INPUT_FAST_TOGG,
+    INPUT_SCRN_SWAP,
     INPUT_MAX
 };
 
@@ -122,6 +125,7 @@ class ConsoleUI
         static std::thread *coreThread, *saveThread;
         static std::condition_variable cond;
         static std::mutex mutex;
+        static int fpsLimiterBackup;
 
         static const uint32_t themeColors[];
         static const uint8_t charWidths[];

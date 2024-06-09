@@ -49,6 +49,7 @@ public class NooActivity extends AppCompatActivity
     private NooRenderer renderer;
     private NooButton buttons[];
     private TextView fpsCounter;
+    private int fpsLimiterBackup = 0;
     private boolean initButtons = true;
     private boolean showingButtons = true;
     private boolean showingFps;
@@ -114,6 +115,13 @@ public class NooActivity extends AppCompatActivity
     {
         pauseCore();
         super.onPause();
+
+        // Restore the FPS limiter
+        if (fpsLimiterBackup != 0)
+        {
+            SettingsMenu.setFpsLimiter(fpsLimiterBackup);
+            fpsLimiterBackup = 0;
+        }
     }
 
     @Override
@@ -316,6 +324,39 @@ public class NooActivity extends AppCompatActivity
             }
         }
 
+        // Handle pressing special hotkeys
+        if (keyCode == BindingsPreference.getKeyBind(12) - 1) // Fast Forward Hold
+        {
+            // Disable the FPS limiter
+            if (SettingsMenu.getFpsLimiter() != 0)
+            {
+                fpsLimiterBackup = SettingsMenu.getFpsLimiter();
+                SettingsMenu.setFpsLimiter(0);
+            }
+            return true;
+        }
+        else if (keyCode == BindingsPreference.getKeyBind(13) - 1) // Fast Forward Toggle
+        {
+            // Toggle between disabling and restoring the FPS limiter
+            if (SettingsMenu.getFpsLimiter() != 0)
+            {
+                fpsLimiterBackup = SettingsMenu.getFpsLimiter();
+                SettingsMenu.setFpsLimiter(0);
+            }
+            else if (fpsLimiterBackup != 0)
+            {
+                SettingsMenu.setFpsLimiter(fpsLimiterBackup);
+                fpsLimiterBackup = 0;
+            }
+            return true;
+        }
+        else if (keyCode == BindingsPreference.getKeyBind(14) - 1) // Screen Swap Toggle
+        {
+            // Toggle between favoring the top or bottom screen
+            SettingsMenu.setScreenSizing((SettingsMenu.getScreenSizing() == 1) ? 2 : 1);
+            renderer.updateLayout(renderer.width, renderer.height);
+            return true;
+        }
         return super.onKeyDown(keyCode, event);
     }
 
@@ -332,6 +373,17 @@ public class NooActivity extends AppCompatActivity
             }
         }
 
+        // Handle releasing special hotkeys
+        if (keyCode == BindingsPreference.getKeyBind(12) - 1) // Fast Forward Hold
+        {
+            // Restore the FPS limiter
+            if (fpsLimiterBackup != 0)
+            {
+                SettingsMenu.setFpsLimiter(fpsLimiterBackup);
+                fpsLimiterBackup = 0;
+            }
+            return true;
+        }
         return super.onKeyUp(keyCode, event);
     }
 
