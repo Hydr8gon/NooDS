@@ -102,6 +102,21 @@ R"(
     }
 )";
 
+uint32_t ConsoleUI::defaultKeys[]
+{
+    HidNpadButton_A, HidNpadButton_B, HidNpadButton_Minus, HidNpadButton_Plus,
+    HidNpadButton_AnyRight, HidNpadButton_AnyLeft, HidNpadButton_AnyUp, HidNpadButton_AnyDown,
+    HidNpadButton_ZR, HidNpadButton_ZL, HidNpadButton_X, HidNpadButton_Y,
+    HidNpadButton_L | HidNpadButton_R
+};
+
+const char *ConsoleUI::keyNames[]
+{
+    "A", "B", "X", "Y", "L Stick", "R Stick", "L", "R",
+    "ZL", "ZR", "Plus", "Minus", "Left", "Up", "Right", "Down",
+    "LS Left", "LS Up", "LS Right", "LS Down", "RS Left", "RS Up", "RS Right", "RS Down"
+};
+
 void ConsoleUI::startFrame(uint32_t color)
 {
     // Convert the clear color to floats
@@ -187,22 +202,9 @@ uint32_t ConsoleUI::getInputHeld()
         scanned = true;
     }
 
-    // Map buttons to UI inputs
-    uint32_t value = 0;
-    uint32_t held = padGetButtons(&pad);
-    if (held & HidNpadButton_A) value |= INPUT_A;
-    if (held & HidNpadButton_B) value |= INPUT_B;
-    if (held & HidNpadButton_Minus) value |= INPUT_SELECT;
-    if (held & HidNpadButton_Plus) value |= INPUT_START;
-    if (held & HidNpadButton_AnyRight) value |= INPUT_RIGHT;
-    if (held & HidNpadButton_AnyLeft) value |= INPUT_LEFT;
-    if (held & HidNpadButton_AnyUp) value |= INPUT_UP;
-    if (held & HidNpadButton_AnyDown) value |= INPUT_DOWN;
-    if (held & HidNpadButton_ZR) value |= INPUT_R;
-    if (held & HidNpadButton_ZL) value |= INPUT_L;
-    if (held & HidNpadButton_X) value |= INPUT_X;
-    if (held & HidNpadButton_Y) value |= INPUT_Y;
-    if ((held & (HidNpadButton_L | HidNpadButton_R)) && !toggle) value |= INPUT_PAUSE;
+    // Return a mask of mappable keys, excluding pause keys if in gyro mode
+    uint32_t value = padGetButtons(&pad) & 0xFFFFFF & ~(HidNpadButton_StickL | HidNpadButton_StickR);
+    if (toggle) value &= ~keyBinds[INPUT_PAUSE];
     return value;
 }
 

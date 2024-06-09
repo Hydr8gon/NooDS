@@ -39,9 +39,6 @@ void *ConsoleUI::fileTextures[2];
 void *ConsoleUI::folderTextures[2];
 void *ConsoleUI::fontTexture;
 
-int ConsoleUI::showFpsCounter = 0;
-int ConsoleUI::menuTheme = 0;
-
 const uint32_t *ConsoleUI::palette;
 uint32_t ConsoleUI::uiWidth, ConsoleUI::uiHeight;
 uint32_t ConsoleUI::lineHeight;
@@ -60,6 +57,10 @@ bool ConsoleUI::changed;
 std::thread *ConsoleUI::coreThread, *ConsoleUI::saveThread;
 std::condition_variable ConsoleUI::cond;
 std::mutex ConsoleUI::mutex;
+
+int ConsoleUI::showFpsCounter = 0;
+int ConsoleUI::menuTheme = 0;
+int ConsoleUI::keyBinds[] = {};
 
 const uint32_t ConsoleUI::themeColors[] =
 {
@@ -179,11 +180,27 @@ void ConsoleUI::initialize(int width, int height, std::string root, std::string 
     // Create the settings folder if it doesn't exist
     mkdir(prefix.c_str(), 0777);
 
+    // Set the default input bindings
+    for (int i = 0; i < INPUT_MAX; i++)
+        keyBinds[i] = defaultKeys[i];
+
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
         Setting("showFpsCounter", &showFpsCounter, false),
-        Setting("menuTheme", &menuTheme, false)
+        Setting("menuTheme", &menuTheme, false),
+        Setting("keyA", &keyBinds[INPUT_A], false),
+        Setting("keyB", &keyBinds[INPUT_B], false),
+        Setting("keySelect", &keyBinds[INPUT_SELECT], false),
+        Setting("keyStart", &keyBinds[INPUT_START], false),
+        Setting("keyRight", &keyBinds[INPUT_RIGHT], false),
+        Setting("keyLeft", &keyBinds[INPUT_LEFT], false),
+        Setting("keyUp", &keyBinds[INPUT_UP], false),
+        Setting("keyDown", &keyBinds[INPUT_DOWN], false),
+        Setting("keyR", &keyBinds[INPUT_R], false),
+        Setting("keyL", &keyBinds[INPUT_L], false),
+        Setting("keyX", &keyBinds[INPUT_X], false),
+        Setting("keyY", &keyBinds[INPUT_Y], false),
     };
 
     // Add the platform settings
@@ -274,9 +291,9 @@ void ConsoleUI::mainLoop(MenuTouch (*specialTouch)(), ScreenLayout *touchLayout)
         // Send input to the core
         for (int i = 0; i < 12; i++)
         {
-            if (pressed & BIT(i))
+            if (pressed & keyBinds[i])
                 core->input.pressKey(i);
-            else if (~held & BIT(i))
+            else if (!(held & keyBinds[i]))
                 core->input.releaseKey(i);
         }
 
@@ -310,7 +327,7 @@ void ConsoleUI::mainLoop(MenuTouch (*specialTouch)(), ScreenLayout *touchLayout)
         if (botTexture) destroyTexture(botTexture);
 
         // Open the pause menu if requested
-        if (held & INPUT_PAUSE)
+        if (held & keyBinds[INPUT_PAUSE])
             pauseMenu();
     }
 }
@@ -323,7 +340,7 @@ int ConsoleUI::setPath(std::string path)
         // If a GBA path is set, allow clearing it
         if (gbaPath != "")
         {
-            if (!message("Loading NDS ROM", "Load the previous GBA ROM alongside this ROM?", true))
+            if (!message("Loading NDS ROM", "Load the previous GBA ROM alongside this ROM?", 1))
                 gbaPath = "";
         }
 
@@ -346,7 +363,7 @@ int ConsoleUI::setPath(std::string path)
         // If an NDS path is set, allow clearing it
         if (ndsPath != "")
         {
-            if (!message("Loading GBA ROM", "Load the previous NDS ROM alongside this ROM?", true))
+            if (!message("Loading GBA ROM", "Load the previous NDS ROM alongside this ROM?", 1))
                 ndsPath = "";
         }
 
@@ -408,7 +425,7 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
         uint32_t held = getInputHeld();
 
         // Handle up input presses
-        if ((pressed & INPUT_UP) && !(pressed & INPUT_DOWN))
+        if ((pressed & defaultKeys[INPUT_UP]) && !(pressed & defaultKeys[INPUT_DOWN]))
         {
             // Disable touch mode or move the selection box up
             if (touchMode)
@@ -422,7 +439,7 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
         }
 
         // Handle down input presses
-        if ((pressed & INPUT_DOWN) && !(pressed & INPUT_UP))
+        if ((pressed & defaultKeys[INPUT_DOWN]) && !(pressed & defaultKeys[INPUT_UP]))
         {
             // Disable touch mode or move the selection box down
             if (touchMode)
@@ -436,26 +453,26 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
         }
 
         // Return button presses so they can be handled externally
-        if (((pressed & INPUT_A) && !touchMode) || (pressed & INPUT_B) || (actionX != ""
-            && (pressed & INPUT_X)) || (actionPlus != "" && (pressed & INPUT_START)))
+        if (((pressed & defaultKeys[INPUT_A]) && !touchMode) || (pressed & defaultKeys[INPUT_B]) || (actionX != ""
+            && (pressed & defaultKeys[INPUT_X])) || (actionPlus != "" && (pressed & defaultKeys[INPUT_START])))
         {
             touchMode = false;
             return pressed;
         }
 
         // Disable touch mode before allowing A presses so the selector is visible
-        if ((pressed & INPUT_A) && touchMode)
+        if ((pressed & defaultKeys[INPUT_A]) && touchMode)
             touchMode = false;
 
         // Cancel up input if it was released
-        if (upHeld && !(held & INPUT_UP))
+        if (upHeld && !(held & defaultKeys[INPUT_UP]))
         {
             upHeld = false;
             scroll = false;
         }
 
         // Cancel down input if it was released
-        if (downHeld && !(held & INPUT_DOWN))
+        if (downHeld && !(held & defaultKeys[INPUT_DOWN]))
         {
             downHeld = false;
             scroll = false;
@@ -514,11 +531,11 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
             if (!touchScroll && touchStart.y >= 650)
             {
                 if (touchStart.x >= boundsBX && touchStart.x < boundsAB)
-                    return INPUT_B;
+                    return defaultKeys[INPUT_B];
                 else if (touchStart.x >= boundsXPlus && touchStart.x < boundsBX)
-                    return INPUT_X;
+                    return defaultKeys[INPUT_X];
                 else if (touchStart.x >= boundsPlus && touchStart.x < boundsXPlus)
-                    return INPUT_START;
+                    return defaultKeys[INPUT_START];
             }
             touchStarted = false;
         }
@@ -544,7 +561,7 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
                 1190 && touchStart.y >= 124 + i * 70 && touchStart.y < 194 + i * 70)
             {
                 index = offset;
-                return INPUT_A;
+                return defaultKeys[INPUT_A];
             }
 
             // Draw UI elements around the list items
@@ -582,7 +599,7 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
     }
 }
 
-bool ConsoleUI::message(std::string title, std::string text, bool cancel)
+uint32_t ConsoleUI::message(std::string title, std::string text, int type)
 {
     // Define the action strings
     std::string actionB = "\x81 Back     ";
@@ -605,7 +622,7 @@ bool ConsoleUI::message(std::string title, std::string text, bool cancel)
         drawString(title, SCALE(72), SCALE(30), SCALE(42), palette[1]);
         drawRectangle(SCALE(30), SCALE(88), SCALE(1220), lineHeight, palette[1]);
         drawRectangle(SCALE(30), SCALE(648), SCALE(1220), lineHeight, palette[1]);
-        drawString((cancel ? actionB : "") + actionA, SCALE(1218), SCALE(667), SCALE(34), palette[1], true);
+        if (type < 2) drawString((type ? actionB : "") + actionA, SCALE(1218), SCALE(667), SCALE(34), palette[1], true);
 
         // Draw each line of text, separated by newline characters
         for (int i = 0, j = 0, y = 0; j != std::string::npos; y += 38)
@@ -619,10 +636,12 @@ bool ConsoleUI::message(std::string title, std::string text, bool cancel)
         uint32_t pressed = getInputPress();
 
         // Dismiss the message and return the result if an action is pressed
-        if (pressed & INPUT_A)
-            return true;
-        else if ((pressed & INPUT_B) && cancel)
-            return false;
+        if (pressed && type == 2) // Input
+            return pressed;
+        else if (pressed & defaultKeys[INPUT_A]) // Default
+            return 1;
+        else if ((pressed & defaultKeys[INPUT_B]) && type == 1) // Cancel
+            return 0;
 
         // Scan for touch input
         MenuTouch touch = getInputTouch();
@@ -649,10 +668,10 @@ bool ConsoleUI::message(std::string title, std::string text, bool cancel)
             // Simulate a button press if its action text was tapped
             if (!touchScroll && touchStart.y >= 650)
             {
-                if (touchStart.x >= boundsAB && touchStart.x < boundsA)
-                    return true;
-                else if (touchStart.x >= boundsB && touchStart.x < boundsAB && cancel)
-                    return false;
+                if (touchStart.x >= boundsAB && touchStart.x < boundsA && type < 2)
+                    return 1;
+                else if (touchStart.x >= boundsB && touchStart.x < boundsAB && type == 1)
+                    return 0;
             }
             touchStarted = false;
         }
@@ -708,7 +727,7 @@ void ConsoleUI::fileBrowser()
         uint32_t pressed = menu("NooDS", files, index, "Settings", "Exit");
 
         // Handle menu input
-        if (pressed & INPUT_A)
+        if (pressed & defaultKeys[INPUT_A])
         {
             // Navigate to the selected file if any exist
             if (files.empty()) continue;
@@ -731,7 +750,7 @@ void ConsoleUI::fileBrowser()
                     return;
             }
         }
-        else if (pressed & INPUT_B)
+        else if (pressed & defaultKeys[INPUT_B])
         {
             // Navigate to the previous directory
             if (curPath != basePath)
@@ -740,12 +759,12 @@ void ConsoleUI::fileBrowser()
                 index = 0;
             }
         }
-        else if (pressed & INPUT_X)
+        else if (pressed & defaultKeys[INPUT_X])
         {
             // Open the settings menu
             settingsMenu();
         }
-        else if (pressed & INPUT_START)
+        else if (pressed & defaultKeys[INPUT_START])
         {
             // Close the file browser
             return;
@@ -790,10 +809,10 @@ void ConsoleUI::settingsMenu()
         };
 
         // Create the settings menu
-        uint32_t pressed = menu("Settings", settings, index);
+        uint32_t pressed = menu("Settings", settings, index, "Controls");
 
         // Handle menu input
-        if (pressed & INPUT_A)
+        if (pressed & defaultKeys[INPUT_A])
         {
             // Change the chosen setting to its next value
             switch (index)
@@ -821,12 +840,88 @@ void ConsoleUI::settingsMenu()
                     break;
             }
         }
-        else if (pressed & INPUT_B)
+        else if (pressed & defaultKeys[INPUT_B])
         {
             // Close the settings menu
             changed = true;
             Settings::save();
             return;
+        }
+        else if (pressed & defaultKeys[INPUT_X])
+        {
+            // Open the controls menu
+            controlsMenu();
+        }
+    }
+}
+
+void ConsoleUI::controlsMenu()
+{
+    int index = 0;
+    while (true)
+    {
+        // Define names for the bindable inputs
+        const char *names[] =
+        {
+            "A Button", "B Button", "Select Button", "Start Button",
+            "Right Button", "Left Button", "Up Button", "Down Button",
+            "R Button", "L Button", "X Button", "Y Button", "Menu Button"
+        };
+
+        // Build strings for the input bindings
+        std::string bindings[INPUT_MAX];
+        for (int i = 0; i < INPUT_MAX; i++)
+        {
+            // Add the input name with a comma (up to 8 entries)
+            for (int j = 0, k = -1; j < 32 && k < 8; j++)
+            {
+                if (!(keyBinds[i] & (1 << j))) continue;
+                if (bindings[i] != "") bindings[i] += ", ";
+                bindings[i] += (++k < 8) ? keyNames[j] : "...";
+            }
+
+            // Replace empty strings with the word none
+            if (bindings[i] == "")
+                bindings[i] = "None";
+        }
+
+        // Create a list of inputs and current bindings
+        std::vector<MenuItem> controls =
+        {
+            MenuItem(names[INPUT_A], bindings[INPUT_A]),
+            MenuItem(names[INPUT_B], bindings[INPUT_B]),
+            MenuItem(names[INPUT_SELECT], bindings[INPUT_SELECT]),
+            MenuItem(names[INPUT_START], bindings[INPUT_START]),
+            MenuItem(names[INPUT_RIGHT], bindings[INPUT_RIGHT]),
+            MenuItem(names[INPUT_LEFT], bindings[INPUT_LEFT]),
+            MenuItem(names[INPUT_UP], bindings[INPUT_UP]),
+            MenuItem(names[INPUT_DOWN], bindings[INPUT_DOWN]),
+            MenuItem(names[INPUT_R], bindings[INPUT_R]),
+            MenuItem(names[INPUT_L], bindings[INPUT_L]),
+            MenuItem(names[INPUT_X], bindings[INPUT_X]),
+            MenuItem(names[INPUT_Y], bindings[INPUT_Y]),
+            MenuItem(names[INPUT_PAUSE], bindings[INPUT_PAUSE]),
+        };
+
+        // Create the controls menu
+        uint32_t pressed = menu("Controls", controls, index, "Clear");
+
+        // Handle menu input
+        if (pressed & defaultKeys[INPUT_A])
+        {
+            // Show a binding message and bind the pressed input
+            keyBinds[index] |= message(std::string("Remap ") + names[index],
+               "Press an input to add it as a binding.", 2);
+        }
+        else if (pressed & defaultKeys[INPUT_B])
+        {
+            // Close the controls menu
+            return;
+        }
+        else if (pressed & defaultKeys[INPUT_X])
+        {
+            // Clear an input binding
+            keyBinds[index] = 0;
         }
     }
 }
@@ -855,7 +950,7 @@ void ConsoleUI::pauseMenu()
         uint32_t pressed = menu("NooDS", items, index);
 
         // Handle menu input
-        if (pressed & INPUT_A)
+        if (pressed & defaultKeys[INPUT_A])
         {
             // Handle the selected item
             switch (index)
@@ -876,7 +971,7 @@ void ConsoleUI::pauseMenu()
                         "loading states is dangerous and can lead to data loss.\nStates are also not guaranteed to "
                         "be compatible across emulator versions.\nPlease rely on in-game saving to keep your progress, "
                         "and back up .sav files\nbefore using this feature. Do you want to save the current state?" :
-                        "Do you want to overwrite the saved state with the current state? This can't be undone!", true))
+                        "Do you want to overwrite the saved state with the current state? This can't be undone!", 1))
                         break;
 
                     // Save the state and return to emulation if confirmed
@@ -938,7 +1033,7 @@ void ConsoleUI::pauseMenu()
                     return;
             }
         }
-        else if (pressed & INPUT_B)
+        else if (pressed & defaultKeys[INPUT_B])
         {
             // Return to the emulator
             startCore();
@@ -983,10 +1078,10 @@ bool ConsoleUI::saveTypeMenu()
         uint32_t pressed = menu("Change Save Type", items, index);
 
         // Handle menu input
-        if (pressed & INPUT_A)
+        if (pressed & defaultKeys[INPUT_A])
         {
             // Confirm the change because doing this accidentally could be bad
-            if (!message("Changing Save Type", "Are you sure? This may result in data loss!", true))
+            if (!message("Changing Save Type", "Are you sure? This may result in data loss!", 1))
                 continue;
 
             // Apply the change for the current mode
@@ -1022,7 +1117,7 @@ bool ConsoleUI::saveTypeMenu()
             }
             return true;
         }
-        else if (pressed & INPUT_B)
+        else if (pressed & defaultKeys[INPUT_B])
         {
             // Close the save type menu
             return false;

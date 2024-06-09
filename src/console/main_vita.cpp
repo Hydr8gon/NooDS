@@ -37,6 +37,21 @@ uint32_t audioBuffer[1024];
 int audioPort;
 bool playing = true;
 
+uint32_t ConsoleUI::defaultKeys[]
+{
+    SCE_CTRL_CIRCLE, SCE_CTRL_CROSS, SCE_CTRL_SELECT, SCE_CTRL_START,
+    SCE_CTRL_RIGHT | BIT(17), SCE_CTRL_LEFT | BIT(19), SCE_CTRL_UP | BIT(16), SCE_CTRL_DOWN | BIT(18),
+    SCE_CTRL_RTRIGGER, SCE_CTRL_LTRIGGER, SCE_CTRL_TRIANGLE, SCE_CTRL_SQUARE,
+    BIT(20) | BIT(21) | BIT(22) | BIT(23)
+};
+
+const char *ConsoleUI::keyNames[]
+{
+    "Select", "L3", "R3", "Start", "Up", "Right", "Down", "Left",
+    "L2", "R2", "L1", "R1", "Triangle", "Circle", "Cross", "Square",
+    "LS Up", "LS Right", "LS Down", "LS Left", "RS Up", "RS Right", "RS Down", "RS Left"
+};
+
 void ConsoleUI::startFrame(uint32_t color)
 {
     // Clear the screen for a new frame
@@ -91,21 +106,16 @@ uint32_t ConsoleUI::getInputHeld()
     SceCtrlData held;
     sceCtrlPeekBufferPositive(0, &held, 1);
 
-    // Map buttons to UI inputs
-    uint32_t value = 0;
-    if (held.buttons & SCE_CTRL_CIRCLE) value |= INPUT_A;
-    if (held.buttons & SCE_CTRL_CROSS) value |= INPUT_B;
-    if (held.buttons & SCE_CTRL_SELECT) value |= INPUT_SELECT;
-    if (held.buttons & SCE_CTRL_START) value |= INPUT_START;
-    if ((held.buttons & SCE_CTRL_RIGHT) || held.lx > 224) value |= INPUT_RIGHT;
-    if ((held.buttons & SCE_CTRL_LEFT) || held.lx < 32) value |= INPUT_LEFT;
-    if ((held.buttons & SCE_CTRL_UP) || held.ly < 32) value |= INPUT_UP;
-    if ((held.buttons & SCE_CTRL_DOWN) || held.ly > 224) value |= INPUT_DOWN;
-    if (held.buttons & SCE_CTRL_RTRIGGER) value |= INPUT_R;
-    if (held.buttons & SCE_CTRL_LTRIGGER) value |= INPUT_L;
-    if (held.buttons & SCE_CTRL_TRIANGLE) value |= INPUT_X;
-    if (held.buttons & SCE_CTRL_SQUARE) value |= INPUT_Y;
-    if (abs(held.rx - 128) > 96 || abs(held.ry - 128) > 96) value |= INPUT_PAUSE;
+    // Return a mask of mappable keys, including stick movements
+    uint32_t value = held.buttons & 0xFFFF;
+    value |= (held.ly < 32) << 16; // LS Up
+    value |= (held.lx > 224) << 17; // LS Right
+    value |= (held.ly > 224) << 18; // LS Down
+    value |= (held.lx < 32) << 19; // LS Left
+    value |= (held.ry < 32) << 20; // RS Up
+    value |= (held.rx > 224) << 21; // RS Right
+    value |= (held.ry > 224) << 22; // RS Down
+    value |= (held.rx < 32) << 23; // RS Left
     return value;
 }
 

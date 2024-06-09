@@ -51,6 +51,26 @@ WHBGfxShaderGroup group;
 GX2RBuffer posBuffer, texBuffer, colBuffer;
 GX2Sampler samplers[2];
 
+uint32_t ConsoleUI::defaultKeys[]
+{
+    VPAD_BUTTON_A, VPAD_BUTTON_B, VPAD_BUTTON_MINUS, VPAD_BUTTON_PLUS,
+    VPAD_BUTTON_RIGHT | VPAD_STICK_R_EMULATION_RIGHT | VPAD_STICK_L_EMULATION_RIGHT,
+    VPAD_BUTTON_LEFT | VPAD_STICK_R_EMULATION_LEFT | VPAD_STICK_L_EMULATION_LEFT,
+    VPAD_BUTTON_UP | VPAD_STICK_R_EMULATION_UP | VPAD_STICK_L_EMULATION_UP,
+    VPAD_BUTTON_DOWN | VPAD_STICK_R_EMULATION_DOWN | VPAD_STICK_L_EMULATION_DOWN,
+    VPAD_BUTTON_ZR, VPAD_BUTTON_ZL, VPAD_BUTTON_X, VPAD_BUTTON_Y,
+    VPAD_BUTTON_L | VPAD_BUTTON_R
+};
+
+const char *ConsoleUI::keyNames[]
+{
+    "Sync", "Home", "Minus", "Plus", "R", "L", "ZR", "ZL",
+    "Down", "Up", "Right", "Left", "Y", "X", "B", "A",
+    "TV", "R Stick", "L Stick", "", "", "", "",
+    "RS Down", "RS Up", "RS Right", "RS Left",
+    "LS Down", "LS Up", "LS Right", "LS Left"
+};
+
 void ConsoleUI::startFrame(uint32_t color)
 {
     // Convert the clear color to floats
@@ -237,22 +257,8 @@ uint32_t ConsoleUI::getInputHeld()
         scanned = true;
     }
 
-    // Map buttons to UI inputs
-    uint32_t value = 0;
-    if (vpad.hold & VPAD_BUTTON_A) value |= INPUT_A;
-    if (vpad.hold & VPAD_BUTTON_B) value |= INPUT_B;
-    if (vpad.hold & VPAD_BUTTON_MINUS) value |= INPUT_SELECT;
-    if (vpad.hold & VPAD_BUTTON_PLUS) value |= INPUT_START;
-    if ((vpad.hold & VPAD_BUTTON_RIGHT) || vpad.leftStick.x > 0.75f || vpad.rightStick.x > 0.75f) value |= INPUT_RIGHT;
-    if ((vpad.hold & VPAD_BUTTON_LEFT) || vpad.leftStick.x < -0.75f || vpad.rightStick.x < -0.75f) value |= INPUT_LEFT;
-    if ((vpad.hold & VPAD_BUTTON_UP) || vpad.leftStick.y > 0.75f || vpad.rightStick.y > 0.75f) value |= INPUT_UP;
-    if ((vpad.hold & VPAD_BUTTON_DOWN) || vpad.leftStick.y < -0.75f || vpad.rightStick.y < -0.75f) value |= INPUT_DOWN;
-    if (vpad.hold & VPAD_BUTTON_ZR) value |= INPUT_R;
-    if (vpad.hold & VPAD_BUTTON_ZL) value |= INPUT_L;
-    if (vpad.hold & VPAD_BUTTON_X) value |= INPUT_X;
-    if (vpad.hold & VPAD_BUTTON_Y) value |= INPUT_Y;
-    if (vpad.hold & (VPAD_BUTTON_L | VPAD_BUTTON_R)) value |= INPUT_PAUSE;
-    return value;
+    // Return a mask of mappable keys
+    return vpad.hold & 0x7FFFFFFF;
 }
 
 MenuTouch ConsoleUI::getInputTouch()

@@ -30,19 +30,20 @@
 
 enum MenuInputs
 {
-    INPUT_A = BIT(0),
-    INPUT_B = BIT(1),
-    INPUT_SELECT = BIT(2),
-    INPUT_START = BIT(3),
-    INPUT_RIGHT = BIT(4),
-    INPUT_LEFT = BIT(5),
-    INPUT_UP = BIT(6),
-    INPUT_DOWN = BIT(7),
-    INPUT_R = BIT(8),
-    INPUT_L = BIT(9),
-    INPUT_X = BIT(10),
-    INPUT_Y = BIT(11),
-    INPUT_PAUSE = BIT(12)
+    INPUT_A,
+    INPUT_B,
+    INPUT_SELECT,
+    INPUT_START,
+    INPUT_RIGHT,
+    INPUT_LEFT,
+    INPUT_UP,
+    INPUT_DOWN,
+    INPUT_R,
+    INPUT_L,
+    INPUT_X,
+    INPUT_Y,
+    INPUT_PAUSE,
+    INPUT_MAX
 };
 
 struct MenuTouch
@@ -75,6 +76,14 @@ class ConsoleUI
         static ScreenLayout layout;
         static bool gbaMode;
 
+        static int showFpsCounter;
+        static int menuTheme;
+        static int keyBinds[INPUT_MAX];
+
+        // Data that is defined per-platform
+        static uint32_t defaultKeys[INPUT_MAX];
+        static const char *keyNames[32];
+
         // Functions that are implemented per-platform
         static void startFrame(uint32_t color);
         static void endFrame();
@@ -101,9 +110,6 @@ class ConsoleUI
         static void *folderTextures[2];
         static void *fontTexture;
 
-        static int showFpsCounter;
-        static int menuTheme;
-
         static const uint32_t *palette;
         static uint32_t uiWidth, uiHeight;
         static uint32_t lineHeight;
@@ -126,9 +132,10 @@ class ConsoleUI
 
         static uint32_t menu(std::string title, std::vector<MenuItem> &items,
             int &index, std::string actionX = "", std::string actionPlus = "");
-        static bool message(std::string title, std::string text, bool cancel = false);
+        static uint32_t message(std::string title, std::string text, int type = 0);
 
         static void settingsMenu();
+        static void controlsMenu();
         static void pauseMenu();
         static bool saveTypeMenu();
 
