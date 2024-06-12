@@ -87,7 +87,7 @@ bool Spi::loadFirmware()
         {
             // Increment the MAC address based on the instance ID
             // This allows instances to be detected as separate systems
-            firmware[0x36] += core->id;
+            firmware[0x3B] += core->id;
 
             // Recalculate the WiFi config CRC
             uint16_t crc = crc16(0, &firmware[0x2C], 0x138);
@@ -110,12 +110,12 @@ bool Spi::loadFirmware()
     // Set some WiFi config data
     firmware[0x2C] = 0x38; // Config length, byte 1
     firmware[0x2D] = 0x01; // Config length, byte 2
-    firmware[0x36] = core->id; // MAC address, byte 1
+    firmware[0x36] = 0x00; // MAC address, byte 1
     firmware[0x37] = 0x09; // MAC address, byte 2
     firmware[0x38] = 0xBF; // MAC address, byte 3
     firmware[0x39] = 0x12; // MAC address, byte 4
     firmware[0x3A] = 0x34; // MAC address, byte 5
-    firmware[0x3B] = 0x56; // MAC address, byte 6
+    firmware[0x3B] = core->id; // MAC address, byte 6
     firmware[0x3C] = 0xFE; // Enabled channels, byte 1
     firmware[0x3D] = 0x3F; // Enabled channels, byte 2
 
