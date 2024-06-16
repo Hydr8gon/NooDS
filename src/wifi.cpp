@@ -233,9 +233,10 @@ void Wifi::receivePackets()
 
 void Wifi::transmitPacket(int index)
 {
+    // Get the packet address and size, padded to a multiple of 4
     uint16_t address = (wTxbufLoc[index] & 0xFFF) << 1;
-    uint16_t size = core->memory.read<uint16_t>(1, 0x4804000 + address + 0x0A) + 8;
-    printf("Instance %d sending packet on channel %d with size 0x%X\n", core->id, index, size);
+    uint16_t size = (core->memory.read<uint16_t>(1, 0x4804000 + address + 0x0A) + 11) & ~0x3;
+    LOG("Instance %d sending packet on channel %d with size 0x%X\n", core->id, index, size);
 
     // Start transmitting a packet
     sendInterrupt(7);
