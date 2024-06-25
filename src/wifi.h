@@ -27,6 +27,17 @@
 
 class Core;
 
+enum PacketType
+{
+    LOC1_FRAME,
+    CMD_FRAME,
+    LOC2_FRAME,
+    LOC3_FRAME,
+    BEACON_FRAME,
+    CMD_REPLY,
+    CMD_ACK
+};
+
 class Wifi
 {
     public:
@@ -40,6 +51,7 @@ class Wifi
         bool shouldSchedule() { return (!connections.empty() || wUsCountcnt) && !scheduled; }
         void scheduleInit();
         void countMs();
+        void transmitPacket(PacketType type);
 
         uint16_t readWModeWep() { return wModeWep; }
         uint16_t readWTxstatCnt() { return wTxstatCnt; }
@@ -64,15 +76,19 @@ class Wifi
         uint16_t readWTxbufCount() { return wTxbufCount; }
         uint16_t readWTxbufGap() { return wTxbufGap; }
         uint16_t readWTxbufGapdisp() { return wTxbufGapdisp; }
-        uint16_t readWTxbufLoc(int index) { return wTxbufLoc[index]; }
+        uint16_t readWTxbufLoc(PacketType type) { return wTxbufLoc[type]; }
         uint16_t readWBeaconInt() { return wBeaconInt; }
+        uint16_t readWTxbufReply1() { return wTxbufReply1; }
+        uint16_t readWTxbufReply2() { return wTxbufReply2; }
         uint16_t readWTxreqRead() { return wTxreqRead; }
         uint16_t readWTxstat() { return wTxstat; }
         uint16_t readWUsCountcnt() { return wUsCountcnt; }
         uint16_t readWUsComparecnt() { return wUsComparecnt; }
+        uint16_t readWCmdCountcnt() { return wCmdCountcnt; }
         uint16_t readWUsCompare(int index) { return wUsCompare >> (index * 16); }
         uint16_t readWUsCount(int index) { return wUsCount >> (index * 16); }
         uint16_t readWPreBeacon() { return wPreBeacon; }
+        uint16_t readWCmdCount() { return wCmdCount; }
         uint16_t readWBeaconCount() { return wBeaconCount; }
         uint16_t readWConfig(int index) { return wConfig[index]; }
         uint16_t readWPostBeacon() { return wPostBeacon; }
@@ -97,15 +113,18 @@ class Wifi
         void writeWRxbufReadcsr(uint16_t mask, uint16_t value);
         void writeWRxbufGap(uint16_t mask, uint16_t value);
         void writeWRxbufGapdisp(uint16_t mask, uint16_t value);
-        void writeWTxbufLoc(int index, uint16_t mask, uint16_t value);
+        void writeWTxbufLoc(PacketType type, uint16_t mask, uint16_t value);
         void writeWBeaconInt(uint16_t mask, uint16_t value);
+        void writeWTxbufReply1(uint16_t mask, uint16_t value);
         void writeWTxreqReset(uint16_t mask, uint16_t value);
         void writeWTxreqSet(uint16_t mask, uint16_t value);
         void writeWUsCountcnt(uint16_t mask, uint16_t value);
         void writeWUsComparecnt(uint16_t mask, uint16_t value);
+        void writeWCmdCountcnt(uint16_t mask, uint16_t value);
         void writeWUsCompare(int index, uint16_t mask, uint16_t value);
         void writeWUsCount(int index, uint16_t mask, uint16_t value);
         void writeWPreBeacon(uint16_t mask, uint16_t value);
+        void writeWCmdCount(uint16_t mask, uint16_t value);
         void writeWBeaconCount(uint16_t mask, uint16_t value);
         void writeWRxbufCount(uint16_t mask, uint16_t value);
         void writeWTxbufWrAddr(uint16_t mask, uint16_t value);
@@ -146,13 +165,17 @@ class Wifi
         uint16_t wRxbufGapdisp = 0;
         uint16_t wTxbufLoc[5] = {};
         uint16_t wBeaconInt = 0;
+        uint16_t wTxbufReply1 = 0;
+        uint16_t wTxbufReply2 = 0;
         uint16_t wTxreqRead = 0x10;
         uint16_t wTxstat = 0;
         uint16_t wUsCountcnt = 0;
         uint16_t wUsComparecnt = 0;
+        uint16_t wCmdCountcnt = 0;
         uint64_t wUsCompare = 0;
         uint64_t wUsCount = 0;
         uint16_t wPreBeacon = 0;
+        uint16_t wCmdCount = 0;
         uint16_t wBeaconCount = 0;
         uint16_t wRxbufCount = 0;
         uint16_t wTxbufWrAddr = 0;
@@ -174,7 +197,6 @@ class Wifi
 
         void sendInterrupt(int bit);
         void receivePackets();
-        void transmitPacket(int index);
 };
 
 #endif // WIFI_H

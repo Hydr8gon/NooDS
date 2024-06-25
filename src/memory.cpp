@@ -1135,15 +1135,18 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             DEF_IO16(0x480006C, data = core->wifi.readWTxbufCount()) // W_TXBUF_COUNT
             DEF_IO16(0x4800074, data = core->wifi.readWTxbufGap()) // W_TXBUF_GAP
             DEF_IO16(0x4800076, data = core->wifi.readWTxbufGapdisp()) // W_TXBUF_GAPDISP
-            DEF_IO16(0x4800080, data = core->wifi.readWTxbufLoc(4)) // W_TXBUF_BEACON
+            DEF_IO16(0x4800080, data = core->wifi.readWTxbufLoc(BEACON_FRAME)) // W_TXBUF_BEACON
             DEF_IO16(0x480008C, data = core->wifi.readWBeaconInt()) // W_BEACON_INT
-            DEF_IO16(0x4800090, data = core->wifi.readWTxbufLoc(1)) // W_TXBUF_CMD
-            DEF_IO16(0x48000A0, data = core->wifi.readWTxbufLoc(0)) // W_TXBUF_LOC1
-            DEF_IO16(0x48000A4, data = core->wifi.readWTxbufLoc(2)) // W_TXBUF_LOC2
-            DEF_IO16(0x48000A8, data = core->wifi.readWTxbufLoc(3)) // W_TXBUF_LOC3
+            DEF_IO16(0x4800090, data = core->wifi.readWTxbufLoc(CMD_FRAME)) // W_TXBUF_CMD
+            DEF_IO16(0x4800094, data = core->wifi.readWTxbufReply1()) // W_TXBUF_REPLY1
+            DEF_IO16(0x4800098, data = core->wifi.readWTxbufReply2()) // W_TXBUF_REPLY2
+            DEF_IO16(0x48000A0, data = core->wifi.readWTxbufLoc(LOC1_FRAME)) // W_TXBUF_LOC1
+            DEF_IO16(0x48000A4, data = core->wifi.readWTxbufLoc(LOC2_FRAME)) // W_TXBUF_LOC2
+            DEF_IO16(0x48000A8, data = core->wifi.readWTxbufLoc(LOC3_FRAME)) // W_TXBUF_LOC3
             DEF_IO16(0x48000B0, data = core->wifi.readWTxreqRead()) // W_TXREQ_READ
             DEF_IO16(0x48000B8, data = core->wifi.readWTxstat()) // W_TXSTAT
             DEF_IO16(0x48000E8, data = core->wifi.readWUsCountcnt()) // W_US_COUNTCNT
+            DEF_IO16(0x48000EE, data = core->wifi.readWCmdCountcnt()) // W_CMD_COUNTCNT
             DEF_IO16(0x48000EA, data = core->wifi.readWUsComparecnt()) // W_US_COMPARECNT
             DEF_IO16(0x48000F0, data = core->wifi.readWUsCompare(0)) // W_US_COMPARE0
             DEF_IO16(0x48000F2, data = core->wifi.readWUsCompare(1)) // W_US_COMPARE1
@@ -1154,6 +1157,7 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             DEF_IO16(0x48000FC, data = core->wifi.readWUsCount(2)) // W_US_COUNT2
             DEF_IO16(0x48000FE, data = core->wifi.readWUsCount(3)) // W_US_COUNT3
             DEF_IO16(0x4800110, data = core->wifi.readWPreBeacon()) // W_PRE_BEACON
+            DEF_IO16(0x4800118, data = core->wifi.readWCmdCount()) // W_CMD_COUNT
             DEF_IO16(0x480011C, data = core->wifi.readWBeaconCount()) // W_BEACON_COUNT
             DEF_IO16(0x4800120, data = core->wifi.readWConfig(0)) // W_CONFIG_120
             DEF_IO16(0x4800122, data = core->wifi.readWConfig(1)) // W_CONFIG_122
@@ -1741,16 +1745,18 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             DEF_IO16(0x4800070, core->wifi.writeWTxbufWrData(IOWR_PARAMS)) // W_TXBUF_WR_DATA
             DEF_IO16(0x4800074, core->wifi.writeWTxbufGap(IOWR_PARAMS)) // W_TXBUF_GAP
             DEF_IO16(0x4800076, core->wifi.writeWTxbufGapdisp(IOWR_PARAMS)) // W_TXBUF_GAPDISP
-            DEF_IO16(0x4800080, core->wifi.writeWTxbufLoc(4, IOWR_PARAMS)) // W_TXBUF_BEACON
+            DEF_IO16(0x4800080, core->wifi.writeWTxbufLoc(BEACON_FRAME, IOWR_PARAMS)) // W_TXBUF_BEACON
             DEF_IO16(0x480008C, core->wifi.writeWBeaconInt(IOWR_PARAMS)) // W_BEACON_INT
-            DEF_IO16(0x4800090, core->wifi.writeWTxbufLoc(1, IOWR_PARAMS)) // W_TXBUF_CMD
-            DEF_IO16(0x48000A0, core->wifi.writeWTxbufLoc(0, IOWR_PARAMS)) // W_TXBUF_LOC1
-            DEF_IO16(0x48000A4, core->wifi.writeWTxbufLoc(2, IOWR_PARAMS)) // W_TXBUF_LOC2
-            DEF_IO16(0x48000A8, core->wifi.writeWTxbufLoc(3, IOWR_PARAMS)) // W_TXBUF_LOC3
+            DEF_IO16(0x4800090, core->wifi.writeWTxbufLoc(CMD_FRAME, IOWR_PARAMS)) // W_TXBUF_CMD
+            DEF_IO16(0x4800094, core->wifi.writeWTxbufReply1(IOWR_PARAMS)) // W_TXBUF_REPLY1
+            DEF_IO16(0x48000A0, core->wifi.writeWTxbufLoc(LOC1_FRAME, IOWR_PARAMS)) // W_TXBUF_LOC1
+            DEF_IO16(0x48000A4, core->wifi.writeWTxbufLoc(LOC2_FRAME, IOWR_PARAMS)) // W_TXBUF_LOC2
+            DEF_IO16(0x48000A8, core->wifi.writeWTxbufLoc(LOC3_FRAME, IOWR_PARAMS)) // W_TXBUF_LOC3
             DEF_IO16(0x48000AC, core->wifi.writeWTxreqReset(IOWR_PARAMS)) // W_TXREQ_RESET
             DEF_IO16(0x48000AE, core->wifi.writeWTxreqSet(IOWR_PARAMS)) // W_TXREQ_SET
             DEF_IO16(0x48000E8, core->wifi.writeWUsCountcnt(IOWR_PARAMS)) // W_US_COUNTCNT
             DEF_IO16(0x48000EA, core->wifi.writeWUsComparecnt(IOWR_PARAMS)) // W_US_COMPARECNT
+            DEF_IO16(0x48000EE, core->wifi.writeWCmdCountcnt(IOWR_PARAMS)) // W_CMD_COUNTCNT
             DEF_IO16(0x48000F0, core->wifi.writeWUsCompare(0, IOWR_PARAMS)) // W_US_COMPARE0
             DEF_IO16(0x48000F2, core->wifi.writeWUsCompare(1, IOWR_PARAMS)) // W_US_COMPARE1
             DEF_IO16(0x48000F4, core->wifi.writeWUsCompare(2, IOWR_PARAMS)) // W_US_COMPARE2
@@ -1760,6 +1766,7 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
             DEF_IO16(0x48000FC, core->wifi.writeWUsCount(2, IOWR_PARAMS)) // W_US_COUNT2
             DEF_IO16(0x48000FE, core->wifi.writeWUsCount(3, IOWR_PARAMS)) // W_US_COUNT3
             DEF_IO16(0x4800110, core->wifi.writeWPreBeacon(IOWR_PARAMS)) // W_PRE_BEACON
+            DEF_IO16(0x4800118, core->wifi.writeWCmdCount(IOWR_PARAMS)) // W_CMD_COUNT
             DEF_IO16(0x480011C, core->wifi.writeWBeaconCount(IOWR_PARAMS)) // W_BEACON_COUNT
             DEF_IO16(0x4800120, core->wifi.writeWConfig(0, IOWR_PARAMS)) // W_CONFIG_120
             DEF_IO16(0x4800122, core->wifi.writeWConfig(1, IOWR_PARAMS)) // W_CONFIG_122

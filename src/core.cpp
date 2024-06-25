@@ -69,6 +69,8 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd,
     tasks[TIMER7_OVERFLOW2] = std::bind(&Timers::overflow, &timers[1], 2);
     tasks[TIMER7_OVERFLOW3] = std::bind(&Timers::overflow, &timers[1], 3);
     tasks[WIFI_COUNT_MS] = std::bind(&Wifi::countMs, &wifi);
+    tasks[WIFI_TRANS_REPLY] = std::bind(&Wifi::transmitPacket, &wifi, CMD_REPLY);
+    tasks[WIFI_TRANS_ACK] = std::bind(&Wifi::transmitPacket, &wifi, CMD_ACK);
 
     // Schedule initial tasks for NDS mode
     schedule(RESET_CYCLES, 0x7FFFFFFF);
