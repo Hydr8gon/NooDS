@@ -40,18 +40,19 @@ class wxGLContext;
 class NooCanvas: public CANVAS_CLASS
 {
     public:
-        NooCanvas(NooFrame *frame);
+        bool gbaMode = false;
 
+        NooCanvas(NooFrame *frame);
         void resetFrame() { sizeReset = 2; }
         void finish() { finished = true; }
 
     private:
         NooFrame *frame;
         wxGLContext *context;
+        uint32_t *framebuffer;
+        bool splitScreens;
 
         ScreenLayout layout;
-        uint32_t framebuffer[256 * 192 * 8] = {};
-        bool gbaMode = false;
         uint8_t sizeReset = 0;
         bool finished = false;
 

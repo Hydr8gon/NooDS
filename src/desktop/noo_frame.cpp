@@ -89,106 +89,109 @@ EVT_DROP_FILES(NooFrame::dropFiles)
 EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
-NooFrame::NooFrame(NooApp *app, int id, std::string path):
-    wxFrame(nullptr, wxID_ANY, "NooDS"), app(app), id(id)
+NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
+    wxFrame(nullptr, wxID_ANY, "NooDS"), app(app), id(id), partner(partner), mainFrame(!partner)
 {
     // Set the icon
     wxIcon icon(icon_xpm);
     SetIcon(icon);
 
-    // Set up the File menu
-    fileMenu = new wxMenu();
-    fileMenu->Append(LOAD_ROM, "&Load ROM");
-    fileMenu->Append(BOOT_FIRMWARE, "&Boot Firmware");
-    fileMenu->AppendSeparator();
-    fileMenu->Append(SAVE_STATE, "&Save State");
-    fileMenu->Append(LOAD_STATE, "&Load State");
-    fileMenu->AppendSeparator();
-    fileMenu->Append(TRIM_ROM, "&Trim ROM");
-    fileMenu->Append(CHANGE_SAVE, "&Change Save Type");
-    fileMenu->AppendSeparator();
-    fileMenu->Append(QUIT, "&Quit");
-
-    // Set up the System menu
-    systemMenu = new wxMenu();
-    systemMenu->Append(PAUSE, "&Resume");
-    systemMenu->Append(RESTART, "&Restart");
-    systemMenu->Append(STOP, "&Stop");
-    systemMenu->AppendSeparator();
-    systemMenu->Append(ADD_SYSTEM, "&Add System");
-
-    // Disable some menu items until the core is running
-    fileMenu->Enable(TRIM_ROM, false);
-    fileMenu->Enable(CHANGE_SAVE, false);
-    fileMenu->Enable(SAVE_STATE, false);
-    fileMenu->Enable(LOAD_STATE, false);
-    systemMenu->Enable(PAUSE, false);
-    systemMenu->Enable(RESTART, false);
-    systemMenu->Enable(STOP, false);
-
-    // Set up the FPS Limiter submenu
-    wxMenu *fpsLimiter = new wxMenu();
-    fpsLimiter->AppendRadioItem(FPS_DISABLED, "&Disabled");
-    fpsLimiter->AppendRadioItem(FPS_LIGHT,    "&Light");
-    fpsLimiter->AppendRadioItem(FPS_ACCURATE, "&Accurate");
-
-    // Set the current value of the FPS limiter setting
-    switch (Settings::fpsLimiter)
+    if (mainFrame)
     {
-        case 0:  fpsLimiter->Check(FPS_DISABLED, true); break;
-        case 1:  fpsLimiter->Check(FPS_LIGHT,    true); break;
-        default: fpsLimiter->Check(FPS_ACCURATE, true); break;
+        // Set up the File menu
+        fileMenu = new wxMenu();
+        fileMenu->Append(LOAD_ROM, "&Load ROM");
+        fileMenu->Append(BOOT_FIRMWARE, "&Boot Firmware");
+        fileMenu->AppendSeparator();
+        fileMenu->Append(SAVE_STATE, "&Save State");
+        fileMenu->Append(LOAD_STATE, "&Load State");
+        fileMenu->AppendSeparator();
+        fileMenu->Append(TRIM_ROM, "&Trim ROM");
+        fileMenu->Append(CHANGE_SAVE, "&Change Save Type");
+        fileMenu->AppendSeparator();
+        fileMenu->Append(QUIT, "&Quit");
+
+        // Set up the System menu
+        systemMenu = new wxMenu();
+        systemMenu->Append(PAUSE, "&Resume");
+        systemMenu->Append(RESTART, "&Restart");
+        systemMenu->Append(STOP, "&Stop");
+        systemMenu->AppendSeparator();
+        systemMenu->Append(ADD_SYSTEM, "&Add System");
+
+        // Disable some menu items until the core is running
+        fileMenu->Enable(TRIM_ROM, false);
+        fileMenu->Enable(CHANGE_SAVE, false);
+        fileMenu->Enable(SAVE_STATE, false);
+        fileMenu->Enable(LOAD_STATE, false);
+        systemMenu->Enable(PAUSE, false);
+        systemMenu->Enable(RESTART, false);
+        systemMenu->Enable(STOP, false);
+
+        // Set up the FPS Limiter submenu
+        wxMenu *fpsLimiter = new wxMenu();
+        fpsLimiter->AppendRadioItem(FPS_DISABLED, "&Disabled");
+        fpsLimiter->AppendRadioItem(FPS_LIGHT, "&Light");
+        fpsLimiter->AppendRadioItem(FPS_ACCURATE, "&Accurate");
+
+        // Set the current value of the FPS limiter setting
+        switch (Settings::fpsLimiter)
+        {
+            case 0: fpsLimiter->Check(FPS_DISABLED, true); break;
+            case 1: fpsLimiter->Check(FPS_LIGHT, true); break;
+            default: fpsLimiter->Check(FPS_ACCURATE, true); break;
+        }
+
+        // Set up the Threaded 3D submenu
+        wxMenu *threaded3D = new wxMenu();
+        threaded3D->AppendRadioItem(THREADED_3D_0, "&Disabled");
+        threaded3D->AppendRadioItem(THREADED_3D_1, "&1 Thread");
+        threaded3D->AppendRadioItem(THREADED_3D_2, "&2 Threads");
+        threaded3D->AppendRadioItem(THREADED_3D_3, "&3 Threads");
+
+        // Set the current value of the threaded 3D setting
+        switch (Settings::threaded3D)
+        {
+            case 0: threaded3D->Check(THREADED_3D_0, true); break;
+            case 1: threaded3D->Check(THREADED_3D_1, true); break;
+            case 2: threaded3D->Check(THREADED_3D_2, true); break;
+            default: threaded3D->Check(THREADED_3D_3, true); break;
+        }
+
+        // Set up the Settings menu
+        wxMenu *settingsMenu = new wxMenu();
+        settingsMenu->Append(PATH_SETTINGS, "&Path Settings");
+        settingsMenu->Append(INPUT_BINDINGS, "&Input Bindings");
+        settingsMenu->Append(SCREEN_LAYOUT, "&Screen Layout");
+        settingsMenu->AppendSeparator();
+        settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
+        settingsMenu->AppendSubMenu(fpsLimiter, "&FPS Limiter");
+        settingsMenu->AppendSeparator();
+        settingsMenu->AppendCheckItem(THREADED_2D, "&Threaded 2D");
+        settingsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
+        settingsMenu->AppendSeparator();
+        settingsMenu->AppendCheckItem(HIGH_RES_3D, "&High-Resolution 3D");
+        settingsMenu->AppendSeparator();
+        settingsMenu->AppendCheckItem(MIC_ENABLE, "&Use Microphone");
+
+        // Set the current values of the checkboxes
+        settingsMenu->Check(DIRECT_BOOT, Settings::directBoot);
+        settingsMenu->Check(THREADED_2D, Settings::threaded2D);
+        settingsMenu->Check(HIGH_RES_3D, Settings::highRes3D);
+        settingsMenu->Check(MIC_ENABLE, NooApp::micEnable);
+
+        // Set up the menu bar
+        wxMenuBar *menuBar = new wxMenuBar();
+        menuBar->Append(fileMenu, "&File");
+        menuBar->Append(systemMenu, "&System");
+        if (id == 0) // Only show settings in the main instance
+            menuBar->Append(settingsMenu, "&Settings");
+        SetMenuBar(menuBar);
     }
-
-    // Set up the Threaded 3D submenu
-    wxMenu *threaded3D = new wxMenu();
-    threaded3D->AppendRadioItem(THREADED_3D_0, "&Disabled");
-    threaded3D->AppendRadioItem(THREADED_3D_1, "&1 Thread");
-    threaded3D->AppendRadioItem(THREADED_3D_2, "&2 Threads");
-    threaded3D->AppendRadioItem(THREADED_3D_3, "&3 Threads");
-
-    // Set the current value of the threaded 3D setting
-    switch (Settings::threaded3D)
-    {
-        case 0:  threaded3D->Check(THREADED_3D_0, true); break;
-        case 1:  threaded3D->Check(THREADED_3D_1, true); break;
-        case 2:  threaded3D->Check(THREADED_3D_2, true); break;
-        default: threaded3D->Check(THREADED_3D_3, true); break;
-    }
-
-    // Set up the Settings menu
-    wxMenu *settingsMenu = new wxMenu();
-    settingsMenu->Append(PATH_SETTINGS,        "&Path Settings");
-    settingsMenu->Append(INPUT_BINDINGS,       "&Input Bindings");
-    settingsMenu->Append(SCREEN_LAYOUT,        "&Screen Layout");
-    settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
-    settingsMenu->AppendSubMenu(fpsLimiter,    "&FPS Limiter");
-    settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(THREADED_2D, "&Threaded 2D");
-    settingsMenu->AppendSubMenu(threaded3D,    "&Threaded 3D");
-    settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(HIGH_RES_3D, "&High-Resolution 3D");
-    settingsMenu->AppendSeparator();
-    settingsMenu->AppendCheckItem(MIC_ENABLE,  "&Use Microphone");
-
-    // Set the current values of the checkboxes
-    settingsMenu->Check(DIRECT_BOOT, Settings::directBoot);
-    settingsMenu->Check(THREADED_2D, Settings::threaded2D);
-    settingsMenu->Check(HIGH_RES_3D, Settings::highRes3D);
-    settingsMenu->Check(MIC_ENABLE,  NooApp::micEnable);
-
-    // Set up the menu bar
-    wxMenuBar *menuBar = new wxMenuBar();
-    menuBar->Append(fileMenu,   "&File");
-    menuBar->Append(systemMenu, "&System");
-    if (id == 0) // Only show settings in the main instance
-        menuBar->Append(settingsMenu, "&Settings");
-    SetMenuBar(menuBar);
 
     // Set the initial window size based on the current screen layout
     ScreenLayout layout;
-    layout.update(0, 0, false);
+    layout.update(0, 0, false, NooApp::splitScreens && ScreenLayout::screenArrangement != 3);
     SetClientSize(wxSize(layout.minWidth, layout.minHeight));
 
     // Prepare and show the window
@@ -231,13 +234,35 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path):
 
 void NooFrame::Refresh()
 {
-    wxFrame::Refresh();
-
     // Override the refresh function to also update the FPS counter
+    wxFrame::Refresh();
     wxString label = "NooDS";
-    if (id > 0)  label += wxString::Format(" (%d)", id + 1);
+    if (id > 0) label += wxString::Format(" (%d)", id + 1);
     if (running) label += wxString::Format(" - %d FPS", core->fps);
     SetLabel(label);
+
+    // Manage the main frame's partner frame
+    if (mainFrame)
+    {
+        bool split = NooApp::splitScreens && ScreenLayout::screenArrangement != 3 && !canvas->gbaMode;
+        if (split && !partner)
+        {
+            // Create the partner frame if needed
+            partner = new NooFrame(app, id, "", this);
+            partner->core = core;
+        }
+        else if (!split && partner)
+        {
+            // Remove the partner frame if not needed
+            delete partner;
+            partner = nullptr;
+        }
+        else if (partner)
+        {
+            // Update the partner frame
+            partner->Refresh();
+        }
+    }
 }
 
 void NooFrame::runCore()
@@ -270,6 +295,7 @@ void NooFrame::startCore(bool full)
         {
             // Attempt to boot the core
             core = new Core(ndsPath, gbaPath, id);
+            if (partner) partner->core = core;
             app->connectCore(id);
         }
         catch (CoreError e)
@@ -314,6 +340,7 @@ void NooFrame::startCore(bool full)
 
         // Start the threads
         running = true;
+        if (partner) partner->running = running;
         coreThread = new std::thread(&NooFrame::runCore, this);
         saveThread = new std::thread(&NooFrame::checkSave, this);
     }
@@ -325,6 +352,7 @@ void NooFrame::stopCore(bool full)
     {
         std::lock_guard<std::mutex> guard(mutex);
         running = false;
+        if (partner) partner->running = running;
         cond.notify_one();
     }
 
@@ -364,6 +392,7 @@ void NooFrame::stopCore(bool full)
             app->disconnCore(id);
             delete core;
             core = nullptr;
+            if (partner) partner->core = core;
         }
     }
 }
@@ -788,8 +817,9 @@ void NooFrame::dropFiles(wxDropFilesEvent &event)
 void NooFrame::close(wxCloseEvent &event)
 {
     // Properly shut down the emulator
-    stopCore(true);
+    mainFrame ? stopCore(true) : partner->stopCore(true);
     app->removeFrame(id);
     canvas->finish();
+    if (partner) delete partner;
     event.Skip(true);
 }

@@ -40,7 +40,7 @@ class ScreenLayout
 
         static void addSettings();
 
-        void update(int winWidth, int winHeight, bool gbaMode);
+        void update(int winWidth, int winHeight, bool gbaMode, bool splitScreens = false);
         int getTouchX(int x, int y);
         int getTouchY(int x, int y);
 };

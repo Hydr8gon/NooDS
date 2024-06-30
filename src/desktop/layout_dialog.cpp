@@ -48,6 +48,7 @@ enum LayoutEvent
     FILT_LINEAR,
     INT_SCALE,
     GBA_CROP,
+    SPLIT_SCREENS,
     SCREEN_GHOST
 };
 
@@ -76,6 +77,7 @@ EVT_RADIOBUTTON(FILT_UPSCALE, LayoutDialog::filtUpscale)
 EVT_RADIOBUTTON(FILT_LINEAR, LayoutDialog::filtLinear)
 EVT_CHECKBOX(INT_SCALE, LayoutDialog::intScale)
 EVT_CHECKBOX(GBA_CROP, LayoutDialog::gbaCrop)
+EVT_CHECKBOX(SPLIT_SCREENS, LayoutDialog::splitScreens)
 EVT_CHECKBOX(SCREEN_GHOST, LayoutDialog::screenGhost)
 EVT_BUTTON(wxID_CANCEL, LayoutDialog::cancel)
 EVT_BUTTON(wxID_OK, LayoutDialog::confirm)
@@ -92,7 +94,8 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     prevSettings[5] = Settings::screenFilter;
     prevSettings[6] = ScreenLayout::integerScale;
     prevSettings[7] = ScreenLayout::gbaCrop;
-    prevSettings[8] = Settings::screenGhost;
+    prevSettings[8] = NooApp::splitScreens;
+    prevSettings[9] = Settings::screenGhost;
 
     // Determine the height of a button
     // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
@@ -165,11 +168,12 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     filtSizer->Add(filtBtns[2] = new wxRadioButton(this, FILT_LINEAR, "Linear"), 0, wxLEFT, size / 8);
 
     // Set up the checkbox settings
-    wxCheckBox *boxes[3];
+    wxCheckBox *boxes[4];
     wxBoxSizer *checkSizer = new wxBoxSizer(wxHORIZONTAL);
     checkSizer->Add(boxes[0] = new wxCheckBox(this, INT_SCALE, "Integer Scale"), 0, wxLEFT, size / 8);
     checkSizer->Add(boxes[1] = new wxCheckBox(this, GBA_CROP, "GBA Crop"), 0, wxLEFT, size / 8);
-    checkSizer->Add(boxes[2] = new wxCheckBox(this, SCREEN_GHOST, "Simulate Ghosting"), 0, wxLEFT, size / 8);
+    checkSizer->Add(boxes[2] = new wxCheckBox(this, SPLIT_SCREENS, "Split Screens"), 0, wxLEFT, size / 8);
+    checkSizer->Add(boxes[3] = new wxCheckBox(this, SCREEN_GHOST, "Simulate Ghosting"), 0, wxLEFT, size / 8);
 
     // Set the current values of the radio buttons
     if (ScreenLayout::screenPosition < 5)
@@ -188,7 +192,8 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     // Set the current values of the checkboxes
     boxes[0]->SetValue(ScreenLayout::integerScale);
     boxes[1]->SetValue(ScreenLayout::gbaCrop);
-    boxes[2]->SetValue(Settings::screenGhost);
+    boxes[2]->SetValue(NooApp::splitScreens);
+    boxes[3]->SetValue(Settings::screenGhost);
 
     // Set up the cancel and confirm buttons
     wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -386,6 +391,13 @@ void LayoutDialog::gbaCrop(wxCommandEvent &event)
     app->updateLayouts();
 }
 
+void LayoutDialog::splitScreens(wxCommandEvent &event)
+{
+    // Toggle the split screens setting
+    NooApp::splitScreens = !NooApp::splitScreens;
+    app->updateLayouts();
+}
+
 void LayoutDialog::screenGhost(wxCommandEvent &event)
 {
     // Toggle the screen ghost setting
@@ -404,7 +416,8 @@ void LayoutDialog::cancel(wxCommandEvent &event)
     Settings::screenFilter = prevSettings[5];
     ScreenLayout::integerScale = prevSettings[6];
     ScreenLayout::gbaCrop = prevSettings[7];
-    Settings::screenGhost = prevSettings[8];
+    NooApp::splitScreens = prevSettings[8];
+    Settings::screenGhost = prevSettings[9];
     app->updateLayouts();
     event.Skip(true);
 }

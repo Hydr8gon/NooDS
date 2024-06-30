@@ -31,8 +31,14 @@ class NooCanvas;
 class NooFrame: public wxFrame
 {
     public:
-        NooFrame(NooApp *app, int id = 0, std::string path = "");
+        NooCanvas *canvas;
+        NooFrame *partner;
+        bool mainFrame;
 
+        Core *core = nullptr;
+        bool running = false;
+
+        NooFrame(NooApp *app, int id = 0, std::string path = "", NooFrame *partner = nullptr);
         void Refresh();
 
         void startCore(bool full);
@@ -41,19 +47,12 @@ class NooFrame: public wxFrame
         void pressKey(int key);
         void releaseKey(int key);
 
-        Core *getCore()  { return core;    }
-        bool isRunning() { return running; }
-
     private:
         NooApp *app;
-        NooCanvas *canvas;
         wxMenu *fileMenu, *systemMenu;
         wxJoystick *joystick;
         wxTimer *timer;
-
-        int id = 0;
-        Core *core = nullptr;
-        bool running = false;
+        int id;
 
         std::string ndsPath, gbaPath;
         std::thread *coreThread = nullptr, *saveThread = nullptr;

@@ -35,6 +35,7 @@ EVT_TIMER(UPDATE, NooApp::update)
 wxEND_EVENT_TABLE()
 
 int NooApp::micEnable = 0;
+int NooApp::splitScreens = 0;
 int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I', WXK_TAB, 0, WXK_ESCAPE, 0, WXK_BACK };
 
 bool NooApp::OnInit()
@@ -45,6 +46,7 @@ bool NooApp::OnInit()
     std::vector<Setting> platformSettings =
     {
         Setting("micEnable", &micEnable, false),
+        Setting("splitScreens", &splitScreens, false),
         Setting("keyA", &keyBinds[0], false),
         Setting("keyB", &keyBinds[1], false),
         Setting("keySelect", &keyBinds[2], false),
@@ -141,8 +143,8 @@ void NooApp::connectCore(int id)
     for (int i = 0; i < MAX_FRAMES; i++)
     {
         if (!frames[i] || i == id) continue;
-        if (Core *core = frames[i]->getCore())
-            core->wifi.addConnection(frames[id]->getCore());
+        if (Core *core = frames[i]->core)
+            core->wifi.addConnection(frames[id]->core);
     }
 }
 
@@ -152,8 +154,8 @@ void NooApp::disconnCore(int id)
     for (int i = 0; i < MAX_FRAMES; i++)
     {
         if (!frames[i] || i == id) continue;
-        if (Core *core = frames[i]->getCore())
-            core->wifi.remConnection(frames[id]->getCore());
+        if (Core *core = frames[i]->core)
+            core->wifi.remConnection(frames[id]->core);
     }
 }
 
@@ -219,7 +221,7 @@ int NooApp::audioCallback(const void *in, void *out, unsigned long count,
     for (size_t i = 0; i < MAX_FRAMES; i++)
     {
         if (!frames[i]) continue;
-        if (Core *core = frames[i]->getCore())
+        if (Core *core = frames[i]->core)
         {
             uint32_t *samples = core->spu.getSamples(699);
             if (!original)
@@ -260,7 +262,7 @@ int NooApp::micCallback(const void *in, void *out, unsigned long count,
     // Find the core with the lowest instance ID
     for (size_t i = 0; i < MAX_FRAMES; i++)
     {
-        if (frames[i] && (core = frames[i]->getCore()))
+        if (frames[i] && (core = frames[i]->core))
             break;
     }
 

@@ -55,9 +55,21 @@ NooCanvas::NooCanvas(NooFrame *frame): CANVAS_CLASS(frame, wxID_ANY, CANVAS_PARA
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 #endif
 
-    // Set focus so that key presses will be registered
-    SetFocus();
+    // Create a new framebuffer or share one if the screens are split
+    if (frame->mainFrame)
+    {
+        framebuffer = new uint32_t[256 * 192 * 8];
+        memset(framebuffer, 0, 256 * 192 * 8 * sizeof(uint32_t));
+    }
+    else
+    {
+        framebuffer = frame->partner->canvas->framebuffer;
+    }
+
+    // Update the screen layout and set focus for key presses
+    splitScreens = NooApp::splitScreens && ScreenLayout::screenArrangement != 3;
     frame->SendSizeEvent();
+    SetFocus();
 }
 
 void NooCanvas::drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t *buf)
@@ -123,20 +135,22 @@ void NooCanvas::draw(wxPaintEvent &event)
     glClear(GL_COLOR_BUFFER_BIT);
 #endif
 
-    if (frame->getCore())
+    // Update the screen layout if it changed
+    bool gba = ScreenLayout::gbaCrop && frame->core && frame->core->gbaMode;
+    bool split = NooApp::splitScreens && ScreenLayout::screenArrangement != 3 && !gba;
+    if (gbaMode != gba || splitScreens != split)
     {
-        // Update the layout if GBA mode changed
-        bool gba = (frame->getCore()->gbaMode && ScreenLayout::gbaCrop);
-        if (gbaMode != gba)
-        {
-            gbaMode = gba;
-            frame->SendSizeEvent();
-        }
+        gbaMode = gba;
+        splitScreens = split;
+        frame->SendSizeEvent();
+    }
 
+    if (frame->core)
+    {
         // Emulation is limited by audio, so frames aren't always generated at a consistent rate
         // This can mess up frame pacing at higher refresh rates when frames are ready too soon
         // To solve this, use a software-based swap interval to wait before getting the next frame
-        if (++frameCount >= swapInterval && frame->getCore()->gpu.getFrame(framebuffer, gba))
+        if (frame->mainFrame && ++frameCount >= swapInterval && frame->core->gpu.getFrame(framebuffer, gba))
             frameCount = 0;
 
         // Shift the screen resolutions if high-res is enabled
@@ -147,6 +161,12 @@ void NooCanvas::draw(wxPaintEvent &event)
             // Draw the GBA screen
             drawScreen(layout.topX, layout.topY, layout.topWidth,
                layout.topHeight, 240 << shift, 160 << shift, &framebuffer[0]);
+        }
+        else if (frame->partner)
+        {
+            // Draw one of the DS screens
+            drawScreen(layout.topX, layout.topY, layout.topWidth, layout.topHeight, 256 << shift,
+               192 << shift, &framebuffer[!frame->mainFrame * ((256 * 192) << (shift * 2))]);
         }
         else
         {
@@ -181,7 +201,7 @@ void NooCanvas::resize(wxSizeEvent &event)
 {
     // Update the screen layout
     wxSize size = GetSize();
-    layout.update(size.x, size.y, gbaMode);
+    layout.update(size.x, size.y, gbaMode, splitScreens);
 
     // Full screen breaks the minimum frame size, but changing to a different value fixes it
     // As a workaround, clear the minimum size on full screen and reset it shortly after
@@ -225,23 +245,23 @@ void NooCanvas::releaseKey(wxKeyEvent &event)
 void NooCanvas::pressScreen(wxMouseEvent &event)
 {
     // Ensure the left mouse button is clicked
-    if (!frame->isRunning() || !event.LeftIsDown()) return;
+    if (!frame->running || !event.LeftIsDown()) return;
 
     // Determine the touch position relative to the emulated touch screen
     int touchX = layout.getTouchX(event.GetX(), event.GetY());
     int touchY = layout.getTouchY(event.GetX(), event.GetY());
 
     // Send the touch coordinates to the core
-    frame->getCore()->input.pressScreen();
-    frame->getCore()->spi.setTouch(touchX, touchY);
+    frame->core->input.pressScreen();
+    frame->core->spi.setTouch(touchX, touchY);
 }
 
 void NooCanvas::releaseScreen(wxMouseEvent &event)
 {
     // Send a touch release to the core
-    if (frame->isRunning())
+    if (frame->running)
     {
-        frame->getCore()->input.releaseScreen();
-        frame->getCore()->spi.clearTouch();
+        frame->core->input.releaseScreen();
+        frame->core->spi.clearTouch();
     }
 }

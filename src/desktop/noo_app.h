@@ -32,6 +32,7 @@ class NooApp: public wxApp
 {
     public:
         static int micEnable;
+        static int splitScreens;
         static int keyBinds[MAX_KEYS];
 
         void createFrame();

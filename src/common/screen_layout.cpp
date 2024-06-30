@@ -46,13 +46,13 @@ void ScreenLayout::addSettings()
     Settings::add(layoutSettings);
 }
 
-void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode)
+void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitScreens)
 {
     // Update the window dimensions
     this->winWidth = winWidth;
     this->winHeight = winHeight;
 
-    if (screenArrangement == 3 || (gbaMode && gbaCrop)) // Single screen
+    if (screenArrangement == 3 || (gbaMode && gbaCrop) || splitScreens) // Single screen
     {
         // Determine the screen dimensions based on the current rotation
         int width = (gbaMode && gbaCrop) ? (screenRotation ? 160 : 240) : (screenRotation ? 192 : 256);
