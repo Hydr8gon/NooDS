@@ -250,6 +250,7 @@ void NooFrame::Refresh()
             // Create the partner frame if needed
             partner = new NooFrame(app, id, "", this);
             partner->core = core;
+            partner->running = running;
         }
         else if (!split && partner)
         {
@@ -811,13 +812,13 @@ void NooFrame::dropFiles(wxDropFilesEvent &event)
     if (event.GetNumberOfFiles() != 1) return;
     wxString path = event.GetFiles()[0];
     if (!wxFileExists(path)) return;
-    loadRomPath((const char*)path.mb_str(wxConvUTF8));
+    (mainFrame ? this : partner)->loadRomPath((const char*)path.mb_str(wxConvUTF8));
 }
 
 void NooFrame::close(wxCloseEvent &event)
 {
     // Properly shut down the emulator
-    mainFrame ? stopCore(true) : partner->stopCore(true);
+    (mainFrame ? this : partner)->stopCore(true);
     app->removeFrame(id);
     canvas->finish();
     if (partner) delete partner;

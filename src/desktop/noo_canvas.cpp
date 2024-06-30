@@ -72,6 +72,13 @@ NooCanvas::NooCanvas(NooFrame *frame): CANVAS_CLASS(frame, wxID_ANY, CANVAS_PARA
     SetFocus();
 }
 
+NooCanvas::~NooCanvas()
+{
+    // Free the framebuffer if it was allocated
+    if (frame->mainFrame)
+        delete[] framebuffer;
+}
+
 void NooCanvas::drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t *buf)
 {
 #ifdef USE_GL_CANVAS
@@ -165,8 +172,9 @@ void NooCanvas::draw(wxPaintEvent &event)
         else if (frame->partner)
         {
             // Draw one of the DS screens
-            drawScreen(layout.topX, layout.topY, layout.topWidth, layout.topHeight, 256 << shift,
-               192 << shift, &framebuffer[!frame->mainFrame * ((256 * 192) << (shift * 2))]);
+            bool bottom = !frame->mainFrame ^ (ScreenLayout::screenSizing == 2);
+            drawScreen(layout.topX, layout.topY, layout.topWidth, layout.topHeight,
+               256 << shift, 192 << shift, &framebuffer[bottom * ((256 * 192) << (shift * 2))]);
         }
         else
         {

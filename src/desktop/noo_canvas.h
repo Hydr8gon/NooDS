@@ -43,6 +43,8 @@ class NooCanvas: public CANVAS_CLASS
         bool gbaMode = false;
 
         NooCanvas(NooFrame *frame);
+        ~NooCanvas();
+
         void resetFrame() { sizeReset = 2; }
         void finish() { finished = true; }
 
