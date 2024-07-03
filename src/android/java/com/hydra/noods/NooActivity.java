@@ -189,13 +189,13 @@ public class NooActivity extends AppCompatActivity
 
                 // Use the message with extra information if a state file doesn't exist yet
                 if (checkState() == 1) // File fail
-                    builder.setMessage("Saving and loading states is dangerous and can lead to data " +
-                        "loss. States are also not guaranteed to be compatible across emulator " +
-                        "versions. Please rely on in-game saving to keep your progress, and back up " +
-                        ".sav files before using this feature. Do you want to save the current state?");
+                    builder.setMessage(getString(R.string.save_warning_1) +
+                        getString(R.string.save_warning_2) +
+                        getString(R.string.save_warning_3) +
+                        getString(R.string.save_warning_4));
                 else
-                    builder.setMessage("Do you want to overwrite the saved " +
-                        "state with the current state? This can't be undone!");
+                    builder.setMessage(getString(R.string.overwrite_save_1) +
+                        getString(R.string.overwrite_save_2));
                 builder.create().show();
                 return true;
 
@@ -206,8 +206,8 @@ public class NooActivity extends AppCompatActivity
                 switch (checkState())
                 {
                     case 0: // Success
-                        builder2.setMessage("Do you want to load the saved state " +
-                            "and lose the current state? This can't be undone!");
+                        builder2.setMessage(getString(R.string.load_warning_1) +
+                            getString(R.string.load_warning_2));
                         builder2.setNegativeButton("Cancel", null);
                         builder2.setPositiveButton("OK", new DialogInterface.OnClickListener()
                         {
@@ -223,17 +223,17 @@ public class NooActivity extends AppCompatActivity
                         break;
 
                     case 1: // File fail
-                        builder2.setMessage("The state file doesn't exist or couldn't be opened.");
+                        builder2.setMessage(R.string.File_fail);
                         builder2.setNegativeButton("OK", null);
                         break;
 
                     case 2: // Format fail
-                        builder2.setMessage("The state file doesn't have a valid format.");
+                        builder2.setMessage(R.string.Format_fail);
                         builder2.setNegativeButton("OK", null);
                         break;
 
                     case 3: // Version fail
-                        builder2.setMessage("The state file isn't compatible with this version of NooDS.");
+                        builder2.setMessage(R.string.Version_fail);
                         builder2.setPositiveButton("OK", null);
                         break;
                 }
@@ -256,7 +256,7 @@ public class NooActivity extends AppCompatActivity
                         // Confirm the change because accidentally resizing a working save file could be bad!
                         AlertDialog.Builder builder4 = new AlertDialog.Builder(NooActivity.this);
                         builder4.setTitle("Changing Save Type");
-                        builder4.setMessage("Are you sure? This may result in data loss!");
+                        builder4.setMessage(R.string.change_save_type_warning);
                         builder4.setNegativeButton("Cancel", null);
                         builder4.setPositiveButton("OK", new DialogInterface.OnClickListener()
                         {

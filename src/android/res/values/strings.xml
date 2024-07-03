@@ -59,5 +59,35 @@
     <string name="button_spacing">Button Spacing</string>
     <string name="vibration_strength">Vibration Strength</string>
 
+    <!--NooActivity-->
+    <string name="save_warning_1">"Saving and loading states is dangerous and can lead to data "</string>
+    <string name="save_warning_2">"loss. States are also not guaranteed to be compatible across emulator "</string>
+    <string name="save_warning_3">"versions. Please rely on in-game saving to keep your progress, and back up "</string>
+    <string name="save_warning_4">.sav files before using this feature. Do you want to save the current state?</string>
+    <string name="overwrite_save_1">"Do you want to overwrite the saved "</string>
+    <string name="overwrite_save_2">state with the current state? This can\'t be undone!</string>
+    <string name="load_warning_1">"Do you want to load the saved state "</string>
+    <string name="load_warning_2">and lose the current state? This can\'t be undone!</string>
+    <string name="File_fail">The state file doesn\'t exist or couldn\'t be opened.</string>
+    <string name="Format_fail">The state file doesn\'t have a valid format.</string>
+    <string name="Version_fail">The state file isn\'t compatible with this version of NooDS.</string>
+    <string name="change_save_type_warning">Are you sure? This may result in data loss!</string>
+
+    <!--BindingsPreference-->
+    <string name="key_to_bind">Press a key to bind it to this input.</string>
+
+    <!--FileBrowser-->
+    <string name="welcome_to_noods">Welcome to NooDS</string>
+    <string name="error_bios_1">Error Loading BIOS</string>
+    <string name="error_bios_2">"Make sure the path settings point to valid BIOS files and try again. "</string>
+    <string name="error_bios_3">"You can modify path settings in "</string>
+    <string name="error_firmware_1">Error Loading Firmware</string>
+    <string name="error_firmware_2">"Make sure the path settings point to a bootable firmware file or try another boot method. "</string>
+    <string name="error_firmware_3">"You can modify path settings in "</string>
+    <string name="error_rom_1">Error Loading ROM</string>
+    <string name="error_rom_2">Make sure the ROM file is accessible and try again.</string>
+    <string name="loading_gba_rom">Loading GBA ROM</string>
+    <string name="load_the_previous_nds_rom">Load the previous NDS ROM alongside this ROM?</string>
+
 
 </resources>

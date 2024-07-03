@@ -222,7 +222,7 @@ public class FileBrowser extends AppCompatActivity
 
         // Create the Play Store information dialog
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Welcome to NooDS");
+        builder.setTitle(R.string.welcome_to_noods);
         builder.setView(view);
         builder.setCancelable(!start);
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
@@ -381,20 +381,20 @@ public class FileBrowser extends AppCompatActivity
             switch (result)
             {
                 case 1: // Missing BIOS files
-                    builder.setTitle("Error Loading BIOS");
-                    builder.setMessage("Make sure the path settings point to valid BIOS files and try again. " +
-                                       "You can modify path settings in " + getExternalFilesDir(null).getPath() + "/noods.ini.");
+                    builder.setTitle(R.string.error_bios_1);
+                    builder.setMessage(getString(R.string.error_bios_2) +
+                                       getString(R.string.error_bios_3) + getExternalFilesDir(null).getPath() + "/noods.ini.");
                     break;
 
                 case 2: // Non-bootable firmware file
-                    builder.setTitle("Error Loading Firmware");
-                    builder.setMessage("Make sure the path settings point to a bootable firmware file or try another boot method. " +
-                                       "You can modify path settings in " + getExternalFilesDir(null).getPath() + "/noods.ini.");
+                    builder.setTitle(R.string.error_firmware_1);
+                    builder.setMessage(getString(R.string.error_firmware_2) +
+                                       getString(R.string.error_firmware_3) + getExternalFilesDir(null).getPath() + "/noods.ini.");
                     break;
 
                 case 3: // Unreadable ROM file
-                    builder.setTitle("Error Loading ROM");
-                    builder.setMessage("Make sure the ROM file is accessible and try again.");
+                    builder.setTitle(R.string.error_rom_1);
+                    builder.setMessage(R.string.error_rom_2);
                     break;
             }
 
@@ -471,8 +471,8 @@ public class FileBrowser extends AppCompatActivity
                 if (isNdsLoaded())
                 {
                     AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                    builder.setTitle("Loading GBA ROM");
-                    builder.setMessage("Load the previous NDS ROM alongside this ROM?");
+                    builder.setTitle(R.string.loading_gba_rom);
+                    builder.setMessage(R.string.load_the_previous_nds_rom);
 
                     builder.setPositiveButton("Yes", new DialogInterface.OnClickListener()
                     {

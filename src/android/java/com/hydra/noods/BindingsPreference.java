@@ -52,7 +52,7 @@ public class BindingsPreference extends Preference
         // Create the dialog for rebinding an input
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle(getTitle());
-        builder.setMessage("Press a key to bind it to this input.");
+        builder.setMessage(R.string.key_to_bind);
         builder.setNegativeButton("Cancel", null);
 
         builder.setPositiveButton("Clear", new DialogInterface.OnClickListener()
