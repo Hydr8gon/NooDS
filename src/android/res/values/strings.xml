@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<resources>
+    <!--file_menu-->
+    <string name="information">Information</string>
+    <string name="change_storage">Change Storage</string>
+    <string name="settings">Settings</string>
+
+    <!--noo_menu-->
+    <string name="toggle_controls">Toggle Controls</string>
+    <string name="restart">Restart</string>
+    <string name="save_state">Save State</string>
+    <string name="load_state">Load State</string>
+    <string name="change_save_type">Change Save Type</string>
+    <string name="input_bindings">Input Bindings</string>
+    <string name="file_browser">File Browser</string>
+
+    <!--bindings-->
+    <string name="buttons">Buttons</string>
+    <string name="a_button">A Button</string>
+    <string name="b_button">B Button</string>
+    <string name="x_button">X Button</string>
+    <string name="y_button">Y Button</string>
+    <string name="start_button">Start Button</string>
+    <string name="select_button">Select Button</string>
+    <string name="up_button">Up Button</string>
+    <string name="down_button">Down Button</string>
+    <string name="left_button">Left Button</string>
+    <string name="right_button">Right Button</string>
+    <string name="l_button">L Button</string>
+    <string name="r_button">R Button</string>
+    <string name="hotkeys">Hotkeys</string>
+    <string name="fast_forward_hold">Fast Forward Hold</string>
+    <string name="fast_forward_toggle">Fast Forward Toggle</string>
+    <string name="screen_swap_toggle">Screen Swap Toggle</string>
+
+    <!--settings-->
+    <string name="general_settings">General Settings</string>
+    <string name="direct_boot">Direct Boot</string>
+    <string name="fps_limiter">FPS Limiter</string>
+    <string name="threaded_2d">Threaded 2D</string>
+    <string name="threaded_3d">Threaded 3D</string>
+    <string name="high_resolution_3d">High-Resolution 3D</string>
+    <string name="use_microphone">Use Microphone</string>
+    <string name="show_fps_counter">Show FPS Counter</string>
+    <string name="screen_layout">Screen Layout</string>
+    <string name="screen_position">Screen Position</string>
+    <string name="screen_rotation">Screen Rotation</string>
+    <string name="screen_arrangement">Screen Arrangement</string>
+    <string name="screen_sizing">Screen Sizing</string>
+    <string name="screen_gap">Screen Gap</string>
+    <string name="screen_filter">Screen Filter</string>
+    <string name="integer_scale">Integer Scale</string>
+    <string name="gba_crop">GBA Crop</string>
+    <string name="simulate_ghosting">Simulate Ghosting</string>
+    <string name="on_screen_controls">On-Screen Controls</string>
+    <string name="button_scale">Button Scale</string>
+    <string name="button_spacing">Button Spacing</string>
+    <string name="vibration_strength">Vibration Strength</string>
+
+
+</resources>

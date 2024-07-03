@@ -4,7 +4,7 @@
 
     <item android:id="@+id/bindings_action"
         android:icon="@drawable/bindings"
-        android:title="Input Bindings"
+        android:title="@string/input_bindings"
         app:showAsAction="always" />
 
 </menu>

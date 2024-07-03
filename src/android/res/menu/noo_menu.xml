@@ -3,27 +3,27 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item android:id="@+id/controls_action"
-        android:title="Toggle Controls" />
+        android:title="@string/toggle_controls" />
 
     <item android:id="@+id/restart_action"
-        android:title="Restart" />
+        android:title="@string/restart" />
 
     <item android:id="@+id/save_state_action"
-        android:title="Save State" />
+        android:title="@string/save_state" />
 
     <item android:id="@+id/load_state_action"
-        android:title="Load State" />
+        android:title="@string/load_state" />
 
     <item android:id="@+id/save_type_action"
-        android:title="Change Save Type" />
+        android:title="@string/change_save_type" />
 
     <item android:id="@+id/bindings_action"
-        android:title="Input Bindings" />
+        android:title="@string/input_bindings" />
 
     <item android:id="@+id/settings_action"
-        android:title="Settings" />
+        android:title="@string/settings" />
 
     <item android:id="@+id/browser_action"
-        android:title="File Browser" />
+        android:title="@string/file_browser" />
 
 </menu>
