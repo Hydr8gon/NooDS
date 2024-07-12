@@ -19,14 +19,16 @@
 
 #ifdef __WIIU__
 
+#include <coreinit/foreground.h>
 #include <coreinit/memdefaultheap.h>
 #include <gx2/display.h>
 #include <gx2/draw.h>
 #include <gx2/mem.h>
 #include <gx2/registers.h>
 #include <gx2r/draw.h>
+#include <proc_ui/procui.h>
+#include <sysapp/launch.h>
 #include <vpad/input.h>
-#include <whb/proc.h>
 #include <whb/sdcard.h>
 #include <whb/gfx.h>
 #include <SDL2/SDL.h>
@@ -282,7 +284,7 @@ void outputAudio(void *data, uint8_t *buffer, int length)
 int main()
 {
     // Initialize various things
-    WHBProcInit();
+    ProcUIInit(OSSavesDone_ReadyToRelease);
     WHBGfxInit();
     VPADInit();
     WHBMountSdCard();
@@ -382,8 +384,22 @@ int main()
 
     // Run the emulator until it exits
     ConsoleUI::mainLoop(nullptr, &gpLayout);
-    WHBProcShutdown();
-    return 0;
+    SYSLaunchMenu();
+
+    // Respond to system messages appropriately to allow exiting
+    while (true)
+    {
+        switch (ProcUIProcessMessages(true))
+        {
+            case PROCUI_STATUS_EXITING:
+                ProcUIShutdown();
+                return 0;
+
+            case PROCUI_STATUS_RELEASE_FOREGROUND:
+                ProcUIDrawDoneRelease();
+                break;
+        }
+    }
 }
 
 #endif // __WIIU__

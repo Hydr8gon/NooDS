@@ -115,18 +115,12 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v1
     - name: Compile
-      run: |
-        make wiiu -j$(nproc)
-        mv icon/icon-wiiu.png icon.png
-        mv icon/meta.xml meta.xml
+      run: make wiiu -j$(nproc)
     - name: Upload
       uses: actions/upload-artifact@v2
       with:
         name: noods-wiiu
-        path: |
-          icon.png
-          meta.xml
-          noods.rpx
+        path: noods.wuhb
 
   build-vita:
     runs-on: ubuntu-latest

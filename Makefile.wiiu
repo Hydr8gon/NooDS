@@ -2,6 +2,11 @@ ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
 endif
 
+APP_NAME := NooDS
+APP_SHORTNAME := NooDS
+APP_AUTHOR := Hydr8gon
+APP_ICON := ../icon/icon-vita.png
+
 include $(DEVKITPRO)/wut/share/wut_rules
 
 NAME := noods
@@ -39,11 +44,12 @@ build-shader:
 	cd src/console/shaders; ./latte-assembler compile shader_wiiu.gsh --vsh shader_wiiu.vsh --psh shader_wiiu.psh
 
 clean:
-	rm -rf $(BUILD) $(NAME).rpx $(NAME).elf
+	rm -rf $(BUILD) $(NAME).wuhb $(NAME).rpx $(NAME).elf
 
 else
 
-all: $(OUTPUT).rpx
+all: $(OUTPUT).wuhb
+$(OUTPUT).wuhb: $(OUTPUT).rpx
 $(OUTPUT).rpx: $(OUTPUT).elf
 $(OUTPUT).elf: $(OFILES)
 
