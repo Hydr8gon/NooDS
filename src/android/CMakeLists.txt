@@ -7,6 +7,7 @@ add_library(noods-core SHARED
             cpp/interface.cpp
             ../common/nds_icon.cpp
             ../common/screen_layout.cpp
+            ../action_replay.cpp
             ../bios.cpp
             ../cartridge.cpp
             ../core.cpp

@@ -24,11 +24,11 @@
 #include "core.h"
 #include "settings.h"
 
-Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd,
-    int gbaRomFd, int ndsSaveFd, int gbaSaveFd, int ndsStateFd, int gbaStateFd):
-    id(id), bios { Bios(this, 0, Bios::swiTable9), Bios(this, 1, Bios::swiTable7), Bios(this, 1, Bios::swiTableGba) },
-    cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this), dldi(this), dma { Dma(this, 0),
-    Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this),
+Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gbaRomFd,
+    int ndsSaveFd, int gbaSaveFd, int ndsStateFd, int gbaStateFd, int ndsCheatFd):
+    id(id), actionReplay(this), bios { Bios(this, 0, Bios::swiTable9), Bios(this, 1, Bios::swiTable7), Bios(this, 1,
+    Bios::swiTableGba) }, cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this), dldi(this), dma {
+    Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this),
     input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this),
     rtc(this), saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
 {
@@ -87,7 +87,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd,
     if (gbaRom != "" || gbaRomFd != -1)
     {
         // Load a GBA ROM
-        if (!cartridgeGba.setRom(gbaRom) && !cartridgeGba.setRom(gbaRomFd, gbaSaveFd, gbaStateFd))
+        if (!cartridgeGba.setRom(gbaRom) && !cartridgeGba.setRom(gbaRomFd, gbaSaveFd, gbaStateFd, -1))
             throw ERROR_ROM;
 
         // Enable GBA mode right away if direct boot is enabled
@@ -101,8 +101,11 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd,
     if (ndsRom != "" || ndsRomFd != -1)
     {
         // Load an NDS ROM
-        if (!cartridgeNds.setRom(ndsRom) && !cartridgeNds.setRom(ndsRomFd, ndsSaveFd, ndsStateFd))
+        if (!cartridgeNds.setRom(ndsRom) && !cartridgeNds.setRom(ndsRomFd, ndsSaveFd, ndsStateFd, ndsCheatFd))
             throw ERROR_ROM;
+
+        // Load cheats if any exist
+        actionReplay.loadCheats();
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled
         if (Settings::directBoot)

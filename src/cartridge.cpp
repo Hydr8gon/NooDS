@@ -36,23 +36,28 @@ Cartridge::~Cartridge()
 
 bool Cartridge::setRom(std::string romPath)
 {
-    // Set the save and state paths based on instance ID
+    // Derive save and state extensions based on instance ID
+    std::string base = romPath.substr(0, romPath.rfind("."));
     std::string sav = core->id ? (".sv" + std::to_string(core->id + 1)) : ".sav";
     std::string noo = core->id ? (".no" + std::to_string(core->id + 1)) : ".noo";
-    savePath = romPath.substr(0, romPath.rfind(".")) + sav;
-    core->saveStates.setState(romPath.substr(0, romPath.rfind(".")) + noo, this == &core->cartridgeGba);
 
-    // Load a ROM normally
+    // Use paths to load ROM files
     this->romPath = romPath;
+    savePath = base + sav;
+    bool gba = (this == &core->cartridgeGba);
+    core->saveStates.setPath(base + noo, gba);
+    if (!gba) core->actionReplay.setPath(base + ".cht");
     return loadRom();
 }
 
-bool Cartridge::setRom(int romFd, int saveFd, int stateFd)
+bool Cartridge::setRom(int romFd, int saveFd, int stateFd, int cheatFd)
 {
-    // Load a ROM using file descriptors; needed for scoped storage on Android
+    // Use descriptors to load ROM files; needed for scoped storage on Android
     this->romFd = romFd;
     this->saveFd = saveFd;
-    core->saveStates.setState(stateFd, this == &core->cartridgeGba);
+    bool gba = (this == &core->cartridgeGba);
+    core->saveStates.setFd(stateFd, gba);
+    if (!gba) core->actionReplay.setFd(cheatFd);
     return loadRom();
 }
 

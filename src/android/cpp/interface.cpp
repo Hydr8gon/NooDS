@@ -39,6 +39,7 @@ std::string ndsPath = "", gbaPath = "";
 int ndsRomFd = -1, gbaRomFd = -1;
 int ndsSaveFd = -1, gbaSaveFd = -1;
 int ndsStateFd = -1, gbaStateFd = -1;
+int ndsCheatFd = -1;
 Core *core = nullptr;
 ScreenLayout layout;
 uint32_t framebuffer[256 * 192 * 8];
@@ -145,7 +146,7 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_FileBrowser_startCore(JNI
     try
     {
         if (core) delete core;
-        core = new Core(ndsPath, gbaPath, 0, ndsRomFd, gbaRomFd, ndsSaveFd, gbaSaveFd, ndsStateFd, gbaStateFd);
+        core = new Core(ndsPath, gbaPath, 0, ndsRomFd, gbaRomFd, ndsSaveFd, gbaSaveFd, ndsStateFd, gbaStateFd, ndsCheatFd);
         return 0;
     }
     catch (CoreError e)
@@ -182,12 +183,13 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaPath(JN
     env->ReleaseStringUTFChars(value, str);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsFds(JNIEnv* env, jobject obj, jint romFd, jint saveFd, jint stateFd)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsFds(JNIEnv* env, jobject obj, jint romFd, jint saveFd, jint stateFd, jint cheatFd)
 {
     // Set the NDS ROM file descriptors
     ndsRomFd = romFd;
     ndsSaveFd = saveFd;
     ndsStateFd = stateFd;
+    ndsCheatFd = cheatFd;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaFds(JNIEnv* env, jobject obj, jint romFd, jint saveFd, jint stateFd)
@@ -544,7 +546,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_writeSave(JNI
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_restartCore(JNIEnv *env, jobject obj)
 {
     if (core) delete core;
-    core = new Core(ndsPath, gbaPath, 0, ndsRomFd, gbaRomFd, ndsSaveFd, gbaSaveFd, ndsStateFd, gbaStateFd);
+    core = new Core(ndsPath, gbaPath, 0, ndsRomFd, gbaRomFd, ndsSaveFd, gbaSaveFd, ndsStateFd, gbaStateFd, ndsCheatFd);
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_NooActivity_checkState(JNIEnv *env, jobject obj)

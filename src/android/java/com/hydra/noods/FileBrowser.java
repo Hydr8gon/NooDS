@@ -416,7 +416,7 @@ public class FileBrowser extends AppCompatActivity
             if (ext.equals(".nds"))
             {
                 if (scoped)
-                    setNdsFds(getRomFd(file.getUri()), getSaveFd(file), getStateFd(file));
+                    setNdsFds(getRomFd(file.getUri()), getSaveFd(file), getStateFd(file), getCheatFd(file));
                 else
                     setNdsPath(file.getUri().getPath());
 
@@ -489,7 +489,7 @@ public class FileBrowser extends AppCompatActivity
                         public void onClick(DialogInterface dialog, int id)
                         {
                             setNdsPath("");
-                            setNdsFds(-1, -1, -1);
+                            setNdsFds(-1, -1, -1, -1);
                             tryStartCore();
                         }
                     });
@@ -500,7 +500,7 @@ public class FileBrowser extends AppCompatActivity
                         public void onCancel(DialogInterface dialog)
                         {
                             setNdsPath("");
-                            setNdsFds(-1, -1, -1);
+                            setNdsFds(-1, -1, -1, -1);
                             tryStartCore();
                         }
                     });
@@ -657,6 +657,27 @@ public class FileBrowser extends AppCompatActivity
         }
     }
 
+    private int getCheatFd(DocumentFile rom)
+    {
+        // Make a cheat file URI based on the ROM file URI
+        String str = rom.getUri().toString();
+        Uri uri = Uri.parse(str.substring(0, str.length() - 4) + ".cht");
+
+        try
+        {
+            // Get a descriptor for the file in scoped mode
+            return getContentResolver().openFileDescriptor(uri, "rw").detachFd();
+        }
+        catch (Exception e)
+        {
+            // Create a new cheat file if one doesn't exist
+            str = rom.getName().toString();
+            DocumentFile save = DocumentFile.fromTreeUri(this, pathUris.get(pathUris.size() - 2));
+            save.createFile("application/sav", str.substring(0, str.length() - 4) + ".cht");
+            return getStateFd(rom);
+        }
+    }
+
     public static native boolean loadSettings(String rootPath);
     public static native void getNdsIcon(int fd, Bitmap bitmap);
     public static native int startCore();
@@ -664,6 +685,6 @@ public class FileBrowser extends AppCompatActivity
     public static native boolean isGbaLoaded();
     public static native void setNdsPath(String value);
     public static native void setGbaPath(String value);
-    public static native void setNdsFds(int romFd, int saveFd, int stateFd);
+    public static native void setNdsFds(int romFd, int saveFd, int stateFd, int cheatFd);
     public static native void setGbaFds(int romFd, int saveFd, int stateFd);
 }

@@ -17,42 +17,41 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef SAVE_STATES_H
-#define SAVE_STATES_H
+#ifndef ACTION_REPLAY_H
+#define ACTION_REPLAY_H
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class Core;
 
-enum StateResult
+struct ARCheat
 {
-    STATE_SUCCESS,
-    STATE_FILE_FAIL,
-    STATE_FORMAT_FAIL,
-    STATE_VERSION_FAIL
+    std::string name;
+    std::vector<uint32_t> code;
+    bool enabled;
 };
 
-class SaveStates
+class ActionReplay
 {
     public:
-        SaveStates(Core *core): core(core) {}
-        void setPath(std::string path, bool gba);
-        void setFd(int fd, bool gba);
+        bool shouldRun = false;
 
-        StateResult checkState();
-        bool saveState();
-        bool loadState();
+        ActionReplay(Core *core): core(core) {}
+        void setPath(std::string path);
+        void setFd(int fd);
+
+        bool loadCheats();
+        void applyCheats();
 
     private:
         Core *core;
-        std::string ndsPath, gbaPath;
-        int ndsFd = -1, gbaFd = -1;
-
-        static const char *stateTag;
-        static const uint32_t stateVersion;
+        std::vector<ARCheat> cheats;
+        std::string path;
+        int fd = -1;
 
         FILE *openFile(const char *mode);
 };
 
-#endif // SAVE_STATES_H
+#endif // ACTION_REPLAY_H

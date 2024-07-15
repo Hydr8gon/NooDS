@@ -605,6 +605,10 @@ void Gpu::scanline355()
                 mutex.unlock();
             }
 
+            // Apply Action Replay cheats at V-blank if enabled
+            if (core->actionReplay.shouldRun)
+                core->actionReplay.applyCheats();
+
             // Stop execution here in case the frontend needs to do things
             core->endFrame();
             break;

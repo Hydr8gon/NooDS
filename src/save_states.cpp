@@ -23,16 +23,16 @@
 const char *SaveStates::stateTag = "NOOD";
 const uint32_t SaveStates::stateVersion = 2;
 
-void SaveStates::setState(std::string path, bool gba)
+void SaveStates::setPath(std::string path, bool gba)
 {
     // Set the NDS or GBA state path
-    gba ? (gbaPath = path) : (ndsPath = path);
+    (gba ? gbaPath : ndsPath) = path;
 }
 
-void SaveStates::setState(int fd, bool gba)
+void SaveStates::setFd(int fd, bool gba)
 {
     // Set the NDS or GBA state descriptor
-    gba ? (gbaFd = fd) : (ndsFd = fd);
+    (gba ? gbaFd : ndsFd) = fd;
 }
 
 FILE *SaveStates::openFile(const char *mode)

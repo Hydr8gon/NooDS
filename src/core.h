@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 
+#include "action_replay.h"
 #include "bios.h"
 #include "cartridge.h"
 #include "cp15.h"
@@ -107,6 +108,7 @@ class Core
         bool gbaMode = false;
         int fps = 0;
 
+        ActionReplay actionReplay;
         Bios bios[3];
         CartridgeGba cartridgeGba;
         CartridgeNds cartridgeNds;
@@ -135,7 +137,7 @@ class Core
         uint32_t globalCycles = 0;
 
         Core(std::string ndsRom = "", std::string gbaRom = "", int id = 0, int ndsRomFd = -1, int gbaRomFd = -1,
-             int ndsSaveFd = -1, int gbaSaveFd = -1, int ndsStateFd = -1, int gbaStateFd = -1);
+             int ndsSaveFd = -1, int gbaSaveFd = -1, int ndsStateFd = -1, int gbaStateFd = -1, int ndsCheatFd = -1);
         void saveState(FILE *file);
         void loadState(FILE *file);
 

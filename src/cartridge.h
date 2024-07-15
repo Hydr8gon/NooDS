@@ -45,7 +45,7 @@ class Cartridge
         ~Cartridge();
 
         bool setRom(std::string romPath);
-        bool setRom(int romFd, int saveFd, int stateFd);
+        bool setRom(int romFd, int saveFd, int stateFd, int cheatFd);
         void writeSave();
 
         void trimRom();
