@@ -48,8 +48,10 @@ bool ActionReplay::loadCheats()
     FILE *file = openFile("r");
     if (!file) return false;
     char data[512];
+    mutex.lock();
 
-    // Load cheats from the file
+    // Reload cheats from the file
+    cheats.clear();
     while (fgets(data, 512, file) != nullptr)
     {
         // Create a new cheat when one is found
@@ -59,7 +61,7 @@ bool ActionReplay::loadCheats()
 
         // Parse the cheat name and enabled state from the file
         cheat.name = &data[1];
-        if ((cheat.enabled = (cheat.name[cheat.name.size() - 2] == '+'))) shouldRun = true;
+        cheat.enabled = (cheat.name[cheat.name.size() - 2] == '+');
         cheat.name = cheat.name.substr(0, cheat.name.size() - 3);
         LOG("Loaded cheat: %s (%s)\n", cheat.name.c_str(), cheat.enabled ? "enabled" : "disabled");
 
@@ -72,6 +74,29 @@ bool ActionReplay::loadCheats()
     }
 
     // Close the file after reading it
+    mutex.unlock();
+    fclose(file);
+    return true;
+}
+
+bool ActionReplay::saveCheats()
+{
+    // Attempt to open the cheat file
+    FILE *file = openFile("w");
+    if (!file) return false;
+    mutex.lock();
+
+    // Write cheats back to the file
+    for (uint32_t i = 0; i < cheats.size(); i++)
+    {
+        fprintf(file, "[%s]%c\n", cheats[i].name.c_str(), cheats[i].enabled ? '+' : '-');
+        for (uint32_t j = 0; j < cheats[i].code.size(); j += 2)
+            fprintf(file, "%08X %08X\n", cheats[i].code[j], cheats[i].code[j + 1]);
+        fprintf(file, "\n");
+    }
+
+    // Close the file after writing it
+    mutex.unlock();
     fclose(file);
     return true;
 }
@@ -79,6 +104,7 @@ bool ActionReplay::loadCheats()
 void ActionReplay::applyCheats()
 {
     // Execute the code of enabled cheats
+    mutex.lock();
     for (uint32_t i = 0; i < cheats.size(); i++)
     {
         // Define registers for executing a cheat
@@ -330,4 +356,5 @@ void ActionReplay::applyCheats()
             }
         }
     }
+    mutex.unlock();
 }

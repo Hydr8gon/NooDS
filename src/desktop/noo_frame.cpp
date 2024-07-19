@@ -18,13 +18,13 @@
 */
 
 #include "noo_frame.h"
+#include "cheat_dialog.h"
 #include "input_dialog.h"
 #include "layout_dialog.h"
 #include "noo_app.h"
 #include "noo_canvas.h"
 #include "path_dialog.h"
 #include "save_dialog.h"
-#include "../common/screen_layout.h"
 #include "../settings.h"
 #include "../../icon/icon.xpm"
 
@@ -41,6 +41,7 @@ enum FrameEvent
     RESTART,
     STOP,
     ADD_SYSTEM,
+    ACTION_REPLAY,
     PATH_SETTINGS,
     INPUT_BINDINGS,
     SCREEN_LAYOUT,
@@ -70,6 +71,7 @@ EVT_MENU(PAUSE, NooFrame::pause)
 EVT_MENU(RESTART, NooFrame::restart)
 EVT_MENU(STOP, NooFrame::stop)
 EVT_MENU(ADD_SYSTEM, NooFrame::addSystem)
+EVT_MENU(ACTION_REPLAY, NooFrame::actionReplay)
 EVT_MENU(PATH_SETTINGS, NooFrame::pathSettings)
 EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
 EVT_MENU(SCREEN_LAYOUT, NooFrame::layoutSettings)
@@ -118,6 +120,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         systemMenu->Append(STOP, "&Stop");
         systemMenu->AppendSeparator();
         systemMenu->Append(ADD_SYSTEM, "&Add System");
+        systemMenu->Append(ACTION_REPLAY, "&Action Replay");
 
         // Disable some menu items until the core is running
         fileMenu->Enable(TRIM_ROM, false);
@@ -127,6 +130,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         systemMenu->Enable(PAUSE, false);
         systemMenu->Enable(RESTART, false);
         systemMenu->Enable(STOP, false);
+        systemMenu->Enable(ACTION_REPLAY, false);
 
         // Set up the FPS Limiter submenu
         wxMenu *fpsLimiter = new wxMenu();
@@ -171,7 +175,6 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         settingsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
         settingsMenu->AppendSeparator();
         settingsMenu->AppendCheckItem(HIGH_RES_3D, "&High-Resolution 3D");
-        settingsMenu->AppendSeparator();
         settingsMenu->AppendCheckItem(MIC_ENABLE, "&Use Microphone");
 
         // Set the current values of the checkboxes
@@ -338,6 +341,7 @@ void NooFrame::startCore(bool full)
         systemMenu->Enable(PAUSE, true);
         systemMenu->Enable(RESTART, true);
         systemMenu->Enable(STOP, true);
+        systemMenu->Enable(ACTION_REPLAY, ndsPath != "");
 
         // Start the threads
         running = true;
@@ -674,6 +678,13 @@ void NooFrame::addSystem(wxCommandEvent &event)
 {
     // Create a new emulator instance
     app->createFrame();
+}
+
+void NooFrame::actionReplay(wxCommandEvent &event)
+{
+    // Show the AR cheats dialog
+    CheatDialog cheatDialog(core);
+    cheatDialog.ShowModal();
 }
 
 void NooFrame::pathSettings(wxCommandEvent &event)

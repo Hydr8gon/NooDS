@@ -79,6 +79,7 @@ class NooFrame: public wxFrame
         void restart(wxCommandEvent &event);
         void stop(wxCommandEvent &event);
         void addSystem(wxCommandEvent &event);
+        void actionReplay(wxCommandEvent &event);
         void pathSettings(wxCommandEvent &event);
         void inputSettings(wxCommandEvent &event);
         void layoutSettings(wxCommandEvent &event);

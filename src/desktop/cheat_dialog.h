@@ -17,43 +17,32 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef ACTION_REPLAY_H
-#define ACTION_REPLAY_H
+#ifndef CHEAT_DIALOG_H
+#define CHEAT_DIALOG_H
 
-#include <cstdint>
-#include <mutex>
-#include <string>
-#include <vector>
+#include "noo_frame.h"
 
-class Core;
-
-struct ARCheat
-{
-    std::string name;
-    std::vector<uint32_t> code;
-    bool enabled;
-};
-
-class ActionReplay
+class CheatDialog: public wxDialog
 {
     public:
-        std::vector<ARCheat> cheats;
-
-        ActionReplay(Core *core): core(core) {}
-        void setPath(std::string path);
-        void setFd(int fd);
-
-        bool loadCheats();
-        bool saveCheats();
-        void applyCheats();
+        CheatDialog(Core *core);
 
     private:
         Core *core;
-        std::mutex mutex;
-        std::string path;
-        int fd = -1;
+        wxCheckListBox *cheatList;
+        wxTextCtrl *nameEditor;
+        wxTextCtrl *codeEditor;
+        int curCheat = -1;
 
-        FILE *openFile(const char *mode);
+        void updateCheat();
+        void checkCheat(wxCommandEvent &event);
+        void selectCheat(wxCommandEvent &event);
+        void addCheat(wxCommandEvent &event);
+        void removeCheat(wxCommandEvent &event);
+        void cancel(wxCommandEvent &event);
+        void confirm(wxCommandEvent &event);
+
+        wxDECLARE_EVENT_TABLE();
 };
 
-#endif // ACTION_REPLAY_H
+#endif // CHEAT_DIALOG_H
