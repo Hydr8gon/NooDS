@@ -43,11 +43,9 @@ CheatDialog::CheatDialog(Core *core): wxDialog(nullptr, wxID_ANY, "Action Replay
 
     // Set up the cheat name and code editors
     wxBoxSizer *editSizer = new wxBoxSizer(wxVERTICAL);
-    nameEditor = new wxTextCtrl();
-    nameEditor->Create(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(size * 8, size));
+    nameEditor = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(size * 8, size));
     editSizer->Add(nameEditor, 0, wxEXPAND | wxBOTTOM, size / 16);
-    codeEditor = new wxTextCtrl();
-    codeEditor->Create(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
+    codeEditor = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE);
     editSizer->Add(codeEditor, 1, wxEXPAND | wxTOP, size / 16);
 
     // Set up the cheat list and combine it with the editors
@@ -104,7 +102,7 @@ void CheatDialog::updateCheat()
     {
         p = code.find_first_of(" \n", i);
         if (p == std::string::npos) p = code.size();
-        cheat->code.push_back(strtol(code.substr(i, p).c_str(), nullptr, 16));
+        cheat->code.push_back(strtoll(code.substr(i, p).c_str(), nullptr, 16));
     }
 
     // Ensure the code's word count is a multiple of 2
@@ -124,10 +122,11 @@ void CheatDialog::selectCheat(wxCommandEvent &event)
     // Select a new cheat and put its name in the editor
     if (curCheat >= 0) updateCheat();
     ARCheat *cheat = &core->actionReplay.cheats[curCheat = event.GetInt()];
-    nameEditor->SetValue(cheat->name);
-    codeEditor->Clear();
+    nameEditor->Clear();
+    nameEditor->AppendText(cheat->name);
 
     // Write the code to the editor as a string
+    codeEditor->Clear();
     for (uint32_t i = 0; i < cheat->code.size(); i += 2)
     {
         char line[19];

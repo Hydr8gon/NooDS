@@ -68,8 +68,8 @@ bool ActionReplay::loadCheats()
         // Load the cheat code up until an empty line
         while (fgets(data, 512, file) != nullptr && data[0] != '\n')
         {
-            cheat.code.push_back(strtol(&data[0], nullptr, 16));
-            cheat.code.push_back(strtol(&data[8], nullptr, 16));
+            cheat.code.push_back(strtoll(&data[0], nullptr, 16));
+            cheat.code.push_back(strtoll(&data[8], nullptr, 16));
         }
     }
 
