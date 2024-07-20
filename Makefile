@@ -100,10 +100,14 @@ wiiu:
 vita:
 	$(MAKE) -f Makefile.vita
 
+libretro:
+	$(MAKE) -f Makefile.libretro
+
 clean:
 	if [ -d "build-android" ]; then ./gradlew clean; fi
 	if [ -d "build-switch" ]; then $(MAKE) -f Makefile.switch clean; fi
 	if [ -d "build-wiiu" ]; then $(MAKE) -f Makefile.wiiu clean; fi
 	if [ -d "build-vita" ]; then $(MAKE) -f Makefile.vita clean; fi
+	if [ -d "build-libretro" ]; then $(MAKE) -f Makefile.libretro clean; fi
 	rm -rf $(BUILD)
 	rm -f $(NAME)

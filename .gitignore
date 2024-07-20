@@ -7,6 +7,7 @@
 /src/android/.cxx
 /eboot.bin
 /noods
+/noods*.so
 /noods.aab
 /NooDS.app
 /NooDS.dmg
