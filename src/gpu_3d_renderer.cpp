@@ -132,15 +132,15 @@ void Gpu3DRenderer::drawScanline(int line)
     if (line == 0)
     {
         // Calculate the scanline bounds for each polygon
-        for (int i = 0; i < core->gpu3D.getPolygonCount(); i++)
+        for (int i = 0; i < core->gpu3D.polygonCountOut; i++)
         {
             polygonTop[i] = 192 * 2;
             polygonBot[i] =   0 * 2;
 
-            _Polygon *polygon = &core->gpu3D.getPolygons()[i];
+            _Polygon *polygon = &core->gpu3D.polygonsOut[i];
             for (int j = 0; j < polygon->size; j++)
             {
-                Vertex *vertex = &polygon->vertices[j];
+                Vertex *vertex = &core->gpu3D.verticesOut[polygon->vertices + j];
                 if (vertex->y < polygonTop[i]) polygonTop[i] = vertex->y;
                 if (vertex->y > polygonBot[i]) polygonBot[i] = vertex->y;
             }
@@ -271,14 +271,14 @@ void Gpu3DRenderer::drawScanline1(int line)
     std::vector<int> translucent;
 
     // Draw the polygons
-    for (int i = 0; i < core->gpu3D.getPolygonCount(); i++)
+    for (int i = 0; i < core->gpu3D.polygonCountOut; i++)
     {
         // Skip polygons that aren't on the current scanline
         if (line < polygonTop[i] || line >= polygonBot[i])
             continue;
 
         // Draw solid polygons and save the translucent ones for later
-        _Polygon *polygon = &core->gpu3D.getPolygons()[i];
+        _Polygon *polygon = &core->gpu3D.polygonsOut[i];
         if (polygon->alpha < 0x3F || polygon->textureFmt == 1 || polygon->textureFmt == 6)
             translucent.push_back(i);
         else
@@ -703,12 +703,12 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
 
 void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
 {
-    _Polygon *polygon = &core->gpu3D.getPolygons()[polygonIndex];
+    _Polygon *polygon = &core->gpu3D.polygonsOut[polygonIndex];
 
     // Get the polygon vertices
     Vertex *vertices[10];
     for (int i = 0; i < polygon->size; i++)
-        vertices[i] = &polygon->vertices[i];
+        vertices[i] = &core->gpu3D.verticesOut[polygon->vertices + i];
 
     // Unclipped quad strip polygons have their vertices crossed, so uncross them
     if (polygon->crossed)

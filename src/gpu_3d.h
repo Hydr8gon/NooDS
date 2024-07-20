@@ -37,10 +37,10 @@ enum GXState
 
 struct Entry
 {
-    Entry(uint8_t command, uint32_t param): command(command), param(param) {}
-
     uint8_t command;
     uint32_t param;
+
+    Entry(uint8_t command, uint32_t param): command(command), param(param) {}
 };
 
 struct Matrix
@@ -61,7 +61,7 @@ struct Vector
     int32_t x = 0, y = 0, z = 0;
 
     int32_t operator*(Vector &vtr);
-    Vector  operator*(Matrix &mtx);
+    Vector operator*(Matrix &mtx);
 };
 
 struct Vertex: Vector
@@ -75,46 +75,45 @@ struct Vertex: Vector
 
 struct _Polygon
 {
-    int size = 0;
-    Vertex *vertices = nullptr;
+    uint32_t textureAddr = 0, paletteAddr = 0;
+    uint16_t sizeS = 0, sizeT = 0;
+    uint8_t textureFmt = 0;
+    bool repeatS = false, repeatT = false;
+    bool flipS = false, flipT = false;
+    bool transparent0 = false;
+
+    uint16_t vertices = 0;
+    uint8_t size = 0;
+    uint8_t wShift = 0;
+    bool wBuffer = false;
     bool crossed = false;
     bool clockwise = false;
 
-    int mode = 0;
+    uint8_t mode = 0;
+    uint8_t alpha = 0;
+    uint8_t id = 0;
     bool transNewDepth = false;
     bool depthTestEqual = false;
     bool fog = false;
-    uint8_t alpha = 0;
-    int id = 0;
-
-    uint32_t textureAddr = 0, paletteAddr = 0;
-    int sizeS = 0, sizeT = 0;
-    bool repeatS = false, repeatT = false;
-    bool flipS = false, flipT = false;
-    int textureFmt = 0;
-    bool transparent0 = false;
-
-    bool wBuffer = false;
-    int wShift = 0;
 };
-
 
 class Gpu3D
 {
     public:
+        _Polygon *polygonsOut = polygons2;
+        Vertex *verticesOut = vertices2;
+        uint16_t polygonCountOut = 0;
+        uint16_t vertexCountOut = 0;
+
         Gpu3D(Core *core): core(core) {}
         void saveState(FILE *file);
         void loadState(FILE *file);
 
         void runCommand();
         void swapBuffers();
-
         bool shouldSwap() { return state == GX_HALTED; }
 
-        _Polygon *getPolygons()     { return polygonsOut;     }
-        int       getPolygonCount() { return polygonCountOut; }
-
-        uint32_t readGxStat()             { return gxStat;           }
+        uint32_t readGxStat() { return gxStat; }
         uint32_t readPosResult(int index) { return posResult[index]; }
         uint32_t readVecResult(int index) { return vecResult[index]; }
         uint32_t readRamCount();
@@ -183,13 +182,13 @@ class Gpu3D
         Matrix clip;
 
         Vertex vertices1[6144], vertices2[6144];
-        Vertex *verticesIn = vertices1, *verticesOut = vertices2;
-        uint16_t vertexCountIn = 0, vertexCountOut = 0;
+        Vertex *verticesIn = vertices1;
+        uint16_t vertexCountIn = 0;
         uint16_t processCount = 0;
 
         _Polygon polygons1[2048], polygons2[2048];
-        _Polygon *polygonsIn = polygons1, *polygonsOut = polygons2;
-        uint16_t polygonCountIn = 0, polygonCountOut = 0;
+        _Polygon *polygonsIn = polygons1;
+        uint16_t polygonCountIn = 0;
 
         Vertex savedVertex;
         _Polygon savedPolygon;
@@ -223,7 +222,7 @@ class Gpu3D
 
         static uint32_t rgb5ToRgb6(uint16_t color);
         static Vertex intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2);
-        static bool clipPolygon(Vertex *unclipped, Vertex *clipped, int *size);
+        static bool clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size);
 
         void processVertices();
         void addVertex();

@@ -255,7 +255,7 @@ Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val
     return vertex;
 }
 
-bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, int *size)
+bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size)
 {
     bool clip = false;
 
@@ -464,11 +464,11 @@ void Gpu3D::swapBuffers()
         _Polygon *p = &polygonsIn[i];
 
         // Find the polygon's greatest W value
-        uint32_t value = p->vertices[0].w;
+        uint32_t value = verticesIn[p->vertices].w;
         for (int j = 1; j < p->size; j++)
         {
-            if ((uint32_t)p->vertices[j].w > value)
-                value = p->vertices[j].w;
+            if ((uint32_t)verticesIn[p->vertices + j].w > value)
+                value = verticesIn[p->vertices + j].w;
         }
 
         // Reduce precision in 4-bit increments until the value fits in a 16-bit range
@@ -564,11 +564,11 @@ void Gpu3D::addPolygon()
     // Set the polygon vertex information
     int size = 3 + (polygonType & 1);
     savedPolygon.size = size;
-    savedPolygon.vertices = &verticesIn[vertexCountIn - size];
+    savedPolygon.vertices = vertexCountIn - size;
 
     // Save a copy of the unclipped vertices
     Vertex unclipped[4];
-    memcpy(unclipped, savedPolygon.vertices, size * sizeof(Vertex));
+    memcpy(unclipped, &verticesIn[savedPolygon.vertices], size * sizeof(Vertex));
 
     // Rearrange quad strip vertices to be counter-clockwise
     if (polygonType == 3)
@@ -691,7 +691,7 @@ void Gpu3D::addPolygon()
             {
                 // Remove the unclipped vertices
                 vertexCountIn -= (vertexCount == 3) ? 3 : 1;
-                savedPolygon.vertices = &verticesIn[vertexCountIn];
+                savedPolygon.vertices = vertexCountIn;
 
                 // Add the clipped vertices
                 for (int i = 0; i < savedPolygon.size; i++)
@@ -716,7 +716,7 @@ void Gpu3D::addPolygon()
             {
                 // Remove the unclipped vertices
                 vertexCountIn -= (vertexCount == 4) ? 4 : 2;
-                savedPolygon.vertices = &verticesIn[vertexCountIn];
+                savedPolygon.vertices = vertexCountIn;
 
                 // Add the clipped vertices
                 for (int i = 0; i < savedPolygon.size; i++)
@@ -1602,7 +1602,7 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
     // If any of the faces are in view, set the result bit
     for (int i = 0; i < 6; i++)
     {
-        int size = 4;
+        uint8_t size = 4;
         Vertex clipped[10];
         clipPolygon(faces[i], clipped, &size);
 
