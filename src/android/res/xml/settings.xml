@@ -3,19 +3,19 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <PreferenceCategory
-        app:title="General Settings"
+        app:title="@string/general_settings"
         app:iconSpaceReserved="false">
 
         <SwitchPreferenceCompat
             app:key="direct_boot"
-            app:title="Direct Boot"
+            app:title="@string/direct_boot"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
         <ListPreference
             app:key="fps_limiter"
-            app:title="FPS Limiter"
+            app:title="@string/fps_limiter"
             app:entries="@array/fps_limiter_entries"
             app:entryValues="@array/setting_values"
             app:useSimpleSummaryProvider="true"
@@ -25,14 +25,14 @@
 
         <SwitchPreferenceCompat
             app:key="threaded_2d"
-            app:title="Threaded 2D"
+            app:title="@string/threaded_2d"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
         <ListPreference
             app:key="threaded_3d"
-            app:title="Threaded 3D"
+            app:title="@string/threaded_3d"
             app:entries="@array/threaded_3d_entries"
             app:entryValues="@array/setting_values"
             app:useSimpleSummaryProvider="true"
@@ -42,32 +42,32 @@
 
         <SwitchPreferenceCompat
             app:key="high_res_3d"
-            app:title="High-Resolution 3D"
+            app:title="@string/high_resolution_3d"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
         <SwitchPreferenceCompat
             app:key="mic_enable"
-            app:title="Use Microphone"
+            app:title="@string/use_microphone"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
         <SwitchPreferenceCompat
             app:key="show_fps_counter"
-            app:title="Show FPS Counter"
+            app:title="@string/show_fps_counter"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true" />
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:title="Screen Layout"
+        app:title="@string/screen_layout"
         app:iconSpaceReserved="false">
 
         <ListPreference
             app:key="screen_position"
-            app:title="Screen Position"
+            app:title="@string/screen_position"
             app:entries="@array/screen_position_entries"
             app:entryValues="@array/setting_values"
             app:useSimpleSummaryProvider="true"
@@ -77,7 +77,7 @@
 
         <ListPreference
             app:key="screen_rotation"
-            app:title="Screen Rotation"
+            app:title="@string/screen_rotation"
             app:entries="@array/screen_rotation_entries"
             app:entryValues="@array/setting_values"
             app:useSimpleSummaryProvider="true"
@@ -87,7 +87,7 @@
 
         <ListPreference
             app:key="screen_arrangement"
-            app:title="Screen Arrangement"
+            app:title="@string/screen_arrangement"
             app:entries="@array/screen_arrangement_entries"
             app:entryValues="@array/setting_values"
             app:useSimpleSummaryProvider="true"
@@ -97,7 +97,7 @@
 
         <ListPreference
             app:key="screen_sizing"
-            app:title="Screen Sizing"
+            app:title="@string/screen_sizing"
             app:entries="@array/screen_sizing_entries"
             app:entryValues="@array/setting_values"
             app:useSimpleSummaryProvider="true"
@@ -107,7 +107,7 @@
 
         <ListPreference
             app:key="screen_gap"
-            app:title="Screen Gap"
+            app:title="@string/screen_gap"
             app:entries="@array/screen_gap_entries"
             app:entryValues="@array/setting_values"
             app:useSimpleSummaryProvider="true"
@@ -117,7 +117,7 @@
 
         <ListPreference
             app:key="screen_filter"
-            app:title="Screen Filter"
+            app:title="@string/screen_filter"
             app:entries="@array/screen_filter_entries"
             app:entryValues="@array/setting_values"
             app:useSimpleSummaryProvider="true"
@@ -127,33 +127,33 @@
 
         <SwitchPreferenceCompat
             app:key="integer_scale"
-            app:title="Integer Scale"
+            app:title="@string/integer_scale"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
         <SwitchPreferenceCompat
             app:key="gba_crop"
-            app:title="GBA Crop"
+            app:title="@string/gba_crop"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
         <SwitchPreferenceCompat
             app:key="screen_ghost"
-            app:title="Simulate Ghosting"
+            app:title="@string/simulate_ghosting"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:title="On-Screen Controls"
+        app:title="@string/on_screen_controls"
         app:iconSpaceReserved="false">
 
         <SeekBarPreference
             app:key="button_scale"
-            app:title="Button Scale"
+            app:title="@string/button_scale"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -161,7 +161,7 @@
 
         <SeekBarPreference
             app:key="button_spacing"
-            app:title="Button Spacing"
+            app:title="@string/button_spacing"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -169,7 +169,7 @@
 
         <SeekBarPreference
             app:key="vibrate_strength"
-            app:title="Vibration Strength"
+            app:title="@string/vibration_strength"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             android:max="10" />

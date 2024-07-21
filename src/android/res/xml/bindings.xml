@@ -2,12 +2,12 @@
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory
-        app:title="Buttons"
+        app:title="@string/buttons"
         app:iconSpaceReserved="false">
 
         <com.hydra.noods.BindingsPreference
             app:key="a_button"
-            app:title="A Button"
+            app:title="@string/a_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -15,7 +15,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="b_button"
-            app:title="B Button"
+            app:title="@string/b_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -23,7 +23,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="x_button"
-            app:title="X Button"
+            app:title="@string/x_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -31,7 +31,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="y_button"
-            app:title="Y Button"
+            app:title="@string/y_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -39,7 +39,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="start_button"
-            app:title="Start Button"
+            app:title="@string/start_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -47,7 +47,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="select_button"
-            app:title="Select Button"
+            app:title="@string/select_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -55,7 +55,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="up_button"
-            app:title="Up Button"
+            app:title="@string/up_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -63,7 +63,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="down_button"
-            app:title="Down Button"
+            app:title="@string/down_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -71,7 +71,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="left_button"
-            app:title="Left Button"
+            app:title="@string/left_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -79,7 +79,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="right_button"
-            app:title="Right Button"
+            app:title="@string/right_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -87,7 +87,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="l_button"
-            app:title="L Button"
+            app:title="@string/l_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -95,7 +95,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="r_button"
-            app:title="R Button"
+            app:title="@string/r_button"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -103,12 +103,12 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        app:title="Hotkeys"
+        app:title="@string/hotkeys"
         app:iconSpaceReserved="false">
 
         <com.hydra.noods.BindingsPreference
             app:key="fast_hold"
-            app:title="Fast Forward Hold"
+            app:title="@string/fast_forward_hold"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -116,7 +116,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="fast_toggle"
-            app:title="Fast Forward Toggle"
+            app:title="@string/fast_forward_toggle"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"
@@ -124,7 +124,7 @@
 
         <com.hydra.noods.BindingsPreference
             app:key="screen_swap"
-            app:title="Screen Swap Toggle"
+            app:title="@string/screen_swap_toggle"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true"

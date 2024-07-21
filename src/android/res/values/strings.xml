@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<resources>
+    <!--file_menu-->
+    <string name="information">Information</string>
+    <string name="change_storage">Change Storage</string>
+    <string name="settings">Settings</string>
+
+    <!--noo_menu-->
+    <string name="toggle_controls">Toggle Controls</string>
+    <string name="restart">Restart</string>
+    <string name="save_state">Save State</string>
+    <string name="load_state">Load State</string>
+    <string name="change_save_type">Change Save Type</string>
+    <string name="input_bindings">Input Bindings</string>
+    <string name="file_browser">File Browser</string>
+
+    <!--bindings-->
+    <string name="buttons">Buttons</string>
+    <string name="a_button">A Button</string>
+    <string name="b_button">B Button</string>
+    <string name="x_button">X Button</string>
+    <string name="y_button">Y Button</string>
+    <string name="start_button">Start Button</string>
+    <string name="select_button">Select Button</string>
+    <string name="up_button">Up Button</string>
+    <string name="down_button">Down Button</string>
+    <string name="left_button">Left Button</string>
+    <string name="right_button">Right Button</string>
+    <string name="l_button">L Button</string>
+    <string name="r_button">R Button</string>
+    <string name="hotkeys">Hotkeys</string>
+    <string name="fast_forward_hold">Fast Forward Hold</string>
+    <string name="fast_forward_toggle">Fast Forward Toggle</string>
+    <string name="screen_swap_toggle">Screen Swap Toggle</string>
+
+    <!--settings-->
+    <string name="general_settings">General Settings</string>
+    <string name="direct_boot">Direct Boot</string>
+    <string name="fps_limiter">FPS Limiter</string>
+    <string name="threaded_2d">Threaded 2D</string>
+    <string name="threaded_3d">Threaded 3D</string>
+    <string name="high_resolution_3d">High-Resolution 3D</string>
+    <string name="use_microphone">Use Microphone</string>
+    <string name="show_fps_counter">Show FPS Counter</string>
+    <string name="screen_layout">Screen Layout</string>
+    <string name="screen_position">Screen Position</string>
+    <string name="screen_rotation">Screen Rotation</string>
+    <string name="screen_arrangement">Screen Arrangement</string>
+    <string name="screen_sizing">Screen Sizing</string>
+    <string name="screen_gap">Screen Gap</string>
+    <string name="screen_filter">Screen Filter</string>
+    <string name="integer_scale">Integer Scale</string>
+    <string name="gba_crop">GBA Crop</string>
+    <string name="simulate_ghosting">Simulate Ghosting</string>
+    <string name="on_screen_controls">On-Screen Controls</string>
+    <string name="button_scale">Button Scale</string>
+    <string name="button_spacing">Button Spacing</string>
+    <string name="vibration_strength">Vibration Strength</string>
+
+    <!--NooActivity-->
+    <string name="save_warning_1">"Saving and loading states is dangerous and can lead to data "</string>
+    <string name="save_warning_2">"loss. States are also not guaranteed to be compatible across emulator "</string>
+    <string name="save_warning_3">"versions. Please rely on in-game saving to keep your progress, and back up "</string>
+    <string name="save_warning_4">.sav files before using this feature. Do you want to save the current state?</string>
+    <string name="overwrite_save_1">"Do you want to overwrite the saved "</string>
+    <string name="overwrite_save_2">state with the current state? This can\'t be undone!</string>
+    <string name="load_warning_1">"Do you want to load the saved state "</string>
+    <string name="load_warning_2">and lose the current state? This can\'t be undone!</string>
+    <string name="File_fail">The state file doesn\'t exist or couldn\'t be opened.</string>
+    <string name="Format_fail">The state file doesn\'t have a valid format.</string>
+    <string name="Version_fail">The state file isn\'t compatible with this version of NooDS.</string>
+    <string name="change_save_type_warning">Are you sure? This may result in data loss!</string>
+
+    <!--BindingsPreference-->
+    <string name="key_to_bind">Press a key to bind it to this input.</string>
+
+    <!--FileBrowser-->
+    <string name="welcome_to_noods">Welcome to NooDS</string>
+    <string name="error_bios_1">Error Loading BIOS</string>
+    <string name="error_bios_2">"Make sure the path settings point to valid BIOS files and try again. "</string>
+    <string name="error_bios_3">"You can modify path settings in "</string>
+    <string name="error_firmware_1">Error Loading Firmware</string>
+    <string name="error_firmware_2">"Make sure the path settings point to a bootable firmware file or try another boot method. "</string>
+    <string name="error_firmware_3">"You can modify path settings in "</string>
+    <string name="error_rom_1">Error Loading ROM</string>
+    <string name="error_rom_2">Make sure the ROM file is accessible and try again.</string>
+    <string name="loading_gba_rom">Loading GBA ROM</string>
+    <string name="load_the_previous_nds_rom">Load the previous NDS ROM alongside this ROM?</string>
+
+
+</resources>
