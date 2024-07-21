@@ -15,6 +15,8 @@
 #define VERSION "0.1"
 #endif
 
+class TouchLayout : public ScreenLayout {};
+
 static retro_environment_t envCallback;
 static retro_video_refresh_t videoCallback;
 static retro_audio_sample_batch_t audioBatchCallback;
@@ -29,6 +31,7 @@ static std::string savesPath;
 
 static Core *core;
 static ScreenLayout layout;
+static TouchLayout touch;
 
 static std::string ndsPath;
 static std::string gbaPath;
@@ -40,8 +43,11 @@ static std::string touchMode;
 static std::string screenSwapMode;
 
 static int screenArrangement;
+static int screenRotation;
+
 static bool renderTopScreen;
 static bool renderBotScreen;
+static bool renderSwapped;
 
 static bool showTouchCursor;
 static bool screenSwapped;
@@ -67,6 +73,20 @@ static int keymap[] = {
   RETRO_DEVICE_ID_JOYPAD_L,
   RETRO_DEVICE_ID_JOYPAD_X,
   RETRO_DEVICE_ID_JOYPAD_Y
+};
+
+static int arrangeMap [] = {
+  0, // 0 - Automatic      0 - Automatic
+  2, // 1 - Vertical       2 - Horizontal
+  1, // 2 - Horizontal     1 - Vertical
+  3, // 3 - Single Screen  3 - Single Screen
+};
+
+static int rotationMap [] = {
+  0, // 0 - Normal        0 - Normal
+  2, // 1 - RotatedLeft   2 - Counter-clockwise
+  0, // 2 - UpsideDown    0 - Normal
+  1, // 3 - RotatedRight  1 - Clockwise
 };
 
 static int32_t clampValue(int32_t value, int32_t min, int32_t max)
@@ -201,7 +221,8 @@ static void initConfig()
     { "noods_threaded2D", "Threaded 2D; enabled|disabled" },
     { "noods_threaded3D", "Threaded 3D; Disabled|1 Thread|2 Threads|3 Threads" },
     { "noods_highRes3D", "High Resolution 3D; disabled|enabled" },
-    { "noods_screenArrangement", "Screen Arrangement; Vertical|Horizontal|Single Screen" },
+    { "noods_screenArrangement", "Screen Arrangement; Automatic|Vertical|Horizontal|Single Screen" },
+    { "noods_screenRotation", "Screen Rotation; Normal|Rotated Left|Rotated Right" },
     { "noods_screenFilter", "Screen Filter; Linear|Nearest|Upscaled" },
     { "noods_screenGhost", "Simulate Ghosting; disabled|enabled" },
     { "noods_swapScreenMode", "Swap Screen Mode; Toggle|Hold" },
@@ -228,13 +249,21 @@ static void updateConfig()
   Settings::screenFilter = fetchVariableEnum("noods_screenFilter", {"Nearest", "Upscaled", "Linear"}, 2);
   Settings::screenGhost = fetchVariableBool("noods_screenGhost", false);
 
-  screenArrangement = fetchVariableEnum("noods_screenArrangement", {"Vertical", "Horizontal", "Single Screen"});
+  screenArrangement = fetchVariableEnum("noods_screenArrangement", {"Automatic", "Vertical", "Horizontal", "Single Screen"});
+  screenRotation = fetchVariableEnum("noods_screenRotation", {"Normal", "Rotated Left", "Upside Down", "Rotated Right"});
   screenSwapMode = fetchVariable("noods_swapScreenMode", "Toggle");
   touchMode = fetchVariable("noods_touchMode", "Touch");
   showTouchCursor = fetchVariableBool("noods_touchCursor", true);
 
-  ScreenLayout::screenArrangement = screenArrangement + 1;
+  ScreenLayout::screenArrangement = screenRotation ? arrangeMap[screenArrangement] : screenArrangement;
+  ScreenLayout::screenRotation = rotationMap[0];
   layout.update(0, 0, false, false);
+
+  TouchLayout::screenArrangement = screenArrangement;
+  TouchLayout::screenRotation = rotationMap[screenRotation];
+  touch.update(0, 0, false, false);
+
+  envCallback(RETRO_ENVIRONMENT_SET_ROTATION, &screenRotation);
 }
 
 static void checkConfigVariables()
@@ -259,20 +288,25 @@ static void updateScreenState()
 
   renderTopScreen = !bottomScreen && (singleScreen || ScreenLayout::screenSizing < 2);
   renderBotScreen = !singleScreen || (bottomScreen || ScreenLayout::screenSizing == 2);
+
+  renderSwapped = screenArrangement == 1 && screenRotation;
 }
 
 static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
 {
   bool shift = Settings::highRes3D || Settings::screenFilter == 1;
 
-  uint32_t minX = layout.botX << shift;
+  uint32_t offX = renderSwapped ? layout.topX : layout.botX;
+  uint32_t offY = renderSwapped ? layout.topY : layout.botY;
+
+  uint32_t minX = offX << shift;
   uint32_t maxX = layout.minWidth << shift;
 
-  uint32_t minY = layout.botY << shift;
+  uint32_t minY = offY << shift;
   uint32_t maxY = layout.minHeight << shift;
 
-  uint32_t curX = (layout.botX + posX) << shift;
-  uint32_t curY = (layout.botY + posY) << shift;
+  uint32_t curX = (offX + posX) << shift;
+  uint32_t curY = (offY + posY) << shift;
 
   uint32_t cursorSize = 2 << shift;
   uint32_t* baseOffset = (uint32_t*)data;
@@ -318,6 +352,8 @@ static void copyScreen(uint32_t *src,  uint32_t *dst, int sx, int sy, int width,
 static void drawTexture(uint32_t *buffer)
 {
   bool shift = Settings::highRes3D || Settings::screenFilter == 1;
+  auto bottom = (256 * 192) << (shift * 2);
+
   auto width = layout.minWidth << shift;
   auto height = layout.minHeight << shift;
 
@@ -326,7 +362,7 @@ static void drawTexture(uint32_t *buffer)
   if (renderTopScreen)
   {
     copyScreen(
-      &buffer[0], bufferPtr,
+      &buffer[renderSwapped ? bottom : 0], bufferPtr,
       layout.topX << shift, layout.topY << shift,
       layout.topWidth << shift, layout.topHeight << shift,
       width
@@ -336,7 +372,7 @@ static void drawTexture(uint32_t *buffer)
   if (renderBotScreen)
   {
     copyScreen(
-      &buffer[(256 * 192) << (shift * 2)], bufferPtr,
+      &buffer[renderSwapped ? 0 : bottom], bufferPtr,
       layout.botX << shift, layout.botY << shift,
       layout.botWidth << shift, layout.botHeight << shift,
       width
@@ -460,7 +496,7 @@ void retro_get_system_av_info(retro_system_av_info* info)
 
   info->geometry.max_width = info->geometry.base_width;
   info->geometry.max_height = info->geometry.base_height;
-  info->geometry.aspect_ratio = (float)layout.minWidth / (float)layout.minHeight;
+  info->geometry.aspect_ratio = (float)touch.minWidth / (float)touch.minHeight;
 
   info->timing.fps = 32.0f * 1024.0f * 1024.0f / 560190.0f;
   info->timing.sample_rate = 32.0f * 1024.0f;
@@ -611,11 +647,11 @@ void retro_run(void)
       auto posX = inputStateCallback(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X);
       auto posY = inputStateCallback(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y);
 
-      auto newX = static_cast<int>((posX + 0x7fff) / (float)(0x7fff * 2) * layout.minWidth);
-      auto newY = static_cast<int>((posY + 0x7fff) / (float)(0x7fff * 2) * layout.minHeight);
+      auto newX = static_cast<int>((posX + 0x7fff) / (float)(0x7fff * 2) * touch.minWidth);
+      auto newY = static_cast<int>((posY + 0x7fff) / (float)(0x7fff * 2) * touch.minHeight);
 
-      bool inScreenX = newX >= layout.botX && newX <= layout.botX + layout.botWidth;
-      bool inScreenY = newY >= layout.botY && newY <= layout.botY + layout.botHeight;
+      bool inScreenX = newX >= touch.botX && newX <= touch.botX + touch.botWidth;
+      bool inScreenY = newY >= touch.botY && newY <= touch.botY + touch.botHeight;
 
       if (inScreenX && inScreenY) {
         touchScreen |= inputStateCallback(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT);
@@ -626,20 +662,27 @@ void retro_run(void)
         lastMouseX = newX;
         lastMouseY = newY;
 
-        pointerX = newX - layout.botX;
-        pointerY = newY - layout.botY;
+        pointerX = touch.getTouchX(newX, newY);
+        pointerY = touch.getTouchY(newX, newY);
       }
     }
 
     if (touchMode == "Joystick" || touchMode == "Auto")
     {
-      auto speedX = (layout.botWidth / 40.0);
-      auto speedY = (layout.botHeight / 40.0);
+      auto speedX = (touch.botWidth / 40.0);
+      auto speedY = (touch.botHeight / 40.0);
 
       float moveX = getAxisState(RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X);
       float moveY = getAxisState(RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_Y);
 
       touchScreen |= getButtonState(RETRO_DEVICE_ID_JOYPAD_R3);
+
+      if (screenRotation)
+      {
+        std::swap(moveX, moveY);
+        if (screenRotation == 1) moveX = -moveX;
+        if (screenRotation == 3) moveY = -moveY;
+      }
 
       if (moveX != 0 || moveY != 0) {
         pointerX = touchX + static_cast<int>((moveX / 32767) * speedX);
