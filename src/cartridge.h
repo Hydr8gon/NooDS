@@ -44,8 +44,7 @@ class Cartridge
         Cartridge(Core *core): core(core) {}
         ~Cartridge();
 
-        bool setRom(std::string romPath);
-        bool setRom(int romFd, int saveFd, int stateFd, int cheatFd);
+        bool setRom(std::string romPath, int romFd = -1, int saveFd = -1, int stateFd = -1, int cheatFd = -1);
         void writeSave();
 
         void trimRom();

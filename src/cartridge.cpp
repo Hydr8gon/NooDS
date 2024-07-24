@@ -34,30 +34,28 @@ Cartridge::~Cartridge()
     if (save) delete[] save;
 }
 
-bool Cartridge::setRom(std::string romPath)
+bool Cartridge::setRom(std::string romPath, int romFd, int saveFd, int stateFd, int cheatFd)
 {
-    // Derive save and state extensions based on instance ID
-    std::string base = romPath.substr(0, romPath.rfind("."));
-    std::string sav = core->id ? (".sv" + std::to_string(core->id + 1)) : ".sav";
-    std::string noo = core->id ? (".no" + std::to_string(core->id + 1)) : ".noo";
+    // Derive file names with extensions based on instance ID
+    std::string basePath = romPath.substr(0, romPath.rfind('.'));
+    std::string savePath = basePath + (core->id ? (".sv" + std::to_string(core->id + 1)) : ".sav");
+    std::string statePath = basePath + (core->id ? (".no" + std::to_string(core->id + 1)) : ".noo");
+    std::string cheatPath = basePath + ".cht";
 
-    // Use paths to load ROM files
-    this->romPath = romPath;
-    savePath = base + sav;
-    bool gba = (this == &core->cartridgeGba);
-    core->saveStates.setPath(base + noo, gba);
-    if (!gba) core->actionReplay.setPath(base + ".cht");
-    return loadRom();
-}
+    // Relocate files to separate folders if enabled
+    if (Settings::savesFolder)
+        savePath = Settings::basePath + "/saves" + savePath.substr(savePath.find_last_of("/\\"));
+    if (Settings::statesFolder)
+        statePath = Settings::basePath + "/states" + statePath.substr(statePath.find_last_of("/\\"));
+    if (Settings::cheatsFolder)
+        cheatPath = Settings::basePath + "/cheats" + cheatPath.substr(cheatPath.find_last_of("/\\"));
 
-bool Cartridge::setRom(int romFd, int saveFd, int stateFd, int cheatFd)
-{
-    // Use descriptors to load ROM files; needed for scoped storage on Android
-    this->romFd = romFd;
-    this->saveFd = saveFd;
+    // Load files using paths or descriptors if provided
     bool gba = (this == &core->cartridgeGba);
-    core->saveStates.setFd(stateFd, gba);
-    if (!gba) core->actionReplay.setFd(cheatFd);
+    if (romFd == -1) this->romPath = romPath; else this->romFd = romFd;
+    if (saveFd == -1) this->savePath = savePath; else this->saveFd = saveFd;
+    (stateFd == -1) ? core->saveStates.setPath(statePath, gba) : core->saveStates.setFd(stateFd, gba);
+    if (!gba) (cheatFd == -1) ? core->actionReplay.setPath(cheatPath) : core->actionReplay.setFd(cheatFd);
     return loadRom();
 }
 

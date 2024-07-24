@@ -25,12 +25,12 @@
 
 struct Setting
 {
-    Setting(std::string name, void *value, bool isString):
-        name(name), value(value), isString(isString) {}
-
     std::string name;
     void *value;
     bool isString;
+
+    Setting(std::string name, void *value, bool isString):
+        name(name), value(value), isString(isString) {}
 };
 
 class Settings
@@ -43,20 +43,23 @@ class Settings
         static int highRes3D;
         static int screenFilter;
         static int screenGhost;
+        static int savesFolder;
+        static int statesFolder;
+        static int cheatsFolder;
+
         static std::string bios9Path;
         static std::string bios7Path;
         static std::string firmwarePath;
         static std::string gbaBiosPath;
         static std::string sdImagePath;
+        static std::string basePath;
 
-        static void add(std::vector<Setting> platformSettings);
-        static bool load(std::string filename = "noods.ini");
+        static void add(std::vector<Setting> &settings);
+        static bool load(std::string path = "");
         static bool save();
 
     private:
-        static std::string filename;
         static std::vector<Setting> settings;
-
         Settings() {} // Private to prevent instantiation
 };
 

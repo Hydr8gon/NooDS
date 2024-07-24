@@ -17,6 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <sys/stat.h>
 #include "settings.h"
 #include "defines.h"
 
@@ -27,13 +28,16 @@ int Settings::threaded3D = 1;
 int Settings::highRes3D = 0;
 int Settings::screenFilter = 2;
 int Settings::screenGhost = 0;
+int Settings::savesFolder = 0;
+int Settings::statesFolder = 1;
+int Settings::cheatsFolder = 1;
+
 std::string Settings::bios9Path = "bios9.bin";
 std::string Settings::bios7Path = "bios7.bin";
 std::string Settings::firmwarePath = "firmware.bin";
 std::string Settings::gbaBiosPath = "gba_bios.bin";
 std::string Settings::sdImagePath = "sd.img";
-
-std::string Settings::filename = "noods.ini";
+std::string Settings::basePath = "";
 
 std::vector<Setting> Settings::settings =
 {
@@ -44,6 +48,9 @@ std::vector<Setting> Settings::settings =
     Setting("highRes3D", &highRes3D, false),
     Setting("screenFilter", &screenFilter, false),
     Setting("screenGhost", &screenGhost, false),
+    Setting("savesFolder", &savesFolder, false),
+    Setting("statesFolder", &statesFolder, false),
+    Setting("cheatsFolder", &cheatsFolder, false),
     Setting("bios9Path", &bios9Path, true),
     Setting("bios7Path", &bios7Path, true),
     Setting("firmwarePath", &firmwarePath, true),
@@ -51,60 +58,72 @@ std::vector<Setting> Settings::settings =
     Setting("sdImagePath", &sdImagePath, true)
 };
 
-void Settings::add(std::vector<Setting> platformSettings)
+void Settings::add(std::vector<Setting> &settings)
 {
-    // Add additional platform settings to be loaded from the settings file
-    settings.insert(settings.end(), platformSettings.begin(), platformSettings.end());
+    // Add additional settings to be loaded from the settings file
+    Settings::settings.insert(Settings::settings.end(), settings.begin(), settings.end());
 }
 
-bool Settings::load(std::string filename)
+bool Settings::load(std::string path)
 {
-    // Attempt to open the settings file
-    // If the file can't be opened, the default values will be used
-    Settings::filename = filename;
-    FILE *settingsFile = fopen(filename.c_str(), "r");
-    if (!settingsFile) return false;
+    // Set the base path and ensure all folders exist
+    mkdir((basePath = path).c_str() MKDIR_ARGS);
+    mkdir((basePath + "/saves").c_str() MKDIR_ARGS);
+    mkdir((basePath + "/states").c_str() MKDIR_ARGS);
+    mkdir((basePath + "/cheats").c_str() MKDIR_ARGS);
 
-    char data[1024];
+    // Open the settings file or set defaults if it doesn't exist
+    FILE *file = fopen((basePath + "/noods.ini").c_str(), "r");
+    if (!file)
+    {
+        Settings::bios9Path = basePath + "/bios9.bin";
+        Settings::bios7Path = basePath + "/bios7.bin";
+        Settings::firmwarePath = basePath + "/firmware.bin";
+        Settings::gbaBiosPath = basePath + "/gba_bios.bin";
+        Settings::sdImagePath = basePath + "/sd.img";
+        Settings::save();
+        return false;
+    }
 
-    // Read each line of the settings file and load the values from them
-    while (fgets(data, 1024, settingsFile) != NULL)
+    // Read each line of the settings file and load values from them
+    char data[512];
+    while (fgets(data, 512, file) != nullptr)
     {
         std::string line = data;
-        int split = line.find("=");
+        size_t split = line.find('=');
         std::string name = line.substr(0, split);
-
-        for (unsigned int i = 0; i < settings.size(); i++)
+        for (size_t i = 0; i < settings.size(); i++)
         {
-            if (name == settings[i].name)
-            {
-                std::string value = line.substr(split + 1, line.size() - split - 2);
-                if (settings[i].isString)
-                    *(std::string*)settings[i].value = value;
-                else if (value[0] >= 0x30 && value[0] <= 0x39)
-                    *(int*)settings[i].value = stoi(value);
-                break;
-            }
+            if (name != settings[i].name) continue;
+            std::string value = line.substr(split + 1, line.size() - split - 2);
+            if (settings[i].isString)
+                *(std::string*)settings[i].value = value;
+            else if (value[0] >= '0' && value[0] <= '9')
+                *(int*)settings[i].value = stoi(value);
+            break;
         }
     }
 
-    fclose(settingsFile);
+    // Close the file after reading it
+    fclose(file);
     return true;
 }
 
 bool Settings::save()
 {
     // Attempt to open the settings file
-    FILE *settingsFile = fopen(filename.c_str(), "w");
-    if (!settingsFile) return false;
+    FILE *file = fopen((basePath + "/noods.ini").c_str(), "w");
+    if (!file) return false;
 
     // Write each setting to the settings file
-    for (unsigned int i = 0; i < settings.size(); i++)
+    for (size_t i = 0; i < settings.size(); i++)
     {
-        std::string value = settings[i].isString ? *(std::string*)settings[i].value : std::to_string(*(int*)settings[i].value);
-        fprintf(settingsFile, "%s=%s\n", settings[i].name.c_str(), value.c_str());
+        std::string value = settings[i].isString ?
+            *(std::string*)settings[i].value : std::to_string(*(int*)settings[i].value);
+        fprintf(file, "%s=%s\n", settings[i].name.c_str(), value.c_str());
     }
 
-    fclose(settingsFile);
+    // Close the file after writing it
+    fclose(file);
     return true;
 }

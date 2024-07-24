@@ -87,7 +87,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     if (gbaRom != "" || gbaRomFd != -1)
     {
         // Load a GBA ROM
-        if (!cartridgeGba.setRom(gbaRom) && !cartridgeGba.setRom(gbaRomFd, gbaSaveFd, gbaStateFd, -1))
+        if (!cartridgeGba.setRom(gbaRom, gbaRomFd, gbaSaveFd, gbaStateFd, -1))
             throw ERROR_ROM;
 
         // Enable GBA mode right away if direct boot is enabled
@@ -101,7 +101,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     if (ndsRom != "" || ndsRomFd != -1)
     {
         // Load an NDS ROM
-        if (!cartridgeNds.setRom(ndsRom) && !cartridgeNds.setRom(ndsRomFd, ndsSaveFd, ndsStateFd, ndsCheatFd))
+        if (!cartridgeNds.setRom(ndsRom, ndsRomFd, ndsSaveFd, ndsStateFd, ndsCheatFd))
             throw ERROR_ROM;
 
         // Load cheats if any exist

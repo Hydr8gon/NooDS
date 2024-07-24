@@ -70,10 +70,10 @@ bool NooApp::OnInit()
     ScreenLayout::addSettings();
     Settings::add(platformSettings);
 
-    // Try to load the settings from the current directory first
+    // Try to load settings from the current directory first
     if (!Settings::load())
     {
-        // Get the system-specific application settings directory
+        // Try to load from the system-specific application settings directory
         std::string settingsDir;
         wxStandardPaths &paths = wxStandardPaths::Get();
 #if defined(WINDOWS) || defined(MACOS) || !wxCHECK_VERSION(3, 1, 0)
@@ -83,14 +83,7 @@ bool NooApp::OnInit()
         settingsDir = paths.GetUserConfigDir().mb_str(wxConvUTF8);
         settingsDir += "/noods";
 #endif
-
-        // Try to load the settings from the system directory, creating it if it doesn't exist
-        if (!Settings::load(settingsDir + "/noods.ini"))
-        {
-            wxFileName dir = wxFileName::DirName(settingsDir);
-            if (!dir.DirExists()) dir.Mkdir();
-            Settings::save();
-        }
+        Settings::load(settingsDir);
     }
 
     // Create the initial frame, passing along a command line filename if given

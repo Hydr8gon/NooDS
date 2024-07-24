@@ -58,7 +58,34 @@
             app:key="show_fps_counter"
             app:title="Show FPS Counter"
             app:iconSpaceReserved="false"
-            app:allowDividerAbove="true" />
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:title="Path Settings"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreferenceCompat
+            app:key="saves_folder"
+            app:title="Separate Saves Folder"
+            app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+
+        <SwitchPreferenceCompat
+            app:key="states_folder"
+            app:title="Separate States Folder"
+            app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+
+        <SwitchPreferenceCompat
+            app:key="cheats_folder"
+            app:title="Separate Cheats Folder"
+            app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
     </PreferenceCategory>
 
     <PreferenceCategory
@@ -172,6 +199,7 @@
             app:title="Vibration Strength"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
+            app:allowDividerBelow="true"
             android:max="10" />
     </PreferenceCategory>
 </PreferenceScreen>

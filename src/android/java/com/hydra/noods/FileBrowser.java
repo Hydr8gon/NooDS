@@ -415,10 +415,8 @@ public class FileBrowser extends AppCompatActivity
             // If a ROM of the other type is already loaded, ask if it should be loaded alongside the new ROM
             if (ext.equals(".nds"))
             {
-                if (scoped)
-                    setNdsFds(getRomFd(file.getUri()), getSaveFd(file), getStateFd(file), getCheatFd(file));
-                else
-                    setNdsPath(file.getUri().getPath());
+                Uri uri = file.getUri();
+                setNdsRom(uri.getPath(), getRomFd(uri), getSaveFd(file), getStateFd(file), getCheatFd(file));
 
                 if (isGbaLoaded())
                 {
@@ -440,8 +438,7 @@ public class FileBrowser extends AppCompatActivity
                         @Override
                         public void onClick(DialogInterface dialog, int id)
                         {
-                            setGbaPath("");
-                            setGbaFds(-1, -1, -1);
+                            setGbaRom("", -1, -1, -1);
                             tryStartCore();
                         }
                     });
@@ -451,8 +448,7 @@ public class FileBrowser extends AppCompatActivity
                         @Override
                         public void onCancel(DialogInterface dialog)
                         {
-                            setGbaPath("");
-                            setGbaFds(-1, -1, -1);
+                            setGbaRom("", -1, -1, -1);
                             tryStartCore();
                         }
                     });
@@ -463,10 +459,8 @@ public class FileBrowser extends AppCompatActivity
             }
             else
             {
-                if (scoped)
-                    setGbaFds(getRomFd(file.getUri()), getSaveFd(file), getStateFd(file));
-                else
-                    setGbaPath(file.getUri().getPath());
+                Uri uri = file.getUri();
+                setGbaRom(uri.getPath(), getRomFd(uri), getSaveFd(file), getStateFd(file));
 
                 if (isNdsLoaded())
                 {
@@ -488,8 +482,7 @@ public class FileBrowser extends AppCompatActivity
                         @Override
                         public void onClick(DialogInterface dialog, int id)
                         {
-                            setNdsPath("");
-                            setNdsFds(-1, -1, -1, -1);
+                            setNdsRom("", -1, -1, -1, -1);
                             tryStartCore();
                         }
                     });
@@ -499,8 +492,7 @@ public class FileBrowser extends AppCompatActivity
                         @Override
                         public void onCancel(DialogInterface dialog)
                         {
-                            setNdsPath("");
-                            setNdsFds(-1, -1, -1, -1);
+                            setNdsRom("", -1, -1, -1, -1);
                             tryStartCore();
                         }
                     });
@@ -593,6 +585,7 @@ public class FileBrowser extends AppCompatActivity
         try
         {
             // Get a descriptor for the file in scoped mode
+            if (!scoped) return -1;
             return getContentResolver().openFileDescriptor(romUri, "r").detachFd();
         }
         catch (Exception e)
@@ -611,6 +604,7 @@ public class FileBrowser extends AppCompatActivity
         try
         {
             // Get a descriptor for the file in scoped mode
+            if (!scoped || SettingsMenu.getSavesFolder() == 1) return -1;
             return getContentResolver().openFileDescriptor(uri, "rw").detachFd();
         }
         catch (Exception e)
@@ -645,6 +639,7 @@ public class FileBrowser extends AppCompatActivity
         try
         {
             // Get a descriptor for the file in scoped mode
+            if (!scoped || SettingsMenu.getStatesFolder() == 1) return -1;
             return getContentResolver().openFileDescriptor(uri, "rw").detachFd();
         }
         catch (Exception e)
@@ -666,6 +661,7 @@ public class FileBrowser extends AppCompatActivity
         try
         {
             // Get a descriptor for the file in scoped mode
+            if (!scoped || SettingsMenu.getCheatsFolder() == 1) return -1;
             return getContentResolver().openFileDescriptor(uri, "rw").detachFd();
         }
         catch (Exception e)
@@ -683,8 +679,6 @@ public class FileBrowser extends AppCompatActivity
     public static native int startCore();
     public static native boolean isNdsLoaded();
     public static native boolean isGbaLoaded();
-    public static native void setNdsPath(String value);
-    public static native void setGbaPath(String value);
-    public static native void setNdsFds(int romFd, int saveFd, int stateFd, int cheatFd);
-    public static native void setGbaFds(int romFd, int saveFd, int stateFd);
+    public static native void setNdsRom(String romPath, int romFd, int saveFd, int stateFd, int cheatFd);
+    public static native void setGbaRom(String romPath, int romFd, int saveFd, int stateFd);
 }

@@ -178,9 +178,6 @@ void ConsoleUI::initialize(int width, int height, std::string root, std::string 
     folderTextures[1] = bmpToTexture(&_binary_src_console_images_folder_light_bmp_start);
     fontTexture = bmpToTexture(&_binary_src_console_images_font_bmp_start);
 
-    // Create the settings folder if it doesn't exist
-    mkdir(prefix.c_str(), 0777);
-
     // Set the default input bindings
     for (int i = 0; i < INPUT_MAX; i++)
         keyBinds[i] = defaultKeys[i];
@@ -212,14 +209,9 @@ void ConsoleUI::initialize(int width, int height, std::string root, std::string 
     ScreenLayout::addSettings();
     Settings::add(platformSettings);
 
-    // Load the settings or set defaults if this is the first time
-    if (!Settings::load(prefix + "noods.ini"))
+    // Load settings or set additional defaults
+    if (!Settings::load(prefix))
     {
-        Settings::bios9Path = prefix + "bios9.bin";
-        Settings::bios7Path = prefix + "bios7.bin";
-        Settings::firmwarePath = prefix + "firmware.bin";
-        Settings::gbaBiosPath = prefix + "gba_bios.bin";
-        Settings::sdImagePath = prefix + "sd.img";
         ScreenLayout::screenArrangement = 2;
         Settings::save();
     }
@@ -840,6 +832,10 @@ void ConsoleUI::settingsMenu()
             MenuItem("Threaded 2D", toggle[Settings::threaded2D]),
             MenuItem("Threaded 3D", toggle[(bool)Settings::threaded3D]),
             MenuItem("High-Resolution 3D", toggle[Settings::highRes3D]),
+            MenuItem("Show FPS Counter", toggle[showFpsCounter]),
+            MenuItem("Separate Saves Folder", toggle[Settings::savesFolder]),
+            MenuItem("Separate States Folder", toggle[Settings::statesFolder]),
+            MenuItem("Separate Cheats Folder", toggle[Settings::cheatsFolder]),
             MenuItem("Screen Position", position[ScreenLayout::screenPosition]),
             MenuItem("Screen Rotation", rotation[ScreenLayout::screenRotation]),
             MenuItem("Screen Arrangement", arrangement[ScreenLayout::screenArrangement]),
@@ -849,7 +845,6 @@ void ConsoleUI::settingsMenu()
             MenuItem("Integer Scale", toggle[ScreenLayout::integerScale]),
             MenuItem("GBA Crop", toggle[ScreenLayout::gbaCrop]),
             MenuItem("Simulate Ghosting", toggle[Settings::screenGhost]),
-            MenuItem("Show FPS Counter", toggle[showFpsCounter]),
             MenuItem("Menu Theme", theme[menuTheme])
         };
 
@@ -867,18 +862,21 @@ void ConsoleUI::settingsMenu()
                 case 2: Settings::threaded2D = (Settings::threaded2D + 1) % 2; break;
                 case 3: Settings::threaded3D = (Settings::threaded3D + 1) % 2; break;
                 case 4: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
-                case 5: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
-                case 6: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
-                case 7: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
-                case 8: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
-                case 9: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
-                case 10: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
-                case 11: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
-                case 12: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
-                case 13: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
-                case 14: showFpsCounter = (showFpsCounter + 1) % 2; break;
+                case 5: showFpsCounter = (showFpsCounter + 1) % 2; break;
+                case 6: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;
+                case 7: Settings::statesFolder = (Settings::statesFolder + 1) % 2; break;
+                case 8: Settings::cheatsFolder = (Settings::cheatsFolder + 1) % 2; break;
+                case 9: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
+                case 10: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
+                case 11: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
+                case 12: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
+                case 13: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
+                case 14: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
+                case 15: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
+                case 16: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
+                case 17: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
 
-                case 15:
+                case 18:
                     // Update the palette when changing themes
                     menuTheme = (menuTheme + 1) % 2;
                     palette = &themeColors[menuTheme * 6];

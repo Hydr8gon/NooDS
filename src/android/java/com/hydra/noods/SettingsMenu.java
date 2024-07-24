@@ -87,6 +87,11 @@ public class SettingsMenu extends AppCompatActivity
         editor.putBoolean("threaded_2d", (getThreaded2D() == 0) ? false : true);
         editor.putString("threaded_3d", Integer.toString(getThreaded3D()));
         editor.putBoolean("high_res_3d", (getHighRes3D() == 0) ? false : true);
+        editor.putBoolean("mic_enable", (getMicEnable() == 0) ? false : true);
+        editor.putBoolean("show_fps_counter", (getShowFpsCounter() == 0) ? false : true);
+        editor.putBoolean("saves_folder", (getSavesFolder() == 0) ? false : true);
+        editor.putBoolean("states_folder", (getStatesFolder() == 0) ? false : true);
+        editor.putBoolean("cheats_folder", (getCheatsFolder() == 0) ? false : true);
         editor.putString("screen_position", Integer.toString(getScreenPosition()));
         editor.putString("screen_rotation", Integer.toString(getScreenRotation()));
         editor.putString("screen_arrangement", Integer.toString(getScreenArrangement()));
@@ -96,8 +101,6 @@ public class SettingsMenu extends AppCompatActivity
         editor.putBoolean("integer_scale", (getIntegerScale() == 0) ? false : true);
         editor.putBoolean("gba_crop", (getGbaCrop() == 0) ? false : true);
         editor.putBoolean("screen_ghost", (getScreenGhost() == 0) ? false : true);
-        editor.putBoolean("mic_enable", (getMicEnable() == 0) ? false : true);
-        editor.putBoolean("show_fps_counter", (getShowFpsCounter() == 0) ? false : true);
         editor.putInt("button_scale", getButtonScale());
         editor.putInt("button_spacing", getButtonSpacing());
         editor.putInt("vibrate_strength", getVibrateStrength());
@@ -138,7 +141,12 @@ public class SettingsMenu extends AppCompatActivity
         setFpsLimiter(Integer.parseInt(prefs.getString("fps_limiter", "1")));
         setThreaded2D(prefs.getBoolean("threaded_2d", true) ? 1 : 0);
         setThreaded3D(Integer.parseInt(prefs.getString("threaded_3d", "1")));
-        setHighRes3D(prefs.getBoolean("high_res_3d", true) ? 1 : 0);
+        setHighRes3D(prefs.getBoolean("high_res_3d", false) ? 1 : 0);
+        setMicEnable(prefs.getBoolean("mic_enable", false) ? 1 : 0);
+        setShowFpsCounter(prefs.getBoolean("show_fps_counter", false) ? 1 : 0);
+        setSavesFolder(prefs.getBoolean("saves_folder", false) ? 1 : 0);
+        setStatesFolder(prefs.getBoolean("states_folder", true) ? 1 : 0);
+        setCheatsFolder(prefs.getBoolean("cheats_folder", true) ? 1 : 0);
         setScreenPosition(Integer.parseInt(prefs.getString("screen_position", "0")));
         setScreenRotation(Integer.parseInt(prefs.getString("screen_rotation", "0")));
         setScreenArrangement(Integer.parseInt(prefs.getString("screen_arrangement", "0")));
@@ -148,8 +156,6 @@ public class SettingsMenu extends AppCompatActivity
         setIntegerScale(prefs.getBoolean("integer_scale", false) ? 1 : 0);
         setGbaCrop(prefs.getBoolean("gba_crop", true) ? 1 : 0);
         setScreenGhost(prefs.getBoolean("screen_ghost", false) ? 1 : 0);
-        setMicEnable(prefs.getBoolean("mic_enable", false) ? 1 : 0);
-        setShowFpsCounter(prefs.getBoolean("show_fps_counter", false) ? 1 : 0);
         setButtonScale(prefs.getInt("button_scale", 5));
         setButtonSpacing(prefs.getInt("button_spacing", 10));
         setVibrateStrength(prefs.getInt("vibrate_strength", 1));
@@ -164,6 +170,11 @@ public class SettingsMenu extends AppCompatActivity
     public static native int getThreaded2D();
     public static native int getThreaded3D();
     public static native int getHighRes3D();
+    public static native int getMicEnable();
+    public static native int getShowFpsCounter();
+    public static native int getSavesFolder();
+    public static native int getStatesFolder();
+    public static native int getCheatsFolder();
     public static native int getScreenPosition();
     public static native int getScreenRotation();
     public static native int getScreenArrangement();
@@ -173,8 +184,6 @@ public class SettingsMenu extends AppCompatActivity
     public static native int getIntegerScale();
     public static native int getGbaCrop();
     public static native int getScreenGhost();
-    public static native int getMicEnable();
-    public static native int getShowFpsCounter();
     public static native int getButtonScale();
     public static native int getButtonSpacing();
     public static native int getVibrateStrength();
@@ -183,6 +192,11 @@ public class SettingsMenu extends AppCompatActivity
     public static native void setThreaded2D(int value);
     public static native void setThreaded3D(int value);
     public static native void setHighRes3D(int value);
+    public static native void setMicEnable(int value);
+    public static native void setShowFpsCounter(int value);
+    public static native void setSavesFolder(int value);
+    public static native void setStatesFolder(int value);
+    public static native void setCheatsFolder(int value);
     public static native void setScreenPosition(int value);
     public static native void setScreenRotation(int value);
     public static native void setScreenArrangement(int value);
@@ -192,8 +206,6 @@ public class SettingsMenu extends AppCompatActivity
     public static native void setIntegerScale(int value);
     public static native void setGbaCrop(int value);
     public static native void setScreenGhost(int value);
-    public static native void setMicEnable(int value);
-    public static native void setShowFpsCounter(int value);
     public static native void setButtonScale(int value);
     public static native void setButtonSpacing(int value);
     public static native void setVibrateStrength(int value);

@@ -112,22 +112,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_loadSetti
         Setting("keyScreenSwap", &keyBinds[14], false)
     };
 
-    // Add the platform settings
+    // Add the platform settings and load
     ScreenLayout::addSettings();
     Settings::add(platformSettings);
-
-    // Load the settings
-    if (Settings::load(path + "/noods.ini"))
-        return true;
-
-    // If this is the first time, set the path settings based on the root storage path
-    Settings::bios7Path = path + "/bios7.bin";
-    Settings::bios9Path = path + "/bios9.bin";
-    Settings::firmwarePath = path + "/firmware.bin";
-    Settings::gbaBiosPath = path + "/gba_bios.bin";
-    Settings::sdImagePath = path + "/sd.img";
-    Settings::save();
-    return false;
+    return Settings::load(path);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_getNdsIcon(JNIEnv *env, jobject obj, jint fd, jobject bitmap)
@@ -167,24 +155,13 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_isGbaLoad
     return gbaPath != "" || gbaRomFd != -1;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsPath(JNIEnv* env, jobject obj, jstring value)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsRom(JNIEnv* env, jobject obj, jstring romPath, jint romFd, jint saveFd, jint stateFd, jint cheatFd)
 {
     // Set the NDS ROM file path
-    const char *str = env->GetStringUTFChars(value, nullptr);
+    const char *str = env->GetStringUTFChars(romPath, nullptr);
     ndsPath = str;
-    env->ReleaseStringUTFChars(value, str);
-}
+    env->ReleaseStringUTFChars(romPath, str);
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaPath(JNIEnv* env, jobject obj, jstring value)
-{
-    // Set the GBA ROM file path
-    const char *str = env->GetStringUTFChars(value, nullptr);
-    gbaPath = str;
-    env->ReleaseStringUTFChars(value, str);
-}
-
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsFds(JNIEnv* env, jobject obj, jint romFd, jint saveFd, jint stateFd, jint cheatFd)
-{
     // Set the NDS ROM file descriptors
     ndsRomFd = romFd;
     ndsSaveFd = saveFd;
@@ -192,8 +169,13 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setNdsFds(JNI
     ndsCheatFd = cheatFd;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaFds(JNIEnv* env, jobject obj, jint romFd, jint saveFd, jint stateFd)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_FileBrowser_setGbaRom(JNIEnv* env, jobject obj, jstring romPath, jint romFd, jint saveFd, jint stateFd)
 {
+    // Set the GBA ROM file path
+    const char *str = env->GetStringUTFChars(romPath, nullptr);
+    gbaPath = str;
+    env->ReleaseStringUTFChars(romPath, str);
+
     // Set the GBA ROM file descriptors
     gbaRomFd = romFd;
     gbaSaveFd = saveFd;
@@ -352,6 +334,31 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getHighRes3D
     return Settings::highRes3D;
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getMicEnable(JNIEnv* env, jobject obj)
+{
+    return micEnable;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getShowFpsCounter(JNIEnv* env, jobject obj)
+{
+    return showFpsCounter;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getSavesFolder(JNIEnv* env, jobject obj)
+{
+    return Settings::savesFolder;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getStatesFolder(JNIEnv* env, jobject obj)
+{
+    return Settings::statesFolder;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getCheatsFolder(JNIEnv* env, jobject obj)
+{
+    return Settings::cheatsFolder;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenPosition(JNIEnv* env, jobject obj)
 {
     return ScreenLayout::screenPosition;
@@ -397,16 +404,6 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenGho
     return Settings::screenGhost;
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getMicEnable(JNIEnv* env, jobject obj)
-{
-    return micEnable;
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getShowFpsCounter(JNIEnv* env, jobject obj)
-{
-    return showFpsCounter;
-}
-
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getButtonScale(JNIEnv* env, jobject obj)
 {
     return buttonScale;
@@ -445,6 +442,31 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setThreaded3
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setHighRes3D(JNIEnv* env, jobject obj, jint value)
 {
     Settings::highRes3D = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setMicEnable(JNIEnv* env, jobject obj, jint value)
+{
+    micEnable = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowFpsCounter(JNIEnv* env, jobject obj, jint value)
+{
+    showFpsCounter = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setSavesFolder(JNIEnv* env, jobject obj, jint value)
+{
+    Settings::savesFolder = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setStatesFolder(JNIEnv* env, jobject obj, jint value)
+{
+    Settings::statesFolder = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setCheatsFolder(JNIEnv* env, jobject obj, jint value)
+{
+    Settings::cheatsFolder = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenPosition(JNIEnv* env, jobject obj, jint value)
@@ -490,16 +512,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setGbaCrop(J
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenGhost(JNIEnv* env, jobject obj, jint value)
 {
     Settings::screenGhost = value;
-}
-
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setMicEnable(JNIEnv* env, jobject obj, jint value)
-{
-    micEnable = value;
-}
-
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowFpsCounter(JNIEnv* env, jobject obj, jint value)
-{
-    showFpsCounter = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setButtonScale(JNIEnv* env, jobject obj, jint value)

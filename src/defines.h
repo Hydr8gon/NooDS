@@ -37,6 +37,13 @@
 #include <unistd.h>
 #endif
 
+// Macro to handle differing mkdir arguments on Windows
+#ifdef WINDOWS
+#define MKDIR_ARGS
+#else
+#define MKDIR_ARGS , 0777
+#endif
+
 // Macro to force inlining
 #ifdef _MSC_VER
 #define FORCE_INLINE __forceinline
