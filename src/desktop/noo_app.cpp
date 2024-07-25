@@ -40,8 +40,6 @@ int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O'
 
 bool NooApp::OnInit()
 {
-    SetAppName("NooDS");
-
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
@@ -70,10 +68,16 @@ bool NooApp::OnInit()
     ScreenLayout::addSettings();
     Settings::add(platformSettings);
 
-    // Try to load settings from the current directory first
-    if (!Settings::load())
+    // Try to load the settings
+    if (FILE *file = fopen("noods.ini", "r"))
     {
-        // Try to load from the system-specific application settings directory
+        // Load from the working directory if a file exists
+        fclose(file);
+        Settings::load();
+    }
+    else
+    {
+        // Load from the system-specific application settings directory
         std::string settingsDir;
         wxStandardPaths &paths = wxStandardPaths::Get();
 #if defined(WINDOWS) || defined(MACOS) || !wxCHECK_VERSION(3, 1, 0)
@@ -87,6 +91,7 @@ bool NooApp::OnInit()
     }
 
     // Create the initial frame, passing along a command line filename if given
+    SetAppName("NooDS");
     frames[0] = new NooFrame(this, 0, (argc > 1) ? argv[1].ToStdString() : "");
 
     // Set up the update timer
@@ -97,7 +102,6 @@ bool NooApp::OnInit()
     Pa_Initialize();
     startStream(0);
     startStream(1);
-
     return true;
 }
 
