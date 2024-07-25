@@ -217,9 +217,9 @@ static void initConfig()
 {
   static const retro_variable values[] = {
     { "noods_directBoot", "Direct Boot; enabled|disabled" },
-    { "noods_fpsLimiter", "FPS Limiter; Disabled|Light|Accurate" },
+    { "noods_fpsLimiter", "FPS Limiter; Light|Accurate|Disabled" },
     { "noods_threaded2D", "Threaded 2D; enabled|disabled" },
-    { "noods_threaded3D", "Threaded 3D; Disabled|1 Thread|2 Threads|3 Threads" },
+    { "noods_threaded3D", "Threaded 3D; 1 Thread|2 Threads|3 Threads|Disabled" },
     { "noods_highRes3D", "High Resolution 3D; disabled|enabled" },
     { "noods_screenArrangement", "Screen Arrangement; Automatic|Vertical|Horizontal|Single Screen" },
     { "noods_screenRotation", "Screen Rotation; Normal|Rotated Left|Rotated Right" },
@@ -244,7 +244,7 @@ static void updateConfig()
   Settings::directBoot = fetchVariableBool("noods_directBoot", true);
   Settings::fpsLimiter = fetchVariableEnum("noods_fpsLimiter", {"Disabled", "Light", "Accurate"});
   Settings::threaded2D = fetchVariableBool("noods_threaded2D", true);
-  Settings::threaded3D = fetchVariableEnum("noods_threaded3D", {"Disabled", "1 Thread", "2 Threads", "3 Threads"});
+  Settings::threaded3D = fetchVariableEnum("noods_threaded3D", {"Disabled", "1 Thread", "2 Threads", "3 Threads"}, 1);
   Settings::highRes3D = fetchVariableBool("noods_highRes3D", false);
   Settings::screenFilter = fetchVariableEnum("noods_screenFilter", {"Nearest", "Upscaled", "Linear"}, 2);
   Settings::screenGhost = fetchVariableBool("noods_screenGhost", false);
@@ -328,7 +328,7 @@ static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
   }
 }
 
-static void copyScreen(uint32_t *src,  uint32_t *dst, int sx, int sy, int width, int height, int stride)
+static void copyScreen(uint32_t *src, uint32_t *dst, int sx, int sy, int width, int height, int stride)
 {
   for (int y = 0; y < height; y++)
   {
@@ -337,14 +337,13 @@ static void copyScreen(uint32_t *src,  uint32_t *dst, int sx, int sy, int width,
 
     for (int x = 0; x < width; x++)
     {
-      *dstPtr =
-        ((*srcPtr & 0xFF000000)) |
-        ((*srcPtr & 0x00FF0000) >> 16) |
-        ((*srcPtr & 0x0000FF00)) |
-        ((*srcPtr & 0x000000FF) << 16);
+      uint32_t pixel = srcPtr[x];
 
-      dstPtr++;
-      srcPtr++;
+      dstPtr[x] =
+        ((pixel & 0xFF000000)) |
+        ((pixel & 0x00FF0000) >> 16) |
+        ((pixel & 0x0000FF00)) |
+        ((pixel & 0x000000FF) << 16);
     }
   }
 }
@@ -427,36 +426,25 @@ static void closeSaveFileDesc()
 
 static bool createCore(std::string ndsRom = "", std::string gbaRom = "")
 {
-  int ndsGameFd = -1;
-  int gbaGameFd = -1;
-
-  closeSaveFileDesc();
-
   try
   {
     if (core) delete core;
 
+    closeSaveFileDesc();
+
     if (ndsRom != "")
-    {
-      ndsGameFd = open(ndsRom.c_str(), O_RDONLY);
       ndsSaveFd = getSaveFileDesc(savesPath + getNameFromPath(ndsRom) + ".sav");
-    }
 
     if (gbaRom != "")
-    {
-      ndsGameFd = open(ndsRom.c_str(), O_RDONLY);
       gbaSaveFd = getSaveFileDesc(savesPath + getNameFromPath(gbaRom) + ".sav");
-    }
 
-    core = new Core("", "", 0, ndsGameFd, gbaGameFd, ndsSaveFd, gbaSaveFd);
-
-    close(ndsGameFd);
-    close(gbaGameFd);
-
+    core = new Core(ndsRom, gbaRom, 0, -1, -1, ndsSaveFd, gbaSaveFd);
     return true;
   }
   catch (CoreError e)
   {
+    closeSaveFileDesc();
+
     switch (e)
     {
       case ERROR_BIOS:
@@ -469,11 +457,6 @@ static bool createCore(std::string ndsRom = "", std::string gbaRom = "")
         logCallback(RETRO_LOG_INFO, "Error Loading ROM");
         break;
     }
-
-    close(ndsGameFd);
-    close(gbaGameFd);
-
-    closeSaveFileDesc();
 
     core = nullptr;
     return false;
@@ -658,7 +641,8 @@ void retro_run(void)
         touchScreen |= inputStateCallback(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED);
       }
 
-      if ((posX != 0 || posY != 0) && (lastMouseX != newX || lastMouseY != newY)) {
+      if ((posX != 0 || posY != 0) && (lastMouseX != newX || lastMouseY != newY))
+      {
         lastMouseX = newX;
         lastMouseY = newY;
 
@@ -684,7 +668,8 @@ void retro_run(void)
         if (screenRotation == 3) moveY = -moveY;
       }
 
-      if (moveX != 0 || moveY != 0) {
+      if (moveX != 0 || moveY != 0)
+      {
         pointerX = touchX + static_cast<int>((moveX / 32767) * speedX);
         pointerY = touchY + static_cast<int>((moveY / 32767) * speedY);
       }

@@ -1,5 +1,5 @@
 NAME := noods_libretro
-BUILD := build
+BUILD := build-libretro
 GIT_VERSION := "$(shell git describe --abbrev=7 --always --tags)"
 SRCS := src src/common src/libretro
 ARGS := -Ofast -flto -std=c++11 -D__LIBRETRO__ -DVERSION=\"$(GIT_VERSION)\"

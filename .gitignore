@@ -3,6 +3,7 @@
 /build-switch
 /build-vita
 /build-wiiu
+/build-libretro
 /.gradle
 /src/android/.cxx
 /eboot.bin
