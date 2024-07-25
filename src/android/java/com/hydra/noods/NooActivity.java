@@ -22,11 +22,13 @@ package com.hydra.noods;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
+import androidx.preference.PreferenceManager;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
@@ -49,21 +51,26 @@ public class NooActivity extends AppCompatActivity
     private NooRenderer renderer;
     private NooButton buttons[];
     private TextView fpsCounter;
+
+    private SharedPreferences prefs;
     private int fpsLimiterBackup = 0;
     private boolean initButtons = true;
-    private boolean showingButtons = true;
+    private boolean showingButtons;
     private boolean showingFps;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-
         layout = new ConstraintLayout(this);
         view = new GLSurfaceView(this);
         renderer = new NooRenderer(this);
         buttons = new NooButton[9];
         fpsCounter = new TextView(this);
+
+        // Load the previous on-screen button state
+        prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        showingButtons = prefs.getBoolean("show_buttons", true);
 
         // Prepare the GL renderer
         view.setEGLContextClientVersion(2);
@@ -150,17 +157,18 @@ public class NooActivity extends AppCompatActivity
         switch (item.getItemId())
         {
             case R.id.controls_action:
-                // Toggle hiding the on-screen buttons
-                if (showingButtons = !showingButtons)
-                {
+                // Toggle the on-screen button state
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putBoolean("show_buttons", showingButtons = !showingButtons);
+                editor.commit();
+
+                // Show or hide the on-screen buttons
+                if (showingButtons)
                     for (int i = 0; i < 6; i++)
                         layout.addView(buttons[i]);
-                }
                 else
-                {
                     for (int i = 0; i < 6; i++)
                         layout.removeView(buttons[i]);
-                }
                 return true;
 
             case R.id.restart_action:
@@ -279,11 +287,6 @@ public class NooActivity extends AppCompatActivity
                 builder3.create().show();
                 return true;
 
-            case R.id.bindings_action:
-                // Open the input bindings menu
-                startActivity(new Intent(this, BindingsMenu.class));
-                return true;
-
             case R.id.settings_action:
                 // Open the settings menu
                 startActivity(new Intent(this, SettingsMenu.class));
@@ -400,10 +403,8 @@ public class NooActivity extends AppCompatActivity
     {
         // Remove old buttons from the layout if visible
         if (!initButtons && showingButtons)
-        {
             for (int i = 0; i < 6; i++)
                 layout.removeView(buttons[i]);
-        }
 
         // Set layout parameters based on display and settings
         DisplayMetrics metrics = new DisplayMetrics();
@@ -434,12 +435,10 @@ public class NooActivity extends AppCompatActivity
             new int[] {2}, z, h - (int)(d * 38), (int)(d * 33), (int)(d * 33));
 
         // Add new buttons to the layout if visible
-        if (initButtons || showingButtons)
-        {
+        if (showingButtons)
             for (int i = 0; i < 6; i++)
                 layout.addView(buttons[i]);
-            initButtons = false;
-        }
+        initButtons = false;
     }
 
     private boolean canEnableMic()
