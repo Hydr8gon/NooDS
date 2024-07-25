@@ -416,7 +416,7 @@ public class FileBrowser extends AppCompatActivity
             if (ext.equals(".nds"))
             {
                 Uri uri = file.getUri();
-                setNdsRom(uri.getPath(), getRomFd(uri), getSaveFd(file), getStateFd(file), getCheatFd(file));
+                setNdsRom(uri.getPath(), getRomFd(uri, false), getSaveFd(file), getStateFd(file), getCheatFd(file));
 
                 if (isGbaLoaded())
                 {
@@ -460,7 +460,7 @@ public class FileBrowser extends AppCompatActivity
             else
             {
                 Uri uri = file.getUri();
-                setGbaRom(uri.getPath(), getRomFd(uri), getSaveFd(file), getStateFd(file));
+                setGbaRom(uri.getPath(), getRomFd(uri, false), getSaveFd(file), getStateFd(file));
 
                 if (isNdsLoaded())
                 {
@@ -569,7 +569,7 @@ public class FileBrowser extends AppCompatActivity
         if (ext.equals(".nds"))
         {
             Bitmap bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
-            getNdsIcon(getRomFd(info.uri), bitmap);
+            getNdsIcon(getRomFd(info.uri, true), bitmap);
             info.icon = bitmap;
             fileInfo.add(info);
         }
@@ -580,12 +580,12 @@ public class FileBrowser extends AppCompatActivity
         }
     }
 
-    private int getRomFd(Uri romUri)
+    private int getRomFd(Uri romUri, boolean override)
     {
         try
         {
             // Get a descriptor for the file in scoped mode
-            if (!scoped) return -1;
+            if (!scoped && !override) return -1;
             return getContentResolver().openFileDescriptor(romUri, "r").detachFd();
         }
         catch (Exception e)

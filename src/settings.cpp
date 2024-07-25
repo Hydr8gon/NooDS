@@ -37,7 +37,7 @@ std::string Settings::bios7Path = "bios7.bin";
 std::string Settings::firmwarePath = "firmware.bin";
 std::string Settings::gbaBiosPath = "gba_bios.bin";
 std::string Settings::sdImagePath = "sd.img";
-std::string Settings::basePath = "";
+std::string Settings::basePath = ".";
 
 std::vector<Setting> Settings::settings =
 {

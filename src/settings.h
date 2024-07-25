@@ -55,7 +55,7 @@ class Settings
         static std::string basePath;
 
         static void add(std::vector<Setting> &settings);
-        static bool load(std::string path = "");
+        static bool load(std::string path = ".");
         static bool save();
 
     private:
