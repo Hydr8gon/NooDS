@@ -3,6 +3,7 @@
 
 #include <fcntl.h>
 #include <fstream>
+#include <sstream>
 
 #include "libretro.h"
 
@@ -794,8 +795,24 @@ void* retro_get_memory_data(unsigned id)
 
 void retro_cheat_set(unsigned index, bool enabled, const char* code)
 {
+  ARCheat cheat;
+
+  cheat.name = index;
+  cheat.enabled = enabled;
+
+  std::istringstream stream(code);
+  std::string line;
+
+  while (getline(stream, line) && !line.empty())
+  {
+    cheat.code.push_back(strtoll(&line[0], nullptr, 16));
+    cheat.code.push_back(strtoll(&line[8], nullptr, 16));
+  }
+
+  core->actionReplay.cheats.push_back(cheat);
 }
 
 void retro_cheat_reset(void)
 {
+  core->actionReplay.cheats.clear();
 }
