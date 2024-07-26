@@ -1,5 +1,5 @@
 diff --git a/src/android/AndroidManifest.xml b/src/android/AndroidManifest.xml
-index 639f434..3ccced9 100644
+index 715b448..ccce88e 100644
 --- a/src/android/AndroidManifest.xml
 +++ b/src/android/AndroidManifest.xml
 @@ -6,7 +6,6 @@
@@ -11,20 +11,20 @@ index 639f434..3ccced9 100644
      <uses-feature android:glEsVersion="0x00020000" android:required="true" />
  
 diff --git a/src/android/java/com/hydra/noods/FileBrowser.java b/src/android/java/com/hydra/noods/FileBrowser.java
-index 404f5dd..841fa39 100644
+index dffc2d6..455e759 100644
 --- a/src/android/java/com/hydra/noods/FileBrowser.java
 +++ b/src/android/java/com/hydra/noods/FileBrowser.java
-@@ -61,7 +61,7 @@ public class FileBrowser extends AppCompatActivity
+@@ -72,7 +72,7 @@ public class FileBrowser extends AppCompatActivity
          System.loadLibrary("noods-core");
      }
  
--    private static final boolean PLAY_STORE = false;
-+    private static final boolean PLAY_STORE = true;
+-    public static final boolean PLAY_STORE = false;
++    public static final boolean PLAY_STORE = true;
+     public static PorterDuffColorFilter iconFilter;
  
      private ArrayList<String> storagePaths;
-     private ArrayList<FileAdapter.FileInfo> fileInfo;
 diff --git a/src/android/res/menu/file_menu.xml b/src/android/res/menu/file_menu.xml
-index 8a21009..e6d55ce 100644
+index 77595be..f8963b8 100644
 --- a/src/android/res/menu/file_menu.xml
 +++ b/src/android/res/menu/file_menu.xml
 @@ -5,7 +5,6 @@

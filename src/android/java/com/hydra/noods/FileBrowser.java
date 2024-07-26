@@ -30,10 +30,16 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -66,7 +72,8 @@ public class FileBrowser extends AppCompatActivity
         System.loadLibrary("noods-core");
     }
 
-    private static final boolean PLAY_STORE = false;
+    public static final boolean PLAY_STORE = false;
+    public static PorterDuffColorFilter iconFilter;
 
     private ArrayList<String> storagePaths;
     private ArrayList<FileAdapter.FileInfo> fileInfo;
@@ -84,6 +91,11 @@ public class FileBrowser extends AppCompatActivity
         // Storage paths can be checked without permissions; prepare them for the options menu
         updateStoragePaths();
         super.onCreate(savedInstanceState);
+
+        // Set the icon filter based on the current system theme
+        int uiMode = getResources().getConfiguration().uiMode;
+        boolean darkMode = (uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        iconFilter = new PorterDuffColorFilter(darkMode ? Color.WHITE : Color.BLACK, PorterDuff.Mode.SRC_IN);
 
         // Load settings and request storage permissions based on environment
         if (!loadSettings(getExternalFilesDir(null).getPath()) && PLAY_STORE)
@@ -112,10 +124,11 @@ public class FileBrowser extends AppCompatActivity
         // Only show the storage switcher if there are multiple storage paths
         getMenuInflater().inflate(R.menu.file_menu, menu);
         if (storagePaths.size() > 1 || scoped)
-        {
-            MenuItem item = menu.findItem(R.id.storage_action);
-            item.setVisible(true);
-        }
+            menu.findItem(R.id.storage_action).setVisible(true);
+
+        // Apply the theme filter to all icons
+        for (int i = 0; i < menu.size(); i++)
+            menu.getItem(i).getIcon().setColorFilter(iconFilter);
         return true;
     }
 
@@ -294,17 +307,9 @@ public class FileBrowser extends AppCompatActivity
 
     private void updateStoragePaths()
     {
-        // Fall back to the default storage directory pre-Lollipop
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.LOLLIPOP)
-        {
-            storagePaths = new ArrayList<String>();
-            storagePaths.add(Environment.getExternalStorageDirectory().getAbsolutePath());
-            return;
-        }
-
         // There's no way to directly get root storage paths, but media paths contain them
         storagePaths = new ArrayList<String>();
-        File[] mediaDirs = getExternalMediaDirs(); // Added in Lollipop
+        File[] mediaDirs = getExternalMediaDirs();
         String basePath = Environment.getExternalStorageDirectory().getAbsolutePath();
         String mediaPath = "";
 
@@ -559,7 +564,7 @@ public class FileBrowser extends AppCompatActivity
         // Add a directory with icon to the file list
         if (directory)
         {
-            info.icon = BitmapFactory.decodeResource(getResources(), R.drawable.folder);
+            info.icon = filterBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.folder));
             fileInfo.add(info);
             return;
         }
@@ -575,9 +580,20 @@ public class FileBrowser extends AppCompatActivity
         }
         else if (ext.equals(".gba"))
         {
-            info.icon = BitmapFactory.decodeResource(getResources(), R.drawable.file);
+            info.icon = filterBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.file));
             fileInfo.add(info);
         }
+    }
+
+    private static Bitmap filterBitmap(Bitmap bitmap)
+    {
+        // Redraw a bitmap using the theme filter
+        Bitmap result = bitmap.copy(bitmap.getConfig(), true);
+        Paint paint = new Paint();
+        paint.setColorFilter(iconFilter);
+        Canvas canvas = new Canvas(result);
+        canvas.drawBitmap(result, 0, 0, paint);
+        return result;
     }
 
     private int getRomFd(Uri romUri, boolean override)

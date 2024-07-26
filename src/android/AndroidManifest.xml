@@ -16,7 +16,7 @@
         android:requestLegacyExternalStorage="true">
 
         <activity android:name=".FileBrowser"
-            android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+            android:theme="@style/Theme.Material3.DayNight"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="true">
 
@@ -29,18 +29,18 @@
 
         <activity android:name=".BindingsMenu"
             android:label="Input Bindings"
-            android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+            android:theme="@style/Theme.Material3.DayNight"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
         </activity>
 
         <activity android:name=".SettingsMenu"
             android:label="Settings"
-            android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+            android:theme="@style/Theme.Material3.DayNight"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
         </activity>
 
         <activity android:name=".NooActivity"
-            android:theme="@style/Theme.AppCompat.NoActionBar">
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar">
         </activity>
 
     </application>

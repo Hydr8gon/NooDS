@@ -116,7 +116,10 @@ public class SettingsMenu extends AppCompatActivity
     @Override
     public boolean onCreateOptionsMenu(Menu menu)
     {
+        // Apply the theme filter to all icons
         getMenuInflater().inflate(R.menu.settings_menu, menu);
+        for (int i = 0; i < menu.size(); i++)
+            menu.getItem(i).getIcon().setColorFilter(FileBrowser.iconFilter);
         return true;
     }
 
