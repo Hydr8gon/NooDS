@@ -78,6 +78,7 @@ public class FileBrowser extends AppCompatActivity
     private ArrayList<String> storagePaths;
     private ArrayList<FileAdapter.FileInfo> fileInfo;
     private ListView fileView;
+    private boolean darkMode;
 
     private Stack<Uri> pathUris;
     private String path;
@@ -94,7 +95,7 @@ public class FileBrowser extends AppCompatActivity
 
         // Set the icon filter based on the current system theme
         int uiMode = getResources().getConfiguration().uiMode;
-        boolean darkMode = (uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        darkMode = (uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
         iconFilter = new PorterDuffColorFilter(darkMode ? Color.WHITE : Color.BLACK, PorterDuff.Mode.SRC_IN);
 
         // Load settings and request storage permissions based on environment
@@ -220,7 +221,7 @@ public class FileBrowser extends AppCompatActivity
         // Create the Play Store information text
         TextView view = new TextView(this);
         float d = getResources().getDisplayMetrics().density;
-        view.setTextColor(Color.BLACK);
+        view.setTextColor(darkMode ? Color.WHITE : Color.BLACK);
         view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         view.setPadding((int)(d * 25), (int)(d * 5), (int)(d * 25), (int)(d * 5));
         view.setSingleLine(false);

@@ -84,7 +84,7 @@ struct _Polygon
 
     uint16_t vertices = 0;
     uint8_t size = 0;
-    uint8_t wShift = 0;
+    int8_t wShift = 0;
     bool wBuffer = false;
     bool crossed = false;
     bool clockwise = false;
