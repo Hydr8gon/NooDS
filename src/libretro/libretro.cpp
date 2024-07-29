@@ -46,6 +46,7 @@ static std::string screenSwapMode;
 static int screenArrangement;
 static int screenRotation;
 
+static bool gbaModeEnabled;
 static bool renderTopScreen;
 static bool renderBotScreen;
 static bool renderSwapped;
@@ -224,6 +225,7 @@ static void initConfig()
     { "noods_highRes3D", "High Resolution 3D; disabled|enabled" },
     { "noods_screenArrangement", "Screen Arrangement; Automatic|Vertical|Horizontal|Single Screen" },
     { "noods_screenRotation", "Screen Rotation; Normal|Rotated Left|Rotated Right" },
+    { "noods_gbaCrop", "Crop GBA Screen; enabled|disabled" },
     { "noods_screenFilter", "Screen Filter; Linear|Nearest|Upscaled" },
     { "noods_screenGhost", "Simulate Ghosting; disabled|enabled" },
     { "noods_swapScreenMode", "Swap Screen Mode; Toggle|Hold" },
@@ -256,13 +258,14 @@ static void updateConfig()
   touchMode = fetchVariable("noods_touchMode", "Touch");
   showTouchCursor = fetchVariableBool("noods_touchCursor", true);
 
+  ScreenLayout::gbaCrop = fetchVariableBool("noods_gbaCrop", true);
   ScreenLayout::screenArrangement = screenRotation ? arrangeMap[screenArrangement] : screenArrangement;
   ScreenLayout::screenRotation = rotationMap[0];
-  layout.update(0, 0, false, false);
+  layout.update(0, 0, gbaModeEnabled, false);
 
   TouchLayout::screenArrangement = screenArrangement;
   TouchLayout::screenRotation = rotationMap[screenRotation];
-  touch.update(0, 0, false, false);
+  touch.update(0, 0, gbaModeEnabled, false);
 
   envCallback(RETRO_ENVIRONMENT_SET_ROTATION, &screenRotation);
 }
@@ -271,6 +274,12 @@ static void checkConfigVariables()
 {
   bool updated = false;
   envCallback(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated);
+
+  if (core && gbaModeEnabled != core->gbaMode)
+  {
+    gbaModeEnabled = core->gbaMode;
+    updated = true;
+  }
 
   if (updated)
   {
@@ -291,6 +300,13 @@ static void updateScreenState()
   renderBotScreen = !singleScreen || (bottomScreen || ScreenLayout::screenSizing == 2);
 
   renderSwapped = screenArrangement == 1 && screenRotation;
+
+  if (ScreenLayout::gbaCrop && gbaModeEnabled)
+  {
+    renderTopScreen = true;
+    renderBotScreen = false;
+    renderSwapped = false;
+  }
 }
 
 static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
@@ -329,16 +345,19 @@ static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
   }
 }
 
-static void copyScreen(uint32_t *src, uint32_t *dst, int sx, int sy, int width, int height, int stride)
+static void copyScreen(uint32_t *src, uint32_t *dst, int sw, int sh, int dx, int dy, int dw, int dh, int stride)
 {
-  for (int y = 0; y < height; y++)
-  {
-    uint32_t* srcPtr = &src[y * width];
-    uint32_t* dstPtr = &dst[(sy + y) * stride + sx];
+  int ox = (sw - dw) / 2;
+  int oy = (sh - dh) / 2;
 
-    for (int x = 0; x < width; x++)
+  for (int y = 0; y < dh; y++)
+  {
+    uint32_t* srcPtr = &src[(y + oy) * sw];
+    uint32_t* dstPtr = &dst[(dy + y) * stride + dx];
+
+    for (int x = 0; x < dw; x++)
     {
-      uint32_t pixel = srcPtr[x];
+      uint32_t pixel = srcPtr[x + ox];
 
       dstPtr[x] =
         ((pixel & 0xFF000000)) |
@@ -363,6 +382,7 @@ static void drawTexture(uint32_t *buffer)
   {
     copyScreen(
       &buffer[renderSwapped ? bottom : 0], bufferPtr,
+      256 << shift, 192 << shift,
       layout.topX << shift, layout.topY << shift,
       layout.topWidth << shift, layout.topHeight << shift,
       width
@@ -373,6 +393,7 @@ static void drawTexture(uint32_t *buffer)
   {
     copyScreen(
       &buffer[renderSwapped ? 0 : bottom], bufferPtr,
+      256 << shift, 192 << shift,
       layout.botX << shift, layout.botY << shift,
       layout.botWidth << shift, layout.botHeight << shift,
       width
@@ -488,6 +509,34 @@ void retro_get_system_av_info(retro_system_av_info* info)
 
 void retro_set_environment(retro_environment_t cb)
 {
+  const struct retro_system_content_info_override contentOverrides[] = {
+    { "nds|gba", true, false },
+    {}
+  };
+
+  cb(RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE, (void*)contentOverrides);
+
+  static const struct retro_subsystem_memory_info ndsMemory[] = {
+    { "sav", RETRO_MEMORY_SAVE_RAM },
+  };
+
+  static const struct retro_subsystem_rom_info dualSlot[] = {
+    { "Nintendo DS (Slot 1)", "nds", true, false, true, ndsMemory, 1 },
+    { "GBA (Slot 2)", "gba", true, false, true, nullptr, 0 },
+  };
+
+  static const struct retro_subsystem_rom_info gbaSlot[] = {
+    { "GBA (Slot 2)", "gba", true, false, true, ndsMemory, 1 },
+  };
+
+  const struct retro_subsystem_info subsystems[] = {
+    { "Slot 1 & 2 Boot", "nds", dualSlot, 2, 1 },
+    { "Slot 2 Boot", "gba", gbaSlot, 1, 2 },
+    {}
+  };
+
+  cb(RETRO_ENVIRONMENT_SET_SUBSYSTEM_INFO, (void*)subsystems);
+
   bool nogameSupport = true;
   cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &nogameSupport);
 
@@ -537,27 +586,30 @@ void retro_deinit(void)
   logCallback = nullptr;
 }
 
-bool retro_load_game(const struct retro_game_info* game)
+bool retro_load_game_special(unsigned type, const struct retro_game_info* info, size_t info_size)
 {
   ndsPath = "";
   gbaPath = "";
 
-  if (game && game->path)
+  for (size_t i = 0; i < info_size; i++)
   {
-    std::string path = game->path;
+    std::string path = info[i].path;
 
     if (path.find(".nds", path.length() - 4) != std::string::npos)
       ndsPath = path;
     else if (path.find(".gba", path.length() - 4) != std::string::npos)
       gbaPath = path;
-    else
-      return false;
   }
 
   initConfig();
-  updateConfig();
-
   initInput();
+
+  if (fetchVariableBool("noods_directBoot", true) && type == 2)
+    gbaModeEnabled = true;
+  else
+    gbaModeEnabled = false;
+
+  updateConfig();
   updateScreenState();
 
   if (createCore(ndsPath, gbaPath))
@@ -571,9 +623,10 @@ bool retro_load_game(const struct retro_game_info* game)
   return false;
 }
 
-bool retro_load_game_special(unsigned type, const struct retro_game_info* info, size_t num)
+bool retro_load_game(const struct retro_game_info* info)
 {
-  return false;
+  size_t info_size = info ? 1 : 0;
+  return retro_load_game_special(0, info, info_size);
 }
 
 void retro_unload_game(void)
