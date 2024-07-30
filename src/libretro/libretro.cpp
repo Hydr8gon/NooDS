@@ -40,6 +40,9 @@ static std::string gbaPath;
 static int ndsSaveFd = -1;
 static int gbaSaveFd = -1;
 
+static std::vector<uint32_t> videoBuffer;
+static uint32_t videoBufferSize;
+
 static std::string touchMode;
 static std::string screenSwapMode;
 
@@ -267,6 +270,17 @@ static void updateConfig()
   TouchLayout::screenRotation = rotationMap[screenRotation];
   touch.update(0, 0, gbaModeEnabled, false);
 
+  bool shift = Settings::highRes3D || Settings::screenFilter == 1;
+  auto bsize = (layout.minWidth << shift) * (layout.minHeight << shift);
+
+  if (videoBufferSize != bsize)
+  {
+    videoBuffer.clear();
+    videoBuffer.resize(bsize);
+
+    videoBufferSize = bsize;
+  }
+
   envCallback(RETRO_ENVIRONMENT_SET_ROTATION, &screenRotation);
 }
 
@@ -326,7 +340,6 @@ static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
   uint32_t curY = (offY + posY) << shift;
 
   uint32_t cursorSize = 2 << shift;
-  uint32_t* baseOffset = (uint32_t*)data;
 
   uint32_t startY = clampValue(curY - cursorSize, minY, maxY);
   uint32_t endY = clampValue(curY + cursorSize, minY, maxY);
@@ -338,9 +351,8 @@ static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
   {
     for (uint32_t x = startX; x < endX; x++)
     {
-      uint32_t* offset = baseOffset + (y * maxX) + x;
-      uint32_t pixel = *offset;
-      *(uint32_t*)offset = (0xFFFFFF - pixel) | 0xFF000000;
+      uint32_t& pixel = data[(y * maxX) + x];
+      pixel = (0xFFFFFF - pixel) | 0xFF000000;
     }
   }
 }
@@ -376,12 +388,10 @@ static void drawTexture(uint32_t *buffer)
   auto width = layout.minWidth << shift;
   auto height = layout.minHeight << shift;
 
-  uint32_t* bufferPtr = new uint32_t[width * height]();
-
   if (renderTopScreen)
   {
     copyScreen(
-      &buffer[renderSwapped ? bottom : 0], bufferPtr,
+      &buffer[renderSwapped ? bottom : 0], videoBuffer.data(),
       256 << shift, 192 << shift,
       layout.topX << shift, layout.topY << shift,
       layout.topWidth << shift, layout.topHeight << shift,
@@ -392,7 +402,7 @@ static void drawTexture(uint32_t *buffer)
   if (renderBotScreen)
   {
     copyScreen(
-      &buffer[renderSwapped ? 0 : bottom], bufferPtr,
+      &buffer[renderSwapped ? 0 : bottom], videoBuffer.data(),
       256 << shift, 192 << shift,
       layout.botX << shift, layout.botY << shift,
       layout.botWidth << shift, layout.botHeight << shift,
@@ -400,11 +410,10 @@ static void drawTexture(uint32_t *buffer)
     );
 
     if (showTouchCursor)
-      drawCursor(bufferPtr, touchX, touchY);
+      drawCursor(videoBuffer.data(), touchX, touchY);
   }
 
-  videoCallback(bufferPtr, width, height, width * 4);
-  delete[] bufferPtr;
+  videoCallback(videoBuffer.data(), width, height, width * 4);
 }
 
 static void playbackAudio(void)
