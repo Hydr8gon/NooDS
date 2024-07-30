@@ -1010,12 +1010,11 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
             }
             else
             {
-                // Adjust the W values to be 15-bit so the calculation doesn't overflow
-                // Also adjust interpolation precision to avoid overflow in high-res mode
+                // Adjust W values to be 15-bit so that a 32-bit calculation wouldn't overflow
+                // The calculation is actually 64-bit for upscaling, but it can still be accurate
                 uint32_t wa = (ws[i2] >> 1) + ((ws[i2] & 1) && !(ws[i2 + 1] & 1));
-                uint32_t s = (resShift & ((xe[i] - xe1[i]) >> 8));
-                factor = ((((ws[i2] >> 1) * (xe[i] - xe1[i])) << (9 - s)) /
-                    ((ws[i2 + 1] >> 1) * (xe2[i] - xe[i]) + wa * (xe[i] - xe1[i]))) << s;
+                factor = (uint64_t((ws[i2] >> 1) * (xe[i] - xe1[i])) << 9) /
+                    ((ws[i2 + 1] >> 1) * (xe2[i] - xe[i]) + wa * (xe[i] - xe1[i]));
             }
 
             // Interpolate the W value of a polygon edge using a factor
@@ -1086,27 +1085,16 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
 
         // Calculate the interpolation factor with a precision of 8 bits for polygon fills
         uint32_t factor;
-        if (we[0] == we[1] && !(we[0] & 0x007F))
-        {
-            // Fall back to linear interpolation if the W values are equal and their lower bits are clear
+        if (we[0] == we[1] && !(we[0] & 0x7F)) // Linear fallback
             factor = -1;
-        }
-        else if (x <= x1)
-        {
-            // Clamp to the minimum value
+        else if (x <= x1) // Clamp min
             factor = 0;
-        }
-        else if (x >= x4)
-        {
-            // Clamp to the maximum value
+        else if (x >= x4) // Clamp max
             factor = (1 << 8);
-        }
-        else
-        {
-            // Adjust interpolation precision to avoid overflow in high-res mode
-            uint32_t s = (resShift & ((x - x1) >> 8));
-            factor = (((we[0] * (x - x1)) << (8 - s)) / (we[1] * (x4 - x) + we[0] * (x - x1))) << s;
-        }
+        else if (resShift && ((x - x1) >> 8)) // 64-bit for upscaling
+            factor = (uint64_t(we[0] * (x - x1)) << 8) / (we[1] * (x4 - x) + we[0] * (x - x1));
+        else // 32-bit
+            factor = ((we[0] * (x - x1)) << 8) / (we[1] * (x4 - x) + we[0] * (x - x1));
 
         // Calculate the depth value of the current pixel
         int32_t depth;
