@@ -222,14 +222,15 @@ static void initConfig()
 {
   static const retro_variable values[] = {
     { "noods_directBoot", "Direct Boot; enabled|disabled" },
-    { "noods_fpsLimiter", "FPS Limiter; Light|Accurate|Disabled" },
+    { "noods_fpsLimiter", "FPS Limiter; disabled|enabled" },
     { "noods_threaded2D", "Threaded 2D; enabled|disabled" },
-    { "noods_threaded3D", "Threaded 3D; 1 Thread|2 Threads|3 Threads|Disabled" },
+    { "noods_threaded3D", "Threaded 3D; 1 Thread|2 Threads|3 Threads|4 Threads|Disabled" },
     { "noods_highRes3D", "High Resolution 3D; disabled|enabled" },
     { "noods_screenArrangement", "Screen Arrangement; Automatic|Vertical|Horizontal|Single Screen" },
     { "noods_screenRotation", "Screen Rotation; Normal|Rotated Left|Rotated Right" },
+    { "noods_screenGap", "Screen Gap; None|Quarter|Half|Full" },
     { "noods_gbaCrop", "Crop GBA Screen; enabled|disabled" },
-    { "noods_screenFilter", "Screen Filter; Linear|Nearest|Upscaled" },
+    { "noods_screenFilter", "Screen Filter; Nearest|Upscaled|Linear" },
     { "noods_screenGhost", "Simulate Ghosting; disabled|enabled" },
     { "noods_swapScreenMode", "Swap Screen Mode; Toggle|Hold" },
     { "noods_touchMode", "Touch Mode; Auto|Pointer|Joystick|None" },
@@ -248,11 +249,11 @@ static void updateConfig()
   Settings::sdImagePath = systemPath + "nds_sd_card.bin";
 
   Settings::directBoot = fetchVariableBool("noods_directBoot", true);
-  Settings::fpsLimiter = fetchVariableEnum("noods_fpsLimiter", {"Disabled", "Light", "Accurate"});
+  Settings::fpsLimiter = fetchVariableBool("noods_fpsLimiter", false);
   Settings::threaded2D = fetchVariableBool("noods_threaded2D", true);
-  Settings::threaded3D = fetchVariableEnum("noods_threaded3D", {"Disabled", "1 Thread", "2 Threads", "3 Threads"}, 1);
+  Settings::threaded3D = fetchVariableEnum("noods_threaded3D", {"Disabled", "1 Thread", "2 Threads", "3 Threads", "4 Threads"}, 1);
   Settings::highRes3D = fetchVariableBool("noods_highRes3D", false);
-  Settings::screenFilter = fetchVariableEnum("noods_screenFilter", {"Nearest", "Upscaled", "Linear"}, 2);
+  Settings::screenFilter = fetchVariableEnum("noods_screenFilter", {"Nearest", "Upscaled", "Linear"});
   Settings::screenGhost = fetchVariableBool("noods_screenGhost", false);
 
   screenArrangement = fetchVariableEnum("noods_screenArrangement", {"Automatic", "Vertical", "Horizontal", "Single Screen"});
@@ -262,6 +263,8 @@ static void updateConfig()
   showTouchCursor = fetchVariableBool("noods_touchCursor", true);
 
   ScreenLayout::gbaCrop = fetchVariableBool("noods_gbaCrop", true);
+  ScreenLayout::screenGap = fetchVariableEnum("noods_screenGap", {"None", "Quarter", "Half", "Full"});
+
   ScreenLayout::screenArrangement = screenRotation ? arrangeMap[screenArrangement] : screenArrangement;
   ScreenLayout::screenRotation = rotationMap[0];
   layout.update(0, 0, gbaModeEnabled, false);
