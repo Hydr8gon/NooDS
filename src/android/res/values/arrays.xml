@@ -1,17 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string-array name="fps_limiter_entries">
-        <item>Disabled</item>
-        <item>Light</item>
-        <item>Accurate</item>
-    </string-array>
-
     <string-array name="threaded_3d_entries">
         <item>Disabled</item>
         <item>1 Thread</item>
         <item>2 Threads</item>
         <item>3 Threads</item>
+        <item>4 Threads</item>
     </string-array>
 
     <string-array name="screen_position_entries">
@@ -59,6 +54,7 @@
         <item>1</item>
         <item>2</item>
         <item>3</item>
+        <item>4</item>
     </string-array>
 
     <string-array name="save_entries_gba">

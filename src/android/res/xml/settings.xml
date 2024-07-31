@@ -6,24 +6,21 @@
         app:title="General Settings"
         app:iconSpaceReserved="false">
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="direct_boot"
             app:title="Direct Boot"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
-        <ListPreference
+        <SwitchPreference
             app:key="fps_limiter"
             app:title="FPS Limiter"
-            app:entries="@array/fps_limiter_entries"
-            app:entryValues="@array/setting_values"
-            app:useSimpleSummaryProvider="true"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="threaded_2d"
             app:title="Threaded 2D"
             app:iconSpaceReserved="false"
@@ -40,21 +37,21 @@
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="high_res_3d"
             app:title="High-Resolution 3D"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="mic_enable"
             app:title="Use Microphone"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="show_fps_counter"
             app:title="Show FPS Counter"
             app:iconSpaceReserved="false"
@@ -66,21 +63,21 @@
         app:title="Path Settings"
         app:iconSpaceReserved="false">
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="saves_folder"
             app:title="Separate Saves Folder"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="states_folder"
             app:title="Separate States Folder"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="cheats_folder"
             app:title="Separate Cheats Folder"
             app:iconSpaceReserved="false"
@@ -152,21 +149,21 @@
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="integer_scale"
             app:title="Integer Scale"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="gba_crop"
             app:title="GBA Crop"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
-        <SwitchPreferenceCompat
+        <SwitchPreference
             app:key="screen_ghost"
             app:title="Simulate Ghosting"
             app:iconSpaceReserved="false"

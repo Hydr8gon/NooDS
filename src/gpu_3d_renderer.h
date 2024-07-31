@@ -65,8 +65,8 @@ class Gpu3DRenderer
         int polygonTop[2048] = {};
         int polygonBot[2048] = {};
 
-        int activeThreads = 0;
-        std::thread *threads[3] = {};
+        uint8_t activeThreads = 0;
+        std::vector<std::thread*> threads;
         std::atomic<int> ready[192 * 2];
 
         uint16_t disp3DCnt = 0;

@@ -46,14 +46,13 @@ enum FrameEvent
     INPUT_BINDINGS,
     SCREEN_LAYOUT,
     DIRECT_BOOT,
-    FPS_DISABLED,
-    FPS_LIGHT,
-    FPS_ACCURATE,
+    FPS_LIMITER,
     THREADED_2D,
     THREADED_3D_0,
     THREADED_3D_1,
     THREADED_3D_2,
     THREADED_3D_3,
+    THREADED_3D_4,
     HIGH_RES_3D,
     MIC_ENABLE,
     UPDATE_JOY
@@ -76,14 +75,13 @@ EVT_MENU(PATH_SETTINGS, NooFrame::pathSettings)
 EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
 EVT_MENU(SCREEN_LAYOUT, NooFrame::layoutSettings)
 EVT_MENU(DIRECT_BOOT, NooFrame::directBootToggle)
-EVT_MENU(FPS_DISABLED, NooFrame::fpsDisabled)
-EVT_MENU(FPS_LIGHT, NooFrame::fpsLight)
-EVT_MENU(FPS_ACCURATE, NooFrame::fpsAccurate)
+EVT_MENU(FPS_LIMITER, NooFrame::fpsLimiter)
 EVT_MENU(THREADED_2D, NooFrame::threaded2D)
 EVT_MENU(THREADED_3D_0, NooFrame::threaded3D0)
 EVT_MENU(THREADED_3D_1, NooFrame::threaded3D1)
 EVT_MENU(THREADED_3D_2, NooFrame::threaded3D2)
 EVT_MENU(THREADED_3D_3, NooFrame::threaded3D3)
+EVT_MENU(THREADED_3D_4, NooFrame::threaded3D4)
 EVT_MENU(HIGH_RES_3D, NooFrame::highRes3D)
 EVT_MENU(MIC_ENABLE, NooFrame::micEnable)
 EVT_TIMER(UPDATE_JOY, NooFrame::updateJoystick)
@@ -132,34 +130,22 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         systemMenu->Enable(STOP, false);
         systemMenu->Enable(ACTION_REPLAY, false);
 
-        // Set up the FPS Limiter submenu
-        wxMenu *fpsLimiter = new wxMenu();
-        fpsLimiter->AppendRadioItem(FPS_DISABLED, "&Disabled");
-        fpsLimiter->AppendRadioItem(FPS_LIGHT, "&Light");
-        fpsLimiter->AppendRadioItem(FPS_ACCURATE, "&Accurate");
-
-        // Set the current value of the FPS limiter setting
-        switch (Settings::fpsLimiter)
-        {
-            case 0: fpsLimiter->Check(FPS_DISABLED, true); break;
-            case 1: fpsLimiter->Check(FPS_LIGHT, true); break;
-            default: fpsLimiter->Check(FPS_ACCURATE, true); break;
-        }
-
         // Set up the Threaded 3D submenu
         wxMenu *threaded3D = new wxMenu();
         threaded3D->AppendRadioItem(THREADED_3D_0, "&Disabled");
         threaded3D->AppendRadioItem(THREADED_3D_1, "&1 Thread");
         threaded3D->AppendRadioItem(THREADED_3D_2, "&2 Threads");
         threaded3D->AppendRadioItem(THREADED_3D_3, "&3 Threads");
+        threaded3D->AppendRadioItem(THREADED_3D_4, "&4 Threads");
 
         // Set the current value of the threaded 3D setting
-        switch (Settings::threaded3D)
+        switch (Settings::threaded3D & 0xF)
         {
             case 0: threaded3D->Check(THREADED_3D_0, true); break;
             case 1: threaded3D->Check(THREADED_3D_1, true); break;
             case 2: threaded3D->Check(THREADED_3D_2, true); break;
-            default: threaded3D->Check(THREADED_3D_3, true); break;
+            case 3: threaded3D->Check(THREADED_3D_3, true); break;
+            default: threaded3D->Check(THREADED_3D_4, true); break;
         }
 
         // Set up the Settings menu
@@ -169,7 +155,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         settingsMenu->Append(SCREEN_LAYOUT, "&Screen Layout");
         settingsMenu->AppendSeparator();
         settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
-        settingsMenu->AppendSubMenu(fpsLimiter, "&FPS Limiter");
+        settingsMenu->AppendCheckItem(FPS_LIMITER, "&FPS Limiter");
         settingsMenu->AppendSeparator();
         settingsMenu->AppendCheckItem(THREADED_2D, "&Threaded 2D");
         settingsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
@@ -179,6 +165,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
 
         // Set the current values of the checkboxes
         settingsMenu->Check(DIRECT_BOOT, Settings::directBoot);
+        settingsMenu->Check(FPS_LIMITER, Settings::fpsLimiter);
         settingsMenu->Check(THREADED_2D, Settings::threaded2D);
         settingsMenu->Check(HIGH_RES_3D, Settings::highRes3D);
         settingsMenu->Check(MIC_ENABLE, NooApp::micEnable);
@@ -717,24 +704,10 @@ void NooFrame::directBootToggle(wxCommandEvent &event)
     Settings::save();
 }
 
-void NooFrame::fpsDisabled(wxCommandEvent &event)
+void NooFrame::fpsLimiter(wxCommandEvent &event)
 {
-    // Set the FPS limiter setting to disabled
-    Settings::fpsLimiter = 0;
-    Settings::save();
-}
-
-void NooFrame::fpsLight(wxCommandEvent &event)
-{
-    // Set the FPS limiter setting to light
-    Settings::fpsLimiter = 1;
-    Settings::save();
-}
-
-void NooFrame::fpsAccurate(wxCommandEvent &event)
-{
-    // Set the FPS limiter setting to accurate
-    Settings::fpsLimiter = 2;
+    // Toggle the FPS limiter setting
+    Settings::fpsLimiter = !Settings::fpsLimiter;
     Settings::save();
 }
 
@@ -770,6 +743,13 @@ void NooFrame::threaded3D3(wxCommandEvent &event)
 {
     // Set the threaded 3D setting to 3 threads
     Settings::threaded3D = 3;
+    Settings::save();
+}
+
+void NooFrame::threaded3D4(wxCommandEvent &event)
+{
+    // Set the threaded 3D setting to 4 threads
+    Settings::threaded3D = 4;
     Settings::save();
 }
 

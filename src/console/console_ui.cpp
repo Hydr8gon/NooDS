@@ -813,6 +813,7 @@ void ConsoleUI::settingsMenu()
 {
     // Define possible values for settings
     const std::vector<std::string> toggle = { "Off", "On" };
+    const std::vector<std::string> threads = { "Disabled", "1 Thread", "2 Threads" };
     const std::vector<std::string> position = { "Center", "Top", "Bottom", "Left", "Right" };
     const std::vector<std::string> rotation = { "None", "Clockwise", "Counter-Clockwise" };
     const std::vector<std::string> arrangement = { "Automatic", "Vertical", "Horizontal", "Single Screen" };
@@ -830,7 +831,7 @@ void ConsoleUI::settingsMenu()
             MenuItem("Direct Boot", toggle[Settings::directBoot]),
             MenuItem("FPS Limiter", toggle[Settings::fpsLimiter]),
             MenuItem("Threaded 2D", toggle[Settings::threaded2D]),
-            MenuItem("Threaded 3D", toggle[(bool)Settings::threaded3D]),
+            MenuItem("Threaded 3D", threads[Settings::threaded3D]),
             MenuItem("High-Resolution 3D", toggle[Settings::highRes3D]),
             MenuItem("Show FPS Counter", toggle[showFpsCounter]),
             MenuItem("Separate Saves Folder", toggle[Settings::savesFolder]),
@@ -860,7 +861,7 @@ void ConsoleUI::settingsMenu()
                 case 0: Settings::directBoot = (Settings::directBoot + 1) % 2; break;
                 case 1: Settings::fpsLimiter = (Settings::fpsLimiter + 1) % 2; break;
                 case 2: Settings::threaded2D = (Settings::threaded2D + 1) % 2; break;
-                case 3: Settings::threaded3D = (Settings::threaded3D + 1) % 2; break;
+                case 3: Settings::threaded3D = (Settings::threaded3D + 1) % 3; break;
                 case 4: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
                 case 5: showFpsCounter = (showFpsCounter + 1) % 2; break;
                 case 6: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;

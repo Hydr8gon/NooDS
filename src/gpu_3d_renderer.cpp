@@ -35,13 +35,10 @@ Gpu3DRenderer::Gpu3DRenderer(Core *core): core(core)
 Gpu3DRenderer::~Gpu3DRenderer()
 {
     // Clean up the threads
-    for (int i = 0; i < activeThreads; i++)
+    for (size_t i = 0; i < threads.size(); i++)
     {
-        if (threads[i]) 
-        {
-            threads[i]->join();
-            delete threads[i];
-        }
+        threads[i]->join();
+        delete threads[i];
     }
 }
 
@@ -153,30 +150,23 @@ void Gpu3DRenderer::drawScanline(int line)
         resShift = Settings::highRes3D;
 
         // Clean up any existing threads
-        for (int i = 0; i < activeThreads; i++)
+        for (size_t i = 0; i < threads.size(); i++)
         {
-            if (threads[i]) 
-            {
-                threads[i]->join();
-                delete threads[i];
-            }
+            threads[i]->join();
+            delete threads[i];
         }
-
-        // Update the thread count
-        activeThreads = Settings::threaded3D;
-        if (activeThreads > 3) activeThreads = 3;
+        threads.clear();
 
         // Set up threaded 3D rendering if enabled
-        if (activeThreads > 0)
+        if ((activeThreads = Settings::threaded3D & 0xF))
         {
             // Mark the scanlines as not ready
-            int end = 192 << resShift;
-            for (int i = 0; i < end; i++)
+            for (int i = 0; i < (192 << resShift); i++)
                 ready[i].store(0);
 
             // Create threads to draw the scanlines
-            for (int i = 0; i < activeThreads; i++)
-                threads[i] = new std::thread(&Gpu3DRenderer::drawThreaded, this, i);
+            for (uint8_t i = 0; i < activeThreads; i++)
+                threads.push_back(new std::thread(&Gpu3DRenderer::drawThreaded, this, i));
         }
     }
 

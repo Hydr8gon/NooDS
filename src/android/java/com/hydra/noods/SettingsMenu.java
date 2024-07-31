@@ -26,7 +26,7 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
-import androidx.preference.SwitchPreferenceCompat;
+import androidx.preference.SwitchPreference;
 
 import android.content.Context;
 import android.content.Intent;
@@ -55,7 +55,7 @@ public class SettingsMenu extends AppCompatActivity
                 @Override
                 public boolean onPreferenceClick(Preference pref)
                 {
-                    if (!((SwitchPreferenceCompat)pref).isChecked()) return true;
+                    if (!((SwitchPreference)pref).isChecked()) return true;
                     String perm = android.Manifest.permission.RECORD_AUDIO;
                     if (ContextCompat.checkSelfPermission(getActivity(), perm) != PackageManager.PERMISSION_GRANTED)
                         ActivityCompat.requestPermissions(getActivity(), new String[] {perm}, 0);
@@ -71,7 +71,7 @@ public class SettingsMenu extends AppCompatActivity
         // Disable the microphone setting if permission wasn't granted
         int perm = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
         if (perm != PackageManager.PERMISSION_GRANTED)
-            ((SwitchPreferenceCompat)fragment.findPreference("mic_enable")).setChecked(false);
+            ((SwitchPreference)fragment.findPreference("mic_enable")).setChecked(false);
     }
 
     @Override
@@ -83,7 +83,7 @@ public class SettingsMenu extends AppCompatActivity
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putBoolean("direct_boot", (getDirectBoot() == 0) ? false : true);
-        editor.putString("fps_limiter", Integer.toString(getFpsLimiter()));
+        editor.putBoolean("fps_limiter", (getFpsLimiter() == 0) ? false : true);
         editor.putBoolean("threaded_2d", (getThreaded2D() == 0) ? false : true);
         editor.putString("threaded_3d", Integer.toString(getThreaded3D()));
         editor.putBoolean("high_res_3d", (getHighRes3D() == 0) ? false : true);
@@ -141,7 +141,7 @@ public class SettingsMenu extends AppCompatActivity
     {
         // Save the settings to the core
         setDirectBoot(prefs.getBoolean("direct_boot", true) ? 1 : 0);
-        setFpsLimiter(Integer.parseInt(prefs.getString("fps_limiter", "1")));
+        setFpsLimiter(prefs.getBoolean("fps_limiter", true) ? 1 : 0);
         setThreaded2D(prefs.getBoolean("threaded_2d", true) ? 1 : 0);
         setThreaded3D(Integer.parseInt(prefs.getString("threaded_3d", "1")));
         setHighRes3D(prefs.getBoolean("high_res_3d", false) ? 1 : 0);
