@@ -830,6 +830,7 @@ void ConsoleUI::settingsMenu()
         {
             MenuItem("Direct Boot", toggle[Settings::directBoot]),
             MenuItem("FPS Limiter", toggle[Settings::fpsLimiter]),
+            MenuItem("Keep ROM in RAM", toggle[Settings::romInRam]),
             MenuItem("Threaded 2D", toggle[Settings::threaded2D]),
             MenuItem("Threaded 3D", threads[Settings::threaded3D]),
             MenuItem("High-Resolution 3D", toggle[Settings::highRes3D]),
@@ -860,24 +861,25 @@ void ConsoleUI::settingsMenu()
             {
                 case 0: Settings::directBoot = (Settings::directBoot + 1) % 2; break;
                 case 1: Settings::fpsLimiter = (Settings::fpsLimiter + 1) % 2; break;
-                case 2: Settings::threaded2D = (Settings::threaded2D + 1) % 2; break;
-                case 3: Settings::threaded3D = (Settings::threaded3D + 1) % 3; break;
-                case 4: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
-                case 5: showFpsCounter = (showFpsCounter + 1) % 2; break;
-                case 6: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;
-                case 7: Settings::statesFolder = (Settings::statesFolder + 1) % 2; break;
-                case 8: Settings::cheatsFolder = (Settings::cheatsFolder + 1) % 2; break;
-                case 9: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
-                case 10: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
-                case 11: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
-                case 12: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
-                case 13: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
-                case 14: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
-                case 15: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
-                case 16: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
-                case 17: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
+                case 2: Settings::romInRam = (Settings::romInRam + 1) % 2; break;
+                case 3: Settings::threaded2D = (Settings::threaded2D + 1) % 2; break;
+                case 4: Settings::threaded3D = (Settings::threaded3D + 1) % 3; break;
+                case 5: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
+                case 6: showFpsCounter = (showFpsCounter + 1) % 2; break;
+                case 7: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;
+                case 8: Settings::statesFolder = (Settings::statesFolder + 1) % 2; break;
+                case 9: Settings::cheatsFolder = (Settings::cheatsFolder + 1) % 2; break;
+                case 10: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
+                case 11: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
+                case 12: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
+                case 13: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
+                case 14: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
+                case 15: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
+                case 16: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
+                case 17: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
+                case 18: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
 
-                case 18:
+                case 19:
                     // Update the palette when changing themes
                     menuTheme = (menuTheme + 1) % 2;
                     palette = &themeColors[menuTheme * 6];

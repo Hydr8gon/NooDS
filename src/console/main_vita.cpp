@@ -30,8 +30,8 @@
 
 #include "console_ui.h"
 
-// Reserve 128MB of allocatable memory (can do more, but loading larger ROMs into RAM is slow)
-int _newlib_heap_size_user = 128 * 1024 * 1024;
+// Reserve 192MB of allocatable memory
+int _newlib_heap_size_user = 192 * 1024 * 1024;
 
 uint32_t audioBuffer[1024];
 int audioPort;

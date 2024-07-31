@@ -38,6 +38,7 @@ class Settings
     public:
         static int directBoot;
         static int fpsLimiter;
+        static int romInRam;
         static int threaded2D;
         static int threaded3D;
         static int highRes3D;

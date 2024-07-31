@@ -21,6 +21,20 @@
             app:allowDividerBelow="true" />
 
         <SwitchPreference
+            app:key="mic_enable"
+            app:title="Use Microphone"
+            app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+
+        <SwitchPreference
+            app:key="rom_in_ram"
+            app:title="Keep ROM in RAM"
+            app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+
+        <SwitchPreference
             app:key="threaded_2d"
             app:title="Threaded 2D"
             app:iconSpaceReserved="false"
@@ -40,13 +54,6 @@
         <SwitchPreference
             app:key="high_res_3d"
             app:title="High-Resolution 3D"
-            app:iconSpaceReserved="false"
-            app:allowDividerAbove="true"
-            app:allowDividerBelow="true" />
-
-        <SwitchPreference
-            app:key="mic_enable"
-            app:title="Use Microphone"
             app:iconSpaceReserved="false"
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />

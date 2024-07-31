@@ -85,6 +85,8 @@ class NooFrame: public wxFrame
         void layoutSettings(wxCommandEvent &event);
         void directBootToggle(wxCommandEvent &event);
         void fpsLimiter(wxCommandEvent &event);
+        void micEnable(wxCommandEvent &event);
+        void romInRam(wxCommandEvent &event);
         void threaded2D(wxCommandEvent &event);
         void threaded3D0(wxCommandEvent &event);
         void threaded3D1(wxCommandEvent &event);
@@ -92,7 +94,6 @@ class NooFrame: public wxFrame
         void threaded3D3(wxCommandEvent &event);
         void threaded3D4(wxCommandEvent &event);
         void highRes3D(wxCommandEvent &event);
-        void micEnable(wxCommandEvent &event);
         void updateJoystick(wxTimerEvent &event);
         void dropFiles(wxDropFilesEvent &event);
         void close(wxCloseEvent &event);

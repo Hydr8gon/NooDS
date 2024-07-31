@@ -47,6 +47,8 @@ enum FrameEvent
     SCREEN_LAYOUT,
     DIRECT_BOOT,
     FPS_LIMITER,
+    MIC_ENABLE,
+    ROM_IN_RAM,
     THREADED_2D,
     THREADED_3D_0,
     THREADED_3D_1,
@@ -54,7 +56,6 @@ enum FrameEvent
     THREADED_3D_3,
     THREADED_3D_4,
     HIGH_RES_3D,
-    MIC_ENABLE,
     UPDATE_JOY
 };
 
@@ -76,6 +77,8 @@ EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
 EVT_MENU(SCREEN_LAYOUT, NooFrame::layoutSettings)
 EVT_MENU(DIRECT_BOOT, NooFrame::directBootToggle)
 EVT_MENU(FPS_LIMITER, NooFrame::fpsLimiter)
+EVT_MENU(MIC_ENABLE, NooFrame::micEnable)
+EVT_MENU(ROM_IN_RAM, NooFrame::romInRam)
 EVT_MENU(THREADED_2D, NooFrame::threaded2D)
 EVT_MENU(THREADED_3D_0, NooFrame::threaded3D0)
 EVT_MENU(THREADED_3D_1, NooFrame::threaded3D1)
@@ -83,7 +86,6 @@ EVT_MENU(THREADED_3D_2, NooFrame::threaded3D2)
 EVT_MENU(THREADED_3D_3, NooFrame::threaded3D3)
 EVT_MENU(THREADED_3D_4, NooFrame::threaded3D4)
 EVT_MENU(HIGH_RES_3D, NooFrame::highRes3D)
-EVT_MENU(MIC_ENABLE, NooFrame::micEnable)
 EVT_TIMER(UPDATE_JOY, NooFrame::updateJoystick)
 EVT_DROP_FILES(NooFrame::dropFiles)
 EVT_CLOSE(NooFrame::close)
@@ -156,19 +158,20 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         settingsMenu->AppendSeparator();
         settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
         settingsMenu->AppendCheckItem(FPS_LIMITER, "&FPS Limiter");
+        settingsMenu->AppendCheckItem(MIC_ENABLE, "&Use Microphone");
+        settingsMenu->AppendCheckItem(ROM_IN_RAM, "&Keep ROM in RAM");
         settingsMenu->AppendSeparator();
         settingsMenu->AppendCheckItem(THREADED_2D, "&Threaded 2D");
         settingsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
-        settingsMenu->AppendSeparator();
         settingsMenu->AppendCheckItem(HIGH_RES_3D, "&High-Resolution 3D");
-        settingsMenu->AppendCheckItem(MIC_ENABLE, "&Use Microphone");
 
         // Set the current values of the checkboxes
         settingsMenu->Check(DIRECT_BOOT, Settings::directBoot);
         settingsMenu->Check(FPS_LIMITER, Settings::fpsLimiter);
+        settingsMenu->Check(MIC_ENABLE, NooApp::micEnable);
+        settingsMenu->Check(ROM_IN_RAM, Settings::romInRam);
         settingsMenu->Check(THREADED_2D, Settings::threaded2D);
         settingsMenu->Check(HIGH_RES_3D, Settings::highRes3D);
-        settingsMenu->Check(MIC_ENABLE, NooApp::micEnable);
 
         // Set up the menu bar
         wxMenuBar *menuBar = new wxMenuBar();
@@ -711,6 +714,21 @@ void NooFrame::fpsLimiter(wxCommandEvent &event)
     Settings::save();
 }
 
+void NooFrame::romInRam(wxCommandEvent &event)
+{
+    // Toggle the ROM in RAM setting
+    Settings::romInRam = !Settings::romInRam;
+    Settings::save();
+}
+
+void NooFrame::micEnable(wxCommandEvent &event)
+{
+    // Toggle the use microphone setting
+    NooApp::micEnable = !NooApp::micEnable;
+    NooApp::micEnable ? app->startStream(1) : app->stopStream(1);
+    Settings::save();
+}
+
 void NooFrame::threaded2D(wxCommandEvent &event)
 {
     // Toggle the threaded 2D setting
@@ -757,14 +775,6 @@ void NooFrame::highRes3D(wxCommandEvent &event)
 {
     // Toggle the high-resolution 3D setting
     Settings::highRes3D = !Settings::highRes3D;
-    Settings::save();
-}
-
-void NooFrame::micEnable(wxCommandEvent &event)
-{
-    // Toggle the use microphone setting
-    NooApp::micEnable = !NooApp::micEnable;
-    NooApp::micEnable ? app->startStream(1) : app->stopStream(1);
     Settings::save();
 }
 

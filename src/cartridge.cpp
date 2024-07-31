@@ -243,12 +243,12 @@ bool CartridgeNds::loadRom()
         saveSizes.push_back(0x800000); // FLASH 8192KB
     }
 
-    // If the ROM is 512MB or smaller, try to load it into memory; otherwise fall back to file-based loading
+    // Try to load the ROM into RAM if enabled; otherwise fall back to file-based loading
     if (!Cartridge::loadRom())
     {
         return false;
     }
-    else if (romSize <= 0x20000000) // 512MB
+    else if (Settings::romInRam)
     {
         try
         {
