@@ -50,6 +50,7 @@ static int screenArrangement;
 static int screenRotation;
 
 static bool gbaModeEnabled;
+static bool renderGbaScreen;
 static bool renderTopScreen;
 static bool renderBotScreen;
 static bool renderSwapped;
@@ -313,17 +314,11 @@ static void updateScreenState()
   bool singleScreen = ScreenLayout::screenArrangement == 3;
   bool bottomScreen = singleScreen && showBottomScreen;
 
-  renderTopScreen = !bottomScreen && (singleScreen || ScreenLayout::screenSizing < 2);
-  renderBotScreen = !singleScreen || (bottomScreen || ScreenLayout::screenSizing == 2);
+  renderGbaScreen = gbaModeEnabled && ScreenLayout::gbaCrop;
+  renderTopScreen = !renderGbaScreen && (!singleScreen || !bottomScreen);
+  renderBotScreen = !renderGbaScreen && (!singleScreen || bottomScreen);
 
   renderSwapped = screenArrangement == 1 && screenRotation;
-
-  if (ScreenLayout::gbaCrop && gbaModeEnabled)
-  {
-    renderTopScreen = true;
-    renderBotScreen = false;
-    renderSwapped = false;
-  }
 }
 
 static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
@@ -362,19 +357,16 @@ static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
 
 static void copyScreen(uint32_t *src, uint32_t *dst, int sw, int sh, int dx, int dy, int dw, int dh, int stride)
 {
-  int ox = (sw - dw) / 2;
-  int oy = (sh - dh) / 2;
-
-  for (int y = 0; y < dh; y++)
+  for (int y = 0; y < dh; ++y)
   {
-    uint32_t* srcPtr = &src[(y + oy) * sw];
-    uint32_t* dstPtr = &dst[(dy + y) * stride + dx];
+    int srcY = y * sw;
+    int dstY = (dy + y) * stride + dx;
 
-    for (int x = 0; x < dw; x++)
+    for (int x = 0; x < dw; ++x)
     {
-      uint32_t pixel = srcPtr[x + ox];
+      uint32_t pixel = src[srcY + x];
 
-      dstPtr[x] =
+      dst[dstY + x] =
         ((pixel & 0xFF000000)) |
         ((pixel & 0x00FF0000) >> 16) |
         ((pixel & 0x0000FF00)) |
@@ -390,6 +382,17 @@ static void drawTexture(uint32_t *buffer)
 
   auto width = layout.minWidth << shift;
   auto height = layout.minHeight << shift;
+
+  if (renderGbaScreen)
+  {
+    copyScreen(
+      &buffer[0], videoBuffer.data(),
+      240 << shift, 160 << shift,
+      layout.topX << shift, layout.topY << shift,
+      layout.topWidth << shift, layout.topHeight << shift,
+      width
+    );
+  }
 
   if (renderTopScreen)
   {
@@ -661,6 +664,7 @@ void retro_reset(void)
 void retro_run(void)
 {
   checkConfigVariables();
+  updateScreenState();
   inputPollCallback();
 
   for (int i = 0; i < sizeof(keymap) / sizeof(*keymap); ++i)
@@ -671,19 +675,22 @@ void retro_run(void)
       core->input.releaseKey(i);
   }
 
-  bool swap = getButtonState(RETRO_DEVICE_ID_JOYPAD_R2);
+  if (!renderGbaScreen)
+  {
+    bool swapPressed = getButtonState(RETRO_DEVICE_ID_JOYPAD_R2);
 
-  if (screenSwapped != swap) {
-    if (screenSwapMode == "Toggle" && swap)
-      showBottomScreen = !showBottomScreen;
+    if (screenSwapped != swapPressed)
+    {
+      if (screenSwapMode == "Toggle" && swapPressed)
+        showBottomScreen = !showBottomScreen;
 
-    if (screenSwapMode == "Hold")
-      showBottomScreen = swap;
+      if (screenSwapMode == "Hold")
+        showBottomScreen = swapPressed;
 
-    screenSwapped = swap;
+      screenSwapped = swapPressed;
+      updateScreenState();
+    }
   }
-
-  updateScreenState();
 
   if (renderBotScreen)
   {
@@ -761,7 +768,7 @@ void retro_run(void)
   core->runFrame();
 
   static uint32_t framebuffer[256 * 192 * 8];
-  core->gpu.getFrame(framebuffer, false);
+  core->gpu.getFrame(framebuffer, renderGbaScreen);
 
   drawTexture(framebuffer);
   playbackAudio();
