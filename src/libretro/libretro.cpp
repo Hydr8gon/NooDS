@@ -55,7 +55,7 @@ static bool renderBotScreen;
 
 static bool showTouchCursor;
 static bool screenSwapped;
-static bool showBottomScreen;
+static bool swapScreens;
 static bool screenTouched;
 
 static int lastMouseX = 0;
@@ -324,11 +324,16 @@ static void checkConfigVariables()
 static void updateScreenState()
 {
   bool singleScreen = ScreenLayout::screenArrangement == 3;
-  bool bottomScreen = singleScreen && showBottomScreen;
+  auto screenSizing = ScreenLayout::screenSizing;
+
+  if (screenSizing <= 1 && swapScreens)
+    screenSizing = 2;
+  else if (screenSizing == 2 && swapScreens)
+    screenSizing = 1;
 
   renderGbaScreen = gbaModeEnabled && ScreenLayout::gbaCrop;
-  renderTopScreen = !renderGbaScreen && (!singleScreen || !bottomScreen);
-  renderBotScreen = !renderGbaScreen && (!singleScreen || bottomScreen);
+  renderTopScreen = !renderGbaScreen && (!singleScreen || screenSizing <= 1);
+  renderBotScreen = !renderGbaScreen && (!singleScreen || screenSizing == 2);
 }
 
 static void drawCursor(uint32_t *data, int32_t pointX, int32_t pointY, int32_t size = 2)
@@ -689,11 +694,20 @@ void retro_run(void)
 
     if (screenSwapped != swapPressed)
     {
+      bool needSwap = ScreenLayout::screenArrangement != 3;
+      bool prevSwap = swapScreens;
+
       if (screenSwapMode == "Toggle" && swapPressed)
-        showBottomScreen = !showBottomScreen;
+        swapScreens = !swapScreens;
 
       if (screenSwapMode == "Hold")
-        showBottomScreen = swapPressed;
+        swapScreens = swapPressed;
+
+      if (needSwap && prevSwap != swapScreens)
+      {
+        swapScreenPositions(layout);
+        swapScreenPositions(touch);
+      }
 
       screenSwapped = swapPressed;
       updateScreenState();
