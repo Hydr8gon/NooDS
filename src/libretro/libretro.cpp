@@ -1,5 +1,6 @@
 #include <cstdarg>
 #include <algorithm>
+#include <cstring>
 
 #include <fcntl.h>
 #include <fstream>
@@ -16,8 +17,6 @@
 #define VERSION "0.1"
 #endif
 
-class TouchLayout : public ScreenLayout {};
-
 static retro_environment_t envCallback;
 static retro_video_refresh_t videoCallback;
 static retro_audio_sample_batch_t audioBatchCallback;
@@ -32,7 +31,7 @@ static std::string savesPath;
 
 static Core *core;
 static ScreenLayout layout;
-static TouchLayout touch;
+static ScreenLayout touch;
 
 static std::string ndsPath;
 static std::string gbaPath;
@@ -231,6 +230,7 @@ static void initConfig()
   static const retro_variable values[] = {
     { "noods_directBoot", "Direct Boot; enabled|disabled" },
     { "noods_fpsLimiter", "FPS Limiter; disabled|enabled" },
+    { "noods_romInRam", "Keep ROM in RAM; disabled|enabled" },
     { "noods_threaded2D", "Threaded 2D; enabled|disabled" },
     { "noods_threaded3D", "Threaded 3D; 1 Thread|2 Threads|3 Threads|4 Threads|Disabled" },
     { "noods_highRes3D", "High Resolution 3D; disabled|enabled" },
@@ -251,6 +251,7 @@ static void initConfig()
 
 static void updateConfig()
 {
+  Settings::basePath = savesPath + "noods";
   Settings::bios9Path = systemPath + "bios9.bin";
   Settings::bios7Path = systemPath + "bios7.bin";
   Settings::firmwarePath = systemPath + "firmware.bin";
@@ -258,6 +259,7 @@ static void updateConfig()
 
   Settings::directBoot = fetchVariableBool("noods_directBoot", true);
   Settings::fpsLimiter = fetchVariableBool("noods_fpsLimiter", false);
+  Settings::romInRam = fetchVariableBool("noods_romInRam", false);
   Settings::threaded2D = fetchVariableBool("noods_threaded2D", true);
   Settings::threaded3D = fetchVariableEnum("noods_threaded3D", {"Disabled", "1 Thread", "2 Threads", "3 Threads", "4 Threads"}, 1);
   Settings::highRes3D = fetchVariableBool("noods_highRes3D", false);
@@ -280,8 +282,8 @@ static void updateConfig()
   if (screenArrangement == 1 && screenRotation)
     swapScreenPositions(layout);
 
-  TouchLayout::screenArrangement = screenArrangement;
-  TouchLayout::screenRotation = rotationMap[screenRotation];
+  ScreenLayout::screenArrangement = screenArrangement;
+  ScreenLayout::screenRotation = rotationMap[screenRotation];
   touch.update(0, 0, gbaModeEnabled, false);
 
   bool shift = Settings::highRes3D || Settings::screenFilter == 1;
@@ -289,11 +291,11 @@ static void updateConfig()
 
   if (videoBufferSize != bsize)
   {
-    videoBuffer.clear();
     videoBuffer.resize(bsize);
-
     videoBufferSize = bsize;
   }
+
+  memset(videoBuffer.data(), 0, videoBuffer.size() * sizeof(videoBuffer[0]));
 
   envCallback(RETRO_ENVIRONMENT_SET_ROTATION, &screenRotation);
 }
@@ -329,10 +331,12 @@ static void updateScreenState()
   renderBotScreen = !renderGbaScreen && (!singleScreen || bottomScreen);
 }
 
-static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
+static void drawCursor(uint32_t *data, int32_t pointX, int32_t pointY, int32_t size = 2)
 {
   bool shift = Settings::highRes3D || Settings::screenFilter == 1;
 
+  uint32_t posX = clampValue(pointX, size, layout.botWidth - size);
+  uint32_t posY = clampValue(pointY, size, layout.botHeight - size);
 
   uint32_t minX = layout.botX << shift;
   uint32_t maxX = layout.minWidth << shift;
@@ -343,7 +347,7 @@ static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
   uint32_t curX = (layout.botX + posX) << shift;
   uint32_t curY = (layout.botY + posY) << shift;
 
-  uint32_t cursorSize = 2 << shift;
+  uint32_t cursorSize = size << shift;
 
   uint32_t startY = clampValue(curY - cursorSize, minY, maxY);
   uint32_t endY = clampValue(curY + cursorSize, minY, maxY);
