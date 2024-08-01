@@ -53,7 +53,6 @@ static bool gbaModeEnabled;
 static bool renderGbaScreen;
 static bool renderTopScreen;
 static bool renderBotScreen;
-static bool renderSwapped;
 
 static bool showTouchCursor;
 static bool screenSwapped;
@@ -112,6 +111,14 @@ static std::string normalizePath(std::string path, bool addSlash = false)
 static std::string getNameFromPath(std::string path) {
   std::string base = path.substr(path.find_last_of("/\\") + 1);
   return base.substr(0, base.rfind("."));
+}
+
+static void swapScreenPositions(ScreenLayout& sl)
+{
+  std::swap(sl.topWidth, sl.botWidth);
+  std::swap(sl.topHeight, sl.botHeight);
+  std::swap(sl.topX, sl.botX);
+  std::swap(sl.topY, sl.botY);
 }
 
 static void logFallback(enum retro_log_level level, const char *fmt, ...)
@@ -270,6 +277,9 @@ static void updateConfig()
   ScreenLayout::screenRotation = rotationMap[0];
   layout.update(0, 0, gbaModeEnabled, false);
 
+  if (screenArrangement == 1 && screenRotation)
+    swapScreenPositions(layout);
+
   TouchLayout::screenArrangement = screenArrangement;
   TouchLayout::screenRotation = rotationMap[screenRotation];
   touch.update(0, 0, gbaModeEnabled, false);
@@ -317,25 +327,21 @@ static void updateScreenState()
   renderGbaScreen = gbaModeEnabled && ScreenLayout::gbaCrop;
   renderTopScreen = !renderGbaScreen && (!singleScreen || !bottomScreen);
   renderBotScreen = !renderGbaScreen && (!singleScreen || bottomScreen);
-
-  renderSwapped = screenArrangement == 1 && screenRotation;
 }
 
 static void drawCursor(uint32_t *data, int32_t posX, int32_t posY)
 {
   bool shift = Settings::highRes3D || Settings::screenFilter == 1;
 
-  uint32_t offX = renderSwapped ? layout.topX : layout.botX;
-  uint32_t offY = renderSwapped ? layout.topY : layout.botY;
 
-  uint32_t minX = offX << shift;
+  uint32_t minX = layout.botX << shift;
   uint32_t maxX = layout.minWidth << shift;
 
-  uint32_t minY = offY << shift;
+  uint32_t minY = layout.botY << shift;
   uint32_t maxY = layout.minHeight << shift;
 
-  uint32_t curX = (offX + posX) << shift;
-  uint32_t curY = (offY + posY) << shift;
+  uint32_t curX = (layout.botX + posX) << shift;
+  uint32_t curY = (layout.botY + posY) << shift;
 
   uint32_t cursorSize = 2 << shift;
 
@@ -378,8 +384,6 @@ static void copyScreen(uint32_t *src, uint32_t *dst, int sw, int sh, int dx, int
 static void drawTexture(uint32_t *buffer)
 {
   bool shift = Settings::highRes3D || Settings::screenFilter == 1;
-  auto bottom = (256 * 192) << (shift * 2);
-
   auto width = layout.minWidth << shift;
   auto height = layout.minHeight << shift;
 
@@ -397,7 +401,7 @@ static void drawTexture(uint32_t *buffer)
   if (renderTopScreen)
   {
     copyScreen(
-      &buffer[renderSwapped ? bottom : 0], videoBuffer.data(),
+      &buffer[0], videoBuffer.data(),
       256 << shift, 192 << shift,
       layout.topX << shift, layout.topY << shift,
       layout.topWidth << shift, layout.topHeight << shift,
@@ -408,7 +412,7 @@ static void drawTexture(uint32_t *buffer)
   if (renderBotScreen)
   {
     copyScreen(
-      &buffer[renderSwapped ? 0 : bottom], videoBuffer.data(),
+      &buffer[(256 * 192) << (shift * 2)], videoBuffer.data(),
       256 << shift, 192 << shift,
       layout.botX << shift, layout.botY << shift,
       layout.botWidth << shift, layout.botHeight << shift,
