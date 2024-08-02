@@ -236,6 +236,8 @@ static void initConfig()
     { "noods_highRes3D", "High Resolution 3D; disabled|enabled" },
     { "noods_screenArrangement", "Screen Arrangement; Automatic|Vertical|Horizontal|Single Screen" },
     { "noods_screenRotation", "Screen Rotation; Normal|Rotated Left|Rotated Right" },
+    { "noods_screenSizing", "Screen Sizing; Even|Enlarge Top|Enlarge Bottom" },
+    { "noods_screenPosition", "Screen Position; Center|Top|Bottom|Left|Right" },
     { "noods_screenGap", "Screen Gap; None|Quarter|Half|Full" },
     { "noods_gbaCrop", "Crop GBA Screen; enabled|disabled" },
     { "noods_screenFilter", "Screen Filter; Nearest|Upscaled|Linear" },
@@ -273,18 +275,61 @@ static void updateConfig()
   showTouchCursor = fetchVariableBool("noods_touchCursor", true);
 
   ScreenLayout::gbaCrop = fetchVariableBool("noods_gbaCrop", true);
+  ScreenLayout::screenSizing = fetchVariableEnum("noods_screenSizing", {"Even", "Enlarge Top", "Enlarge Bottom"});
+  ScreenLayout::screenPosition = fetchVariableEnum("noods_screenPosition", {"Center", "Top", "Bottom", "Left", "Right"});
   ScreenLayout::screenGap = fetchVariableEnum("noods_screenGap", {"None", "Quarter", "Half", "Full"});
+
+  int screenSizing = 0; int screenWidth = 0; int screenHeight = 0;
+
+  if (screenArrangement == 1 && screenRotation && ScreenLayout::screenSizing)
+  {
+    screenSizing = ScreenLayout::screenSizing;
+    ScreenLayout::screenSizing = screenSizing == 2 ? 1 : 2;
+  }
 
   ScreenLayout::screenArrangement = screenRotation ? arrangeMap[screenArrangement] : screenArrangement;
   ScreenLayout::screenRotation = rotationMap[0];
   layout.update(0, 0, gbaModeEnabled, false);
 
+  if (ScreenLayout::screenSizing && ScreenLayout::screenArrangement == 2)
+  {
+    screenWidth = layout.minWidth / 2 * 3;
+    screenHeight = layout.minHeight * 2;
+  }
+
+  if (ScreenLayout::screenSizing && ScreenLayout::screenArrangement < 2)
+  {
+    screenWidth = layout.minWidth * 2;
+    screenHeight = layout.minHeight / 2 * 3;
+  }
+
+  if (screenWidth && screenHeight)
+  {
+    ScreenLayout::integerScale = true;
+    layout.update(screenWidth, screenHeight, gbaModeEnabled, false);
+
+    layout.minWidth = layout.winWidth;
+    layout.minHeight = layout.winHeight;
+  }
+
   if (screenArrangement == 1 && screenRotation)
+  {
+    ScreenLayout::screenSizing = screenSizing;
     swapScreenPositions(layout);
+  }
 
   ScreenLayout::screenArrangement = screenArrangement;
   ScreenLayout::screenRotation = rotationMap[screenRotation];
   touch.update(0, 0, gbaModeEnabled, false);
+
+  if (screenWidth && screenHeight)
+  {
+    if (ScreenLayout::screenRotation) std::swap(screenWidth, screenHeight);
+    touch.update(screenWidth, screenHeight, gbaModeEnabled, false);
+
+    touch.minWidth = touch.winWidth;
+    touch.minHeight = touch.winHeight;
+  }
 
   bool shift = Settings::highRes3D || Settings::screenFilter == 1;
   auto bsize = (layout.minWidth << shift) * (layout.minHeight << shift);
@@ -339,9 +384,10 @@ static void updateScreenState()
 static void drawCursor(uint32_t *data, int32_t pointX, int32_t pointY, int32_t size = 2)
 {
   bool shift = Settings::highRes3D || Settings::screenFilter == 1;
+  auto scale = layout.botWidth / 256;
 
-  uint32_t posX = clampValue(pointX, size, layout.botWidth - size);
-  uint32_t posY = clampValue(pointY, size, layout.botHeight - size);
+  uint32_t posX = clampValue(pointX, size, (layout.botWidth / scale) - size);
+  uint32_t posY = clampValue(pointY, size, (layout.botHeight / scale) - size);
 
   uint32_t minX = layout.botX << shift;
   uint32_t maxX = layout.minWidth << shift;
@@ -349,10 +395,10 @@ static void drawCursor(uint32_t *data, int32_t pointX, int32_t pointY, int32_t s
   uint32_t minY = layout.botY << shift;
   uint32_t maxY = layout.minHeight << shift;
 
-  uint32_t curX = (layout.botX + posX) << shift;
-  uint32_t curY = (layout.botY + posY) << shift;
+  uint32_t curX = (layout.botX + (posX * scale)) << shift;
+  uint32_t curY = (layout.botY + (posY * scale)) << shift;
 
-  uint32_t cursorSize = size << shift;
+  uint32_t cursorSize = (size * scale) << shift;
 
   uint32_t startY = clampValue(curY - cursorSize, minY, maxY);
   uint32_t endY = clampValue(curY + cursorSize, minY, maxY);
@@ -372,14 +418,17 @@ static void drawCursor(uint32_t *data, int32_t pointX, int32_t pointY, int32_t s
 
 static void copyScreen(uint32_t *src, uint32_t *dst, int sw, int sh, int dx, int dy, int dw, int dh, int stride)
 {
+  int scaleX = dw / sw;
+  int scaleY = dh / sh;
+
   for (int y = 0; y < dh; ++y)
   {
-    int srcY = y * sw;
+    int srcY = (y / scaleY) * sw;
     int dstY = (dy + y) * stride + dx;
 
     for (int x = 0; x < dw; ++x)
     {
-      uint32_t pixel = src[srcY + x];
+      uint32_t pixel = src[srcY + (x / scaleX)];
 
       dst[dstY + x] =
         ((pixel & 0xFF000000)) |
