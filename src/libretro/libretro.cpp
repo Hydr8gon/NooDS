@@ -26,6 +26,10 @@ static retro_input_state_t inputStateCallback;
 static struct retro_log_callback logging;
 static retro_log_printf_t logCallback;
 
+static retro_microphone_t* microphone;
+static retro_microphone_interface micInterface;
+static bool micAvailable;
+
 static std::string systemPath;
 static std::string savesPath;
 
@@ -42,6 +46,9 @@ static int gbaSaveFd = -1;
 static std::vector<uint32_t> videoBuffer;
 static uint32_t videoBufferSize;
 
+static std::string micInputMode;
+static std::string micButtonMode;
+
 static std::string touchMode;
 static std::string screenSwapMode;
 
@@ -52,6 +59,9 @@ static bool gbaModeEnabled;
 static bool renderGbaScreen;
 static bool renderTopScreen;
 static bool renderBotScreen;
+
+static bool micToggled;
+static bool micActive;
 
 static bool showTouchCursor;
 static bool screenSwapped;
@@ -215,6 +225,7 @@ static void initInput(void)
     { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L, "L" },
     { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X, "X" },
     { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y, "Y" },
+    { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2, "Microphone" },
     { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2, "Swap screens" },
     { 0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R3, "Touch joystick" },
     { 0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_ID_ANALOG_X, "Touch joystick X" },
@@ -245,6 +256,8 @@ static void initConfig()
     { "noods_swapScreenMode", "Swap Screen Mode; Toggle|Hold" },
     { "noods_touchMode", "Touch Mode; Auto|Pointer|Joystick|None" },
     { "noods_touchCursor", "Show Touch Cursor; enabled|disabled" },
+    { "noods_micInputMode", "Microphone Input Mode; Silence|Noise|Microphone" },
+    { "noods_micButtonMode", "Microphone Button Mode; Toggle|Hold|Always" },
     { nullptr, nullptr }
   };
 
@@ -267,6 +280,9 @@ static void updateConfig()
   Settings::highRes3D = fetchVariableBool("noods_highRes3D", false);
   Settings::screenFilter = fetchVariableEnum("noods_screenFilter", {"Nearest", "Upscaled", "Linear"});
   Settings::screenGhost = fetchVariableBool("noods_screenGhost", false);
+
+  micInputMode = fetchVariable("noods_micInputMode", "Silence");
+  micButtonMode = fetchVariable("noods_micButtonMode", "Toggle");
 
   screenArrangement = fetchVariableEnum("noods_screenArrangement", {"Automatic", "Vertical", "Horizontal", "Single Screen"});
   screenRotation = fetchVariableEnum("noods_screenRotation", {"Normal", "Rotated Left", "Upside Down", "Rotated Right"});
@@ -484,7 +500,7 @@ static void drawTexture(uint32_t *buffer)
   videoCallback(videoBuffer.data(), width, height, width * 4);
 }
 
-static void playbackAudio(void)
+static void playbackAudio()
 {
   static int16_t buffer[547 * 2];
   uint32_t *original = core->spu.getSamples(547);
@@ -498,6 +514,58 @@ static void playbackAudio(void)
 
   uint32_t size = sizeof(buffer) / (2 * sizeof(int16_t));
   audioBatchCallback(buffer, size);
+}
+
+static void openMicrophone()
+{
+  if (micAvailable && !microphone)
+  {
+    retro_microphone_params_t params = { 44100 };
+    microphone = micInterface.open_mic(&params);
+
+    micInterface.set_mic_state(microphone, false);
+  }
+}
+
+static void closeMicrophone()
+{
+  if (micAvailable && microphone)
+  {
+    micInterface.close_mic(microphone);
+    microphone = nullptr;
+  }
+}
+
+static void setMicrophoneState(bool enabled)
+{
+  if (micInputMode == "Microphone" && micAvailable && microphone)
+    micInterface.set_mic_state(microphone, enabled);
+}
+
+static void sendMicSamples()
+{
+  static const size_t maxSamples = 735;
+  static int16_t buffer[maxSamples];
+
+  size_t samplesRead = 0;
+
+  if (micInputMode == "Microphone" && microphone && micInterface.get_mic_state(microphone))
+  {
+    samplesRead = micInterface.read_mic(microphone, buffer, maxSamples);
+  }
+  else if (micInputMode == "Noise")
+  {
+    samplesRead = maxSamples;
+    for (int i = 0; i < maxSamples; i++) buffer[i] = rand() & 0xFFFF;
+  }
+  else
+  {
+    samplesRead = 0;
+    memset(buffer, 0, sizeof(buffer));
+  }
+
+  if (samplesRead)
+    core->spi.sendMicData(buffer, samplesRead, 44100);
 }
 
 static int getSaveFileDesc(std::string path)
@@ -649,6 +717,9 @@ void retro_init(void)
   enum retro_pixel_format xrgb888 = RETRO_PIXEL_FORMAT_XRGB8888;
   envCallback(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &xrgb888);
 
+  micInterface.interface_version = RETRO_MICROPHONE_INTERFACE_VERSION;
+  micAvailable = envCallback(RETRO_ENVIRONMENT_GET_MICROPHONE_INTERFACE, &micInterface);
+
   if (envCallback(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &logging))
     logCallback = logging.log;
   else
@@ -688,6 +759,7 @@ bool retro_load_game_special(unsigned type, const struct retro_game_info* info, 
 
   updateConfig();
   updateScreenState();
+  openMicrophone();
 
   if (createCore(ndsPath, gbaPath))
   {
@@ -715,6 +787,7 @@ void retro_unload_game(void)
     delete core;
   }
 
+  closeMicrophone();
   closeSaveFileDesc();
 }
 
@@ -735,6 +808,29 @@ void retro_run(void)
       core->input.pressKey(i);
     else
       core->input.releaseKey(i);
+  }
+
+  if (micInputMode != "Silence")
+  {
+    bool micPressed = getButtonState(RETRO_DEVICE_ID_JOYPAD_L2);
+    bool prevStatus = micActive;
+
+    if (micToggled != micPressed)
+    {
+      if (micButtonMode == "Toggle" && micPressed)
+        micActive = !micActive;
+
+      if (micButtonMode == "Hold")
+        micActive = micPressed;
+
+      micToggled = micPressed;
+    }
+
+    if (micButtonMode == "Always")
+      micActive = true;
+
+    if (prevStatus != micActive) setMicrophoneState(micActive);
+    if (micActive) sendMicSamples();
   }
 
   if (!renderGbaScreen)
