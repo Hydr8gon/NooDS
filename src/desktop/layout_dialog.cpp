@@ -46,6 +46,10 @@ enum LayoutEvent
     FILT_NEAREST,
     FILT_UPSCALE,
     FILT_LINEAR,
+    ASPECT_DEFAULT,
+    ASPECT_16_10,
+    ASPECT_16_9,
+    ASPECT_18_9,
     INT_SCALE,
     GBA_CROP,
     SPLIT_SCREENS,
@@ -75,6 +79,10 @@ EVT_RADIOBUTTON(GAP_FULL, LayoutDialog::gapFull)
 EVT_RADIOBUTTON(FILT_NEAREST, LayoutDialog::filtNearest)
 EVT_RADIOBUTTON(FILT_UPSCALE, LayoutDialog::filtUpscale)
 EVT_RADIOBUTTON(FILT_LINEAR, LayoutDialog::filtLinear)
+EVT_RADIOBUTTON(ASPECT_DEFAULT, LayoutDialog::aspectDefault)
+EVT_RADIOBUTTON(ASPECT_16_10, LayoutDialog::aspect16x10)
+EVT_RADIOBUTTON(ASPECT_16_9, LayoutDialog::aspect16x9)
+EVT_RADIOBUTTON(ASPECT_18_9, LayoutDialog::aspect18x9)
 EVT_CHECKBOX(INT_SCALE, LayoutDialog::intScale)
 EVT_CHECKBOX(GBA_CROP, LayoutDialog::gbaCrop)
 EVT_CHECKBOX(SPLIT_SCREENS, LayoutDialog::splitScreens)
@@ -91,11 +99,12 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     prevSettings[2] = ScreenLayout::screenArrangement;
     prevSettings[3] = ScreenLayout::screenSizing;
     prevSettings[4] = ScreenLayout::screenGap;
-    prevSettings[5] = Settings::screenFilter;
-    prevSettings[6] = ScreenLayout::integerScale;
-    prevSettings[7] = ScreenLayout::gbaCrop;
-    prevSettings[8] = NooApp::splitScreens;
-    prevSettings[9] = Settings::screenGhost;
+    prevSettings[5] = ScreenLayout::aspectRatio;
+    prevSettings[6] = Settings::screenFilter;
+    prevSettings[7] = ScreenLayout::integerScale;
+    prevSettings[8] = ScreenLayout::gbaCrop;
+    prevSettings[9] = NooApp::splitScreens;
+    prevSettings[10] = Settings::screenGhost;
 
     // Determine the height of a button
     // Borders are measured in pixels, so this value can be used to make values that scale with the DPI/font size
@@ -167,6 +176,17 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     filtSizer->Add(filtBtns[1] = new wxRadioButton(this, FILT_UPSCALE, "Upscaled"), 0, wxLEFT, size / 8);
     filtSizer->Add(filtBtns[2] = new wxRadioButton(this, FILT_LINEAR, "Linear"), 0, wxLEFT, size / 8);
 
+    // Set up the aspect ratio settings
+    wxRadioButton *aspectBtns[4];
+    wxBoxSizer *aspectSizer = new wxBoxSizer(wxHORIZONTAL);
+    aspectSizer->Add(new wxStaticText(this, wxID_ANY, "Aspect Ratio:", wxDefaultPosition,
+        wxSize(wxDefaultSize.GetWidth(), size)), 0, wxALIGN_CENTRE | wxRIGHT, size / 8);
+    aspectSizer->Add(aspectBtns[0] = new wxRadioButton(this, ASPECT_DEFAULT, "Default",
+        wxDefaultPosition, wxDefaultSize, wxRB_GROUP), 0, wxLEFT, size / 8);
+    aspectSizer->Add(aspectBtns[1] = new wxRadioButton(this, ASPECT_16_10, "16:10"), 0, wxLEFT, size / 8);
+    aspectSizer->Add(aspectBtns[2] = new wxRadioButton(this, ASPECT_16_9, "16:9"), 0, wxLEFT, size / 8);
+    aspectSizer->Add(aspectBtns[3] = new wxRadioButton(this, ASPECT_18_9, "18:9"), 0, wxLEFT, size / 8);
+
     // Set up the checkbox settings
     wxCheckBox *boxes[4];
     wxBoxSizer *checkSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -188,6 +208,8 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
         gapBtns[ScreenLayout::screenGap]->SetValue(true);
     if (Settings::screenFilter < 3)
         filtBtns[Settings::screenFilter]->SetValue(true);
+    if (ScreenLayout::aspectRatio < 4)
+        aspectBtns[ScreenLayout::aspectRatio]->SetValue(true);
 
     // Set the current values of the checkboxes
     boxes[0]->SetValue(ScreenLayout::integerScale);
@@ -209,6 +231,7 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     contents->Add(sizeSizer, 1, wxEXPAND);
     contents->Add(gapSizer, 1, wxEXPAND);
     contents->Add(filtSizer, 1, wxEXPAND);
+    contents->Add(aspectSizer, 1, wxEXPAND);
     contents->Add(checkSizer, 1, wxEXPAND);
     contents->Add(buttonSizer, 1, wxEXPAND);
 
@@ -377,6 +400,34 @@ void LayoutDialog::filtLinear(wxCommandEvent &event)
     app->updateLayouts();
 }
 
+void LayoutDialog::aspectDefault(wxCommandEvent &event)
+{
+    // Set the aspect ratio setting to default
+    ScreenLayout::aspectRatio = 0;
+    app->updateLayouts();
+}
+
+void LayoutDialog::aspect16x10(wxCommandEvent &event)
+{
+    // Set the aspect ratio setting to 16:10
+    ScreenLayout::aspectRatio = 1;
+    app->updateLayouts();
+}
+
+void LayoutDialog::aspect16x9(wxCommandEvent &event)
+{
+    // Set the aspect ratio setting to 16:9
+    ScreenLayout::aspectRatio = 2;
+    app->updateLayouts();
+}
+
+void LayoutDialog::aspect18x9(wxCommandEvent &event)
+{
+    // Set the aspect ratio setting to 18:9
+    ScreenLayout::aspectRatio = 3;
+    app->updateLayouts();
+}
+
 void LayoutDialog::intScale(wxCommandEvent &event)
 {
     // Toggle the integer scale setting
@@ -413,11 +464,12 @@ void LayoutDialog::cancel(wxCommandEvent &event)
     ScreenLayout::screenArrangement = prevSettings[2];
     ScreenLayout::screenSizing = prevSettings[3];
     ScreenLayout::screenGap = prevSettings[4];
-    Settings::screenFilter = prevSettings[5];
-    ScreenLayout::integerScale = prevSettings[6];
-    ScreenLayout::gbaCrop = prevSettings[7];
-    NooApp::splitScreens = prevSettings[8];
-    Settings::screenGhost = prevSettings[9];
+    ScreenLayout::aspectRatio = prevSettings[5];
+    Settings::screenFilter = prevSettings[6];
+    ScreenLayout::integerScale = prevSettings[7];
+    ScreenLayout::gbaCrop = prevSettings[8];
+    NooApp::splitScreens = prevSettings[9];
+    Settings::screenGhost = prevSettings[10];
     app->updateLayouts();
     event.Skip(true);
 }

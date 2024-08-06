@@ -394,6 +394,11 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenFil
     return Settings::screenFilter;
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getAspectRatio(JNIEnv* env, jobject obj)
+{
+    return ScreenLayout::aspectRatio;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getIntegerScale(JNIEnv* env, jobject obj)
 {
     return ScreenLayout::integerScale;
@@ -507,6 +512,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenGap
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenFilter(JNIEnv* env, jobject obj, jint value)
 {
     Settings::screenFilter = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setAspectRatio(JNIEnv* env, jobject obj, jint value)
+{
+    ScreenLayout::aspectRatio = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setIntegerScale(JNIEnv* env, jobject obj, jint value)

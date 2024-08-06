@@ -820,6 +820,7 @@ void ConsoleUI::settingsMenu()
     const std::vector<std::string> sizing = { "Even", "Enlarge Top", "Enlarge Bottom" };
     const std::vector<std::string> gap = { "None", "Quarter", "Half", "Full" };
     const std::vector<std::string> filter = { "Nearest", "Upscaled", "Linear" };
+    const std::vector<std::string> aspect = { "Default", "16:10", "16:9", "18:9" };
     const std::vector<std::string> theme = { "Dark", "Light" };
 
     int index = 0;
@@ -844,6 +845,7 @@ void ConsoleUI::settingsMenu()
             MenuItem("Screen Sizing", sizing[ScreenLayout::screenSizing]),
             MenuItem("Screen Gap", gap[ScreenLayout::screenGap]),
             MenuItem("Screen Filter", filter[Settings::screenFilter]),
+            MenuItem("Aspect Ratio", aspect[ScreenLayout::aspectRatio]),
             MenuItem("Integer Scale", toggle[ScreenLayout::integerScale]),
             MenuItem("GBA Crop", toggle[ScreenLayout::gbaCrop]),
             MenuItem("Simulate Ghosting", toggle[Settings::screenGhost]),
@@ -875,11 +877,12 @@ void ConsoleUI::settingsMenu()
                 case 13: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
                 case 14: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
                 case 15: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
-                case 16: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
-                case 17: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
-                case 18: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
+                case 16: ScreenLayout::aspectRatio = (ScreenLayout::aspectRatio + 1) % 4; break;
+                case 17: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
+                case 18: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
+                case 19: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
 
-                case 19:
+                case 20:
                     // Update the palette when changing themes
                     menuTheme = (menuTheme + 1) % 2;
                     palette = &themeColors[menuTheme * 6];

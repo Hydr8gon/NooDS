@@ -99,6 +99,7 @@ public class SettingsMenu extends AppCompatActivity
         editor.putString("screen_sizing", Integer.toString(getScreenSizing()));
         editor.putString("screen_gap", Integer.toString(getScreenGap()));
         editor.putString("screen_filter", Integer.toString(getScreenFilter()));
+        editor.putString("aspect_ratio", Integer.toString(getAspectRatio()));
         editor.putBoolean("integer_scale", (getIntegerScale() == 0) ? false : true);
         editor.putBoolean("gba_crop", (getGbaCrop() == 0) ? false : true);
         editor.putBoolean("screen_ghost", (getScreenGhost() == 0) ? false : true);
@@ -157,7 +158,8 @@ public class SettingsMenu extends AppCompatActivity
         setScreenArrangement(Integer.parseInt(prefs.getString("screen_arrangement", "0")));
         setScreenSizing(Integer.parseInt(prefs.getString("screen_sizing", "0")));
         setScreenGap(Integer.parseInt(prefs.getString("screen_gap", "0")));
-        setScreenFilter(Integer.parseInt(prefs.getString("screen_filter", "1")));
+        setScreenFilter(Integer.parseInt(prefs.getString("screen_filter", "2")));
+        setAspectRatio(Integer.parseInt(prefs.getString("aspect_ratio", "0")));
         setIntegerScale(prefs.getBoolean("integer_scale", false) ? 1 : 0);
         setGbaCrop(prefs.getBoolean("gba_crop", true) ? 1 : 0);
         setScreenGhost(prefs.getBoolean("screen_ghost", false) ? 1 : 0);
@@ -187,6 +189,7 @@ public class SettingsMenu extends AppCompatActivity
     public static native int getScreenSizing();
     public static native int getScreenGap();
     public static native int getScreenFilter();
+    public static native int getAspectRatio();
     public static native int getIntegerScale();
     public static native int getGbaCrop();
     public static native int getScreenGhost();
@@ -210,6 +213,7 @@ public class SettingsMenu extends AppCompatActivity
     public static native void setScreenSizing(int value);
     public static native void setScreenGap(int value);
     public static native void setScreenFilter(int value);
+    public static native void setAspectRatio(int value);
     public static native void setIntegerScale(int value);
     public static native void setGbaCrop(int value);
     public static native void setScreenGhost(int value);

@@ -49,6 +49,13 @@
         <item>Linear</item>
     </string-array>
 
+    <string-array name="aspect_ratio_entries">
+        <item>Default</item>
+        <item>16:10</item>
+        <item>16:9</item>
+        <item>18:9</item>
+    </string-array>
+
     <string-array name="setting_values">
         <item>0</item>
         <item>1</item>

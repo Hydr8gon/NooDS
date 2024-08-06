@@ -156,6 +156,16 @@
             app:allowDividerAbove="true"
             app:allowDividerBelow="true" />
 
+        <ListPreference
+            app:key="aspect_ratio"
+            app:title="Aspect Ratio"
+            app:entries="@array/aspect_ratio_entries"
+            app:entryValues="@array/setting_values"
+            app:useSimpleSummaryProvider="true"
+            app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+
         <SwitchPreference
             app:key="integer_scale"
             app:title="Integer Scale"

@@ -18,28 +18,31 @@
 */
 
 #include "screen_layout.h"
+#include "../defines.h"
 #include "../settings.h"
 
-int ScreenLayout::screenPosition    = 0;
-int ScreenLayout::screenRotation    = 0;
+int ScreenLayout::screenPosition = 0;
+int ScreenLayout::screenRotation = 0;
 int ScreenLayout::screenArrangement = 0;
-int ScreenLayout::screenSizing      = 0;
-int ScreenLayout::screenGap         = 0;
-int ScreenLayout::integerScale      = 0;
-int ScreenLayout::gbaCrop           = 1;
+int ScreenLayout::screenSizing = 0;
+int ScreenLayout::screenGap = 0;
+int ScreenLayout::aspectRatio = 0;
+int ScreenLayout::integerScale = 0;
+int ScreenLayout::gbaCrop = 1;
 
 void ScreenLayout::addSettings()
 {
     // Define the layout settings
     std::vector<Setting> layoutSettings =
     {
-        Setting("screenPosition",    &screenPosition,    false),
-        Setting("screenRotation",    &screenRotation,    false),
+        Setting("screenPosition", &screenPosition, false),
+        Setting("screenRotation", &screenRotation, false),
         Setting("screenArrangement", &screenArrangement, false),
-        Setting("screenSizing",      &screenSizing,      false),
-        Setting("screenGap",         &screenGap,         false),
-        Setting("integerScale",      &integerScale,      false),
-        Setting("gbaCrop",           &gbaCrop,           false)
+        Setting("screenSizing", &screenSizing, false),
+        Setting("screenGap", &screenGap, false),
+        Setting("aspectRatio", &aspectRatio, false),
+        Setting("integerScale", &integerScale, false),
+        Setting("gbaCrop", &gbaCrop, false)
     };
 
     // Add the layout settings
@@ -52,12 +55,23 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
     this->winWidth = winWidth;
     this->winHeight = winHeight;
 
-    if (screenArrangement == 3 || (gbaMode && gbaCrop) || splitScreens) // Single screen
+    // Set the screen dimensions based on mode and aspect ratio
+    bool gba = (gbaMode && gbaCrop);
+    int width, height = (gba ? 160 : 192);
+    switch (aspectRatio)
     {
-        // Determine the screen dimensions based on the current rotation
-        int width = (gbaMode && gbaCrop) ? (screenRotation ? 160 : 240) : (screenRotation ? 192 : 256);
-        int height = (gbaMode && gbaCrop) ? (screenRotation ? 240 : 160) : (screenRotation ? 256 : 192);
+        default: width = (gba ? 240 : 256); break; // Default
+        case 1: width = (gba ? 256 : 308); break; // 16:10
+        case 2: width = (gba ? 284 : 342); break; // 16:9
+        case 3: width = (gba ? 320 : 384); break; // 18:9
+    }
 
+    // Swap the screen dimensions if rotated
+    if (screenRotation)
+        SWAP(width, height);
+
+    if (screenArrangement == 3 || gba || splitScreens) // Single screen
+    {
         // Set the minimum dimensions for the layout
         minWidth  = width;
         minHeight = height;
@@ -95,10 +109,6 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
         // Determine the screen arrangement based on the current settings
         // In automatic mode, the arrangement is horizontal if rotated and vertical otherwise
         bool vertical = (screenArrangement == 1 || (screenArrangement == 0 && screenRotation == 0));
-
-        // Determine the screen dimensions based on the current rotation
-        int width  = (screenRotation ? 192 : 256);
-        int height = (screenRotation ? 256 : 192);
 
         // Determine the screen gap based on the current setting
         int gap = (screenGap ? (12 * (1 << screenGap)) : 0);

@@ -31,7 +31,7 @@ class LayoutDialog: public wxDialog
 
     private:
         NooApp *app;
-        int prevSettings[10];
+        int prevSettings[11];
 
         void posCenter(wxCommandEvent &event);
         void posTop(wxCommandEvent &event);
@@ -55,6 +55,10 @@ class LayoutDialog: public wxDialog
         void filtNearest(wxCommandEvent &event);
         void filtUpscale(wxCommandEvent &event);
         void filtLinear(wxCommandEvent &event);
+        void aspectDefault(wxCommandEvent &event);
+        void aspect16x10(wxCommandEvent &event);
+        void aspect16x9(wxCommandEvent &event);
+        void aspect18x9(wxCommandEvent &event);
         void intScale(wxCommandEvent &event);
         void gbaCrop(wxCommandEvent &event);
         void splitScreens(wxCommandEvent &event);

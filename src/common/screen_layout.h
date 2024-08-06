@@ -28,6 +28,7 @@ class ScreenLayout
         static int screenArrangement;
         static int screenSizing;
         static int screenGap;
+        static int aspectRatio;
         static int integerScale;
         static int gbaCrop;
 
