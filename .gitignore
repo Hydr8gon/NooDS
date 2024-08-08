@@ -9,6 +9,8 @@
 /eboot.bin
 /noods
 /noods*.so
+/noods*.dll
+/noods*.dylib
 /noods.aab
 /NooDS.app
 /NooDS.dmg

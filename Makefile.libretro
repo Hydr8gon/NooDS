@@ -8,10 +8,24 @@ CPPFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.cpp))
 HFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.h))
 OFILES := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
 
+# Detect the platform
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S),Linux)
+	SHARED_EXT := .so
+else ifeq ($(UNAME_S),Darwin)
+	SHARED_EXT := .dylib
+else ifeq ($(OS),Windows_NT)
+  ARGS += -DWINDOWS
+	SHARED_EXT := .dll
+else
+	$(error Unsupported platform)
+endif
+
 all: $(NAME)
 
 $(NAME): $(OFILES)
-	g++ -shared -o $@.so $(ARGS) $^ $(LIBS)
+	g++ -shared -o $@$(SHARED_EXT) $(ARGS) $^ $(LIBS)
 
 $(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
 	g++ -c -fPIC -o $@ $(ARGS) $(INCS) $<
@@ -21,4 +35,4 @@ $(BUILD):
 
 clean:
 	rm -rf $(BUILD)
-	rm -f $(NAME).so
+	rm -f $(NAME)$(SHARED_EXT)
