@@ -108,9 +108,12 @@ public class NooActivity extends AppCompatActivity
         setContentView(layout);
         layout.addView(view);
 
-        // Create the FPS counter
+        // Create the FPS counter, padded for round corners
         fpsCounter.setTextSize(24);
         fpsCounter.setTextColor(Color.WHITE);
+        DisplayMetrics metrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
+        fpsCounter.setPadding((int)(metrics.density * 10), (int)(metrics.density * 10), 0, 0);
 
         // Add the FPS counter to the layout if enabled
         if (showingFps = (SettingsMenu.getShowFpsCounter() != 0))

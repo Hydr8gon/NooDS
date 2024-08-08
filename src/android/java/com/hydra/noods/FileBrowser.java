@@ -200,6 +200,13 @@ public class FileBrowser extends AppCompatActivity
                 return;
 
             case 2: // Scoped directory selection
+                // Reload if nothing was selected
+                if (resultData == null)
+                {
+                    openScoped();
+                    return;
+                }
+
                 // Save the returned URI with persistent permissions so it can be restored next time
                 SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
                 int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
