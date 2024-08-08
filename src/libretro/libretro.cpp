@@ -111,13 +111,13 @@ static int32_t clampValue(int32_t value, int32_t min, int32_t max)
 static std::string normalizePath(std::string path, bool addSlash = false)
 {
   std::string normalizedPath = path;
-  if (addSlash && normalizedPath.back() != '/') {
+  if (addSlash && normalizedPath.back() != '/')
     normalizedPath += '/';
-  }
   return normalizedPath;
 }
 
-static std::string getNameFromPath(std::string path) {
+static std::string getNameFromPath(std::string path)
+{
   std::string base = path.substr(path.find_last_of("/\\") + 1);
   return base.substr(0, base.rfind("."));
 }
@@ -571,9 +571,11 @@ static void sendMicSamples()
 static int getSaveFileDesc(std::string path)
 {
   int fd = open(path.c_str(), O_RDWR);
-  if (fd == -1) {
+  if (fd == -1)
+  {
     std::ofstream file(path, std::ios::binary);
-    if (file.is_open()) {
+    if (file.is_open())
+    {
       file.put(0xFF);
       file.close();
     }
@@ -780,7 +782,8 @@ bool retro_load_game(const struct retro_game_info* info)
 
 void retro_unload_game(void)
 {
-  if (core) {
+  if (core)
+  {
     core->cartridgeNds.writeSave();
     core->cartridgeGba.writeSave();
 
@@ -876,7 +879,8 @@ void retro_run(void)
       bool inScreenX = newX >= touch.botX && newX <= touch.botX + touch.botWidth;
       bool inScreenY = newY >= touch.botY && newY <= touch.botY + touch.botHeight;
 
-      if (inScreenX && inScreenY) {
+      if (inScreenX && inScreenY)
+      {
         touchScreen |= inputStateCallback(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT);
         touchScreen |= inputStateCallback(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED);
       }
