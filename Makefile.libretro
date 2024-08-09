@@ -8,18 +8,16 @@ CPPFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.cpp))
 HFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.h))
 OFILES := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
 
-# Detect the platform
-UNAME_S := $(shell uname -s)
-
-ifeq ($(UNAME_S),Linux)
-	SHARED_EXT := .so
-else ifeq ($(UNAME_S),Darwin)
-	SHARED_EXT := .dylib
-else ifeq ($(OS),Windows_NT)
-  ARGS += -DWINDOWS
-	SHARED_EXT := .dll
+ifeq ($(OS),Windows_NT)
+  ARGS += -static -DWINDOWS
+  SHARED_EXT := .dll
 else
-	$(error Unsupported platform)
+  ifeq ($(shell uname -s),Darwin)
+    ARGS += -DMACOS
+    SHARED_EXT := .dylib
+  else
+    SHARED_EXT := .so
+  endif
 endif
 
 all: $(NAME)
