@@ -1,0 +1,96 @@
+name: Libretro Builds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Install MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+    - name: Install build tools
+      run: pacman -S mingw-w64-x86_64-{gcc,pkg-config} make --noconfirm
+      shell: msys2 {0}
+    - name: Compile
+      run: |
+        make libretro -j$(nproc)
+      shell: msys2 {0}
+      working-directory: ${{ github.workspace }}
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        name: noods-libretro-windows
+        path: |
+          noods_libretro.dll
+          noods_libretro.info
+
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Compile
+      run: |
+        make libretro -j$(sysctl -n hw.logicalcpu)
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        name: noods-libretro-mac
+        path: |
+          noods_libretro.dylib
+          noods_libretro.info
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install build tools
+      run: |
+        sudo apt update
+        sudo apt install gcc -y
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Compile
+      run: |
+        git config --global protocol.file.allow always
+        make libretro -j$(nproc)
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        name: noods-libretro-linux
+        path: |
+          noods_libretro.so
+          noods_libretro.info
+
+  update-release:
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-mac, build-linux]
+
+    steps:
+    - name: Delete old release
+      uses: dev-drprasad/delete-tag-and-release@v0.2.1
+      with:
+        delete_release: true
+        tag_name: release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Get artifacts
+      uses: actions/download-artifact@v2
+    - name: Package artifacts
+      run: for i in ./*; do zip -r -j ${i}.zip $i; done
+    - name: Create new release
+      uses: ncipollo/release-action@v1
+      with:
+        name: Rolling Release
+        body: Automatically updated builds
+        artifacts: "*.zip"
+        tag: release
+        token: ${{ secrets.GITHUB_TOKEN }}
