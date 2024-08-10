@@ -8,10 +8,22 @@ CPPFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.cpp))
 HFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.h))
 OFILES := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
 
+ifeq ($(OS),Windows_NT)
+  ARGS += -static -DWINDOWS
+  SHARED_EXT := .dll
+else
+  ifeq ($(shell uname -s),Darwin)
+    ARGS += -DMACOS
+    SHARED_EXT := .dylib
+  else
+    SHARED_EXT := .so
+  endif
+endif
+
 all: $(NAME)
 
 $(NAME): $(OFILES)
-	g++ -shared -o $@.so $(ARGS) $^ $(LIBS)
+	g++ -shared -o $@$(SHARED_EXT) $(ARGS) $^ $(LIBS)
 
 $(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
 	g++ -c -fPIC -o $@ $(ARGS) $(INCS) $<
@@ -21,4 +33,4 @@ $(BUILD):
 
 clean:
 	rm -rf $(BUILD)
-	rm -f $(NAME).so
+	rm -f $(NAME)$(SHARED_EXT)

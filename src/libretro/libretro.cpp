@@ -1,6 +1,7 @@
 #include <cstdarg>
 #include <algorithm>
 #include <cstring>
+#include <regex>
 
 #include <fcntl.h>
 #include <fstream>
@@ -110,10 +111,12 @@ static int32_t clampValue(int32_t value, int32_t min, int32_t max)
 
 static std::string normalizePath(std::string path, bool addSlash = false)
 {
-  std::string normalizedPath = path;
-  if (addSlash && normalizedPath.back() != '/')
-    normalizedPath += '/';
-  return normalizedPath;
+  std::string newPath = path;
+  if (addSlash && newPath.back() != '/') newPath += '/';
+#ifdef WINDOWS
+  std::replace(newPath.begin(), newPath.end(), '\\', '/');
+#endif
+  return newPath;
 }
 
 static std::string getNameFromPath(std::string path)
@@ -743,7 +746,7 @@ bool retro_load_game_special(unsigned type, const struct retro_game_info* info, 
 
   for (size_t i = 0; i < info_size; i++)
   {
-    std::string path = info[i].path;
+    std::string path = normalizePath(info[i].path);
 
     if (path.find(".nds", path.length() - 4) != std::string::npos)
       ndsPath = path;
