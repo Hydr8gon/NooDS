@@ -150,7 +150,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Get artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4.1.7
     - name: Package artifacts
       run: for i in ./*; do zip -r -j ${i}.zip $i; done
     - name: Create new release
