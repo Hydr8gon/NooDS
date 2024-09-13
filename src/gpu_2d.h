@@ -33,18 +33,19 @@ class Gpu2D
         void loadState(FILE *file);
 
         void reloadRegisters();
+        void updateWindows(int line);
         void drawGbaScanline(int line);
         void drawScanline(int line);
 
         uint32_t *getFramebuffer() { return framebuffer; }
-        uint32_t *getRawLine()     { return layers[0];   }
+        uint32_t *getRawLine() { return layers[0]; }
 
-        uint32_t readDispCnt()      { return dispCnt;      }
-        uint16_t readBgCnt(int bg)  { return bgCnt[bg];    }
-        uint16_t readWinIn()        { return winIn;        }
-        uint16_t readWinOut()       { return winOut;       }
-        uint16_t readBldCnt()       { return bldCnt;       }
-        uint16_t readBldAlpha()     { return bldAlpha;     }
+        uint32_t readDispCnt() { return dispCnt; }
+        uint16_t readBgCnt(int bg) { return bgCnt[bg]; }
+        uint16_t readWinIn() { return winIn; }
+        uint16_t readWinOut() { return winOut; }
+        uint16_t readBldCnt() { return bldCnt; }
+        uint16_t readBldAlpha() { return bldAlpha; }
         uint16_t readMasterBright() { return masterBright; }
 
         void writeDispCnt(uint32_t mask, uint32_t value);
@@ -83,7 +84,7 @@ class Gpu2D
         int internalX[2] = {};
         int internalY[2] = {};
         bool winHFlip[2] = {};
-        bool winVFlip[2] = {};
+        bool winVFlag[2] = {};
 
         uint32_t dispCnt = 0;
         uint16_t bgCnt[4] = {};

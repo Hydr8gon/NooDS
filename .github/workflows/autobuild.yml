@@ -27,7 +27,7 @@ jobs:
       shell: msys2 {0}
       working-directory: ${{ github.workspace }}
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: noods-windows
         path: noods.exe
@@ -45,7 +45,7 @@ jobs:
         make -j$(sysctl -n hw.logicalcpu)
         ./mac-bundle.sh --dmg
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: noods-mac
         path: NooDS.dmg
@@ -67,7 +67,7 @@ jobs:
         git config --global protocol.file.allow always
         make flatpak
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: noods-linux
         path: noods.flatpak
@@ -87,7 +87,7 @@ jobs:
       env:
         KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: noods-android
         path: noods.apk
@@ -102,7 +102,7 @@ jobs:
     - name: Compile
       run: make switch -j$(nproc)
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: noods-switch
         path: noods.nro
@@ -117,7 +117,7 @@ jobs:
     - name: Compile
       run: make wiiu -j$(nproc)
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: noods-wiiu
         path: noods.wuhb
@@ -132,7 +132,7 @@ jobs:
     - name: Compile
       run: make vita -j$(nproc)
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: noods-vita
         path: noods.vpk
@@ -150,7 +150,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Get artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
     - name: Package artifacts
       run: for i in ./*; do zip -r -j ${i}.zip $i; done
     - name: Create new release

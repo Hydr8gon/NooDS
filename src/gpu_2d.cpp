@@ -25,31 +25,19 @@
 
 Gpu2D::Gpu2D(Core *core, bool engine): core(core), engine(engine)
 {
-    if (engine == 0)
-    {
-        // Set up 2D GPU engine A
-        bgVramAddr = 0x6000000;
-        objVramAddr = 0x6400000;
-        palette = core->memory.palette;
-        oam = core->memory.oam;
-        extPalettes = core->memory.engAExtPal;
-    }
-    else
-    {
-        // Set up 2D GPU engine B
-        bgVramAddr = 0x6200000;
-        objVramAddr = 0x6600000;
-        palette = core->memory.palette + 0x400;
-        oam = core->memory.oam + 0x400;
-        extPalettes = core->memory.engBExtPal;
-    }
+    // Set up 2D GPU engine A or B
+    bgVramAddr = 0x6000000 + engine * 0x200000;
+    objVramAddr = 0x6400000 + engine * 0x200000;
+    palette = core->memory.palette + engine * 0x400;
+    oam = core->memory.oam + engine * 0x400;
+    extPalettes = engine ? core->memory.engBExtPal : core->memory.engAExtPal;
 }
 
 void Gpu2D::saveState(FILE *file)
 {
     // Write state data to the file
     fwrite(winHFlip, sizeof(bool), sizeof(winHFlip) / sizeof(bool), file);
-    fwrite(winVFlip, sizeof(bool), sizeof(winVFlip) / sizeof(bool), file);
+    fwrite(winVFlag, sizeof(bool), sizeof(winVFlag) / sizeof(bool), file);
     fwrite(&dispCnt, sizeof(dispCnt), 1, file);
     fwrite(bgCnt, 2, sizeof(bgCnt) / 2, file);
     fwrite(bgHOfs, 2, sizeof(bgHOfs) / 2, file);
@@ -77,7 +65,7 @@ void Gpu2D::loadState(FILE *file)
 {
     // Read state data from the file
     fread(winHFlip, sizeof(bool), sizeof(winHFlip) / sizeof(bool), file);
-    fread(winVFlip, sizeof(bool), sizeof(winVFlip) / sizeof(bool), file);
+    fread(winVFlag, sizeof(bool), sizeof(winVFlag) / sizeof(bool), file);
     fread(&dispCnt, sizeof(dispCnt), 1, file);
     fread(bgCnt, 2, sizeof(bgCnt) / 2, file);
     fread(bgHOfs, 2, sizeof(bgHOfs) / 2, file);
@@ -105,9 +93,9 @@ uint32_t Gpu2D::rgb5ToRgb6(uint32_t color)
 {
     // Convert an RGB5 value to an RGB6 value (the way the 2D engine does it)
     // Also keep the extra bits because some of them are used to keep track of stuff
-    uint8_t r = ((color >>  0) & 0x1F) * 2;
-    uint8_t g = ((color >>  5) & 0x1F) * 2;
-    uint8_t b = ((color >> 10) & 0x1F) * 2;
+    uint8_t r = ((color << 1) & 0x3E);
+    uint8_t g = ((color >> 4) & 0x3E);
+    uint8_t b = ((color >> 9) & 0x3E);
     return (color & 0xFFFC0000) | (b << 12) | (g << 6) | r;
 }
 
@@ -118,6 +106,18 @@ void Gpu2D::reloadRegisters()
     internalX[1] = bgX[1];
     internalY[0] = bgY[0];
     internalY[1] = bgY[1];
+}
+
+void Gpu2D::updateWindows(int line)
+{
+    // Enable or disable vertical window areas at the set scanlines
+    for (int i = 0; i < 2; i++)
+    {
+        if (line == winY2[i])
+            winVFlag[i] = false;
+        else if (line == winY1[i])
+            winVFlag[i] = true;
+    }
 }
 
 void Gpu2D::drawGbaScanline(int line)
@@ -137,19 +137,19 @@ void Gpu2D::drawGbaScanline(int line)
     }
 
     // Draw the background layers depending on the BG mode
-    switch (dispCnt & 0x7)
+    switch (uint8_t mode = (dispCnt & 0x7))
     {
         case 0:
             if (dispCnt & BIT(11)) drawText<1>(3, line);
             if (dispCnt & BIT(10)) drawText<1>(2, line);
-            if (dispCnt & BIT(9))  drawText<1>(1, line);
-            if (dispCnt & BIT(8))  drawText<1>(0, line);
+            if (dispCnt & BIT(9)) drawText<1>(1, line);
+            if (dispCnt & BIT(8)) drawText<1>(0, line);
             break;
 
         case 1:
             if (dispCnt & BIT(10)) drawAffine<1>(2, line);
-            if (dispCnt & BIT(9))    drawText<1>(1, line);
-            if (dispCnt & BIT(8))    drawText<1>(0, line);
+            if (dispCnt & BIT(9)) drawText<1>(1, line);
+            if (dispCnt & BIT(8)) drawText<1>(0, line);
             break;
 
         case 2:
@@ -162,14 +162,12 @@ void Gpu2D::drawGbaScanline(int line)
             break;
 
         default:
-            LOG("Unknown GBA BG mode: %d\n", dispCnt & 0x0007);
+            LOG("Unknown GBA BG mode: %d\n", mode);
             break;
     }
 
-    uint8_t mode = (bldCnt >> 6) & 0x3;
-
     // Blend the layers to form the final image
-    for (int i = 0; i < 240; i++)
+    for (int mode = (bldCnt >> 6) & 0x3, i = 0; i < 240; i++)
     {
         // Check if blending can/should be performed
         if (layers[0][i] & BIT(25)) // Semi-transparent pixel
@@ -187,12 +185,12 @@ void Gpu2D::drawGbaScanline(int line)
         }
 
         // Skip blending if the pixel is in the bounds of a window that has it disabled
-        if (dispCnt & 0x0000E000) // Windows enabled
+        if (dispCnt & 0xE000) // Windows enabled
         {
             uint8_t enabled;
-            if ((dispCnt & BIT(13)) && (i >= winX1[0] && i < winX2[0]) != winHFlip[0] && (line >= winY1[0] && line < winY2[0]) != winVFlip[0])
+            if ((dispCnt & BIT(13)) && winVFlag[0] && (i >= winX1[0] && i < winX2[0]) != winHFlip[0])
                 enabled = winIn >> 0; // Window 0
-            else if ((dispCnt & BIT(14)) && (i >= winX1[1] && i < winX2[1]) != winHFlip[1] && (line >= winY1[1] && line < winY2[1]) != winVFlip[1])
+            else if ((dispCnt & BIT(14)) && winVFlag[1] && (i >= winX1[1] && i < winX2[1]) != winHFlip[1])
                 enabled = winIn >> 8; // Window 1
             else if ((dispCnt & BIT(15)) && (framebuffer[line * 256 + i] & BIT(24)))
                 enabled = winOut >> 8; // Object window
@@ -209,8 +207,8 @@ void Gpu2D::drawGbaScanline(int line)
             {
                 uint8_t eva = std::min((bldAlpha >> 0) & 0x1F, 16);
                 uint8_t evb = std::min((bldAlpha >> 8) & 0x1F, 16);
-                uint8_t r = std::min((((layers[0][i] >>  0) & 0x1F) * eva + ((layers[1][i] >>  0) & 0x1F) * evb) / 16, 31U);
-                uint8_t g = std::min((((layers[0][i] >>  5) & 0x1F) * eva + ((layers[1][i] >>  5) & 0x1F) * evb) / 16, 31U);
+                uint8_t r = std::min((((layers[0][i] >> 0) & 0x1F) * eva + ((layers[1][i] >> 0) & 0x1F) * evb) / 16, 31U);
+                uint8_t g = std::min((((layers[0][i] >> 5) & 0x1F) * eva + ((layers[1][i] >> 5) & 0x1F) * evb) / 16, 31U);
                 uint8_t b = std::min((((layers[0][i] >> 10) & 0x1F) * eva + ((layers[1][i] >> 10) & 0x1F) * evb) / 16, 31U);
                 layers[0][i] = (b << 10) | (g << 5) | r;
                 continue;
@@ -219,8 +217,8 @@ void Gpu2D::drawGbaScanline(int line)
             case 2: // Brightness increase
                 if (bldY)
                 {
-                    uint8_t r = (layers[0][i] >>  0) & 0x1F; r += (31 - r) * bldY / 16;
-                    uint8_t g = (layers[0][i] >>  5) & 0x1F; g += (31 - g) * bldY / 16;
+                    uint8_t r = (layers[0][i] >> 0) & 0x1F; r += (31 - r) * bldY / 16;
+                    uint8_t g = (layers[0][i] >> 5) & 0x1F; g += (31 - g) * bldY / 16;
                     uint8_t b = (layers[0][i] >> 10) & 0x1F; b += (31 - b) * bldY / 16;
                     layers[0][i] = (b << 10) | (g << 5) | r;
                 }
@@ -229,8 +227,8 @@ void Gpu2D::drawGbaScanline(int line)
             case 3: // Brightness decrease
                 if (bldY)
                 {
-                    uint8_t r = (layers[0][i] >>  0) & 0x1F; r -= r * bldY / 16;
-                    uint8_t g = (layers[0][i] >>  5) & 0x1F; g -= g * bldY / 16;
+                    uint8_t r = (layers[0][i] >> 0) & 0x1F; r -= r * bldY / 16;
+                    uint8_t g = (layers[0][i] >> 5) & 0x1F; g -= g * bldY / 16;
                     uint8_t b = (layers[0][i] >> 10) & 0x1F; b -= b * bldY / 16;
                     layers[0][i] = (b << 10) | (g << 5) | r;
                 }
@@ -259,48 +257,48 @@ void Gpu2D::drawScanline(int line)
     }
 
     // Draw the background layers depending on the BG mode
-    switch (dispCnt & 0x7)
+    switch (uint8_t mode = (dispCnt & 0x7))
     {
         case 0:
             if (dispCnt & BIT(11)) drawText<0>(3, line);
             if (dispCnt & BIT(10)) drawText<0>(2, line);
-            if (dispCnt & BIT(9))  drawText<0>(1, line);
-            if (dispCnt & BIT(8))  drawText<0>(0, line);
+            if (dispCnt & BIT(9)) drawText<0>(1, line);
+            if (dispCnt & BIT(8)) drawText<0>(0, line);
             break;
 
         case 1:
             if (dispCnt & BIT(11)) drawAffine<0>(3, line);
-            if (dispCnt & BIT(10))   drawText<0>(2, line);
-            if (dispCnt & BIT(9))    drawText<0>(1, line);
-            if (dispCnt & BIT(8))    drawText<0>(0, line);
+            if (dispCnt & BIT(10)) drawText<0>(2, line);
+            if (dispCnt & BIT(9)) drawText<0>(1, line);
+            if (dispCnt & BIT(8)) drawText<0>(0, line);
             break;
 
         case 2:
             if (dispCnt & BIT(11)) drawAffine<0>(3, line);
             if (dispCnt & BIT(10)) drawAffine<0>(2, line);
-            if (dispCnt & BIT(9))    drawText<0>(1, line);
-            if (dispCnt & BIT(8))    drawText<0>(0, line);
+            if (dispCnt & BIT(9)) drawText<0>(1, line);
+            if (dispCnt & BIT(8)) drawText<0>(0, line);
             break;
 
         case 3:
             if (dispCnt & BIT(11)) drawExtended(3, line);
-            if (dispCnt & BIT(10))  drawText<0>(2, line);
-            if (dispCnt & BIT(9))   drawText<0>(1, line);
-            if (dispCnt & BIT(8))   drawText<0>(0, line);
+            if (dispCnt & BIT(10)) drawText<0>(2, line);
+            if (dispCnt & BIT(9)) drawText<0>(1, line);
+            if (dispCnt & BIT(8)) drawText<0>(0, line);
             break;
 
         case 4:
-            if (dispCnt & BIT(11))  drawExtended(3, line);
+            if (dispCnt & BIT(11)) drawExtended(3, line);
             if (dispCnt & BIT(10)) drawAffine<0>(2, line);
-            if (dispCnt & BIT(9))    drawText<0>(1, line);
-            if (dispCnt & BIT(8))    drawText<0>(0, line);
+            if (dispCnt & BIT(9)) drawText<0>(1, line);
+            if (dispCnt & BIT(8)) drawText<0>(0, line);
             break;
 
         case 5:
             if (dispCnt & BIT(11)) drawExtended(3, line);
             if (dispCnt & BIT(10)) drawExtended(2, line);
-            if (dispCnt & BIT(9))   drawText<0>(1, line);
-            if (dispCnt & BIT(8))   drawText<0>(0, line);
+            if (dispCnt & BIT(9)) drawText<0>(1, line);
+            if (dispCnt & BIT(8)) drawText<0>(0, line);
             break;
 
         case 6:
@@ -308,14 +306,12 @@ void Gpu2D::drawScanline(int line)
             break;
 
         default:
-            LOG("Unknown engine %c BG mode: %d\n", ((engine == 0) ? 'A' : 'B'), dispCnt & 0x7);
+            LOG("Unknown engine %c BG mode: %d\n", (engine == 0) ? 'A' : 'B', mode);
             break;
     }
 
-    uint8_t mode = (bldCnt >> 6) & 0x3;
-
     // Blend the layers to form the final image
-    for (int i = 0; i < 256; i++)
+    for (int mode = (bldCnt >> 6) & 0x3, i = 0; i < 256; i++)
     {
         // Check if blending can/should be performed
         if (layers[0][i] & BIT(26)) // 3D pixel
@@ -328,8 +324,8 @@ void Gpu2D::drawScanline(int line)
                 if (eva == 64) continue;
                 uint32_t blend = rgb5ToRgb6(layers[1][i]);
                 uint8_t evb = 64 - eva;
-                uint8_t r = std::min((((layers[0][i] >>  0) & 0x3F) * eva + ((blend >>  0) & 0x3F) * evb) / 64, 63U);
-                uint8_t g = std::min((((layers[0][i] >>  6) & 0x3F) * eva + ((blend >>  6) & 0x3F) * evb) / 64, 63U);
+                uint8_t r = std::min((((layers[0][i] >> 0) & 0x3F) * eva + ((blend >> 0) & 0x3F) * evb) / 64, 63U);
+                uint8_t g = std::min((((layers[0][i] >> 6) & 0x3F) * eva + ((blend >> 6) & 0x3F) * evb) / 64, 63U);
                 uint8_t b = std::min((((layers[0][i] >> 12) & 0x3F) * eva + ((blend >> 12) & 0x3F) * evb) / 64, 63U);
                 layers[0][i] = (b << 12) | (g << 6) | r;
                 continue;
@@ -361,12 +357,12 @@ void Gpu2D::drawScanline(int line)
         }
 
         // Skip blending if the pixel is in the bounds of a window that has it disabled
-        if (dispCnt & 0x0000E000) // Windows enabled
+        if (dispCnt & 0xE000) // Windows enabled
         {
             uint8_t enabled;
-            if ((dispCnt & BIT(13)) && (i >= winX1[0] && i < winX2[0]) != winHFlip[0] && (line >= winY1[0] && line < winY2[0]) != winVFlip[0])
+            if ((dispCnt & BIT(13)) && winVFlag[0] && (i >= winX1[0] && i < winX2[0]) != winHFlip[0])
                 enabled = winIn >> 0; // Window 0
-            else if ((dispCnt & BIT(14)) && (i >= winX1[1] && i < winX2[1]) != winHFlip[1] && (line >= winY1[1] && line < winY2[1]) != winVFlip[1])
+            else if ((dispCnt & BIT(14)) && winVFlag[1] && (i >= winX1[1] && i < winX2[1]) != winHFlip[1])
                 enabled = winIn >> 8; // Window 1
             else if ((dispCnt & BIT(15)) && (framebuffer[line * 256 + i] & BIT(24)))
                 enabled = winOut >> 8; // Object window
@@ -384,8 +380,8 @@ void Gpu2D::drawScanline(int line)
                 uint32_t blend = (layers[1][i] & BIT(26)) ? layers[1][i] : rgb5ToRgb6(layers[1][i]);
                 uint8_t eva = std::min((bldAlpha >> 0) & 0x1F, 16);
                 uint8_t evb = std::min((bldAlpha >> 8) & 0x1F, 16);
-                uint8_t r = std::min((((layers[0][i] >>  0) & 0x3F) * eva + ((blend >>  0) & 0x3F) * evb) / 16, 63U);
-                uint8_t g = std::min((((layers[0][i] >>  6) & 0x3F) * eva + ((blend >>  6) & 0x3F) * evb) / 16, 63U);
+                uint8_t r = std::min((((layers[0][i] >> 0) & 0x3F) * eva + ((blend >> 0) & 0x3F) * evb) / 16, 63U);
+                uint8_t g = std::min((((layers[0][i] >> 6) & 0x3F) * eva + ((blend >> 6) & 0x3F) * evb) / 16, 63U);
                 uint8_t b = std::min((((layers[0][i] >> 12) & 0x3F) * eva + ((blend >> 12) & 0x3F) * evb) / 16, 63U);
                 layers[0][i] = (b << 12) | (g << 6) | r;
                 continue;
@@ -394,8 +390,8 @@ void Gpu2D::drawScanline(int line)
             case 2: // Brightness increase
                 if (bldY)
                 {
-                    uint8_t r = (layers[0][i] >>  0) & 0x3F; r += (63 - r) * bldY / 16;
-                    uint8_t g = (layers[0][i] >>  6) & 0x3F; g += (63 - g) * bldY / 16;
+                    uint8_t r = (layers[0][i] >> 0) & 0x3F; r += (63 - r) * bldY / 16;
+                    uint8_t g = (layers[0][i] >> 6) & 0x3F; g += (63 - g) * bldY / 16;
                     uint8_t b = (layers[0][i] >> 12) & 0x3F; b += (63 - b) * bldY / 16;
                     layers[0][i] = (b << 12) | (g << 6) | r;
                 }
@@ -404,8 +400,8 @@ void Gpu2D::drawScanline(int line)
             case 3: // Brightness decrease
                 if (bldY)
                 {
-                    uint8_t r = (layers[0][i] >>  0) & 0x3F; r -= r * bldY / 16;
-                    uint8_t g = (layers[0][i] >>  6) & 0x3F; g -= g * bldY / 16;
+                    uint8_t r = (layers[0][i] >> 0) & 0x3F; r -= r * bldY / 16;
+                    uint8_t g = (layers[0][i] >> 6) & 0x3F; g -= g * bldY / 16;
                     uint8_t b = (layers[0][i] >> 12) & 0x3F; b -= b * bldY / 16;
                     layers[0][i] = (b << 12) | (g << 6) | r;
                 }
@@ -417,32 +413,23 @@ void Gpu2D::drawScanline(int line)
     switch ((dispCnt >> 16) & 0x3) // Display mode
     {
         case 0: // Display off
-        {
             // Fill the display with white
             memset(&framebuffer[line * 256], 0xFF, 256 * sizeof(uint32_t));
             break;
-        }
 
         case 1: // Layers
-        {
             memcpy(&framebuffer[line * 256], layers[0], 256 * sizeof(uint32_t));
             break;
-        }
 
         case 2: // VRAM display
-        {
             // Draw raw bitmap data from a VRAM block
-            uint32_t address = 0x6800000 + ((dispCnt & 0x000C0000) >> 18) * 0x20000 + line * 256 * 2;
-            for (int i = 0; i < 256; i++)
-                framebuffer[line * 256 + i] = rgb5ToRgb6(core->memory.read<uint16_t>(0, address + i * 2));
+            for (uint32_t addr = 0x6800000 + ((dispCnt >> 1) & 0x60000) + line * 256 * 2, i = 0; i < 256; i++)
+                framebuffer[line * 256 + i] = rgb5ToRgb6(core->memory.read<uint16_t>(0, addr + i * 2));
             break;
-        }
 
         case 3: // Main memory display
-        {
-            LOG("Unimplemented engine %c display mode: display FIFO\n", ((engine == 0) ? 'A' : 'B'));
+            LOG("Unimplemented engine %c display mode: display FIFO\n", (engine == 0) ? 'A' : 'B');
             break;
-        }
     }
 
     // Apply master brightness (DS-only, 18-bit)
@@ -454,8 +441,8 @@ void Gpu2D::drawScanline(int line)
                 for (int i = 0; i < 256; i++)
                 {
                     uint32_t *pixel = &framebuffer[line * 256 + i];
-                    uint8_t r = (*pixel >>  0) & 0x3F; r += (63 - r) * factor / 16;
-                    uint8_t g = (*pixel >>  6) & 0x3F; g += (63 - g) * factor / 16;
+                    uint8_t r = (*pixel >> 0) & 0x3F; r += (63 - r) * factor / 16;
+                    uint8_t g = (*pixel >> 6) & 0x3F; g += (63 - g) * factor / 16;
                     uint8_t b = (*pixel >> 12) & 0x3F; b += (63 - b) * factor / 16;
                     *pixel = (b << 12) | (g << 6) | r;
                 }
@@ -468,8 +455,8 @@ void Gpu2D::drawScanline(int line)
                 for (int i = 0; i < 256; i++)
                 {
                     uint32_t *pixel = &framebuffer[line * 256 + i];
-                    uint8_t r = (*pixel >>  0) & 0x3F; r -= r * factor / 16;
-                    uint8_t g = (*pixel >>  6) & 0x3F; g -= g * factor / 16;
+                    uint8_t r = (*pixel >> 0) & 0x3F; r -= r * factor / 16;
+                    uint8_t g = (*pixel >> 6) & 0x3F; g -= g * factor / 16;
                     uint8_t b = (*pixel >> 12) & 0x3F; b -= b * factor / 16;
                     *pixel = (b << 12) | (g << 6) | r;
                 }
@@ -481,12 +468,12 @@ void Gpu2D::drawScanline(int line)
 void Gpu2D::drawBgPixel(int bg, int line, int x, uint32_t pixel)
 {
     // Skip the pixel if it's in the bounds of a window that has its layer disabled
-    if (dispCnt & 0x0000E000) // Windows enabled
+    if (dispCnt & 0xE000) // Windows enabled
     {
         uint8_t enabled;
-        if ((dispCnt & BIT(13)) && (x >= winX1[0] && x < winX2[0]) != winHFlip[0] && (line >= winY1[0] && line < winY2[0]) != winVFlip[0])
+        if ((dispCnt & BIT(13)) && winVFlag[0] && (x >= winX1[0] && x < winX2[0]) != winHFlip[0])
             enabled = winIn >> 0; // Window 0
-        else if ((dispCnt & BIT(14)) && (x >= winX1[1] && x < winX2[1]) != winHFlip[1] && (line >= winY1[1] && line < winY2[1]) != winVFlip[1])
+        else if ((dispCnt & BIT(14)) && winVFlag[1] && (x >= winX1[1] && x < winX2[1]) != winHFlip[1])
             enabled = winIn >> 8; // Window 1
         else if ((dispCnt & BIT(15)) && (framebuffer[line * 256 + x] & BIT(24)))
             enabled = winOut >> 8; // Object window
@@ -520,12 +507,12 @@ void Gpu2D::drawBgPixel(int bg, int line, int x, uint32_t pixel)
 void Gpu2D::drawObjPixel(int line, int x, uint32_t pixel, int8_t priority)
 {
     // Skip the pixel if it's in the bounds of a window that has objects disabled
-    if (dispCnt & 0x0000E000) // Windows enabled
+    if (dispCnt & 0xE000) // Windows enabled
     {
         uint8_t enabled;
-        if ((dispCnt & BIT(13)) && (x >= winX1[0] && x < winX2[0]) != winHFlip[0] && (line >= winY1[0] && line < winY2[0]) != winVFlip[0])
+        if ((dispCnt & BIT(13)) && winVFlag[0] && (x >= winX1[0] && x < winX2[0]) != winHFlip[0])
             enabled = winIn >> 0; // Window 0
-        else if ((dispCnt & BIT(14)) && (x >= winX1[1] && x < winX2[1]) != winHFlip[1] && (line >= winY1[1] && line < winY2[1]) != winVFlip[1])
+        else if ((dispCnt & BIT(14)) && winVFlag[1] && (x >= winX1[1] && x < winX2[1]) != winHFlip[1])
             enabled = winIn >> 8; // Window 1
         else if ((dispCnt & BIT(15)) && (framebuffer[line * 256 + x] & BIT(24)))
             enabled = winOut >> 8; // Object window
@@ -1400,10 +1387,6 @@ void Gpu2D::writeWinV(int win, uint16_t mask, uint16_t value)
     // Write to one of the WINV registers
     if (mask & 0x00FF) winY2[win] = (value & 0x00FF) >> 0;
     if (mask & 0xFF00) winY1[win] = (value & 0xFF00) >> 8;
-
-    // Invert the window if Y1 exceeds Y2
-    if (winVFlip[win] = (winY1[win] > winY2[win]))
-        SWAP(winY1[win], winY2[win]);
 }
 
 void Gpu2D::writeWinIn(uint16_t mask, uint16_t value)

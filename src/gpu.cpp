@@ -344,6 +344,9 @@ void Gpu::gbaScanline308()
             break;
     }
 
+    // Update window flags for the next scanline
+    core->gpu2D[0].updateWindows(vCount);
+
     // Signal that the next scanline should start drawing
     if (vCount < 160 && thread)
         drawing.store(1);
@@ -630,6 +633,10 @@ void Gpu::scanline355()
             }
             break;
     }
+
+    // Update window flags for the next scanline
+    core->gpu2D[0].updateWindows(vCount);
+    core->gpu2D[1].updateWindows(vCount);
 
     // Signal that the next scanline should start drawing
     if (vCount < 192 && thread)
