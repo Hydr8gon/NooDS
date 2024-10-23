@@ -77,7 +77,7 @@ class Memory
         uint8_t bios7[0x4000] = {}; // 16KB ARM7 BIOS
         uint8_t gbaBios[0x4000] = {}; // 16KB GBA BIOS
 
-        uint8_t ram[0x400000] = {}; // 4MB main RAM
+        uint8_t ram[0x1000000] = {}; // 16MB main RAM
         uint8_t wram[0x8000] = {}; // 32KB shared WRAM
         uint8_t instrTcm[0x8000] = {}; // 32KB instruction TCM
         uint8_t dataTcm[0x4000] = {}; // 16KB data TCM

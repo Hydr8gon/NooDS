@@ -78,8 +78,9 @@ class NooFrame: public wxFrame
         void pause(wxCommandEvent &event);
         void restart(wxCommandEvent &event);
         void stop(wxCommandEvent &event);
-        void addSystem(wxCommandEvent &event);
         void actionReplay(wxCommandEvent &event);
+        void addSystem(wxCommandEvent &event);
+        void dsiModeToggle(wxCommandEvent &event);
         void pathSettings(wxCommandEvent &event);
         void inputSettings(wxCommandEvent &event);
         void layoutSettings(wxCommandEvent &event);

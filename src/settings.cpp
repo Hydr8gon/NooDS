@@ -32,6 +32,7 @@ int Settings::screenGhost = 0;
 int Settings::savesFolder = 0;
 int Settings::statesFolder = 1;
 int Settings::cheatsFolder = 1;
+int Settings::dsiMode = 0;
 
 std::string Settings::bios9Path = "bios9.bin";
 std::string Settings::bios7Path = "bios7.bin";
@@ -53,6 +54,7 @@ std::vector<Setting> Settings::settings =
     Setting("savesFolder", &savesFolder, false),
     Setting("statesFolder", &statesFolder, false),
     Setting("cheatsFolder", &cheatsFolder, false),
+    Setting("dsiMode", &dsiMode, false),
     Setting("bios9Path", &bios9Path, true),
     Setting("bios7Path", &bios7Path, true),
     Setting("firmwarePath", &firmwarePath, true),

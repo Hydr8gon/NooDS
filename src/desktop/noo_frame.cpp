@@ -40,8 +40,9 @@ enum FrameEvent
     PAUSE,
     RESTART,
     STOP,
-    ADD_SYSTEM,
     ACTION_REPLAY,
+    ADD_SYSTEM,
+    DSI_MODE,
     PATH_SETTINGS,
     INPUT_BINDINGS,
     SCREEN_LAYOUT,
@@ -70,8 +71,9 @@ EVT_MENU(QUIT, NooFrame::quit)
 EVT_MENU(PAUSE, NooFrame::pause)
 EVT_MENU(RESTART, NooFrame::restart)
 EVT_MENU(STOP, NooFrame::stop)
-EVT_MENU(ADD_SYSTEM, NooFrame::addSystem)
 EVT_MENU(ACTION_REPLAY, NooFrame::actionReplay)
+EVT_MENU(ADD_SYSTEM, NooFrame::addSystem)
+EVT_MENU(DSI_MODE, NooFrame::dsiModeToggle)
 EVT_MENU(PATH_SETTINGS, NooFrame::pathSettings)
 EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
 EVT_MENU(SCREEN_LAYOUT, NooFrame::layoutSettings)
@@ -119,8 +121,13 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         systemMenu->Append(RESTART, "&Restart");
         systemMenu->Append(STOP, "&Stop");
         systemMenu->AppendSeparator();
-        systemMenu->Append(ADD_SYSTEM, "&Add System");
         systemMenu->Append(ACTION_REPLAY, "&Action Replay");
+        systemMenu->Append(ADD_SYSTEM, "&Add System");
+        systemMenu->AppendSeparator();
+        systemMenu->AppendCheckItem(DSI_MODE, "&DSi Homebrew Mode");
+
+        // Set the initial System checkbox states
+        systemMenu->Check(DSI_MODE, Settings::dsiMode);
 
         // Disable some menu items until the core is running
         fileMenu->Enable(TRIM_ROM, false);
@@ -165,7 +172,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         settingsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
         settingsMenu->AppendCheckItem(HIGH_RES_3D, "&High-Resolution 3D");
 
-        // Set the current values of the checkboxes
+        // Set the initial Settings checkbox states
         settingsMenu->Check(DIRECT_BOOT, Settings::directBoot);
         settingsMenu->Check(FPS_LIMITER, Settings::fpsLimiter);
         settingsMenu->Check(MIC_ENABLE, NooApp::micEnable);
@@ -664,17 +671,24 @@ void NooFrame::stop(wxCommandEvent &event)
     stopCore(true);
 }
 
+void NooFrame::actionReplay(wxCommandEvent &event)
+{
+    // Show the AR cheats dialog
+    CheatDialog cheatDialog(core);
+    cheatDialog.ShowModal();
+}
+
 void NooFrame::addSystem(wxCommandEvent &event)
 {
     // Create a new emulator instance
     app->createFrame();
 }
 
-void NooFrame::actionReplay(wxCommandEvent &event)
+void NooFrame::dsiModeToggle(wxCommandEvent &event)
 {
-    // Show the AR cheats dialog
-    CheatDialog cheatDialog(core);
-    cheatDialog.ShowModal();
+    // Toggle the DSi homebrew mode setting
+    Settings::dsiMode = !Settings::dsiMode;
+    Settings::save();
 }
 
 void NooFrame::pathSettings(wxCommandEvent &event)

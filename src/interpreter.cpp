@@ -43,8 +43,9 @@ void Interpreter::saveState(FILE *file)
     fwrite(&spsrAbt, sizeof(spsrAbt), 1, file);
     fwrite(&spsrIrq, sizeof(spsrIrq), 1, file);
     fwrite(&spsrUnd, sizeof(spsrUnd), 1, file);
-    fwrite(&halted, sizeof(halted), 1, file);
     fwrite(&cycles, sizeof(cycles), 1, file);
+    fwrite(&halted, sizeof(halted), 1, file);
+    fwrite(&dsiCycle, sizeof(dsiCycle), 1, file);
     fwrite(&ime, sizeof(ime), 1, file);
     fwrite(&ie, sizeof(ie), 1, file);
     fwrite(&irf, sizeof(irf), 1, file);
@@ -67,8 +68,9 @@ void Interpreter::loadState(FILE *file)
     fread(&spsrAbt, sizeof(spsrAbt), 1, file);
     fread(&spsrIrq, sizeof(spsrIrq), 1, file);
     fread(&spsrUnd, sizeof(spsrUnd), 1, file);
-    fread(&halted, sizeof(halted), 1, file);
     fread(&cycles, sizeof(cycles), 1, file);
+    fread(&halted, sizeof(halted), 1, file);
+    fread(&dsiCycle, sizeof(dsiCycle), 1, file);
     fread(&ime, sizeof(ime), 1, file);
     fread(&ie, sizeof(ie), 1, file);
     fread(&irf, sizeof(irf), 1, file);
@@ -95,7 +97,7 @@ void Interpreter::directBoot()
 {
     // Prepare to directly boot a ROM
     setCpsr(0x000000DF); // System, interrupts off
-    registersUsr[15] = core->gbaMode ? 0x8000000 : core->memory.read<uint32_t>(arm7, 0x27FFE24 + (arm7 << 4));
+    registersUsr[15] = core->gbaMode ? 0x8000000 : entryAddr;
     registersUsr[14] = registersUsr[15];
     registersUsr[12] = registersUsr[15];
     registersUsr[13] = arm7 ? (core->gbaMode ? 0x3007F00 : 0x380FD80) : 0x3002F7C;
@@ -112,10 +114,9 @@ void Interpreter::resetCycles()
 
 void Interpreter::runNdsFrame(Core &core)
 {
+    // Run a frame in NDS mode
     Interpreter &arm9 = core.interpreter[0];
     Interpreter &arm7 = core.interpreter[1];
-
-    // Run a frame in NDS mode
     while (core.running.exchange(true))
     {
         // Run the CPUs until the next scheduled task
@@ -145,11 +146,48 @@ void Interpreter::runNdsFrame(Core &core)
     }
 }
 
+void Interpreter::runDsiFrame(Core &core)
+{
+    // Run a frame in DSi mode
+    Interpreter &arm9 = core.interpreter[0];
+    Interpreter &arm7 = core.interpreter[1];
+    while (core.running.exchange(true))
+    {
+        // Run the CPUs until the next scheduled task
+        while (core.events[0].cycles > core.globalCycles)
+        {
+            // Run the ARM9 twice as fast as usual
+            if (!arm9.halted && core.globalCycles >= arm9.cycles)
+            {
+                int cycles = arm9.runOpcode() + arm9.dsiCycle;
+                arm9.cycles = core.globalCycles + (cycles >> 1);
+                arm9.dsiCycle = (cycles & 0x1);
+            }
+
+            // Run the ARM7 at half the regular speed of the ARM9
+            if (!arm7.halted && core.globalCycles >= arm7.cycles)
+                arm7.cycles = core.globalCycles + (arm7.runOpcode() << 1);
+
+            // Count cycles up to the next soonest event
+            core.globalCycles = std::min<uint32_t>((arm9.halted ? -1 : arm9.cycles), (arm7.halted ? -1 : arm7.cycles));
+        }
+
+        // Jump to the next scheduled task
+        core.globalCycles = core.events[0].cycles;
+
+        // Run all tasks that are scheduled now
+        while (core.events[0].cycles <= core.globalCycles)
+        {
+            core.tasks[core.events[0].task]();
+            core.events.erase(core.events.begin());
+        }
+    }
+}
+
 void Interpreter::runGbaFrame(Core &core)
 {
-    Interpreter &arm7 = core.interpreter[1];
-
     // Run a frame in GBA mode
+    Interpreter &arm7 = core.interpreter[1];
     while (core.running.exchange(true))
     {
         // Run the ARM7 until the next scheduled task

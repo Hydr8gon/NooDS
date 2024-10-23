@@ -47,6 +47,7 @@ class Settings
         static int savesFolder;
         static int statesFolder;
         static int cheatsFolder;
+        static int dsiMode;
 
         static std::string bios9Path;
         static std::string bios7Path;

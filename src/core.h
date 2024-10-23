@@ -105,8 +105,9 @@ class Core
 {
     public:
         int id = 0;
-        bool gbaMode = false;
         int fps = 0;
+        bool dsiMode = false;
+        bool gbaMode = false;
 
         ActionReplay actionReplay;
         Bios bios[3];

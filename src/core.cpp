@@ -78,6 +78,10 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     schedule(NDS_SCANLINE355, 355 * 6);
     schedule(NDS_SPU_SAMPLE, 512 * 2);
 
+    // Update DSi mode now and ignore changes to it later
+    dsiMode = Settings::dsiMode;
+    runFunc = dsiMode ? &Interpreter::runDsiFrame : &Interpreter::runNdsFrame;
+
     // Initialize the memory and CPUs
     memory.updateMap9(0x00000000, 0xFFFFFFFF);
     memory.updateMap7(0x00000000, 0xFFFFFFFF);
@@ -145,6 +149,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
 void Core::saveState(FILE *file)
 {
     // Write state data to the file
+    fwrite(&dsiMode, sizeof(dsiMode), 1, file);
     fwrite(&gbaMode, sizeof(gbaMode), 1, file);
     fwrite(&globalCycles, sizeof(globalCycles), 1, file);
 
@@ -158,6 +163,7 @@ void Core::saveState(FILE *file)
 void Core::loadState(FILE *file)
 {
     // Read state data from the file
+    fread(&dsiMode, sizeof(dsiMode), 1, file);
     fread(&gbaMode, sizeof(gbaMode), 1, file);
     fread(&globalCycles, sizeof(globalCycles), 1, file);
 
@@ -173,7 +179,7 @@ void Core::loadState(FILE *file)
     }
 
     // Update the run function pointer
-    runFunc = gbaMode ? &Interpreter::runGbaFrame : &Interpreter::runNdsFrame;
+    runFunc = gbaMode ? &Interpreter::runGbaFrame : (dsiMode ? &Interpreter::runDsiFrame : &Interpreter::runNdsFrame);
 }
 
 void Core::resetCycles()
@@ -221,10 +227,13 @@ void Core::enterGbaMode()
 
     // Disable HLE BIOS if a real one was loaded
     if (realGbaBios)
-        return interpreter[1].setBios(nullptr);
+    {
+        interpreter[1].bios = nullptr;
+        return;
+    }
 
     // Enable HLE BIOS and boot the GBA ROM directly
-    interpreter[1].setBios(&bios[2]);
+    interpreter[1].bios = &bios[2];
     interpreter[1].directBoot();
     memory.write<uint16_t>(1, 0x4000088, 0x200); // SOUNDBIAS
 }

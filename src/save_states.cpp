@@ -21,7 +21,7 @@
 #include "core.h"
 
 const char *SaveStates::stateTag = "NOOD";
-const uint32_t SaveStates::stateVersion = 3;
+const uint32_t SaveStates::stateVersion = 4;
 
 void SaveStates::setPath(std::string path, bool gba)
 {

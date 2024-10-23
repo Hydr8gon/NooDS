@@ -30,6 +30,9 @@ class Bios;
 class Interpreter
 {
     public:
+        Bios *bios = nullptr;
+        uint32_t entryAddr = 0;
+
         Interpreter(Core *core, bool arm7);
         void saveState(FILE *file);
         void loadState(FILE *file);
@@ -39,6 +42,7 @@ class Interpreter
         void resetCycles();
 
         static void runNdsFrame(Core &core);
+        static void runDsiFrame(Core &core);
         static void runGbaFrame(Core &core);
 
         void halt(int bit) { halted |= BIT(bit); }
@@ -48,8 +52,6 @@ class Interpreter
 
         bool isThumb() { return cpsr & BIT(5); }
         uint32_t getPC() { return *registers[15]; }
-
-        void setBios(Bios *bios) { this->bios = bios; }
         int handleHleIrq();
 
         uint8_t readIme() { return ime; }
@@ -66,9 +68,7 @@ class Interpreter
         Core *core;
         bool arm7;
 
-        Bios *bios = nullptr;
         uint32_t pipeline[2] = {};
-
         uint32_t *registers[32] = {};
         uint32_t registersUsr[16] = {};
         uint32_t registersFiq[7] = {};
@@ -80,8 +80,9 @@ class Interpreter
         uint32_t cpsr = 0, *spsr = nullptr;
         uint32_t spsrFiq = 0, spsrSvc = 0, spsrAbt = 0, spsrIrq = 0, spsrUnd = 0;
 
-        uint8_t halted = 0;
         uint32_t cycles = 0;
+        uint8_t halted = 0;
+        bool dsiCycle = false;
 
         uint8_t ime = 0;
         uint32_t ie = 0, irf = 0;

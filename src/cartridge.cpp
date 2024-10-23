@@ -303,32 +303,31 @@ void CartridgeNds::directBoot()
         loadRomSection(0, 0x170);
 
     // Extract some information about the initial ARM9 code from the header
-    uint32_t offset9    = U8TO32(rom, 0x20);
-    uint32_t entryAddr9 = U8TO32(rom, 0x24);
-    uint32_t ramAddr9   = U8TO32(rom, 0x28);
-    uint32_t size9      = U8TO32(rom, 0x2C);
-    LOG("ARM9 code ROM offset:    0x%X\n", offset9);
-    LOG("ARM9 code entry address: 0x%X\n", entryAddr9);
-    LOG("ARM9 RAM address:        0x%X\n", ramAddr9);
-    LOG("ARM9 code size:          0x%X\n", size9);
+    uint32_t offset9 = U8TO32(rom, 0x20);
+    core->interpreter[0].entryAddr = U8TO32(rom, 0x24);
+    uint32_t ramAddr9 = U8TO32(rom, 0x28);
+    uint32_t size9 = U8TO32(rom, 0x2C);
+    LOG("ARM9 code ROM offset: 0x%X\n", offset9);
+    LOG("ARM9 code entry address: 0x%X\n", core->interpreter[0].entryAddr);
+    LOG("ARM9 RAM address: 0x%X\n", ramAddr9);
+    LOG("ARM9 code size: 0x%X\n", size9);
 
     // Extract some information about the initial ARM7 code from the header
-    uint32_t offset7    = U8TO32(rom, 0x30);
-    uint32_t entryAddr7 = U8TO32(rom, 0x34);
-    uint32_t ramAddr7   = U8TO32(rom, 0x38);
-    uint32_t size7      = U8TO32(rom, 0x3C);
-    LOG("ARM7 code ROM offset:    0x%X\n", offset7);
-    LOG("ARM7 code entry address: 0x%X\n", entryAddr7);
-    LOG("ARM7 RAM address:        0x%X\n", ramAddr7);
-    LOG("ARM7 code size:          0x%X\n", size7);
+    uint32_t offset7 = U8TO32(rom, 0x30);
+    core->interpreter[1].entryAddr = U8TO32(rom, 0x34);
+    uint32_t ramAddr7 = U8TO32(rom, 0x38);
+    uint32_t size7 = U8TO32(rom, 0x3C);
+    LOG("ARM7 code ROM offset: 0x%X\n", offset7);
+    LOG("ARM7 code entry address: 0x%X\n", core->interpreter[1].entryAddr);
+    LOG("ARM7 RAM address: 0x%X\n", ramAddr7);
+    LOG("ARM7 code size: 0x%X\n", size7);
 
     // Load the ROM header into memory
     for (uint32_t i = 0; i < 0x170; i += 4)
         core->memory.write<uint32_t>(0, 0x27FFE00 + i, U8TO32(rom, i));
 
-    uint32_t offset;
-
     // Load the initial ARM9 code from file if needed
+    uint32_t offset;
     if (romFile)
     {
         loadRomSection(offset9, size9);

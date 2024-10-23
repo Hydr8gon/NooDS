@@ -79,7 +79,7 @@ template <typename T> void VramMapping::write(uint32_t address, T value)
 void Memory::saveState(FILE *file)
 {
     // Write state data to the file
-    fwrite(ram, 1, sizeof(ram), file);
+    fwrite(ram, 1, core->dsiMode ? 0x1000000 : 0x400000, file);
     fwrite(wram, 1, sizeof(wram), file);
     fwrite(instrTcm, 1, sizeof(instrTcm), file);
     fwrite(dataTcm, 1, sizeof(dataTcm), file);
@@ -106,7 +106,7 @@ void Memory::saveState(FILE *file)
 void Memory::loadState(FILE *file)
 {
     // Read state data from the file
-    fread(ram, 1, sizeof(ram), file);
+    fread(ram, 1, core->dsiMode ? 0x1000000 : 0x400000, file);
     fread(wram, 1, sizeof(wram), file);
     fread(instrTcm, 1, sizeof(instrTcm), file);
     fread(dataTcm, 1, sizeof(dataTcm), file);
@@ -147,7 +147,7 @@ bool Memory::loadBios9()
 
     // Prepare HLE BIOS with a special opcode for interrupt return
     bios9[3] = 0xFF;
-    core->interpreter[0].setBios(&core->bios[0]);
+    core->interpreter[0].bios = &core->bios[0];
     return false;
 }
 
@@ -163,7 +163,7 @@ bool Memory::loadBios7()
 
     // Prepare HLE BIOS with a special opcode for interrupt return
     bios7[3] = 0xFF;
-    core->interpreter[1].setBios(&core->bios[1]);
+    core->interpreter[1].bios = &core->bios[1];
     return false;
 }
 
@@ -202,8 +202,12 @@ void Memory::updateMap9(uint32_t start, uint32_t end, bool tcm)
         // Map a 4KB block to the corresponding ARM9 memory, excluding special cases
         switch (address & 0xFF000000)
         {
+            case 0xC000000: // Main RAM (DSi mirror)
+                if (!core->dsiMode)
+                    break;
+
             case 0x2000000: // Main RAM
-                read = write = &ram[address & 0x3FFFFF];
+                read = write = &ram[address & (core->dsiMode ? 0xFFFFFF : 0x3FFFFF)];
                 break;
 
             case 0x3000000: // Shared WRAM
@@ -308,8 +312,12 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                         read = &bios7[address];
                     break;
 
+                case 0xC000000: // Main RAM (DSi mirror)
+                    if (!core->dsiMode)
+                        break;
+
                 case 0x2000000: // Main RAM
-                    read = write = &ram[address & 0x3FFFFF];
+                    read = write = &ram[address & (core->dsiMode ? 0xFFFFFF : 0x3FFFFF)];
                     break;
 
                 case 0x3000000: // WRAM
@@ -1009,6 +1017,7 @@ template <typename T> T Memory::ioRead9(uint32_t address)
             DEF_IO16(0x400106C, data = core->gpu2D[1].readMasterBright()) // MASTER_BRIGHT (engine B)
             DEF_IO32(0x4100000, data = core->ipc.readIpcFifoRecv(0)) // IPCFIFORECV (ARM9)
             DEF_IO32(0x4100010, data = core->cartridgeNds.readRomDataIn(0)) // ROMDATAIN (ARM9)
+            DEF_IO32(0x4004008, data = core->dsiMode * 0x8000) // SCFG_EXT9 (stub)
 
             default:
                 // Handle unknown reads by returning nothing
@@ -1177,6 +1186,7 @@ template <typename T> T Memory::ioRead7(uint32_t address)
             DEF_IO16(0x4800154, data = core->wifi.readWConfig(14)) // W_CONFIG_154
             DEF_IO16(0x480015C, data = core->wifi.readWBbRead()) // W_BB_READ
             DEF_IO16(0x4800210, data = core->wifi.readWTxSeqno()) // W_TX_SEQNO
+            DEF_IO32(0x4004008, data = core->dsiMode * 0x8000) // SCFG_EXT7 (stub)
 
             default:
                 // Handle unknown reads by returning nothing
