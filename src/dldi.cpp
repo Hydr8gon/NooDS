@@ -47,9 +47,16 @@ void Dldi::patchRom(uint8_t *rom, uint32_t offset, uint32_t size)
                 goto next;
         }
 
+        // Check for sufficient space in DLDI area
+        if (rom[i + 0x0F] < 0x08)
+        {
+            LOG("Failed to patch DLDI driver at ROM offset 0x%X - insufficient space\n", offset + i);
+            break;
+        }
+
         // Patch the DLDI driver to use the HLE functions
         rom[i + 0x0C] = 0x01; // DLDI driver version
-        rom[i + 0x0D] = 0x09; // Size of DLDI driver in terms of 1 << n (0.5KB)
+        rom[i + 0x0D] = 0x08; // Size of DLDI driver in terms of 1 << n (0.25KB)
         rom[i + 0x0E] = 0x00; // Sections to adjust (none)
         strcpy((char*) (rom + i + 0x10), "NooDS DLDI"); // Long driver name
         uint32_t address = U8TO32(rom, i + 0x40); // Address of driver
