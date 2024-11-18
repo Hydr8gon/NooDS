@@ -32,7 +32,7 @@ Dldi::~Dldi()
 void Dldi::patchRom(uint8_t *rom, uint32_t offset, uint32_t size)
 {
     // Scan the ROM for DLDI drivers and patch them if found
-    for (size_t i = 0; i < size; i += 0x4)
+    for (uint32_t i = 0; i < size; i += 4)
     {
         // Check for the DLDI magic number
         if (U8TO32(rom, i) != 0xBF8DA5ED)
@@ -47,23 +47,23 @@ void Dldi::patchRom(uint8_t *rom, uint32_t offset, uint32_t size)
                 goto next;
         }
 
-        // Check for sufficient space in DLDI area
-        if (rom[i + 0x0F] < 0x08)
+        // Ensure there's room to patch the DLDI driver
+        if (rom[i + 0x0F] < 0x08) // Space in ROM
         {
-            LOG("Failed to patch DLDI driver at ROM offset 0x%X - insufficient space\n", offset + i);
+            LOG("Not enough space to patch DLDI driver at ROM offset 0x%X\n", offset + i);
             break;
         }
 
         // Patch the DLDI driver to use the HLE functions
         rom[i + 0x0C] = 0x01; // DLDI driver version
-        rom[i + 0x0D] = 0x08; // Size of DLDI driver in terms of 1 << n (0.25KB)
-        rom[i + 0x0E] = 0x00; // Sections to adjust (none)
-        strcpy((char*) (rom + i + 0x10), "NooDS DLDI"); // Long driver name
+        rom[i + 0x0D] = 0x08; // Size of driver in terms of 1 << n (256 bytes)
+        rom[i + 0x0E] = 0x00; // Sections to adjust
+        strcpy((char*)&rom[i + 0x10], "NooDS DLDI"); // Long driver name
         uint32_t address = U8TO32(rom, i + 0x40); // Address of driver
-        U32TO8(rom, i + 0x44, address + 0x98); // End of DLDI driver area
+        U32TO8(rom, i + 0x44, address + 0x98); // End of driver code
         U32TO8(rom, i + 0x58, address + 0x98); // Start of BSS area
         U32TO8(rom, i + 0x5C, address + 0x98); // End of BSS area
-        memcpy(rom + i + 0x60, "NoDS", 4); // Short driver name
+        memcpy(&rom[i + 0x60], "NOOD", 4); // Short driver name
         U32TO8(rom, i + 0x64, 0x00000023); // Feature flags (read, write, NDS slot)
         U32TO8(rom, i + 0x68, address + 0x80); // Address of startup()
         U32TO8(rom, i + 0x6C, address + 0x84); // Address of isInserted()
