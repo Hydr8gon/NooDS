@@ -52,6 +52,7 @@ uint32_t Cp15::read(uint8_t cn, uint8_t cm, uint8_t cp)
         case 0x010000: return ctrlReg; // Control
         case 0x090100: return dtcmReg; // Data TCM base/size
         case 0x090101: return itcmReg; // Instruction TCM size
+        case 0x0D0001: case 0x0D0101: return procId; // Trace process ID
 
         default:
             LOG("Unknown CP15 register read: C%d,C%d,%d\n", cn, cm, cp);
@@ -105,6 +106,11 @@ void Cp15::write(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value)
 
             // Update the memory map at the old and new ITCM areas
             core->memory.updateMap9(0x00000000, std::max(oldSize, itcmSize), true);
+            return;
+
+        case 0x0D0001: case 0x0D0101: // Trace process ID
+            // Set the trace process ID register
+            procId = value;
             return;
 
         default:

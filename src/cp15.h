@@ -46,6 +46,7 @@ class Cp15
         uint32_t ctrlReg = 0x78;
         uint32_t dtcmReg = 0x00;
         uint32_t itcmReg = 0x00;
+        uint32_t procId = 0x00;
 };
 
 #endif // CP15_H
