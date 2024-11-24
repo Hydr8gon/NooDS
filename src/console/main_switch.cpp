@@ -47,6 +47,8 @@ struct Texture
         width(width), height(height) {}
 };
 
+ClkrstSession cpuSession;
+
 EGLDisplay display;
 EGLContext context;
 EGLSurface surface;
@@ -136,6 +138,12 @@ void ConsoleUI::endFrame()
     glFinish();
     eglSwapBuffers(display, surface);
     scanned = false;
+
+    // Check if overclock should be reapplied, in case of pressing home for example
+    uint32_t rate;
+    clkrstGetClockRate(&cpuSession, &rate);
+    if (rate != 1785000000)
+        clkrstSetClockRate(&cpuSession, 1785000000);
 }
 
 void *ConsoleUI::createTexture(uint32_t *data, int width, int height)
@@ -289,7 +297,6 @@ MenuTouch gyroTouch()
 int main(int argc, char **argv)
 {
     // Overclock the Switch CPU
-    ClkrstSession cpuSession;
     clkrstInitialize();
     clkrstOpenSession(&cpuSession, PcvModuleId_CpuBus, 0);
     clkrstSetClockRate(&cpuSession, 1785000000);
