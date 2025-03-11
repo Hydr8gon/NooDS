@@ -109,7 +109,7 @@ class Gpu3D
         void saveState(FILE *file);
         void loadState(FILE *file);
 
-        void runCommand();
+        void runCommands();
         void swapBuffers();
         bool shouldSwap() { return state == GX_HALTED; }
 

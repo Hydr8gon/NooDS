@@ -174,9 +174,10 @@ bool Spi::loadFirmware()
 
 void Spi::directBoot()
 {
-    // Load the user settings into memory
+    // Load the user settings into memory based on DSi mode
+    uint32_t address = 0x27FFC80 + (Settings::dsiMode << 23);
     for (uint32_t i = 0; i < 0x70; i++)
-        core->memory.write<uint8_t>(0, 0x27FFC80 + i, firmware[firmSize - 0x100 + i]);
+        core->memory.write<uint8_t>(0, address + i, firmware[firmSize - 0x100 + i]);
 }
 
 void Spi::setTouch(int x, int y)

@@ -55,7 +55,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     tasks[NDS_SCANLINE355] = std::bind(&Gpu::scanline355, &gpu);
     tasks[GBA_SCANLINE240] = std::bind(&Gpu::gbaScanline240, &gpu);
     tasks[GBA_SCANLINE308] = std::bind(&Gpu::gbaScanline308, &gpu);
-    tasks[GPU3D_COMMAND] = std::bind(&Gpu3D::runCommand, &gpu3D);
+    tasks[GPU3D_COMMANDS] = std::bind(&Gpu3D::runCommands, &gpu3D);
     tasks[ARM9_INTERRUPT] = std::bind(&Interpreter::interrupt, &interpreter[0]);
     tasks[ARM7_INTERRUPT] = std::bind(&Interpreter::interrupt, &interpreter[1]);
     tasks[NDS_SPU_SAMPLE] = std::bind(&Spu::runSample, &spu);

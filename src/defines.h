@@ -22,6 +22,9 @@
 
 #include <cstdio>
 
+// Control how many cycles of 3D GPU commands are batched
+#define GPU3D_BATCH 32
+
 // Enable or disable debug log printing
 #ifdef DEBUG
 #define LOG(...) printf(__VA_ARGS__)
@@ -56,19 +59,20 @@
 
 // Macro to swap two values
 #define SWAP(a, b) \
-{                  \
-    auto c = a;    \
-    a = b;         \
-    b = c;         \
+{ \
+    auto c = a; \
+    a = b; \
+    b = c; \
 }
 
 // Macros that read a value larger than 8 bits from an 8-bit array
 #define U8TO16(data, index) ((data)[index] | ((data)[(index) + 1] << 8))
-#define U8TO32(data, index) ((data)[index] | ((data)[(index) + 1] << 8) | ((data)[(index) + 2] << 16) | ((data)[(index) + 3] << 24))
+#define U8TO32(data, index) ((data)[index] | ((data)[(index) + 1] << 8) | \
+    ((data)[(index) + 2] << 16) | ((data)[(index) + 3] << 24))
 #define U8TO64(data, index) ((uint64_t)U8TO32(data, (index) + 4) << 32) | (uint32_t)U8TO32(data, index)
 
 // Macro that stores a 32-bit value to an 8-bit array
-#define U32TO8(data, index, value)                  \
+#define U32TO8(data, index, value) \
     (data)[(index) + 0] = (uint8_t)((value) >>  0); \
     (data)[(index) + 1] = (uint8_t)((value) >>  8); \
     (data)[(index) + 2] = (uint8_t)((value) >> 16); \

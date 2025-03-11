@@ -231,14 +231,13 @@ uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
 
 Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2)
 {
-    Vertex vertex;
-
     // Calculate the interpolation coefficients
     int64_t d1 = val1 + vtx1->w;
     int64_t d2 = val2 + vtx2->w;
     if (d2 == d1) return *vtx1;
 
     // Interpolate the vertex coordinates
+    Vertex vertex;
     vertex.x = ((d2 * vtx1->x) - (d1 * vtx2->x)) / (d2 - d1);
     vertex.y = ((d2 * vtx1->y) - (d1 * vtx2->y)) / (d2 - d1);
     vertex.z = ((d2 * vtx1->z) - (d1 * vtx2->z)) / (d2 - d1);
@@ -251,15 +250,13 @@ Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val
     uint8_t g = ((d2 * ((vtx1->color >>  6) & 0x3F)) - (d1 * ((vtx2->color >>  6) & 0x3F))) / (d2 - d1);
     uint8_t b = ((d2 * ((vtx1->color >> 12) & 0x3F)) - (d1 * ((vtx2->color >> 12) & 0x3F))) / (d2 - d1);
     vertex.color = (vtx1->color & 0xFC0000) | (b << 12) | (g << 6) | r;
-
     return vertex;
 }
 
 bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size)
 {
-    bool clip = false;
-
     // Start with the original unclipped vertices
+    bool clip = false;
     Vertex vertices[10];
     memcpy(vertices, unclipped, *size * sizeof(Vertex));
 
@@ -268,7 +265,6 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size)
     {
         int oldSize = *size;
         *size = 0;
-
         for (int j = 0; j < oldSize; j++)
         {
             // Get the unclipped vertices 
@@ -295,7 +291,6 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size)
                     clipped[(*size)++] = intersection(current, previous, currentVal, previousVal);
                     clip = true;
                 }
-
                 clipped[(*size)++] = *current;
             }
             else if (previousVal >= -previous->w) // Previous vertex in bounds
@@ -308,91 +303,98 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size)
         // Update the current vertices
         memcpy(vertices, clipped, *size * sizeof(Vertex));
     }
-
     return clip;
 }
 
-void Gpu3D::runCommand()
+void Gpu3D::runCommands()
 {
-    // Fetch the next geometry command
-    Entry entry = fifo.front();
-    int count = paramCounts[entry.command];
-    std::vector<uint32_t> params;
-
-    // If the command has multiple parameters, fetch them all
-    if (count > 1)
+    // Run a batch of geometry commands
+    uint32_t cycles = 0;
+    while (cycles < GPU3D_BATCH)
     {
-        params.reserve(count);
-        for (int i = 0; i < count; i++)
+        // Fetch the next geometry command
+        Entry entry = fifo.front();
+        int count = paramCounts[entry.command];
+        std::vector<uint32_t> params;
+
+        // If the command has multiple parameters, fetch them all
+        if (count > 1)
         {
-            params.push_back(fifo.front().param);
+            params.reserve(count);
+            for (int i = 0; i < count; i++)
+            {
+                params.push_back(fifo.front().param);
+                fifo.pop_front();
+            }
+        }
+        else
+        {
+            count = 1;
             fifo.pop_front();
         }
-    }
-    else
-    {
-        count = 1;
-        fifo.pop_front();
-    }
 
-    // Execute the geometry command
-    switch (entry.command)
-    {
-        case 0x10: mtxModeCmd(entry.param);       break; // MTX_MODE
-        case 0x11: mtxPushCmd();                  break; // MTX_PUSH
-        case 0x12: mtxPopCmd(entry.param);        break; // MTX_POP
-        case 0x13: mtxStoreCmd(entry.param);      break; // MTX_STORE
-        case 0x14: mtxRestoreCmd(entry.param);    break; // MTX_RESTORE
-        case 0x15: mtxIdentityCmd();              break; // MTX_IDENTITY
-        case 0x16: mtxLoad44Cmd(params);          break; // MTX_LOAD_4x4
-        case 0x17: mtxLoad43Cmd(params);          break; // MTX_LOAD_4x3
-        case 0x18: mtxMult44Cmd(params);          break; // MTX_MULT_4x4
-        case 0x19: mtxMult43Cmd(params);          break; // MTX_MULT_4x3
-        case 0x1A: mtxMult33Cmd(params);          break; // MTX_MULT_3x3
-        case 0x1B: mtxScaleCmd(params);           break; // MTX_SCALE
-        case 0x1C: mtxTransCmd(params);           break; // MTX_TRANS
-        case 0x20: colorCmd(entry.param);         break; // COLOR
-        case 0x21: normalCmd(entry.param);        break; // NORMAL
-        case 0x22: texCoordCmd(entry.param);      break; // TEXCOORD
-        case 0x23: vtx16Cmd(params);              break; // VTX_16
-        case 0x24: vtx10Cmd(entry.param);         break; // VTX_10
-        case 0x25: vtxXYCmd(entry.param);         break; // VTX_XY
-        case 0x26: vtxXZCmd(entry.param);         break; // VTX_XZ
-        case 0x27: vtxYZCmd(entry.param);         break; // VTX_YZ
-        case 0x28: vtxDiffCmd(entry.param);       break; // VTX_DIFF
-        case 0x29: polygonAttrCmd(entry.param);   break; // POLYGON_ATTR
-        case 0x2A: texImageParamCmd(entry.param); break; // TEXIMAGE_PARAM
-        case 0x2B: plttBaseCmd(entry.param);      break; // PLTT_BASE
-        case 0x30: difAmbCmd(entry.param);        break; // DIF_AMB
-        case 0x31: speEmiCmd(entry.param);        break; // SPE_EMI
-        case 0x32: lightVectorCmd(entry.param);   break; // LIGHT_VECTOR
-        case 0x33: lightColorCmd(entry.param);    break; // LIGHT_COLOR
-        case 0x34: shininessCmd(params);          break; // SHININESS
-        case 0x40: beginVtxsCmd(entry.param);     break; // BEGIN_VTXS
-        case 0x41:                                break; // END_VTXS
-        case 0x50: swapBuffersCmd(entry.param);   break; // SWAP_BUFFERS
-        case 0x60: viewportCmd(entry.param);      break; // VIEWPORT
-        case 0x70: boxTestCmd(params);            break; // BOX_TEST
-        case 0x71: posTestCmd(params);            break; // POS_TEST
-        case 0x72: vecTestCmd(entry.param);       break; // VEC_TEST
-
-        default:
+        // Execute the geometry command
+        switch (entry.command)
         {
-            LOG("Unknown GXFIFO command: 0x%X\n", entry.command);
-            break;
-        }
-    }
+            case 0x10: mtxModeCmd(entry.param); break; // MTX_MODE
+            case 0x11: mtxPushCmd(); break; // MTX_PUSH
+            case 0x12: mtxPopCmd(entry.param); break; // MTX_POP
+            case 0x13: mtxStoreCmd(entry.param); break; // MTX_STORE
+            case 0x14: mtxRestoreCmd(entry.param); break; // MTX_RESTORE
+            case 0x15: mtxIdentityCmd(); break; // MTX_IDENTITY
+            case 0x16: mtxLoad44Cmd(params); break; // MTX_LOAD_4x4
+            case 0x17: mtxLoad43Cmd(params); break; // MTX_LOAD_4x3
+            case 0x18: mtxMult44Cmd(params); break; // MTX_MULT_4x4
+            case 0x19: mtxMult43Cmd(params); break; // MTX_MULT_4x3
+            case 0x1A: mtxMult33Cmd(params); break; // MTX_MULT_3x3
+            case 0x1B: mtxScaleCmd(params); break; // MTX_SCALE
+            case 0x1C: mtxTransCmd(params); break; // MTX_TRANS
+            case 0x20: colorCmd(entry.param); break; // COLOR
+            case 0x21: normalCmd(entry.param); break; // NORMAL
+            case 0x22: texCoordCmd(entry.param); break; // TEXCOORD
+            case 0x23: vtx16Cmd(params); break; // VTX_16
+            case 0x24: vtx10Cmd(entry.param); break; // VTX_10
+            case 0x25: vtxXYCmd(entry.param); break; // VTX_XY
+            case 0x26: vtxXZCmd(entry.param); break; // VTX_XZ
+            case 0x27: vtxYZCmd(entry.param); break; // VTX_YZ
+            case 0x28: vtxDiffCmd(entry.param); break; // VTX_DIFF
+            case 0x29: polygonAttrCmd(entry.param); break; // POLYGON_ATTR
+            case 0x2A: texImageParamCmd(entry.param); break; // TEXIMAGE_PARAM
+            case 0x2B: plttBaseCmd(entry.param); break; // PLTT_BASE
+            case 0x30: difAmbCmd(entry.param); break; // DIF_AMB
+            case 0x31: speEmiCmd(entry.param); break; // SPE_EMI
+            case 0x32: lightVectorCmd(entry.param); break; // LIGHT_VECTOR
+            case 0x33: lightColorCmd(entry.param); break; // LIGHT_COLOR
+            case 0x34: shininessCmd(params); break; // SHININESS
+            case 0x40: beginVtxsCmd(entry.param); break; // BEGIN_VTXS
+            case 0x41: break; // END_VTXS
+            case 0x50: swapBuffersCmd(entry.param); break; // SWAP_BUFFERS
+            case 0x60: viewportCmd(entry.param); break; // VIEWPORT
+            case 0x70: boxTestCmd(params); break; // BOX_TEST
+            case 0x71: posTestCmd(params); break; // POS_TEST
+            case 0x72: vecTestCmd(entry.param); break; // VEC_TEST
 
-    // On hardware, FIFO entries are moved into a pipe before being executed
-    // The pipe can hold 4 entries, and is refilled when it runs half empty (2 entries)
-    // As long as there are enough entries, set the pipe size to 3 or 4 depending on when it would refill
-    pipeSize = 4 - ((pipeSize + count) & 1);
-    if (pipeSize > fifo.size()) pipeSize = fifo.size();
+            default:
+                LOG("Unknown GXFIFO command: 0x%X\n", entry.command);
+                break;
+        }
+
+        // On hardware, FIFO entries are moved into a pipe before being executed
+        // The pipe can hold 4 entries, and is refilled when it runs half empty (2 entries)
+        // As long as there are enough entries, set the pipe size to 3 or 4 depending on when it would refill
+        pipeSize = 4 - ((pipeSize + count) & 1);
+        if (pipeSize > fifo.size()) pipeSize = fifo.size();
+
+        // End a batch early if there aren't enough parameters
+        cycles += 2;
+        if (fifo.empty() || fifo.size() < paramCounts[fifo.front().command])
+            break;
+    }
 
     // Update the FIFO status
     gxStat = (gxStat & ~0x01FF0000) | ((fifo.size() - pipeSize) << 16); // FIFO entries
-    if (fifo.size() - pipeSize == 0) gxStat |=  BIT(26); // FIFO empty
-    if (fifo.size() == 0)            gxStat &= ~BIT(27); // Commands not executing
+    if (fifo.size() - pipeSize == 0) gxStat |= BIT(26); // FIFO empty
+    if (fifo.size() == 0) gxStat &= ~BIT(27); // Commands not executing
 
     // If the FIFO becomes less than half full, trigger GXFIFO DMA transfers
     // If the FIFO is already less than half full when a DMA starts, it will automatically activate
@@ -417,7 +419,7 @@ void Gpu3D::runCommand()
     if (state != GX_HALTED)
     {
         if (!fifo.empty() && fifo.size() >= paramCounts[fifo.front().command])
-            core->schedule(GPU3D_COMMAND, 2);
+            core->schedule(GPU3D_COMMANDS, cycles);
         else
             state = GX_IDLE;
     }
@@ -500,7 +502,7 @@ void Gpu3D::swapBuffers()
     // Unhalt the GXFIFO, and start executing commands if one is ready
     if (!fifo.empty() && fifo.size() >= paramCounts[fifo.front().command])
     {
-        core->schedule(GPU3D_COMMAND, 2);
+        core->schedule(GPU3D_COMMANDS, 2);
         state = GX_RUNNING;
     }
     else
@@ -1711,7 +1713,7 @@ void Gpu3D::addEntry(Entry entry)
     // Start executing commands if one is ready
     if (state == GX_IDLE && fifo.size() >= paramCounts[fifo.front().command])
     {
-        core->schedule(GPU3D_COMMAND, 2);
+        core->schedule(GPU3D_COMMANDS, 2);
         state = GX_RUNNING;
     }
 }
