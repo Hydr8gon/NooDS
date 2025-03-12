@@ -45,6 +45,9 @@ class Interpreter
         static void runDsiFrame(Core &core);
         static void runGbaFrame(Core &core);
 
+        uint16_t getOpcode16();
+        uint32_t getOpcode32();
+
         void halt(int bit) { halted |= BIT(bit); }
         void unhalt(int bit) { halted &= ~BIT(bit); }
         void sendInterrupt(int bit);
@@ -68,7 +71,9 @@ class Interpreter
         Core *core;
         bool arm7;
 
+        uint8_t *pcData = nullptr;
         uint32_t pipeline[2] = {};
+
         uint32_t *registers[32] = {};
         uint32_t registersUsr[16] = {};
         uint32_t registersFiq[7] = {};

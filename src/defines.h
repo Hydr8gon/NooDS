@@ -66,16 +66,21 @@
 }
 
 // Macros that read a value larger than 8 bits from an 8-bit array
-#define U8TO16(data, index) ((data)[index] | ((data)[(index) + 1] << 8))
-#define U8TO32(data, index) ((data)[index] | ((data)[(index) + 1] << 8) | \
-    ((data)[(index) + 2] << 16) | ((data)[(index) + 3] << 24))
-#define U8TO64(data, index) ((uint64_t)U8TO32(data, (index) + 4) << 32) | (uint32_t)U8TO32(data, index)
+#ifdef ENDIAN_BIG
+#define U8TO16(data, index) __builtin_bswap16(*(uint16_t*)&(data)[index])
+#define U8TO32(data, index) __builtin_bswap32(*(uint32_t*)&(data)[index])
+#define U8TO64(data, index) __builtin_bswap64(*(uint64_t*)&(data)[index])
+#else
+#define U8TO16(data, index) (*(uint16_t*)&(data)[index])
+#define U8TO32(data, index) (*(uint32_t*)&(data)[index])
+#define U8TO64(data, index) (*(uint64_t*)&(data)[index])
+#endif
 
 // Macro that stores a 32-bit value to an 8-bit array
-#define U32TO8(data, index, value) \
-    (data)[(index) + 0] = (uint8_t)((value) >>  0); \
-    (data)[(index) + 1] = (uint8_t)((value) >>  8); \
-    (data)[(index) + 2] = (uint8_t)((value) >> 16); \
-    (data)[(index) + 3] = (uint8_t)((value) >> 24);
+#ifdef ENDIAN_BIG
+#define U32TO8(data, index, value) (*(uint32_t*)&(data)[index] = __builtin_bswap32(value))
+#else
+#define U32TO8(data, index, value) (*(uint32_t*)&(data)[index] = (value))
+#endif
 
 #endif // DEFINES_H

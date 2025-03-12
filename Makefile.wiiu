@@ -16,7 +16,7 @@ DATA := src/console/images src/console/shaders
 LIBS := -lwut -lSDL2
 INCS := $(PORTLIBS) $(WUT_ROOT)
 
-CXXFLAGS := -g -Ofast -flto -ffunction-sections $(MACHDEP) $(INCLUDE) -D__WIIU__ -D__WUT__ -DNO_FDOPEN
+CXXFLAGS := -g -Ofast -flto -ffunction-sections $(MACHDEP) $(INCLUDE) -D__WIIU__ -D__WUT__ -DENDIAN_BIG -DNO_FDOPEN
 LDFLAGS = -g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))

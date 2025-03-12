@@ -78,6 +78,7 @@ void Interpreter::loadState(FILE *file)
 
     // Update mapped registers
     swapRegisters(cpsr);
+    pcData = nullptr;
 }
 
 void Interpreter::init()
@@ -216,25 +217,43 @@ FORCE_INLINE int Interpreter::runOpcode()
     // Execute an instruction
     if (cpsr & BIT(5)) // THUMB mode
     {
-        // Fill the pipeline, incrementing the program counter
-        pipeline[1] = core->memory.read<uint16_t>(arm7, *registers[15] += 2);
+        // Increment the program counter and fill the pipeline from pointer or fallback
+        pipeline[1] = (((*registers[15] += 2) & 0xFFE) && pcData) ? U8TO16(pcData += 2, 0) : getOpcode16();
 
         // Execute a THUMB instruction
         return (this->*thumbInstrs[(opcode >> 6) & 0x3FF])(opcode);
     }
     else // ARM mode
     {
-        // Fill the pipeline, incrementing the program counter
-        pipeline[1] = core->memory.read<uint32_t>(arm7, *registers[15] += 4);
+        // Increment the program counter and fill the pipeline from pointer or fallback
+        pipeline[1] = (((*registers[15] += 4) & 0xFFC) && pcData) ? U8TO32(pcData += 4, 0) : getOpcode32();
 
         // Execute an ARM instruction based on its condition
         switch (condition[((opcode >> 24) & 0xF0) | (cpsr >> 28)])
         {
-            case 0:  return 1;                      // False
-            case 2:  return handleReserved(opcode); // Reserved
+            case 0: return 1; // False
+            case 2: return handleReserved(opcode); // Reserved
             default: return (this->*armInstrs[((opcode >> 16) & 0xFF0) | ((opcode >> 4) & 0xF)])(opcode);
         }
     }
+}
+
+uint16_t Interpreter::getOpcode16()
+{
+    // Set the opcode pointer or fall back to a regular 16-bit opcode read
+    if (!(pcData = (arm7 ? core->memory.readMap7 : core->memory.readMap9A)[*registers[15] >> 12]))
+        return core->memory.read<uint16_t>(arm7, *registers[15]);
+    pcData += (*registers[15] & 0xFFE);
+    return U8TO16(pcData, 0);
+}
+
+uint32_t Interpreter::getOpcode32()
+{
+    // Set the opcode pointer or fall back to a regular 32-bit opcode read
+    if (!(pcData = (arm7 ? core->memory.readMap7 : core->memory.readMap9A)[*registers[15] >> 12]))
+        return core->memory.read<uint32_t>(arm7, *registers[15]);
+    pcData += (*registers[15] & 0xFFC);
+    return U8TO32(pcData, 0);
 }
 
 void Interpreter::sendInterrupt(int bit)
@@ -285,13 +304,13 @@ void Interpreter::flushPipeline()
     {
         *registers[15] = (*registers[15] & ~0x1) + 2;
         pipeline[0] = core->memory.read<uint16_t>(arm7, *registers[15] - 2);
-        pipeline[1] = core->memory.read<uint16_t>(arm7, *registers[15]);
+        pipeline[1] = getOpcode16();
     }
     else // ARM mode
     {
         *registers[15] = (*registers[15] & ~0x3) + 4;
         pipeline[0] = core->memory.read<uint32_t>(arm7, *registers[15] - 4);
-        pipeline[1] = core->memory.read<uint32_t>(arm7, *registers[15]);
+        pipeline[1] = getOpcode32();
     }
 }
 
@@ -404,12 +423,12 @@ int Interpreter::handleReserved(uint32_t opcode)
         uint32_t **r = registers;
         switch (opcode)
         {
-            case DLDI_START:  *r[0] = core->dldi.startup();                               break;
-            case DLDI_INSERT: *r[0] = core->dldi.isInserted();                            break;
-            case DLDI_READ:   *r[0] = core->dldi.readSectors(arm7, *r[0], *r[1], *r[2]);  break;
-            case DLDI_WRITE:  *r[0] = core->dldi.writeSectors(arm7, *r[0], *r[1], *r[2]); break;
-            case DLDI_CLEAR:  *r[0] = core->dldi.clearStatus();                           break;
-            case DLDI_STOP:   *r[0] = core->dldi.shutdown();                              break;
+            case DLDI_START: *r[0] = core->dldi.startup(); break;
+            case DLDI_INSERT: *r[0] = core->dldi.isInserted(); break;
+            case DLDI_READ: *r[0] = core->dldi.readSectors(arm7, *r[0], *r[1], *r[2]); break;
+            case DLDI_WRITE: *r[0] = core->dldi.writeSectors(arm7, *r[0], *r[1], *r[2]); break;
+            case DLDI_CLEAR: *r[0] = core->dldi.clearStatus(); break;
+            case DLDI_STOP: *r[0] = core->dldi.shutdown(); break;
         }
         return bx(14);
     }

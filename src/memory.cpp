@@ -266,6 +266,9 @@ void Memory::updateMap9(uint32_t start, uint32_t end, bool tcm)
     // For non-TCM updates, update the TCM map as well
     if (!tcm)
         updateMap9(start, end, true);
+
+    // Update the ARM9 opcode pointer in case it was remapped
+    core->interpreter[0].getOpcode16();
 }
 
 void Memory::updateMap7(uint32_t start, uint32_t end)
@@ -357,6 +360,9 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
             }
         }
     }
+
+    // Update the ARM7 opcode pointer in case it was remapped
+    core->interpreter[1].getOpcode16();
 }
 
 void Memory::updateVram()

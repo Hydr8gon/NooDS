@@ -38,6 +38,14 @@ struct VramMapping
 class Memory
 {
     public:
+        // 32-bit address space, split into 4KB blocks
+        uint8_t *readMap9A[0x100000] = {};
+        uint8_t *readMap9B[0x100000] = {};
+        uint8_t *readMap7[0x100000] = {};
+        uint8_t *writeMap9A[0x100000] = {};
+        uint8_t *writeMap9B[0x100000] = {};
+        uint8_t *writeMap7[0x100000] = {};
+
         uint8_t palette[0x800] = {}; // 2KB palette
         uint8_t oam[0x800] = {}; // 2KB OAM
         uint8_t *engAExtPal[5] = {};
@@ -64,14 +72,6 @@ class Memory
     private:
         Core *core;
         uint32_t gbaBiosAddr = 0;
-
-        // 32-bit address space, split into 4KB blocks
-        uint8_t *readMap9A[0x100000] = {};
-        uint8_t *readMap9B[0x100000] = {};
-        uint8_t *readMap7[0x100000] = {};
-        uint8_t *writeMap9A[0x100000] = {};
-        uint8_t *writeMap9B[0x100000] = {};
-        uint8_t *writeMap7[0x100000] = {};
 
         uint8_t bios9[0x8000] = {}; // 32KB ARM9 BIOS
         uint8_t bios7[0x4000] = {}; // 16KB ARM7 BIOS
