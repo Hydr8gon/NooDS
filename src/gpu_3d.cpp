@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -32,8 +32,8 @@ Matrix Matrix::operator*(Matrix &mtx)
     {
         for (int x = 0; x < 4; x++)
         {
-            result.data[y * 4 + x] = ((int64_t)data[y * 4 + 0] * mtx.data[0 + x] + (int64_t)data[y * 4 + 1] * mtx.data[4  + x] +
-                                      (int64_t)data[y * 4 + 2] * mtx.data[8 + x] + (int64_t)data[y * 4 + 3] * mtx.data[12 + x]) >> 12;
+            result.data[y * 4 + x] = ((int64_t)data[y * 4 + 0] * mtx.data[0 + x] + (int64_t)data[y * 4 + 1] * mtx.data[4 + x] +
+                (int64_t)data[y * 4 + 2] * mtx.data[8 + x] + (int64_t)data[y * 4 + 3] * mtx.data[12 + x]) >> 12;
         }
     }
 
@@ -51,8 +51,8 @@ Vector Vector::operator*(Matrix &mtx)
     Vector result;
 
     // Multiply a vector with a matrix
-    result.x = ((int64_t)x * mtx.data[0] + (int64_t)y * mtx.data[4] + (int64_t)z * mtx.data[8])  >> 12;
-    result.y = ((int64_t)x * mtx.data[1] + (int64_t)y * mtx.data[5] + (int64_t)z * mtx.data[9])  >> 12;
+    result.x = ((int64_t)x * mtx.data[0] + (int64_t)y * mtx.data[4] + (int64_t)z * mtx.data[8]) >> 12;
+    result.y = ((int64_t)x * mtx.data[1] + (int64_t)y * mtx.data[5] + (int64_t)z * mtx.data[9]) >> 12;
     result.z = ((int64_t)x * mtx.data[2] + (int64_t)y * mtx.data[6] + (int64_t)z * mtx.data[10]) >> 12;
 
     return result;
@@ -63,8 +63,8 @@ Vertex Vertex::operator*(Matrix &mtx)
     Vertex result = *this;
 
     // Multiply a vertex with a matrix
-    result.x = ((int64_t)x * mtx.data[0] + (int64_t)y * mtx.data[4] + (int64_t)z * mtx.data[8]  + (int64_t)w * mtx.data[12]) >> 12;
-    result.y = ((int64_t)x * mtx.data[1] + (int64_t)y * mtx.data[5] + (int64_t)z * mtx.data[9]  + (int64_t)w * mtx.data[13]) >> 12;
+    result.x = ((int64_t)x * mtx.data[0] + (int64_t)y * mtx.data[4] + (int64_t)z * mtx.data[8] + (int64_t)w * mtx.data[12]) >> 12;
+    result.y = ((int64_t)x * mtx.data[1] + (int64_t)y * mtx.data[5] + (int64_t)z * mtx.data[9] + (int64_t)w * mtx.data[13]) >> 12;
     result.z = ((int64_t)x * mtx.data[2] + (int64_t)y * mtx.data[6] + (int64_t)z * mtx.data[10] + (int64_t)w * mtx.data[14]) >> 12;
     result.w = ((int64_t)x * mtx.data[3] + (int64_t)y * mtx.data[7] + (int64_t)z * mtx.data[11] + (int64_t)w * mtx.data[15]) >> 12;
 
@@ -73,14 +73,14 @@ Vertex Vertex::operator*(Matrix &mtx)
 
 const uint8_t Gpu3D::paramCounts[] =
 {
-    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x00-0x0F
-    1,  0,  1,  1,  1,  0, 16, 12, 16, 12,  9,  3,  3,  0,  0,  0, // 0x10-0x1F
-    1,  1,  1,  2,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0, // 0x20-0x2F
-    1,  1,  1,  1, 32,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x30-0x3F
-    1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x40-0x4F
-    1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x50-0x5F
-    1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x60-0x6F
-    3,  2,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 0x70-0x7F
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x00-0x0F
+    1, 0, 1, 1, 1, 0, 16, 12, 16, 12, 9, 3, 3, 0, 0, 0, // 0x10-0x1F
+    1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, // 0x20-0x2F
+    1, 1, 1, 1, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x30-0x3F
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x40-0x4F
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x50-0x5F
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x60-0x6F
+    3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x70-0x7F
 };
 
 void Gpu3D::saveState(FILE *file)
@@ -223,8 +223,8 @@ void Gpu3D::loadState(FILE *file)
 uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
 {
     // Convert an RGB5 value to an RGB6 value (the way the 3D engine does it)
-    uint8_t r = ((color >>  0) & 0x1F) * 2; if (r > 0) r++;
-    uint8_t g = ((color >>  5) & 0x1F) * 2; if (g > 0) g++;
+    uint8_t r = ((color >> 0) & 0x1F) * 2; if (r > 0) r++;
+    uint8_t g = ((color >> 5) & 0x1F) * 2; if (g > 0) g++;
     uint8_t b = ((color >> 10) & 0x1F) * 2; if (b > 0) b++;
     return (b << 12) | (g << 6) | r;
 }
@@ -246,8 +246,8 @@ Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val
     vertex.t = ((d2 * vtx1->t) - (d1 * vtx2->t)) / (d2 - d1);
 
     // Interpolate the vertex color
-    uint8_t r = ((d2 * ((vtx1->color >>  0) & 0x3F)) - (d1 * ((vtx2->color >>  0) & 0x3F))) / (d2 - d1);
-    uint8_t g = ((d2 * ((vtx1->color >>  6) & 0x3F)) - (d1 * ((vtx2->color >>  6) & 0x3F))) / (d2 - d1);
+    uint8_t r = ((d2 * ((vtx1->color >> 0) & 0x3F)) - (d1 * ((vtx2->color >> 0) & 0x3F))) / (d2 - d1);
+    uint8_t g = ((d2 * ((vtx1->color >> 6) & 0x3F)) - (d1 * ((vtx2->color >> 6) & 0x3F))) / (d2 - d1);
     uint8_t b = ((d2 * ((vtx1->color >> 12) & 0x3F)) - (d1 * ((vtx2->color >> 12) & 0x3F))) / (d2 - d1);
     vertex.color = (vtx1->color & 0xFC0000) | (b << 12) | (g << 6) | r;
     return vertex;
@@ -275,11 +275,11 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size)
             int32_t currentVal, previousVal;
             switch (i)
             {
-                case 0: currentVal =  current->x; previousVal =  previous->x; break;
+                case 0: currentVal = current->x; previousVal = previous->x; break;
                 case 1: currentVal = -current->x; previousVal = -previous->x; break;
-                case 2: currentVal =  current->y; previousVal =  previous->y; break;
+                case 2: currentVal = current->y; previousVal = previous->y; break;
                 case 3: currentVal = -current->y; previousVal = -previous->y; break;
-                case 4: currentVal =  current->z; previousVal =  previous->z; break;
+                case 4: currentVal = current->z; previousVal = previous->z; break;
                 case 5: currentVal = -current->z; previousVal = -previous->z; break;
             }
 
@@ -552,9 +552,9 @@ void Gpu3D::addVertex()
     // Move to the next polygon if one has been completed
     switch (polygonType)
     {
-        case 0: if (vertexCount % 3 == 0)                     addPolygon(); break; // Separate triangles
-        case 1: if (vertexCount % 4 == 0)                     addPolygon(); break; // Separate quads
-        case 2: if (vertexCount >= 3)                         addPolygon(); break; // Triangle strips
+        case 0: if (vertexCount % 3 == 0) addPolygon(); break; // Separate triangles
+        case 1: if (vertexCount % 4 == 0) addPolygon(); break; // Separate quads
+        case 2: if (vertexCount >= 3) addPolygon(); break; // Triangle strips
         case 3: if (vertexCount >= 4 && vertexCount % 2 == 0) addPolygon(); break; // Quad strips
     }
 }
@@ -1252,8 +1252,8 @@ void Gpu3D::normalCmd(uint32_t param)
 {
     // Get the normal vector
     Vertex normalVector;
-    normalVector.x = ((int16_t)((param & 0x000003FF) <<  6)) >> 3;
-    normalVector.y = ((int16_t)((param & 0x000FFC00) >>  4)) >> 3;
+    normalVector.x = ((int16_t)((param & 0x000003FF) << 6)) >> 3;
+    normalVector.y = ((int16_t)((param & 0x000FFC00) >> 4)) >> 3;
     normalVector.z = ((int16_t)((param & 0x3FF00000) >> 14)) >> 3;
 
     // Transform the texture coordinates
@@ -1299,20 +1299,20 @@ void Gpu3D::normalCmd(uint32_t param)
 
             if (shininessEnabled) shininessLevel = shininess[shininessLevel >> 5] << 4;
 
-            int r = (savedVertex.color >>  0) & 0x3F;
-            int g = (savedVertex.color >>  6) & 0x3F;
+            int r = (savedVertex.color >> 0) & 0x3F;
+            int g = (savedVertex.color >> 6) & 0x3F;
             int b = (savedVertex.color >> 12) & 0x3F;
 
-            r += (((specularColor >>  0) & 0x3F) * ((lightColor[i] >>  0) & 0x3F) * shininessLevel) >> 18;
-            g += (((specularColor >>  6) & 0x3F) * ((lightColor[i] >>  6) & 0x3F) * shininessLevel) >> 18;
+            r += (((specularColor >> 0) & 0x3F) * ((lightColor[i] >> 0) & 0x3F) * shininessLevel) >> 18;
+            g += (((specularColor >> 6) & 0x3F) * ((lightColor[i] >> 6) & 0x3F) * shininessLevel) >> 18;
             b += (((specularColor >> 12) & 0x3F) * ((lightColor[i] >> 12) & 0x3F) * shininessLevel) >> 18;
 
-            r += (((diffuseColor >>  0) & 0x3F) * ((lightColor[i] >>  0) & 0x3F) * diffuseLevel) >> 18;
-            g += (((diffuseColor >>  6) & 0x3F) * ((lightColor[i] >>  6) & 0x3F) * diffuseLevel) >> 18;
+            r += (((diffuseColor >> 0) & 0x3F) * ((lightColor[i] >> 0) & 0x3F) * diffuseLevel) >> 18;
+            g += (((diffuseColor >> 6) & 0x3F) * ((lightColor[i] >> 6) & 0x3F) * diffuseLevel) >> 18;
             b += (((diffuseColor >> 12) & 0x3F) * ((lightColor[i] >> 12) & 0x3F) * diffuseLevel) >> 18;
 
-            r += ((ambientColor >>  0) & 0x3F) * ((lightColor[i] >>  0) & 0x3F) >> 6;
-            g += ((ambientColor >>  6) & 0x3F) * ((lightColor[i] >>  6) & 0x3F) >> 6;
+            r += ((ambientColor >> 0) & 0x3F) * ((lightColor[i] >> 0) & 0x3F) >> 6;
+            g += ((ambientColor >> 6) & 0x3F) * ((lightColor[i] >> 6) & 0x3F) >> 6;
             b += ((ambientColor >> 12) & 0x3F) * ((lightColor[i] >> 12) & 0x3F) >> 6;
 
             if (r < 0) r = 0; if (r > 0x3F) r = 0x3F;
@@ -1327,7 +1327,7 @@ void Gpu3D::normalCmd(uint32_t param)
 void Gpu3D::texCoordCmd(uint32_t param)
 {
     // Set the untransformed texture coordinates
-    s = (int16_t)(param >>  0);
+    s = (int16_t)(param >> 0);
     t = (int16_t)(param >> 16);
 
     // Transform the texture coordinates
@@ -1357,7 +1357,7 @@ void Gpu3D::texCoordCmd(uint32_t param)
 void Gpu3D::vtx16Cmd(std::vector<uint32_t> &params)
 {
     // Set the X, Y, and Z coordinates
-    savedVertex.x = (int16_t)(params[0] >>  0);
+    savedVertex.x = (int16_t)(params[0] >> 0);
     savedVertex.y = (int16_t)(params[0] >> 16);
     savedVertex.z = (int16_t)(params[1]);
 
@@ -1377,7 +1377,7 @@ void Gpu3D::vtx10Cmd(uint32_t param)
 void Gpu3D::vtxXYCmd(uint32_t param)
 {
     // Set the X and Y coordinates
-    savedVertex.x = (int16_t)(param >>  0);
+    savedVertex.x = (int16_t)(param >> 0);
     savedVertex.y = (int16_t)(param >> 16);
 
     addVertex();
@@ -1386,7 +1386,7 @@ void Gpu3D::vtxXYCmd(uint32_t param)
 void Gpu3D::vtxXZCmd(uint32_t param)
 {
     // Set the X and Z coordinates
-    savedVertex.x = (int16_t)(param >>  0);
+    savedVertex.x = (int16_t)(param >> 0);
     savedVertex.z = (int16_t)(param >> 16);
 
     addVertex();
@@ -1395,7 +1395,7 @@ void Gpu3D::vtxXZCmd(uint32_t param)
 void Gpu3D::vtxYZCmd(uint32_t param)
 {
     // Set the Y and Z coordinates
-    savedVertex.y = (int16_t)(param >>  0);
+    savedVertex.y = (int16_t)(param >> 0);
     savedVertex.z = (int16_t)(param >> 16);
 
     addVertex();
@@ -1404,8 +1404,8 @@ void Gpu3D::vtxYZCmd(uint32_t param)
 void Gpu3D::vtxDiffCmd(uint32_t param)
 {
     // Add offsets to the X, Y, and Z coordinates
-    savedVertex.x += ((int16_t)((param & 0x000003FF) <<  6) / 8) >> 3;
-    savedVertex.y += ((int16_t)((param & 0x000FFC00) >>  4) / 8) >> 3;
+    savedVertex.x += ((int16_t)((param & 0x000003FF) << 6) / 8) >> 3;
+    savedVertex.y += ((int16_t)((param & 0x000FFC00) >> 4) / 8) >> 3;
     savedVertex.z += ((int16_t)((param & 0x3FF00000) >> 14) / 8) >> 3;
 
     addVertex();
@@ -1442,7 +1442,7 @@ void Gpu3D::plttBaseCmd(uint32_t param)
 void Gpu3D::difAmbCmd(uint32_t param)
 {
     // Set the diffuse and ambient reflection colors
-    diffuseColor = rgb5ToRgb6(param >>  0);
+    diffuseColor = rgb5ToRgb6(param >> 0);
     ambientColor = rgb5ToRgb6(param >> 16);
 
     // Directly set the vertex color
@@ -1453,7 +1453,7 @@ void Gpu3D::difAmbCmd(uint32_t param)
 void Gpu3D::speEmiCmd(uint32_t param)
 {
     // Set the specular reflection and emission colors
-    specularColor = rgb5ToRgb6(param >>  0);
+    specularColor = rgb5ToRgb6(param >> 0);
     emissionColor = rgb5ToRgb6(param >> 16);
 
     // Set the shininess table toggle
@@ -1463,16 +1463,16 @@ void Gpu3D::speEmiCmd(uint32_t param)
 void Gpu3D::lightVectorCmd(uint32_t param)
 {
     // Set one of the light vectors
-    lightVector[param >> 30].x = ((int16_t)((param & 0x000003FF) <<  6)) >> 3;
-    lightVector[param >> 30].y = ((int16_t)((param & 0x000FFC00) >>  4)) >> 3;
+    lightVector[param >> 30].x = ((int16_t)((param & 0x000003FF) << 6)) >> 3;
+    lightVector[param >> 30].y = ((int16_t)((param & 0x000FFC00) >> 4)) >> 3;
     lightVector[param >> 30].z = ((int16_t)((param & 0x3FF00000) >> 14)) >> 3;
 
     // Multiply the light vector by the directional matrix
     lightVector[param >> 30] = lightVector[param >> 30] * direction;
 
     // Set one of the half vectors
-    halfVector[param >> 30].x = (lightVector[param >> 30].x)             / 2;
-    halfVector[param >> 30].y = (lightVector[param >> 30].y)             / 2;
+    halfVector[param >> 30].x = (lightVector[param >> 30].x) / 2;
+    halfVector[param >> 30].y = (lightVector[param >> 30].y) / 2;
     halfVector[param >> 30].z = (lightVector[param >> 30].z - (1 << 12)) / 2;
 }
 
@@ -1487,8 +1487,8 @@ void Gpu3D::shininessCmd(std::vector<uint32_t> &params)
     // Set the values of the specular reflection shininess table
     for (int i = 0; i < 32; i++)
     {
-        shininess[i * 4 + 0] = params[i] >>  0;
-        shininess[i * 4 + 1] = params[i] >>  8;
+        shininess[i * 4 + 0] = params[i] >> 0;
+        shininess[i * 4 + 1] = params[i] >> 8;
         shininess[i * 4 + 2] = params[i] >> 16;
         shininess[i * 4 + 3] = params[i] >> 24;
     }
@@ -1622,7 +1622,7 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
 void Gpu3D::posTestCmd(std::vector<uint32_t> &params)
 {
     // Set the X, Y, and Z coordinates, overwriting the saved vertex
-    savedVertex.x = (int16_t)(params[0] >>  0);
+    savedVertex.x = (int16_t)(params[0] >> 0);
     savedVertex.y = (int16_t)(params[0] >> 16);
     savedVertex.z = (int16_t)(params[1]);
     savedVertex.w = 1 << 12;
@@ -1650,8 +1650,8 @@ void Gpu3D::vecTestCmd(uint32_t param)
 {
     // Set the vector components
     Vertex vector;
-    vector.x = ((int16_t)((param & 0x000003FF) <<  6)) >> 3;
-    vector.y = ((int16_t)((param & 0x000FFC00) >>  4)) >> 3;
+    vector.x = ((int16_t)((param & 0x000003FF) << 6)) >> 3;
+    vector.y = ((int16_t)((param & 0x000FFC00) >> 4)) >> 3;
     vector.z = ((int16_t)((param & 0x3FF00000) >> 14)) >> 3;
 
     // Multiply the vector with the directional matrix and set the result

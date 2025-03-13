@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -24,7 +24,7 @@
 #include <wx/wx.h>
 
 #define MAX_FRAMES 8
-#define MAX_KEYS  17
+#define MAX_KEYS 17
 
 class NooFrame;
 
@@ -50,7 +50,7 @@ class NooApp: public wxApp
         PaStream *streams[2] = {};
 
         bool OnInit();
-        int  OnExit();
+        int OnExit();
 
         void update(wxTimerEvent &event);
 

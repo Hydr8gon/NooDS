@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -550,8 +550,8 @@ template <bool gbaMode> void Gpu2D::drawText(int bg, int line)
     }
 
     // Get the base data addresses
-    uint32_t tileBase  = bgVramAddr + ((dispCnt >> 11) & 0x70000) + ((bgCnt[bg] <<  3) & 0x0F800);
-    uint32_t indexBase = bgVramAddr + ((dispCnt >>  8) & 0x70000) + ((bgCnt[bg] << 12) & 0x3C000);
+    uint32_t tileBase = bgVramAddr + ((dispCnt >> 11) & 0x70000) + ((bgCnt[bg] << 3) & 0x0F800);
+    uint32_t indexBase = bgVramAddr + ((dispCnt >> 8) & 0x70000) + ((bgCnt[bg] << 12) & 0x3C000);
 
     // Adjust the Y-coordinate within the background based on vertical mosaic
     int yOffset = (((bgCnt[bg] & BIT(6)) ? (line - (line % (((mosaic >> 4) & 0xF) + 1))) : line) + bgVOfs[bg]) & 0x1FF;
@@ -646,8 +646,8 @@ template <bool gbaMode> void Gpu2D::drawText(int bg, int line)
 template <bool gbaMode> void Gpu2D::drawAffine(int bg, int line)
 {
     // Calculate the base data addresses
-    uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] <<  3) & 0x0F800) + ((dispCnt >> 11) & 0x70000);
-    uint32_t indexBase = bgVramAddr + ((bgCnt[bg] << 12) & 0x3C000) + ((dispCnt >>  8) & 0x70000);
+    uint32_t tileBase = bgVramAddr + ((bgCnt[bg] << 3) & 0x0F800) + ((dispCnt >> 11) & 0x70000);
+    uint32_t indexBase = bgVramAddr + ((bgCnt[bg] << 12) & 0x3C000) + ((dispCnt >> 8) & 0x70000);
 
     // Set the initial rotscale coordinates
     int rotscaleX = internalX[bg - 2] - bgPA[bg - 2];
@@ -771,8 +771,8 @@ void Gpu2D::drawExtended(int bg, int line)
     else // Extended affine
     {
         // Calculate the base data addresses
-        uint32_t tileBase  = bgVramAddr + ((bgCnt[bg] <<  3) & 0x0F800) + ((dispCnt >> 11) & 0x70000);
-        uint32_t indexBase = bgVramAddr + ((bgCnt[bg] << 12) & 0x3C000) + ((dispCnt >>  8) & 0x70000);
+        uint32_t tileBase = bgVramAddr + ((bgCnt[bg] << 3) & 0x0F800) + ((dispCnt >> 11) & 0x70000);
+        uint32_t indexBase = bgVramAddr + ((bgCnt[bg] << 12) & 0x3C000) + ((dispCnt >> 8) & 0x70000);
 
         // Get the bitmap size
         size_t size = 128 << ((bgCnt[bg] >> 14) & 0x3);
@@ -811,8 +811,8 @@ void Gpu2D::drawExtended(int bg, int line)
 
             // Read the palette index for the current pixel
             uint32_t indexAddr = indexBase + (tile & 0x3FF) * 64 + // Tile offset
-                (((tile & BIT(11)) ? (7 - y) : y) & 7)      *  8 + // Vertical offset, flipped if enabled
-                (((tile & BIT(10)) ? (7 - x) : x) & 7);            // Horizontal offset, flipped if enabled
+                (((tile & BIT(11)) ? (7 - y) : y) & 7) * 8 + // Vertical offset, flipped if enabled
+                (((tile & BIT(10)) ? (7 - x) : x) & 7); // Horizontal offset, flipped if enabled
             uint8_t index = core->memory.read<uint8_t>(0, indexAddr);
 
             // Draw the pixel if it isn't transparent
@@ -895,8 +895,8 @@ void Gpu2D::drawLarge(int bg, int line)
     int rotscaleY = internalY[bg - 2] - bgPC[bg - 2];
 
     // Get the bitmap size
-    int sizeX = ((bgCnt[bg] >> 14) & 0x3) ? 1024 :  512;
-    int sizeY = ((bgCnt[bg] >> 14) & 0x3) ?  512 : 1024;
+    int sizeX = ((bgCnt[bg] >> 14) & 0x3) ? 1024 : 512;
+    int sizeY = ((bgCnt[bg] >> 14) & 0x3) ? 512 : 1024;
 
     // Draw a line of the layer
     for (int i = 0; i < 256; i++)
@@ -959,16 +959,16 @@ template <bool gbaMode> void Gpu2D::drawObjects(int line, bool window)
         int width, height;
         switch (((object[0] >> 12) & 0xC) | ((object[1] >> 14) & 0x3)) // Shape, size
         {
-            case 0x0: width =  8; height =  8; break; // Square, 0
+            case 0x0: width = 8; height = 8; break; // Square, 0
             case 0x1: width = 16; height = 16; break; // Square, 1
             case 0x2: width = 32; height = 32; break; // Square, 2
             case 0x3: width = 64; height = 64; break; // Square, 3
-            case 0x4: width = 16; height =  8; break; // Horizontal, 0
-            case 0x5: width = 32; height =  8; break; // Horizontal, 1
+            case 0x4: width = 16; height = 8; break; // Horizontal, 0
+            case 0x5: width = 32; height = 8; break; // Horizontal, 1
             case 0x6: width = 32; height = 16; break; // Horizontal, 2
             case 0x7: width = 64; height = 32; break; // Horizontal, 3
-            case 0x8: width =  8; height = 16; break; // Vertical, 0
-            case 0x9: width =  8; height = 32; break; // Vertical, 1
+            case 0x8: width = 8; height = 16; break; // Vertical, 0
+            case 0x9: width = 8; height = 32; break; // Vertical, 1
             case 0xA: width = 16; height = 32; break; // Vertical, 2
             case 0xB: width = 32; height = 64; break; // Vertical, 3
 
@@ -981,7 +981,7 @@ template <bool gbaMode> void Gpu2D::drawObjects(int line, bool window)
         int width2 = width, height2 = height;
         if ((object[0] & 0x0300) == 0x0300)
         {
-            width2  *= 2;
+            width2 *= 2;
             height2 *= 2;
         }
 

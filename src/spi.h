@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -54,8 +54,8 @@ class Spi
         static void setLanguage(Language lang) { language = lang; }
         void sendMicData(const int16_t* samples, size_t count, size_t rate);
 
-        uint16_t readSpiCnt()  { return spiCnt;  }
-        uint8_t  readSpiData() { return spiData; }
+        uint16_t readSpiCnt() { return spiCnt; }
+        uint8_t readSpiData() { return spiData; }
 
         void writeSpiCnt(uint16_t mask, uint16_t value);
         void writeSpiData(uint8_t value);

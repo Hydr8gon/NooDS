@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -71,8 +71,8 @@ void Gpu::loadState(FILE *file)
 uint32_t Gpu::rgb5ToRgb8(uint32_t color)
 {
     // Convert an RGB5 value to an RGB8 value, with RGB6 as an intermediate
-    uint8_t r = (((color >>  0) & 0x1F) << 1) * 255 / 63;
-    uint8_t g = (((color >>  5) & 0x1F) << 1) * 255 / 63;
+    uint8_t r = (((color >> 0) & 0x1F) << 1) * 255 / 63;
+    uint8_t g = (((color >> 5) & 0x1F) << 1) * 255 / 63;
     uint8_t b = (((color >> 10) & 0x1F) << 1) * 255 / 63;
     return (0xFF << 24) | (b << 16) | (g << 8) | r;
 }
@@ -80,8 +80,8 @@ uint32_t Gpu::rgb5ToRgb8(uint32_t color)
 uint32_t Gpu::rgb6ToRgb8(uint32_t color)
 {
     // Convert an RGB6 value to an RGB8 value
-    uint8_t r = ((color >>  0) & 0x3F) * 255 / 63;
-    uint8_t g = ((color >>  6) & 0x3F) * 255 / 63;
+    uint8_t r = ((color >> 0) & 0x3F) * 255 / 63;
+    uint8_t g = ((color >> 6) & 0x3F) * 255 / 63;
     uint8_t b = ((color >> 12) & 0x3F) * 255 / 63;
     return (0xFF << 24) | (b << 16) | (g << 8) | r;
 }
@@ -89,8 +89,8 @@ uint32_t Gpu::rgb6ToRgb8(uint32_t color)
 uint16_t Gpu::rgb6ToRgb5(uint32_t color)
 {
     // Convert an RGB6 value to an RGB5 value
-    uint8_t r = ((color >>  0) & 0x3F) / 2;
-    uint8_t g = ((color >>  6) & 0x3F) / 2;
+    uint8_t r = ((color >> 0) & 0x3F) / 2;
+    uint8_t g = ((color >> 6) & 0x3F) / 2;
     uint8_t b = ((color >> 12) & 0x3F) / 2;
     return BIT(15) | (b << 10) | (g << 5) | r;
 }
@@ -416,7 +416,7 @@ void Gpu::scanline256()
             switch ((dispCapCnt & 0x00300000) >> 20) // Capture size
             {
                 case 0: width = 128; height = 128; break;
-                case 1: width = 256; height =  64; break;
+                case 1: width = 256; height = 64; break;
                 case 2: width = 256; height = 128; break;
                 case 3: width = 256; height = 192; break;
             }
@@ -491,8 +491,8 @@ void Gpu::scanline256()
                         uint16_t c2 = core->memory.read<uint16_t>(0, base + ((readOffset + i * 2) & 0x1FFFF));
 
                         // Blend the color values
-                        uint8_t r = std::min((((c1 >>  0) & 0x1F) * eva + ((c2 >>  0) & 0x1F) * evb) / 16, 31);
-                        uint8_t g = std::min((((c1 >>  5) & 0x1F) * eva + ((c2 >>  5) & 0x1F) * evb) / 16, 31);
+                        uint8_t r = std::min((((c1 >> 0) & 0x1F) * eva + ((c2 >> 0) & 0x1F) * evb) / 16, 31);
+                        uint8_t g = std::min((((c1 >> 5) & 0x1F) * eva + ((c2 >> 5) & 0x1F) * evb) / 16, 31);
                         uint8_t b = std::min((((c1 >> 10) & 0x1F) * eva + ((c2 >> 10) & 0x1F) * evb) / 16, 31);
 
                         uint16_t color = BIT(15) | (b << 10) | (g << 5) | r;
@@ -579,12 +579,12 @@ void Gpu::scanline355()
                 {
                     if (powCnt1 & BIT(15)) // Display swap
                     {
-                        memcpy(&buffers.framebuffer[0],         core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                        memcpy(&buffers.framebuffer[0], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                         memcpy(&buffers.framebuffer[256 * 192], core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                     }
                     else
                     {
-                        memcpy(&buffers.framebuffer[0],         core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
+                        memcpy(&buffers.framebuffer[0], core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                         memcpy(&buffers.framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                     }
                 }

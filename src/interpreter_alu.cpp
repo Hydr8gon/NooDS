@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -21,16 +21,16 @@
 #include "core.h"
 
 // Define functions for each ARM shift variation
-#define ALU_FUNCS(func, S)                                                                    \
-    int Interpreter::func##Lli(uint32_t opcode) { return func(opcode, lli##S(opcode));      } \
-    int Interpreter::func##Llr(uint32_t opcode) { return func(opcode, llr##S(opcode)) + 1;  } \
-    int Interpreter::func##Lri(uint32_t opcode) { return func(opcode, lri##S(opcode));      } \
-    int Interpreter::func##Lrr(uint32_t opcode) { return func(opcode, lrr##S(opcode)) + 1;  } \
-    int Interpreter::func##Ari(uint32_t opcode) { return func(opcode, ari##S(opcode));      } \
-    int Interpreter::func##Arr(uint32_t opcode) { return func(opcode, arr##S(opcode)) + 1;  } \
-    int Interpreter::func##Rri(uint32_t opcode) { return func(opcode, rri##S(opcode));      } \
-    int Interpreter::func##Rrr(uint32_t opcode) { return func(opcode, rrr##S(opcode)) + 1;  } \
-    int Interpreter::func##Imm(uint32_t opcode) { return func(opcode, imm##S(opcode));      }
+#define ALU_FUNCS(func, S) \
+    int Interpreter::func##Lli(uint32_t opcode) { return func(opcode, lli##S(opcode)); } \
+    int Interpreter::func##Llr(uint32_t opcode) { return func(opcode, llr##S(opcode)) + 1; } \
+    int Interpreter::func##Lri(uint32_t opcode) { return func(opcode, lri##S(opcode)); } \
+    int Interpreter::func##Lrr(uint32_t opcode) { return func(opcode, lrr##S(opcode)) + 1; } \
+    int Interpreter::func##Ari(uint32_t opcode) { return func(opcode, ari##S(opcode)); } \
+    int Interpreter::func##Arr(uint32_t opcode) { return func(opcode, arr##S(opcode)) + 1; } \
+    int Interpreter::func##Rri(uint32_t opcode) { return func(opcode, rri##S(opcode)); } \
+    int Interpreter::func##Rrr(uint32_t opcode) { return func(opcode, rrr##S(opcode)) + 1; } \
+    int Interpreter::func##Imm(uint32_t opcode) { return func(opcode, imm##S(opcode)); }
 
 // Create functions for instructions that have shift variations
 ALU_FUNCS(_and,)

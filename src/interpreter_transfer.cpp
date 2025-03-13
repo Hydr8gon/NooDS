@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -21,52 +21,52 @@
 #include "core.h"
 
 // Define functions for each ARM offset variation (half type)
-#define HALF_FUNCS(func)                                                                    \
-    int Interpreter::func##Ofrm(uint32_t opcode) { return func##Of(opcode, -rp(opcode));  } \
+#define HALF_FUNCS(func) \
+    int Interpreter::func##Ofrm(uint32_t opcode) { return func##Of(opcode, -rp(opcode)); } \
     int Interpreter::func##Ofim(uint32_t opcode) { return func##Of(opcode, -ipH(opcode)); } \
-    int Interpreter::func##Ofrp(uint32_t opcode) { return func##Of(opcode,  rp(opcode));  } \
-    int Interpreter::func##Ofip(uint32_t opcode) { return func##Of(opcode,  ipH(opcode)); } \
-    int Interpreter::func##Prrm(uint32_t opcode) { return func##Pr(opcode, -rp(opcode));  } \
+    int Interpreter::func##Ofrp(uint32_t opcode) { return func##Of(opcode, rp(opcode)); } \
+    int Interpreter::func##Ofip(uint32_t opcode) { return func##Of(opcode, ipH(opcode)); } \
+    int Interpreter::func##Prrm(uint32_t opcode) { return func##Pr(opcode, -rp(opcode)); } \
     int Interpreter::func##Prim(uint32_t opcode) { return func##Pr(opcode, -ipH(opcode)); } \
-    int Interpreter::func##Prrp(uint32_t opcode) { return func##Pr(opcode,  rp(opcode));  } \
-    int Interpreter::func##Prip(uint32_t opcode) { return func##Pr(opcode,  ipH(opcode)); } \
-    int Interpreter::func##Ptrm(uint32_t opcode) { return func##Pt(opcode, -rp(opcode));  } \
+    int Interpreter::func##Prrp(uint32_t opcode) { return func##Pr(opcode, rp(opcode)); } \
+    int Interpreter::func##Prip(uint32_t opcode) { return func##Pr(opcode, ipH(opcode)); } \
+    int Interpreter::func##Ptrm(uint32_t opcode) { return func##Pt(opcode, -rp(opcode)); } \
     int Interpreter::func##Ptim(uint32_t opcode) { return func##Pt(opcode, -ipH(opcode)); } \
-    int Interpreter::func##Ptrp(uint32_t opcode) { return func##Pt(opcode,  rp(opcode));  } \
-    int Interpreter::func##Ptip(uint32_t opcode) { return func##Pt(opcode,  ipH(opcode)); }
+    int Interpreter::func##Ptrp(uint32_t opcode) { return func##Pt(opcode, rp(opcode)); } \
+    int Interpreter::func##Ptip(uint32_t opcode) { return func##Pt(opcode, ipH(opcode)); }
 
 // Define functions for each ARM offset variation (full type)
 #define FULL_FUNCS(func) \
-    int Interpreter::func##Ofim(uint32_t opcode)   { return func##Of(opcode, -ip(opcode));   } \
-    int Interpreter::func##Ofip(uint32_t opcode)   { return func##Of(opcode,  ip(opcode));   } \
+    int Interpreter::func##Ofim(uint32_t opcode) { return func##Of(opcode, -ip(opcode)); } \
+    int Interpreter::func##Ofip(uint32_t opcode) { return func##Of(opcode, ip(opcode)); } \
     int Interpreter::func##Ofrmll(uint32_t opcode) { return func##Of(opcode, -rpll(opcode)); } \
     int Interpreter::func##Ofrmlr(uint32_t opcode) { return func##Of(opcode, -rplr(opcode)); } \
     int Interpreter::func##Ofrmar(uint32_t opcode) { return func##Of(opcode, -rpar(opcode)); } \
     int Interpreter::func##Ofrmrr(uint32_t opcode) { return func##Of(opcode, -rprr(opcode)); } \
-    int Interpreter::func##Ofrpll(uint32_t opcode) { return func##Of(opcode,  rpll(opcode)); } \
-    int Interpreter::func##Ofrplr(uint32_t opcode) { return func##Of(opcode,  rplr(opcode)); } \
-    int Interpreter::func##Ofrpar(uint32_t opcode) { return func##Of(opcode,  rpar(opcode)); } \
-    int Interpreter::func##Ofrprr(uint32_t opcode) { return func##Of(opcode,  rprr(opcode)); } \
-    int Interpreter::func##Prim(uint32_t opcode)   { return func##Pr(opcode, -ip(opcode));   } \
-    int Interpreter::func##Prip(uint32_t opcode)   { return func##Pr(opcode,  ip(opcode));   } \
+    int Interpreter::func##Ofrpll(uint32_t opcode) { return func##Of(opcode, rpll(opcode)); } \
+    int Interpreter::func##Ofrplr(uint32_t opcode) { return func##Of(opcode, rplr(opcode)); } \
+    int Interpreter::func##Ofrpar(uint32_t opcode) { return func##Of(opcode, rpar(opcode)); } \
+    int Interpreter::func##Ofrprr(uint32_t opcode) { return func##Of(opcode, rprr(opcode)); } \
+    int Interpreter::func##Prim(uint32_t opcode) { return func##Pr(opcode, -ip(opcode)); } \
+    int Interpreter::func##Prip(uint32_t opcode) { return func##Pr(opcode, ip(opcode)); } \
     int Interpreter::func##Prrmll(uint32_t opcode) { return func##Pr(opcode, -rpll(opcode)); } \
     int Interpreter::func##Prrmlr(uint32_t opcode) { return func##Pr(opcode, -rplr(opcode)); } \
     int Interpreter::func##Prrmar(uint32_t opcode) { return func##Pr(opcode, -rpar(opcode)); } \
     int Interpreter::func##Prrmrr(uint32_t opcode) { return func##Pr(opcode, -rprr(opcode)); } \
-    int Interpreter::func##Prrpll(uint32_t opcode) { return func##Pr(opcode,  rpll(opcode)); } \
-    int Interpreter::func##Prrplr(uint32_t opcode) { return func##Pr(opcode,  rplr(opcode)); } \
-    int Interpreter::func##Prrpar(uint32_t opcode) { return func##Pr(opcode,  rpar(opcode)); } \
-    int Interpreter::func##Prrprr(uint32_t opcode) { return func##Pr(opcode,  rprr(opcode)); } \
-    int Interpreter::func##Ptim(uint32_t opcode)   { return func##Pt(opcode, -ip(opcode));   } \
-    int Interpreter::func##Ptip(uint32_t opcode)   { return func##Pt(opcode,  ip(opcode));   } \
+    int Interpreter::func##Prrpll(uint32_t opcode) { return func##Pr(opcode, rpll(opcode)); } \
+    int Interpreter::func##Prrplr(uint32_t opcode) { return func##Pr(opcode, rplr(opcode)); } \
+    int Interpreter::func##Prrpar(uint32_t opcode) { return func##Pr(opcode, rpar(opcode)); } \
+    int Interpreter::func##Prrprr(uint32_t opcode) { return func##Pr(opcode, rprr(opcode)); } \
+    int Interpreter::func##Ptim(uint32_t opcode) { return func##Pt(opcode, -ip(opcode)); } \
+    int Interpreter::func##Ptip(uint32_t opcode) { return func##Pt(opcode, ip(opcode)); } \
     int Interpreter::func##Ptrmll(uint32_t opcode) { return func##Pt(opcode, -rpll(opcode)); } \
     int Interpreter::func##Ptrmlr(uint32_t opcode) { return func##Pt(opcode, -rplr(opcode)); } \
     int Interpreter::func##Ptrmar(uint32_t opcode) { return func##Pt(opcode, -rpar(opcode)); } \
     int Interpreter::func##Ptrmrr(uint32_t opcode) { return func##Pt(opcode, -rprr(opcode)); } \
-    int Interpreter::func##Ptrpll(uint32_t opcode) { return func##Pt(opcode,  rpll(opcode)); } \
-    int Interpreter::func##Ptrplr(uint32_t opcode) { return func##Pt(opcode,  rplr(opcode)); } \
-    int Interpreter::func##Ptrpar(uint32_t opcode) { return func##Pt(opcode,  rpar(opcode)); } \
-    int Interpreter::func##Ptrprr(uint32_t opcode) { return func##Pt(opcode,  rprr(opcode)); }
+    int Interpreter::func##Ptrpll(uint32_t opcode) { return func##Pt(opcode, rpll(opcode)); } \
+    int Interpreter::func##Ptrplr(uint32_t opcode) { return func##Pt(opcode, rplr(opcode)); } \
+    int Interpreter::func##Ptrpar(uint32_t opcode) { return func##Pt(opcode, rpar(opcode)); } \
+    int Interpreter::func##Ptrprr(uint32_t opcode) { return func##Pt(opcode, rprr(opcode)); }
 
 // Create functions for instructions that have offset variations (half type)
 HALF_FUNCS(ldrsb)

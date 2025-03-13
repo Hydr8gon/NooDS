@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -45,23 +45,23 @@ EVT_RADIOBUTTON(SELECTION_6, SaveDialog::selection6)
 EVT_RADIOBUTTON(SELECTION_7, SaveDialog::selection7)
 EVT_RADIOBUTTON(SELECTION_8, SaveDialog::selection8)
 EVT_RADIOBUTTON(SELECTION_9, SaveDialog::selection9)
-EVT_BUTTON(wxID_OK,          SaveDialog::confirm)
+EVT_BUTTON(wxID_OK, SaveDialog::confirm)
 wxEND_EVENT_TABLE()
 
 int SaveDialog::selectionToSize(int selection)
 {
     switch (selection)
     {
-        case 1:  return    0x200; //  0.5KB
-        case 2:  return   0x2000; //    8KB
-        case 3:  return   0x8000; //   32KB
-        case 4:  return  0x10000; //   64KB
-        case 5:  return  0x20000; //  128KB
-        case 6:  return  0x40000; //  256KB
-        case 7:  return  0x80000; //  512KB
-        case 8:  return 0x100000; // 1024KB
-        case 9:  return 0x800000; // 8192KB
-        default: return        0; // None
+        case 1: return 0x200; // 0.5KB
+        case 2: return 0x2000; // 8KB
+        case 3: return 0x8000; // 32KB
+        case 4: return 0x10000; // 64KB
+        case 5: return 0x20000; // 128KB
+        case 6: return 0x40000; // 256KB
+        case 7: return 0x80000; // 512KB
+        case 8: return 0x100000; // 1024KB
+        case 9: return 0x800000; // 8192KB
+        default: return 0; // None
     }
 }
 
@@ -69,16 +69,16 @@ int SaveDialog::sizeToSelection(int size)
 {
     switch (size)
     {
-        case    0x200: return 1; //  0.5KB
-        case   0x2000: return 2; //    8KB
-        case   0x8000: return 3; //   32KB
-        case  0x10000: return 4; //   64KB
-        case  0x20000: return 5; //  128KB
-        case  0x40000: return 6; //  256KB
-        case  0x80000: return 7; //  512KB
+        case 0x200: return 1; // 0.5KB
+        case 0x2000: return 2; // 8KB
+        case 0x8000: return 3; // 32KB
+        case 0x10000: return 4; // 64KB
+        case 0x20000: return 5; // 128KB
+        case 0x40000: return 6; // 256KB
+        case 0x80000: return 7; // 512KB
         case 0x100000: return 8; // 1024KB
         case 0x800000: return 9; // 8192KB
-        default:       return 0; // None
+        default: return 0; // None
     }
 }
 
@@ -101,24 +101,24 @@ SaveDialog::SaveDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Change Sav
     if (gba)
     {
         // Set up radio buttons for GBA save types
-        leftRadio->Add(buttons[0]  = new wxRadioButton(this, SELECTION_0, "None"),         1);
-        leftRadio->Add(buttons[1]  = new wxRadioButton(this, SELECTION_1, "EEPROM 0.5KB"), 1);
-        leftRadio->Add(buttons[2]  = new wxRadioButton(this, SELECTION_2, "EEPROM 8KB"),   1);
-        rightRadio->Add(buttons[3] = new wxRadioButton(this, SELECTION_3, "SRAM 32KB"),    1);
-        rightRadio->Add(buttons[4] = new wxRadioButton(this, SELECTION_4, "FLASH 64KB"),   1);
-        rightRadio->Add(buttons[5] = new wxRadioButton(this, SELECTION_5, "FLASH 128KB"),  1);
+        leftRadio->Add(buttons[0] = new wxRadioButton(this, SELECTION_0, "None"), 1);
+        leftRadio->Add(buttons[1] = new wxRadioButton(this, SELECTION_1, "EEPROM 0.5KB"), 1);
+        leftRadio->Add(buttons[2] = new wxRadioButton(this, SELECTION_2, "EEPROM 8KB"), 1);
+        rightRadio->Add(buttons[3] = new wxRadioButton(this, SELECTION_3, "SRAM 32KB"), 1);
+        rightRadio->Add(buttons[4] = new wxRadioButton(this, SELECTION_4, "FLASH 64KB"), 1);
+        rightRadio->Add(buttons[5] = new wxRadioButton(this, SELECTION_5, "FLASH 128KB"), 1);
     }
     else
     {
         // Set up radio buttons for NDS save types
-        leftRadio->Add(buttons[0] =  new wxRadioButton(this, SELECTION_0, "None"),         1);
-        leftRadio->Add(buttons[1] =  new wxRadioButton(this, SELECTION_1, "EEPROM 0.5KB"), 1);
-        leftRadio->Add(buttons[2] =  new wxRadioButton(this, SELECTION_2, "EEPROM 8KB"),   1);
-        leftRadio->Add(buttons[4] =  new wxRadioButton(this, SELECTION_4, "EEPROM 64KB"),  1);
-        leftRadio->Add(buttons[5] =  new wxRadioButton(this, SELECTION_5, "EEPROM 128KB"), 1);
-        rightRadio->Add(buttons[3] = new wxRadioButton(this, SELECTION_3, "FRAM 32KB"),    1);
-        rightRadio->Add(buttons[6] = new wxRadioButton(this, SELECTION_6, "FLASH 256KB"),  1);
-        rightRadio->Add(buttons[7] = new wxRadioButton(this, SELECTION_7, "FLASH 512KB"),  1);
+        leftRadio->Add(buttons[0] = new wxRadioButton(this, SELECTION_0, "None"), 1);
+        leftRadio->Add(buttons[1] = new wxRadioButton(this, SELECTION_1, "EEPROM 0.5KB"), 1);
+        leftRadio->Add(buttons[2] = new wxRadioButton(this, SELECTION_2, "EEPROM 8KB"), 1);
+        leftRadio->Add(buttons[4] = new wxRadioButton(this, SELECTION_4, "EEPROM 64KB"), 1);
+        leftRadio->Add(buttons[5] = new wxRadioButton(this, SELECTION_5, "EEPROM 128KB"), 1);
+        rightRadio->Add(buttons[3] = new wxRadioButton(this, SELECTION_3, "FRAM 32KB"), 1);
+        rightRadio->Add(buttons[6] = new wxRadioButton(this, SELECTION_6, "FLASH 256KB"), 1);
+        rightRadio->Add(buttons[7] = new wxRadioButton(this, SELECTION_7, "FLASH 512KB"), 1);
         rightRadio->Add(buttons[8] = new wxRadioButton(this, SELECTION_8, "FLASH 1024KB"), 1);
         rightRadio->Add(buttons[9] = new wxRadioButton(this, SELECTION_9, "FLASH 8192KB"), 1);
     }
@@ -129,18 +129,18 @@ SaveDialog::SaveDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Change Sav
 
     // Combine all of the radio buttons
     wxBoxSizer *radioSizer = new wxBoxSizer(wxHORIZONTAL);
-    radioSizer->Add(leftRadio,  1, wxEXPAND | wxRIGHT, size / 8);
-    radioSizer->Add(rightRadio, 1, wxEXPAND | wxLEFT,  size / 8);
+    radioSizer->Add(leftRadio, 1, wxEXPAND | wxRIGHT, size / 8);
+    radioSizer->Add(rightRadio, 1, wxEXPAND | wxLEFT, size / 8);
 
     // Set up the cancel and confirm buttons
     wxBoxSizer *buttonSizer = new wxBoxSizer(wxHORIZONTAL);
     buttonSizer->Add(new wxStaticText(this, wxID_ANY, ""), 1);
-    buttonSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"),  0, wxRIGHT, size / 16);
-    buttonSizer->Add(new wxButton(this, wxID_OK,     "Confirm"), 0, wxLEFT,  size / 16);
+    buttonSizer->Add(new wxButton(this, wxID_CANCEL, "Cancel"), 0, wxRIGHT, size / 16);
+    buttonSizer->Add(new wxButton(this, wxID_OK, "Confirm"), 0, wxLEFT, size / 16);
 
     // Combine all of the contents
     wxBoxSizer *contents = new wxBoxSizer(wxVERTICAL);
-    contents->Add(radioSizer,  1, wxEXPAND | wxALL, size / 8);
+    contents->Add(radioSizer, 1, wxEXPAND | wxALL, size / 8);
     contents->Add(buttonSizer, 0, wxEXPAND | wxALL, size / 8);
 
     // Add a final border around everything

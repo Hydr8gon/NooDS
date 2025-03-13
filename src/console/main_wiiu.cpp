@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -199,7 +199,7 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
     {
         s1, t1, s2, t1, s2, t2, s1, t2, // None
         s1, t2, s1, t1, s2, t1, s2, t2, // Clockwise
-        s2, t1, s2, t2, s1, t2, s1, t1  // Counter-clockwise
+        s2, t1, s2, t2, s1, t2, s1, t1, // Counter-clockwise
     };
 
     // Upload positions to the buffer

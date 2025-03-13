@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -71,8 +71,8 @@ void Gpu3DRenderer::loadState(FILE *file)
 uint32_t Gpu3DRenderer::rgba5ToRgba6(uint32_t color)
 {
     // Convert an RGBA5 value to an RGBA6 value (the way the 3D engine does it)
-    uint8_t r = ((color >>  0) & 0x1F) * 2; if (r > 0) r++;
-    uint8_t g = ((color >>  5) & 0x1F) * 2; if (g > 0) g++;
+    uint8_t r = ((color >> 0) & 0x1F) * 2; if (r > 0) r++;
+    uint8_t g = ((color >> 5) & 0x1F) * 2; if (g > 0) g++;
     uint8_t b = ((color >> 10) & 0x1F) * 2; if (b > 0) b++;
     uint8_t a = ((color >> 15) & 0x1F) * 2; if (a > 0) a++;
     return (a << 18) | (b << 12) | (g << 6) | r;
@@ -132,7 +132,7 @@ void Gpu3DRenderer::drawScanline(int line)
         for (int i = 0; i < core->gpu3D.polygonCountOut; i++)
         {
             polygonTop[i] = 192 * 2;
-            polygonBot[i] =   0 * 2;
+            polygonBot[i] = 0 * 2;
 
             _Polygon *polygon = &core->gpu3D.polygonsOut[i];
             for (int j = 0; j < polygon->size; j++)
@@ -251,8 +251,8 @@ void Gpu3DRenderer::drawScanline1(int line)
     int start = line * 256 * 2, end = start + (256 << resShift);
     for (int i = start; i < end; i++)
     {
-        framebuffer[0][i]  = color;
-        depthBuffer[0][i]  = depth;
+        framebuffer[0][i] = color;
+        depthBuffer[0][i] = depth;
         attribBuffer[0][i] = attrib;
     }
 
@@ -296,19 +296,19 @@ void Gpu3DRenderer::finishScanline(int line)
                 // Get the polygon IDs of the surrounding pixels
                 uint32_t id[4] =
                 {
-                    (((i & w) > 0) ? attribBuffer[0][i -   1] : (clearColor >> 24)) & 0x3F, // Left
-                    (((i & w) < w) ? attribBuffer[0][i +   1] : (clearColor >> 24)) & 0x3F, // Right
-                    ((line    > 0) ? attribBuffer[0][i - 512] : (clearColor >> 24)) & 0x3F, // Up
-                    ((line    < h) ? attribBuffer[0][i + 512] : (clearColor >> 24)) & 0x3F  // Down
+                    (((i & w) > 0) ? attribBuffer[0][i - 1] : (clearColor >> 24)) & 0x3F, // Left
+                    (((i & w) < w) ? attribBuffer[0][i + 1] : (clearColor >> 24)) & 0x3F, // Right
+                    ((line > 0) ? attribBuffer[0][i - 512] : (clearColor >> 24)) & 0x3F, // Up
+                    ((line < h) ? attribBuffer[0][i + 512] : (clearColor >> 24)) & 0x3F // Down
                 };
 
                 // Get the depth values of the surrounding pixels
                 int32_t depth[4] =
                 {
-                    (((i & w) > 0) ? depthBuffer[0][i -   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Left
-                    (((i & w) < w) ? depthBuffer[0][i +   1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Right
-                    ((line    > 0) ? depthBuffer[0][i - 512] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Up
-                    ((line    < h) ? depthBuffer[0][i + 512] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9)))  // Down
+                    (((i & w) > 0) ? depthBuffer[0][i - 1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Left
+                    (((i & w) < w) ? depthBuffer[0][i + 1] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Right
+                    ((line > 0) ? depthBuffer[0][i - 512] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))), // Up
+                    ((line < h) ? depthBuffer[0][i + 512] : ((clearDepth == 0x7FFF) ? 0xFFFFFF : (clearDepth << 9))) // Down
                 };
 
                 // Check the surrounding pixels, and mark the edge if at least one has a different ID and greater depth
@@ -369,8 +369,8 @@ void Gpu3DRenderer::finishScanline(int line)
                     }
                     else
                     {
-                        uint8_t r = (((fog >>  0) & 0x3F) * density + ((framebuffer[layer][i] >>  0) & 0x3F) * (128 - density)) / 128;
-                        uint8_t g = (((fog >>  6) & 0x3F) * density + ((framebuffer[layer][i] >>  6) & 0x3F) * (128 - density)) / 128;
+                        uint8_t r = (((fog >> 0) & 0x3F) * density + ((framebuffer[layer][i] >> 0) & 0x3F) * (128 - density)) / 128;
+                        uint8_t g = (((fog >> 6) & 0x3F) * density + ((framebuffer[layer][i] >> 6) & 0x3F) * (128 - density)) / 128;
                         uint8_t b = (((fog >> 12) & 0x3F) * density + ((framebuffer[layer][i] >> 12) & 0x3F) * (128 - density)) / 128;
                         framebuffer[layer][i] = BIT(26) | (a << 18) | (b << 12) | (g << 6) | r;
                     }
@@ -447,8 +447,8 @@ uint32_t Gpu3DRenderer::interpolateFactor(uint32_t factor, uint32_t shift, uint3
 uint32_t Gpu3DRenderer::interpolateColor(uint32_t c1, uint32_t c2, uint32_t x1, uint32_t x, uint32_t x2)
 {
     // Apply linear interpolation separately on the RGB values
-    uint32_t r = interpolateLinear((c1 >>  0) & 0x3F, (c2 >>  0) & 0x3F, x1, x, x2);
-    uint32_t g = interpolateLinear((c1 >>  6) & 0x3F, (c2 >>  6) & 0x3F, x1, x, x2);
+    uint32_t r = interpolateLinear((c1 >> 0) & 0x3F, (c2 >> 0) & 0x3F, x1, x, x2);
+    uint32_t g = interpolateLinear((c1 >> 6) & 0x3F, (c2 >> 6) & 0x3F, x1, x, x2);
     uint32_t b = interpolateLinear((c1 >> 12) & 0x3F, (c2 >> 12) & 0x3F, x1, x, x2);
     uint32_t a = (((c1 >> 18) & 0x3F) > ((c2 >> 18) & 0x3F)) ? ((c1 >> 18) & 0x3F) : ((c2 >> 18) & 0x3F);
     return (a << 18) | (b << 12) | (g << 6) | r;
@@ -715,7 +715,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     // Set the starting edges
     int v[4] =
     {
-        start, (start + 1)                 % polygon->size,
+        start, (start + 1) % polygon->size,
         start, (start - 1 + polygon->size) % polygon->size
     };
 
@@ -765,7 +765,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     else if (abs(vertices[v[1]]->x - vertices[v[0]]->x) > vertices[v[1]]->y - vertices[v[0]]->y) // X-major
     {
         // Interpolate with an extra bit of precision so the result can be rounded
-        x1 = interpolateLinear(vertices[v[0]]->x << 1, vertices[v[1]]->x << 1, vertices[v[0]]->y, line,     vertices[v[1]]->y) + 1;
+        x1 = interpolateLinear(vertices[v[0]]->x << 1, vertices[v[1]]->x << 1, vertices[v[0]]->y, line, vertices[v[1]]->y) + 1;
         x2 = interpolateLinear(vertices[v[0]]->x << 1, vertices[v[1]]->x << 1, vertices[v[0]]->y, line + 1, vertices[v[1]]->y) + 1;
 
         bool negative = (vertices[v[0]]->x > vertices[v[1]]->x);
@@ -780,7 +780,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
         // Calculate the edge alpha values if anti-aliasing is enabled
         if (disp3DCnt & BIT(4))
         {
-            x1a = interpolateLinear(vertices[v[0]]->y << 6, vertices[v[1]]->y << 6, vertices[v[0]]->x << 1, x1,     vertices[v[1]]->x << 1) & 0x3F;
+            x1a = interpolateLinear(vertices[v[0]]->y << 6, vertices[v[1]]->y << 6, vertices[v[0]]->x << 1, x1, vertices[v[1]]->x << 1) & 0x3F;
             x2a = interpolateLinear(vertices[v[0]]->y << 6, vertices[v[1]]->y << 6, vertices[v[0]]->x << 1, x2 - 2, vertices[v[1]]->x << 1) & 0x3F;
 
             if (negative)
@@ -837,7 +837,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     else if (abs(vertices[v[3]]->x - vertices[v[2]]->x) > vertices[v[3]]->y - vertices[v[2]]->y) // X-major
     {
         // Interpolate with an extra bit of precision so the result can be rounded
-        x3 = interpolateLinear(vertices[v[2]]->x << 1, vertices[v[3]]->x << 1, vertices[v[2]]->y, line,     vertices[v[3]]->y) + 1;
+        x3 = interpolateLinear(vertices[v[2]]->x << 1, vertices[v[3]]->x << 1, vertices[v[2]]->y, line, vertices[v[3]]->y) + 1;
         x4 = interpolateLinear(vertices[v[2]]->x << 1, vertices[v[3]]->x << 1, vertices[v[2]]->y, line + 1, vertices[v[3]]->y) + 1;
 
         bool negative = (vertices[v[2]]->x > vertices[v[3]]->x);
@@ -852,7 +852,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
         // Calculate the edge alpha values if anti-aliasing is enabled
         if (disp3DCnt & BIT(4))
         {
-            x3a = interpolateLinear(vertices[v[2]]->y << 6, vertices[v[3]]->y << 6, vertices[v[2]]->x << 1, x3,     vertices[v[3]]->x << 1) & 0x3F;
+            x3a = interpolateLinear(vertices[v[2]]->y << 6, vertices[v[3]]->y << 6, vertices[v[2]]->x << 1, x3, vertices[v[3]]->x << 1) & 0x3F;
             x4a = interpolateLinear(vertices[v[2]]->y << 6, vertices[v[3]]->y << 6, vertices[v[2]]->x << 1, x4 - 2, vertices[v[3]]->x << 1) & 0x3F;
 
             if (!negative)
@@ -891,9 +891,9 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     if (x4 > x3) x4--;
 
     // Handle crossed edges; these become "dotted" if their orientation is wrong
-    if (x2 > x3) { x2 = x3;                                     }
+    if (x2 > x3) { x2 = x3; }
     if (x1 > x2) { x2 = x1; x1a = 0x3F - x1a; x2a = 0x3F - x2a; }
-    if (x2 > x3) { x3 = x2;                                     }
+    if (x2 > x3) { x3 = x2; }
     if (x3 > x4) { x3 = x4; x3a = 0x3F - x3a; x4a = 0x3F - x4a; }
 
     // Swap the edges so the leftmost one comes first
@@ -975,8 +975,8 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
 
             // Linearly interpolate the vertex color of a polygon edge
             // The color values are expanded to 9 bits during interpolation for extra precision
-            re[i] = interpolateLinear(((vertices[v[i2]]->color >>  0) & 0x3F) << 3, ((vertices[v[i2 + 1]]->color >>  0) & 0x3F) << 3, xe1[i], xe[i], xe2[i]);
-            ge[i] = interpolateLinear(((vertices[v[i2]]->color >>  6) & 0x3F) << 3, ((vertices[v[i2 + 1]]->color >>  6) & 0x3F) << 3, xe1[i], xe[i], xe2[i]);
+            re[i] = interpolateLinear(((vertices[v[i2]]->color >> 0) & 0x3F) << 3, ((vertices[v[i2 + 1]]->color >> 0) & 0x3F) << 3, xe1[i], xe[i], xe2[i]);
+            ge[i] = interpolateLinear(((vertices[v[i2]]->color >> 6) & 0x3F) << 3, ((vertices[v[i2 + 1]]->color >> 6) & 0x3F) << 3, xe1[i], xe[i], xe2[i]);
             be[i] = interpolateLinear(((vertices[v[i2]]->color >> 12) & 0x3F) << 3, ((vertices[v[i2 + 1]]->color >> 12) & 0x3F) << 3, xe1[i], xe[i], xe2[i]);
 
             // Linearly interpolate the texture coordinates of a polygon edge
@@ -1012,8 +1012,8 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
 
             // Interpolate the vertex color of a polygon edge using a factor
             // The color values are expanded to 9 bits during interpolation for extra precision
-            re[i] = interpolateFactor(factor, 9, ((vertices[v[i2]]->color >>  0) & 0x3F) << 3, ((vertices[v[i2 + 1]]->color >>  0) & 0x3F) << 3);
-            ge[i] = interpolateFactor(factor, 9, ((vertices[v[i2]]->color >>  6) & 0x3F) << 3, ((vertices[v[i2 + 1]]->color >>  6) & 0x3F) << 3);
+            re[i] = interpolateFactor(factor, 9, ((vertices[v[i2]]->color >> 0) & 0x3F) << 3, ((vertices[v[i2 + 1]]->color >> 0) & 0x3F) << 3);
+            ge[i] = interpolateFactor(factor, 9, ((vertices[v[i2]]->color >> 6) & 0x3F) << 3, ((vertices[v[i2 + 1]]->color >> 6) & 0x3F) << 3);
             be[i] = interpolateFactor(factor, 9, ((vertices[v[i2]]->color >> 12) & 0x3F) << 3, ((vertices[v[i2 + 1]]->color >> 12) & 0x3F) << 3);
 
             // Interpolate the texture coordinates of a polygon edge using a factor
@@ -1046,7 +1046,7 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
     // Set special bounds that hide some edges for opaque pixels with no edge effects
     if (polygon->alpha != 0 && !(disp3DCnt & (BIT(4) | BIT(5))))
     {
-        if (hideLeft)  x1e = x2 + 1;
+        if (hideLeft) x1e = x2 + 1;
         if (hideRight) x4e = x3;
         if (!(hideLeft && hideRight) && x4e <= x1e)
             x4e = x1e + 1;
@@ -1192,8 +1192,8 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
             {
                 case 0: // Modulation
                 {
-                    uint8_t r = ((((texel >>  0) & 0x3F) + 1) * (((color >>  0) & 0x3F) + 1) - 1) / 64;
-                    uint8_t g = ((((texel >>  6) & 0x3F) + 1) * (((color >>  6) & 0x3F) + 1) - 1) / 64;
+                    uint8_t r = ((((texel >> 0) & 0x3F) + 1) * (((color >> 0) & 0x3F) + 1) - 1) / 64;
+                    uint8_t g = ((((texel >> 6) & 0x3F) + 1) * (((color >> 6) & 0x3F) + 1) - 1) / 64;
                     uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
                     uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
                     color = (a << 18) | (b << 12) | (g << 6) | r;
@@ -1204,10 +1204,10 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
                 case 3: // Shadow
                 {
                     uint8_t at = ((texel >> 18) & 0x3F);
-                    uint8_t r = (((texel >>  0) & 0x3F) * at + ((color >>  0) & 0x3F) * (63 - at)) / 64;
-                    uint8_t g = (((texel >>  6) & 0x3F) * at + ((color >>  6) & 0x3F) * (63 - at)) / 64;
+                    uint8_t r = (((texel >> 0) & 0x3F) * at + ((color >> 0) & 0x3F) * (63 - at)) / 64;
+                    uint8_t g = (((texel >> 6) & 0x3F) * at + ((color >> 6) & 0x3F) * (63 - at)) / 64;
                     uint8_t b = (((texel >> 12) & 0x3F) * at + ((color >> 12) & 0x3F) * (63 - at)) / 64;
-                    uint8_t a =  ((color >> 18) & 0x3F);
+                    uint8_t a = ((color >> 18) & 0x3F);
                     color = (a << 18) | (b << 12) | (g << 6) | r;
                     break;
                 }
@@ -1219,17 +1219,17 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
 
                     if (disp3DCnt & BIT(1)) // Highlight
                     {
-                        r = ((((texel >>  0) & 0x3F) + 1) * (((color >>  0) & 0x3F) + 1) - 1) / 64;
-                        g = ((((texel >>  6) & 0x3F) + 1) * (((color >>  6) & 0x3F) + 1) - 1) / 64;
+                        r = ((((texel >> 0) & 0x3F) + 1) * (((color >> 0) & 0x3F) + 1) - 1) / 64;
+                        g = ((((texel >> 6) & 0x3F) + 1) * (((color >> 6) & 0x3F) + 1) - 1) / 64;
                         b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
-                        r += ((toon >>  0) & 0x3F); if (r > 63) r = 63;
-                        g += ((toon >>  6) & 0x3F); if (g > 63) g = 63;
+                        r += ((toon >> 0) & 0x3F); if (r > 63) r = 63;
+                        g += ((toon >> 6) & 0x3F); if (g > 63) g = 63;
                         b += ((toon >> 12) & 0x3F); if (b > 63) b = 63;
                     }
                     else // Toon
                     {
-                        r = ((((texel >>  0) & 0x3F) + 1) * (((toon >>  0) & 0x3F) + 1) - 1) / 64;
-                        g = ((((texel >>  6) & 0x3F) + 1) * (((toon >>  6) & 0x3F) + 1) - 1) / 64;
+                        r = ((((texel >> 0) & 0x3F) + 1) * (((toon >> 0) & 0x3F) + 1) - 1) / 64;
+                        g = ((((texel >> 6) & 0x3F) + 1) * (((toon >> 6) & 0x3F) + 1) - 1) / 64;
                         b = ((((texel >> 12) & 0x3F) + 1) * (((toon >> 12) & 0x3F) + 1) - 1) / 64;
                     }
 
@@ -1246,14 +1246,14 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
 
             if (disp3DCnt & BIT(1)) // Highlight
             {
-                r = ((color >>  0) & 0x3F) + ((toon >>  0) & 0x3F); if (r > 63) r = 63;
-                g = ((color >>  6) & 0x3F) + ((toon >>  6) & 0x3F); if (g > 63) g = 63;
+                r = ((color >> 0) & 0x3F) + ((toon >> 0) & 0x3F); if (r > 63) r = 63;
+                g = ((color >> 6) & 0x3F) + ((toon >> 6) & 0x3F); if (g > 63) g = 63;
                 b = ((color >> 12) & 0x3F) + ((toon >> 12) & 0x3F); if (b > 63) b = 63;
             }
             else // Toon
             {
-                r = ((toon >>  0) & 0x3F);
-                g = ((toon >>  6) & 0x3F);
+                r = ((toon >> 0) & 0x3F);
+                g = ((toon >> 6) & 0x3F);
                 b = ((toon >> 12) & 0x3F);
             }
 
@@ -1273,8 +1273,8 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex)
             // Push the previous pixel to the back layer if drawing a front anti-aliased edge pixel
             if ((disp3DCnt & BIT(4)) && layer == 0 && edge)
             {
-                framebuffer[1][i]  = framebuffer[0][i];
-                depthBuffer[1][i]  = depthBuffer[0][i];
+                framebuffer[1][i] = framebuffer[0][i];
+                depthBuffer[1][i] = depthBuffer[0][i];
                 attribBuffer[1][i] = attribBuffer[0][i];
 
                 // Set the pixel transparency for anti-aliasing

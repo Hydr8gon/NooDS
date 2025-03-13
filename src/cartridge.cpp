@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -30,7 +30,7 @@ Cartridge::~Cartridge()
 
     // Free the ROM and save memory
     if (romFile) fclose(romFile);
-    if (rom)  delete[] rom;
+    if (rom) delete[] rom;
     if (save) delete[] save;
 }
 
@@ -411,8 +411,8 @@ uint64_t CartridgeNds::encrypt64(uint64_t value)
         uint32_t z = encTable[i] ^ x;
         x = encTable[0x012 + ((z >> 24) & 0xFF)];
         x = encTable[0x112 + ((z >> 16) & 0xFF)] + x;
-        x = encTable[0x212 + ((z >>  8) & 0xFF)] ^ x;
-        x = encTable[0x312 + ((z >>  0) & 0xFF)] + x;
+        x = encTable[0x212 + ((z >> 8) & 0xFF)] ^ x;
+        x = encTable[0x312 + ((z >> 0) & 0xFF)] + x;
         x ^= y;
         y = z;
     }
@@ -433,8 +433,8 @@ uint64_t CartridgeNds::decrypt64(uint64_t value)
         uint32_t z = encTable[i] ^ x;
         x = encTable[0x012 + ((z >> 24) & 0xFF)];
         x = encTable[0x112 + ((z >> 16) & 0xFF)] + x;
-        x = encTable[0x212 + ((z >>  8) & 0xFF)] ^ x;
-        x = encTable[0x312 + ((z >>  0) & 0xFF)] + x;
+        x = encTable[0x212 + ((z >> 8) & 0xFF)] ^ x;
+        x = encTable[0x312 + ((z >> 0) & 0xFF)] + x;
         x ^= y;
         y = z;
     }
@@ -828,8 +828,8 @@ void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
     uint8_t size = (romCtrl[cpu] & 0x07000000) >> 24;
     switch (size)
     {
-        case 0:  blockSize[cpu] = 0;             break;
-        case 7:  blockSize[cpu] = 4;             break;
+        case 0: blockSize[cpu] = 0; break;
+        case 7: blockSize[cpu] = 4; break;
         default: blockSize[cpu] = 0x100 << size; break;
     }
 

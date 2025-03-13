@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -73,9 +73,9 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
     if (screenArrangement == 3 || gba || splitScreens) // Single screen
     {
         // Set the minimum dimensions for the layout
-        minWidth  = width;
+        minWidth = width;
         minHeight = height;
-        if (winWidth  < minWidth)  winWidth  = minWidth;
+        if (winWidth < minWidth) winWidth = minWidth;
         if (winHeight < minHeight) winHeight = minHeight;
 
         // Scale the screen to the size of the window
@@ -127,9 +127,9 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
             if (screenGap) height += gap / 2;
 
             // Set the minimum dimensions for the layout
-            minWidth  = width;
+            minWidth = width;
             minHeight = height * 2;
-            if (winWidth  < minWidth)  winWidth  = minWidth;
+            if (winWidth < minWidth) winWidth = minWidth;
             if (winHeight < minHeight) winHeight = minHeight;
 
             if (screenSizing == 0) // Even
@@ -165,9 +165,9 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
             if (screenGap) width += gap / 2;
 
             // Set the minimum dimensions for the layout
-            minWidth  = width * 2;
+            minWidth = width * 2;
             minHeight = height;
-            if (winWidth  < minWidth)  winWidth  = minWidth;
+            if (winWidth < minWidth) winWidth = minWidth;
             if (winHeight < minHeight) winHeight = minHeight;
 
             if (screenSizing == 0) // Even
@@ -201,15 +201,15 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
         // Calculate the dimensions of each screen
         if (screenSizing == 1) // Enlarge Top
         {
-            topWidth  = largeScale * width;
-            botWidth  = smallScale * width;
+            topWidth = largeScale * width;
+            botWidth = smallScale * width;
             topHeight = largeScale * height;
             botHeight = smallScale * height;
         }
         else // Even/Enlarge Bottom
         {
-            topWidth  = smallScale * width;
-            botWidth  = largeScale * width;
+            topWidth = smallScale * width;
+            botWidth = largeScale * width;
             topHeight = smallScale * height;
             botHeight = largeScale * height;
         }
@@ -361,8 +361,8 @@ int ScreenLayout::getTouchX(int x, int y)
     // Map window coordinates to an X-coordinate on the touch screen
     switch (screenRotation)
     {
-        case 0:  return       (x - botX) * 256 / botWidth;  // None
-        case 1:  return       (y - botY) * 256 / botHeight; // Clockwise
+        case 0: return (x - botX) * 256 / botWidth; // None
+        case 1: return (y - botY) * 256 / botHeight; // Clockwise
         default: return 255 - (y - botY) * 256 / botHeight; // Counter-clockwise
     }
 }
@@ -372,8 +372,8 @@ int ScreenLayout::getTouchY(int x, int y)
     // Map window coordinates to a Y-coordinate on the touch screen
     switch (screenRotation)
     {
-        case 0:  return       (y - botY) * 192 / botHeight; // None
-        case 1:  return 191 - (x - botX) * 192 / botWidth;  // Clockwise
-        default: return       (x - botX) * 192 / botWidth;  // Counter-clockwise
+        case 0: return (y - botY) * 192 / botHeight; // None
+        case 1: return 191 - (x - botX) * 192 / botWidth; // Clockwise
+        default: return (x - botX) * 192 / botWidth; // Counter-clockwise
     }
 }

@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -28,7 +28,7 @@ Language Spi::language = LG_ENGLISH;
 Spi::~Spi()
 {
     // Free any dynamic memory
-    if (firmware)  delete[] firmware;
+    if (firmware) delete[] firmware;
     if (micBuffer) delete[] micBuffer;
 }
 
@@ -141,16 +141,16 @@ bool Spi::loadFirmware()
     for (uint32_t addr = 0x1FE00; addr <= 0x1FF00; addr += 0x100)
     {
         // Set some user settings data
-        firmware[addr + 0x00] =  5;  // Version
-        firmware[addr + 0x02] =  2;  // Favorite color
-        firmware[addr + 0x03] =  5;  // Birthday month
-        firmware[addr + 0x04] = 25;  // Birthday day
+        firmware[addr + 0x00] = 5; // Version
+        firmware[addr + 0x02] = 2; // Favorite color
+        firmware[addr + 0x03] = 5; // Birthday month
+        firmware[addr + 0x04] = 25; // Birthday day
         firmware[addr + 0x06] = 'N'; // Nickname, char 1
         firmware[addr + 0x08] = 'o'; // Nickname, char 2
         firmware[addr + 0x0A] = 'o'; // Nickname, char 3
         firmware[addr + 0x0C] = 'D'; // Nickname, char 4
         firmware[addr + 0x0E] = 'S'; // Nickname, char 5
-        firmware[addr + 0x1A] =  5;  // Nickname length
+        firmware[addr + 0x1A] = 5; // Nickname length
 
         // Set the touch calibration data
         firmware[addr + 0x5E] = 0xF0; // ADC X2, byte 1
@@ -188,12 +188,12 @@ void Spi::setTouch(int x, int y)
     // Read calibration points from the firmware
     uint16_t adcX1 = U8TO16(firmware, firmSize - 0xA8);
     uint16_t adcY1 = U8TO16(firmware, firmSize - 0xA6);
-    uint8_t  scrX1 = firmware[firmSize - 0xA4];
-    uint8_t  scrY1 = firmware[firmSize - 0xA3];
+    uint8_t scrX1 = firmware[firmSize - 0xA4];
+    uint8_t scrY1 = firmware[firmSize - 0xA3];
     uint16_t adcX2 = U8TO16(firmware, firmSize - 0xA2);
     uint16_t adcY2 = U8TO16(firmware, firmSize - 0xA0);
-    uint8_t  scrX2 = firmware[firmSize - 0x9E];
-    uint8_t  scrY2 = firmware[firmSize - 0x9D];
+    uint8_t scrX2 = firmware[firmSize - 0x9E];
+    uint8_t scrY2 = firmware[firmSize - 0x9D];
 
     // Ensure the coordinates are within bounds
     // A one pixel border around the screen is ignored to avoid potential underflow/overflow

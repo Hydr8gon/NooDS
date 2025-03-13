@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -118,22 +118,22 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
             cp15.write(1, 0, 0, 0x0005707D); // CP15 Control
             cp15.write(9, 1, 0, 0x0300000A); // Data TCM base/size
             cp15.write(9, 1, 1, 0x00000020); // Instruction TCM size
-            memory.write<uint8_t>(0,  0x4000247,   0x03); // WRAMCNT
-            memory.write<uint8_t>(0,  0x4000300,   0x01); // POSTFLG (ARM9)
-            memory.write<uint8_t>(1,  0x4000300,   0x01); // POSTFLG (ARM7)
+            memory.write<uint8_t>(0, 0x4000247, 0x03); // WRAMCNT
+            memory.write<uint8_t>(0, 0x4000300, 0x01); // POSTFLG (ARM9)
+            memory.write<uint8_t>(1, 0x4000300, 0x01); // POSTFLG (ARM7)
             memory.write<uint16_t>(0, 0x4000304, 0x0001); // POWCNT1
             memory.write<uint16_t>(1, 0x4000504, 0x0200); // SOUNDBIAS
 
             // Set some memory values as the BIOS/firmware would
             memory.write<uint32_t>(0, 0x27FF800, 0x00001FC2); // Chip ID 1
             memory.write<uint32_t>(0, 0x27FF804, 0x00001FC2); // Chip ID 2
-            memory.write<uint16_t>(0, 0x27FF850,     0x5835); // ARM7 BIOS CRC
-            memory.write<uint16_t>(0, 0x27FF880,     0x0007); // Message from ARM9 to ARM7
-            memory.write<uint16_t>(0, 0x27FF884,     0x0006); // ARM7 boot task
+            memory.write<uint16_t>(0, 0x27FF850, 0x5835); // ARM7 BIOS CRC
+            memory.write<uint16_t>(0, 0x27FF880, 0x0007); // Message from ARM9 to ARM7
+            memory.write<uint16_t>(0, 0x27FF884, 0x0006); // ARM7 boot task
             memory.write<uint32_t>(0, 0x27FFC00, 0x00001FC2); // Copy of chip ID 1
             memory.write<uint32_t>(0, 0x27FFC04, 0x00001FC2); // Copy of chip ID 2
-            memory.write<uint16_t>(0, 0x27FFC10,     0x5835); // Copy of ARM7 BIOS CRC
-            memory.write<uint16_t>(0, 0x27FFC40,     0x0001); // Boot indicator
+            memory.write<uint16_t>(0, 0x27FFC10, 0x5835); // Copy of ARM7 BIOS CRC
+            memory.write<uint16_t>(0, 0x27FFC40, 0x0001); // Boot indicator
 
             cartridgeNds.directBoot();
             interpreter[0].directBoot();

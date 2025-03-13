@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -50,7 +50,7 @@ class Cartridge
         void trimRom();
         void resizeSave(int newSize, bool dirty = true);
 
-        int getRomSize()  { return romSize;  }
+        int getRomSize() { return romSize; }
         int getSaveSize() { return saveSize; }
 
     protected:
@@ -83,9 +83,9 @@ class CartridgeNds: public Cartridge
         void directBoot();
         void wordReady(bool cpu);
 
-        uint16_t readAuxSpiCnt(bool cpu)  { return auxSpiCnt[cpu];  }
-        uint8_t  readAuxSpiData(bool cpu) { return auxSpiData[cpu]; }
-        uint32_t readRomCtrl(bool cpu)    { return romCtrl[cpu];    }
+        uint16_t readAuxSpiCnt(bool cpu) { return auxSpiCnt[cpu]; }
+        uint8_t readAuxSpiData(bool cpu) { return auxSpiData[cpu]; }
+        uint32_t readRomCtrl(bool cpu) { return romCtrl[cpu]; }
         uint32_t readRomDataIn(bool cpu);
 
         void writeAuxSpiCnt(bool cpu, uint16_t mask, uint16_t value);

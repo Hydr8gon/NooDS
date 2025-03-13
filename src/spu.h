@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -43,19 +43,19 @@ class Spu
         void runSample();
         void gbaFifoTimer(int timer);
 
-        uint8_t  readGbaSoundCntL(int channel);
+        uint8_t readGbaSoundCntL(int channel);
         uint16_t readGbaSoundCntH(int channel);
         uint16_t readGbaSoundCntX(int channel);
         uint16_t readGbaMainSoundCntL() { return gbaMainSoundCntL; }
         uint16_t readGbaMainSoundCntH() { return gbaMainSoundCntH; }
-        uint8_t  readGbaMainSoundCntX() { return gbaMainSoundCntX; }
-        uint16_t readGbaSoundBias()     { return gbaSoundBias;     }
-        uint8_t  readGbaWaveRam(int index);
+        uint8_t readGbaMainSoundCntX() { return gbaMainSoundCntX; }
+        uint16_t readGbaSoundBias() { return gbaSoundBias; }
+        uint8_t readGbaWaveRam(int index);
 
-        uint32_t readSoundCnt(int channel)  { return soundCnt[channel];  }
-        uint16_t readMainSoundCnt()         { return mainSoundCnt;       }
-        uint16_t readSoundBias()            { return soundBias;          }
-        uint8_t  readSndCapCnt(int channel) { return sndCapCnt[channel]; }
+        uint32_t readSoundCnt(int channel) { return soundCnt[channel]; }
+        uint16_t readMainSoundCnt() { return mainSoundCnt; }
+        uint16_t readSoundBias() { return soundBias; }
+        uint8_t readSndCapCnt(int channel) { return sndCapCnt[channel]; }
         uint32_t readSndCapDad(int channel) { return sndCapDad[channel]; }
 
         void writeGbaSoundCntL(int channel, uint8_t value);

@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -172,7 +172,7 @@ uint32_t *Spu::getSamples(int count)
     {
         delete[] bufferIn;
         delete[] bufferOut;
-        bufferIn  = new uint32_t[count];
+        bufferIn = new uint32_t[count];
         bufferOut = new uint32_t[count];
         bufferSize = count;
         bufferPointer = 0;
@@ -366,10 +366,10 @@ void Spu::runGbaSample()
             // If bit 15 is set, the volume shift is overridden and 75% is forced
             switch ((gbaSoundCntH[2] & 0xE000) >> 13)
             {
-                case 0:  data[2] >>= 4; break;
-                case 1:  data[2] >>= 0; break;
-                case 2:  data[2] >>= 1; break;
-                case 3:  data[2] >>= 2; break;
+                case 0: data[2] >>= 4; break;
+                case 1: data[2] >>= 0; break;
+                case 2: data[2] >>= 1; break;
+                case 3: data[2] >>= 2; break;
                 default: data[2] = data[2] * 3 / 4; break;
             }
 
@@ -476,17 +476,17 @@ void Spu::runGbaSample()
     }
 
     // Apply the sound bias
-    sampleLeft  += (gbaSoundBias & 0x03FF);
+    sampleLeft += (gbaSoundBias & 0x03FF);
     sampleRight += (gbaSoundBias & 0x03FF);
 
     // Apply clipping
-    if (sampleLeft  < 0x000) sampleLeft  = 0x000;
-    if (sampleLeft  > 0x3FF) sampleLeft  = 0x3FF;
+    if (sampleLeft < 0x000) sampleLeft = 0x000;
+    if (sampleLeft > 0x3FF) sampleLeft = 0x3FF;
     if (sampleRight < 0x000) sampleRight = 0x000;
     if (sampleRight > 0x3FF) sampleRight = 0x3FF;
 
     // Expand the samples to signed 16-bit values and return them
-    sampleLeft  = (sampleLeft  - 0x200) << 5;
+    sampleLeft = (sampleLeft - 0x200) << 5;
     sampleRight = (sampleRight - 0x200) << 5;
 
     if (bufferSize > 0)
@@ -611,7 +611,7 @@ void Spu::runSample()
 
                     // Calculate the next index
                     adpcmIndex[i] += indexTable[adpcmData & 0x7];
-                    if (adpcmIndex[i] <  0) adpcmIndex[i] =  0;
+                    if (adpcmIndex[i] < 0) adpcmIndex[i] = 0;
                     if (adpcmIndex[i] > 88) adpcmIndex[i] = 88;
 
                     // Move to the next 4-bit ADPCM data
@@ -683,20 +683,20 @@ void Spu::runSample()
         // The samples are now rounded to 8 fractional bits
         int panValue = (soundCnt[i] & 0x007F0000) >> 16;
         if (panValue == 127) panValue++;
-        int64_t dataLeft  = (data * (128 - panValue) / 128) >> 3;
-        int64_t dataRight = (data *        panValue  / 128) >> 3;
+        int64_t dataLeft = (data * (128 - panValue) / 128) >> 3;
+        int64_t dataRight = (data * panValue / 128) >> 3;
 
         // Redirect channels 1 and 3 if enabled
         if (i == 1 || i == 3)
         {
-            channelsLeft[i >> 1]  = dataLeft;
+            channelsLeft[i >> 1] = dataLeft;
             channelsRight[i >> 1] = dataRight;
             if (mainSoundCnt & BIT(12 + (i >> 1)))
                 continue;
         }
 
         // Add the channel to the mixer
-        mixerLeft  += dataLeft;
+        mixerLeft += dataLeft;
         mixerRight += dataRight;
     }
 
@@ -720,7 +720,7 @@ void Spu::runSample()
 
             // Get a sample from the mixer, clamped to be within range
             int64_t sample = ((i == 0) ? mixerLeft : mixerRight);
-            if (sample >  0x7FFFFF) sample =  0x7FFFFF;
+            if (sample > 0x7FFFFF) sample = 0x7FFFFF;
             if (sample < -0x800000) sample = -0x800000;
 
             // Write a sample to the buffer
@@ -755,9 +755,9 @@ void Spu::runSample()
     int64_t sampleLeft;
     switch ((mainSoundCnt & 0x0300) >> 8) // Left output selection
     {
-        case 0: sampleLeft = mixerLeft;                         break; // Mixer
-        case 1: sampleLeft = channelsLeft[0];                   break; // Channel 1
-        case 2: sampleLeft = channelsLeft[1];                   break; // Channel 3
+        case 0: sampleLeft = mixerLeft; break; // Mixer
+        case 1: sampleLeft = channelsLeft[0]; break; // Channel 1
+        case 2: sampleLeft = channelsLeft[1]; break; // Channel 3
         case 3: sampleLeft = channelsLeft[0] + channelsLeft[1]; break; // Channel 1 + 3
     }
 
@@ -765,9 +765,9 @@ void Spu::runSample()
     int64_t sampleRight;
     switch ((mainSoundCnt & 0x0C00) >> 10) // Right output selection
     {
-        case 0: sampleRight = mixerRight;                          break; // Mixer
-        case 1: sampleRight = channelsRight[0];                    break; // Channel 1
-        case 2: sampleRight = channelsRight[1];                    break; // Channel 3
+        case 0: sampleRight = mixerRight; break; // Mixer
+        case 1: sampleRight = channelsRight[0]; break; // Channel 1
+        case 2: sampleRight = channelsRight[1]; break; // Channel 3
         case 3: sampleRight = channelsRight[0] + channelsRight[1]; break; // Channel 1 + 3
     }
 
@@ -775,21 +775,21 @@ void Spu::runSample()
     // The samples are now rounded to no fractional bits
     int masterVol = (mainSoundCnt & 0x007F);
     if (masterVol == 127) masterVol++;
-    sampleLeft  = (sampleLeft  * masterVol / 128) >> 8;
+    sampleLeft = (sampleLeft * masterVol / 128) >> 8;
     sampleRight = (sampleRight * masterVol / 128) >> 8;
 
     // Convert to 10-bit and apply the sound bias
-    sampleLeft  = (sampleLeft  >> 6) + soundBias;
+    sampleLeft = (sampleLeft >> 6) + soundBias;
     sampleRight = (sampleRight >> 6) + soundBias;
 
     // Apply clipping
-    if (sampleLeft  < 0x000) sampleLeft  = 0x000;
-    if (sampleLeft  > 0x3FF) sampleLeft  = 0x3FF;
+    if (sampleLeft < 0x000) sampleLeft = 0x000;
+    if (sampleLeft > 0x3FF) sampleLeft = 0x3FF;
     if (sampleRight < 0x000) sampleRight = 0x000;
     if (sampleRight > 0x3FF) sampleRight = 0x3FF;
 
     // Expand the samples to signed 16-bit values and return them
-    sampleLeft  = (sampleLeft  - 0x200) << 5;
+    sampleLeft = (sampleLeft - 0x200) << 5;
     sampleRight = (sampleRight - 0x200) << 5;
 
     if (bufferSize > 0)
@@ -997,7 +997,7 @@ void Spu::writeGbaMainSoundCntX(uint8_t value)
     gbaMainSoundCntX = (gbaMainSoundCntX & ~0x80) | (value & 0x80);
 
     // Reset the PSG channels when disabled
-    if (!(gbaMainSoundCntX & BIT(7)))   
+    if (!(gbaMainSoundCntX & BIT(7)))
     {
         for (int i = 0; i < 4; i++)
         {

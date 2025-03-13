@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -25,43 +25,43 @@
 // HLE ARM9 BIOS SWI lookup table
 int (Bios::*Bios::swiTable9[])(uint32_t**) =
 {
-    &Bios::swiUnknown,       &Bios::swiUnknown,        &Bios::swiUnknown,      &Bios::swiWaitByLoop, // 0x00-0x03
-    &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiHalt,         &Bios::swiUnknown,    // 0x04-0x07
-    &Bios::swiUnknown,       &Bios::swiDivide,         &Bios::swiUnknown,      &Bios::swiCpuSet,     // 0x08-0x0B
-    &Bios::swiCpuFastSet,    &Bios::swiSquareRoot,     &Bios::swiGetCrc16,     &Bios::swiIsDebugger, // 0x0C-0x0F
-    &Bios::swiBitUnpack,     &Bios::swiLz77Uncomp,     &Bios::swiLz77Uncomp,   &Bios::swiHuffUncomp, // 0x10-0x13
-    &Bios::swiRunlenUncomp,  &Bios::swiRunlenUncomp,   &Bios::swiDiffUnfilt8,  &Bios::swiUnknown,    // 0x14-0x17
-    &Bios::swiDiffUnfilt16,  &Bios::swiUnknown,        &Bios::swiUnknown,      &Bios::swiUnknown,    // 0x18-0x1B
-    &Bios::swiUnknown,       &Bios::swiUnknown,        &Bios::swiUnknown,      &Bios::swiUnknown,    // 0x1C-0x1F
-    &Bios::swiUnknown                                                                                // 0x20
+    &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiWaitByLoop, // 0x00-0x03
+    &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiHalt, &Bios::swiUnknown, // 0x04-0x07
+    &Bios::swiUnknown, &Bios::swiDivide, &Bios::swiUnknown, &Bios::swiCpuSet, // 0x08-0x0B
+    &Bios::swiCpuFastSet, &Bios::swiSquareRoot, &Bios::swiGetCrc16, &Bios::swiIsDebugger, // 0x0C-0x0F
+    &Bios::swiBitUnpack, &Bios::swiLz77Uncomp, &Bios::swiLz77Uncomp, &Bios::swiHuffUncomp, // 0x10-0x13
+    &Bios::swiRunlenUncomp, &Bios::swiRunlenUncomp, &Bios::swiDiffUnfilt8, &Bios::swiUnknown, // 0x14-0x17
+    &Bios::swiDiffUnfilt16, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, // 0x18-0x1B
+    &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, // 0x1C-0x1F
+    &Bios::swiUnknown // 0x20
 };
 
 // HLE ARM7 BIOS SWI lookup table
 int (Bios::*Bios::swiTable7[])(uint32_t**) =
 {
-    &Bios::swiUnknown,        &Bios::swiUnknown,        &Bios::swiUnknown,      &Bios::swiWaitByLoop,    // 0x00-0x03
-    &Bios::swiInterruptWait,  &Bios::swiVBlankIntrWait, &Bios::swiHalt,         &Bios::swiSleep,         // 0x04-0x07
-    &Bios::swiSoundBias,      &Bios::swiDivide,         &Bios::swiUnknown,      &Bios::swiCpuSet,        // 0x08-0x0B
-    &Bios::swiCpuFastSet,     &Bios::swiSquareRoot,     &Bios::swiGetCrc16,     &Bios::swiIsDebugger,    // 0x0C-0x0F
-    &Bios::swiBitUnpack,      &Bios::swiLz77Uncomp,     &Bios::swiLz77Uncomp,   &Bios::swiHuffUncomp,    // 0x10-0x13
-    &Bios::swiRunlenUncomp,   &Bios::swiRunlenUncomp,   &Bios::swiUnknown,      &Bios::swiUnknown,       // 0x14-0x17
-    &Bios::swiUnknown,        &Bios::swiUnknown,        &Bios::swiGetSineTable, &Bios::swiGetPitchTable, // 0x18-0x1B
-    &Bios::swiGetVolumeTable, &Bios::swiUnknown,        &Bios::swiUnknown,      &Bios::swiUnknown,       // 0x1C-0x1F
-    &Bios::swiUnknown                                                                                    // 0x20
+    &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiWaitByLoop, // 0x00-0x03
+    &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiHalt, &Bios::swiSleep, // 0x04-0x07
+    &Bios::swiSoundBias, &Bios::swiDivide, &Bios::swiUnknown, &Bios::swiCpuSet, // 0x08-0x0B
+    &Bios::swiCpuFastSet, &Bios::swiSquareRoot, &Bios::swiGetCrc16, &Bios::swiIsDebugger, // 0x0C-0x0F
+    &Bios::swiBitUnpack, &Bios::swiLz77Uncomp, &Bios::swiLz77Uncomp, &Bios::swiHuffUncomp, // 0x10-0x13
+    &Bios::swiRunlenUncomp, &Bios::swiRunlenUncomp, &Bios::swiUnknown, &Bios::swiUnknown, // 0x14-0x17
+    &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiGetSineTable, &Bios::swiGetPitchTable, // 0x18-0x1B
+    &Bios::swiGetVolumeTable, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, // 0x1C-0x1F
+    &Bios::swiUnknown // 0x20
 };
 
 // HLE GBA BIOS SWI lookup table
 int (Bios::*Bios::swiTableGba[])(uint32_t**) =
 {
-    &Bios::swiUnknown,       &Bios::swiRegRamReset,    &Bios::swiHalt,        &Bios::swiSleep,        // 0x00-0x03
-    &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiDivide,      &Bios::swiDivArm,       // 0x04-0x07
-    &Bios::swiSquareRoot,    &Bios::swiArcTan,         &Bios::swiArcTan2,     &Bios::swiCpuSet,       // 0x08-0x0B
-    &Bios::swiCpuFastSet,    &Bios::swiUnknown,        &Bios::swiBgAffineSet, &Bios::swiObjAffineSet, // 0x0C-0x0F
-    &Bios::swiBitUnpack,     &Bios::swiLz77Uncomp,     &Bios::swiLz77Uncomp,  &Bios::swiHuffUncomp,   // 0x10-0x13
-    &Bios::swiRunlenUncomp,  &Bios::swiRunlenUncomp,   &Bios::swiDiffUnfilt8, &Bios::swiDiffUnfilt8,  // 0x14-0x17
-    &Bios::swiDiffUnfilt16,  &Bios::swiSoundBias,      &Bios::swiUnknown,     &Bios::swiUnknown,      // 0x18-0x1B
-    &Bios::swiUnknown,       &Bios::swiUnknown,        &Bios::swiUnknown,     &Bios::swiUnknown,      // 0x1C-0x1F
-    &Bios::swiUnknown                                                                                 // 0x20
+    &Bios::swiUnknown, &Bios::swiRegRamReset, &Bios::swiHalt, &Bios::swiSleep, // 0x00-0x03
+    &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiDivide, &Bios::swiDivArm, // 0x04-0x07
+    &Bios::swiSquareRoot, &Bios::swiArcTan, &Bios::swiArcTan2, &Bios::swiCpuSet, // 0x08-0x0B
+    &Bios::swiCpuFastSet, &Bios::swiUnknown, &Bios::swiBgAffineSet, &Bios::swiObjAffineSet, // 0x0C-0x0F
+    &Bios::swiBitUnpack, &Bios::swiLz77Uncomp, &Bios::swiLz77Uncomp, &Bios::swiHuffUncomp, // 0x10-0x13
+    &Bios::swiRunlenUncomp, &Bios::swiRunlenUncomp, &Bios::swiDiffUnfilt8, &Bios::swiDiffUnfilt8, // 0x14-0x17
+    &Bios::swiDiffUnfilt16, &Bios::swiSoundBias, &Bios::swiUnknown, &Bios::swiUnknown, // 0x18-0x1B
+    &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, // 0x1C-0x1F
+    &Bios::swiUnknown // 0x20
 };
 
 void Bios::saveState(FILE *file)

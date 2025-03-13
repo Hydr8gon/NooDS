@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -39,7 +39,7 @@ class Rtc
         uint8_t readRtc();
         uint16_t readGpData();
         uint16_t readGpDirection() { return gpDirection; }
-        uint16_t readGpControl()   { return gpControl;   }
+        uint16_t readGpControl() { return gpControl; }
 
         void writeRtc(uint8_t value);
         void writeGpData(uint16_t value, uint16_t mask);

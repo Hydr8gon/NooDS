@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -44,23 +44,23 @@ public class NooRenderer implements GLSurfaceView.Renderer
     private boolean gbaMode;
 
     private final String vertexShader =
-        "precision mediump float;"                                      +
-        "uniform mat4 uProjection;"                                     +
-        "attribute vec2 aPosition;"                                     +
-        "attribute vec2 aTexCoord;"                                     +
-        "varying vec2 vTexCoord;"                                       +
-        "void main()"                                                   +
-        "{"                                                             +
+        "precision mediump float;" +
+        "uniform mat4 uProjection;" +
+        "attribute vec2 aPosition;" +
+        "attribute vec2 aTexCoord;" +
+        "varying vec2 vTexCoord;" +
+        "void main()" +
+        "{" +
         "    gl_Position = uProjection * vec4(aPosition.xy, 0.0, 1.0);" +
-        "    vTexCoord = aTexCoord;"                                    +
+        "    vTexCoord = aTexCoord;" +
         "}";
 
     private final String fragmentShader =
-        "precision mediump float;"                           +
-        "uniform sampler2D uTexture;"                        +
-        "varying vec2 vTexCoord;"                            +
-        "void main()"                                        +
-        "{"                                                  +
+        "precision mediump float;" +
+        "uniform sampler2D uTexture;" +
+        "varying vec2 vTexCoord;" +
+        "void main()" +
+        "{" +
         "    gl_FragColor = texture2D(uTexture, vTexCoord);" +
         "}";
 
@@ -114,10 +114,10 @@ public class NooRenderer implements GLSurfaceView.Renderer
         // Define the 2D projection matrix
         final float[] projection =
         {
-             2.0f / width,  0.0f,          0.0f, 0.0f,
-             0.0f,         -2.0f / height, 0.0f, 0.0f,
-             0.0f,          0.0f,          0.0f, 0.0f,
-            -1.0f,          1.0f,          0.0f, 1.0f
+             2.0f / width, 0.0f, 0.0f, 0.0f,
+             0.0f, -2.0f / height, 0.0f, 0.0f,
+             0.0f, 0.0f, 0.0f, 0.0f,
+            -1.0f, 1.0f, 0.0f, 1.0f
         };
 
         // Pass the data to the shaders
@@ -196,7 +196,7 @@ public class NooRenderer implements GLSurfaceView.Renderer
         {
             { s1, s1, s2, s2 }, // None
             { s1, s2, s1, s2 }, // Clockwise
-            { s2, s1, s2, s1 }  // Counter-Clockwise
+            { s2, s1, s2, s1 }, // Counter-Clockwise
         };
 
         // Arrange the T coordinates for rotation
@@ -204,15 +204,15 @@ public class NooRenderer implements GLSurfaceView.Renderer
         {
             { t1, t2, t1, t2 }, // None
             { t2, t2, t1, t1 }, // Clockwise
-            { t1, t1, t2, t2 }  // Counter-Clockwise
+            { t1, t1, t2, t2 }, // Counter-Clockwise
         };
 
         // Define the vertices
         final float[] vertices =
         {
-            x,     y,     s[rot][0], t[rot][0],
-            x,     y + h, s[rot][1], t[rot][1],
-            x + w, y,     s[rot][2], t[rot][2],
+            x, y, s[rot][0], t[rot][0],
+            x, y + h, s[rot][1], t[rot][1],
+            x + w, y, s[rot][2], t[rot][2],
             x + w, y + h, s[rot][3], t[rot][3]
         };
 

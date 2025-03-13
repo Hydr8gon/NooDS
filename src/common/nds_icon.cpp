@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -58,8 +58,8 @@ NdsIcon::NdsIcon(std::string path, int fd)
     {
         uint8_t index = (i & 1) ? ((data[i / 2] & 0xF0) >> 4) : (data[i / 2] & 0x0F);
         uint16_t color = index ? U8TO16(palette, index * 2) : 0xFFFF;
-        uint8_t r = ((color >>  0) & 0x1F) * 255 / 31;
-        uint8_t g = ((color >>  5) & 0x1F) * 255 / 31;
+        uint8_t r = ((color >> 0) & 0x1F) * 255 / 31;
+        uint8_t g = ((color >> 5) & 0x1F) * 255 / 31;
         uint8_t b = ((color >> 10) & 0x1F) * 255 / 31;
         tiles[i] = (0xFF << 24) | (b << 16) | (g << 8) | r;
     }

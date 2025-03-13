@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -48,9 +48,9 @@ class Gpu
         void scanline355();
 
         uint16_t readDispStat(bool cpu) { return dispStat[cpu]; }
-        uint16_t readVCount()           { return vCount;        }
-        uint32_t readDispCapCnt()       { return dispCapCnt;    }
-        uint16_t readPowCnt1()          { return powCnt1;       }
+        uint16_t readVCount() { return vCount; }
+        uint32_t readDispCapCnt() { return dispCapCnt; }
+        uint16_t readPowCnt1() { return powCnt1; }
 
         void writeDispStat(bool cpu, uint16_t mask, uint16_t value);
         void writeDispCapCnt(uint32_t mask, uint32_t value);

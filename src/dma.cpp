@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -46,7 +46,7 @@ void Dma::transfer(int channel)
 {
     int dstAddrCnt = (dmaCnt[channel] & 0x00600000) >> 21;
     int srcAddrCnt = (dmaCnt[channel] & 0x01800000) >> 23;
-    int mode       = (dmaCnt[channel] & 0x38000000) >> 27;
+    int mode = (dmaCnt[channel] & 0x38000000) >> 27;
     int gxFifoCount = 0;
 
     // Perform the transfer

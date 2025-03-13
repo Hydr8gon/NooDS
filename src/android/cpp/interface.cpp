@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -65,7 +65,7 @@ void audioPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
     for (int i = 0; i < 1024; i++)
     {
         uint32_t sample = original[i * 699 / 1024];
-        audioPlayerBuffer[i * 2 + 0] = sample >>  0;
+        audioPlayerBuffer[i * 2 + 0] = sample >> 0;
         audioPlayerBuffer[i * 2 + 1] = sample >> 16;
     }
 

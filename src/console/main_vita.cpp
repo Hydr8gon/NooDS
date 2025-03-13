@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -74,7 +74,7 @@ void *ConsoleUI::createTexture(uint32_t *data, int width, int height)
     uint32_t stride = vita2d_texture_get_stride(texture) / sizeof(uint32_t);
     uint32_t *texData = (uint32_t*)vita2d_texture_get_datap(texture);
     for (int y = 0; y < height; y++)
-         memcpy(&texData[y * stride], &data[y * width], width * sizeof(uint32_t));
+        memcpy(&texData[y * stride], &data[y * width], width * sizeof(uint32_t));
     return texture;
 }
 

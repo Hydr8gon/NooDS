@@ -1,5 +1,5 @@
 /*
-    Copyright 2019-2024 Hydr8gon
+    Copyright 2019-2025 Hydr8gon
 
     This file is part of NooDS.
 
@@ -115,11 +115,11 @@ void Rtc::updateDateTime()
     // Save to the date and time registers in BCD format
     // Index 3 contains the day of the week, but most things don't care
     dateTime[0] = ((time->tm_year / 10) << 4) | (time->tm_year % 10);
-    dateTime[1] = ((time->tm_mon  / 10) << 4) | (time->tm_mon  % 10);
+    dateTime[1] = ((time->tm_mon / 10) << 4) | (time->tm_mon % 10);
     dateTime[2] = ((time->tm_mday / 10) << 4) | (time->tm_mday % 10);
     dateTime[4] = ((time->tm_hour / 10) << 4) | (time->tm_hour % 10);
-    dateTime[5] = ((time->tm_min  / 10) << 4) | (time->tm_min  % 10);
-    dateTime[6] = ((time->tm_sec  / 10) << 4) | (time->tm_sec  % 10);
+    dateTime[5] = ((time->tm_min / 10) << 4) | (time->tm_min % 10);
+    dateTime[6] = ((time->tm_sec / 10) << 4) | (time->tm_sec % 10);
 
     // Set the AM/PM bit
     if (time->tm_hour >= 12)
@@ -224,9 +224,9 @@ void Rtc::writeRtc(uint8_t value)
     rtc = value & ~0x07;
 
     // Change the CS/SCK/SIO bits if writable and update the RTC
-    bool cs  = (rtc & BIT(6)) ?  (value & BIT(2)) : csCur;
+    bool cs = (rtc & BIT(6)) ? (value & BIT(2)) : csCur;
     bool sck = (rtc & BIT(5)) ? !(value & BIT(1)) : sckCur;
-    bool sio = (rtc & BIT(4)) ?  (value & BIT(0)) : sioCur;
+    bool sio = (rtc & BIT(4)) ? (value & BIT(0)) : sioCur;
     updateRtc(cs, sck, sio);
 }
 
@@ -235,7 +235,7 @@ void Rtc::writeGpData(uint16_t mask, uint16_t value)
     if (mask & 0xFF)
     {
         // Change the CS/SCK/SIO bits if writable and update the RTC
-        bool cs  = (gpDirection & BIT(2)) ? (value & BIT(2)) : csCur;
+        bool cs = (gpDirection & BIT(2)) ? (value & BIT(2)) : csCur;
         bool sio = (gpDirection & BIT(1)) ? (value & BIT(1)) : sioCur;
         bool sck = (gpDirection & BIT(0)) ? (value & BIT(0)) : sckCur;
         updateRtc(cs, sck, sio);
@@ -266,7 +266,7 @@ void Rtc::writeGpControl(uint16_t mask, uint16_t value)
 uint8_t Rtc::readRtc()
 {
     // Get the CS/SCK/SIO bits if readable and read from the RTC register
-    bool cs  = csCur;
+    bool cs = csCur;
     bool sck = (rtc & BIT(5)) ? 0 : sckCur;
     bool sio = (rtc & BIT(4)) ? 0 : sioCur;
     return rtc | (cs << 2) | (sck << 1) | (sio << 0);
@@ -275,7 +275,7 @@ uint8_t Rtc::readRtc()
 uint16_t Rtc::readGpData()
 {
     // Get the CS/SCK/SIO bits if readable and read from the GP_DATA register
-    bool cs  = (gpDirection & BIT(2)) ? 0 : csCur;
+    bool cs = (gpDirection & BIT(2)) ? 0 : csCur;
     bool sio = (gpDirection & BIT(1)) ? 0 : sioCur;
     bool sck = (gpDirection & BIT(0)) ? 0 : sckCur;
     return (cs << 2) | (sio << 1) | (sck << 0);
