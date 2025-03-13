@@ -542,10 +542,8 @@ template <bool gbaMode> void Gpu2D::drawText(int bg, int line)
 
         // Draw a scanline of 3D pixels
         for (int i = 0; i < 256; i++)
-        {
             if (data[i << resShift] & 0xFC0000)
                 drawBgPixel(bg, line, i, data[i << resShift]);
-        }
         return;
     }
 
@@ -563,9 +561,12 @@ template <bool gbaMode> void Gpu2D::drawText(int bg, int line)
         tileBase += (bgCnt[bg] & BIT(14)) ? 0x1000 : 0x800;
 
     // Draw a line
+    int width = (gbaMode ? 240 : 256) + (bgHOfs[bg] & 0x7);
     if (bgCnt[bg] & BIT(7)) // 8-bit
     {
-        for (int i = 0; i <= (gbaMode ? 240 : 256); i += 8)
+        // Set the extended palette slot if enabled; BG 0/1 can optionally use slot 2/3
+        uint8_t *extPal = (dispCnt & BIT(30)) ? extPalettes[bg + (bg < 2 && (bgCnt[bg] & BIT(13))) * 2] : nullptr;
+        for (int i = 0; i < width; i += 8)
         {
             // Move the tile address to the current tile
             int xOffset = (i + bgHOfs[bg]) & 0x1FF;
@@ -575,25 +576,9 @@ template <bool gbaMode> void Gpu2D::drawText(int bg, int line)
             if (xOffset >= 256 && (bgCnt[bg] & BIT(14)))
                 tileAddr += 0x800;
 
-            // Get the current tile
+            // Get the current tile and its palette
             uint16_t tile = core->memory.read<uint16_t>(gbaMode, tileAddr);
-
-            // Get the tile's palette
-            uint8_t *pal;
-            if (dispCnt & BIT(30)) // Extended palette
-            {
-                // Determine the extended palette slot
-                // Backgrounds 0 and 1 can alternatively use slots 2 and 3
-                int slot = (bg < 2 && (bgCnt[bg] & BIT(13))) ? (bg + 2) : bg;
-
-                // In extended palette mode, the tile can select from multiple 256-color palettes
-                if (!extPalettes[slot]) return;
-                pal = &extPalettes[slot][(tile & 0xF000) >> 3];
-            }
-            else // Standard palette
-            {
-                pal = palette;
-            }
+            uint8_t *pal = extPal ? &extPal[(tile >> 3) & 0x1E00] : palette;
 
             // Get the palette indices for the current line of the tile, flipped vertically if enabled
             uint32_t indexAddr = indexBase + (tile & 0x3FF) * 64 + ((tile & BIT(11)) ? (7 - (yOffset & 7)) : (yOffset & 7)) * 8;
@@ -611,7 +596,7 @@ template <bool gbaMode> void Gpu2D::drawText(int bg, int line)
     }
     else // 4-bit
     {
-        for (int i = 0; i <= (gbaMode ? 240 : 256); i += 8)
+        for (int i = 0; i < width; i += 8)
         {
             // Move the tile address to the current tile
             int xOffset = (i + bgHOfs[bg]) & 0x1FF;
@@ -704,14 +689,10 @@ void Gpu2D::drawExtended(int bg, int line)
         uint32_t dataBase = bgVramAddr + ((bgCnt[bg] << 6) & 0x7C000);
 
         // Get the bitmap size
-        int sizeX, sizeY;
-        switch ((bgCnt[bg] >> 14) & 0x3)
-        {
-            case 0: sizeX = 128; sizeY = 128; break;
-            case 1: sizeX = 256; sizeY = 256; break;
-            case 2: sizeX = 512; sizeY = 256; break;
-            case 3: sizeX = 512; sizeY = 512; break;
-        }
+        static const uint16_t sizes[] = { 128, 128, 256, 256, 512, 256, 512, 512 };
+        const uint16_t *size = &sizes[((bgCnt[bg] >> 13) & 0x6)];
+        const uint16_t sizeX = size[0];
+        const uint16_t sizeY = size[1];
 
         if (bgCnt[bg] & BIT(2)) // Direct color bitmap
         {
@@ -828,20 +809,15 @@ void Gpu2D::drawExtended(int bg, int line)
 
 void Gpu2D::drawExtendedGba(int bg, int line)
 {
-    uint8_t mode = dispCnt & 0x7;
-
     // Calculate the base data address
     // Modes 4 and 5 have two bitmaps that can be selected with DISPCNT bit 4
+    uint8_t mode = dispCnt & 0x7;
     uint32_t dataBase = bgVramAddr + ((bgCnt[bg] << 3) & 0xF800) +
         ((mode > 3 && (dispCnt & BIT(4))) ? 0xA000 : 0);
 
     // Set the initial rotscale coordinates
     int rotscaleX = internalX[bg - 2] - bgPA[bg - 2];
     int rotscaleY = internalY[bg - 2] - bgPC[bg - 2];
-
-    // Get the bitmap size
-    int sizeX = (mode == 5) ? 160 : 240;
-    int sizeY = (mode == 5) ? 128 : 160;
 
     if (mode == 4) // 256 color bitmap
     {
@@ -853,19 +829,20 @@ void Gpu2D::drawExtendedGba(int bg, int line)
             int y = (rotscaleY += bgPC[bg - 2]) >> 8;
 
             // Don't draw anything on display area overflow
-            if (x < 0 || x >= sizeX || y < 0 || y >= sizeY)
+            if (x < 0 || x >= 240 || y < 0 || y >= 160)
                 continue;
 
-            // Read the palette index for the current pixel
-            uint8_t index = core->memory.read<uint8_t>(1, dataBase + y * sizeX + x);
-
-            // Draw the pixel if it isn't transparent
-            if (index)
+            // Draw a pixel if it has a non-transparent palette index
+            if (uint8_t index = core->memory.read<uint8_t>(1, dataBase + y * 240 + x))
                 drawBgPixel(bg, line, i, U8TO16(palette, index * 2) | BIT(15));
         }
     }
     else // Direct color bitmap
     {
+        // Get the bitmap size
+        uint8_t sizeX = (mode == 5) ? 160 : 240;
+        uint8_t sizeY = (mode == 5) ? 128 : 160;
+
         // Draw a line of the layer
         for (int i = 0; i < 240; i++)
         {
@@ -939,51 +916,31 @@ template <bool gbaMode> void Gpu2D::drawObjects(int line, bool window)
     // Loop through and draw the 128 sprites in OAM
     for (int i = 0; i < 128; i++)
     {
+        // Skip objects that are disabled or are/aren't window type
         uint8_t byte = oam[i * 8 + 1];
         uint8_t type = (byte >> 2) & 0x3;
-
-        // Skip objects that are disabled or are/aren't window type
         if ((byte & 0x3) == 2 || (type == 2) != window)
             continue;
 
-        // Get the current object
-        // Each object takes up 8 bytes in memory, but the last 2 bytes are reserved for rotscale
-        uint16_t object[3] =
+        // Get an object's 6 attribute bytes (the unused 2 bytes are for rotscale)
+        uint16_t object[3] = { U8TO16(oam, i * 8 + 0), U8TO16(oam, i * 8 + 2), U8TO16(oam, i * 8 + 4) };
+
+        // Get the object's dimensions based on its shape and size
+        static const uint8_t sizes[] =
         {
-            (uint16_t)U8TO16(oam, i * 8 + 0),
-            (uint16_t)U8TO16(oam, i * 8 + 2),
-            (uint16_t)U8TO16(oam, i * 8 + 4)
+            8, 8, 16, 16, 32, 32, 64, 64, // Square
+            16, 8, 32, 8, 32, 16, 64, 32, // Horizontal
+            8, 16, 8, 32, 16, 32, 32, 64, // Vertical
+            0, 0, 0, 0, 0, 0, 0, 0 // Prohibited
         };
-
-        // Determine the dimensions of the object
-        int width, height;
-        switch (((object[0] >> 12) & 0xC) | ((object[1] >> 14) & 0x3)) // Shape, size
-        {
-            case 0x0: width = 8; height = 8; break; // Square, 0
-            case 0x1: width = 16; height = 16; break; // Square, 1
-            case 0x2: width = 32; height = 32; break; // Square, 2
-            case 0x3: width = 64; height = 64; break; // Square, 3
-            case 0x4: width = 16; height = 8; break; // Horizontal, 0
-            case 0x5: width = 32; height = 8; break; // Horizontal, 1
-            case 0x6: width = 32; height = 16; break; // Horizontal, 2
-            case 0x7: width = 64; height = 32; break; // Horizontal, 3
-            case 0x8: width = 8; height = 16; break; // Vertical, 0
-            case 0x9: width = 8; height = 32; break; // Vertical, 1
-            case 0xA: width = 16; height = 32; break; // Vertical, 2
-            case 0xB: width = 32; height = 64; break; // Vertical, 3
-
-            default:
-                LOG("Unknown object dimensions: shape=%d, size=%d\n", (object[0] >> 14) & 0x3, (object[1] >> 14) & 0x3);
-                continue;
-        }
+        const uint8_t *size = &sizes[((object[0] >> 11) & 0x18) | ((object[1] >> 13) & 0x6)];
+        const uint8_t width = size[0];
+        const uint8_t height = size[1];
 
         // Double the object bounds for rotscale objects with the double size bit set
-        int width2 = width, height2 = height;
-        if ((object[0] & 0x0300) == 0x0300)
-        {
-            width2 *= 2;
-            height2 *= 2;
-        }
+        bool shift = ((object[0] & 0x300) == 0x300);
+        uint8_t width2 = width << shift;
+        uint8_t height2 = height << shift;
 
         // Get the Y coordinate and wrap it around if it exceeds the screen bounds
         int y = object[0] & 0xFF;
@@ -1069,7 +1026,6 @@ template <bool gbaMode> void Gpu2D::drawObjects(int line, bool window)
                         drawObjPixel(line, offset, pixel, priority);
                 }
             }
-
             continue;
         }
 

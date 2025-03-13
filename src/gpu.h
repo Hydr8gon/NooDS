@@ -70,7 +70,7 @@ class Gpu
         std::atomic<bool> ready;
         std::mutex mutex;
 
-        bool running = false;
+        std::atomic<bool> running;
         std::atomic<int> drawing;
         std::thread *thread = nullptr;
 

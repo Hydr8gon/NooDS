@@ -596,66 +596,47 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t)
             if (!palette) return 0;
 
             // Return the palette color or a transparent or interpolated color based on the mode
+            uint32_t c1, c2;
             switch ((palBase & 0xC000) >> 14) // Interpolation mode
             {
                 case 0:
-                {
                     if (index == 3) return 0;
                     return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-                }
 
                 case 1:
-                {
                     switch (index)
                     {
                         case 2:
-                        {
-                            uint32_t c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
-                            uint32_t c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
+                            c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
+                            c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
                             return interpolateColor(c1, c2, 0, 1, 2);
-                        }
 
                         case 3:
-                        {
                             return 0;
-                        }
 
                         default:
-                        {
                             return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-                        }
                     }
-                }
 
                 case 2:
-                {
                     return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-                }
 
                 case 3:
-                {
                     switch (index)
                     {
                         case 2:
-                        {
-                            uint32_t c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
-                            uint32_t c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
+                            c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
+                            c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
                             return interpolateColor(c1, c2, 0, 3, 8);
-                        }
 
                         case 3:
-                        {
-                            uint32_t c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
-                            uint32_t c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
+                            c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
+                            c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
                             return interpolateColor(c1, c2, 0, 5, 8);
-                        }
 
                         default:
-                        {
                             return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-                        }
                     }
-                }
             }
         }
 

@@ -468,10 +468,8 @@ void Gpu3D::swapBuffers()
         // Find the polygon's greatest W value
         uint32_t value = verticesIn[p->vertices].w;
         for (int j = 1; j < p->size; j++)
-        {
             if ((uint32_t)verticesIn[p->vertices + j].w > value)
                 value = verticesIn[p->vertices + j].w;
-        }
 
         // Reduce precision in 4-bit increments until the value fits in a 16-bit range
         while ((value >> p->wShift) > 0xFFFF)
@@ -479,10 +477,8 @@ void Gpu3D::swapBuffers()
 
         // If precision wasn't reduced, increase it until the value doesn't fit in a 16-bit range
         if (p->wShift == 0 && value != 0)
-        {
             while ((value << -(p->wShift - 4)) <= 0xFFFF)
                 p->wShift -= 4;
-        }
     }
 
     // Swap the vertex buffers
@@ -513,9 +509,8 @@ void Gpu3D::swapBuffers()
 
 void Gpu3D::addVertex()
 {
-    if (vertexCountIn >= 6144) return;
-
     // Set the new vertex
+    if (vertexCountIn >= 6144) return;
     verticesIn[vertexCountIn] = savedVertex;
     verticesIn[vertexCountIn].w = 1 << 12;
 
@@ -561,9 +556,8 @@ void Gpu3D::addVertex()
 
 void Gpu3D::addPolygon()
 {
-    if (polygonCountIn >= 2048) return;
-
     // Set the polygon vertex information
+    if (polygonCountIn >= 2048) return;
     int size = 3 + (polygonType & 1);
     savedPolygon.size = size;
     savedPolygon.vertices = vertexCountIn - size;
@@ -622,14 +616,11 @@ void Gpu3D::addPolygon()
         switch (polygonType)
         {
             case 0: case 1: // Separate polygons
-            {
                 // Discard the vertices
                 vertexCountIn -= size;
                 return;
-            }
 
             case 2: // Triangle strips
-            {
                 if (vertexCount == 3) // First triangle in the strip
                 {
                     // Discard the first vertex, but keep the other 2 for the next triangle
@@ -647,10 +638,8 @@ void Gpu3D::addPolygon()
                     vertexCount = 2;
                 }
                 return;
-            }
 
             case 3: // Quad strips
-            {
                 if (vertexCount == 4) // First quad in the strip
                 {
                     // Discard the first 2 vertices, but keep the other 2 for the next quad
@@ -665,7 +654,6 @@ void Gpu3D::addPolygon()
                     vertexCount = 2;
                 }
                 return;
-            }
         }
     }
 
@@ -675,7 +663,6 @@ void Gpu3D::addPolygon()
         switch (polygonType)
         {
             case 0: case 1: // Separate polygons
-            {
                 // Remove the unclipped vertices
                 vertexCountIn -= size;
 
@@ -687,10 +674,8 @@ void Gpu3D::addPolygon()
                     vertexCountIn++;
                 }
                 break;
-            }
 
             case 2: // Triangle strips
-            {
                 // Remove the unclipped vertices
                 vertexCountIn -= (vertexCount == 3) ? 3 : 1;
                 savedPolygon.vertices = vertexCountIn;
@@ -712,10 +697,8 @@ void Gpu3D::addPolygon()
                 }
                 vertexCount = 2;
                 break;
-            }
 
             case 3: // Quad strips
-            {
                 // Remove the unclipped vertices
                 vertexCountIn -= (vertexCount == 4) ? 4 : 2;
                 savedPolygon.vertices = vertexCountIn;
@@ -737,7 +720,6 @@ void Gpu3D::addPolygon()
                 }
                 vertexCount = 2;
                 break;
-            }
         }
     }
 
@@ -762,7 +744,6 @@ void Gpu3D::mtxPushCmd()
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             if (!(gxStat & BIT(13)))
             {
                 // Push to the single projection stack slot and increment the pointer
@@ -775,7 +756,6 @@ void Gpu3D::mtxPushCmd()
                 gxStat |= BIT(15);
             }
             break;
-        }
 
         case 1: case 2: // Coordinate and directional stacks
         {
@@ -798,11 +778,9 @@ void Gpu3D::mtxPushCmd()
         }
 
         case 3: // Texture stack
-        {
             // Push to the single texture stack slot
             textureStack = texture;
             break;
-        }
     }
 
     // Clear the busy bit if no more matrix commands are queued
@@ -816,7 +794,6 @@ void Gpu3D::mtxPopCmd(uint32_t param)
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             if (gxStat & BIT(13))
             {
                 // Pop from the single projection stack slot and decrement the pointer
@@ -830,7 +807,6 @@ void Gpu3D::mtxPopCmd(uint32_t param)
                 gxStat |= BIT(15);
             }
             break;
-        }
 
         case 1: case 2: // Coordinate and directional stacks
         {
@@ -854,11 +830,9 @@ void Gpu3D::mtxPopCmd(uint32_t param)
         }
 
         case 3: // Texture stack
-        {
             // Pop from the single texture stack slot
             texture = textureStack;
             break;
-        }
     }
 
     // Clear the busy bit if no more matrix commands are queued
@@ -872,11 +846,9 @@ void Gpu3D::mtxStoreCmd(uint32_t param)
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             // Store to the single projection stack slot
             projectionStack = projection;
             break;
-        }
 
         case 1: case 2: // Coordinate and directional stacks
         {
@@ -894,11 +866,9 @@ void Gpu3D::mtxStoreCmd(uint32_t param)
         }
 
         case 3: // Texture stack
-        {
             // Store to the single texture stack slot
             textureStack = texture;
             break;
-        }
     }
 }
 
@@ -908,12 +878,10 @@ void Gpu3D::mtxRestoreCmd(uint32_t param)
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             // Restore from the single projection stack slot
             projection = projectionStack;
             clipDirty = true;
             break;
-        }
 
         case 1: case 2: // Coordinate and directional stacks
         {
@@ -932,11 +900,9 @@ void Gpu3D::mtxRestoreCmd(uint32_t param)
        }
 
         case 3: // Texture stack
-        {
             // Restore from the single texture stack slot
             texture = textureStack;
             break;
-        }
     }
 }
 
@@ -946,32 +912,24 @@ void Gpu3D::mtxIdentityCmd()
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             projection = Matrix();
             clipDirty = true;
             break;
-        }
 
         case 1: // Coordinate stack
-        {
             coordinate = Matrix();
             clipDirty = true;
             break;
-        }
 
         case 2: // Coordinate and directional stacks
-        {
             coordinate = Matrix();
             direction = Matrix();
             clipDirty = true;
             break;
-        }
 
         case 3: // Texture stack
-        {
             texture = Matrix();
             break;
-        }
     }
 }
 
@@ -984,32 +942,24 @@ void Gpu3D::mtxLoad44Cmd(std::vector<uint32_t> &params)
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             projection = matrix;
             clipDirty = true;
             break;
-        }
 
         case 1: // Coordinate stack
-        {
             coordinate = matrix;
             clipDirty = true;
             break;
-        }
 
         case 2: // Coordinate and directional stacks
-        {
             coordinate = matrix;
             direction = matrix;
             clipDirty = true;
             break;
-        }
 
         case 3: // Texture stack
-        {
             texture = matrix;
             break;
-        }
     }
 }
 
@@ -1024,32 +974,24 @@ void Gpu3D::mtxLoad43Cmd(std::vector<uint32_t> &params)
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             projection = matrix;
             clipDirty = true;
             break;
-        }
 
         case 1: // Coordinate stack
-        {
             coordinate = matrix;
             clipDirty = true;
             break;
-        }
 
         case 2: // Coordinate and directional stacks
-        {
             coordinate = matrix;
             direction = matrix;
             clipDirty = true;
             break;
-        }
 
         case 3: // Texture stack
-        {
             texture = matrix;
             break;
-        }
     }
 }
 
@@ -1062,32 +1004,24 @@ void Gpu3D::mtxMult44Cmd(std::vector<uint32_t> &params)
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             projection = matrix * projection;
             clipDirty = true;
             break;
-        }
 
         case 1: // Coordinate stack
-        {
             coordinate = matrix * coordinate;
             clipDirty = true;
             break;
-        }
 
         case 2: // Coordinate and directional stacks
-        {
             coordinate = matrix * coordinate;
             direction = matrix * direction;
             clipDirty = true;
             break;
-        }
 
         case 3: // Texture stack
-        {
             texture = matrix * texture;
             break;
-        }
     }
 }
 
@@ -1102,32 +1036,24 @@ void Gpu3D::mtxMult43Cmd(std::vector<uint32_t> &params)
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             projection = matrix * projection;
             clipDirty = true;
             break;
-        }
 
         case 1: // Coordinate stack
-        {
             coordinate = matrix * coordinate;
             clipDirty = true;
             break;
-        }
 
         case 2: // Coordinate and directional stacks
-        {
             coordinate = matrix * coordinate;
             direction = matrix * direction;
             clipDirty = true;
             break;
-        }
 
         case 3: // Texture stack
-        {
             texture = matrix * texture;
             break;
-        }
     }
 }
 
@@ -1142,32 +1068,24 @@ void Gpu3D::mtxMult33Cmd(std::vector<uint32_t> &params)
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             projection = matrix * projection;
             clipDirty = true;
             break;
-        }
 
         case 1: // Coordinate stack
-        {
             coordinate = matrix * coordinate;
             clipDirty = true;
             break;
-        }
 
         case 2: // Coordinate and directional stacks
-        {
             coordinate = matrix * coordinate;
             direction = matrix * direction;
             clipDirty = true;
             break;
-        }
 
         case 3: // Texture stack
-        {
             texture = matrix * texture;
             break;
-        }
     }
 }
 
@@ -1182,24 +1100,18 @@ void Gpu3D::mtxScaleCmd(std::vector<uint32_t> &params)
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             projection = matrix * projection;
             clipDirty = true;
             break;
-        }
 
         case 1: case 2: // Coordinate stack
-        {
             coordinate = matrix * coordinate;
             clipDirty = true;
             break;
-        }
 
         case 3: // Texture stack
-        {
             texture = matrix * texture;
             break;
-        }
     }
 }
 
@@ -1213,32 +1125,24 @@ void Gpu3D::mtxTransCmd(std::vector<uint32_t> &params)
     switch (matrixMode)
     {
         case 0: // Projection stack
-        {
             projection = matrix * projection;
             clipDirty = true;
             break;
-        }
 
         case 1: // Coordinate stack
-        {
             coordinate = matrix * coordinate;
             clipDirty = true;
             break;
-        }
 
         case 2: // Coordinate and directional stacks
-        {
             coordinate = matrix * coordinate;
             direction = matrix * direction;
             clipDirty = true;
             break;
-        }
 
         case 3: // Texture stack
-        {
             texture = matrix * texture;
             break;
-        }
     }
 }
 
@@ -1360,7 +1264,6 @@ void Gpu3D::vtx16Cmd(std::vector<uint32_t> &params)
     savedVertex.x = (int16_t)(params[0] >> 0);
     savedVertex.y = (int16_t)(params[0] >> 16);
     savedVertex.z = (int16_t)(params[1]);
-
     addVertex();
 }
 
@@ -1370,7 +1273,6 @@ void Gpu3D::vtx10Cmd(uint32_t param)
     savedVertex.x = (int16_t)((param & 0x000003FF) << 6);
     savedVertex.y = (int16_t)((param & 0x000FFC00) >> 4);
     savedVertex.z = (int16_t)((param & 0x3FF00000) >> 14);
-
     addVertex();
 }
 
@@ -1379,7 +1281,6 @@ void Gpu3D::vtxXYCmd(uint32_t param)
     // Set the X and Y coordinates
     savedVertex.x = (int16_t)(param >> 0);
     savedVertex.y = (int16_t)(param >> 16);
-
     addVertex();
 }
 
@@ -1388,7 +1289,6 @@ void Gpu3D::vtxXZCmd(uint32_t param)
     // Set the X and Z coordinates
     savedVertex.x = (int16_t)(param >> 0);
     savedVertex.z = (int16_t)(param >> 16);
-
     addVertex();
 }
 
@@ -1397,7 +1297,6 @@ void Gpu3D::vtxYZCmd(uint32_t param)
     // Set the Y and Z coordinates
     savedVertex.y = (int16_t)(param >> 0);
     savedVertex.z = (int16_t)(param >> 16);
-
     addVertex();
 }
 
@@ -1407,7 +1306,6 @@ void Gpu3D::vtxDiffCmd(uint32_t param)
     savedVertex.x += ((int16_t)((param & 0x000003FF) << 6) / 8) >> 3;
     savedVertex.y += ((int16_t)((param & 0x000FFC00) >> 4) / 8) >> 3;
     savedVertex.z += ((int16_t)((param & 0x3FF00000) >> 14) / 8) >> 3;
-
     addVertex();
 }
 

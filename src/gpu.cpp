@@ -27,6 +27,7 @@ Gpu::Gpu(Core *core): core(core)
 {
     // Mark the thread as not drawing to start
     ready.store(false);
+    running.store(false);
     drawing.store(0);
 }
 
@@ -35,7 +36,7 @@ Gpu::~Gpu()
     // Clean up the thread
     if (thread)
     {
-        running = false;
+        running.store(false);
         thread->join();
         delete thread;
     }
@@ -290,7 +291,7 @@ void Gpu::gbaScanline308()
             // Stop the thread now that the frame has been drawn
             if (thread)
             {
-                running = false;
+                running.store(false);
                 thread->join();
                 delete thread;
                 thread = nullptr;
@@ -338,7 +339,7 @@ void Gpu::gbaScanline308()
             // Start the 2D thread if enabled
             if (Settings::threaded2D && !thread)
             {
-                running = true;
+                running.store(true);
                 thread = new std::thread(&Gpu::drawGbaThreaded, this);
             }
             break;
@@ -412,14 +413,10 @@ void Gpu::scanline256()
         if (displayCapture)
         {
             // Determine the capture size
-            int width, height;
-            switch ((dispCapCnt & 0x00300000) >> 20) // Capture size
-            {
-                case 0: width = 128; height = 128; break;
-                case 1: width = 256; height = 64; break;
-                case 2: width = 256; height = 128; break;
-                case 3: width = 256; height = 192; break;
-            }
+            static const uint16_t sizes[] = { 128, 128, 256, 64, 256, 128, 256, 192 };
+            const uint16_t *size = &sizes[(dispCapCnt >> 19) & 0x6];
+            const uint16_t width = size[0];
+            const uint16_t height = size[1];
 
             // Get the VRAM destination address for the current scanline
             uint32_t base = 0x6800000 + ((dispCapCnt & 0x00030000) >> 16) * 0x20000;
@@ -438,7 +435,6 @@ void Gpu::scanline256()
                     // Copy a scanline to memory
                     for (int i = 0; i < width; i++)
                         core->memory.write<uint16_t>(0, base + ((writeOffset + i * 2) & 0x1FFFF), rgb6ToRgb5(source[i << resShift]));
-
                     break;
                 }
 
@@ -459,7 +455,6 @@ void Gpu::scanline256()
                         uint16_t color = core->memory.read<uint16_t>(0, base + ((readOffset + i * 2) & 0x1FFFF));
                         core->memory.write<uint16_t>(0, base + ((writeOffset + i * 2) & 0x1FFFF), color);
                     }
-
                     break;
                 }
 
@@ -498,7 +493,6 @@ void Gpu::scanline256()
                         uint16_t color = BIT(15) | (b << 10) | (g << 5) | r;
                         core->memory.write<uint16_t>(0, base + ((writeOffset + i * 2) & 0x1FFFF), color);
                     }
-
                     break;
                 }
             }
@@ -545,7 +539,7 @@ void Gpu::scanline355()
             // Stop the thread now that the frame has been drawn
             if (thread)
             {
-                running = false;
+                running.store(false);
                 thread->join();
                 delete thread;
                 thread = nullptr;
@@ -571,9 +565,8 @@ void Gpu::scanline355()
             // Allow up to 2 framebuffers to be queued, to preserve frame pacing if emulation runs ahead
             if (framebuffers.size() < 2)
             {
-                Buffers buffers;
-
                 // Copy the completed sub-framebuffers to a new framebuffer
+                Buffers buffers;
                 buffers.framebuffer = new uint32_t[256 * 192 * 2];
                 if (powCnt1 & BIT(0)) // LCDs enabled
                 {
@@ -628,7 +621,7 @@ void Gpu::scanline355()
             // Start the 2D thread if enabled
             if (Settings::threaded2D && !thread)
             {
-                running = true;
+                running.store(true);
                 thread = new std::thread(&Gpu::drawThreaded, this);
             }
             break;
@@ -670,12 +663,12 @@ void Gpu::scanline355()
 
 void Gpu::drawGbaThreaded()
 {
-    while (running)
+    while (running.load())
     {
         // Wait until the next scanline should start
         while (drawing.load() != 1)
         {
-            if (!running) return;
+            if (!running.load()) return;
             std::this_thread::yield();
         }
 
@@ -689,12 +682,12 @@ void Gpu::drawGbaThreaded()
 
 void Gpu::drawThreaded()
 {
-    while (running)
+    while (running.load())
     {
         // Wait until the next scanline should start
         while (drawing.load() != 1)
         {
-            if (!running) return;
+            if (!running.load()) return;
             std::this_thread::yield();
         }
 
