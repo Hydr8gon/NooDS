@@ -40,6 +40,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     realGbaBios = memory.loadGbaBios();
 
     // Define the tasks that can be scheduled
+    tasks[UPDATE_RUN] = std::bind(&Core::updateRun, this);
     tasks[RESET_CYCLES] = std::bind(&Core::resetCycles, this);
     tasks[CART9_WORD_READY] = std::bind(&CartridgeNds::wordReady, &cartridgeNds, 0);
     tasks[CART7_WORD_READY] = std::bind(&CartridgeNds::wordReady, &cartridgeNds, 1);
@@ -80,7 +81,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
 
     // Update DSi mode now and ignore changes to it later
     dsiMode = Settings::dsiMode;
-    runFunc = dsiMode ? &Interpreter::runDsiFrame : &Interpreter::runNdsFrame;
+    updateRun();
 
     // Initialize the memory and CPUs
     memory.updateMap9(0x00000000, 0xFFFFFFFF);
@@ -179,7 +180,24 @@ void Core::loadState(FILE *file)
     }
 
     // Update the run function pointer
-    runFunc = gbaMode ? &Interpreter::runGbaFrame : (dsiMode ? &Interpreter::runDsiFrame : &Interpreter::runNdsFrame);
+    updateRun();
+}
+
+void Core::updateRun() {
+    // Set the run function based on active CPUs and core mode
+    if (interpreter[0].halted && interpreter[1].halted)
+        runFunc = &Interpreter::runCoreNone;
+    else if (gbaMode)
+        runFunc = &Interpreter::runCoreSingle<true, 0>;
+    else if (dsiMode)
+        runFunc = &Interpreter::runCoreDsi;
+    else if (!interpreter[0].halted && !interpreter[1].halted)
+        runFunc = &Interpreter::runCoreNds;
+    else if (interpreter[0].halted)
+        runFunc = &Interpreter::runCoreSingle<true, 1>;
+    else
+        runFunc = &Interpreter::runCoreSingle<false, 0>;
+    running.store(false);
 }
 
 void Core::resetCycles()
@@ -205,8 +223,8 @@ void Core::enterGbaMode()
 {
     // Switch to GBA mode
     gbaMode = true;
-    runFunc = &Interpreter::runGbaFrame;
-    running.store(false);
+    interpreter[0].halt(2);
+    updateRun();
 
     // Reset the scheduler and schedule initial tasks for GBA mode
     events.clear();

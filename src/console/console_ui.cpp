@@ -1250,7 +1250,7 @@ void ConsoleUI::runCore()
 {
     // Run the emulator
     while (running)
-        core->runFrame();
+        core->runCore();
 }
 
 void ConsoleUI::checkSave()

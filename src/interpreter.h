@@ -32,6 +32,7 @@ class Interpreter
     public:
         Bios *bios = nullptr;
         uint32_t entryAddr = 0;
+        uint8_t halted = 0;
 
         Interpreter(Core *core, bool arm7);
         void saveState(FILE *file);
@@ -41,15 +42,16 @@ class Interpreter
         void directBoot();
         void resetCycles();
 
-        static void runNdsFrame(Core &core);
-        static void runDsiFrame(Core &core);
-        static void runGbaFrame(Core &core);
+        static void runCoreNone(Core &core);
+        template <bool, int> static void runCoreSingle(Core &core);
+        static void runCoreNds(Core &core);
+        static void runCoreDsi(Core &core);
 
         uint16_t getOpcode16();
         uint32_t getOpcode32();
 
-        void halt(int bit) { halted |= BIT(bit); }
-        void unhalt(int bit) { halted &= ~BIT(bit); }
+        void halt(int bit);
+        void unhalt(int bit);
         void sendInterrupt(int bit);
         void interrupt();
 
@@ -86,7 +88,6 @@ class Interpreter
         uint32_t spsrFiq = 0, spsrSvc = 0, spsrAbt = 0, spsrIrq = 0, spsrUnd = 0;
 
         uint32_t cycles = 0;
-        uint8_t halted = 0;
         bool dsiCycle = false;
 
         uint8_t ime = 0;

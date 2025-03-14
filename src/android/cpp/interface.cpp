@@ -564,9 +564,9 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_NooActivity_isGbaMode
     return core->gbaMode;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_runFrame(JNIEnv *env, jobject obj)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_runCore(JNIEnv *env, jobject obj)
 {
-    core->runFrame();
+    core->runCore();
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_NooActivity_writeSave(JNIEnv *env, jobject obj)

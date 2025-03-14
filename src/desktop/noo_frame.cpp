@@ -270,7 +270,7 @@ void NooFrame::runCore()
 {
     // Run the emulator
     while (running)
-        core->runFrame();
+        core->runCore();
 }
 
 void NooFrame::checkSave()

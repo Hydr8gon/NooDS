@@ -113,32 +113,13 @@ void Interpreter::resetCycles()
     cycles -= std::min(core->globalCycles, cycles);
 }
 
-void Interpreter::runNdsFrame(Core &core)
+void Interpreter::runCoreNone(Core &core)
 {
-    // Run a frame in NDS mode
-    Interpreter &arm9 = core.interpreter[0];
-    Interpreter &arm7 = core.interpreter[1];
+    // Run the core with no active CPUs
     while (core.running.exchange(true))
     {
-        // Run the CPUs until the next scheduled task
-        while (core.events[0].cycles > core.globalCycles)
-        {
-            // Run the ARM9
-            if (!arm9.halted && core.globalCycles >= arm9.cycles)
-                arm9.cycles = core.globalCycles + arm9.runOpcode();
-
-            // Run the ARM7 at half the speed of the ARM9
-            if (!arm7.halted && core.globalCycles >= arm7.cycles)
-                arm7.cycles = core.globalCycles + (arm7.runOpcode() << 1);
-
-            // Count cycles up to the next soonest event
-            core.globalCycles = std::min<uint32_t>((arm9.halted ? -1 : arm9.cycles), (arm7.halted ? -1 : arm7.cycles));
-        }
-
-        // Jump to the next scheduled task
+        // Jump to the next task and run all that are scheduled now
         core.globalCycles = core.events[0].cycles;
-
-        // Run all tasks that are scheduled now
         while (core.events[0].cycles <= core.globalCycles)
         {
             core.tasks[core.events[0].task]();
@@ -147,59 +128,83 @@ void Interpreter::runNdsFrame(Core &core)
     }
 }
 
-void Interpreter::runDsiFrame(Core &core)
+template void Interpreter::runCoreSingle<false, 0>(Core &core);
+template void Interpreter::runCoreSingle<true, 0>(Core &core);
+template void Interpreter::runCoreSingle<true, 1>(Core &core);
+template <bool _arm7, int shift> void Interpreter::runCoreSingle(Core &core)
 {
-    // Run a frame in DSi mode
+    // Run the core with one active CPU
+    Interpreter &arm = core.interpreter[_arm7];
+    while (core.running.exchange(true))
+    {
+        // Run a CPU until the next scheduled task
+        core.globalCycles = std::max(core.globalCycles, arm.cycles);
+        while (core.events[0].cycles > arm.cycles)
+            arm.cycles = (core.globalCycles += arm.runOpcode() << shift);
+
+        // Jump to the next task and run all that are scheduled now
+        core.globalCycles = core.events[0].cycles;
+        while (core.events[0].cycles <= core.globalCycles)
+        {
+            core.tasks[core.events[0].task]();
+            core.events.erase(core.events.begin());
+        }
+    }
+}
+
+void Interpreter::runCoreNds(Core &core)
+{
+    // Run the core with both CPUs active in NDS mode
     Interpreter &arm9 = core.interpreter[0];
     Interpreter &arm7 = core.interpreter[1];
     while (core.running.exchange(true))
     {
-        // Run the CPUs until the next scheduled task
+        // Run the ARM9 and half-speed ARM7 until the next scheduled task
+        while (core.events[0].cycles > core.globalCycles)
+        {
+            if (core.globalCycles >= arm9.cycles)
+                arm9.cycles = core.globalCycles + arm9.runOpcode();
+            if (core.globalCycles >= arm7.cycles)
+                arm7.cycles = core.globalCycles + (arm7.runOpcode() << 1);
+            core.globalCycles = std::min<uint32_t>(arm9.cycles, arm7.cycles);
+        }
+
+        // Jump to the next task and run all that are scheduled now
+        core.globalCycles = core.events[0].cycles;
+        while (core.events[0].cycles <= core.globalCycles)
+        {
+            core.tasks[core.events[0].task]();
+            core.events.erase(core.events.begin());
+        }
+    }
+}
+
+void Interpreter::runCoreDsi(Core &core)
+{
+    // Run the core in DSi mode
+    Interpreter &arm9 = core.interpreter[0];
+    Interpreter &arm7 = core.interpreter[1];
+    while (core.running.exchange(true))
+    {
+        // Run both CPUs until the next scheduled task
         while (core.events[0].cycles > core.globalCycles)
         {
             // Run the ARM9 twice as fast as usual
-            if (!arm9.halted && core.globalCycles >= arm9.cycles)
+            if (core.globalCycles >= arm9.cycles)
             {
                 int cycles = arm9.runOpcode() + arm9.dsiCycle;
                 arm9.cycles = core.globalCycles + (cycles >> 1);
                 arm9.dsiCycle = (cycles & 0x1);
             }
 
-            // Run the ARM7 at half the regular speed of the ARM9
-            if (!arm7.halted && core.globalCycles >= arm7.cycles)
+            // Run the ARM7 at half speed and advance to the next opcode cycle
+            if (core.globalCycles >= arm7.cycles)
                 arm7.cycles = core.globalCycles + (arm7.runOpcode() << 1);
-
-            // Count cycles up to the next soonest event
-            core.globalCycles = std::min<uint32_t>((arm9.halted ? -1 : arm9.cycles), (arm7.halted ? -1 : arm7.cycles));
+            core.globalCycles = std::min<uint32_t>(arm9.cycles, arm7.cycles);
         }
 
-        // Jump to the next scheduled task
+        // Jump to the next task and run all that are scheduled now
         core.globalCycles = core.events[0].cycles;
-
-        // Run all tasks that are scheduled now
-        while (core.events[0].cycles <= core.globalCycles)
-        {
-            core.tasks[core.events[0].task]();
-            core.events.erase(core.events.begin());
-        }
-    }
-}
-
-void Interpreter::runGbaFrame(Core &core)
-{
-    // Run a frame in GBA mode
-    Interpreter &arm7 = core.interpreter[1];
-    while (core.running.exchange(true))
-    {
-        // Run the ARM7 until the next scheduled task
-        if (arm7.cycles > core.globalCycles) core.globalCycles = arm7.cycles;
-        while (!arm7.halted && core.events[0].cycles > arm7.cycles)
-            arm7.cycles = (core.globalCycles += arm7.runOpcode());
-
-        // Jump to the next scheduled task
-        core.globalCycles = core.events[0].cycles;
-
-        // Run all tasks that are scheduled now
         while (core.events[0].cycles <= core.globalCycles)
         {
             core.tasks[core.events[0].task]();
@@ -256,6 +261,26 @@ uint32_t Interpreter::getOpcode32()
     return U8TO32(pcData, 0);
 }
 
+void Interpreter::halt(int bit)
+{
+    // Set a halt bit and disable the CPU if newly halted
+    bool before = halted;
+    halted |= BIT(bit);
+    if (before) return;
+    core->schedule(UPDATE_RUN, 0);
+    cycles = 0xFFFFFFFF;
+}
+
+void Interpreter::unhalt(int bit)
+{
+    // Clear a halt bit and enable the CPU if newly halted
+    bool before = halted;
+    halted &= ~BIT(bit);
+    if (!before) return;
+    core->schedule(UPDATE_RUN, 0);
+    cycles = 0;
+}
+
 void Interpreter::sendInterrupt(int bit)
 {
     // Set the interrupt's request bit
@@ -268,7 +293,7 @@ void Interpreter::sendInterrupt(int bit)
         if (ime && !(cpsr & BIT(7)))
             core->schedule(SchedTask(ARM9_INTERRUPT + arm7), (arm7 && !core->gbaMode) + 1);
         else if (ime || arm7)
-            halted &= ~BIT(0);
+            unhalt(0);
     }
 }
 
@@ -278,7 +303,7 @@ void Interpreter::interrupt()
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
     {
         exception(0x18);
-        halted &= ~BIT(0);
+        unhalt(0);
     }
 }
 

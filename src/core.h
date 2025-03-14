@@ -58,6 +58,7 @@ enum CoreError
 
 enum SchedTask
 {
+    UPDATE_RUN,
     RESET_CYCLES,
     CART9_WORD_READY,
     CART7_WORD_READY,
@@ -142,17 +143,18 @@ class Core
         void saveState(FILE *file);
         void loadState(FILE *file);
 
-        void runFrame() { (*runFunc)(*this); }
+        void runCore() { (*runFunc)(*this); }
         void schedule(SchedTask task, uint32_t cycles);
         void enterGbaMode();
         void endFrame();
 
     private:
         bool realGbaBios;
-        void (*runFunc)(Core&) = &Interpreter::runNdsFrame;
+        void (*runFunc)(Core&) = &Interpreter::runCoreNds;
         std::chrono::steady_clock::time_point lastFpsTime;
         int fpsCount = 0;
 
+        void updateRun();
         void resetCycles();
 };
 

@@ -494,7 +494,7 @@ public class NooActivity extends AppCompatActivity
             public void run()
             {             
                 while (running)
-                    runFrame();
+                    runCore();
             }
         };
 
@@ -589,7 +589,7 @@ public class NooActivity extends AppCompatActivity
     public static native void stopAudioRecorder();
     public static native int getFps();
     public static native boolean isGbaMode();
-    public static native void runFrame();
+    public static native void runCore();
     public static native void writeSave();
     public static native void restartCore();
     public static native int checkState();
