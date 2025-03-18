@@ -233,15 +233,16 @@ uint32_t *Spu::getSamples(int count)
 
 void Spu::runGbaSample()
 {
-    int64_t sampleLeft = 0;
-    int64_t sampleRight = 0;
+    // Push a dummy sample if disabled and schedule the next one
+    core->schedule(GBA_SPU_SAMPLE, 512);
+    if (!Settings::emulateAudio) return pushSample(0, 0);
 
     // Generate an audio sample
+    int32_t sampleLeft = 0, sampleRight = 0;
     if (gbaMainSoundCntX & BIT(7))
     {
-        int32_t data[4] = {};
-
         // Run the tone channels
+        int32_t data[4] = {};
         for (int i = 0; i < 2; i++)
         {
             if (!(gbaMainSoundCntX & BIT(i)))
@@ -475,72 +476,44 @@ void Spu::runGbaSample()
         gbaFrameSequencer = (gbaFrameSequencer + 1) % 512;
     }
 
-    // Apply the sound bias
-    sampleLeft += (gbaSoundBias & 0x03FF);
-    sampleRight += (gbaSoundBias & 0x03FF);
-
-    // Apply clipping
-    if (sampleLeft < 0x000) sampleLeft = 0x000;
-    if (sampleLeft > 0x3FF) sampleLeft = 0x3FF;
-    if (sampleRight < 0x000) sampleRight = 0x000;
-    if (sampleRight > 0x3FF) sampleRight = 0x3FF;
-
-    // Expand the samples to signed 16-bit values and return them
-    sampleLeft = (sampleLeft - 0x200) << 5;
-    sampleRight = (sampleRight - 0x200) << 5;
-
-    if (bufferSize > 0)
-    {
-        // Write the samples to the buffer
-        bufferIn[bufferPointer++] = (sampleRight << 16) | (sampleLeft & 0xFFFF);
-
-        // Handle a full buffer
-        if (bufferPointer == bufferSize)
-            swapBuffers();
-    }
-
-    // Reschedule the task for the next sample
-    core->schedule(GBA_SPU_SAMPLE, 512);
+    // Apply sound bias and clipping, and expand samples to signed 16-bit
+    sampleLeft = (std::max(0, std::min<int32_t>(0x3FF, sampleLeft + (gbaSoundBias & 0x3FF))) - 0x200) << 6;
+    sampleRight = (std::max(0, std::min<int32_t>(0x3FF, sampleRight + (gbaSoundBias & 0x3FF))) - 0x200) << 6;
+    pushSample(sampleLeft, sampleRight);
 }
 
 void Spu::runSample()
 {
-    int64_t mixerLeft = 0, mixerRight = 0;
-    int64_t channelsLeft[2] = {}, channelsRight[2] = {};
+    // Push a dummy sample if disabled and schedule the next one
+    core->schedule(NDS_SPU_SAMPLE, 512 * 2);
+    if (!Settings::emulateAudio) return pushSample(0, 0);
 
     // Mix the sound channels
-    for (int i = 0; i < 16; i++)
+    int64_t mixerLeft = 0, mixerRight = 0;
+    int64_t channelsLeft[2] = {}, channelsRight[2] = {};
+    for (int i = 0; enabled >> i; i++)
     {
         // Skip disabled channels
-        if (!(enabled & BIT(i)))
-            continue;
-
-        int format = (soundCnt[i] & 0x60000000) >> 29;
+        if (!(enabled & BIT(i))) continue;
+        uint8_t format = (soundCnt[i] >> 29) & 0x3;
         int64_t data = 0;
 
         // Read the sample data
         switch (format)
         {
             case 0: // PCM8
-            {
                 data = (int8_t)core->memory.read<uint8_t>(1, soundCurrent[i]) << 8;
                 break;
-            }
 
             case 1: // PCM16
-            {
                 data = (int16_t)core->memory.read<uint16_t>(1, soundCurrent[i]);
                 break;
-            }
 
             case 2: // ADPCM
-            {
                 data = adpcmValue[i];
                 break;
-            }
 
             case 3: // Pulse/Noise
-            {
                 if (i >= 8 && i <= 13) // Pulse waves
                 {
                     // Set the sample to low or high depending on the position in the duty cycle
@@ -553,7 +526,6 @@ void Spu::runSample()
                     data = (noiseValues[i - 14] & BIT(15)) ? -0x7FFF : 0x7FFF;
                 }
                 break;
-            }
         }
 
         // Increment the timer for the length of a sample
@@ -572,11 +544,9 @@ void Spu::runSample()
             switch (format)
             {
                 case 0: case 1: // PCM8/PCM16
-                {
                     // Increment the data pointer by the size of one sample
                     soundCurrent[i] += 1 + format;
                     break;
-                }
 
                 case 2: // ADPCM
                 {
@@ -622,7 +592,6 @@ void Spu::runSample()
                 }
 
                 case 3: // Pulse/Noise
-                {
                     if (i >= 8 && i <= 13) // Pulse waves
                     {
                         // Increment the duty cycle counter
@@ -640,7 +609,6 @@ void Spu::runSample()
                             noiseValues[i - 14] >>= 1;
                     }
                     break;
-                }
             }
 
             // Repeat or end the sound if the end of the data is reached
@@ -778,36 +746,29 @@ void Spu::runSample()
     sampleLeft = (sampleLeft * masterVol / 128) >> 8;
     sampleRight = (sampleRight * masterVol / 128) >> 8;
 
-    // Convert to 10-bit and apply the sound bias
-    sampleLeft = (sampleLeft >> 6) + soundBias;
-    sampleRight = (sampleRight >> 6) + soundBias;
-
-    // Apply clipping
-    if (sampleLeft < 0x000) sampleLeft = 0x000;
-    if (sampleLeft > 0x3FF) sampleLeft = 0x3FF;
-    if (sampleRight < 0x000) sampleRight = 0x000;
-    if (sampleRight > 0x3FF) sampleRight = 0x3FF;
-
-    // Expand the samples to signed 16-bit values and return them
-    sampleLeft = (sampleLeft - 0x200) << 5;
-    sampleRight = (sampleRight - 0x200) << 5;
-
-    if (bufferSize > 0)
+    // Process samples depending on audio settings
+    if (Settings::audio16Bit)
     {
-        // Write the samples to the buffer
-        bufferIn[bufferPointer++] = (sampleRight << 16) | (sampleLeft & 0xFFFF);
-
-        // Handle a full buffer
-        if (bufferPointer == bufferSize)
-            swapBuffers();
+        // Apply sound bias and clipping, and convert to signed 16-bit
+        sampleLeft = (std::max(0, std::min<int32_t>(0xFFFF, sampleLeft + (soundBias << 6))) - 0x8000);
+        sampleRight = (std::max(0, std::min<int32_t>(0xFFFF, sampleRight + (soundBias << 6))) - 0x8000);
     }
-
-    // Reschedule the task for the next sample
-    core->schedule(NDS_SPU_SAMPLE, 512 * 2);
+    else
+    {
+        // Convert to 10-bit, apply sound bias and clipping, and expand to signed 16-bit
+        sampleLeft = (std::max(0, std::min<int32_t>(0x3FF, (sampleLeft >> 6) + soundBias)) - 0x200) << 6;
+        sampleRight = (std::max(0, std::min<int32_t>(0x3FF, (sampleRight >> 6) + soundBias)) - 0x200) << 6;
+    }
+    pushSample(sampleLeft, sampleRight);
 }
 
-void Spu::swapBuffers()
+void Spu::pushSample(int16_t sampleLeft, int16_t sampleRight)
 {
+    // Write the samples to the buffer
+    if (!bufferSize) return;
+    bufferIn[bufferPointer++] = (sampleRight << 16) | (sampleLeft & 0xFFFF);
+    if (bufferPointer != bufferSize) return;
+
     // Wait until the buffer has been played, keeping the emulator throttled to 60 FPS
     // Synchronizing to the audio eliminites the potential for nasty audio crackles
     if (Settings::fpsLimiter == 2) // Accurate
@@ -903,18 +864,16 @@ void Spu::gbaFifoTimer(int timer)
 
 void Spu::writeGbaSoundCntL(int channel, uint8_t value)
 {
-    if (!(gbaMainSoundCntX & BIT(7))) return;
-
     // Write to one of the GBA SOUNDCNT_L registers
+    if (!(gbaMainSoundCntX & BIT(7))) return;
     uint8_t mask = (channel == 0) ? 0x7F : 0xE0;
     gbaSoundCntL[channel / 2] = (gbaSoundCntL[channel / 2] & ~mask) | (value & mask);
 }
 
 void Spu::writeGbaSoundCntH(int channel, uint16_t mask, uint16_t value)
 {
-    if (!(gbaMainSoundCntX & BIT(7))) return;
-
     // Write to one of the GBA SOUNDCNT_H registers
+    if (!(gbaMainSoundCntX & BIT(7))) return;
     switch (channel)
     {
         case 2: mask &= 0xE0FF; break;
@@ -925,47 +884,42 @@ void Spu::writeGbaSoundCntH(int channel, uint16_t mask, uint16_t value)
 
 void Spu::writeGbaSoundCntX(int channel, uint16_t mask, uint16_t value)
 {
-    if (!(gbaMainSoundCntX & BIT(7))) return;
-
     // Write to one of the GBA SOUNDCNT_X registers
+    if (!(gbaMainSoundCntX & BIT(7))) return;
     mask &= (channel == 3) ? 0x40FF : 0x47FF;
     gbaSoundCntX[channel] = (gbaSoundCntX[channel] & ~mask) | (value & mask);
 
-    // Restart the channel
-    if ((value & BIT(15)))
+    // Restart the channel if audio emulation is enabled
+    if (!Settings::emulateAudio || !(value & BIT(15))) return;
+    gbaMainSoundCntX |= BIT(channel);
+    if (channel < 2) // Tone
     {
-        if (channel < 2) // Tone
-        {
-            if (channel == 0) gbaSweepTimer = (gbaSoundCntL[0] & 0x70) >> 4;
-            gbaEnvelopes[channel] = (gbaSoundCntH[channel] & 0xF000) >> 12;
-            gbaEnvTimers[channel] = (gbaSoundCntH[channel] & 0x0700) >> 8;
-            gbaSoundTimers[channel] = 2048 - (gbaSoundCntX[channel] & 0x07FF);
-        }
-        else if (channel == 2) // Wave
-        {
-            gbaWaveDigit = 0;
-            gbaSoundTimers[2] = 2048 - (gbaSoundCntX[2] & 0x07FF);
-        }
-        else // Noise
-        {
-            gbaNoiseValue = (gbaSoundCntH[3] & BIT(3)) ? 0x40 : 0x4000;
-            gbaEnvelopes[2] = (gbaSoundCntH[3] & 0xF000) >> 12;
-            gbaEnvTimers[2] = (gbaSoundCntH[3] & 0x0700) >> 8;
+        if (channel == 0) gbaSweepTimer = (gbaSoundCntL[0] & 0x70) >> 4;
+        gbaEnvelopes[channel] = (gbaSoundCntH[channel] & 0xF000) >> 12;
+        gbaEnvTimers[channel] = (gbaSoundCntH[channel] & 0x0700) >> 8;
+        gbaSoundTimers[channel] = 2048 - (gbaSoundCntX[channel] & 0x07FF);
+    }
+    else if (channel == 2) // Wave
+    {
+        gbaWaveDigit = 0;
+        gbaSoundTimers[2] = 2048 - (gbaSoundCntX[2] & 0x07FF);
+    }
+    else // Noise
+    {
+        gbaNoiseValue = (gbaSoundCntH[3] & BIT(3)) ? 0x40 : 0x4000;
+        gbaEnvelopes[2] = (gbaSoundCntH[3] & 0xF000) >> 12;
+        gbaEnvTimers[2] = (gbaSoundCntH[3] & 0x0700) >> 8;
 
-            int divisor = (gbaSoundCntX[3] & 0x0007) * 16;
-            if (divisor == 0) divisor = 8;
-            gbaSoundTimers[3] = (divisor << ((gbaSoundCntX[3] & 0x00F0) >> 4));
-        }
-
-        gbaMainSoundCntX |= BIT(channel);
+        int divisor = (gbaSoundCntX[3] & 0x0007) * 16;
+        if (divisor == 0) divisor = 8;
+        gbaSoundTimers[3] = (divisor << ((gbaSoundCntX[3] & 0x00F0) >> 4));
     }
 }
 
 void Spu::writeGbaMainSoundCntL(uint16_t mask, uint16_t value)
 {
-    if (!(gbaMainSoundCntX & BIT(7))) return;
-
     // Write to the main GBA SOUNDCNT_L register
+    if (!(gbaMainSoundCntX & BIT(7))) return;
     mask &= 0xFF77;
     gbaMainSoundCntL = (gbaMainSoundCntL & ~mask) | (value & mask);
 }
@@ -1028,25 +982,23 @@ void Spu::writeGbaFifoA(uint32_t mask, uint32_t value)
 {
     // Push PCM8 data to the GBA sound FIFO A
     for (int i = 0; i < 32; i += 8)
-    {
         if (gbaFifos[0].size() < 32 && (mask & (0xFF << i)))
             gbaFifos[0].push_back(value >> i);
-    }
 }
 
 void Spu::writeGbaFifoB(uint32_t mask, uint32_t value)
 {
     // Push PCM8 data to the GBA sound FIFO B
     for (int i = 0; i < 32; i += 8)
-    {
         if (gbaFifos[1].size() < 32 && (mask & (0xFF << i)))
             gbaFifos[1].push_back(value >> i);
-    }
 }
 
 void Spu::writeSoundCnt(int channel, uint32_t mask, uint32_t value)
 {
-    bool enable = (!(soundCnt[channel] & BIT(31)) && (value & BIT(31)));
+    // Prevent channels from starting if audio emulation is disabled
+    if (!Settings::emulateAudio) value &= ~BIT(31);
+    bool enable = (!(soundCnt[channel] & BIT(31)) && (value & mask & BIT(31)));
 
     // Write to one of the SOUNDCNT registers
     mask &= 0xFF7F837F;
@@ -1096,9 +1048,8 @@ void Spu::writeSoundLen(int channel, uint32_t mask, uint32_t value)
 
 void Spu::writeMainSoundCnt(uint16_t mask, uint16_t value)
 {
-    bool enable = (!(mainSoundCnt & BIT(15)) && (value & BIT(15)));
-
     // Write to the main SOUNDCNT register
+    bool enable = (!(mainSoundCnt & BIT(15)) && (value & BIT(15)));
     mask &= 0xBF7F;
     mainSoundCnt = (mainSoundCnt & ~mask) | (value & mask);
 

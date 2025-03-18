@@ -27,6 +27,8 @@ int Settings::romInRam = 0;
 int Settings::threaded2D = 1;
 int Settings::threaded3D = 1;
 int Settings::highRes3D = 0;
+int Settings::emulateAudio = 1;
+int Settings::audio16Bit = 1;
 int Settings::screenFilter = 2;
 int Settings::screenGhost = 0;
 int Settings::savesFolder = 0;
@@ -49,6 +51,8 @@ std::vector<Setting> Settings::settings =
     Setting("threaded2D", &threaded2D, false),
     Setting("threaded3D", &threaded3D, false),
     Setting("highRes3D", &highRes3D, false),
+    Setting("emulateAudio", &emulateAudio, false),
+    Setting("audio16Bit", &audio16Bit, false),
     Setting("screenFilter", &screenFilter, false),
     Setting("screenGhost", &screenGhost, false),
     Setting("savesFolder", &savesFolder, false),

@@ -28,8 +28,8 @@
 #include "../../common/nds_icon.h"
 #include "../../common/screen_layout.h"
 
-int micEnable = 0;
 int showFpsCounter = 0;
+int micEnable = 0;
 int buttonScale = 5;
 int buttonSpacing = 10;
 int vibrateStrength = 1;
@@ -90,8 +90,8 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_hydra_noods_FileBrowser_loadSetti
     // Define the platform settings
     std::vector<Setting> platformSettings =
     {
-        Setting("micEnable", &micEnable, false),
         Setting("showFpsCounter", &showFpsCounter, false),
+        Setting("micEnable", &micEnable, false),
         Setting("buttonScale", &buttonScale, false),
         Setting("buttonSpacing", &buttonSpacing, false),
         Setting("vibrateStrength", &vibrateStrength, false),
@@ -314,19 +314,19 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getDirectBoo
     return Settings::directBoot;
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getRomInRam(JNIEnv* env, jobject obj)
+{
+    return Settings::romInRam;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getFpsLimiter(JNIEnv* env, jobject obj)
 {
     return Settings::fpsLimiter;
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getMicEnable(JNIEnv* env, jobject obj)
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getShowFpsCounter(JNIEnv* env, jobject obj)
 {
-    return micEnable;
-}
-
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getRomInRam(JNIEnv* env, jobject obj)
-{
-    return Settings::romInRam;
+    return showFpsCounter;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getThreaded2D(JNIEnv* env, jobject obj)
@@ -344,9 +344,24 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getHighRes3D
     return Settings::highRes3D;
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getShowFpsCounter(JNIEnv* env, jobject obj)
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenGhost(JNIEnv* env, jobject obj)
 {
-    return showFpsCounter;
+    return Settings::screenGhost;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getEmulateAudio(JNIEnv* env, jobject obj)
+{
+    return Settings::emulateAudio;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getAudio16Bit(JNIEnv* env, jobject obj)
+{
+    return Settings::audio16Bit;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getMicEnable(JNIEnv* env, jobject obj)
+{
+    return micEnable;
 }
 
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getSavesFolder(JNIEnv* env, jobject obj)
@@ -409,11 +424,6 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getGbaCrop(J
     return ScreenLayout::gbaCrop;
 }
 
-extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getScreenGhost(JNIEnv* env, jobject obj)
-{
-    return Settings::screenGhost;
-}
-
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getButtonScale(JNIEnv* env, jobject obj)
 {
     return buttonScale;
@@ -434,19 +444,19 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setDirectBoo
     Settings::directBoot = value;
 }
 
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setRomInRam(JNIEnv* env, jobject obj, jint value)
+{
+    Settings::romInRam = value;
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setFpsLimiter(JNIEnv* env, jobject obj, jint value)
 {
     Settings::fpsLimiter = value;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setMicEnable(JNIEnv* env, jobject obj, jint value)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowFpsCounter(JNIEnv* env, jobject obj, jint value)
 {
-    micEnable = value;
-}
-
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setRomInRam(JNIEnv* env, jobject obj, jint value)
-{
-    Settings::romInRam = value;
+    showFpsCounter = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setThreaded2D(JNIEnv* env, jobject obj, jint value)
@@ -464,9 +474,24 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setHighRes3D
     Settings::highRes3D = value;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowFpsCounter(JNIEnv* env, jobject obj, jint value)
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenGhost(JNIEnv* env, jobject obj, jint value)
 {
-    showFpsCounter = value;
+    Settings::screenGhost = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setEmulateAudio(JNIEnv* env, jobject obj, jint value)
+{
+    Settings::emulateAudio = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setAudio16Bit(JNIEnv* env, jobject obj, jint value)
+{
+    Settings::audio16Bit = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setMicEnable(JNIEnv* env, jobject obj, jint value)
+{
+    micEnable = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setSavesFolder(JNIEnv* env, jobject obj, jint value)
@@ -527,11 +552,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setIntegerSc
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setGbaCrop(JNIEnv* env, jobject obj, jint value)
 {
     ScreenLayout::gbaCrop = value;
-}
-
-extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setScreenGhost(JNIEnv* env, jobject obj, jint value)
-{
-    Settings::screenGhost = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setButtonScale(JNIEnv* env, jobject obj, jint value)

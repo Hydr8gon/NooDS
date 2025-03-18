@@ -137,7 +137,7 @@ class Spu
         uint32_t sndCapDad[2] = {};
         uint16_t sndCapLen[2] = {};
 
-        void swapBuffers();
+        void pushSample(int16_t sampleLeft, int16_t sampleRight);
         void startChannel(int channel);
 };
 

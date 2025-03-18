@@ -42,6 +42,8 @@ class Settings
         static int threaded2D;
         static int threaded3D;
         static int highRes3D;
+        static int emulateAudio;
+        static int audio16Bit;
         static int screenFilter;
         static int screenGhost;
         static int savesFolder;

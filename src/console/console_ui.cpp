@@ -65,8 +65,8 @@ int ConsoleUI::keyBinds[] = {};
 
 const uint32_t ConsoleUI::themeColors[] =
 {
-    0xFF2D2D2D, 0xFFFFFFFF, 0xFF4B4B4B, 0xFF232323, 0xFFE1B955, 0xFFC8FF00, // Dark
-    0xFFEBEBEB, 0xFF2D2D2D, 0xFFCDCDCD, 0xFFFFFFFF, 0xFFD2D732, 0xFFF05032 // Light
+    0xFF2D2D2D, 0xFFFFFFFF, 0xFF4B4B4B, 0xFF232323, 0xFFE1B955, 0xFFC8FF00, 0xFFA2A2A2, // Dark
+    0xFFEBEBEB, 0xFF2D2D2D, 0xFFCDCDCD, 0xFFFFFFFF, 0xFFD2D732, 0xFFF05032, 0xFF727272 // Light
 };
 
 const uint8_t ConsoleUI::charWidths[] =
@@ -217,7 +217,7 @@ void ConsoleUI::initialize(int width, int height, std::string root, std::string 
     }
 
     // Initialize some values
-    palette = &themeColors[menuTheme * 6];
+    palette = &themeColors[menuTheme * 7];
     uiWidth = width;
     uiHeight = height;
     lineHeight = height / 480;
@@ -448,6 +448,9 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
     bool touchScroll = false;
     MenuTouch touchStart(false, 0, 0);
 
+    // Ensure a header isn't selected
+    index += items[index].header;
+
     while (true)
     {
         // Draw the borders
@@ -464,11 +467,12 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
         // Handle up input presses
         if ((pressed & defaultKeys[INPUT_UP]) && !(pressed & defaultKeys[INPUT_DOWN]))
         {
-            // Disable touch mode or move the selection box up
+            // Disable touch mode or move the selection box up, skipping headers
             if (touchMode)
                 touchMode = false;
-            else if (index > 0)
+            else if (index > items[0].header)
                 index--;
+            index -= items[index].header;
 
             // Remember when the up input started
             upHeld = true;
@@ -478,11 +482,12 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
         // Handle down input presses
         if ((pressed & defaultKeys[INPUT_DOWN]) && !(pressed & defaultKeys[INPUT_UP]))
         {
-            // Disable touch mode or move the selection box down
+            // Disable touch mode or move the selection box down, skipping headers
             if (touchMode)
                 touchMode = false;
             else if (index < items.size() - 1)
                 index++;
+            index += items[index].header;
 
             // Remember when the down input started
             downHeld = true;
@@ -499,7 +504,10 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
 
         // Disable touch mode before allowing A presses so the selector is visible
         if ((pressed & defaultKeys[INPUT_A]) && touchMode)
+        {
             touchMode = false;
+            index += items[index].header;
+        }
 
         // Cancel up input if it was released
         if (upHeld && !(held & defaultKeys[INPUT_UP]))
@@ -516,17 +524,18 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
         }
 
         // Scroll continuously while a directional input is held
-        if ((upHeld && index > 0) || (downHeld && index < items.size() - 1))
+        if ((upHeld && index > items[0].header) || (downHeld && index < items.size() - 1))
         {
             // When the input starts, wait a bit before scrolling
             std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - timeHeld;
             if (!scroll && elapsed.count() > 0.5f)
                 scroll = true;
 
-            // Scroll up or down at a fixed time interval
+            // Scroll up or down at a fixed time interval, skipping headers
             if (scroll && elapsed.count() > 0.1f)
             {
                 index += upHeld ? -1 : 1;
+                index += upHeld ? -items[index].header : items[index].header;
                 timeHeld = std::chrono::steady_clock::now();
             }
         }
@@ -594,8 +603,8 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
                 offset = i + index - 3;
 
             // Simulate an A press on a selection if it was tapped
-            if (!touchStarted && !touchScroll && touchStart.x >= 90 && touchStart.x <
-                1190 && touchStart.y >= 124 + i * 70 && touchStart.y < 194 + i * 70)
+            if (!items[offset].header && (!touchStarted && !touchScroll && touchStart.x >= 90 &&
+                touchStart.x < 1190 && touchStart.y >= 124 + i * 70 && touchStart.y < 194 + i * 70))
             {
                 index = offset;
                 return defaultKeys[INPUT_A];
@@ -615,6 +624,13 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
             {
                 // Draw separators between the items
                 drawRectangle(SCALE(90), SCALE(194 + i * 70), SCALE(1100), lineHeight, palette[2]);
+            }
+
+            // Draw a header item's name and skip the rest
+            if (items[offset].header)
+            {
+                drawString(items[offset].name, SCALE(105), SCALE(160 + i * 70), SCALE(28), palette[6]);
+                continue;
             }
 
             // Draw the current item's name
@@ -813,6 +829,7 @@ void ConsoleUI::settingsMenu()
 {
     // Define possible values for settings
     const std::vector<std::string> toggle = { "Off", "On" };
+    const std::vector<std::string> theme = { "Dark", "Light" };
     const std::vector<std::string> threads = { "Disabled", "1 Thread", "2 Threads" };
     const std::vector<std::string> position = { "Center", "Top", "Bottom", "Left", "Right" };
     const std::vector<std::string> rotation = { "None", "Clockwise", "Counter-Clockwise" };
@@ -821,7 +838,6 @@ void ConsoleUI::settingsMenu()
     const std::vector<std::string> gap = { "None", "Quarter", "Half", "Full" };
     const std::vector<std::string> filter = { "Nearest", "Upscaled", "Linear" };
     const std::vector<std::string> aspect = { "Default", "16:10", "16:9", "18:9" };
-    const std::vector<std::string> theme = { "Dark", "Light" };
 
     int index = 0;
     while (true)
@@ -829,16 +845,25 @@ void ConsoleUI::settingsMenu()
         // Create a list of settings and current values
         std::vector<MenuItem> settings =
         {
+            MenuItem("General Settings", true),
             MenuItem("Direct Boot", toggle[Settings::directBoot]),
-            MenuItem("FPS Limiter", toggle[Settings::fpsLimiter]),
             MenuItem("Keep ROM in RAM", toggle[Settings::romInRam]),
+            MenuItem("FPS Limiter", toggle[Settings::fpsLimiter]),
+            MenuItem("Show FPS Counter", toggle[showFpsCounter]),
+            MenuItem("Menu Theme", theme[menuTheme]),
+            MenuItem("Graphics Settings", true),
             MenuItem("Threaded 2D", toggle[Settings::threaded2D]),
             MenuItem("Threaded 3D", threads[Settings::threaded3D]),
             MenuItem("High-Resolution 3D", toggle[Settings::highRes3D]),
-            MenuItem("Show FPS Counter", toggle[showFpsCounter]),
+            MenuItem("Simulate Ghosting", toggle[Settings::screenGhost]),
+            MenuItem("Audio Settings", true),
+            MenuItem("Audio Emulation", toggle[Settings::emulateAudio]),
+            MenuItem("16-bit Audio Output", toggle[Settings::audio16Bit]),
+            MenuItem("Path Settings", true),
             MenuItem("Separate Saves Folder", toggle[Settings::savesFolder]),
             MenuItem("Separate States Folder", toggle[Settings::statesFolder]),
             MenuItem("Separate Cheats Folder", toggle[Settings::cheatsFolder]),
+            MenuItem("Screen Layout", true),
             MenuItem("Screen Position", position[ScreenLayout::screenPosition]),
             MenuItem("Screen Rotation", rotation[ScreenLayout::screenRotation]),
             MenuItem("Screen Arrangement", arrangement[ScreenLayout::screenArrangement]),
@@ -847,9 +872,7 @@ void ConsoleUI::settingsMenu()
             MenuItem("Screen Filter", filter[Settings::screenFilter]),
             MenuItem("Aspect Ratio", aspect[ScreenLayout::aspectRatio]),
             MenuItem("Integer Scale", toggle[ScreenLayout::integerScale]),
-            MenuItem("GBA Crop", toggle[ScreenLayout::gbaCrop]),
-            MenuItem("Simulate Ghosting", toggle[Settings::screenGhost]),
-            MenuItem("Menu Theme", theme[menuTheme])
+            MenuItem("GBA Crop", toggle[ScreenLayout::gbaCrop])
         };
 
         // Create the settings menu
@@ -861,31 +884,33 @@ void ConsoleUI::settingsMenu()
             // Change the chosen setting to its next value
             switch (index)
             {
-                case 0: Settings::directBoot = (Settings::directBoot + 1) % 2; break;
-                case 1: Settings::fpsLimiter = (Settings::fpsLimiter + 1) % 2; break;
+                case 1: Settings::directBoot = (Settings::directBoot + 1) % 2; break;
                 case 2: Settings::romInRam = (Settings::romInRam + 1) % 2; break;
-                case 3: Settings::threaded2D = (Settings::threaded2D + 1) % 2; break;
-                case 4: Settings::threaded3D = (Settings::threaded3D + 1) % 3; break;
-                case 5: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
-                case 6: showFpsCounter = (showFpsCounter + 1) % 2; break;
-                case 7: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;
-                case 8: Settings::statesFolder = (Settings::statesFolder + 1) % 2; break;
-                case 9: Settings::cheatsFolder = (Settings::cheatsFolder + 1) % 2; break;
-                case 10: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
-                case 11: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
-                case 12: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
-                case 13: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
-                case 14: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
-                case 15: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
-                case 16: ScreenLayout::aspectRatio = (ScreenLayout::aspectRatio + 1) % 4; break;
-                case 17: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
-                case 18: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
-                case 19: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
+                case 3: Settings::fpsLimiter = (Settings::fpsLimiter + 1) % 2; break;
+                case 4: showFpsCounter = (showFpsCounter + 1) % 2; break;
+                case 7: Settings::threaded2D = (Settings::threaded2D + 1) % 2; break;
+                case 8: Settings::threaded3D = (Settings::threaded3D + 1) % 3; break;
+                case 9: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
+                case 10: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
+                case 12: Settings::emulateAudio = (Settings::emulateAudio + 1) % 2; break;
+                case 13: Settings::audio16Bit = (Settings::audio16Bit + 1) % 2; break;
+                case 15: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;
+                case 16: Settings::statesFolder = (Settings::statesFolder + 1) % 2; break;
+                case 17: Settings::cheatsFolder = (Settings::cheatsFolder + 1) % 2; break;
+                case 19: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
+                case 20: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
+                case 21: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
+                case 22: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
+                case 23: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
+                case 24: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
+                case 25: ScreenLayout::aspectRatio = (ScreenLayout::aspectRatio + 1) % 4; break;
+                case 26: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
+                case 27: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
 
-                case 20:
+                case 5:
                     // Update the palette when changing themes
                     menuTheme = (menuTheme + 1) % 2;
-                    palette = &themeColors[menuTheme * 6];
+                    palette = &themeColors[menuTheme * 7];
                     break;
             }
         }
@@ -938,6 +963,7 @@ void ConsoleUI::controlsMenu()
         // Create a list of inputs and current bindings
         std::vector<MenuItem> controls =
         {
+            MenuItem("Buttons", true),
             MenuItem(names[INPUT_A], bindings[INPUT_A]),
             MenuItem(names[INPUT_B], bindings[INPUT_B]),
             MenuItem(names[INPUT_SELECT], bindings[INPUT_SELECT]),
@@ -950,6 +976,7 @@ void ConsoleUI::controlsMenu()
             MenuItem(names[INPUT_L], bindings[INPUT_L]),
             MenuItem(names[INPUT_X], bindings[INPUT_X]),
             MenuItem(names[INPUT_Y], bindings[INPUT_Y]),
+            MenuItem("Hotkeys", true),
             MenuItem(names[INPUT_MENU], bindings[INPUT_MENU]),
             MenuItem(names[INPUT_FAST_HOLD], bindings[INPUT_FAST_HOLD]),
             MenuItem(names[INPUT_FAST_TOGG], bindings[INPUT_FAST_TOGG]),
@@ -958,12 +985,13 @@ void ConsoleUI::controlsMenu()
 
         // Create the controls menu
         uint32_t pressed = menu("Controls", controls, index, "Clear");
+        int i = index - ((index > 13) ? 2 : 1);
 
         // Handle menu input
         if (pressed & defaultKeys[INPUT_A])
         {
             // Show a binding message and bind the pressed input
-            keyBinds[index] |= message(std::string("Remap ") + names[index],
+            keyBinds[i] |= message(std::string("Remap ") + names[i],
                "Press an input to add it as a binding.", 2);
         }
         else if (pressed & defaultKeys[INPUT_B])
@@ -974,7 +1002,7 @@ void ConsoleUI::controlsMenu()
         else if (pressed & defaultKeys[INPUT_X])
         {
             // Clear an input binding
-            keyBinds[index] = 0;
+            keyBinds[i] = 0;
         }
     }
 }

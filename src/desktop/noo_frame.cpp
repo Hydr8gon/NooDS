@@ -43,13 +43,9 @@ enum FrameEvent
     ACTION_REPLAY,
     ADD_SYSTEM,
     DSI_MODE,
-    PATH_SETTINGS,
-    INPUT_BINDINGS,
-    SCREEN_LAYOUT,
     DIRECT_BOOT,
-    FPS_LIMITER,
-    MIC_ENABLE,
     ROM_IN_RAM,
+    FPS_LIMITER,
     THREADED_2D,
     THREADED_3D_0,
     THREADED_3D_1,
@@ -57,6 +53,13 @@ enum FrameEvent
     THREADED_3D_3,
     THREADED_3D_4,
     HIGH_RES_3D,
+    SCREEN_GHOST,
+    EMULATE_AUDIO,
+    AUDIO_16_BIT,
+    MIC_ENABLE,
+    PATH_SETTINGS,
+    SCREEN_LAYOUT,
+    INPUT_BINDINGS,
     UPDATE_JOY
 };
 
@@ -74,13 +77,9 @@ EVT_MENU(STOP, NooFrame::stop)
 EVT_MENU(ACTION_REPLAY, NooFrame::actionReplay)
 EVT_MENU(ADD_SYSTEM, NooFrame::addSystem)
 EVT_MENU(DSI_MODE, NooFrame::dsiModeToggle)
-EVT_MENU(PATH_SETTINGS, NooFrame::pathSettings)
-EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
-EVT_MENU(SCREEN_LAYOUT, NooFrame::layoutSettings)
 EVT_MENU(DIRECT_BOOT, NooFrame::directBootToggle)
-EVT_MENU(FPS_LIMITER, NooFrame::fpsLimiter)
-EVT_MENU(MIC_ENABLE, NooFrame::micEnable)
 EVT_MENU(ROM_IN_RAM, NooFrame::romInRam)
+EVT_MENU(FPS_LIMITER, NooFrame::fpsLimiter)
 EVT_MENU(THREADED_2D, NooFrame::threaded2D)
 EVT_MENU(THREADED_3D_0, NooFrame::threaded3D0)
 EVT_MENU(THREADED_3D_1, NooFrame::threaded3D1)
@@ -88,6 +87,13 @@ EVT_MENU(THREADED_3D_2, NooFrame::threaded3D2)
 EVT_MENU(THREADED_3D_3, NooFrame::threaded3D3)
 EVT_MENU(THREADED_3D_4, NooFrame::threaded3D4)
 EVT_MENU(HIGH_RES_3D, NooFrame::highRes3D)
+EVT_MENU(SCREEN_GHOST, NooFrame::screenGhost)
+EVT_MENU(EMULATE_AUDIO, NooFrame::emulateAudio)
+EVT_MENU(AUDIO_16_BIT, NooFrame::audio16Bit)
+EVT_MENU(MIC_ENABLE, NooFrame::micEnable)
+EVT_MENU(PATH_SETTINGS, NooFrame::pathSettings)
+EVT_MENU(SCREEN_LAYOUT, NooFrame::layoutSettings)
+EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
 EVT_TIMER(UPDATE_JOY, NooFrame::updateJoystick)
 EVT_DROP_FILES(NooFrame::dropFiles)
 EVT_CLOSE(NooFrame::close)
@@ -102,7 +108,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
 
     if (mainFrame)
     {
-        // Set up the File menu
+        // Set up the file menu
         fileMenu = new wxMenu();
         fileMenu->Append(LOAD_ROM, "&Load ROM");
         fileMenu->Append(BOOT_FIRMWARE, "&Boot Firmware");
@@ -115,7 +121,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         fileMenu->AppendSeparator();
         fileMenu->Append(QUIT, "&Quit");
 
-        // Set up the System menu
+        // Set up the system menu
         systemMenu = new wxMenu();
         systemMenu->Append(PAUSE, "&Resume");
         systemMenu->Append(RESTART, "&Restart");
@@ -126,7 +132,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         systemMenu->AppendSeparator();
         systemMenu->AppendCheckItem(DSI_MODE, "&DSi Homebrew Mode");
 
-        // Set the initial System checkbox states
+        // Set the initial system checkbox states
         systemMenu->Check(DSI_MODE, Settings::dsiMode);
 
         // Disable some menu items until the core is running
@@ -139,7 +145,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         systemMenu->Enable(STOP, false);
         systemMenu->Enable(ACTION_REPLAY, false);
 
-        // Set up the Threaded 3D submenu
+        // Set up the threaded 3D submenu
         wxMenu *threaded3D = new wxMenu();
         threaded3D->AppendRadioItem(THREADED_3D_0, "&Disabled");
         threaded3D->AppendRadioItem(THREADED_3D_1, "&1 Thread");
@@ -147,7 +153,47 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         threaded3D->AppendRadioItem(THREADED_3D_3, "&3 Threads");
         threaded3D->AppendRadioItem(THREADED_3D_4, "&4 Threads");
 
-        // Set the current value of the threaded 3D setting
+        // Set up the general settings submenu
+        wxMenu *generalMenu = new wxMenu();
+        generalMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
+        generalMenu->AppendCheckItem(ROM_IN_RAM, "&Keep ROM in RAM");
+        generalMenu->AppendCheckItem(FPS_LIMITER, "&FPS Limiter");
+
+        // Set up the graphics settings submenu
+        wxMenu *graphicsMenu = new wxMenu();
+        graphicsMenu->AppendCheckItem(THREADED_2D, "&Threaded 2D");
+        graphicsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
+        graphicsMenu->AppendCheckItem(HIGH_RES_3D, "&High-Resolution 3D");
+        graphicsMenu->AppendCheckItem(SCREEN_GHOST, "Simulate Ghosting");
+
+        // Set up the audio settings submenu
+        wxMenu *audioMenu = new wxMenu();
+        audioMenu->AppendCheckItem(EMULATE_AUDIO, "&Audio Emulation");
+        audioMenu->AppendCheckItem(AUDIO_16_BIT, "&16-bit Audio Output");
+        audioMenu->AppendCheckItem(MIC_ENABLE, "&Use Microphone");
+
+        // Set up the settings menu
+        wxMenu *settingsMenu = new wxMenu();
+        settingsMenu->AppendSubMenu(generalMenu, "&General Settings");
+        settingsMenu->AppendSubMenu(graphicsMenu, "&Graphics Settings");
+        settingsMenu->AppendSubMenu(audioMenu, "&Audio Settings");
+        settingsMenu->AppendSeparator();
+        settingsMenu->Append(PATH_SETTINGS, "&Path Settings");
+        settingsMenu->Append(SCREEN_LAYOUT, "&Screen Layout");
+        settingsMenu->Append(INPUT_BINDINGS, "&Input Bindings");
+
+        // Set the initial settings checkbox states
+        settingsMenu->Check(DIRECT_BOOT, Settings::directBoot);
+        settingsMenu->Check(ROM_IN_RAM, Settings::romInRam);
+        settingsMenu->Check(FPS_LIMITER, Settings::fpsLimiter);
+        settingsMenu->Check(THREADED_2D, Settings::threaded2D);
+        settingsMenu->Check(HIGH_RES_3D, Settings::highRes3D);
+        settingsMenu->Check(SCREEN_GHOST, Settings::screenGhost);
+        settingsMenu->Check(EMULATE_AUDIO, Settings::emulateAudio);
+        settingsMenu->Check(AUDIO_16_BIT, Settings::audio16Bit);
+        settingsMenu->Check(MIC_ENABLE, NooApp::micEnable);
+
+        // Set the initial threaded 3D setting selection
         switch (Settings::threaded3D & 0xF)
         {
             case 0: threaded3D->Check(THREADED_3D_0, true); break;
@@ -156,29 +202,6 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
             case 3: threaded3D->Check(THREADED_3D_3, true); break;
             default: threaded3D->Check(THREADED_3D_4, true); break;
         }
-
-        // Set up the Settings menu
-        wxMenu *settingsMenu = new wxMenu();
-        settingsMenu->Append(PATH_SETTINGS, "&Path Settings");
-        settingsMenu->Append(INPUT_BINDINGS, "&Input Bindings");
-        settingsMenu->Append(SCREEN_LAYOUT, "&Screen Layout");
-        settingsMenu->AppendSeparator();
-        settingsMenu->AppendCheckItem(DIRECT_BOOT, "&Direct Boot");
-        settingsMenu->AppendCheckItem(FPS_LIMITER, "&FPS Limiter");
-        settingsMenu->AppendCheckItem(MIC_ENABLE, "&Use Microphone");
-        settingsMenu->AppendCheckItem(ROM_IN_RAM, "&Keep ROM in RAM");
-        settingsMenu->AppendSeparator();
-        settingsMenu->AppendCheckItem(THREADED_2D, "&Threaded 2D");
-        settingsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
-        settingsMenu->AppendCheckItem(HIGH_RES_3D, "&High-Resolution 3D");
-
-        // Set the initial Settings checkbox states
-        settingsMenu->Check(DIRECT_BOOT, Settings::directBoot);
-        settingsMenu->Check(FPS_LIMITER, Settings::fpsLimiter);
-        settingsMenu->Check(MIC_ENABLE, NooApp::micEnable);
-        settingsMenu->Check(ROM_IN_RAM, Settings::romInRam);
-        settingsMenu->Check(THREADED_2D, Settings::threaded2D);
-        settingsMenu->Check(HIGH_RES_3D, Settings::highRes3D);
 
         // Set up the menu bar
         wxMenuBar *menuBar = new wxMenuBar();
@@ -691,40 +714,10 @@ void NooFrame::dsiModeToggle(wxCommandEvent &event)
     Settings::save();
 }
 
-void NooFrame::pathSettings(wxCommandEvent &event)
-{
-    // Show the path settings dialog
-    PathDialog pathDialog;
-    pathDialog.ShowModal();
-}
-
-void NooFrame::inputSettings(wxCommandEvent &event)
-{
-    // Pause joystick updates and show the input settings dialog
-    if (timer) timer->Stop();
-    InputDialog inputDialog(joystick);
-    inputDialog.ShowModal();
-    if (timer) timer->Start(10);
-}
-
-void NooFrame::layoutSettings(wxCommandEvent &event)
-{
-    // Show the layout settings dialog
-    LayoutDialog layoutDialog(app);
-    layoutDialog.ShowModal();
-}
-
 void NooFrame::directBootToggle(wxCommandEvent &event)
 {
     // Toggle the direct boot setting
     Settings::directBoot = !Settings::directBoot;
-    Settings::save();
-}
-
-void NooFrame::fpsLimiter(wxCommandEvent &event)
-{
-    // Toggle the FPS limiter setting
-    Settings::fpsLimiter = !Settings::fpsLimiter;
     Settings::save();
 }
 
@@ -735,11 +728,10 @@ void NooFrame::romInRam(wxCommandEvent &event)
     Settings::save();
 }
 
-void NooFrame::micEnable(wxCommandEvent &event)
+void NooFrame::fpsLimiter(wxCommandEvent &event)
 {
-    // Toggle the use microphone setting
-    NooApp::micEnable = !NooApp::micEnable;
-    NooApp::micEnable ? app->startStream(1) : app->stopStream(1);
+    // Toggle the FPS limiter setting
+    Settings::fpsLimiter = !Settings::fpsLimiter;
     Settings::save();
 }
 
@@ -790,6 +782,58 @@ void NooFrame::highRes3D(wxCommandEvent &event)
     // Toggle the high-resolution 3D setting
     Settings::highRes3D = !Settings::highRes3D;
     Settings::save();
+}
+
+void NooFrame::screenGhost(wxCommandEvent &event)
+{
+    // Toggle the simulate ghosting setting
+    Settings::screenGhost = !Settings::screenGhost;
+    app->updateLayouts();
+}
+
+void NooFrame::emulateAudio(wxCommandEvent &event)
+{
+    // Toggle the audio emulation setting
+    Settings::emulateAudio = !Settings::emulateAudio;
+    Settings::save();
+}
+
+void NooFrame::audio16Bit(wxCommandEvent &event)
+{
+    // Toggle the 16-bit audio output setting
+    Settings::audio16Bit = !Settings::audio16Bit;
+    Settings::save();
+}
+
+void NooFrame::micEnable(wxCommandEvent &event)
+{
+    // Toggle the use microphone setting
+    NooApp::micEnable = !NooApp::micEnable;
+    NooApp::micEnable ? app->startStream(1) : app->stopStream(1);
+    Settings::save();
+}
+
+void NooFrame::pathSettings(wxCommandEvent &event)
+{
+    // Show the path settings dialog
+    PathDialog pathDialog;
+    pathDialog.ShowModal();
+}
+
+void NooFrame::layoutSettings(wxCommandEvent &event)
+{
+    // Show the layout settings dialog
+    LayoutDialog layoutDialog(app);
+    layoutDialog.ShowModal();
+}
+
+void NooFrame::inputSettings(wxCommandEvent &event)
+{
+    // Pause joystick updates and show the input settings dialog
+    if (timer) timer->Stop();
+    InputDialog inputDialog(joystick);
+    inputDialog.ShowModal();
+    if (timer) timer->Start(10);
 }
 
 void NooFrame::updateJoystick(wxTimerEvent &event)

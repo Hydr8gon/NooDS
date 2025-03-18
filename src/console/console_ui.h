@@ -64,9 +64,12 @@ struct MenuItem
     std::string setting;
     void *iconTex;
     uint8_t iconSize;
+    bool header;
 
     MenuItem(std::string name, std::string setting = "", void *iconTex = nullptr, uint8_t iconSize = 0):
-        name(name), setting(setting), iconTex(iconTex), iconSize(iconSize) {}
+        name(name), setting(setting), iconTex(iconTex), iconSize(iconSize), header(false) {}
+    MenuItem(std::string name, bool header):
+        name(name), setting(""), iconTex(nullptr), iconSize(0), header(header) {}
     bool operator<(const MenuItem &item) { return (name < item.name); }
 };
 
