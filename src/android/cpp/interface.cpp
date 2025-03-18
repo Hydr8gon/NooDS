@@ -329,6 +329,11 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getShowFpsCo
     return showFpsCounter;
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getFrameskip(JNIEnv* env, jobject obj)
+{
+    return Settings::frameskip;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getThreaded2D(JNIEnv* env, jobject obj)
 {
     return Settings::threaded2D;
@@ -457,6 +462,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setFpsLimite
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setShowFpsCounter(JNIEnv* env, jobject obj, jint value)
 {
     showFpsCounter = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setFrameskip(JNIEnv* env, jobject obj, jint value)
+{
+    Settings::frameskip = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setThreaded2D(JNIEnv* env, jobject obj, jint value)

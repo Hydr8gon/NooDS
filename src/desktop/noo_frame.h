@@ -84,12 +84,9 @@ class NooFrame: public wxFrame
         void directBootToggle(wxCommandEvent &event);
         void romInRam(wxCommandEvent &event);
         void fpsLimiter(wxCommandEvent &event);
+        template <int> void frameskip(wxCommandEvent &event);
         void threaded2D(wxCommandEvent &event);
-        void threaded3D0(wxCommandEvent &event);
-        void threaded3D1(wxCommandEvent &event);
-        void threaded3D2(wxCommandEvent &event);
-        void threaded3D3(wxCommandEvent &event);
-        void threaded3D4(wxCommandEvent &event);
+        template <int> void threaded3D(wxCommandEvent &event);
         void highRes3D(wxCommandEvent &event);
         void screenGhost(wxCommandEvent &event);
         void emulateAudio(wxCommandEvent &event);

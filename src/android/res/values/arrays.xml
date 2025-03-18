@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <string-array name="frameskip_entries">
+        <item>None</item>
+        <item>1 Frame</item>
+        <item>2 Frames</item>
+        <item>3 Frames</item>
+        <item>4 Frames</item>
+        <item>5 Frames</item>
+    </string-array>
+
     <string-array name="threaded_3d_entries">
         <item>Disabled</item>
         <item>1 Thread</item>
@@ -62,6 +71,7 @@
         <item>2</item>
         <item>3</item>
         <item>4</item>
+        <item>5</item>
     </string-array>
 
     <string-array name="save_entries_gba">

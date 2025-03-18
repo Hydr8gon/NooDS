@@ -46,6 +46,12 @@ enum FrameEvent
     DIRECT_BOOT,
     ROM_IN_RAM,
     FPS_LIMITER,
+    FRAMESKIP_0,
+    FRAMESKIP_1,
+    FRAMESKIP_2,
+    FRAMESKIP_3,
+    FRAMESKIP_4,
+    FRAMESKIP_5,
     THREADED_2D,
     THREADED_3D_0,
     THREADED_3D_1,
@@ -80,12 +86,18 @@ EVT_MENU(DSI_MODE, NooFrame::dsiModeToggle)
 EVT_MENU(DIRECT_BOOT, NooFrame::directBootToggle)
 EVT_MENU(ROM_IN_RAM, NooFrame::romInRam)
 EVT_MENU(FPS_LIMITER, NooFrame::fpsLimiter)
+EVT_MENU(FRAMESKIP_0, NooFrame::frameskip<0>)
+EVT_MENU(FRAMESKIP_1, NooFrame::frameskip<1>)
+EVT_MENU(FRAMESKIP_2, NooFrame::frameskip<2>)
+EVT_MENU(FRAMESKIP_3, NooFrame::frameskip<3>)
+EVT_MENU(FRAMESKIP_4, NooFrame::frameskip<4>)
+EVT_MENU(FRAMESKIP_5, NooFrame::frameskip<5>)
 EVT_MENU(THREADED_2D, NooFrame::threaded2D)
-EVT_MENU(THREADED_3D_0, NooFrame::threaded3D0)
-EVT_MENU(THREADED_3D_1, NooFrame::threaded3D1)
-EVT_MENU(THREADED_3D_2, NooFrame::threaded3D2)
-EVT_MENU(THREADED_3D_3, NooFrame::threaded3D3)
-EVT_MENU(THREADED_3D_4, NooFrame::threaded3D4)
+EVT_MENU(THREADED_3D_0, NooFrame::threaded3D<0>)
+EVT_MENU(THREADED_3D_1, NooFrame::threaded3D<1>)
+EVT_MENU(THREADED_3D_2, NooFrame::threaded3D<2>)
+EVT_MENU(THREADED_3D_3, NooFrame::threaded3D<3>)
+EVT_MENU(THREADED_3D_4, NooFrame::threaded3D<4>)
 EVT_MENU(HIGH_RES_3D, NooFrame::highRes3D)
 EVT_MENU(SCREEN_GHOST, NooFrame::screenGhost)
 EVT_MENU(EMULATE_AUDIO, NooFrame::emulateAudio)
@@ -145,6 +157,15 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         systemMenu->Enable(STOP, false);
         systemMenu->Enable(ACTION_REPLAY, false);
 
+        // Set up the skip frames submenu
+        wxMenu *frameskip = new wxMenu();
+        frameskip->AppendRadioItem(FRAMESKIP_0, "&None");
+        frameskip->AppendRadioItem(FRAMESKIP_1, "&1 Frame");
+        frameskip->AppendRadioItem(FRAMESKIP_2, "&2 Frames");
+        frameskip->AppendRadioItem(FRAMESKIP_3, "&3 Frames");
+        frameskip->AppendRadioItem(FRAMESKIP_4, "&4 Frames");
+        frameskip->AppendRadioItem(FRAMESKIP_5, "&5 Frames");
+
         // Set up the threaded 3D submenu
         wxMenu *threaded3D = new wxMenu();
         threaded3D->AppendRadioItem(THREADED_3D_0, "&Disabled");
@@ -161,6 +182,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
 
         // Set up the graphics settings submenu
         wxMenu *graphicsMenu = new wxMenu();
+        graphicsMenu->AppendSubMenu(frameskip, "&Skip Frames");
         graphicsMenu->AppendCheckItem(THREADED_2D, "&Threaded 2D");
         graphicsMenu->AppendSubMenu(threaded3D, "&Threaded 3D");
         graphicsMenu->AppendCheckItem(HIGH_RES_3D, "&High-Resolution 3D");
@@ -193,15 +215,9 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         settingsMenu->Check(AUDIO_16_BIT, Settings::audio16Bit);
         settingsMenu->Check(MIC_ENABLE, NooApp::micEnable);
 
-        // Set the initial threaded 3D setting selection
-        switch (Settings::threaded3D & 0xF)
-        {
-            case 0: threaded3D->Check(THREADED_3D_0, true); break;
-            case 1: threaded3D->Check(THREADED_3D_1, true); break;
-            case 2: threaded3D->Check(THREADED_3D_2, true); break;
-            case 3: threaded3D->Check(THREADED_3D_3, true); break;
-            default: threaded3D->Check(THREADED_3D_4, true); break;
-        }
+        // Set the initial radio setting selections
+        frameskip->Check(FRAMESKIP_0 + std::min<uint8_t>(Settings::frameskip, 5), true);
+        threaded3D->Check(THREADED_3D_0 + std::min<uint8_t>(Settings::threaded3D, 4), true);
 
         // Set up the menu bar
         wxMenuBar *menuBar = new wxMenuBar();
@@ -735,6 +751,13 @@ void NooFrame::fpsLimiter(wxCommandEvent &event)
     Settings::save();
 }
 
+template <int value> void NooFrame::frameskip(wxCommandEvent &event)
+{
+    // Set the skip frames setting
+    Settings::frameskip = value;
+    Settings::save();
+}
+
 void NooFrame::threaded2D(wxCommandEvent &event)
 {
     // Toggle the threaded 2D setting
@@ -742,38 +765,10 @@ void NooFrame::threaded2D(wxCommandEvent &event)
     Settings::save();
 }
 
-void NooFrame::threaded3D0(wxCommandEvent &event)
+template <int value> void NooFrame::threaded3D(wxCommandEvent &event)
 {
-    // Set the threaded 3D setting to disabled
-    Settings::threaded3D = 0;
-    Settings::save();
-}
-
-void NooFrame::threaded3D1(wxCommandEvent &event)
-{
-    // Set the threaded 3D setting to 1 thread
-    Settings::threaded3D = 1;
-    Settings::save();
-}
-
-void NooFrame::threaded3D2(wxCommandEvent &event)
-{
-    // Set the threaded 3D setting to 2 threads
-    Settings::threaded3D = 2;
-    Settings::save();
-}
-
-void NooFrame::threaded3D3(wxCommandEvent &event)
-{
-    // Set the threaded 3D setting to 3 threads
-    Settings::threaded3D = 3;
-    Settings::save();
-}
-
-void NooFrame::threaded3D4(wxCommandEvent &event)
-{
-    // Set the threaded 3D setting to 4 threads
-    Settings::threaded3D = 4;
+    // Set the threaded 3D setting
+    Settings::threaded3D = value;
     Settings::save();
 }
 

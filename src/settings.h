@@ -37,18 +37,19 @@ class Settings
 {
     public:
         static int directBoot;
-        static int fpsLimiter;
         static int romInRam;
+        static int fpsLimiter;
+        static int frameskip;
         static int threaded2D;
         static int threaded3D;
         static int highRes3D;
+        static int screenGhost;
         static int emulateAudio;
         static int audio16Bit;
-        static int screenFilter;
-        static int screenGhost;
         static int savesFolder;
         static int statesFolder;
         static int cheatsFolder;
+        static int screenFilter;
         static int dsiMode;
 
         static std::string bios9Path;

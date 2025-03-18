@@ -86,6 +86,7 @@ public class SettingsMenu extends AppCompatActivity
         editor.putBoolean("rom_in_ram", (getRomInRam() == 0) ? false : true);
         editor.putBoolean("fps_limiter", (getFpsLimiter() == 0) ? false : true);
         editor.putBoolean("show_fps_counter", (getShowFpsCounter() == 0) ? false : true);
+        editor.putString("frameskip", Integer.toString(getFrameskip()));
         editor.putBoolean("threaded_2d", (getThreaded2D() == 0) ? false : true);
         editor.putString("threaded_3d", Integer.toString(getThreaded3D()));
         editor.putBoolean("high_res_3d", (getHighRes3D() == 0) ? false : true);
@@ -148,6 +149,7 @@ public class SettingsMenu extends AppCompatActivity
         setRomInRam(prefs.getBoolean("rom_in_ram", false) ? 1 : 0);
         setFpsLimiter(prefs.getBoolean("fps_limiter", true) ? 1 : 0);
         setShowFpsCounter(prefs.getBoolean("show_fps_counter", false) ? 1 : 0);
+        setFrameskip(Integer.parseInt(prefs.getString("frameskip", "0")));
         setThreaded2D(prefs.getBoolean("threaded_2d", true) ? 1 : 0);
         setThreaded3D(Integer.parseInt(prefs.getString("threaded_3d", "1")));
         setHighRes3D(prefs.getBoolean("high_res_3d", false) ? 1 : 0);
@@ -180,6 +182,7 @@ public class SettingsMenu extends AppCompatActivity
     public static native int getRomInRam();
     public static native int getFpsLimiter();
     public static native int getShowFpsCounter();
+    public static native int getFrameskip();
     public static native int getThreaded2D();
     public static native int getThreaded3D();
     public static native int getHighRes3D();
@@ -206,6 +209,7 @@ public class SettingsMenu extends AppCompatActivity
     public static native void setRomInRam(int value);
     public static native void setFpsLimiter(int value);
     public static native void setShowFpsCounter(int value);
+    public static native void setFrameskip(int value);
     public static native void setThreaded2D(int value);
     public static native void setThreaded3D(int value);
     public static native void setHighRes3D(int value);

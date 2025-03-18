@@ -39,6 +39,16 @@
         app:title="Graphics Settings"
         app:iconSpaceReserved="false">
 
+        <ListPreference
+            app:key="frameskip"
+            app:title="Skip Frames"
+            app:entries="@array/frameskip_entries"
+            app:entryValues="@array/setting_values"
+            app:useSimpleSummaryProvider="true"
+            app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+
         <SwitchPreference
             app:key="threaded_2d"
             app:title="Threaded 2D"

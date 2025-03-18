@@ -22,18 +22,19 @@
 #include "defines.h"
 
 int Settings::directBoot = 1;
-int Settings::fpsLimiter = 1;
 int Settings::romInRam = 0;
+int Settings::fpsLimiter = 1;
+int Settings::frameskip = 0;
 int Settings::threaded2D = 1;
 int Settings::threaded3D = 1;
 int Settings::highRes3D = 0;
+int Settings::screenGhost = 0;
 int Settings::emulateAudio = 1;
 int Settings::audio16Bit = 1;
-int Settings::screenFilter = 2;
-int Settings::screenGhost = 0;
 int Settings::savesFolder = 0;
 int Settings::statesFolder = 1;
 int Settings::cheatsFolder = 1;
+int Settings::screenFilter = 2;
 int Settings::dsiMode = 0;
 
 std::string Settings::bios9Path = "bios9.bin";
@@ -46,18 +47,19 @@ std::string Settings::basePath = ".";
 std::vector<Setting> Settings::settings =
 {
     Setting("directBoot", &directBoot, false),
-    Setting("fpsLimiter", &fpsLimiter, false),
     Setting("romInRam", &romInRam, false),
+    Setting("fpsLimiter", &fpsLimiter, false),
+    Setting("frameskip", &frameskip, false),
     Setting("threaded2D", &threaded2D, false),
     Setting("threaded3D", &threaded3D, false),
     Setting("highRes3D", &highRes3D, false),
+    Setting("screenGhost", &screenGhost, false),
     Setting("emulateAudio", &emulateAudio, false),
     Setting("audio16Bit", &audio16Bit, false),
-    Setting("screenFilter", &screenFilter, false),
-    Setting("screenGhost", &screenGhost, false),
     Setting("savesFolder", &savesFolder, false),
     Setting("statesFolder", &statesFolder, false),
     Setting("cheatsFolder", &cheatsFolder, false),
+    Setting("screenFilter", &screenFilter, false),
     Setting("dsiMode", &dsiMode, false),
     Setting("bios9Path", &bios9Path, true),
     Setting("bios7Path", &bios7Path, true),

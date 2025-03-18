@@ -74,6 +74,7 @@ class Gpu
         std::atomic<int> drawing;
         std::thread *thread = nullptr;
 
+        int frames = 0;
         bool gbaBlock = true;
         bool displayCapture = false;
         uint8_t dirty3D = 0;

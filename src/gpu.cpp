@@ -258,7 +258,7 @@ void Gpu::gbaScanline240()
             while (drawing.load() != 0)
                 std::this_thread::yield();
         }
-        else
+        else if (frames == 0)
         {
             // Draw the current scanline
             core->gpu2D[0].drawGbaScanline(vCount);
@@ -308,7 +308,7 @@ void Gpu::gbaScanline308()
             core->dma[1].trigger(1);
 
             // Allow up to 2 framebuffers to be queued, to preserve frame pacing if emulation runs ahead
-            if (framebuffers.size() < 2)
+            if (frames == 0 && framebuffers.size() < 2)
             {
                 // Copy the completed sub-framebuffer to a new framebuffer
                 Buffers buffers;
@@ -321,6 +321,10 @@ void Gpu::gbaScanline308()
                 ready.store(true);
                 mutex.unlock();
             }
+
+            // Update the frame count to skip frames when non-zero
+            if (frames++ >= Settings::frameskip)
+                frames = 0;
 
             // Stop execution here in case the frontend needs to do things
             core->endFrame();
@@ -337,7 +341,7 @@ void Gpu::gbaScanline308()
             core->gpu2D[0].reloadRegisters();
 
             // Start the 2D thread if enabled
-            if (Settings::threaded2D && !thread)
+            if (Settings::threaded2D && frames == 0 && !thread)
             {
                 running.store(true);
                 thread = new std::thread(&Gpu::drawGbaThreaded, this);
@@ -395,7 +399,7 @@ void Gpu::scanline256()
                     break;
             }
         }
-        else
+        else if (frames == 0)
         {
             // Draw the current scanlines
             core->gpu2D[0].drawScanline(vCount);
@@ -509,7 +513,7 @@ void Gpu::scanline256()
     // Draw 3D scanlines 48 lines in advance, if the current 3D is dirty
     // If the 3D parameters haven't changed since the last frame, there's no need to draw it again
     // Bit 0 of the dirty variable represents invalidation, and bit 1 represents a frame currently drawing
-    if (dirty3D && (core->gpu2D[0].readDispCnt() & BIT(3)) && ((vCount + 48) % 263) < 192)
+    if (frames == 0 && dirty3D && (core->gpu2D[0].readDispCnt() & BIT(3)) && ((vCount + 48) % 263) < 192)
     {
         if (vCount == 215) dirty3D = BIT(1);
         core->gpu3DRenderer.drawScanline((vCount + 48) % 263);
@@ -563,7 +567,7 @@ void Gpu::scanline355()
                 core->gpu3D.swapBuffers();
 
             // Allow up to 2 framebuffers to be queued, to preserve frame pacing if emulation runs ahead
-            if (framebuffers.size() < 2)
+            if (frames == 0 && framebuffers.size() < 2)
             {
                 // Copy the completed sub-framebuffers to a new framebuffer
                 Buffers buffers;
@@ -601,6 +605,10 @@ void Gpu::scanline355()
                 mutex.unlock();
             }
 
+            // Update the frame count to skip frames when non-zero
+            if (frames++ >= Settings::frameskip)
+                frames = 0;
+
             // Apply cheats and stop execution in case the frontend needs to do things
             core->actionReplay.applyCheats();
             core->endFrame();
@@ -619,7 +627,7 @@ void Gpu::scanline355()
             core->gpu2D[1].reloadRegisters();
 
             // Start the 2D thread if enabled
-            if (Settings::threaded2D && !thread)
+            if (Settings::threaded2D && frames == 0 && !thread)
             {
                 running.store(true);
                 thread = new std::thread(&Gpu::drawThreaded, this);

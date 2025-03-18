@@ -449,7 +449,8 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
     MenuTouch touchStart(false, 0, 0);
 
     // Ensure a header isn't selected
-    index += items[index].header;
+    index += items.empty() ? 0 : items[index].header;
+    int min = items.empty() ? 0 : items[0].header;
 
     while (true)
     {
@@ -470,9 +471,9 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
             // Disable touch mode or move the selection box up, skipping headers
             if (touchMode)
                 touchMode = false;
-            else if (index > items[0].header)
+            else if (index > min)
                 index--;
-            index -= items[index].header;
+            index -= items.empty() ? 0 : items[index].header;
 
             // Remember when the up input started
             upHeld = true;
@@ -487,7 +488,7 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
                 touchMode = false;
             else if (index < items.size() - 1)
                 index++;
-            index += items[index].header;
+            index += items.empty() ? 0 : items[index].header;
 
             // Remember when the down input started
             downHeld = true;
@@ -506,7 +507,7 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
         if ((pressed & defaultKeys[INPUT_A]) && touchMode)
         {
             touchMode = false;
-            index += items[index].header;
+            index += items.empty() ? 0 : items[index].header;
         }
 
         // Cancel up input if it was released
@@ -524,7 +525,7 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
         }
 
         // Scroll continuously while a directional input is held
-        if ((upHeld && index > items[0].header) || (downHeld && index < items.size() - 1))
+        if ((upHeld && index > min) || (downHeld && index < items.size() - 1))
         {
             // When the input starts, wait a bit before scrolling
             std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - timeHeld;
@@ -534,8 +535,7 @@ uint32_t ConsoleUI::menu(std::string title, std::vector<MenuItem> &items,
             // Scroll up or down at a fixed time interval, skipping headers
             if (scroll && elapsed.count() > 0.1f)
             {
-                index += upHeld ? -1 : 1;
-                index += upHeld ? -items[index].header : items[index].header;
+                index += (1 + (items.empty() ? 0 : items[index].header)) * (upHeld ? -1 : 1);
                 timeHeld = std::chrono::steady_clock::now();
             }
         }
@@ -830,6 +830,7 @@ void ConsoleUI::settingsMenu()
     // Define possible values for settings
     const std::vector<std::string> toggle = { "Off", "On" };
     const std::vector<std::string> theme = { "Dark", "Light" };
+    const std::vector<std::string> frames = { "None", "1 Frame", "2 Frames", "3 Frames", "4 Frames", "5 Frames" };
     const std::vector<std::string> threads = { "Disabled", "1 Thread", "2 Threads" };
     const std::vector<std::string> position = { "Center", "Top", "Bottom", "Left", "Right" };
     const std::vector<std::string> rotation = { "None", "Clockwise", "Counter-Clockwise" };
@@ -852,6 +853,7 @@ void ConsoleUI::settingsMenu()
             MenuItem("Show FPS Counter", toggle[showFpsCounter]),
             MenuItem("Menu Theme", theme[menuTheme]),
             MenuItem("Graphics Settings", true),
+            MenuItem("Skip Frames", frames[Settings::frameskip]),
             MenuItem("Threaded 2D", toggle[Settings::threaded2D]),
             MenuItem("Threaded 3D", threads[Settings::threaded3D]),
             MenuItem("High-Resolution 3D", toggle[Settings::highRes3D]),
@@ -888,24 +890,25 @@ void ConsoleUI::settingsMenu()
                 case 2: Settings::romInRam = (Settings::romInRam + 1) % 2; break;
                 case 3: Settings::fpsLimiter = (Settings::fpsLimiter + 1) % 2; break;
                 case 4: showFpsCounter = (showFpsCounter + 1) % 2; break;
-                case 7: Settings::threaded2D = (Settings::threaded2D + 1) % 2; break;
-                case 8: Settings::threaded3D = (Settings::threaded3D + 1) % 3; break;
-                case 9: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
-                case 10: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
-                case 12: Settings::emulateAudio = (Settings::emulateAudio + 1) % 2; break;
-                case 13: Settings::audio16Bit = (Settings::audio16Bit + 1) % 2; break;
-                case 15: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;
-                case 16: Settings::statesFolder = (Settings::statesFolder + 1) % 2; break;
-                case 17: Settings::cheatsFolder = (Settings::cheatsFolder + 1) % 2; break;
-                case 19: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
-                case 20: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
-                case 21: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
-                case 22: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
-                case 23: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
-                case 24: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
-                case 25: ScreenLayout::aspectRatio = (ScreenLayout::aspectRatio + 1) % 4; break;
-                case 26: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
-                case 27: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
+                case 7: Settings::frameskip = (Settings::frameskip + 1) % 6; break;
+                case 8: Settings::threaded2D = (Settings::threaded2D + 1) % 2; break;
+                case 9: Settings::threaded3D = (Settings::threaded3D + 1) % 3; break;
+                case 10: Settings::highRes3D = (Settings::highRes3D + 1) % 2; break;
+                case 11: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
+                case 13: Settings::emulateAudio = (Settings::emulateAudio + 1) % 2; break;
+                case 14: Settings::audio16Bit = (Settings::audio16Bit + 1) % 2; break;
+                case 16: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;
+                case 17: Settings::statesFolder = (Settings::statesFolder + 1) % 2; break;
+                case 18: Settings::cheatsFolder = (Settings::cheatsFolder + 1) % 2; break;
+                case 20: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
+                case 21: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
+                case 22: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
+                case 23: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
+                case 24: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
+                case 25: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
+                case 26: ScreenLayout::aspectRatio = (ScreenLayout::aspectRatio + 1) % 4; break;
+                case 27: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
+                case 28: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
 
                 case 5:
                     // Update the palette when changing themes
