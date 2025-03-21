@@ -28,8 +28,7 @@
 #include "../core.h"
 #include "../defines.h"
 
-enum MenuInputs
-{
+enum MenuInputs {
     INPUT_A,
     INPUT_B,
     INPUT_SELECT,
@@ -49,8 +48,7 @@ enum MenuInputs
     INPUT_MAX
 };
 
-struct MenuTouch
-{
+struct MenuTouch {
     bool pressed;
     float x, y;
 
@@ -58,8 +56,7 @@ struct MenuTouch
         pressed(pressed), x(x), y(y) {}
 };
 
-struct MenuItem
-{
+struct MenuItem {
     std::string name;
     std::string setting;
     void *iconTex;
@@ -73,8 +70,7 @@ struct MenuItem
     bool operator<(const MenuItem &item) { return (name < item.name); }
 };
 
-class ConsoleUI
-{
+class ConsoleUI {
     public:
         static Core *core;
         static bool running;

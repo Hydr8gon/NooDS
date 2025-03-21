@@ -30,11 +30,9 @@ int ScreenLayout::aspectRatio = 0;
 int ScreenLayout::integerScale = 0;
 int ScreenLayout::gbaCrop = 1;
 
-void ScreenLayout::addSettings()
-{
+void ScreenLayout::addSettings() {
     // Define the layout settings
-    std::vector<Setting> layoutSettings =
-    {
+    std::vector<Setting> layoutSettings = {
         Setting("screenPosition", &screenPosition, false),
         Setting("screenRotation", &screenRotation, false),
         Setting("screenArrangement", &screenArrangement, false),
@@ -49,8 +47,7 @@ void ScreenLayout::addSettings()
     Settings::add(layoutSettings);
 }
 
-void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitScreens)
-{
+void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitScreens) {
     // Update the window dimensions
     this->winWidth = winWidth;
     this->winHeight = winHeight;
@@ -58,8 +55,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
     // Set the screen dimensions based on mode and aspect ratio
     bool gba = (gbaMode && gbaCrop);
     int width, height = (gba ? 160 : 192);
-    switch (aspectRatio)
-    {
+    switch (aspectRatio) {
         default: width = (gba ? 240 : 256); break; // Default
         case 1: width = (gba ? 256 : 308); break; // 16:10
         case 2: width = (gba ? 284 : 342); break; // 16:9
@@ -70,8 +66,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
     if (screenRotation)
         SWAP(width, height);
 
-    if (screenArrangement == 3 || gba || splitScreens) // Single screen
-    {
+    if (screenArrangement == 3 || gba || splitScreens) { // Single screen
         // Set the minimum dimensions for the layout
         minWidth = width;
         minHeight = height;
@@ -104,8 +99,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
         else // Center, Left, Right
             topY = botY = (winHeight - topHeight) / 2;
     }
-    else // Dual screens
-    {
+    else { // Dual screens
         // Determine the screen arrangement based on the current settings
         // In automatic mode, the arrangement is horizontal if rotated and vertical otherwise
         bool vertical = (screenArrangement == 1 || (screenArrangement == 0 && screenRotation == 0));
@@ -121,8 +115,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
         // If the window is taller than the screen, the screen is scaled to the width of the window
         // If gap is enabled, each screen is given half of the gap as extra weight for scaling
         // This results in a gap that is scaled with the screens, and averages if the screens are different scales
-        if (vertical)
-        {
+        if (vertical) {
             // Add the extra gap weight if enabled
             if (screenGap) height += gap / 2;
 
@@ -132,8 +125,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
             if (winWidth < minWidth) winWidth = minWidth;
             if (winHeight < minHeight) winHeight = minHeight;
 
-            if (screenSizing == 0) // Even
-            {
+            if (screenSizing == 0) { // Even
                 // Scale both screens to the size of the window
                 float baseRatio = (float)width / (height * 2);
                 float screenRatio = (float)winWidth / winHeight;
@@ -141,8 +133,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
                 if (integerScale) largeScale = (int)largeScale;
                 smallScale = largeScale;
             }
-            else // Enlarge Top/Bottom
-            {
+            else { // Enlarge Top/Bottom
                 float baseRatio = (float)width / height;
 
                 // Scale the large screen to the size of the window minus room for the smaller screen
@@ -159,8 +150,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
             // Remove the extra gap weight for the next calculations
             if (screenGap) height -= gap / 2;
         }
-        else // Horizontal
-        {
+        else { // Horizontal
             // Add the extra gap weight if enabled
             if (screenGap) width += gap / 2;
 
@@ -170,8 +160,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
             if (winWidth < minWidth) winWidth = minWidth;
             if (winHeight < minHeight) winHeight = minHeight;
 
-            if (screenSizing == 0) // Even
-            {
+            if (screenSizing == 0) { // Even
                 // Scale both screens to the size of the window
                 float baseRatio = (float)(width * 2) / height;
                 float screenRatio = (float)winWidth / winHeight;
@@ -179,8 +168,7 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
                 if (integerScale) largeScale = (int)largeScale;
                 smallScale = largeScale;
             }
-            else // Enlarge Top/Enlarge Bottom
-            {
+            else { // Enlarge Top/Enlarge Bottom
                 float baseRatio = (float)width / height;
 
                 // Scale the large screen to the size of the window minus room for the smaller screen
@@ -199,15 +187,13 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
         }
 
         // Calculate the dimensions of each screen
-        if (screenSizing == 1) // Enlarge Top
-        {
+        if (screenSizing == 1) { // Enlarge Top
             topWidth = largeScale * width;
             botWidth = smallScale * width;
             topHeight = largeScale * height;
             botHeight = smallScale * height;
         }
-        else // Even/Enlarge Bottom
-        {
+        else { // Even/Enlarge Bottom
             topWidth = smallScale * width;
             botWidth = largeScale * width;
             topHeight = smallScale * height;
@@ -215,139 +201,115 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
         }
 
         // Calculate the positions of each screen, placed next to each other vertically or horizontally
-        if (vertical)
-        {
+        if (vertical) {
             // Position the screens horizontally
-            if (screenPosition == 3) // Left
-            {
+            if (screenPosition == 3) { // Left
                 topX = 0;
                 botX = 0;
             }
-            else if (screenPosition == 4) // Right
-            {
+            else if (screenPosition == 4) { // Right
                 topX = winWidth - topWidth;
                 botX = winWidth - botWidth;
             }
-            else // Center, Top, Bottom
-            {
+            else { // Center, Top, Bottom
                 topX = (winWidth - topWidth) / 2;
                 botX = (winWidth - botWidth) / 2;
             }
 
             // Swap the screens if rotated clockwise to keep the top above the bottom
-            if (screenRotation == 1) // Clockwise
-            {
+            if (screenRotation == 1) { // Clockwise
                 botY = (winHeight - botHeight - topHeight) / 2;
                 topY = botY + botHeight;
 
                 // Add the gap between the screens if enabled
-                if (screenGap)
-                {
+                if (screenGap) {
                     botY -= (largeScale * gap + smallScale * gap) / 4;
                     topY += (largeScale * gap + smallScale * gap) / 4;
                 }
 
                 // Position the screen vertically
-                if (screenPosition == 1) // Top
-                {
+                if (screenPosition == 1) { // Top
                     topY -= botY;
                     botY -= botY;
                 }
-                else if (screenPosition == 2) // Bottom
-                {
+                else if (screenPosition == 2) { // Bottom
                     topY += botY;
                     botY += botY;
                 }
             }
-            else // None/Counter-Clockwise
-            {
+            else { // None/Counter-Clockwise
                 topY = (winHeight - topHeight - botHeight) / 2;
                 botY = topY + topHeight;
 
                 // Add the gap between the screens if enabled
-                if (screenGap)
-                {
+                if (screenGap) {
                     topY -= (largeScale * gap + smallScale * gap) / 4;
                     botY += (largeScale * gap + smallScale * gap) / 4;
                 }
 
                 // Position the screen vertically
-                if (screenPosition == 1) // Top
-                {
+                if (screenPosition == 1) { // Top
                     botY -= topY;
                     topY -= topY;
                 }
-                else if (screenPosition == 2) // Bottom
-                {
+                else if (screenPosition == 2) { // Bottom
                     botY += topY;
                     topY += topY;
                 }
             }
         }
-        else // Horizontal
-        {
+        else { // Horizontal
             // Position the screen vertically
-            if (screenPosition == 1) // Top
-            {
+            if (screenPosition == 1) { // Top
                 topY = 0;
                 botY = 0;
             }
-            else if (screenPosition == 2) // Bottom
-            {
+            else if (screenPosition == 2) { // Bottom
                 topY = winHeight - topHeight;
                 botY = winHeight - botHeight;
             }
-            else // Center, Left, Right
-            {
+            else { // Center, Left, Right
                 topY = (winHeight - topHeight) / 2;
                 botY = (winHeight - botHeight) / 2;
             }
 
             // Swap the screens if rotated clockwise to keep the top above the bottom
-            if (screenRotation == 1) // Clockwise
-            {
+            if (screenRotation == 1) { // Clockwise
                 botX = (winWidth - botWidth - topWidth) / 2;
                 topX = botX + botWidth;
 
                 // Add the gap between the screens if enabled
-                if (screenGap)
-                {
+                if (screenGap) {
                     botX -= (largeScale * gap + smallScale * gap) / 4;
                     topX += (largeScale * gap + smallScale * gap) / 4;
                 }
 
                 // Position the screen horizontally
-                if (screenPosition == 3) // Left
-                {
+                if (screenPosition == 3) { // Left
                     topX -= botX;
                     botX -= botX;
                 }
-                else if (screenPosition == 4) // Right
-                {
+                else if (screenPosition == 4) { // Right
                     topX += botX;
                     botX += botX;
                 }
             }
-            else // None/Counter-Clockwise
-            {
+            else { // None/Counter-Clockwise
                 topX = (winWidth - topWidth - botWidth) / 2;
                 botX = topX + topWidth;
 
                 // Add the gap between the screens if enabled
-                if (screenGap)
-                {
+                if (screenGap) {
                     topX -= (largeScale * gap + smallScale * gap) / 4;
                     botX += (largeScale * gap + smallScale * gap) / 4;
                 }
 
                 // Position the screen horizontally
-                if (screenPosition == 3) // Left
-                {
+                if (screenPosition == 3) { // Left
                     botX -= topX;
                     topX -= topX;
                 }
-                else if (screenPosition == 4) // Right
-                {
+                else if (screenPosition == 4) { // Right
                     botX += topX;
                     topX += topX;
                 }
@@ -356,22 +318,18 @@ void ScreenLayout::update(int winWidth, int winHeight, bool gbaMode, bool splitS
     }
 }
 
-int ScreenLayout::getTouchX(int x, int y)
-{
+int ScreenLayout::getTouchX(int x, int y) {
     // Map window coordinates to an X-coordinate on the touch screen
-    switch (screenRotation)
-    {
+    switch (screenRotation) {
         case 0: return (x - botX) * 256 / botWidth; // None
         case 1: return (y - botY) * 256 / botHeight; // Clockwise
         default: return 255 - (y - botY) * 256 / botHeight; // Counter-clockwise
     }
 }
 
-int ScreenLayout::getTouchY(int x, int y)
-{
+int ScreenLayout::getTouchY(int x, int y) {
     // Map window coordinates to a Y-coordinate on the touch screen
-    switch (screenRotation)
-    {
+    switch (screenRotation) {
         case 0: return (y - botY) * 192 / botHeight; // None
         case 1: return 191 - (x - botX) * 192 / botWidth; // Clockwise
         default: return (x - botX) * 192 / botWidth; // Counter-clockwise

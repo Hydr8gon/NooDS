@@ -37,38 +37,33 @@ uint32_t audioBuffer[1024];
 int audioPort;
 bool playing = true;
 
-uint32_t ConsoleUI::defaultKeys[]
-{
+uint32_t ConsoleUI::defaultKeys[] {
     SCE_CTRL_CIRCLE, SCE_CTRL_CROSS, SCE_CTRL_SELECT, SCE_CTRL_START,
     SCE_CTRL_RIGHT | BIT(17), SCE_CTRL_LEFT | BIT(19), SCE_CTRL_UP | BIT(16), SCE_CTRL_DOWN | BIT(18),
     SCE_CTRL_RTRIGGER, SCE_CTRL_LTRIGGER, SCE_CTRL_TRIANGLE, SCE_CTRL_SQUARE,
     BIT(20) | BIT(21) | BIT(22) | BIT(23)
 };
 
-const char *ConsoleUI::keyNames[]
-{
+const char *ConsoleUI::keyNames[] {
     "Select", "L3", "R3", "Start", "Up", "Right", "Down", "Left",
     "L2", "R2", "L1", "R1", "Triangle", "Circle", "Cross", "Square",
     "LS Up", "LS Right", "LS Down", "LS Left", "RS Up", "RS Right", "RS Down", "RS Left"
 };
 
-void ConsoleUI::startFrame(uint32_t color)
-{
+void ConsoleUI::startFrame(uint32_t color) {
     // Clear the screen for a new frame
     vita2d_start_drawing();
     vita2d_set_clear_color(color);
     vita2d_clear_screen();
 }
 
-void ConsoleUI::endFrame()
-{
+void ConsoleUI::endFrame() {
     // Finish and display a frame
     vita2d_end_drawing();
     vita2d_swap_buffers();
 }
 
-void *ConsoleUI::createTexture(uint32_t *data, int width, int height)
-{
+void *ConsoleUI::createTexture(uint32_t *data, int width, int height) {
     // Create a new texture and copy data to it
     vita2d_texture *texture = vita2d_create_empty_texture(width, height);
     uint32_t stride = vita2d_texture_get_stride(texture) / sizeof(uint32_t);
@@ -78,16 +73,14 @@ void *ConsoleUI::createTexture(uint32_t *data, int width, int height)
     return texture;
 }
 
-void ConsoleUI::destroyTexture(void *texture)
-{
+void ConsoleUI::destroyTexture(void *texture) {
     // Clean up a texture when it's safe to do so
     vita2d_wait_rendering_done();
     vita2d_free_texture((vita2d_texture*)texture);
 }
 
 void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float th,
-    float x, float y, float w, float h, bool filter, int rotation, uint32_t color)
-{
+    float x, float y, float w, float h, bool filter, int rotation, uint32_t color) {
     // Set the texture filter
     SceGxmTextureFilter texFilter = filter ? SCE_GXM_TEXTURE_FILTER_LINEAR : SCE_GXM_TEXTURE_FILTER_POINT;
     vita2d_texture_set_filters((vita2d_texture*)texture, texFilter, texFilter);
@@ -100,8 +93,7 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
             tx, ty, tw, th, w / th, h / tw, 3.14159f * ((rotation == 1) ? 0.5f : -0.5f), color);
 }
 
-uint32_t ConsoleUI::getInputHeld()
-{
+uint32_t ConsoleUI::getInputHeld() {
     // Scan for held buttons
     SceCtrlData held;
     sceCtrlPeekBufferPositive(0, &held, 1);
@@ -119,26 +111,22 @@ uint32_t ConsoleUI::getInputHeld()
     return value;
 }
 
-MenuTouch ConsoleUI::getInputTouch()
-{
+MenuTouch ConsoleUI::getInputTouch() {
     // Scan for touch input and scale it to 720p
     SceTouchData touch;
     sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch, 1);
     return MenuTouch(touch.reportNum > 0, touch.report[0].x * 1280 / 1920, touch.report[0].y * 720 / 1080);
 }
 
-void outputAudio()
-{
-    while (playing)
-    {
+void outputAudio() {
+    while (playing) {
         // Refill the audio buffer until stopped
         ConsoleUI::fillAudioBuffer(audioBuffer, 1024, 48000);
         sceAudioOutOutput(audioPort, audioBuffer);
     }
 }
 
-int main()
-{
+int main() {
     // Initialize hardware and the UI
     scePowerSetArmClockFrequency(444);
     vita2d_init();

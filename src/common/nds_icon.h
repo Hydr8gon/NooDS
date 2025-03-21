@@ -23,8 +23,7 @@
 #include <cstdint>
 #include <string>
 
-class NdsIcon
-{
+class NdsIcon {
     public:
         NdsIcon(std::string path, int fd = -1);
 

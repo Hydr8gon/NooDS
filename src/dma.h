@@ -25,8 +25,7 @@
 
 class Core;
 
-class Dma
-{
+class Dma {
     public:
         Dma(Core *core, bool cpu): core(core), cpu(cpu) {}
         void saveState(FILE *file);

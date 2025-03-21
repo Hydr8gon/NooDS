@@ -20,8 +20,7 @@
 #include "dma.h"
 #include "core.h"
 
-void Dma::saveState(FILE *file)
-{
+void Dma::saveState(FILE *file) {
     // Write state data to the file
     fwrite(srcAddrs, 4, sizeof(srcAddrs) / 4, file);
     fwrite(dstAddrs, 4, sizeof(dstAddrs) / 4, file);
@@ -31,8 +30,7 @@ void Dma::saveState(FILE *file)
     fwrite(dmaCnt, 4, sizeof(dmaCnt) / 4, file);
 }
 
-void Dma::loadState(FILE *file)
-{
+void Dma::loadState(FILE *file) {
     // Read state data from the file
     fread(srcAddrs, 4, sizeof(srcAddrs) / 4, file);
     fread(dstAddrs, 4, sizeof(dstAddrs) / 4, file);
@@ -42,20 +40,17 @@ void Dma::loadState(FILE *file)
     fread(dmaCnt, 4, sizeof(dmaCnt) / 4, file);
 }
 
-void Dma::transfer(int channel)
-{
+void Dma::transfer(int channel) {
     int dstAddrCnt = (dmaCnt[channel] & 0x00600000) >> 21;
     int srcAddrCnt = (dmaCnt[channel] & 0x01800000) >> 23;
     int mode = (dmaCnt[channel] & 0x38000000) >> 27;
     int gxFifoCount = 0;
 
     // Perform the transfer
-    if (core->gbaMode && mode == 6 && (channel == 1 || channel == 2)) // GBA sound DMA
-    {
+    if (core->gbaMode && mode == 6 && (channel == 1 || channel == 2)) { // GBA sound DMA
         LOG_INFO("ARM%d DMA channel %d transferring 4 words from 0x%X to 0x%X in mode %d\n",
             cpu ? 7 : 9, channel, srcAddrs[channel], dstAddrs[channel], mode);
-        for (unsigned int i = 0; i < 4; i++)
-        {
+        for (unsigned int i = 0; i < 4; i++) {
             // Transfer a word
             // GBA sound DMAs always transfer 4 words and never adjust the destination address
             uint32_t value = core->memory.read<uint32_t>(cpu, srcAddrs[channel], false);
@@ -68,12 +63,10 @@ void Dma::transfer(int channel)
                 srcAddrs[channel] -= 4;
         }
     }
-    else if (dmaCnt[channel] & BIT(26)) // Whole word transfer
-    {
+    else if (dmaCnt[channel] & BIT(26)) { // Whole word transfer
         LOG_INFO("ARM%d DMA channel %d transferring %d words from 0x%X to 0x%X in mode %d\n",
             cpu ? 7 : 9, channel, wordCounts[channel], srcAddrs[channel], dstAddrs[channel], mode);
-        for (unsigned int i = 0; i < wordCounts[channel]; i++)
-        {
+        for (unsigned int i = 0; i < wordCounts[channel]; i++) {
             // Transfer a word
             uint32_t value = core->memory.read<uint32_t>(cpu, srcAddrs[channel], false);
             core->memory.write<uint32_t>(cpu, dstAddrs[channel], value, false);
@@ -95,12 +88,10 @@ void Dma::transfer(int channel)
                 break;
         }
     }
-    else // Half-word transfer
-    {
+    else { // Half-word transfer
         LOG_INFO("ARM%d DMA channel %d transferring %d half-words from 0x%X to 0x%X in mode %d\n",
             cpu ? 7 : 9, channel, wordCounts[channel], srcAddrs[channel], dstAddrs[channel], mode);
-        for (unsigned int i = 0; i < wordCounts[channel]; i++)
-        {
+        for (unsigned int i = 0; i < wordCounts[channel]; i++) {
             // Transfer a half-word
             uint16_t value = core->memory.read<uint16_t>(cpu, srcAddrs[channel], false);
             core->memory.write<uint16_t>(cpu, dstAddrs[channel], value, false);
@@ -123,12 +114,10 @@ void Dma::transfer(int channel)
         }
     }
 
-    if (mode == 7)
-    {
+    if (mode == 7) {
         // Don't end a GXFIFO transfer if there are still words left
         wordCounts[channel] -= gxFifoCount;
-        if (wordCounts[channel] > 0)
-        {
+        if (wordCounts[channel] > 0) {
             // Schedule another transfer immediately if the FIFO is still half empty
             if (core->gpu3D.readGxStat() & BIT(25))
                 core->schedule(SchedTask(DMA9_TRANSFER0 + (cpu << 2) + channel), 1);
@@ -136,8 +125,7 @@ void Dma::transfer(int channel)
         }
     }
 
-    if ((dmaCnt[channel] & BIT(25)) && mode != 0) // Repeat
-    {
+    if ((dmaCnt[channel] & BIT(25)) && mode != 0) { // Repeat
         // Reload the internal registers on repeat
         wordCounts[channel] = dmaCnt[channel] & 0x001FFFFF;
         if (dstAddrCnt == 3) // Increment and reload
@@ -147,8 +135,7 @@ void Dma::transfer(int channel)
         if (mode == 7 && core->gpu3D.readGxStat() & BIT(25))
             core->schedule(SchedTask(DMA9_TRANSFER0 + (cpu << 2) + channel), 1);
     }
-    else
-    {
+    else {
         // End the transfer
         dmaCnt[channel] &= ~BIT(31);
     }
@@ -158,35 +145,30 @@ void Dma::transfer(int channel)
         core->interpreter[cpu].sendInterrupt(8 + channel);
 }
 
-void Dma::trigger(int mode, uint8_t channels)
-{
+void Dma::trigger(int mode, uint8_t channels) {
     // ARM7 DMAs don't use the lowest mode bit, so adjust accordingly
     if (cpu == 1) mode <<= 1;
 
     // Schedule a transfer on channels that are enabled and set to the triggered mode
-    for (int i = 0; i < 4; i++)
-    {
+    for (int i = 0; i < 4; i++) {
         if ((channels & BIT(i)) && (dmaCnt[i] & BIT(31)) && ((dmaCnt[i] & 0x38000000) >> 27) == mode)
             core->schedule(SchedTask(DMA9_TRANSFER0 + (cpu << 2) + i), 1);
     }
 }
 
-void Dma::writeDmaSad(int channel, uint32_t mask, uint32_t value)
-{
+void Dma::writeDmaSad(int channel, uint32_t mask, uint32_t value) {
     // Write to one of the DMASAD registers
     mask &= ((cpu == 0 || channel != 0) ? 0x0FFFFFFF : 0x07FFFFFF);
     dmaSad[channel] = (dmaSad[channel] & ~mask) | (value & mask);
 }
 
-void Dma::writeDmaDad(int channel, uint32_t mask, uint32_t value)
-{
+void Dma::writeDmaDad(int channel, uint32_t mask, uint32_t value) {
     // Write to one of the DMADAD registers
     mask &= ((cpu == 0 || channel == 3) ? 0x0FFFFFFF : 0x07FFFFFF);
     dmaDad[channel] = (dmaDad[channel] & ~mask) | (value & mask);
 }
 
-void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value)
-{
+void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value) {
     uint32_t old = dmaCnt[channel];
 
     // Write to one of the DMACNT registers
@@ -215,8 +197,7 @@ void Dma::writeDmaCnt(int channel, uint32_t mask, uint32_t value)
         core->schedule(SchedTask(DMA9_TRANSFER0 + (cpu << 2) + channel), 1);
 }
 
-uint32_t Dma::readDmaCnt(int channel)
-{
+uint32_t Dma::readDmaCnt(int channel) {
     // Read from one of the DMACNT registers
     // The lower half-word isn't readable in GBA mode
     return dmaCnt[channel] & ~(core->gbaMode ? 0x0000FFFF : 0x00000000);

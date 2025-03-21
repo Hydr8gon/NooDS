@@ -25,16 +25,14 @@
 
 class Core;
 
-enum StateResult
-{
+enum StateResult {
     STATE_SUCCESS,
     STATE_FILE_FAIL,
     STATE_FORMAT_FAIL,
     STATE_VERSION_FAIL
 };
 
-class SaveStates
-{
+class SaveStates {
     public:
         SaveStates(Core *core): core(core) {}
         void setPath(std::string path, bool gba);

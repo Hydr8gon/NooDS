@@ -29,8 +29,7 @@
 
 class Core;
 
-class Spu
-{
+class Spu {
     public:
         Spu(Core *core);
         ~Spu();

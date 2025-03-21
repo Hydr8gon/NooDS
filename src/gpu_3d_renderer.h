@@ -29,8 +29,7 @@ class Core;
 struct Vertex;
 struct _Polygon;
 
-class Gpu3DRenderer
-{
+class Gpu3DRenderer {
     public:
         Gpu3DRenderer(Core *core);
         ~Gpu3DRenderer();

@@ -19,8 +19,7 @@
 
 #include "cheat_dialog.h"
 
-enum CheatEvent
-{
+enum CheatEvent {
     ADD_CHEAT = 1,
     REMOVE_CHEAT
 };
@@ -34,8 +33,7 @@ EVT_BUTTON(wxID_CANCEL, CheatDialog::cancel)
 EVT_BUTTON(wxID_OK, CheatDialog::confirm)
 wxEND_EVENT_TABLE()
 
-CheatDialog::CheatDialog(Core *core): wxDialog(nullptr, wxID_ANY, "Action Replay Cheats"), core(core)
-{
+CheatDialog::CheatDialog(Core *core): wxDialog(nullptr, wxID_ANY, "Action Replay Cheats"), core(core) {
     // Use the height of a button as a unit to scale pixel values based on DPI/font
     wxButton *dummy = new wxButton(this, wxID_ANY, "");
     int size = dummy->GetSize().y;
@@ -59,8 +57,7 @@ CheatDialog::CheatDialog(Core *core): wxDialog(nullptr, wxID_ANY, "Action Replay
     nameEditor->Disable();
     codeEditor->Disable();
     std::vector<ARCheat> &cheats = core->actionReplay.cheats;
-    for (uint32_t i = 0; i < cheats.size(); i++)
-    {
+    for (uint32_t i = 0; i < cheats.size(); i++) {
         cheatList->Append(cheats[i].name);
         cheatList->Check(i, cheats[i].enabled);
     }
@@ -89,8 +86,7 @@ CheatDialog::CheatDialog(Core *core): wxDialog(nullptr, wxID_ANY, "Action Replay
     SetMaxSize(GetSize());
 }
 
-void CheatDialog::updateCheat()
-{
+void CheatDialog::updateCheat() {
     // Get the current cheat and update its name
     ARCheat *cheat = &core->actionReplay.cheats[curCheat];
     cheatList->SetString(curCheat, cheat->name = nameEditor->GetValue());
@@ -98,8 +94,7 @@ void CheatDialog::updateCheat()
 
     // Parse the cheat's code from the editor string
     std::string code = codeEditor->GetValue().ToStdString();
-    for (size_t i = 0, p; i < code.size(); i = p + 1)
-    {
+    for (size_t i = 0, p; i < code.size(); i = p + 1) {
         p = code.find_first_of(" \n", i);
         if (p == std::string::npos) p = code.size();
         cheat->code.push_back(strtoll(code.substr(i, p).c_str(), nullptr, 16));
@@ -110,15 +105,13 @@ void CheatDialog::updateCheat()
         cheat->code.push_back(0);
 }
 
-void CheatDialog::checkCheat(wxCommandEvent &event)
-{
+void CheatDialog::checkCheat(wxCommandEvent &event) {
     // Enable or disable a cheat
     ARCheat &cheat = core->actionReplay.cheats[event.GetInt()];
     cheat.enabled = !cheat.enabled;
 }
 
-void CheatDialog::selectCheat(wxCommandEvent &event)
-{
+void CheatDialog::selectCheat(wxCommandEvent &event) {
     // Select a new cheat and put its name in the editor
     if (curCheat >= 0) updateCheat();
     ARCheat *cheat = &core->actionReplay.cheats[curCheat = event.GetInt()];
@@ -127,8 +120,7 @@ void CheatDialog::selectCheat(wxCommandEvent &event)
 
     // Write the code to the editor as a string
     codeEditor->Clear();
-    for (uint32_t i = 0; i < cheat->code.size(); i += 2)
-    {
+    for (uint32_t i = 0; i < cheat->code.size(); i += 2) {
         char line[19];
         sprintf(line, "%08X %08X\n", cheat->code[i], cheat->code[i + 1]);
         codeEditor->AppendText(line);
@@ -139,8 +131,7 @@ void CheatDialog::selectCheat(wxCommandEvent &event)
     codeEditor->Enable();
 }
 
-void CheatDialog::addCheat(wxCommandEvent &event)
-{
+void CheatDialog::addCheat(wxCommandEvent &event) {
     // Create a new cheat
     ARCheat cheat;
     cheatList->Append(cheat.name = "New Cheat");
@@ -148,8 +139,7 @@ void CheatDialog::addCheat(wxCommandEvent &event)
     core->actionReplay.cheats.push_back(cheat);
 }
 
-void CheatDialog::removeCheat(wxCommandEvent &event)
-{
+void CheatDialog::removeCheat(wxCommandEvent &event) {
     // Remove a cheat and reset the list
     if (curCheat < 0) return;
     std::vector<ARCheat> &cheats = core->actionReplay.cheats;
@@ -157,8 +147,7 @@ void CheatDialog::removeCheat(wxCommandEvent &event)
     cheatList->Clear();
 
     // Repopulate the cheat list
-    for (uint32_t i = 0; i < cheats.size(); i++)
-    {
+    for (uint32_t i = 0; i < cheats.size(); i++) {
         cheatList->Append(cheats[i].name);
         cheatList->Check(i, cheats[i].enabled);
     }
@@ -171,15 +160,13 @@ void CheatDialog::removeCheat(wxCommandEvent &event)
     codeEditor->Disable();
 }
 
-void CheatDialog::cancel(wxCommandEvent &event)
-{
+void CheatDialog::cancel(wxCommandEvent &event) {
     // Reload cheats to discard changes
     core->actionReplay.loadCheats();
     event.Skip(true);
 }
 
-void CheatDialog::confirm(wxCommandEvent &event)
-{
+void CheatDialog::confirm(wxCommandEvent &event) {
     // Update the current cheat and save changes
     if (curCheat >= 0) updateCheat();
     core->actionReplay.saveCheats();

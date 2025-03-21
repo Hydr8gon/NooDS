@@ -30,8 +30,7 @@
 
 class Core;
 
-class Gpu
-{
+class Gpu {
     public:
         Gpu(Core *core);
         ~Gpu();
@@ -59,8 +58,7 @@ class Gpu
     private:
         Core *core;
 
-        struct Buffers
-        {
+        struct Buffers {
             uint32_t *framebuffer = nullptr;
             uint32_t *hiRes3D = nullptr;
             bool top3D = false;

@@ -23,8 +23,7 @@
 #include "core.h"
 
 // HLE ARM9 BIOS SWI lookup table
-int (Bios::*Bios::swiTable9[])(uint32_t**) =
-{
+int (Bios::*Bios::swiTable9[])(uint32_t**) = {
     &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiWaitByLoop, // 0x00-0x03
     &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiHalt, &Bios::swiUnknown, // 0x04-0x07
     &Bios::swiUnknown, &Bios::swiDivide, &Bios::swiUnknown, &Bios::swiCpuSet, // 0x08-0x0B
@@ -37,8 +36,7 @@ int (Bios::*Bios::swiTable9[])(uint32_t**) =
 };
 
 // HLE ARM7 BIOS SWI lookup table
-int (Bios::*Bios::swiTable7[])(uint32_t**) =
-{
+int (Bios::*Bios::swiTable7[])(uint32_t**) = {
     &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiWaitByLoop, // 0x00-0x03
     &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiHalt, &Bios::swiSleep, // 0x04-0x07
     &Bios::swiSoundBias, &Bios::swiDivide, &Bios::swiUnknown, &Bios::swiCpuSet, // 0x08-0x0B
@@ -51,8 +49,7 @@ int (Bios::*Bios::swiTable7[])(uint32_t**) =
 };
 
 // HLE GBA BIOS SWI lookup table
-int (Bios::*Bios::swiTableGba[])(uint32_t**) =
-{
+int (Bios::*Bios::swiTableGba[])(uint32_t**) = {
     &Bios::swiUnknown, &Bios::swiRegRamReset, &Bios::swiHalt, &Bios::swiSleep, // 0x00-0x03
     &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiDivide, &Bios::swiDivArm, // 0x04-0x07
     &Bios::swiSquareRoot, &Bios::swiArcTan, &Bios::swiArcTan2, &Bios::swiCpuSet, // 0x08-0x0B
@@ -64,25 +61,20 @@ int (Bios::*Bios::swiTableGba[])(uint32_t**) =
     &Bios::swiUnknown // 0x20
 };
 
-void Bios::saveState(FILE *file)
-{
+void Bios::saveState(FILE *file) {
     // Write state data to the file
     fwrite(&waitFlags, sizeof(waitFlags), 1, file);
 }
 
-void Bios::loadState(FILE *file)
-{
+void Bios::loadState(FILE *file) {
     // Read state data from the file
     fread(&waitFlags, sizeof(waitFlags), 1, file);
 }
 
-int Bios::execute(uint8_t vector, uint32_t **registers)
-{
+int Bios::execute(uint8_t vector, uint32_t **registers) {
     // Execute the HLE version of the given exception vector
-    switch (vector)
-    {
-        case 0x08: // SWI
-        {
+    switch (vector) {
+        case 0x08: { // SWI
             // The PC was adjusted for an exception, so adjust it back
             *registers[15] += 4;
 
@@ -102,15 +94,13 @@ int Bios::execute(uint8_t vector, uint32_t **registers)
     }
 }
 
-void Bios::checkWaitFlags()
-{
+void Bios::checkWaitFlags() {
     // Read the BIOS interrupt flags from memory
     uint32_t address = arm7 ? 0x3FFFFF8 : (core->cp15.dtcmAddr + 0x3FF8);
     uint32_t flags = core->memory.read<uint32_t>(arm7, address);
 
     // If a flag being waited for is set, clear it and stop waiting
-    if (flags & waitFlags)
-    {
+    if (flags & waitFlags) {
         core->memory.write<uint32_t>(arm7, address, flags & ~waitFlags);
         waitFlags = 0;
         return;
@@ -120,8 +110,7 @@ void Bios::checkWaitFlags()
     core->interpreter[arm7].halt(0);
 }
 
-int Bios::swiRegRamReset(uint32_t **registers)
-{
+int Bios::swiRegRamReset(uint32_t **registers) {
     // Enable forced blank for PPU memory access
     core->memory.write<uint16_t>(arm7, 0x4000000, 0x80);
 
@@ -156,29 +145,25 @@ int Bios::swiRegRamReset(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiWaitByLoop(uint32_t **registers)
-{
+int Bios::swiWaitByLoop(uint32_t **registers) {
     // Wait 4 cycles for each loop iteration (1 for subtraction, 3 for branch)
     uint32_t loops = *registers[0];
     *registers[0] = 0;
     return loops * 4 + 3;
 }
 
-int Bios::swiInterruptWait(uint32_t **registers)
-{
+int Bios::swiInterruptWait(uint32_t **registers) {
     // Set the flags to wait for and start waiting
     waitFlags = *registers[1];
     core->interpreter[arm7].halt(0);
 
-    if (*registers[0]) // Discard old
-    {
+    if (*registers[0]) { // Discard old
         // Clear old flags and continue waiting for a new one
         checkWaitFlags();
         waitFlags = *registers[1];
         core->interpreter[arm7].halt(0);
     }
-    else if (arm7)
-    {
+    else if (arm7) {
         // Check old flags and don't wait if one is already set
         // This is bugged on ARM9; it always waits for at least one interrupt
         checkWaitFlags();
@@ -186,38 +171,33 @@ int Bios::swiInterruptWait(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiVBlankIntrWait(uint32_t **registers)
-{
+int Bios::swiVBlankIntrWait(uint32_t **registers) {
     // Wait until a new V-blank interrupt occurs
     *registers[0] = 1;
     *registers[1] = 1;
     return swiInterruptWait(registers);
 }
 
-int Bios::swiHalt(uint32_t **registers)
-{
+int Bios::swiHalt(uint32_t **registers) {
     // Halt the CPU
     core->interpreter[arm7].halt(0);
     return 3;
 }
 
-int Bios::swiSleep(uint32_t **registers)
-{
+int Bios::swiSleep(uint32_t **registers) {
     // Put the ARM7 in sleep mode
     core->memory.write<uint8_t>(1, 0x4000301, 0xC0); // HALTCNT
     return 3;
 }
 
-int Bios::swiSoundBias(uint32_t **registers)
-{
+int Bios::swiSoundBias(uint32_t **registers) {
     // Set the sound bias value
     // Actual BIOS adjusts this over time with delay, but oh well
     core->memory.write<uint16_t>(1, 0x4000504, *registers[0] ? 0x200 : 0); // SOUNDBIAS
     return 3;
 }
 
-int Bios::swiDivide(uint32_t **registers)
-{
+int Bios::swiDivide(uint32_t **registers) {
     // Calculate the division result and remainder
     int32_t div = int32_t(*registers[0]) / int32_t(*registers[1]);
     int32_t mod = int32_t(*registers[0]) % int32_t(*registers[1]);
@@ -229,22 +209,19 @@ int Bios::swiDivide(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiDivArm(uint32_t **registers)
-{
+int Bios::swiDivArm(uint32_t **registers) {
     // Divide with numerator and denominator swapped
     SWAP(*registers[0], *registers[1]);
     return swiDivide(registers);
 }
 
-int Bios::swiSquareRoot(uint32_t **registers)
-{
+int Bios::swiSquareRoot(uint32_t **registers) {
     // Calculate the square root result
     *registers[0] = sqrt(*registers[0]);
     return 3;
 }
 
-int Bios::swiArcTan(uint32_t **registers)
-{
+int Bios::swiArcTan(uint32_t **registers) {
     // Calculate the inverse of a fixed-point tangent
     int32_t square = -(int32_t(*registers[0] * *registers[0]) >> 14);
     int32_t result = ((square * 0xA9) >> 14) + 0x390;
@@ -258,8 +235,7 @@ int Bios::swiArcTan(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiArcTan2(uint32_t **registers)
-{
+int Bios::swiArcTan2(uint32_t **registers) {
     // Define parameters for calculating inverse tangent with correction processing
     static const uint8_t offsets[] = { 0, 1, 1, 2, 2, 3, 3, 4 };
     int32_t x = *registers[0];
@@ -283,28 +259,23 @@ int Bios::swiArcTan2(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiCpuSet(uint32_t **registers)
-{
+int Bios::swiCpuSet(uint32_t **registers) {
     // Decode some parameters
     bool word = (*registers[2] & BIT(26));
     bool fixed = (*registers[2] & BIT(24));
     uint32_t size = (*registers[2] & 0xFFFFF) << (1 + word);
 
-    if (word)
-    {
+    if (word) {
         // Copy/fill memory from the source to the destination (32-bit)
-        for (uint32_t i = 0; i < size; i += 4)
-        {
+        for (uint32_t i = 0; i < size; i += 4) {
             uint32_t address = *registers[0] + (fixed ? 0 : i);
             uint32_t value = core->memory.read<uint32_t>(arm7, address);
             core->memory.write<uint32_t>(arm7, *registers[1] + i, value);
         }
     }
-    else
-    {
+    else {
         // Copy/fill memory from the source to the destination (16-bit)
-        for (uint32_t i = 0; i < size; i += 2)
-        {
+        for (uint32_t i = 0; i < size; i += 2) {
             uint32_t address = *registers[0] + (fixed ? 0 : i);
             uint16_t value = core->memory.read<uint16_t>(arm7, address);
             core->memory.write<uint16_t>(arm7, *registers[1] + i, value);
@@ -313,15 +284,13 @@ int Bios::swiCpuSet(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiCpuFastSet(uint32_t **registers)
-{
+int Bios::swiCpuFastSet(uint32_t **registers) {
     // Decode some parameters
     bool fixed = (*registers[2] & BIT(24));
     uint32_t size = (*registers[2] & 0xFFFFF) << 2;
 
     // Copy/fill memory from the source to the destination
-    for (uint32_t i = 0; i < size; i += 4)
-    {
+    for (uint32_t i = 0; i < size; i += 4) {
         uint32_t address = *registers[0] + (fixed ? 0 : i);
         uint32_t value = core->memory.read<uint32_t>(arm7, address);
         core->memory.write<uint32_t>(arm7, *registers[1] + i, value);
@@ -329,13 +298,11 @@ int Bios::swiCpuFastSet(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiGetCrc16(uint32_t **registers)
-{
+int Bios::swiGetCrc16(uint32_t **registers) {
     static const uint16_t table[] = { 0xC0C1, 0xC181, 0xC301, 0xC601, 0xCC01, 0xD801, 0xF001, 0xA001 };
 
     // Calculate a CRC16 value for the given data
-    for (size_t i = 0; i < *registers[2]; i++)
-    {
+    for (size_t i = 0; i < *registers[2]; i++) {
         *registers[0] ^= core->memory.read<uint8_t>(arm7, *registers[1] + i);
         for (size_t j = 0; j < 8; j++)
             *registers[0] = (*registers[0] >> 1) ^ ((*registers[0] & 1) ? (table[j] << (7 - j)) : 0);
@@ -343,16 +310,14 @@ int Bios::swiGetCrc16(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiIsDebugger(uint32_t **registers)
-{
+int Bios::swiIsDebugger(uint32_t **registers) {
     // Report that this isn't a debugger
     *registers[0] = 0;
     return 3;
 }
 
 // Affine table taken from the open-source Cult of GBA BIOS
-const uint16_t Bios::affineTable[0x100] =
-{
+const uint16_t Bios::affineTable[0x100] = {
     0x0000, 0x0192, 0x0323, 0x04B5, 0x0645, 0x07D5, 0x0964, 0x0AF1,
     0x0C7C, 0x0E05, 0x0F8C, 0x1111, 0x1294, 0x1413, 0x158F, 0x1708,
     0x187D, 0x19EF, 0x1B5D, 0x1CC6, 0x1E2B, 0x1F8B, 0x20E7, 0x223D,
@@ -387,11 +352,9 @@ const uint16_t Bios::affineTable[0x100] =
     0xF384, 0xF50F, 0xF69C, 0xF82B, 0xF9BB, 0xFB4B, 0xFCDD, 0xFE6E
 };
 
-int Bios::swiBgAffineSet(uint32_t **registers)
-{
+int Bios::swiBgAffineSet(uint32_t **registers) {
     // Process the specified number of background affine parameters
-    for (int i = 0; i < *registers[2]; i++)
-    {
+    for (int i = 0; i < *registers[2]; i++) {
         // Read the input parameters
         int32_t origX = core->memory.read<uint32_t>(arm7, *registers[0] + i * 18 + 0);
         int32_t origY = core->memory.read<uint32_t>(arm7, *registers[0] + i * 18 + 4);
@@ -417,11 +380,9 @@ int Bios::swiBgAffineSet(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiObjAffineSet(uint32_t **registers)
-{
+int Bios::swiObjAffineSet(uint32_t **registers) {
     // Process the specified number of object affine parameters
-    for (int i = 0; i < *registers[2]; i++)
-    {
+    for (int i = 0; i < *registers[2]; i++) {
         // Read the input parameters
         int16_t scaleX = core->memory.read<uint16_t>(arm7, *registers[0] + i * 6 + 0);
         int16_t scaleY = core->memory.read<uint16_t>(arm7, *registers[0] + i * 6 + 2);
@@ -440,8 +401,7 @@ int Bios::swiObjAffineSet(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiBitUnpack(uint32_t **registers)
-{
+int Bios::swiBitUnpack(uint32_t **registers) {
     // Read the parameters from memory
     uint16_t size = core->memory.read<uint16_t>(arm7, *registers[2]);
     uint8_t srcWidth = core->memory.read<uint8_t>(arm7, *registers[2] + 2);
@@ -452,13 +412,11 @@ int Bios::swiBitUnpack(uint32_t **registers)
     uint32_t dstValue = 0;
     uint8_t dstBits = 0;
 
-    for (uint32_t src = 0; src < size; src++)
-    {
+    for (uint32_t src = 0; src < size; src++) {
         // Read 8 bits of source data
         uint8_t srcValue = core->memory.read<uint8_t>(arm7, *registers[0] + src);
 
-        for (uint8_t srcBits = 0; srcBits < 8; srcBits += srcWidth)
-        {
+        for (uint8_t srcBits = 0; srcBits < 8; srcBits += srcWidth) {
             // Isolate a single value from the source
             uint32_t value = srcValue << (dstWidth - srcWidth);
             uint32_t mask = (1 << dstWidth) - 1;
@@ -473,8 +431,7 @@ int Bios::swiBitUnpack(uint32_t **registers)
             dstBits += dstWidth;
 
             // Flush the destination data once there are 32 bits
-            if (dstBits == 32)
-            {
+            if (dstBits == 32) {
                 core->memory.write<uint32_t>(arm7, *registers[1] + dst, dstValue);
                 dst += 4;
                 dstValue = 0;
@@ -488,26 +445,22 @@ int Bios::swiBitUnpack(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiLz77Uncomp(uint32_t **registers)
-{
+int Bios::swiLz77Uncomp(uint32_t **registers) {
     // Get the size from the header and set the initial addresses
     uint32_t size = core->memory.read<uint32_t>(arm7, *registers[0]) >> 8;
     uint32_t src = 4;
     uint32_t dst = 0;
 
-    while (true)
-    {
+    while (true) {
         // Read the flags for the next 8 sections
         uint16_t flags = core->memory.read<uint8_t>(arm7, *registers[0] + src++);
 
-        for (uint32_t i = 0; i < 8; i++)
-        {
+        for (uint32_t i = 0; i < 8; i++) {
             // Finish once the destination size is reached
             if (dst >= size)
                 return 3;
 
-            if ((flags <<= 1) & BIT(8)) // Next flag
-            {
+            if ((flags <<= 1) & BIT(8)) { // Next flag
                 // Decode some parameters
                 uint8_t val1 = core->memory.read<uint8_t>(arm7, *registers[0] + src++);
                 uint8_t val2 = core->memory.read<uint8_t>(arm7, *registers[0] + src++);
@@ -515,14 +468,12 @@ int Bios::swiLz77Uncomp(uint32_t **registers)
                 uint16_t offset = 1 + ((val1 & 0xF) << 8) + val2;
 
                 // Repeat a group of bytes from a previous offset in the destination
-                for (uint32_t j = 0; j < size; j++)
-                {
+                for (uint32_t j = 0; j < size; j++) {
                     uint8_t value = core->memory.read<uint8_t>(arm7, *registers[1] + dst - offset);
                     core->memory.write<uint8_t>(arm7, *registers[1] + dst++, value);
                 }
             }
-            else
-            {
+            else {
                 // Copy a new byte from the source to the destination
                 uint8_t value = core->memory.read<uint8_t>(arm7, *registers[0] + src++);
                 core->memory.write<uint8_t>(arm7, *registers[1] + dst++, value);
@@ -531,8 +482,7 @@ int Bios::swiLz77Uncomp(uint32_t **registers)
     }
 }
 
-int Bios::swiHuffUncomp(uint32_t **registers)
-{
+int Bios::swiHuffUncomp(uint32_t **registers) {
     // Read the header and set size parameters
     uint32_t header = core->memory.read<uint32_t>(arm7, *registers[0]);
     uint8_t treeSize = core->memory.read<uint8_t>(arm7, *registers[0] + 4);
@@ -547,15 +497,13 @@ int Bios::swiHuffUncomp(uint32_t **registers)
     uint32_t endAddress = *registers[1] + (header >> 8);
     uint32_t buffer = 0;
 
-    while (true)
-    {
+    while (true) {
         // Read the next set of node bits
         uint32_t bits = core->memory.read<uint32_t>(arm7, bitsAddress);
         bitsAddress += 4;
 
         // Process the node bits
-        for (int i = 0; i < 32; i++)
-        {
+        for (int i = 0; i < 32; i++) {
             // Move to the next node based on the current node and bit
             uint8_t bit = (bits >> 31);
             uint8_t node = core->memory.read<uint8_t>(arm7, nodeAddress);
@@ -577,30 +525,25 @@ int Bios::swiHuffUncomp(uint32_t **registers)
     }
 }
 
-int Bios::swiRunlenUncomp(uint32_t **registers)
-{
+int Bios::swiRunlenUncomp(uint32_t **registers) {
     // Get the size from the header and set the initial addresses
     uint32_t size = core->memory.read<uint32_t>(arm7, *registers[0]) >> 8;
     uint32_t src = 4;
     uint32_t dst = 0;
 
-    while (dst < size)
-    {
+    while (dst < size) {
         // Read the flags for the next section
         uint8_t flags = core->memory.read<uint8_t>(arm7, *registers[0] + src++);
 
-        if (flags & BIT(7)) // Compressed
-        {
+        if (flags & BIT(7)) { // Compressed
             // Fill a length of destination data with the same source value
             uint8_t value = core->memory.read<uint8_t>(arm7, *registers[0] + src++);
             for (uint32_t j = 0; j < (flags & 0x7F) + 3; j++)
                 core->memory.write<uint8_t>(arm7, *registers[1] + dst++, value);
         }
-        else
-        {
+        else {
             // Copy a length of uncompressed data from the source to the destination
-            for (uint32_t j = 0; j < (flags & 0x7F) + 1; j++)
-            {
+            for (uint32_t j = 0; j < (flags & 0x7F) + 1; j++) {
                 uint8_t value = core->memory.read<uint8_t>(arm7, *registers[0] + src++);
                 core->memory.write<uint8_t>(arm7, *registers[1] + dst++, value);
             }
@@ -609,15 +552,13 @@ int Bios::swiRunlenUncomp(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiDiffUnfilt8(uint32_t **registers)
-{
+int Bios::swiDiffUnfilt8(uint32_t **registers) {
     // Get the size from the header and set the initial value
     uint32_t size = core->memory.read<uint32_t>(0, *registers[0]) >> 8;
     uint8_t value = 0;
 
     // Accumulate the source values and write them to the destination (8-bit)
-    for (uint32_t i = 0; i < size; i++)
-    {
+    for (uint32_t i = 0; i < size; i++) {
         uint32_t address = *registers[0] + 4 + i;
         value += core->memory.read<uint8_t>(0, address);
         core->memory.write<uint8_t>(0, *registers[1] + i, value);
@@ -625,15 +566,13 @@ int Bios::swiDiffUnfilt8(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiDiffUnfilt16(uint32_t **registers)
-{
+int Bios::swiDiffUnfilt16(uint32_t **registers) {
     // Get the size from the header and set the initial value
     uint32_t size = core->memory.read<uint32_t>(0, *registers[0]) >> 8;
     uint16_t value = 0;
 
     // Accumulate the source values and write them to the destination (16-bit)
-    for (uint32_t i = 0; i < size; i += 2)
-    {
+    for (uint32_t i = 0; i < size; i += 2) {
         uint32_t address = *registers[0] + 4 + i;
         value += core->memory.read<uint16_t>(0, address);
         core->memory.write<uint16_t>(0, *registers[1] + i, value);
@@ -641,11 +580,9 @@ int Bios::swiDiffUnfilt16(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiGetSineTable(uint32_t **registers)
-{
+int Bios::swiGetSineTable(uint32_t **registers) {
     // Sine table taken from the open-source DraStic BIOS
-    static const uint16_t sineTable[] =
-    {
+    static const uint16_t sineTable[] = {
         0x0000, 0x0324, 0x0648, 0x096A, 0x0C8C, 0x0FAB, 0x12C8, 0x15E2,
         0x18F9, 0x1C0B, 0x1F1A, 0x2223, 0x2528, 0x2826, 0x2B1F, 0x2E11,
         0x30FB, 0x33DF, 0x36BA, 0x398C, 0x3C56, 0x3F17, 0x41CE, 0x447A,
@@ -661,11 +598,9 @@ int Bios::swiGetSineTable(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiGetPitchTable(uint32_t **registers)
-{
+int Bios::swiGetPitchTable(uint32_t **registers) {
     // Pitch table taken from the open-source DraStic BIOS
-    static const uint16_t pitchTable[] =
-    {
+    static const uint16_t pitchTable[] = {
         0x0000, 0x003B, 0x0076, 0x00B2, 0x00ED, 0x0128, 0x0164, 0x019F,
         0x01DB, 0x0217, 0x0252, 0x028E, 0x02CA, 0x0305, 0x0341, 0x037D,
         0x03B9, 0x03F5, 0x0431, 0x046E, 0x04AA, 0x04E6, 0x0522, 0x055F,
@@ -769,11 +704,9 @@ int Bios::swiGetPitchTable(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiGetVolumeTable(uint32_t **registers)
-{
+int Bios::swiGetVolumeTable(uint32_t **registers) {
     // Volume table taken from the open-source DraStic BIOS
-    static const uint8_t volumeTable[] =
-    {
+    static const uint8_t volumeTable[] = {
         0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
         0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
         0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
@@ -872,8 +805,7 @@ int Bios::swiGetVolumeTable(uint32_t **registers)
     return 3;
 }
 
-int Bios::swiUnknown(uint32_t **registers)
-{
+int Bios::swiUnknown(uint32_t **registers) {
     // Handle an unknown SWI comment
     uint32_t address = *registers[15] - (core->interpreter[arm7].isThumb() ? 4 : 6);
     uint8_t comment = core->memory.read<uint8_t>(arm7, address);

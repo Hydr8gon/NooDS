@@ -31,8 +31,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
-public class NooRenderer implements GLSurfaceView.Renderer
-{
+public class NooRenderer implements GLSurfaceView.Renderer {
     public int width;
     public int height;
 
@@ -64,15 +63,13 @@ public class NooRenderer implements GLSurfaceView.Renderer
         "    gl_FragColor = texture2D(uTexture, vTexCoord);" +
         "}";
 
-    NooRenderer(NooActivity activity)
-    {
+    NooRenderer(NooActivity activity) {
         super();
         this.activity = activity;
     }
 
     @Override
-    public void onSurfaceCreated(GL10 unused, EGLConfig config)
-    {
+    public void onSurfaceCreated(GL10 unused, EGLConfig config) {
         // Compile the vertex shader
         int vertShader = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
         GLES20.glShaderSource(vertShader, vertexShader);
@@ -109,11 +106,9 @@ public class NooRenderer implements GLSurfaceView.Renderer
     }
 
     @Override
-    public void onSurfaceChanged(GL10 unused, int width, int height)
-    {
+    public void onSurfaceChanged(GL10 unused, int width, int height) {
         // Define the 2D projection matrix
-        final float[] projection =
-        {
+        final float[] projection = {
              2.0f / width, 0.0f, 0.0f, 0.0f,
              0.0f, -2.0f / height, 0.0f, 0.0f,
              0.0f, 0.0f, 0.0f, 0.0f,
@@ -133,30 +128,25 @@ public class NooRenderer implements GLSurfaceView.Renderer
         updateLayout(width, height);
 
         // Update the button layout
-        activity.runOnUiThread(new Runnable()
-        {
+        activity.runOnUiThread(new Runnable() {
             @Override
-            public void run()
-            {
+            public void run() {
                 activity.updateButtons();
             }
         });
     }
 
     @Override
-    public void onDrawFrame(GL10 unused)
-    {
+    public void onDrawFrame(GL10 unused) {
         // Update the resolution if it changed
-        if (shift != ((SettingsMenu.getHighRes3D() != 0 || SettingsMenu.getScreenFilter() == 1) ? 1 : 0))
-        {
+        if (shift != ((SettingsMenu.getHighRes3D() != 0 || SettingsMenu.getScreenFilter() == 1) ? 1 : 0)) {
             shift ^= 0x1;
             bitmap = Bitmap.createBitmap((gbaMode ? 240 : 256) << shift,
                 (gbaMode ? 160 : (192 * 2)) << shift, Bitmap.Config.ARGB_8888);
         }
 
         // Update the layout if GBA mode changed
-        if (gbaMode != (activity.isGbaMode() && SettingsMenu.getGbaCrop() != 0))
-        {
+        if (gbaMode != (activity.isGbaMode() && SettingsMenu.getGbaCrop() != 0)) {
             gbaMode = !gbaMode;
             updateLayout(width, height);
             bitmap = Bitmap.createBitmap((gbaMode ? 240 : 256) << shift,
@@ -172,13 +162,11 @@ public class NooRenderer implements GLSurfaceView.Renderer
         while (!copyFramebuffer(bitmap, gbaMode) && activity.isRunning());
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
-        if (gbaMode)
-        {
+        if (gbaMode) {
             // Draw the GBA screen
             drawScreen(getTopX(), getTopY(), getTopWidth(), getTopHeight(), 0.0f, 0.0f, 1.0f, 1.0f);
         }
-        else
-        {
+        else {
             // Draw the DS top and bottom screens
             if (SettingsMenu.getScreenArrangement() != 3 || SettingsMenu.getScreenSizing() < 2)
                 drawScreen(getTopX(), getTopY(), getTopWidth(), getTopHeight(), 0.0f, 0.0f, 1.0f, 0.5f);
@@ -187,29 +175,25 @@ public class NooRenderer implements GLSurfaceView.Renderer
         }
     }
 
-    private void drawScreen(float x, float y, float w, float h, float s1, float t1, float s2, float t2)
-    {
+    private void drawScreen(float x, float y, float w, float h, float s1, float t1, float s2, float t2) {
         final int rot = SettingsMenu.getScreenRotation();
 
         // Arrange the S coordinates for rotation
-        final float s[][] =
-        {
+        final float s[][] = {
             { s1, s1, s2, s2 }, // None
             { s1, s2, s1, s2 }, // Clockwise
             { s2, s1, s2, s1 }, // Counter-Clockwise
         };
 
         // Arrange the T coordinates for rotation
-        final float t[][] =
-        {
+        final float t[][] = {
             { t1, t2, t1, t2 }, // None
             { t2, t2, t1, t1 }, // Clockwise
             { t1, t1, t2, t2 }, // Counter-Clockwise
         };
 
         // Define the vertices
-        final float[] vertices =
-        {
+        final float[] vertices = {
             x, y, s[rot][0], t[rot][0],
             x, y + h, s[rot][1], t[rot][1],
             x + w, y, s[rot][2], t[rot][2],

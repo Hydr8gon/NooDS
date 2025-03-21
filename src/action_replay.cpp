@@ -20,20 +20,17 @@
 #include "action_replay.h"
 #include "core.h"
 
-void ActionReplay::setPath(std::string path)
-{
+void ActionReplay::setPath(std::string path) {
     // Set the cheat path
     this->path = path;
 }
 
-void ActionReplay::setFd(int fd)
-{
+void ActionReplay::setFd(int fd) {
     // Set the cheat descriptor
     this->fd = fd;
 }
 
-FILE *ActionReplay::openFile(const char *mode)
-{
+FILE *ActionReplay::openFile(const char *mode) {
     // Open the cheat file if one is set
     if (fd != -1)
         return fdopen(dup(fd), mode);
@@ -42,8 +39,7 @@ FILE *ActionReplay::openFile(const char *mode)
     return nullptr;
 }
 
-bool ActionReplay::loadCheats()
-{
+bool ActionReplay::loadCheats() {
     // Attempt to open the cheat file
     FILE *file = openFile("r");
     if (!file) return false;
@@ -52,8 +48,7 @@ bool ActionReplay::loadCheats()
 
     // Reload cheats from the file
     cheats.clear();
-    while (fgets(data, 512, file) != nullptr)
-    {
+    while (fgets(data, 512, file) != nullptr) {
         // Create a new cheat when one is found
         if (data[0] != '[') continue;
         cheats.push_back(ARCheat());
@@ -66,8 +61,7 @@ bool ActionReplay::loadCheats()
         LOG_INFO("Loaded cheat: %s (%s)\n", cheat.name.c_str(), cheat.enabled ? "enabled" : "disabled");
 
         // Load the cheat code up until an empty line
-        while (fgets(data, 512, file) != nullptr && data[0] != '\n')
-        {
+        while (fgets(data, 512, file) != nullptr && data[0] != '\n') {
             cheat.code.push_back(strtoll(&data[0], nullptr, 16));
             cheat.code.push_back(strtoll(&data[8], nullptr, 16));
         }
@@ -79,16 +73,14 @@ bool ActionReplay::loadCheats()
     return true;
 }
 
-bool ActionReplay::saveCheats()
-{
+bool ActionReplay::saveCheats() {
     // Attempt to open the cheat file
     FILE *file = openFile("w");
     if (!file) return false;
     mutex.lock();
 
     // Write cheats back to the file
-    for (uint32_t i = 0; i < cheats.size(); i++)
-    {
+    for (uint32_t i = 0; i < cheats.size(); i++) {
         fprintf(file, "[%s]%c\n", cheats[i].name.c_str(), cheats[i].enabled ? '+' : '-');
         for (uint32_t j = 0; j < cheats[i].code.size(); j += 2)
             fprintf(file, "%08X %08X\n", cheats[i].code[j], cheats[i].code[j + 1]);
@@ -101,12 +93,10 @@ bool ActionReplay::saveCheats()
     return true;
 }
 
-void ActionReplay::applyCheats()
-{
+void ActionReplay::applyCheats() {
     // Execute the code of enabled cheats
     mutex.lock();
-    for (uint32_t i = 0; i < cheats.size(); i++)
-    {
+    for (uint32_t i = 0; i < cheats.size(); i++) {
         // Define registers for executing a cheat
         if (!cheats[i].enabled) continue;
         uint32_t offset = 0;
@@ -117,12 +107,10 @@ void ActionReplay::applyCheats()
         bool condFlag = false;
 
         // Loop through lines of a cheat's code
-        for (uint32_t address = 0; address < cheats[i].code.size(); address += 2)
-        {
+        for (uint32_t address = 0; address < cheats[i].code.size(); address += 2) {
             // Check the condition flag
             uint32_t *line = &cheats[i].code[address];
-            if (condFlag)
-            {
+            if (condFlag) {
                 // Handle adjustments that happen regardless of condition
                 uint8_t op = (line[0] >> 24);
                 if ((op >> 4) == 0xE) // Parameter copy
@@ -136,8 +124,7 @@ void ActionReplay::applyCheats()
             }
 
             // Interpret a line of the code
-            switch (line[0] >> 28)
-            {
+            switch (line[0] >> 28) {
                 case 0x0: // Write word
                     // Write a word to memory
                     core->memory.write<uint32_t>(1, (line[0] & 0xFFFFFFF) + offset, line[1]);
@@ -153,64 +140,56 @@ void ActionReplay::applyCheats()
                     core->memory.write<uint8_t>(1, (line[0] & 0xFFFFFFF) + offset, line[1]);
                     continue;
 
-                case 0x3: // If greater than word
-                {
+                case 0x3: { // If greater than word
                     // Set the condition flag if a word isn't greater than a memory value
                     uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
                     condFlag = (line[1] <= core->memory.read<uint32_t>(1, addr));
                     continue;
                 }
 
-                case 0x4: // If less than word
-                {
+                case 0x4: { // If less than word
                     // Set the condition flag if a word isn't less than a memory value
                     uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
                     condFlag = (line[1] >= core->memory.read<uint32_t>(1, addr));
                     continue;
                 }
 
-                case 0x5: // If equal to word
-                {
+                case 0x5: { // If equal to word
                     // Set the condition flag if a word isn't equal to a memory value
                     uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
                     condFlag = (line[1] != core->memory.read<uint32_t>(1, addr));
                     continue;
                 }
 
-                case 0x6: // If not equal to word
-                {
+                case 0x6: { // If not equal to word
                     // Set the condition flag if a word is equal to a memory value
                     uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
                     condFlag = (line[1] == core->memory.read<uint32_t>(1, addr));
                     continue;
                 }
 
-                case 0x7: // If greater than half
-                {
+                case 0x7: { // If greater than half
                     // Set the condition flag if a half-word isn't greater than a masked memory value
                     uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
                     condFlag = (line[1] & 0xFFFF) <= (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
                     continue;
                 }
 
-                case 0x8: // If less than half
-                {
+                case 0x8: { // If less than half
                     // Set the condition flag if a half-word isn't less than a masked memory value
                     uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
                     condFlag = (line[1] & 0xFFFF) >= (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
                     continue;
                 }
 
-                case 0x9: // If equal to half
-                {
+                case 0x9: { // If equal to half
                     // Set the condition flag if a half-word isn't equal to a masked memory value
                     uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
                     condFlag = (line[1] & 0xFFFF) != (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
                     continue;
                 }
 
-                case 0xA: // If not equal to half
-                {
+                case 0xA: { // If not equal to half
                     // Set the condition flag if a half-word is equal to a masked memory value
                     uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
                     condFlag = (line[1] & 0xFFFF) == (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
@@ -223,8 +202,7 @@ void ActionReplay::applyCheats()
                     continue;
 
                 case 0xC:
-                    switch (line[0] >> 24)
-                    {
+                    switch (line[0] >> 24) {
                         case 0xC0: // For loop
                             // Set the loop count and address to loop to
                             loopCount = line[1];
@@ -244,8 +222,7 @@ void ActionReplay::applyCheats()
                     goto invalid;
 
                 case 0xD:
-                    switch (line[0] >> 24)
-                    {
+                    switch (line[0] >> 24) {
                         case 0xD0: // End if
                             // Clear the condition flag
                             condFlag = false;
@@ -253,8 +230,7 @@ void ActionReplay::applyCheats()
 
                         case 0xD1: // Next loop
                             // Jump to the loop address until the loop count runs out
-                            if (loopCount)
-                            {
+                            if (loopCount) {
                                 loopCount--;
                                 address = loopAddress;
                                 continue;
@@ -264,8 +240,7 @@ void ActionReplay::applyCheats()
 
                         case 0xD2: // Next loop and flush
                             // Jump to the loop address and reset registers after looping
-                            if (loopCount)
-                            {
+                            if (loopCount) {
                                 loopCount--;
                                 address = loopAddress;
                                 continue;
@@ -332,8 +307,7 @@ void ActionReplay::applyCheats()
 
                 case 0xE: // Parameter copy
                     // Copy parameter bytes to memory and jump to the next opcode
-                    for (uint32_t j = 0; j < line[1]; j++)
-                    {
+                    for (uint32_t j = 0; j < line[1]; j++) {
                         uint8_t value = line[(j >> 2) + 2] >> ((j & 0x3) * 8);
                         core->memory.write<uint8_t>(1, (line[0] & 0xFFFFFFF) + offset + j, value);
                     }
@@ -342,8 +316,7 @@ void ActionReplay::applyCheats()
 
                 case 0xF: // Memory copy
                     // Copy bytes from one memory location to another
-                    for (uint32_t j = 0; j < line[1]; j++)
-                    {
+                    for (uint32_t j = 0; j < line[1]; j++) {
                         uint8_t value = core->memory.read<uint8_t>(1, offset + j);
                         core->memory.write<uint8_t>(1, (line[0] & 0xFFFFFFF) + j, value);
                     }

@@ -20,8 +20,7 @@
 #include "save_dialog.h"
 #include "noo_frame.h"
 
-enum SaveEvent
-{
+enum SaveEvent {
     SELECTION_0 = 1,
     SELECTION_1,
     SELECTION_2,
@@ -48,10 +47,8 @@ EVT_RADIOBUTTON(SELECTION_9, SaveDialog::selection9)
 EVT_BUTTON(wxID_OK, SaveDialog::confirm)
 wxEND_EVENT_TABLE()
 
-int SaveDialog::selectionToSize(int selection)
-{
-    switch (selection)
-    {
+int SaveDialog::selectionToSize(int selection) {
+    switch (selection) {
         case 1: return 0x200; // 0.5KB
         case 2: return 0x2000; // 8KB
         case 3: return 0x8000; // 32KB
@@ -65,10 +62,8 @@ int SaveDialog::selectionToSize(int selection)
     }
 }
 
-int SaveDialog::sizeToSelection(int size)
-{
-    switch (size)
-    {
+int SaveDialog::sizeToSelection(int size) {
+    switch (size) {
         case 0x200: return 1; // 0.5KB
         case 0x2000: return 2; // 8KB
         case 0x8000: return 3; // 32KB
@@ -82,8 +77,7 @@ int SaveDialog::sizeToSelection(int size)
     }
 }
 
-SaveDialog::SaveDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Change Save Type"), frame(frame)
-{
+SaveDialog::SaveDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Change Save Type"), frame(frame) {
     // Check the current emulation mode and get the corresponding cartridge
     gba = frame->core->gbaMode;
     cartridge = gba ? (Cartridge*)&frame->core->cartridgeGba : (Cartridge*)&frame->core->cartridgeNds;
@@ -98,8 +92,7 @@ SaveDialog::SaveDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Change Sav
     wxBoxSizer *rightRadio = new wxBoxSizer(wxVERTICAL);
     wxRadioButton *buttons[10];
 
-    if (gba)
-    {
+    if (gba) {
         // Set up radio buttons for GBA save types
         leftRadio->Add(buttons[0] = new wxRadioButton(this, SELECTION_0, "None"), 1);
         leftRadio->Add(buttons[1] = new wxRadioButton(this, SELECTION_1, "EEPROM 0.5KB"), 1);
@@ -108,8 +101,7 @@ SaveDialog::SaveDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Change Sav
         rightRadio->Add(buttons[4] = new wxRadioButton(this, SELECTION_4, "FLASH 64KB"), 1);
         rightRadio->Add(buttons[5] = new wxRadioButton(this, SELECTION_5, "FLASH 128KB"), 1);
     }
-    else
-    {
+    else {
         // Set up radio buttons for NDS save types
         leftRadio->Add(buttons[0] = new wxRadioButton(this, SELECTION_0, "None"), 1);
         leftRadio->Add(buttons[1] = new wxRadioButton(this, SELECTION_1, "EEPROM 0.5KB"), 1);
@@ -154,73 +146,61 @@ SaveDialog::SaveDialog(NooFrame *frame): wxDialog(nullptr, wxID_ANY, "Change Sav
     SetMaxSize(GetSize());
 }
 
-void SaveDialog::selection0(wxCommandEvent &event)
-{
+void SaveDialog::selection0(wxCommandEvent &event) {
     // Set the selection to 0
     selection = 0;
 }
 
-void SaveDialog::selection1(wxCommandEvent &event)
-{
+void SaveDialog::selection1(wxCommandEvent &event) {
     // Set the selection to 1
     selection = 1;
 }
 
-void SaveDialog::selection2(wxCommandEvent &event)
-{
+void SaveDialog::selection2(wxCommandEvent &event) {
     // Set the selection to 2
     selection = 2;
 }
 
-void SaveDialog::selection3(wxCommandEvent &event)
-{
+void SaveDialog::selection3(wxCommandEvent &event) {
     // Set the selection to 3
     selection = 3;
 }
 
-void SaveDialog::selection4(wxCommandEvent &event)
-{
+void SaveDialog::selection4(wxCommandEvent &event) {
     // Set the selection to 4
     selection = 4;
 }
 
-void SaveDialog::selection5(wxCommandEvent &event)
-{
+void SaveDialog::selection5(wxCommandEvent &event) {
     // Set the selection to 5
     selection = 5;
 }
 
-void SaveDialog::selection6(wxCommandEvent &event)
-{
+void SaveDialog::selection6(wxCommandEvent &event) {
     // Set the selection to 6
     selection = 6;
 }
 
-void SaveDialog::selection7(wxCommandEvent &event)
-{
+void SaveDialog::selection7(wxCommandEvent &event) {
     // Set the selection to 7
     selection = 7;
 }
 
-void SaveDialog::selection8(wxCommandEvent &event)
-{
+void SaveDialog::selection8(wxCommandEvent &event) {
     // Set the selection to 8
     selection = 8;
 }
 
-void SaveDialog::selection9(wxCommandEvent &event)
-{
+void SaveDialog::selection9(wxCommandEvent &event) {
     // Set the selection to 9
     selection = 9;
 }
 
-void SaveDialog::confirm(wxCommandEvent &event)
-{
+void SaveDialog::confirm(wxCommandEvent &event) {
     // Confirm the change because accidentally resizing a working save file could be bad!
     // On confirmation, apply the change and restart the core
     wxMessageDialog dialog(this, "Are you sure? This may result in data loss!", "Changing Save Type", wxYES_NO | wxICON_NONE);
-    if (dialog.ShowModal() == wxID_YES)
-    {
+    if (dialog.ShowModal() == wxID_YES) {
         frame->stopCore(false);
         cartridge->resizeSave(selectionToSize(selection));
         frame->startCore(true);

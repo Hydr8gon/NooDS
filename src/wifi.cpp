@@ -24,16 +24,14 @@
 
 #define MS_CYCLES 34418
 
-Wifi::Wifi(Core *core): core(core)
-{
+Wifi::Wifi(Core *core): core(core) {
     // Set some default BB register values
     bbRegisters[0x00] = 0x6D;
     bbRegisters[0x5D] = 0x01;
     bbRegisters[0x64] = 0xFF;
 }
 
-void Wifi::saveState(FILE *file)
-{
+void Wifi::saveState(FILE *file) {
     // Write state data to the file
     fwrite(&scheduled, sizeof(scheduled), 1, file);
     fwrite(&wModeWep, sizeof(wModeWep), 1, file);
@@ -81,8 +79,7 @@ void Wifi::saveState(FILE *file)
     fwrite(wConfig, 2, sizeof(wConfig) / 2, file);
 }
 
-void Wifi::loadState(FILE *file)
-{
+void Wifi::loadState(FILE *file) {
     // Read state data from the file
     fread(&scheduled, sizeof(scheduled), 1, file);
     fread(&wModeWep, sizeof(wModeWep), 1, file);
@@ -130,8 +127,7 @@ void Wifi::loadState(FILE *file)
     fread(wConfig, 2, sizeof(wConfig) / 2, file);
 }
 
-void Wifi::addConnection(Core *core)
-{
+void Wifi::addConnection(Core *core) {
     // Add an external core to this one's connection list
     mutex.lock();
     connections.push_back(&core->wifi);
@@ -143,8 +139,7 @@ void Wifi::addConnection(Core *core)
     core->wifi.mutex.unlock();
 }
 
-void Wifi::remConnection(Core *core)
-{
+void Wifi::remConnection(Core *core) {
     // Remove an external core from this one's connection list
     mutex.lock();
     auto position = std::find(connections.begin(), connections.end(), &core->wifi);
@@ -158,32 +153,27 @@ void Wifi::remConnection(Core *core)
     core->wifi.mutex.unlock();
 }
 
-void Wifi::scheduleInit()
-{
+void Wifi::scheduleInit() {
     // Schedule an initial millisecond tick (this will reschedule itself as needed)
     core->schedule(WIFI_COUNT_MS, MS_CYCLES);
     scheduled = true;
 }
 
-void Wifi::countMs()
-{
+void Wifi::countMs() {
     // Process any queued packets
     if (!packets.empty())
         receivePackets();
 
-    if (wUsCountcnt) // Counter enable
-    {
+    if (wUsCountcnt) { // Counter enable
         // Decrement the beacon counter and trigger an interrupt if the pre-beacon value matches
         if (--wBeaconCount == wPreBeacon && wUsComparecnt)
             sendInterrupt(15);
 
         // Increment the main counter by a millisecond and handle compare events
-        if ((wUsCount += 0x400) == wUsCompare || wBeaconCount == 0)
-        {
+        if ((wUsCount += 0x400) == wUsCompare || wBeaconCount == 0) {
             // Reload the beacon counter and trigger an interrupt with transmission if enabled
             wBeaconCount = wBeaconInt;
-            if (wUsComparecnt)
-            {
+            if (wUsComparecnt) {
                 sendInterrupt(14);
                 if ((wTxbufLoc[BEACON_FRAME] & BIT(15)) && (wTxreqRead & BIT(BEACON_FRAME)))
                     transmitPacket(BEACON_FRAME);
@@ -206,8 +196,7 @@ void Wifi::countMs()
         scheduled = false;
 }
 
-void Wifi::sendInterrupt(int bit)
-{
+void Wifi::sendInterrupt(int bit) {
     // Trigger a WiFi interrupt if W_IF & W_IE changes from zero
     if (!(wIe & wIrf) && (wIe & BIT(bit)))
         core->interpreter[1].sendInterrupt(24);
@@ -216,25 +205,21 @@ void Wifi::sendInterrupt(int bit)
     wIrf |= BIT(bit);
 
     // Perform additional actions for beacon interrupts
-    if (bit == 14)
-    {
+    if (bit == 14) {
         wPostBeacon = 0xFFFF;
         wTxreqRead &= 0xFFF2;
     }
 }
 
-void Wifi::receivePackets()
-{
+void Wifi::receivePackets() {
     // Start receiving packets
     sendInterrupt(6);
     mutex.lock();
 
     // Write all queued packets to the circular buffer
-    for (uint32_t i = 0; i < packets.size(); i++)
-    {
+    for (uint32_t i = 0; i < packets.size(); i++) {
         uint16_t size = (packets[i][4] + 12) / 2;
-        for (uint32_t j = 0; j < size; j++)
-        {
+        for (uint32_t j = 0; j < size; j++) {
             // Write a half-word of the packet to memory
             core->memory.write<uint16_t>(1, 0x4804000 + wRxbufWrcsr, packets[i][j]);
 
@@ -258,22 +243,17 @@ void Wifi::receivePackets()
     sendInterrupt(0);
 }
 
-void Wifi::transmitPacket(PacketType type)
-{
+void Wifi::transmitPacket(PacketType type) {
     // Set the packet address and size, and modify the TX header
     uint16_t address, size;
-    if (type == CMD_ACK)
-    {
+    if (type == CMD_ACK) {
         // Set the size for a generated CMD ack
         address = 0;
         size = 40;
     }
-    else
-    {
-        if (type == CMD_REPLY)
-        {
-            if (wTxbufReply1 & BIT(15))
-            {
+    else {
+        if (type == CMD_REPLY) {
+            if (wTxbufReply1 & BIT(15)) {
                 // Increment the retry count and swap the CMD reply address if set
                 address = (wTxbufReply1 & 0xFFF) << 1;
                 uint8_t value = core->memory.read<uint8_t>(1, 0x4804004 + address) + 1;
@@ -281,16 +261,14 @@ void Wifi::transmitPacket(PacketType type)
                 wTxbufReply2 = wTxbufReply1;
                 wTxbufReply1 = 0;
             }
-            else
-            {
+            else {
                 // Set the size for a generated empty CMD reply
                 address = 0;
                 size = 36;
                 goto start;
             }
         }
-        else
-        {
+        else {
             // Set the address for a regular packet
             address = (wTxbufLoc[type] & 0xFFF) << 1;
         }
@@ -308,8 +286,7 @@ start:
     sendInterrupt(7);
     mutex.lock();
 
-    for (uint32_t i = 0; i < connections.size(); i++)
-    {
+    for (uint32_t i = 0; i < connections.size(); i++) {
         // Create packet data and fill out the RX header
         const uint16_t fts[] = { 0x8010, 0x801C, 0x8010, 0x8010, 0x8011, 0x801E, 0x801D };
         uint16_t *data = new uint16_t[size / 2];
@@ -320,8 +297,7 @@ start:
         data[4] = size - 12; // Data length
         data[5] = 0x00FF; // Signal strength
 
-        if (type == CMD_ACK)
-        {
+        if (type == CMD_ACK) {
             // Fill out the IEEE header and body for a CMD ack
             data[6] = 0x0218; // Frame control
             data[7] = 0x7FFF; // Duration
@@ -338,8 +314,7 @@ start:
             data[18] = 0x0046; // Something?
             data[19] = 0x0000; // Error flags
         }
-        else if (type == CMD_REPLY && !(wTxbufReply1 & BIT(15)))
-        {
+        else if (type == CMD_REPLY && !(wTxbufReply1 & BIT(15))) {
             // Fill out the IEEE header for an empty CMD reply
             data[6] = 0x0158; // Frame control
             data[7] = 0x7FFF; // Duration
@@ -354,8 +329,7 @@ start:
             data[16] = wMacaddr[2]; // Address 3
             data[17] = 0x0000; // Sequence control
         }
-        else
-        {
+        else {
             // Read the rest of the packet from memory
             for (uint32_t j = 12; j < size; j += 2)
                 data[j / 2] = core->memory.read<uint16_t>(1, 0x4804000 + address + j);
@@ -382,8 +356,7 @@ start:
         sendInterrupt(12);
 
     // Update transmission status based on type and certain bits
-    switch (type)
-    {
+    switch (type) {
         case LOC1_FRAME: wTxstat = (wTxbufLoc[0] & BIT(12)) ? 0x0701 : 0x0001; break;
         case CMD_FRAME: wTxstat = (wTxstatCnt & BIT(14)) ? 0x0801 : 0x0001; break;
         case LOC2_FRAME: wTxstat = (wTxbufLoc[2] & BIT(12)) ? 0x1701 : 0x1001; break;
@@ -394,28 +367,24 @@ start:
     }
 }
 
-void Wifi::writeWModeWep(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWModeWep(uint16_t mask, uint16_t value) {
     // Write to the W_MODE_WEP register
     wModeWep = (wModeWep & ~mask) | (value & mask);
 }
 
-void Wifi::writeWTxstatCnt(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWTxstatCnt(uint16_t mask, uint16_t value) {
     // Write to the W_TXSTAT_CNT register
     mask &= 0xF000;
     wTxstatCnt = (wTxstatCnt & ~mask) | (value & mask);
 }
 
-void Wifi::writeWIrf(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWIrf(uint16_t mask, uint16_t value) {
     // Write to the W_IF register
     // Setting a bit actually clears it to acknowledge an interrupt
     wIrf &= ~(value & mask);
 }
 
-void Wifi::writeWIe(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWIe(uint16_t mask, uint16_t value) {
     // Trigger a WiFi interrupt if W_IF & W_IE changes from zero
     if (!(wIe & wIrf) && (value & mask & wIrf))
         core->interpreter[1].sendInterrupt(24);
@@ -425,27 +394,23 @@ void Wifi::writeWIe(uint16_t mask, uint16_t value)
     wIe = (wIe & ~mask) | (value & mask);
 }
 
-void Wifi::writeWMacaddr(int index, uint16_t mask, uint16_t value)
-{
+void Wifi::writeWMacaddr(int index, uint16_t mask, uint16_t value) {
     // Write to one of the W_MACADDR registers
     wMacaddr[index] = (wMacaddr[index] & ~mask) | (value & mask);
 }
 
-void Wifi::writeWBssid(int index, uint16_t mask, uint16_t value)
-{
+void Wifi::writeWBssid(int index, uint16_t mask, uint16_t value) {
     // Write to one of the W_BSSID registers
     wBssid[index] = (wBssid[index] & ~mask) | (value & mask);
 }
 
-void Wifi::writeWAidFull(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWAidFull(uint16_t mask, uint16_t value) {
     // Write to the W_AID_FULL register
     mask &= 0x07FF;
     wAidFull = (wAidFull & ~mask) | (value & mask);
 }
 
-void Wifi::writeWRxcnt(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWRxcnt(uint16_t mask, uint16_t value) {
     // Write to the W_RXCNT register
     mask &= 0xFF0E;
     wRxcnt = (wRxcnt & ~mask) | (value & mask);
@@ -455,8 +420,7 @@ void Wifi::writeWRxcnt(uint16_t mask, uint16_t value)
         wRxbufWrcsr = wRxbufWrAddr << 1;
 }
 
-void Wifi::writeWPowerstate(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWPowerstate(uint16_t mask, uint16_t value) {
     // Write to the W_POWERSTATE register
     mask &= 0x0003;
     wPowerstate = (wPowerstate & ~mask) | (value & mask);
@@ -466,8 +430,7 @@ void Wifi::writeWPowerstate(uint16_t mask, uint16_t value)
         wPowerstate &= ~BIT(9);
 }
 
-void Wifi::writeWPowerforce(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWPowerforce(uint16_t mask, uint16_t value) {
     // Write to the W_POWERFORCE register
     mask &= 0x8001;
     wPowerforce = (wPowerforce & ~mask) | (value & mask);
@@ -477,76 +440,65 @@ void Wifi::writeWPowerforce(uint16_t mask, uint16_t value)
         wPowerstate = (wPowerstate & ~BIT(9)) | ((wPowerforce & BIT(0)) << 9);
 }
 
-void Wifi::writeWRxbufBegin(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWRxbufBegin(uint16_t mask, uint16_t value) {
     // Write to the W_RXBUF_BEGIN register
     wRxbufBegin = (wRxbufBegin & ~mask) | (value & mask);
 }
 
-void Wifi::writeWRxbufEnd(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWRxbufEnd(uint16_t mask, uint16_t value) {
     // Write to the W_RXBUF_END register
     wRxbufEnd = (wRxbufEnd & ~mask) | (value & mask);
 }
 
-void Wifi::writeWRxbufWrAddr(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWRxbufWrAddr(uint16_t mask, uint16_t value) {
     // Write to the W_RXBUF_WR_ADDR register
     mask &= 0x0FFF;
     wRxbufWrAddr = (wRxbufWrAddr & ~mask) | (value & mask);
 }
 
-void Wifi::writeWRxbufRdAddr(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWRxbufRdAddr(uint16_t mask, uint16_t value) {
     // Write to the W_RXBUF_RD_ADDR register
     mask &= 0x1FFE;
     wRxbufRdAddr = (wRxbufRdAddr & ~mask) | (value & mask);
 }
 
-void Wifi::writeWRxbufReadcsr(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWRxbufReadcsr(uint16_t mask, uint16_t value) {
     // Write to the W_RXBUF_READCSR register
     mask &= 0x0FFF;
     wRxbufReadcsr = (wRxbufReadcsr & ~mask) | (value & mask);
 }
 
-void Wifi::writeWRxbufGap(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWRxbufGap(uint16_t mask, uint16_t value) {
     // Write to the W_RXBUF_GAP register
     mask &= 0x1FFE;
     wRxbufGap = (wRxbufGap & ~mask) | (value & mask);
 }
 
-void Wifi::writeWRxbufGapdisp(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWRxbufGapdisp(uint16_t mask, uint16_t value) {
     // Write to the W_RXBUF_GAPDISP register
     mask &= 0x0FFF;
     wRxbufGapdisp = (wRxbufGapdisp & ~mask) | (value & mask);
 }
 
-void Wifi::writeWRxbufCount(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWRxbufCount(uint16_t mask, uint16_t value) {
     // Write to the W_RXBUF_COUNT register
     mask &= 0x0FFF;
     wRxbufCount = (wRxbufCount & ~mask) | (value & mask);
 }
 
-void Wifi::writeWTxbufWrAddr(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWTxbufWrAddr(uint16_t mask, uint16_t value) {
     // Write to the W_TXBUF_WR_ADDR register
     mask &= 0x1FFE;
     wTxbufWrAddr = (wTxbufWrAddr & ~mask) | (value & mask);
 }
 
-void Wifi::writeWTxbufCount(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWTxbufCount(uint16_t mask, uint16_t value) {
     // Write to the W_TXBUF_COUNT register
     mask &= 0x0FFF;
     wTxbufCount = (wTxbufCount & ~mask) | (value & mask);
 }
 
-void Wifi::writeWTxbufWrData(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWTxbufWrData(uint16_t mask, uint16_t value) {
     // Write a value to WiFi RAM
     core->memory.write<uint16_t>(1, 0x4804000 + wTxbufWrAddr, value & mask);
 
@@ -561,22 +513,19 @@ void Wifi::writeWTxbufWrData(uint16_t mask, uint16_t value)
         sendInterrupt(8);
 }
 
-void Wifi::writeWTxbufGap(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWTxbufGap(uint16_t mask, uint16_t value) {
     // Write to the W_TXBUF_GAP register
     mask &= 0x1FFE;
     wTxbufGap = (wTxbufGap & ~mask) | (value & mask);
 }
 
-void Wifi::writeWTxbufGapdisp(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWTxbufGapdisp(uint16_t mask, uint16_t value) {
     // Write to the W_TXBUF_GAPDISP register
     mask &= 0x0FFF;
     wTxbufGapdisp = (wTxbufGapdisp & ~mask) | (value & mask);
 }
 
-void Wifi::writeWTxbufLoc(PacketType type, uint16_t mask, uint16_t value)
-{
+void Wifi::writeWTxbufLoc(PacketType type, uint16_t mask, uint16_t value) {
     // Write to one of the W_TXBUF_[BEACON,CMD,LOC1,LOC2,LOC3] registers
     wTxbufLoc[type] = (wTxbufLoc[type] & ~mask) | (value & mask);
 
@@ -585,8 +534,7 @@ void Wifi::writeWTxbufLoc(PacketType type, uint16_t mask, uint16_t value)
         transmitPacket(type);
 }
 
-void Wifi::writeWBeaconInt(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWBeaconInt(uint16_t mask, uint16_t value) {
     // Write to the W_BEACON_INT register
     mask &= 0x03FF;
     wBeaconInt = (wBeaconInt & ~mask) | (value & mask);
@@ -595,21 +543,18 @@ void Wifi::writeWBeaconInt(uint16_t mask, uint16_t value)
     wBeaconCount = wBeaconInt;
 }
 
-void Wifi::writeWTxbufReply1(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWTxbufReply1(uint16_t mask, uint16_t value) {
     // Write to the W_TXBUF_REPLY1 register
     wTxbufReply1 = (wTxbufReply1 & ~mask) | (value & mask);
 }
 
-void Wifi::writeWTxreqReset(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWTxreqReset(uint16_t mask, uint16_t value) {
     // Clear bits in W_TXREQ_READ
     mask &= 0x000F;
     wTxreqRead &= ~(value & mask);
 }
 
-void Wifi::writeWTxreqSet(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWTxreqSet(uint16_t mask, uint16_t value) {
     // Set bits in W_TXREQ_READ
     mask &= 0x000F;
     wTxreqRead |= (value & mask);
@@ -620,15 +565,13 @@ void Wifi::writeWTxreqSet(uint16_t mask, uint16_t value)
             transmitPacket(PacketType(i));
 }
 
-void Wifi::writeWUsCountcnt(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWUsCountcnt(uint16_t mask, uint16_t value) {
     // Write to the W_US_COUNTCNT register
     mask &= 0x0001;
     wUsCountcnt = (wUsCountcnt & ~mask) | (value & mask);
 }
 
-void Wifi::writeWUsComparecnt(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWUsComparecnt(uint16_t mask, uint16_t value) {
     // Write to the W_US_COMPARECNT register
     mask &= 0x0001;
     wUsComparecnt = (wUsComparecnt & ~mask) | (value & mask);
@@ -638,50 +581,42 @@ void Wifi::writeWUsComparecnt(uint16_t mask, uint16_t value)
         sendInterrupt(14);
 }
 
-void Wifi::writeWCmdCountcnt(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWCmdCountcnt(uint16_t mask, uint16_t value) {
     // Write to the W_CMD_COUNTCNT register
     mask &= 0x0001;
     wCmdCountcnt = (wCmdCountcnt & ~mask) | (value & mask);
 }
 
-void Wifi::writeWUsCompare(int index, uint16_t mask, uint16_t value)
-{
+void Wifi::writeWUsCompare(int index, uint16_t mask, uint16_t value) {
     // Write to part of the W_US_COMPARE register
     int shift = index * 16;
     mask &= (index ? 0xFFFF : 0xFC00);
     wUsCompare = (wUsCompare & ~(uint64_t(mask) << shift)) | (uint64_t(value & mask) << shift);
 }
 
-void Wifi::writeWUsCount(int index, uint16_t mask, uint16_t value)
-{
+void Wifi::writeWUsCount(int index, uint16_t mask, uint16_t value) {
     // Write to part of the W_US_COUNT register
     int shift = index * 16;
     wUsCount = (wUsCount & ~(uint64_t(mask) << shift)) | (uint64_t(value & mask) << shift);
 }
 
-void Wifi::writeWPreBeacon(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWPreBeacon(uint16_t mask, uint16_t value) {
     // Write to the W_PRE_BEACON register
     wPreBeacon = (wPreBeacon & ~mask) | (value & mask);
 }
 
-void Wifi::writeWCmdCount(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWCmdCount(uint16_t mask, uint16_t value) {
     // Write to the W_CMD_COUNT register
     wCmdCount = (wCmdCount & ~mask) | (value & mask);
 }
 
-void Wifi::writeWBeaconCount(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWBeaconCount(uint16_t mask, uint16_t value) {
     // Write to the W_BEACON_COUNT register
     wBeaconCount = (wBeaconCount & ~mask) | (value & mask);
 }
 
-void Wifi::writeWConfig(int index, uint16_t mask, uint16_t value)
-{
-    const uint16_t masks[] =
-    {
+void Wifi::writeWConfig(int index, uint16_t mask, uint16_t value) {
+    const uint16_t masks[] = {
         0x81FF, 0xFFFF, 0xFFFF, 0xFFFF, 0x0FFF,
         0x8FFF, 0xFFFF, 0xFFFF, 0x00FF, 0x00FF,
         0x00FF, 0x00FF, 0xFFFF, 0xFF3F, 0x7A7F
@@ -692,21 +627,17 @@ void Wifi::writeWConfig(int index, uint16_t mask, uint16_t value)
     wConfig[index] = (wConfig[index] & ~mask) | (value & mask);
 }
 
-void Wifi::writeWPostBeacon(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWPostBeacon(uint16_t mask, uint16_t value) {
     // Write to the W_POST_BEACON register
     wPostBeacon = (wPostBeacon & ~mask) | (value & mask);
 }
 
-void Wifi::writeWBbCnt(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWBbCnt(uint16_t mask, uint16_t value) {
     int index = value & 0x00FF;
 
     // Perform a BB register transfer
-    switch ((value & 0xF000) >> 12)
-    {
-        case 5: // Write
-        {
+    switch ((value & 0xF000) >> 12) {
+        case 5: { // Write
             if ((index >= 0x01 && index <= 0x0C) || (index >= 0x13 && index <= 0x15) || (index >= 0x1B && index <= 0x26) ||
                 (index >= 0x28 && index <= 0x4C) || (index >= 0x4E && index <= 0x5C) || (index >= 0x62 && index <= 0x63) ||
                 (index == 0x65) || (index >= 0x67 && index <= 0x68)) // Writable registers
@@ -714,22 +645,19 @@ void Wifi::writeWBbCnt(uint16_t mask, uint16_t value)
             break;
         }
 
-        case 6: // Read
-        {
+        case 6: { // Read
             wBbRead = bbRegisters[index];
             break;
         }
     }
 }
 
-void Wifi::writeWBbWrite(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWBbWrite(uint16_t mask, uint16_t value) {
     // Write to the W_BB_WRITE register
     wBbWrite = (wBbWrite & ~mask) | (value & mask);
 }
 
-void Wifi::writeWIrfSet(uint16_t mask, uint16_t value)
-{
+void Wifi::writeWIrfSet(uint16_t mask, uint16_t value) {
     // Trigger a WiFi interrupt if W_IF & W_IE changes from zero
     if (!(wIe & wIrf) && (wIe & value & mask))
         core->interpreter[1].sendInterrupt(24);
@@ -739,8 +667,7 @@ void Wifi::writeWIrfSet(uint16_t mask, uint16_t value)
     wIrf |= (value & mask);
 }
 
-uint16_t Wifi::readWRxbufRdData()
-{
+uint16_t Wifi::readWRxbufRdData() {
     // Read a value from WiFi RAM
     uint16_t value = core->memory.read<uint16_t>(1, 0x4804000 + wRxbufRdAddr);
 

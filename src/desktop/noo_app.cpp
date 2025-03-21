@@ -25,8 +25,7 @@
 #include "../common/screen_layout.h"
 #include "../settings.h"
 
-enum AppEvent
-{
+enum AppEvent {
     UPDATE = 1
 };
 
@@ -38,11 +37,9 @@ int NooApp::micEnable = 0;
 int NooApp::splitScreens = 0;
 int NooApp::keyBinds[] = { 'L', 'K', 'G', 'H', 'D', 'A', 'W', 'S', 'P', 'Q', 'O', 'I', WXK_TAB, 0, WXK_ESCAPE, 0, WXK_BACK };
 
-bool NooApp::OnInit()
-{
+bool NooApp::OnInit() {
     // Define the platform settings
-    std::vector<Setting> platformSettings =
-    {
+    std::vector<Setting> platformSettings = {
         Setting("micEnable", &micEnable, false),
         Setting("splitScreens", &splitScreens, false),
         Setting("keyA", &keyBinds[0], false),
@@ -69,14 +66,12 @@ bool NooApp::OnInit()
     Settings::add(platformSettings);
 
     // Try to load the settings
-    if (FILE *file = fopen("noods.ini", "r"))
-    {
+    if (FILE *file = fopen("noods.ini", "r")) {
         // Load from the working directory if a file exists
         fclose(file);
         Settings::load();
     }
-    else
-    {
+    else {
         // Load from the system-specific application settings directory
         std::string settingsDir;
         wxStandardPaths &paths = wxStandardPaths::Get();
@@ -105,8 +100,7 @@ bool NooApp::OnInit()
     return true;
 }
 
-int NooApp::OnExit()
-{
+int NooApp::OnExit() {
     // Clean up the audio service and streams
     stopStream(1);
     stopStream(0);
@@ -115,111 +109,90 @@ int NooApp::OnExit()
     return wxApp::OnExit();
 }
 
-void NooApp::createFrame()
-{
+void NooApp::createFrame() {
     // Create a new frame using the lowest free instance ID
-    for (int i = 0; i < MAX_FRAMES; i++)
-    {
-        if (!frames[i])
-        {
+    for (int i = 0; i < MAX_FRAMES; i++) {
+        if (!frames[i]) {
             frames[i] = new NooFrame(this, i);
             return;
         }
     }
 }
 
-void NooApp::removeFrame(int id)
-{
+void NooApp::removeFrame(int id) {
     // Free an instance ID; this should be done on frame destruction
     frames[id] = nullptr;
 }
 
-void NooApp::connectCore(int id)
-{
+void NooApp::connectCore(int id) {
     // Connect a frame's core to all other active cores
-    for (int i = 0; i < MAX_FRAMES; i++)
-    {
+    for (int i = 0; i < MAX_FRAMES; i++) {
         if (!frames[i] || i == id) continue;
         if (Core *core = frames[i]->core)
             core->wifi.addConnection(frames[id]->core);
     }
 }
 
-void NooApp::disconnCore(int id)
-{
+void NooApp::disconnCore(int id) {
     // Disconnect a frame's core from all other active cores
-    for (int i = 0; i < MAX_FRAMES; i++)
-    {
+    for (int i = 0; i < MAX_FRAMES; i++) {
         if (!frames[i] || i == id) continue;
         if (Core *core = frames[i]->core)
             core->wifi.remConnection(frames[id]->core);
     }
 }
 
-void NooApp::updateLayouts()
-{
+void NooApp::updateLayouts() {
     // Trigger resize events for frames to update screen layouts
-    for (size_t i = 0; i < MAX_FRAMES; i++)
-    {
+    for (size_t i = 0; i < MAX_FRAMES; i++) {
         if (frames[i])
             frames[i]->SendSizeEvent();
     }
 }
 
-void NooApp::startStream(bool stream)
-{
-    if (stream == 0)
-    {
-        if (Pa_GetDefaultOutputDevice() != paNoDevice)
-        {
+void NooApp::startStream(bool stream) {
+    if (stream == 0) {
+        if (Pa_GetDefaultOutputDevice() != paNoDevice) {
             // Initialize the audio output stream
             Pa_OpenDefaultStream(&streams[0], 0, 2, paInt16, 48000, 1024, audioCallback, frames);
             Pa_StartStream(streams[0]);
         }
     }
-    else if (micEnable && Pa_GetDefaultInputDevice() != paNoDevice)
-    {
+    else if (micEnable && Pa_GetDefaultInputDevice() != paNoDevice) {
         // Initialize the audio input stream
         Pa_OpenDefaultStream(&streams[1], 1, 0, paInt16, 48000, 1024, micCallback, frames);
         Pa_StartStream(streams[1]);
     }
 }
 
-void NooApp::stopStream(bool stream)
-{
+void NooApp::stopStream(bool stream) {
     // Stop a stream if it was running
-    if (streams[stream])
-    {
+    if (streams[stream]) {
         Pa_StopStream(streams[stream]);
         Pa_CloseStream(streams[stream]);
         streams[stream] = nullptr;
     }
 }
 
-void NooApp::update(wxTimerEvent &event)
-{
+void NooApp::update(wxTimerEvent &event) {
     // Continuously refresh the frames
-    for (size_t i = 0; i < MAX_FRAMES; i++)
-    {
+    for (size_t i = 0; i < MAX_FRAMES; i++) {
         if (frames[i])
             frames[i]->Refresh();
     }
 }
 
 int NooApp::audioCallback(const void *in, void *out, unsigned long count,
-    const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data)
-{
+    const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data) {
     int16_t *buffer = (int16_t*)out;
     NooFrame **frames = (NooFrame**)data;
     uint32_t *original = nullptr;
 
     // Get samples from each instance so frame limiting is enforced
     // Only the lowest instance ID's samples are played; the rest are discarded
-    for (size_t i = 0; i < MAX_FRAMES; i++)
-    {
+    for (size_t i = 0; i < MAX_FRAMES; i++) {
         if (!frames[i]) continue;
-        if (Core *core = frames[i]->core)
-        {
+        if (Core *core = frames[i]->core) {
             uint32_t *samples = core->spu.getSamples(699);
             if (!original)
                 original = samples;
@@ -228,20 +201,17 @@ int NooApp::audioCallback(const void *in, void *out, unsigned long count,
         }
     }
 
-    if (original)
-    {
+    if (original) {
         // The NDS sample rate is 32768Hz, but it causes issues on some systems, so 48000Hz is used instead
         // Stretch 699 samples at 32768Hz to approximately 1024 samples at 48000Hz
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             uint32_t sample = original[i * 699 / 1024];
             buffer[i * 2 + 0] = sample >>  0;
             buffer[i * 2 + 1] = sample >> 16;
         }
         delete[] original;
     }
-    else
-    {
+    else {
         // Play silence if the emulator isn't running
         memset(buffer, 0, count * sizeof(uint32_t));
     }
@@ -250,15 +220,13 @@ int NooApp::audioCallback(const void *in, void *out, unsigned long count,
 }
 
 int NooApp::micCallback(const void *in, void *out, unsigned long count,
-    const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data)
-{
+    const PaStreamCallbackTimeInfo *info, PaStreamCallbackFlags flags, void *data) {
     const int16_t *buffer = (const int16_t*)in;
     NooFrame **frames = (NooFrame**)data;
     Core *core = nullptr;
 
     // Find the core with the lowest instance ID
-    for (size_t i = 0; i < MAX_FRAMES; i++)
-    {
+    for (size_t i = 0; i < MAX_FRAMES; i++) {
         if (frames[i] && (core = frames[i]->core))
             break;
     }

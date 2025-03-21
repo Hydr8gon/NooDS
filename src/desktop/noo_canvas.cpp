@@ -39,8 +39,7 @@ EVT_MOTION(NooCanvas::pressScreen)
 EVT_LEFT_UP(NooCanvas::releaseScreen)
 wxEND_EVENT_TABLE()
 
-NooCanvas::NooCanvas(NooFrame *frame): CANVAS_CLASS(frame, wxID_ANY, CANVAS_PARAM), frame(frame)
-{
+NooCanvas::NooCanvas(NooFrame *frame): CANVAS_CLASS(frame, wxID_ANY, CANVAS_PARAM), frame(frame) {
 #ifdef USE_GL_CANVAS
     // Prepare the OpenGL context
     context = new wxGLContext(this);
@@ -56,13 +55,11 @@ NooCanvas::NooCanvas(NooFrame *frame): CANVAS_CLASS(frame, wxID_ANY, CANVAS_PARA
 #endif
 
     // Create a new framebuffer or share one if the screens are split
-    if (frame->mainFrame)
-    {
+    if (frame->mainFrame) {
         framebuffer = new uint32_t[256 * 192 * 8];
         memset(framebuffer, 0, 256 * 192 * 8 * sizeof(uint32_t));
     }
-    else
-    {
+    else {
         framebuffer = frame->partner->canvas->framebuffer;
     }
 
@@ -72,15 +69,13 @@ NooCanvas::NooCanvas(NooFrame *frame): CANVAS_CLASS(frame, wxID_ANY, CANVAS_PARA
     SetFocus();
 }
 
-NooCanvas::~NooCanvas()
-{
+NooCanvas::~NooCanvas() {
     // Free the framebuffer if it was allocated
     if (frame->mainFrame)
         delete[] framebuffer;
 }
 
-void NooCanvas::drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t *buf)
-{
+void NooCanvas::drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t *buf) {
 #ifdef USE_GL_CANVAS
     // Set texture coordinates based on rotation
     static const uint8_t texCoords[] = { 0x4B, 0x2D, 0xD2 };
@@ -105,11 +100,9 @@ void NooCanvas::drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t 
     wxNativePixelData::Iterator iter(data);
 
     // Copy buffer data to the bitmap
-    for (int i = 0; i < hb; i++)
-    {
+    for (int i = 0; i < hb; i++) {
         wxNativePixelData::Iterator pixel = iter;
-        for (int j = 0; j < wb; j++, pixel++)
-        {
+        for (int j = 0; j < wb; j++, pixel++) {
             uint32_t color = buf[i * wb + j];
             pixel.Red() = ((color >> 0) & 0xFF);
             pixel.Green() = ((color >> 8) & 0xFF);
@@ -129,8 +122,7 @@ void NooCanvas::drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t 
 #endif
 }
 
-void NooCanvas::draw(wxPaintEvent &event)
-{
+void NooCanvas::draw(wxPaintEvent &event) {
     // Stop rendering if the program is closing
     if (finished)
         return;
@@ -145,15 +137,13 @@ void NooCanvas::draw(wxPaintEvent &event)
     // Update the screen layout if it changed
     bool gba = ScreenLayout::gbaCrop && frame->core && frame->core->gbaMode;
     bool split = NooApp::splitScreens && ScreenLayout::screenArrangement != 3 && !gba;
-    if (gbaMode != gba || splitScreens != split)
-    {
+    if (gbaMode != gba || splitScreens != split) {
         gbaMode = gba;
         splitScreens = split;
         frame->SendSizeEvent();
     }
 
-    if (frame->core)
-    {
+    if (frame->core) {
         // Emulation is limited by audio, so frames aren't always generated at a consistent rate
         // This can mess up frame pacing at higher refresh rates when frames are ready too soon
         // To solve this, use a software-based swap interval to wait before getting the next frame
@@ -163,21 +153,18 @@ void NooCanvas::draw(wxPaintEvent &event)
         // Shift the screen resolutions if high-res is enabled
         bool shift = (Settings::highRes3D || Settings::screenFilter == 1);
 
-        if (gbaMode)
-        {
+        if (gbaMode) {
             // Draw the GBA screen
             drawScreen(layout.topX, layout.topY, layout.topWidth,
                layout.topHeight, 240 << shift, 160 << shift, &framebuffer[0]);
         }
-        else if (frame->partner)
-        {
+        else if (frame->partner) {
             // Draw one of the DS screens
             bool bottom = !frame->mainFrame ^ (ScreenLayout::screenSizing == 2);
             drawScreen(layout.topX, layout.topY, layout.topWidth, layout.topHeight,
                256 << shift, 192 << shift, &framebuffer[bottom * ((256 * 192) << (shift * 2))]);
         }
-        else
-        {
+        else {
             // Draw the DS top and bottom screens
             if (ScreenLayout::screenArrangement != 3 || ScreenLayout::screenSizing < 2)
                 drawScreen(layout.topX, layout.topY, layout.topWidth,
@@ -191,8 +178,7 @@ void NooCanvas::draw(wxPaintEvent &event)
     // Track the refresh rate and update the swap interval every second
     refreshRate++;
     std::chrono::duration<double> rateTime = std::chrono::steady_clock::now() - lastRateTime;
-    if (rateTime.count() >= 1.0f)
-    {
+    if (rateTime.count() >= 1.0f) {
         swapInterval = (refreshRate + 5) / 60; // Margin of 5
         refreshRate = 0;
         lastRateTime = std::chrono::steady_clock::now();
@@ -205,8 +191,7 @@ void NooCanvas::draw(wxPaintEvent &event)
 #endif
 }
 
-void NooCanvas::resize(wxSizeEvent &event)
-{
+void NooCanvas::resize(wxSizeEvent &event) {
     // Update the screen layout
     wxSize size = GetSize();
     layout.update(size.x, size.y, gbaMode, splitScreens);
@@ -230,28 +215,23 @@ void NooCanvas::resize(wxSizeEvent &event)
 #endif
 }
 
-void NooCanvas::pressKey(wxKeyEvent &event)
-{
+void NooCanvas::pressKey(wxKeyEvent &event) {
     // Trigger a key press if a mapped key was pressed
-    for (int i = 0; i < MAX_KEYS; i++)
-    {
+    for (int i = 0; i < MAX_KEYS; i++) {
         if (event.GetKeyCode() == NooApp::keyBinds[i])
             frame->pressKey(i);
     }
 }
 
-void NooCanvas::releaseKey(wxKeyEvent &event)
-{
+void NooCanvas::releaseKey(wxKeyEvent &event) {
     // Trigger a key release if a mapped key was released
-    for (int i = 0; i < MAX_KEYS; i++)
-    {
+    for (int i = 0; i < MAX_KEYS; i++) {
         if (event.GetKeyCode() == NooApp::keyBinds[i])
             frame->releaseKey(i);
     }
 }
 
-void NooCanvas::pressScreen(wxMouseEvent &event)
-{
+void NooCanvas::pressScreen(wxMouseEvent &event) {
     // Ensure the left mouse button is clicked
     if (!frame->running || !event.LeftIsDown()) return;
 
@@ -264,11 +244,9 @@ void NooCanvas::pressScreen(wxMouseEvent &event)
     frame->core->spi.setTouch(touchX, touchY);
 }
 
-void NooCanvas::releaseScreen(wxMouseEvent &event)
-{
+void NooCanvas::releaseScreen(wxMouseEvent &event) {
     // Send a touch release to the core
-    if (frame->running)
-    {
+    if (frame->running) {
         frame->core->input.releaseScreen();
         frame->core->spi.clearTouch();
     }

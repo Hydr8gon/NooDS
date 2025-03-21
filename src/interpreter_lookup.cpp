@@ -21,8 +21,7 @@
 
 // ARM lookup table, based on the map found at http://imrannazar.com/ARM-Opcode-Map
 // Uses bits 27-20 and 7-4 of an opcode to find the appropriate instruction
-int (Interpreter::*Interpreter::armInstrs[])(uint32_t) =
-{
+int (Interpreter::*Interpreter::armInstrs[])(uint32_t) = {
     &Interpreter::_andLli, &Interpreter::_andLlr, &Interpreter::_andLri, &Interpreter::_andLrr, // 0x000-0x003
     &Interpreter::_andAri, &Interpreter::_andArr, &Interpreter::_andRri, &Interpreter::_andRrr, // 0x004-0x007
     &Interpreter::_andLli, &Interpreter::mul, &Interpreter::_andLri, &Interpreter::strhPtrm, // 0x008-0x00B
@@ -1051,8 +1050,7 @@ int (Interpreter::*Interpreter::armInstrs[])(uint32_t) =
 
 // THUMB lookup table, based on the map found at http://imrannazar.com/ARM-Opcode-Map
 // Uses bits 15-6 of an opcode to find the appropriate instruction
-int (Interpreter::*Interpreter::thumbInstrs[])(uint16_t) =
-{
+int (Interpreter::*Interpreter::thumbInstrs[])(uint16_t) = {
     &Interpreter::lslImmT, &Interpreter::lslImmT, &Interpreter::lslImmT, &Interpreter::lslImmT, // 0x000-0x003
     &Interpreter::lslImmT, &Interpreter::lslImmT, &Interpreter::lslImmT, &Interpreter::lslImmT, // 0x004-0x007
     &Interpreter::lslImmT, &Interpreter::lslImmT, &Interpreter::lslImmT, &Interpreter::lslImmT, // 0x008-0x00B
@@ -1312,8 +1310,7 @@ int (Interpreter::*Interpreter::thumbInstrs[])(uint16_t) =
 };
 
 // Precomputed ARM condition evaluations; index bits 7-4 are condition code, bits 3-0 are NZCV
-const uint8_t Interpreter::condition[] =
-{
+const uint8_t Interpreter::condition[] = {
     0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, // EQ
     1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, // NE
     0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, // CS
@@ -1333,8 +1330,7 @@ const uint8_t Interpreter::condition[] =
 };
 
 // Precomputed bit counts corresponding to index
-const uint8_t Interpreter::bitCount[] =
-{
+const uint8_t Interpreter::bitCount[] = {
     0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
     1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
     1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,

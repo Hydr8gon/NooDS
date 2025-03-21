@@ -25,8 +25,7 @@
 class NooFrame;
 class Cartridge;
 
-class SaveDialog: public wxDialog
-{
+class SaveDialog: public wxDialog {
     public:
         SaveDialog(NooFrame *frame);
 

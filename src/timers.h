@@ -25,8 +25,7 @@
 
 class Core;
 
-class Timers
-{
+class Timers {
     public:
         Timers(Core *core, bool arm7): core(core), arm7(arm7) {}
         void saveState(FILE *file);

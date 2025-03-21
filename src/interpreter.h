@@ -27,8 +27,7 @@
 class Core;
 class Bios;
 
-class Interpreter
-{
+class Interpreter {
     public:
         Bios *bios = nullptr;
         uint32_t entryAddr = 0;

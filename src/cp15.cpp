@@ -20,8 +20,7 @@
 #include "cp15.h"
 #include "core.h"
 
-void Cp15::saveState(FILE *file)
-{
+void Cp15::saveState(FILE *file) {
     // Write state data to the file
     fwrite(&ctrlReg, sizeof(ctrlReg), 1, file);
     fwrite(&dtcmReg, sizeof(dtcmReg), 1, file);
@@ -29,8 +28,7 @@ void Cp15::saveState(FILE *file)
     fwrite(&procId, sizeof(procId), 1, file);
 }
 
-void Cp15::loadState(FILE *file)
-{
+void Cp15::loadState(FILE *file) {
     // Read state data from the file
     uint32_t ctrl, dtcm, itcm;
     fread(&ctrl, sizeof(ctrl), 1, file);
@@ -44,11 +42,9 @@ void Cp15::loadState(FILE *file)
     write(9, 1, 1, itcm);
 }
 
-uint32_t Cp15::read(uint8_t cn, uint8_t cm, uint8_t cp)
-{
+uint32_t Cp15::read(uint8_t cn, uint8_t cm, uint8_t cp) {
     // Read a value from a CP15 register
-    switch ((cn << 16) | (cm << 8) | (cp << 0))
-    {
+    switch ((cn << 16) | (cm << 8) | (cp << 0)) {
         case 0x000000: return 0x41059461; // Main ID
         case 0x000001: return 0x0F0D2112; // Cache type
         case 0x010000: return ctrlReg; // Control
@@ -62,12 +58,10 @@ uint32_t Cp15::read(uint8_t cn, uint8_t cm, uint8_t cp)
     }
 }
 
-void Cp15::write(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value)
-{
+void Cp15::write(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value) {
     // Write a value to a CP15 register
     uint32_t oldAddr, oldSize;
-    switch ((cn << 16) | (cm << 8) | (cp << 0))
-    {
+    switch ((cn << 16) | (cm << 8) | (cp << 0)) {
         case 0x010000: // Control
             // Set writable control bits and update their state values
             ctrlReg = (ctrlReg & ~0xFF085) | (value & 0xFF085);

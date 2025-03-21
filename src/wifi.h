@@ -27,8 +27,7 @@
 
 class Core;
 
-enum PacketType
-{
+enum PacketType {
     LOC1_FRAME,
     CMD_FRAME,
     LOC2_FRAME,
@@ -38,8 +37,7 @@ enum PacketType
     CMD_ACK
 };
 
-class Wifi
-{
+class Wifi {
     public:
         Wifi(Core *core);
         void saveState(FILE *file);
@@ -188,8 +186,7 @@ class Wifi
         uint16_t wTxSeqno = 0;
 
         uint8_t bbRegisters[0x100] = {};
-        uint16_t wConfig[15] =
-        {
+        uint16_t wConfig[15] = {
             0x0048, 0x4840, 0x0000, 0x0000, 0x0142,
             0x8064, 0x0000, 0x2443, 0x0042, 0x0016,
             0x0016, 0x0016, 0x162C, 0x0204, 0x0058

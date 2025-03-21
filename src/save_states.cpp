@@ -23,20 +23,17 @@
 const char *SaveStates::stateTag = "NOOD";
 const uint32_t SaveStates::stateVersion = 5;
 
-void SaveStates::setPath(std::string path, bool gba)
-{
+void SaveStates::setPath(std::string path, bool gba) {
     // Set the NDS or GBA state path
     (gba ? gbaPath : ndsPath) = path;
 }
 
-void SaveStates::setFd(int fd, bool gba)
-{
+void SaveStates::setFd(int fd, bool gba) {
     // Set the NDS or GBA state descriptor
     (gba ? gbaFd : ndsFd) = fd;
 }
 
-FILE *SaveStates::openFile(const char *mode)
-{
+FILE *SaveStates::openFile(const char *mode) {
     // Open the NDS or GBA state file based on what's running
     if (gbaFd != -1 && (core->gbaMode || ndsFd == -1))
         return fdopen(dup(gbaFd), mode);
@@ -49,8 +46,7 @@ FILE *SaveStates::openFile(const char *mode)
     return nullptr;
 }
 
-StateResult SaveStates::checkState()
-{
+StateResult SaveStates::checkState() {
     // Try to open the state file, if it exists
     FILE *file = openFile("rb");
     if (!file) return STATE_FILE_FAIL;
@@ -77,8 +73,7 @@ StateResult SaveStates::checkState()
     return STATE_SUCCESS;
 }
 
-bool SaveStates::saveState()
-{
+bool SaveStates::saveState() {
     // Open the state file and write the header
     FILE *file = openFile("wb");
     if (!file) return false;
@@ -115,8 +110,7 @@ bool SaveStates::saveState()
     return true;
 }
 
-bool SaveStates::loadState()
-{
+bool SaveStates::loadState() {
     // Open the state file and read past the header
     FILE *file = openFile("rb");
     if (!file) return false;

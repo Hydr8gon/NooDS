@@ -27,13 +27,11 @@ import android.content.DialogInterface;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
 
-public class BindingsPreference extends Preference
-{
+public class BindingsPreference extends Preference {
     private Context context;
     private int index;
 
-    public BindingsPreference(Context context, AttributeSet attrs)
-    {
+    public BindingsPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
         this.context = context;
         index = Integer.parseInt(attrs.getAttributeValue(null, "index"));
@@ -47,30 +45,25 @@ public class BindingsPreference extends Preference
     }
 
     @Override
-    protected void onClick()
-    {
+    protected void onClick() {
         // Create the dialog for rebinding an input
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle(getTitle());
         builder.setMessage("Press a key to bind it to this input.");
         builder.setNegativeButton("Cancel", null);
 
-        builder.setPositiveButton("Clear", new DialogInterface.OnClickListener()
-        {
+        builder.setPositiveButton("Clear", new DialogInterface.OnClickListener() {
             @Override
-            public void onClick(DialogInterface dialog, int id)
-            {
+            public void onClick(DialogInterface dialog, int id) {
                 // Clear the binding for the key index
                 setKeyBind(index, 0);
                 setSummary("None");
             }
         });
 
-       builder.setOnKeyListener(new DialogInterface.OnKeyListener()
-       {
+       builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
             @Override
-            public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event)
-            {
+            public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
                 // Set the binding for the key index
                 setKeyBind(index, keyCode + 1);
                 setSummary("Input " + Integer.toString(keyCode));

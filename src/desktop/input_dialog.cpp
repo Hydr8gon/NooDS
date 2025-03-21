@@ -22,8 +22,7 @@
 #include "input_dialog.h"
 #include "../settings.h"
 
-enum InputEvent
-{
+enum InputEvent {
     REMAP_A = 1,
     REMAP_B,
     REMAP_X,
@@ -69,8 +68,7 @@ EVT_BUTTON(wxID_OK, InputDialog::confirm)
 EVT_CHAR_HOOK(InputDialog::pressKey)
 wxEND_EVENT_TABLE()
 
-std::string InputDialog::keyToString(int key)
-{
+std::string InputDialog::keyToString(int key) {
     // Handle joystick keys
     // 1000, 2000, and 3000 are offsets assigned to these keys to identify them and hopefully avoid conflict
     if (key >= 3000)
@@ -81,8 +79,7 @@ std::string InputDialog::keyToString(int key)
         return "Button " + std::to_string(key - 1000);
 
     // Convert special keys to words representing their respective keys
-    switch (key)
-    {
+    switch (key) {
         case 0: return "None";
         case WXK_BACK: return "Backspace";
         case WXK_TAB: return "Tab";
@@ -191,8 +188,7 @@ std::string InputDialog::keyToString(int key)
     return regular;
 }
 
-InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Input Bindings"), joystick(joystick)
-{
+InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Input Bindings"), joystick(joystick) {
     // Load the key bindings
     memcpy(keyBinds, NooApp::keyBinds, sizeof(keyBinds));
 
@@ -350,8 +346,7 @@ InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Inp
     SetMaxSize(GetSize());
 
     // Set up joystick input if a joystick is connected
-    if (joystick)
-    {
+    if (joystick) {
         // Save the initial axis values so inputs can be detected as offsets instead of raw values
         // This avoids issues with axes that have non-zero values in their resting positions
         for (int i = 0; i < joystick->GetNumberAxes(); i++)
@@ -363,15 +358,13 @@ InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Inp
     }
 }
 
-InputDialog::~InputDialog()
-{
+InputDialog::~InputDialog() {
     // Clean up the joystick timer
     if (joystick)
         delete timer;
 }
 
-void InputDialog::resetLabels()
-{
+void InputDialog::resetLabels() {
     // Reset the button labels
     keyA->SetLabel(keyToString(keyBinds[0]));
     keyB->SetLabel(keyToString(keyBinds[1]));
@@ -393,8 +386,7 @@ void InputDialog::resetLabels()
     current = nullptr;
 }
 
-void InputDialog::remapA(wxCommandEvent &event)
-{
+void InputDialog::remapA(wxCommandEvent &event) {
     // Prepare the A button for remapping
     resetLabels();
     keyA->SetLabel("Press a key");
@@ -402,8 +394,7 @@ void InputDialog::remapA(wxCommandEvent &event)
     keyIndex = 0;
 }
 
-void InputDialog::remapB(wxCommandEvent &event)
-{
+void InputDialog::remapB(wxCommandEvent &event) {
     // Prepare the B button for remapping
     resetLabels();
     keyB->SetLabel("Press a key");
@@ -411,8 +402,7 @@ void InputDialog::remapB(wxCommandEvent &event)
     keyIndex = 1;
 }
 
-void InputDialog::remapX(wxCommandEvent &event)
-{
+void InputDialog::remapX(wxCommandEvent &event) {
     // Prepare the X button for remapping
     resetLabels();
     keyX->SetLabel("Press a key");
@@ -420,8 +410,7 @@ void InputDialog::remapX(wxCommandEvent &event)
     keyIndex = 10;
 }
 
-void InputDialog::remapY(wxCommandEvent &event)
-{
+void InputDialog::remapY(wxCommandEvent &event) {
     // Prepare the Y button for remapping
     resetLabels();
     keyY->SetLabel("Press a key");
@@ -429,8 +418,7 @@ void InputDialog::remapY(wxCommandEvent &event)
     keyIndex = 11;
 }
 
-void InputDialog::remapStart(wxCommandEvent &event)
-{
+void InputDialog::remapStart(wxCommandEvent &event) {
     // Prepare the Start button for remapping
     resetLabels();
     keyStart->SetLabel("Press a key");
@@ -438,8 +426,7 @@ void InputDialog::remapStart(wxCommandEvent &event)
     keyIndex = 3;
 }
 
-void InputDialog::remapSelect(wxCommandEvent &event)
-{
+void InputDialog::remapSelect(wxCommandEvent &event) {
     // Prepare the Select button for remapping
     resetLabels();
     keySelect->SetLabel("Press a key");
@@ -447,8 +434,7 @@ void InputDialog::remapSelect(wxCommandEvent &event)
     keyIndex = 2;
 }
 
-void InputDialog::remapUp(wxCommandEvent &event)
-{
+void InputDialog::remapUp(wxCommandEvent &event) {
     // Prepare the Up button for remapping
     resetLabels();
     keyUp->SetLabel("Press a key");
@@ -456,8 +442,7 @@ void InputDialog::remapUp(wxCommandEvent &event)
     keyIndex = 6;
 }
 
-void InputDialog::remapDown(wxCommandEvent &event)
-{
+void InputDialog::remapDown(wxCommandEvent &event) {
     // Prepare the Down button for remapping
     resetLabels();
     keyDown->SetLabel("Press a key");
@@ -465,8 +450,7 @@ void InputDialog::remapDown(wxCommandEvent &event)
     keyIndex = 7;
 }
 
-void InputDialog::remapLeft(wxCommandEvent &event)
-{
+void InputDialog::remapLeft(wxCommandEvent &event) {
     // Prepare the Left button for remapping
     resetLabels();
     keyLeft->SetLabel("Press a key");
@@ -474,8 +458,7 @@ void InputDialog::remapLeft(wxCommandEvent &event)
     keyIndex = 5;
 }
 
-void InputDialog::remapRight(wxCommandEvent &event)
-{
+void InputDialog::remapRight(wxCommandEvent &event) {
     // Prepare the Right button for remapping
     resetLabels();
     keyRight->SetLabel("Press a key");
@@ -483,8 +466,7 @@ void InputDialog::remapRight(wxCommandEvent &event)
     keyIndex = 4;
 }
 
-void InputDialog::remapL(wxCommandEvent &event)
-{
+void InputDialog::remapL(wxCommandEvent &event) {
     // Prepare the L button for remapping
     resetLabels();
     keyL->SetLabel("Press a key");
@@ -492,8 +474,7 @@ void InputDialog::remapL(wxCommandEvent &event)
     keyIndex = 9;
 }
 
-void InputDialog::remapR(wxCommandEvent &event)
-{
+void InputDialog::remapR(wxCommandEvent &event) {
     // Prepare the R button for remapping
     resetLabels();
     keyR->SetLabel("Press a key");
@@ -501,8 +482,7 @@ void InputDialog::remapR(wxCommandEvent &event)
     keyIndex = 8;
 }
 
-void InputDialog::remapFastHold(wxCommandEvent &event)
-{
+void InputDialog::remapFastHold(wxCommandEvent &event) {
     // Prepare the fast forward hold hotkey for remapping
     resetLabels();
     keyFastHold->SetLabel("Press a key");
@@ -510,8 +490,7 @@ void InputDialog::remapFastHold(wxCommandEvent &event)
     keyIndex = 12;
 }
 
-void InputDialog::remapFastToggle(wxCommandEvent &event)
-{
+void InputDialog::remapFastToggle(wxCommandEvent &event) {
     // Prepare the fast forward toggle hotkey for remapping
     resetLabels();
     keyFastToggle->SetLabel("Press a key");
@@ -519,8 +498,7 @@ void InputDialog::remapFastToggle(wxCommandEvent &event)
     keyIndex = 13;
 }
 
-void InputDialog::remapFullScreen(wxCommandEvent &event)
-{
+void InputDialog::remapFullScreen(wxCommandEvent &event) {
     // Prepare the full screen toggle hotkey for remapping
     resetLabels();
     keyFullScreen->SetLabel("Press a key");
@@ -528,8 +506,7 @@ void InputDialog::remapFullScreen(wxCommandEvent &event)
     keyIndex = 14;
 }
 
-void InputDialog::remapScreenSwap(wxCommandEvent &event)
-{
+void InputDialog::remapScreenSwap(wxCommandEvent &event) {
     // Prepare the screen swap toggle hotkey for remapping
     resetLabels();
     keyScreenSwap->SetLabel("Press a key");
@@ -537,8 +514,7 @@ void InputDialog::remapScreenSwap(wxCommandEvent &event)
     keyIndex = 15;
 }
 
-void InputDialog::remapSystemPause(wxCommandEvent &event)
-{
+void InputDialog::remapSystemPause(wxCommandEvent &event) {
     // Prepare the system pause toggle hotkey for remapping
     resetLabels();
     keySystemPause->SetLabel("Press a key");
@@ -546,17 +522,14 @@ void InputDialog::remapSystemPause(wxCommandEvent &event)
     keyIndex = 16;
 }
 
-void InputDialog::clearMap(wxCommandEvent &event)
-{
-    if (current)
-    {
+void InputDialog::clearMap(wxCommandEvent &event) {
+    if (current) {
         // If a button is selected, clear only its mapping
         keyBinds[keyIndex] = 0;
         current->SetLabel(keyToString(keyBinds[keyIndex]));
         current = nullptr;
     }
-    else
-    {
+    else {
         // If no button is selected, clear all mappings
         for (int i = 0; i < MAX_KEYS; i++)
             keyBinds[i] = 0;
@@ -564,14 +537,11 @@ void InputDialog::clearMap(wxCommandEvent &event)
     }
 }
 
-void InputDialog::updateJoystick(wxTimerEvent &event)
-{
+void InputDialog::updateJoystick(wxTimerEvent &event) {
     // Map the current button to a joystick button if one is pressed
     if (!current) return;
-    for (int i = 0; i < joystick->GetNumberButtons(); i++)
-    {
-        if (joystick->GetButtonState(i))
-        {
+    for (int i = 0; i < joystick->GetNumberButtons(); i++) {
+        if (joystick->GetButtonState(i)) {
             keyBinds[keyIndex] = 1000 + i;
             current->SetLabel(keyToString(keyBinds[keyIndex]));
             current = nullptr;
@@ -580,17 +550,14 @@ void InputDialog::updateJoystick(wxTimerEvent &event)
     }
 
     // Map the current button to a joystick axis if one is held
-    for (int i = 0; i < joystick->GetNumberAxes(); i++)
-    {
-        if (joystick->GetPosition(i) - axisBases[i] > 16384) // Positive axis
-        {
+    for (int i = 0; i < joystick->GetNumberAxes(); i++) {
+        if (joystick->GetPosition(i) - axisBases[i] > 16384) { // Positive axis
             keyBinds[keyIndex] = 2000 + i;
             current->SetLabel(keyToString(keyBinds[keyIndex]));
             current = nullptr;
             return;
         }
-        else if (joystick->GetPosition(i) - axisBases[i] < -16384) // Negative axis
-        {
+        else if (joystick->GetPosition(i) - axisBases[i] < -16384) { // Negative axis
             keyBinds[keyIndex] = 3000 + i;
             current->SetLabel(keyToString(keyBinds[keyIndex]));
             current = nullptr;
@@ -599,16 +566,14 @@ void InputDialog::updateJoystick(wxTimerEvent &event)
     }
 }
 
-void InputDialog::confirm(wxCommandEvent &event)
-{
+void InputDialog::confirm(wxCommandEvent &event) {
     // Save the key mappings
     memcpy(NooApp::keyBinds, keyBinds, sizeof(keyBinds));
     Settings::save();
     event.Skip(true);
 }
 
-void InputDialog::pressKey(wxKeyEvent &event)
-{
+void InputDialog::pressKey(wxKeyEvent &event) {
     // Map the current button to the pressed key
     if (!current) return;
     keyBinds[keyIndex] = event.GetKeyCode();

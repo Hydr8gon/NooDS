@@ -53,8 +53,7 @@ WHBGfxShaderGroup group;
 GX2RBuffer posBuffer, texBuffer, colBuffer;
 GX2Sampler samplers[2];
 
-uint32_t ConsoleUI::defaultKeys[]
-{
+uint32_t ConsoleUI::defaultKeys[] {
     VPAD_BUTTON_A, VPAD_BUTTON_B, VPAD_BUTTON_MINUS, VPAD_BUTTON_PLUS,
     VPAD_BUTTON_RIGHT | VPAD_STICK_R_EMULATION_RIGHT | VPAD_STICK_L_EMULATION_RIGHT,
     VPAD_BUTTON_LEFT | VPAD_STICK_R_EMULATION_LEFT | VPAD_STICK_L_EMULATION_LEFT,
@@ -64,8 +63,7 @@ uint32_t ConsoleUI::defaultKeys[]
     VPAD_BUTTON_L | VPAD_BUTTON_R
 };
 
-const char *ConsoleUI::keyNames[]
-{
+const char *ConsoleUI::keyNames[] {
     "Sync", "Home", "Minus", "Plus", "R", "L", "ZR", "ZL",
     "Down", "Up", "Right", "Left", "Y", "X", "B", "A",
     "TV", "R Stick", "L Stick", "", "", "", "",
@@ -73,8 +71,7 @@ const char *ConsoleUI::keyNames[]
     "LS Down", "LS Up", "LS Right", "LS Left"
 };
 
-void ConsoleUI::startFrame(uint32_t color)
-{
+void ConsoleUI::startFrame(uint32_t color) {
     // Convert the clear color to floats
     float r = float(color & 0xFF) / 0xFF;
     float g = float((color >> 8) & 0xFF) / 0xFF;
@@ -90,16 +87,14 @@ void ConsoleUI::startFrame(uint32_t color)
 
 }
 
-void ConsoleUI::endFrame()
-{
+void ConsoleUI::endFrame() {
     // Finish and display a frame
     WHBGfxFinishRenderTV();
     WHBGfxFinishRenderDRC();
     WHBGfxFinishRender();
 
     // Free the gamepad screen texture if it was overridden
-    if (gpTexture)
-    {
+    if (gpTexture) {
         destroyTexture(gpTexture);
         gpTexture = nullptr;
     }
@@ -110,8 +105,7 @@ void ConsoleUI::endFrame()
     scanned = false;
 }
 
-void *ConsoleUI::createTexture(uint32_t *data, int width, int height)
-{
+void *ConsoleUI::createTexture(uint32_t *data, int width, int height) {
     // Create a new texture with the given dimensions
     GX2Texture *texture = new GX2Texture;
     memset(texture, 0, sizeof(GX2Texture));
@@ -129,8 +123,7 @@ void *ConsoleUI::createTexture(uint32_t *data, int width, int height)
 
     // Copy data to the texture
     uint32_t *dst = (uint32_t*)texture->surface.image;
-    for (int y = 0; y < height; y++)
-    {
+    for (int y = 0; y < height; y++) {
         memcpy(dst, &data[y * width], width * sizeof(uint32_t));
         dst += texture->surface.pitch;
     }
@@ -138,16 +131,14 @@ void *ConsoleUI::createTexture(uint32_t *data, int width, int height)
     return texture;
 }
 
-void ConsoleUI::destroyTexture(void *texture)
-{
+void ConsoleUI::destroyTexture(void *texture) {
     // Clean up a texture
     MEMFreeToDefaultHeap(((GX2Texture*)texture)->surface.image);
     delete (GX2Texture*)texture;
 }
 
 void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float th,
-    float x, float y, float w, float h, bool filter, int rotation, uint32_t color)
-{
+    float x, float y, float w, float h, bool filter, int rotation, uint32_t color) {
     // Convert position values to floats for the TV
     float x1 = (x / (tvWidth / 2) - 1.0f);
     float y1 = -(y / (tvHeight / 2) - 1.0f);
@@ -159,18 +150,15 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
     float y2a = (y1 - y2 < 1.0f / 240) ? (y1 - 1.0f / 240) : y2;
 
     // Detect and override gamepad screen layout positions
-    if (running && tw >= 240)
-    {
-        if (firstScreen)
-        {
+    if (running && tw >= 240) {
+        if (firstScreen) {
             x1a = (float(gpLayout.topX) / 427 - 1.0f);
             y1a = -(float(gpLayout.topY) / 240 - 1.0f);
             x2a = (float(gpLayout.topX + gpLayout.topWidth) / 427 - 1.0f);
             y2a = -(float(gpLayout.topY + gpLayout.topHeight) / 240 - 1.0f);
             firstScreen = false;
         }
-        else
-        {
+        else {
             x1a = (float(gpLayout.botX) / 427 - 1.0f);
             y1a = -(float(gpLayout.botY) / 240 - 1.0f);
             x2a = (float(gpLayout.botX + gpLayout.botWidth) / 427 - 1.0f);
@@ -195,8 +183,7 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
     float vtxColors[] = { r, g, b, a, r, g, b, a, r, g, b, a, r, g, b, a };
 
     // Define texture coordinates based on rotation
-    float texCoords[] =
-    {
+    float texCoords[] = {
         s1, t1, s2, t1, s2, t2, s1, t2, // None
         s1, t2, s1, t1, s2, t1, s2, t2, // Clockwise
         s2, t1, s2, t2, s1, t2, s1, t1, // Counter-clockwise
@@ -228,8 +215,7 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
 
     // Override the gamepad screen texture with the other screen in single screen mode
     GX2Texture *tempTexture = nullptr;
-    if (running && tw >= 240 && !(ConsoleUI::gbaMode && ScreenLayout::gbaCrop) && ScreenLayout::screenArrangement == 3)
-    {
+    if (running && tw >= 240 && !(ConsoleUI::gbaMode && ScreenLayout::gbaCrop) && ScreenLayout::screenArrangement == 3) {
         bool shift = (Settings::highRes3D || Settings::screenFilter == 1);
         uint32_t *data = &ConsoleUI::framebuffer[(256 * 192 * (ScreenLayout::screenSizing < 2)) << (shift * 2)];
         tempTexture = gpTexture = (GX2Texture*)createTexture(data, 256 << shift, 192 << shift);
@@ -249,11 +235,9 @@ void ConsoleUI::drawTexture(void *texture, float tx, float ty, float tw, float t
         bufOffset += 8 * sizeof(float);
 }
 
-uint32_t ConsoleUI::getInputHeld()
-{
+uint32_t ConsoleUI::getInputHeld() {
     // Scan for input once per frame
-    if (!scanned)
-    {
+    if (!scanned) {
         VPADRead(VPAD_CHAN_0, &vpad, 1, nullptr);
         VPADGetTPCalibratedPoint(VPAD_CHAN_0, &touch, &vpad.tpNormal);
         scanned = true;
@@ -263,11 +247,9 @@ uint32_t ConsoleUI::getInputHeld()
     return vpad.hold & 0x7FFFFFFF;
 }
 
-MenuTouch ConsoleUI::getInputTouch()
-{
+MenuTouch ConsoleUI::getInputTouch() {
     // Scan for input once per frame and read touch data
-    if (!scanned)
-    {
+    if (!scanned) {
         VPADRead(VPAD_CHAN_0, &vpad, 1, nullptr);
         VPADGetTPCalibratedPoint(VPAD_CHAN_0, &touch, &vpad.tpNormal);
         scanned = true;
@@ -275,14 +257,12 @@ MenuTouch ConsoleUI::getInputTouch()
     return MenuTouch(touch.touched, touch.x, touch.y);
 }
 
-void outputAudio(void *data, uint8_t *buffer, int length)
-{
+void outputAudio(void *data, uint8_t *buffer, int length) {
     // Refill the audio buffer as a callback
     ConsoleUI::fillAudioBuffer((uint32_t*)buffer, length / sizeof(uint32_t), 32768);
 }
 
-int main()
-{
+int main() {
     // Initialize various things
     ProcUIInit(OSSavesDone_ReadyToRelease);
     WHBGfxInit();
@@ -291,8 +271,7 @@ int main()
     gpLayout.update(854, 480, false);
 
     // Get the current TV render dimensions
-    switch (GX2GetSystemTVScanMode())
-    {
+    switch (GX2GetSystemTVScanMode()) {
         case GX2_TV_SCAN_MODE_480I:
         case GX2_TV_SCAN_MODE_480P:
             tvWidth = 854;
@@ -387,10 +366,8 @@ int main()
     SYSLaunchMenu();
 
     // Respond to system messages appropriately to allow exiting
-    while (true)
-    {
-        switch (ProcUIProcessMessages(true))
-        {
+    while (true) {
+        switch (ProcUIProcessMessages(true)) {
             case PROCUI_STATUS_EXITING:
                 ProcUIShutdown();
                 return 0;

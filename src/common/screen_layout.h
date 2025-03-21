@@ -20,8 +20,7 @@
 #ifndef SCREEN_LAYOUT_H
 #define SCREEN_LAYOUT_H
 
-class ScreenLayout
-{
+class ScreenLayout {
     public:
         static int screenPosition;
         static int screenRotation;

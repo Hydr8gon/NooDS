@@ -72,8 +72,7 @@
 #define BIT(i) (1 << (i))
 
 // Macro to swap two values
-#define SWAP(a, b) \
-{ \
+#define SWAP(a, b) { \
     auto c = a; \
     a = b; \
     b = c; \

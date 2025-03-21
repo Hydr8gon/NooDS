@@ -26,8 +26,7 @@
 
 class Core;
 
-class Rtc
-{
+class Rtc {
     public:
         Rtc(Core *core): core(core) {}
         void saveState(FILE *file);

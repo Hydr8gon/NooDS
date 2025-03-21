@@ -30,8 +30,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     Bios::swiTableGba) }, cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this), dldi(this), dma {
     Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this),
     input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this),
-    rtc(this), saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this)
-{
+    rtc(this), saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this) {
     // Try to load BIOS and firmware; require DS files when not direct booting
     bool required = !Settings::directBoot || (ndsRom == "" && gbaRom == "" && ndsRomFd == -1 && gbaRomFd == -1);
     if (!memory.loadBios9() && required) throw ERROR_BIOS;
@@ -89,22 +88,19 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     interpreter[0].init();
     interpreter[1].init();
 
-    if (gbaRom != "" || gbaRomFd != -1)
-    {
+    if (gbaRom != "" || gbaRomFd != -1) {
         // Load a GBA ROM
         if (!cartridgeGba.setRom(gbaRom, gbaRomFd, gbaSaveFd, gbaStateFd, -1))
             throw ERROR_ROM;
 
         // Enable GBA mode right away if direct boot is enabled
-        if (Settings::directBoot && ndsRom == "" && ndsRomFd == -1)
-        {
+        if (Settings::directBoot && ndsRom == "" && ndsRomFd == -1) {
             memory.write<uint16_t>(0, 0x4000304, 0x8003); // POWCNT1
             enterGbaMode();
         }
     }
 
-    if (ndsRom != "" || ndsRomFd != -1)
-    {
+    if (ndsRom != "" || ndsRomFd != -1) {
         // Load an NDS ROM
         if (!cartridgeNds.setRom(ndsRom, ndsRomFd, ndsSaveFd, ndsStateFd, ndsCheatFd))
             throw ERROR_ROM;
@@ -113,8 +109,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
         actionReplay.loadCheats();
 
         // Prepare to boot the NDS ROM directly if direct boot is enabled
-        if (Settings::directBoot)
-        {
+        if (Settings::directBoot) {
             // Set some registers as the BIOS/firmware would
             cp15.write(1, 0, 0, 0x0005707D); // CP15 Control
             cp15.write(9, 1, 0, 0x0300000A); // Data TCM base/size
@@ -147,8 +142,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     running.store(true);
 }
 
-void Core::saveState(FILE *file)
-{
+void Core::saveState(FILE *file) {
     // Write state data to the file
     fwrite(&dsiMode, sizeof(dsiMode), 1, file);
     fwrite(&gbaMode, sizeof(gbaMode), 1, file);
@@ -161,8 +155,7 @@ void Core::saveState(FILE *file)
         fwrite(&events[i], sizeof(events[i]), 1, file);
 }
 
-void Core::loadState(FILE *file)
-{
+void Core::loadState(FILE *file) {
     // Read state data from the file
     fread(&dsiMode, sizeof(dsiMode), 1, file);
     fread(&gbaMode, sizeof(gbaMode), 1, file);
@@ -173,8 +166,7 @@ void Core::loadState(FILE *file)
     uint32_t count;
     SchedEvent event(MAX_TASKS, 0);
     fread(&count, sizeof(count), 1, file);
-    for (uint32_t i = 0; i < count; i++)
-    {
+    for (uint32_t i = 0; i < count; i++) {
         fread(&event, sizeof(event), 1, file);
         events.push_back(event);
     }
@@ -200,8 +192,7 @@ void Core::updateRun() {
     running.store(false);
 }
 
-void Core::resetCycles()
-{
+void Core::resetCycles() {
     // Reset the global cycle count periodically to prevent overflow
     for (size_t i = 0; i < events.size(); i++)
         events[i].cycles -= globalCycles;
@@ -211,16 +202,14 @@ void Core::resetCycles()
     schedule(RESET_CYCLES, 0x7FFFFFFF);
 }
 
-void Core::schedule(SchedTask task, uint32_t cycles)
-{
+void Core::schedule(SchedTask task, uint32_t cycles) {
     // Add a task to the scheduler, sorted by least to most cycles until execution
     SchedEvent event(task, globalCycles + cycles);
     auto it = std::upper_bound(events.cbegin(), events.cend(), event);
     events.insert(it, event);
 }
 
-void Core::enterGbaMode()
-{
+void Core::enterGbaMode() {
     // Switch to GBA mode
     gbaMode = true;
     interpreter[0].halt(2);
@@ -244,8 +233,7 @@ void Core::enterGbaMode()
     memory.write<uint8_t>(0, 0x4000241, 0x80); // VRAMCNT_B
 
     // Disable HLE BIOS if a real one was loaded
-    if (realGbaBios)
-    {
+    if (realGbaBios) {
         interpreter[1].bios = nullptr;
         return;
     }
@@ -256,16 +244,14 @@ void Core::enterGbaMode()
     memory.write<uint16_t>(1, 0x4000088, 0x200); // SOUNDBIAS
 }
 
-void Core::endFrame()
-{
+void Core::endFrame() {
     // Break execution at the end of a frame and count it
     running.store(false);
     fpsCount++;
 
     // Update the FPS and reset the counter every second
     std::chrono::duration<double> fpsTime = std::chrono::steady_clock::now() - lastFpsTime;
-    if (fpsTime.count() >= 1.0f)
-    {
+    if (fpsTime.count() >= 1.0f) {
         fps = fpsCount;
         fpsCount = 0;
         lastFpsTime = std::chrono::steady_clock::now();

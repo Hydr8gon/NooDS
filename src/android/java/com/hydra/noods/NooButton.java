@@ -27,32 +27,28 @@ import android.view.View;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 
-public class NooButton extends Button
-{
+public class NooButton extends Button {
     private Vibrator vibrator;
     private int[] resIds;
     private int[] btnIds;
     private int state = 0;
     private int lastState = 0;
 
-    public static int[] resAbxy =
-    {
+    public static int[] resAbxy = {
         R.drawable.abxy,          R.drawable.abxy_pressed1, R.drawable.abxy_pressed5, R.drawable.abxy,
         R.drawable.abxy_pressed7, R.drawable.abxy_pressed8, R.drawable.abxy_pressed6, R.drawable.abxy,
         R.drawable.abxy_pressed3, R.drawable.abxy_pressed2, R.drawable.abxy_pressed4, R.drawable.abxy,
         R.drawable.abxy,          R.drawable.abxy,          R.drawable.abxy,          R.drawable.abxy
     };
 
-    public static int[] resDpad =
-    {
+    public static int[] resDpad = {
         R.drawable.dpad,          R.drawable.dpad_pressed1, R.drawable.dpad_pressed5, R.drawable.dpad,
         R.drawable.dpad_pressed7, R.drawable.dpad_pressed8, R.drawable.dpad_pressed6, R.drawable.dpad,
         R.drawable.dpad_pressed3, R.drawable.dpad_pressed2, R.drawable.dpad_pressed4, R.drawable.dpad,
         R.drawable.dpad,          R.drawable.dpad,          R.drawable.dpad,          R.drawable.dpad
     };
 
-    public NooButton(Context context, int[] resIds, int[] btnIds, int x, int y, int width, int height)
-    {
+    public NooButton(Context context, int[] resIds, int[] btnIds, int x, int y, int width, int height) {
         super(context);
         vibrator = (Vibrator)context.getSystemService(Context.VIBRATOR_SERVICE);
         this.resIds = resIds;
@@ -66,15 +62,11 @@ public class NooButton extends Button
         setAlpha(0.5f);
 
         // Handle button touches
-        if (btnIds.length >= 4) // D-pad
-        {
-            setOnTouchListener(new Button.OnTouchListener()
-            {
+        if (btnIds.length >= 4) { // D-pad
+            setOnTouchListener(new Button.OnTouchListener() {
                 @Override
-                public boolean onTouch(View view, MotionEvent event)
-                {
-                    switch (event.getAction())
-                    {
+                public boolean onTouch(View view, MotionEvent event) {
+                    switch (event.getAction()) {
                         case MotionEvent.ACTION_DOWN:
                         case MotionEvent.ACTION_MOVE:
                             // Press the right key if in range, otherwise release
@@ -122,15 +114,11 @@ public class NooButton extends Button
                 }
             });
         }
-        else
-        {
-            setOnTouchListener(new Button.OnTouchListener()
-            {
+        else {
+            setOnTouchListener(new Button.OnTouchListener() {
                 @Override
-                public boolean onTouch(View view, MotionEvent event)
-                {
-                    switch (event.getAction())
-                    {
+                public boolean onTouch(View view, MotionEvent event) {
+                    switch (event.getAction()) {
                         case MotionEvent.ACTION_DOWN:
                             // Press a key, update the image, and vibrate
                             pressKey(btnIds[0]);
@@ -150,8 +138,7 @@ public class NooButton extends Button
         }
     }
 
-    private void pressDKey(int key)
-    {
+    private void pressDKey(int key) {
         // Press a D-pad key and track the state
         pressKey(btnIds[key]);
         state |= 1 << key;

@@ -22,8 +22,7 @@
 
 #include <wx/wx.h>
 
-class PathDialog: public wxDialog
-{
+class PathDialog: public wxDialog {
     public:
         PathDialog();
 

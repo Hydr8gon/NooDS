@@ -25,8 +25,7 @@
 
 class Core;
 
-class DivSqrt
-{
+class DivSqrt {
     public:
         DivSqrt(Core *core): core(core) {}
         void saveState(FILE *file);

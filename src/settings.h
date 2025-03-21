@@ -23,8 +23,7 @@
 #include <string>
 #include <vector>
 
-struct Setting
-{
+struct Setting {
     std::string name;
     void *value;
     bool isString;
@@ -33,8 +32,7 @@ struct Setting
         name(name), value(value), isString(isString) {}
 };
 
-class Settings
-{
+class Settings {
     public:
         static int directBoot;
         static int romInRam;

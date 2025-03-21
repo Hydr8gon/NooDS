@@ -52,14 +52,12 @@
 #define IOWR_PARAMS8 data << (base * 8)
 #define IOWR_PARAMS mask << (base * 8), data << (base * 8)
 
-void VramMapping::add(uint8_t *mapping)
-{
+void VramMapping::add(uint8_t *mapping) {
     // Add a VRAM mapping
     mappings[count++] = mapping;
 }
 
-template <typename T> T VramMapping::read(uint32_t address)
-{
+template <typename T> T VramMapping::read(uint32_t address) {
     // Read a value from all the VRAM mappings ORed together
     T value = 0;
     for (uint8_t m = 0; m < count; m++)
@@ -68,16 +66,14 @@ template <typename T> T VramMapping::read(uint32_t address)
     return value;
 }
 
-template <typename T> void VramMapping::write(uint32_t address, T value)
-{
+template <typename T> void VramMapping::write(uint32_t address, T value) {
     // Write a value to all the VRAM mappings
     for (uint8_t m = 0; m < count; m++)
         for (uint32_t i = 0; i < sizeof(T); i++)
             mappings[m][address + i] = value >> (i * 8);
 }
 
-void Memory::saveState(FILE *file)
-{
+void Memory::saveState(FILE *file) {
     // Write state data to the file
     fwrite(ram, 1, core->dsiMode ? 0x1000000 : 0x400000, file);
     fwrite(wram, 1, sizeof(wram), file);
@@ -103,8 +99,7 @@ void Memory::saveState(FILE *file)
     fwrite(&haltCnt, sizeof(haltCnt), 1, file);
 }
 
-void Memory::loadState(FILE *file)
-{
+void Memory::loadState(FILE *file) {
     // Read state data from the file
     fread(ram, 1, core->dsiMode ? 0x1000000 : 0x400000, file);
     fread(wram, 1, sizeof(wram), file);
@@ -135,11 +130,9 @@ void Memory::loadState(FILE *file)
     updateVram();
 }
 
-bool Memory::loadBios9()
-{
+bool Memory::loadBios9() {
     // Load the ARM9 BIOS if the file is found
-    if (FILE *file = fopen(Settings::bios9Path.c_str(), "rb"))
-    {
+    if (FILE *file = fopen(Settings::bios9Path.c_str(), "rb")) {
         fread(bios9, sizeof(uint8_t), 0x1000, file);
         fclose(file);
         return true;
@@ -151,11 +144,9 @@ bool Memory::loadBios9()
     return false;
 }
 
-bool Memory::loadBios7()
-{
+bool Memory::loadBios7() {
     // Load the ARM7 BIOS if the file is found
-    if (FILE *file = fopen(Settings::bios7Path.c_str(), "rb"))
-    {
+    if (FILE *file = fopen(Settings::bios7Path.c_str(), "rb")) {
         fread(bios7, sizeof(uint8_t), 0x4000, file);
         fclose(file);
         return true;
@@ -167,11 +158,9 @@ bool Memory::loadBios7()
     return false;
 }
 
-bool Memory::loadGbaBios()
-{
+bool Memory::loadGbaBios() {
     // Load the GBA BIOS if the file is found
-    if (FILE *file = fopen(Settings::gbaBiosPath.c_str(), "rb"))
-    {
+    if (FILE *file = fopen(Settings::gbaBiosPath.c_str(), "rb")) {
         fread(gbaBios, sizeof(uint8_t), 0x4000, file);
         fclose(file);
         return true;
@@ -182,26 +171,22 @@ bool Memory::loadGbaBios()
     return false;
 }
 
-void Memory::copyBiosLogo(uint8_t *logo)
-{
+void Memory::copyBiosLogo(uint8_t *logo) {
     // Copy logo data to HLE BIOS so GBA ROMs can be verified
     if (bios9[3] == 0xFF)
         memcpy(&bios9[0x20], logo, 0x9C);
 }
 
-void Memory::updateMap9(uint32_t start, uint32_t end, bool tcm)
-{
+void Memory::updateMap9(uint32_t start, uint32_t end, bool tcm) {
     // Update the ARM9 read and write memory maps in the given range
-    for (uint64_t address = start; address < end; address += 0x1000)
-    {
+    for (uint64_t address = start; address < end; address += 0x1000) {
         // Get the current read and write pointers; there are TCM and non-TCM maps
         uint8_t *&read = (tcm ? readMap9A : readMap9B)[address >> 12];
         uint8_t *&write = (tcm ? writeMap9A : writeMap9B)[address >> 12];
         read = write = nullptr;
 
         // Map a 4KB block to the corresponding ARM9 memory, excluding special cases
-        switch (address & 0xFF000000)
-        {
+        switch (address & 0xFF000000) {
             case 0xC000000: // Main RAM (DSi mirror)
                 if (!core->dsiMode)
                     break;
@@ -211,19 +196,16 @@ void Memory::updateMap9(uint32_t start, uint32_t end, bool tcm)
                 break;
 
             case 0x3000000: // Shared WRAM
-                switch (wramCnt)
-                {
+                switch (wramCnt) {
                     case 0: read = write = &wram[(address & 0x7FFF)]; break;
                     case 1: read = write = &wram[(address & 0x3FFF) + 0x4000]; break;
                     case 2: read = write = &wram[(address & 0x3FFF)]; break;
                 }
                 break;
 
-            case 0x6000000: // VRAM
-            {
+            case 0x6000000: { // VRAM
                 VramMapping *mapping;
-                switch (address & 0xFFE00000)
-                {
+                switch (address & 0xFFE00000) {
                     case 0x6000000: mapping = &engABg[(address & 0x7FFFF) >> 14]; break;
                     case 0x6200000: mapping = &engBBg[(address & 0x1FFFF) >> 14]; break;
                     case 0x6400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
@@ -247,15 +229,13 @@ void Memory::updateMap9(uint32_t start, uint32_t end, bool tcm)
 
         // Map TCM on top of the standard memory layout
         if (!tcm) continue;
-        if (address < core->cp15.itcmSize) // Instruction TCM
-        {
+        if (address < core->cp15.itcmSize) { // Instruction TCM
             if (core->cp15.itcmCanRead)
                 read = &instrTcm[address & 0x7FFF];
             if (core->cp15.itcmCanWrite)
                 write = &instrTcm[address & 0x7FFF];
         }
-        else if (address - core->cp15.dtcmAddr < core->cp15.dtcmSize) // Data TCM
-        {
+        else if (address - core->cp15.dtcmAddr < core->cp15.dtcmSize) { // Data TCM
             if (core->cp15.dtcmCanRead)
                 read = &dataTcm[(address - core->cp15.dtcmAddr) & 0x3FFF];
             if (core->cp15.dtcmCanWrite)
@@ -271,21 +251,17 @@ void Memory::updateMap9(uint32_t start, uint32_t end, bool tcm)
     core->interpreter[0].getOpcode16();
 }
 
-void Memory::updateMap7(uint32_t start, uint32_t end)
-{
+void Memory::updateMap7(uint32_t start, uint32_t end) {
     // Update the ARM7 read and write memory maps in the given range
-    for (uint64_t address = start; address < end; address += 0x1000)
-    {
+    for (uint64_t address = start; address < end; address += 0x1000) {
         // Get the current read and write pointers
         uint8_t *&read = readMap7[address >> 12];
         uint8_t *&write = writeMap7[address >> 12];
         read = write = nullptr;
 
-        if (core->gbaMode) // GBA
-        {
+        if (core->gbaMode) { // GBA
             // Map a 4KB block to the corresponding GBA memory, excluding special cases
-            switch (address & 0xFF000000)
-            {
+            switch (address & 0xFF000000) {
                 case 0x2000000: // On-board WRAM
                     read = write = &ram[address & 0x3FFFF];
                     break;
@@ -305,11 +281,9 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                     break;
             }
         }
-        else // ARM7
-        {
+        else { // ARM7
             // Map a 4KB block to the corresponding ARM7 memory, excluding special cases
-            switch (address & 0xFF000000)
-            {
+            switch (address & 0xFF000000) {
                 case 0x0000000: // ARM7 BIOS
                     if (address < 0x4000)
                         read = &bios7[address];
@@ -324,10 +298,8 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                     break;
 
                 case 0x3000000: // WRAM
-                    if (!(address & 0x800000)) // Shared WRAM
-                    {
-                        switch (wramCnt)
-                        {
+                    if (!(address & 0x800000)) { // Shared WRAM
+                        switch (wramCnt) {
                             case 1: read = write = &wram[(address & 0x3FFF)]; break;
                             case 2: read = write = &wram[(address & 0x3FFF) + 0x4000]; break;
                             case 3: read = write = &wram[(address & 0x7FFF)]; break;
@@ -338,16 +310,14 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
                     break;
 
                 case 0x4000000: // I/O registers
-                    if (address & 0x800000) // WiFi regions
-                    {
+                    if (address & 0x800000) { // WiFi regions
                         uint32_t addr = address & ~0x8000; // Mirror
                         if (addr >= 0x4804000 && addr < 0x4806000) // WiFi RAM
                             read = write = &wifiRam[addr & 0x1FFF];
                     }
                     break;
 
-                case 0x6000000: // VRAM
-                {
+                case 0x6000000: { // VRAM
                     VramMapping *mapping = &vram7[(address & 0x3FFFF) >> 17];
                     if (mapping->count == 1)
                         read = write = &mapping->mappings[0][address & 0x1FFFF];
@@ -365,8 +335,7 @@ void Memory::updateMap7(uint32_t start, uint32_t end)
     core->interpreter[1].getOpcode16();
 }
 
-void Memory::updateVram()
-{
+void Memory::updateVram() {
     // Clear the previous VRAM mappings
     memset(engABg, 0, sizeof(engABg));
     memset(engBBg, 0, sizeof(engBBg));
@@ -381,11 +350,9 @@ void Memory::updateVram()
     vramStat = 0;
 
     // Remap VRAM block A
-    if (vramCnt[0] & BIT(7)) // Enabled
-    {
+    if (vramCnt[0] & BIT(7)) { // Enabled
         uint8_t ofs = (vramCnt[0] >> 3) & 0x3;
-        switch (vramCnt[0] & 0x7) // MST
-        {
+        switch (vramCnt[0] & 0x7) { // MST
             case 0: // LCDC
                 for (int i = 0; i < 8; i++)
                     lcdc[i].add(&vramA[i << 14]);
@@ -408,11 +375,9 @@ void Memory::updateVram()
     }
 
     // Remap VRAM block B
-    if (vramCnt[1] & BIT(7)) // Enabled
-    {
+    if (vramCnt[1] & BIT(7)) { // Enabled
         uint8_t ofs = (vramCnt[1] >> 3) & 0x3;
-        switch (vramCnt[1] & 0x7) // MST
-        {
+        switch (vramCnt[1] & 0x7) { // MST
             case 0: // LCDC
                 for (int i = 0; i < 8; i++)
                     lcdc[8 + i].add(&vramB[i << 14]);
@@ -435,11 +400,9 @@ void Memory::updateVram()
     }
 
     // Remap VRAM block C
-    if (vramCnt[2] & BIT(7)) // Enabled
-    {
+    if (vramCnt[2] & BIT(7)) { // Enabled
         uint8_t ofs = (vramCnt[2] >> 3) & 0x3;
-        switch (vramCnt[2] & 0x7) // MST
-        {
+        switch (vramCnt[2] & 0x7) { // MST
             case 0: // LCDC
                 for (int i = 0; i < 8; i++)
                     lcdc[16 + i].add(&vramC[i << 14]);
@@ -467,11 +430,9 @@ void Memory::updateVram()
     }
 
     // Remap VRAM block D
-    if (vramCnt[3] & BIT(7)) // Enabled
-    {
+    if (vramCnt[3] & BIT(7)) { // Enabled
         uint8_t ofs = (vramCnt[3] >> 3) & 0x3;
-        switch (vramCnt[3] & 0x7) // MST
-        {
+        switch (vramCnt[3] & 0x7) { // MST
             case 0: // LCDC
                 for (int i = 0; i < 8; i++)
                     lcdc[24 + i].add(&vramD[i << 14]);
@@ -499,10 +460,8 @@ void Memory::updateVram()
     }
 
     // Remap VRAM block E
-    if (vramCnt[4] & BIT(7)) // Enabled
-    {
-        switch (vramCnt[4] & 0x7) // MST
-        {
+    if (vramCnt[4] & BIT(7)) { // Enabled
+        switch (vramCnt[4] & 0x7) { // MST
             case 0: // LCDC
                 for (int i = 0; i < 4; i++)
                     lcdc[32 + i].add(&vramE[i << 14]);
@@ -531,11 +490,9 @@ void Memory::updateVram()
     }
 
     // Remap VRAM block F
-    if (vramCnt[5] & BIT(7)) // Enabled
-    {
+    if (vramCnt[5] & BIT(7)) { // Enabled
         uint8_t ofs = (vramCnt[5] >> 3) & 0x3;
-        switch (vramCnt[5] & 0x7) // MST
-        {
+        switch (vramCnt[5] & 0x7) { // MST
             case 0: // LCDC
                 lcdc[36].add(&vramF[0]);
                 break;
@@ -566,11 +523,9 @@ void Memory::updateVram()
     }
 
     // Remap VRAM block G
-    if (vramCnt[6] & BIT(7)) // Enabled
-    {
+    if (vramCnt[6] & BIT(7)) { // Enabled
         uint8_t ofs = (vramCnt[6] >> 3) & 0x3;
-        switch (vramCnt[6] & 0x7) // MST
-        {
+        switch (vramCnt[6] & 0x7) { // MST
             case 0: // LCDC
                 lcdc[37].add(&vramG[0]);
                 break;
@@ -601,18 +556,15 @@ void Memory::updateVram()
     }
 
     // Remap VRAM block H
-    if (vramCnt[7] & BIT(7)) // Enabled
-    {
-        switch (vramCnt[7] & 0x7) // MST
-        {
+    if (vramCnt[7] & BIT(7)) { // Enabled
+        switch (vramCnt[7] & 0x7) { // MST
             case 0: // LCDC
                 for (int i = 0; i < 2; i++)
                     lcdc[38 + i].add(&vramH[i << 14]);
                 break;
 
             case 1: // Engine B BG
-                for (int i = 0; i < 2; i++)
-                {
+                for (int i = 0; i < 2; i++) {
                     engBBg[0 + i].add(&vramH[i << 14]);
                     engBBg[4 + i].add(&vramH[i << 14]);
                 }
@@ -626,17 +578,14 @@ void Memory::updateVram()
     }
 
     // Remap VRAM block I
-    if (vramCnt[8] & BIT(7)) // Enabled
-    {
-        switch (vramCnt[8] & 0x7) // MST
-        {
+    if (vramCnt[8] & BIT(7)) { // Enabled
+        switch (vramCnt[8] & 0x7) { // MST
             case 0: // LCDC
                 lcdc[40].add(&vramI[0]);
                 break;
 
             case 1: // Engine B BG
-                for (int i = 0; i < 2; i++)
-                {
+                for (int i = 0; i < 2; i++) {
                     engBBg[2 + i].add(&vramI[0]);
                     engBBg[6 + i].add(&vramI[0]);
                 }
@@ -659,17 +608,14 @@ void Memory::updateVram()
     core->gpu.invalidate3D();
 }
 
-template <typename T> T Memory::readFallback(bool arm7, uint32_t address)
-{
+template <typename T> T Memory::readFallback(bool arm7, uint32_t address) {
     // Align the address
     address &= ~(sizeof(T) - 1);
     uint8_t *data = nullptr;
 
     // Handle special memory reads such as I/O registers, overlapping VRAM, or areas smaller than 4KB
-    if (!arm7) // ARM9
-    {
-        switch (address & 0xFF000000)
-        {
+    if (!arm7) { // ARM9
+        switch (address & 0xFF000000) {
             case 0x4000000: // I/O registers
                 return ioRead9<T>(address);
 
@@ -677,11 +623,9 @@ template <typename T> T Memory::readFallback(bool arm7, uint32_t address)
                 data = &palette[address & 0x7FF];
                 break;
 
-            case 0x6000000: // VRAM
-            {
+            case 0x6000000: { // VRAM
                 VramMapping *mapping;
-                switch (address & 0xFFE00000)
-                {
+                switch (address & 0xFFE00000) {
                     case 0x6000000: mapping = &engABg[(address & 0x7FFFF) >> 14]; break;
                     case 0x6200000: mapping = &engBBg[(address & 0x1FFFF) >> 14]; break;
                     case 0x6400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
@@ -703,10 +647,8 @@ template <typename T> T Memory::readFallback(bool arm7, uint32_t address)
                 return core->cartridgeGba.sramRead(address + 0x4000000);
         }
     }
-    else if (core->gbaMode) // GBA
-    {
-        switch (address & 0xFF000000)
-        {
+    else if (core->gbaMode) { // GBA
+        switch (address & 0xFF000000) {
             case 0x0000000: // GBA BIOS (only readable when executing; otherwise returns last value)
                 if (address < 0x4000)
                     data = &gbaBios[(core->interpreter[1].getPC() < 0x4000) ? (gbaBiosAddr = address) : gbaBiosAddr];
@@ -739,15 +681,12 @@ template <typename T> T Memory::readFallback(bool arm7, uint32_t address)
                 return core->cartridgeGba.sramRead(address);
         }
     }
-    else // ARM7
-    {
-        switch (address & 0xFF000000)
-        {
+    else { // ARM7
+        switch (address & 0xFF000000) {
             case 0x4000000: // I/O registers
                 return ioRead7<T>(address);
 
-            case 0x6000000: // VRAM
-            {
+            case 0x6000000: { // VRAM
                 VramMapping *mapping = &vram7[(address & 0x3FFFF) >> 17];
                 if (mapping->count == 0) break;
                 return mapping->read<T>(address & 0x1FFFF);
@@ -762,8 +701,7 @@ template <typename T> T Memory::readFallback(bool arm7, uint32_t address)
     }
 
     // Form an LSB-first value from data at the pointer
-    if (data)
-    {
+    if (data) {
         T value = 0;
         for (uint32_t i = 0; i < sizeof(T); i++)
             value |= data[i] << (i * 8);
@@ -771,8 +709,7 @@ template <typename T> T Memory::readFallback(bool arm7, uint32_t address)
     }
 
     // Handle unknown NDS reads by returning nothing
-    if (!core->gbaMode)
-    {
+    if (!core->gbaMode) {
         LOG_WARN("Unmapped ARM%d memory read: 0x%X\n", (arm7 ? 7 : 9), address);
         return 0;
     }
@@ -783,17 +720,14 @@ template <typename T> T Memory::readFallback(bool arm7, uint32_t address)
     return read<T>(arm7, core->interpreter[1].getPC());
 }
 
-template <typename T> void Memory::writeFallback(bool arm7, uint32_t address, T value)
-{
+template <typename T> void Memory::writeFallback(bool arm7, uint32_t address, T value) {
     // Align the address
     address &= ~(sizeof(T) - 1);
     uint8_t *data = nullptr;
 
     // Handle special memory writes such as I/O registers, overlapping VRAM, or areas smaller than 4KB
-    if (!arm7) // ARM9
-    {
-        switch (address & 0xFF000000)
-        {
+    if (!arm7) { // ARM9
+        switch (address & 0xFF000000) {
             case 0x4000000: // I/O registers
                 ioWrite9<T>(address, value);
                 return;
@@ -802,11 +736,9 @@ template <typename T> void Memory::writeFallback(bool arm7, uint32_t address, T 
                 data = &palette[address & 0x7FF];
                 break;
 
-            case 0x6000000: // VRAM
-            {
+            case 0x6000000: { // VRAM
                 VramMapping *mapping;
-                switch (address & 0xFFE00000)
-                {
+                switch (address & 0xFFE00000) {
                     case 0x6000000: mapping = &engABg[(address & 0x7FFFF) >> 14]; break;
                     case 0x6200000: mapping = &engBBg[(address & 0x1FFFF) >> 14]; break;
                     case 0x6400000: mapping = &engAObj[(address & 0x3FFFF) >> 14]; break;
@@ -827,10 +759,8 @@ template <typename T> void Memory::writeFallback(bool arm7, uint32_t address, T 
                 return;
         }
     }
-    else if (core->gbaMode) // GBA
-    {
-        switch (address & 0xFF000000)
-        {
+    else if (core->gbaMode) { // GBA
+        switch (address & 0xFF000000) {
             case 0x4000000: // I/O registers
                 ioWriteGba<T>(address, value);
                 return;
@@ -858,16 +788,13 @@ template <typename T> void Memory::writeFallback(bool arm7, uint32_t address, T 
                 return;
         }
     }
-    else // ARM7
-    {
-        switch (address & 0xFF000000)
-        {
+    else { // ARM7
+        switch (address & 0xFF000000) {
             case 0x4000000: // I/O registers
                 ioWrite7<T>(address, value);
                 return;
 
-            case 0x6000000: // VRAM
-            {
+            case 0x6000000: { // VRAM
                 VramMapping *mapping = &vram7[(address & 0x3FFFF) >> 17];
                 if (mapping->count == 0) break;
                 mapping->write<T>(address & 0x1FFFF, value);
@@ -881,8 +808,7 @@ template <typename T> void Memory::writeFallback(bool arm7, uint32_t address, T 
     }
 
     // Write an LSB-first value to data at the pointer
-    if (data)
-    {
+    if (data) {
         for (uint32_t i = 0; i < sizeof(T); i++)
             data[i] = value >> (i * 8);
         return;
@@ -895,16 +821,13 @@ template <typename T> void Memory::writeFallback(bool arm7, uint32_t address, T 
         LOG_WARN("Unmapped GBA memory write: 0x%X\n", address);
 }
 
-template <typename T> T Memory::ioRead9(uint32_t address)
-{
+template <typename T> T Memory::ioRead9(uint32_t address) {
     // Read a value from one or more ARM9 I/O registers
     T value = 0;
-    for (uint32_t i = 0; i < sizeof(T);)
-    {
+    for (uint32_t i = 0; i < sizeof(T);) {
         // Load data from a register
         uint32_t base, size, data;
-        switch (base = address + i)
-        {
+        switch (base = address + i) {
             DEF_IO32(0x4000000, data = core->gpu2D[0].readDispCnt()) // DISPCNT (engine A)
             DEF_IO16(0x4000004, data = core->gpu.readDispStat(0)) // DISPCNT (engine A)
             DEF_IO16(0x4000006, data = core->gpu.readVCount()) // VCOUNT
@@ -1027,8 +950,7 @@ template <typename T> T Memory::ioRead9(uint32_t address)
 
             default:
                 // Handle unknown reads by returning nothing
-                if (i == 0)
-                {
+                if (i == 0) {
                     LOG_WARN("Unknown ARM9 I/O register read: 0x%X\n", address);
                     return 0;
                 }
@@ -1045,20 +967,17 @@ template <typename T> T Memory::ioRead9(uint32_t address)
     return value;
 }
 
-template <typename T> T Memory::ioRead7(uint32_t address)
-{
+template <typename T> T Memory::ioRead7(uint32_t address) {
     // Mirror the WiFi regions
     if (address >= 0x4808000 && address < 0x4810000)
         address &= ~0x8000;
 
     // Read a value from one or more ARM7 I/O registers
     T value = 0;
-    for (uint32_t i = 0; i < sizeof(T);)
-    {
+    for (uint32_t i = 0; i < sizeof(T);) {
         // Load data from a register
         uint32_t base, size, data;
-        switch (base = address + i)
-        {
+        switch (base = address + i) {
             DEF_IO16(0x4000004, data = core->gpu.readDispStat(1)) // DISPSTAT (ARM7)
             DEF_IO16(0x4000006, data = core->gpu.readVCount()) // VCOUNT
             DEF_IO32(0x40000B0, data = core->dma[1].readDmaSad(0)) // DMA0SAD (ARM7)
@@ -1196,8 +1115,7 @@ template <typename T> T Memory::ioRead7(uint32_t address)
 
             default:
                 // Handle unknown reads by returning nothing
-                if (i == 0)
-                {
+                if (i == 0) {
                     LOG_WARN("Unknown ARM7 I/O register read: 0x%X\n", address);
                     return 0;
                 }
@@ -1214,16 +1132,13 @@ template <typename T> T Memory::ioRead7(uint32_t address)
     return value;
 }
 
-template <typename T> T Memory::ioReadGba(uint32_t address)
-{
+template <typename T> T Memory::ioReadGba(uint32_t address) {
     // Read a value from one or more GBA I/O registers
     T value = 0;
-    for (uint32_t i = 0; i < sizeof(T);)
-    {
+    for (uint32_t i = 0; i < sizeof(T);) {
         // Load data from a register
         uint32_t base, size, data;
-        switch (base = address + i)
-        {
+        switch (base = address + i) {
             DEF_IO16(0x4000000, data = core->gpu2D[0].readDispCnt()) // DISPCNT
             DEF_IO16(0x4000004, data = core->gpu.readDispStat(1)) // DISPSTAT
             DEF_IO16(0x4000006, data = core->gpu.readVCount()) // VCOUNT
@@ -1288,8 +1203,7 @@ template <typename T> T Memory::ioReadGba(uint32_t address)
 
             default:
                 // Handle unknown reads by returning nothing
-                if (i == 0)
-                {
+                if (i == 0) {
                     LOG_WARN("Unknown GBA I/O register read: 0x%X\n", address);
                     return 0;
                 }
@@ -1306,16 +1220,13 @@ template <typename T> T Memory::ioReadGba(uint32_t address)
     return value;
 }
 
-template <typename T> void Memory::ioWrite9(uint32_t address, T value)
-{
+template <typename T> void Memory::ioWrite9(uint32_t address, T value) {
     // Write a value to one or more ARM9 I/O registers
-    for (uint32_t i = 0; i < sizeof(T);)
-    {
+    for (uint32_t i = 0; i < sizeof(T);) {
         // Store data to a register
         uint32_t base, size, data = value >> (i * 8);
         uint32_t mask = (1ULL << ((sizeof(T) - i) * 8)) - 1;
-        switch (base = address + i)
-        {
+        switch (base = address + i) {
             DEF_IO32(0x4000000, core->gpu2D[0].writeDispCnt(IOWR_PARAMS)) // DISPCNT (engine A)
             DEF_IO16(0x4000004, core->gpu.writeDispStat(0, IOWR_PARAMS)) // DISPSTAT (ARM9)
             DEF_IO16(0x4000008, core->gpu2D[0].writeBgCnt(0, IOWR_PARAMS)) // BG0CNT (engine A)
@@ -1579,8 +1490,7 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
 
             default:
                 // Handle unknown writes by doing nothing
-                if (i == 0)
-                {
+                if (i == 0) {
                     LOG_WARN("Unknown ARM9 I/O register write: 0x%X\n", address);
                     return;
                 }
@@ -1595,20 +1505,17 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
     }
 }
 
-template <typename T> void Memory::ioWrite7(uint32_t address, T value)
-{
+template <typename T> void Memory::ioWrite7(uint32_t address, T value) {
     // Mirror the WiFi regions
     if (address >= 0x4808000 && address < 0x4810000)
         address &= ~0x8000;
 
     // Write a value to one or more ARM7 I/O registers
-    for (uint32_t i = 0; i < sizeof(T);)
-    {
+    for (uint32_t i = 0; i < sizeof(T);) {
         // Store data to a register
         uint32_t base, size, data = value >> (i * 8);
         uint32_t mask = (1ULL << ((sizeof(T) - i) * 8)) - 1;
-        switch (base = address + i)
-        {
+        switch (base = address + i) {
             DEF_IO16(0x4000004, core->gpu.writeDispStat(1, IOWR_PARAMS)) // DISPSTAT (ARM7)
             DEF_IO32(0x40000B0, core->dma[1].writeDmaSad(0, IOWR_PARAMS)) // DMA0SAD (ARM7)
             DEF_IO32(0x40000B4, core->dma[1].writeDmaDad(0, IOWR_PARAMS)) // DMA0DAD (ARM7)
@@ -1806,8 +1713,7 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
 
             default:
                 // Handle unknown writes by doing nothing
-                if (i == 0)
-                {
+                if (i == 0) {
                     LOG_WARN("Unknown ARM7 I/O register write: 0x%X\n", address);
                     return;
                 }
@@ -1822,16 +1728,13 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
     }
 }
 
-template <typename T> void Memory::ioWriteGba(uint32_t address, T value)
-{
+template <typename T> void Memory::ioWriteGba(uint32_t address, T value) {
     // Write a value to one or more GBA I/O registers
-    for (uint32_t i = 0; i < sizeof(T);)
-    {
+    for (uint32_t i = 0; i < sizeof(T);) {
         // Store data to a register
         uint32_t base, size, data = value >> (i * 8);
         uint32_t mask = (1ULL << ((sizeof(T) - i) * 8)) - 1;
-        switch (base = address + i)
-        {
+        switch (base = address + i) {
             DEF_IO16(0x4000000, core->gpu2D[0].writeDispCnt(IOWR_PARAMS)) // DISPCNT
             DEF_IO16(0x4000004, core->gpu.writeDispStat(1, IOWR_PARAMS)) // DISPSTAT
             DEF_IO16(0x4000008, core->gpu2D[0].writeBgCnt(0, IOWR_PARAMS)) // BG0CNT
@@ -1931,8 +1834,7 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value)
 
             default:
                 // Handle unknown writes by doing nothing
-                if (i == 0)
-                {
+                if (i == 0) {
                     LOG_WARN("Unknown GBA I/O register write: 0x%X\n", address);
                     return;
                 }
@@ -1947,14 +1849,12 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value)
     }
 }
 
-void Memory::writeDmaFill(int channel, uint32_t mask, uint32_t value)
-{
+void Memory::writeDmaFill(int channel, uint32_t mask, uint32_t value) {
     // Write to one of the DMAFILL registers
     dmaFill[channel] = (dmaFill[channel] & ~mask) | (value & mask);
 }
 
-void Memory::writeVramCnt(int index, uint8_t value)
-{
+void Memory::writeVramCnt(int index, uint8_t value) {
     // Write to one of the VRAMCNT registers and update VRAM mappings
     const uint8_t masks[] = { 0x9B, 0x9B, 0x9F, 0x9F, 0x87, 0x9F, 0x9F, 0x83, 0x83 };
     if ((value & masks[index]) == (vramCnt[index] & masks[index])) return;
@@ -1962,22 +1862,19 @@ void Memory::writeVramCnt(int index, uint8_t value)
     updateVram();
 }
 
-void Memory::writeWramCnt(uint8_t value)
-{
+void Memory::writeWramCnt(uint8_t value) {
     // Write to the WRAMCNT register and update WRAM mappings
     wramCnt = value & 0x3;
     updateMap9(0x3000000, 0x4000000);
     updateMap7(0x3000000, 0x4000000);
 }
 
-void Memory::writeHaltCnt(uint8_t value)
-{
+void Memory::writeHaltCnt(uint8_t value) {
     // Write to the HALTCNT register
     haltCnt = value & 0xC0;
 
     // Change the ARM7's power mode
-    switch (haltCnt >> 6)
-    {
+    switch (haltCnt >> 6) {
         case 1: // GBA
             core->enterGbaMode();
             break;
@@ -1992,8 +1889,7 @@ void Memory::writeHaltCnt(uint8_t value)
     }
 }
 
-void Memory::writeGbaHaltCnt(uint8_t value)
-{
+void Memory::writeGbaHaltCnt(uint8_t value) {
     // Halt the CPU
     core->interpreter[1].halt(0);
     if (value & BIT(7)) // Stop

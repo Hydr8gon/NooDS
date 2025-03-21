@@ -26,8 +26,7 @@
 
 #include "noo_app.h"
 
-class InputDialog: public wxDialog
-{
+class InputDialog: public wxDialog {
     public:
         InputDialog(wxJoystick *joystick);
         ~InputDialog();

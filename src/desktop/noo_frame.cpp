@@ -28,8 +28,7 @@
 #include "../settings.h"
 #include "../../icon/icon.xpm"
 
-enum FrameEvent
-{
+enum FrameEvent {
     LOAD_ROM = 1,
     BOOT_FIRMWARE,
     SAVE_STATE,
@@ -112,14 +111,12 @@ EVT_CLOSE(NooFrame::close)
 wxEND_EVENT_TABLE()
 
 NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
-    wxFrame(nullptr, wxID_ANY, "NooDS"), app(app), id(id), partner(partner), mainFrame(!partner)
-{
+    wxFrame(nullptr, wxID_ANY, "NooDS"), app(app), id(id), partner(partner), mainFrame(!partner) {
     // Set the icon
     wxIcon icon(icon_xpm);
     SetIcon(icon);
 
-    if (mainFrame)
-    {
+    if (mainFrame) {
         // Set up the file menu
         fileMenu = new wxMenu();
         fileMenu->Append(LOAD_ROM, "&Load ROM");
@@ -247,8 +244,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
 
     // Prepare a joystick if one is connected
     joystick = new wxJoystick();
-    if (joystick->IsOk())
-    {
+    if (joystick->IsOk()) {
         // Save the initial axis values so inputs can be detected as offsets instead of raw values
         // This avoids issues with axes that have non-zero values in their resting positions
         for (int i = 0; i < joystick->GetNumberAxes(); i++)
@@ -258,8 +254,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         timer = new wxTimer(this, UPDATE_JOY);
         timer->Start(10);
     }
-    else
-    {
+    else {
         // Don't use a joystick if one isn't connected
         delete joystick;
         joystick = nullptr;
@@ -271,8 +266,7 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         loadRomPath(path);
 }
 
-void NooFrame::Refresh()
-{
+void NooFrame::Refresh() {
     // Override the refresh function to also update the FPS counter
     wxFrame::Refresh();
     wxString label = "NooDS";
@@ -281,41 +275,34 @@ void NooFrame::Refresh()
     SetLabel(label);
 
     // Manage the main frame's partner frame
-    if (mainFrame)
-    {
+    if (mainFrame) {
         bool split = NooApp::splitScreens && ScreenLayout::screenArrangement != 3 && !canvas->gbaMode;
-        if (split && !partner)
-        {
+        if (split && !partner) {
             // Create the partner frame if needed
             partner = new NooFrame(app, id, "", this);
             partner->core = core;
             partner->running = running;
         }
-        else if (!split && partner)
-        {
+        else if (!split && partner) {
             // Remove the partner frame if not needed
             delete partner;
             partner = nullptr;
         }
-        else if (partner)
-        {
+        else if (partner) {
             // Update the partner frame
             partner->Refresh();
         }
     }
 }
 
-void NooFrame::runCore()
-{
+void NooFrame::runCore() {
     // Run the emulator
     while (running)
         core->runCore();
 }
 
-void NooFrame::checkSave()
-{
-    while (running)
-    {
+void NooFrame::checkSave() {
+    while (running) {
         // Check save files every few seconds and update them if changed
         std::unique_lock<std::mutex> lock(mutex);
         cond.wait_for(lock, std::chrono::seconds(3), [&]{ return !running; });
@@ -324,25 +311,20 @@ void NooFrame::checkSave()
     }
 }
 
-void NooFrame::startCore(bool full)
-{
-    if (full)
-    {
+void NooFrame::startCore(bool full) {
+    if (full) {
         // Ensure the core is shut down
         stopCore(true);
 
-        try
-        {
+        try {
             // Attempt to boot the core
             core = new Core(ndsPath, gbaPath, id);
             if (partner) partner->core = core;
             app->connectCore(id);
         }
-        catch (CoreError e)
-        {
+        catch (CoreError e) {
             // Inform the user of the error if loading wasn't successful
-            switch (e)
-            {
+            switch (e) {
                 case ERROR_BIOS: // Missing BIOS files
                     wxMessageDialog(this, "Make sure the path settings point to valid BIOS files and try again.",
                         "Error Loading BIOS", wxICON_NONE).ShowModal();
@@ -361,11 +343,9 @@ void NooFrame::startCore(bool full)
         }
     }
 
-    if (core)
-    {
+    if (core) {
         // Enable some file menu items if a ROM is loaded
-        if (ndsPath != "" || gbaPath != "")
-        {
+        if (ndsPath != "" || gbaPath != "") {
             fileMenu->Enable(TRIM_ROM, true);
             fileMenu->Enable(CHANGE_SAVE, true);
             fileMenu->Enable(SAVE_STATE, true);
@@ -387,10 +367,8 @@ void NooFrame::startCore(bool full)
     }
 }
 
-void NooFrame::stopCore(bool full)
-{
-    // Signal for the threads to stop if the core is running
-    {
+void NooFrame::stopCore(bool full) {
+    { // Signal for the threads to stop if the core is running
         std::lock_guard<std::mutex> guard(mutex);
         running = false;
         if (partner) partner->running = running;
@@ -398,16 +376,14 @@ void NooFrame::stopCore(bool full)
     }
 
     // Wait for the core thread to stop
-    if (coreThread)
-    {
+    if (coreThread) {
         coreThread->join();
         delete coreThread;
         coreThread = nullptr;
     }
 
     // Wait for the save thread to stop
-    if (saveThread)
-    {
+    if (saveThread) {
         saveThread->join();
         delete saveThread;
         saveThread = nullptr;
@@ -416,8 +392,7 @@ void NooFrame::stopCore(bool full)
     // Update the system menu for being paused
     systemMenu->SetLabel(PAUSE, "&Resume");
 
-    if (full)
-    {
+    if (full) {
         // Disable some menu items
         fileMenu->Enable(TRIM_ROM, false);
         fileMenu->Enable(CHANGE_SAVE, false);
@@ -428,8 +403,7 @@ void NooFrame::stopCore(bool full)
         systemMenu->Enable(STOP, false);
 
         // Shut down the core
-        if (core)
-        {
+        if (core) {
             app->disconnCore(id);
             delete core;
             core = nullptr;
@@ -438,15 +412,12 @@ void NooFrame::stopCore(bool full)
     }
 }
 
-void NooFrame::pressKey(int key)
-{
+void NooFrame::pressKey(int key) {
     // Handle a key press separate from the key's actual mapping
-    switch (key)
-    {
+    switch (key) {
         case 12: // Fast Forward Hold
             // Disable the FPS limiter
-            if (Settings::fpsLimiter != 0)
-            {
+            if (Settings::fpsLimiter != 0) {
                 fpsLimiterBackup = Settings::fpsLimiter;
                 Settings::fpsLimiter = 0;
             }
@@ -454,16 +425,13 @@ void NooFrame::pressKey(int key)
 
         case 13: // Fast Forward Toggle
             // Toggle the FPS limiter on or off
-            if (!(hotkeyToggles & BIT(0)))
-            {
-                if (Settings::fpsLimiter != 0)
-                {
+            if (!(hotkeyToggles & BIT(0))) {
+                if (Settings::fpsLimiter != 0) {
                     // Disable the FPS limiter
                     fpsLimiterBackup = Settings::fpsLimiter;
                     Settings::fpsLimiter = 0;
                 }
-                else if (fpsLimiterBackup != 0)
-                {
+                else if (fpsLimiterBackup != 0) {
                     // Restore the previous FPS limiter setting
                     Settings::fpsLimiter = fpsLimiterBackup;
                     fpsLimiterBackup = 0;
@@ -481,8 +449,7 @@ void NooFrame::pressKey(int key)
 
         case 15: // Screen Swap Toggle
             // Toggle between favoring the top or bottom screen
-            if (!(hotkeyToggles & BIT(2)))
-            {
+            if (!(hotkeyToggles & BIT(2))) {
                 ScreenLayout::screenSizing = (ScreenLayout::screenSizing == 1) ? 2 : 1;
                 app->updateLayouts();
                 hotkeyToggles |= BIT(2);
@@ -491,8 +458,7 @@ void NooFrame::pressKey(int key)
 
         case 16: // System Pause Toggle
             // Toggle between pausing or resuming the core
-            if (!(hotkeyToggles & BIT(3)))
-            {
+            if (!(hotkeyToggles & BIT(3))) {
                 running ? stopCore(false) : startCore(false);
                 hotkeyToggles |= BIT(3);
             }
@@ -506,15 +472,12 @@ void NooFrame::pressKey(int key)
     }
 }
 
-void NooFrame::releaseKey(int key)
-{
+void NooFrame::releaseKey(int key) {
     // Handle a key release separate from the key's actual mapping
-    switch (key)
-    {
+    switch (key) {
         case 12: // Fast Forward Hold
             // Restore the previous FPS limiter setting
-            if (fpsLimiterBackup != 0)
-            {
+            if (fpsLimiterBackup != 0) {
                 Settings::fpsLimiter = fpsLimiterBackup;
                 fpsLimiterBackup = 0;
             }
@@ -535,30 +498,24 @@ void NooFrame::releaseKey(int key)
     }
 }
 
-void NooFrame::loadRomPath(std::string path)
-{
+void NooFrame::loadRomPath(std::string path) {
     // Set the NDS or GBA ROM path depending on the extension of the given file
     // If a ROM of the other type is already loaded, ask if it should be loaded alongside the new ROM
-    if (path.find(".nds", path.length() - 4) != std::string::npos) // NDS ROM
-    {
-        if (gbaPath != "")
-        {
+    if (path.find(".nds", path.length() - 4) != std::string::npos) { // NDS ROM
+        if (gbaPath != "") {
             wxMessageDialog dialog(this, "Load the current GBA ROM alongside this ROM?", "Loading NDS ROM", wxYES_NO | wxICON_NONE);
             if (dialog.ShowModal() != wxID_YES) gbaPath = "";
         }
         ndsPath = path;
     }
-    else if (path.find(".gba", path.length() - 4) != std::string::npos) // GBA ROM
-    {
-        if (ndsPath != "")
-        {
+    else if (path.find(".gba", path.length() - 4) != std::string::npos) { // GBA ROM
+        if (ndsPath != "") {
             wxMessageDialog dialog(this, "Load the current NDS ROM alongside this ROM?", "Loading GBA ROM", wxYES_NO | wxICON_NONE);
             if (dialog.ShowModal() != wxID_YES) ndsPath = "";
         }
         gbaPath = path;
     }
-    else
-    {
+    else {
         return;
     }
 
@@ -566,30 +523,26 @@ void NooFrame::loadRomPath(std::string path)
     startCore(true);
 }
 
-void NooFrame::loadRom(wxCommandEvent &event)
-{
+void NooFrame::loadRom(wxCommandEvent &event) {
     // Show the file browser
     wxFileDialog romSelect(this, "Select ROM File", "", "", "NDS/GBA ROM files (*.nds, *.gba)|*.nds;*.gba", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (romSelect.ShowModal() != wxID_CANCEL)
         loadRomPath((const char*)romSelect.GetPath().mb_str(wxConvUTF8));
 }
 
-void NooFrame::bootFirmware(wxCommandEvent &event)
-{
+void NooFrame::bootFirmware(wxCommandEvent &event) {
     // Start the core with no ROM
     ndsPath = "";
     gbaPath = "";
     startCore(true);
 }
 
-void NooFrame::trimRom(wxCommandEvent &event)
-{
+void NooFrame::trimRom(wxCommandEvent &event) {
     bool gba = core->gbaMode;
 
     // Confirm that the current ROM should be trimmed
     wxMessageDialog dialog(this, "Trim the current ROM to save space?", "Trimming ROM", wxYES_NO | wxICON_NONE);
-    if (dialog.ShowModal() == wxID_YES)
-    {
+    if (dialog.ShowModal() == wxID_YES) {
         int oldSize, newSize;
 
         // Pause the core for safety and trim the ROM
@@ -610,19 +563,16 @@ void NooFrame::trimRom(wxCommandEvent &event)
     }
 }
 
-void NooFrame::changeSave(wxCommandEvent &event)
-{
+void NooFrame::changeSave(wxCommandEvent &event) {
     // Show the save dialog
     SaveDialog saveDialog(this);
     saveDialog.ShowModal();
 }
 
-void NooFrame::saveState(wxCommandEvent &event)
-{
+void NooFrame::saveState(wxCommandEvent &event) {
     // Create a confirmation dialog, with extra information if a state file doesn't exist yet
     wxMessageDialog *dialog;
-    switch (core->saveStates.checkState())
-    {
+    switch (core->saveStates.checkState()) {
         case STATE_FILE_FAIL:
             dialog = new wxMessageDialog(this, "Saving and loading states is dangerous and can lead to data "
                 "loss. States are also not guaranteed to be compatible across emulator versions. Please "
@@ -637,8 +587,7 @@ void NooFrame::saveState(wxCommandEvent &event)
     }
 
     // Show the dialog and save the state if confirmed
-    if (dialog->ShowModal() == wxID_YES)
-    {
+    if (dialog->ShowModal() == wxID_YES) {
         stopCore(false);
         core->saveStates.saveState();
         startCore(false);
@@ -646,12 +595,10 @@ void NooFrame::saveState(wxCommandEvent &event)
     delete dialog;
 }
 
-void NooFrame::loadState(wxCommandEvent &event)
-{
+void NooFrame::loadState(wxCommandEvent &event) {
     // Create a confirmation dialog, or an error if something went wrong
     wxMessageDialog *dialog;
-    switch (core->saveStates.checkState())
-    {
+    switch (core->saveStates.checkState()) {
         case STATE_SUCCESS:
             dialog = new wxMessageDialog(this, "Do you want to load the saved state and lose the "
                 "current state? This can't be undone!", "Load State", wxYES_NO | wxICON_NONE);
@@ -674,8 +621,7 @@ void NooFrame::loadState(wxCommandEvent &event)
     }
 
     // Show the dialog and load the state if confirmed
-    if (dialog->ShowModal() == wxID_YES)
-    {
+    if (dialog->ShowModal() == wxID_YES) {
         stopCore(false);
         core->saveStates.loadState();
         startCore(false);
@@ -683,14 +629,12 @@ void NooFrame::loadState(wxCommandEvent &event)
     delete dialog;
 }
 
-void NooFrame::quit(wxCommandEvent &event)
-{
+void NooFrame::quit(wxCommandEvent &event) {
     // Close the program
     Close(true);
 }
 
-void NooFrame::pause(wxCommandEvent &event)
-{
+void NooFrame::pause(wxCommandEvent &event) {
     // Pause or resume the core
     if (running)
         stopCore(false);
@@ -698,132 +642,113 @@ void NooFrame::pause(wxCommandEvent &event)
         startCore(false);
 }
 
-void NooFrame::restart(wxCommandEvent &event)
-{
+void NooFrame::restart(wxCommandEvent &event) {
     // Restart the core
     startCore(true);
 }
 
-void NooFrame::stop(wxCommandEvent &event)
-{
+void NooFrame::stop(wxCommandEvent &event) {
     // Stop the core
     stopCore(true);
 }
 
-void NooFrame::actionReplay(wxCommandEvent &event)
-{
+void NooFrame::actionReplay(wxCommandEvent &event) {
     // Show the AR cheats dialog
     CheatDialog cheatDialog(core);
     cheatDialog.ShowModal();
 }
 
-void NooFrame::addSystem(wxCommandEvent &event)
-{
+void NooFrame::addSystem(wxCommandEvent &event) {
     // Create a new emulator instance
     app->createFrame();
 }
 
-void NooFrame::dsiModeToggle(wxCommandEvent &event)
-{
+void NooFrame::dsiModeToggle(wxCommandEvent &event) {
     // Toggle the DSi homebrew mode setting
     Settings::dsiMode = !Settings::dsiMode;
     Settings::save();
 }
 
-void NooFrame::directBootToggle(wxCommandEvent &event)
-{
+void NooFrame::directBootToggle(wxCommandEvent &event) {
     // Toggle the direct boot setting
     Settings::directBoot = !Settings::directBoot;
     Settings::save();
 }
 
-void NooFrame::romInRam(wxCommandEvent &event)
-{
+void NooFrame::romInRam(wxCommandEvent &event) {
     // Toggle the ROM in RAM setting
     Settings::romInRam = !Settings::romInRam;
     Settings::save();
 }
 
-void NooFrame::fpsLimiter(wxCommandEvent &event)
-{
+void NooFrame::fpsLimiter(wxCommandEvent &event) {
     // Toggle the FPS limiter setting
     Settings::fpsLimiter = !Settings::fpsLimiter;
     Settings::save();
 }
 
-template <int value> void NooFrame::frameskip(wxCommandEvent &event)
-{
+template <int value> void NooFrame::frameskip(wxCommandEvent &event) {
     // Set the skip frames setting
     Settings::frameskip = value;
     Settings::save();
 }
 
-void NooFrame::threaded2D(wxCommandEvent &event)
-{
+void NooFrame::threaded2D(wxCommandEvent &event) {
     // Toggle the threaded 2D setting
     Settings::threaded2D = !Settings::threaded2D;
     Settings::save();
 }
 
-template <int value> void NooFrame::threaded3D(wxCommandEvent &event)
-{
+template <int value> void NooFrame::threaded3D(wxCommandEvent &event) {
     // Set the threaded 3D setting
     Settings::threaded3D = value;
     Settings::save();
 }
 
-void NooFrame::highRes3D(wxCommandEvent &event)
-{
+void NooFrame::highRes3D(wxCommandEvent &event) {
     // Toggle the high-resolution 3D setting
     Settings::highRes3D = !Settings::highRes3D;
     Settings::save();
 }
 
-void NooFrame::screenGhost(wxCommandEvent &event)
-{
+void NooFrame::screenGhost(wxCommandEvent &event) {
     // Toggle the simulate ghosting setting
     Settings::screenGhost = !Settings::screenGhost;
     app->updateLayouts();
 }
 
-void NooFrame::emulateAudio(wxCommandEvent &event)
-{
+void NooFrame::emulateAudio(wxCommandEvent &event) {
     // Toggle the audio emulation setting
     Settings::emulateAudio = !Settings::emulateAudio;
     Settings::save();
 }
 
-void NooFrame::audio16Bit(wxCommandEvent &event)
-{
+void NooFrame::audio16Bit(wxCommandEvent &event) {
     // Toggle the 16-bit audio output setting
     Settings::audio16Bit = !Settings::audio16Bit;
     Settings::save();
 }
 
-void NooFrame::micEnable(wxCommandEvent &event)
-{
+void NooFrame::micEnable(wxCommandEvent &event) {
     // Toggle the use microphone setting
     NooApp::micEnable = !NooApp::micEnable;
     NooApp::micEnable ? app->startStream(1) : app->stopStream(1);
     Settings::save();
 }
 
-void NooFrame::pathSettings(wxCommandEvent &event)
-{
+void NooFrame::pathSettings(wxCommandEvent &event) {
     // Show the path settings dialog
     PathDialog pathDialog;
     pathDialog.ShowModal();
 }
 
-void NooFrame::layoutSettings(wxCommandEvent &event)
-{
+void NooFrame::layoutSettings(wxCommandEvent &event) {
     // Show the layout settings dialog
     LayoutDialog layoutDialog(app);
     layoutDialog.ShowModal();
 }
 
-void NooFrame::inputSettings(wxCommandEvent &event)
-{
+void NooFrame::inputSettings(wxCommandEvent &event) {
     // Pause joystick updates and show the input settings dialog
     if (timer) timer->Stop();
     InputDialog inputDialog(joystick);
@@ -831,27 +756,22 @@ void NooFrame::inputSettings(wxCommandEvent &event)
     if (timer) timer->Start(10);
 }
 
-void NooFrame::updateJoystick(wxTimerEvent &event)
-{
+void NooFrame::updateJoystick(wxTimerEvent &event) {
     // Check the status of mapped joystick inputs and trigger key presses and releases accordingly
-    for (int i = 0; i < MAX_KEYS; i++)
-    {
-        if (NooApp::keyBinds[i] >= 3000 && joystick->GetNumberAxes() > NooApp::keyBinds[i] - 3000) // Axis -
-        {
+    for (int i = 0; i < MAX_KEYS; i++) {
+        if (NooApp::keyBinds[i] >= 3000 && joystick->GetNumberAxes() > NooApp::keyBinds[i] - 3000) { // Axis -
             if (joystick->GetPosition(NooApp::keyBinds[i] - 3000) - axisBases[NooApp::keyBinds[i] - 3000] < -16384)
                 pressKey(i);
             else
                 releaseKey(i);
         }
-        else if (NooApp::keyBinds[i] >= 2000 && joystick->GetNumberAxes() > NooApp::keyBinds[i] - 2000) // Axis +
-        {
+        else if (NooApp::keyBinds[i] >= 2000 && joystick->GetNumberAxes() > NooApp::keyBinds[i] - 2000) { // Axis +
             if (joystick->GetPosition(NooApp::keyBinds[i] - 2000) - axisBases[NooApp::keyBinds[i] - 2000] > 16384)
                 pressKey(i);
             else
                 releaseKey(i);
         }
-        else if (NooApp::keyBinds[i] >= 1000 && joystick->GetNumberButtons() > NooApp::keyBinds[i] - 1000) // Button
-        {
+        else if (NooApp::keyBinds[i] >= 1000 && joystick->GetNumberButtons() > NooApp::keyBinds[i] - 1000) { // Button
             if (joystick->GetButtonState(NooApp::keyBinds[i] - 1000))
                 pressKey(i);
             else
@@ -860,8 +780,7 @@ void NooFrame::updateJoystick(wxTimerEvent &event)
     }
 }
 
-void NooFrame::dropFiles(wxDropFilesEvent &event)
-{
+void NooFrame::dropFiles(wxDropFilesEvent &event) {
     // Load a single dropped file
     if (event.GetNumberOfFiles() != 1) return;
     wxString path = event.GetFiles()[0];
@@ -869,8 +788,7 @@ void NooFrame::dropFiles(wxDropFilesEvent &event)
     (mainFrame ? this : partner)->loadRomPath((const char*)path.mb_str(wxConvUTF8));
 }
 
-void NooFrame::close(wxCloseEvent &event)
-{
+void NooFrame::close(wxCloseEvent &event) {
     // Properly shut down the emulator
     (mainFrame ? this : partner)->stopCore(true);
     app->removeFrame(id);

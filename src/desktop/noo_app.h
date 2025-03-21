@@ -28,8 +28,7 @@
 
 class NooFrame;
 
-class NooApp: public wxApp
-{
+class NooApp: public wxApp {
     public:
         static int micEnable;
         static int splitScreens;

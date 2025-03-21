@@ -25,8 +25,7 @@
 
 class Core;
 
-class Cp15
-{
+class Cp15 {
     public:
         uint32_t exceptionAddr = 0;
         bool dtcmCanRead = false, dtcmCanWrite = false;

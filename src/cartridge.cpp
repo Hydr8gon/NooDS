@@ -23,8 +23,7 @@
 #include "core.h"
 #include "settings.h"
 
-Cartridge::~Cartridge()
-{
+Cartridge::~Cartridge() {
     // Update the save file before exiting
     writeSave();
 
@@ -34,8 +33,7 @@ Cartridge::~Cartridge()
     if (save) delete[] save;
 }
 
-bool Cartridge::setRom(std::string romPath, int romFd, int saveFd, int stateFd, int cheatFd)
-{
+bool Cartridge::setRom(std::string romPath, int romFd, int saveFd, int stateFd, int cheatFd) {
     // Derive file names with extensions based on instance ID
     std::string basePath = romPath.substr(0, romPath.rfind('.'));
     std::string savePath = basePath + (core->id ? (".sv" + std::to_string(core->id + 1)) : ".sav");
@@ -59,8 +57,7 @@ bool Cartridge::setRom(std::string romPath, int romFd, int saveFd, int stateFd, 
     return loadRom();
 }
 
-bool Cartridge::loadRom()
-{
+bool Cartridge::loadRom() {
     // Attempt to open a ROM file
     romFile = (romFd == -1) ? fopen(romPath.c_str(), "rb") : fdopen(dup(romFd), "rb");
     if (!romFile) return false;
@@ -69,8 +66,7 @@ bool Cartridge::loadRom()
     fseek(romFile, 0, SEEK_SET);
 
     // Attempt to load the ROM's save into memory
-    if (FILE *saveFile = (saveFd == -1) ? fopen(savePath.c_str(), "rb") : fdopen(dup(saveFd), "rb"))
-    {
+    if (FILE *saveFile = (saveFd == -1) ? fopen(savePath.c_str(), "rb") : fdopen(dup(saveFd), "rb")) {
         fseek(saveFile, 0, SEEK_END);
         saveSize = ftell(saveFile);
         fseek(saveFile, 0, SEEK_SET);
@@ -86,8 +82,7 @@ bool Cartridge::loadRom()
     return true;
 }
 
-void Cartridge::loadRomSection(size_t offset, size_t size)
-{
+void Cartridge::loadRomSection(size_t offset, size_t size) {
     // Load a section of the current ROM file into memory
     if (rom) delete[] rom;
     rom = new uint8_t[size];
@@ -96,17 +91,13 @@ void Cartridge::loadRomSection(size_t offset, size_t size)
     core->dldi.patchRom(rom, offset, size);
 }
 
-void Cartridge::writeSave()
-{
+void Cartridge::writeSave() {
     // Update the save file if the data changed
     mutex.lock();
-    if (saveDirty)
-    {
-        if (FILE *saveFile = (saveFd == -1) ? fopen(savePath.c_str(), "wb") : fdopen(dup(saveFd), "wb"))
-        {
+    if (saveDirty) {
+        if (FILE *saveFile = (saveFd == -1) ? fopen(savePath.c_str(), "wb") : fdopen(dup(saveFd), "wb")) {
             // Overwrite and resize without closing the file descriptor
-            if (saveFd != -1)
-            {
+            if (saveFd != -1) {
                 fseek(saveFile, 0, SEEK_SET);
                 ftruncate(saveFd, saveSize);
             }
@@ -120,18 +111,15 @@ void Cartridge::writeSave()
     mutex.unlock();
 }
 
-void Cartridge::trimRom()
-{
+void Cartridge::trimRom() {
     // Starting from the end, reduce the ROM size until a non-filler word is found
     int newSize;
-    for (newSize = romSize & ~3; newSize > 0; newSize -= 4)
-    {
+    for (newSize = romSize & ~3; newSize > 0; newSize -= 4) {
         if (U8TO32(rom, newSize - 4) != 0xFFFFFFFF)
             break;
     }
 
-    if (newSize < romSize)
-    {
+    if (newSize < romSize) {
         // Update the ROM in memory
         romSize = newSize;
         uint8_t *newRom = new uint8_t[newSize];
@@ -141,8 +129,7 @@ void Cartridge::trimRom()
 
         // Update the ROM file
         FILE *romFile = (romFd == -1) ? fopen(romPath.c_str(), "wb") : fdopen(dup(romFd), "wb");
-        if (romFile)
-        {
+        if (romFile) {
             if (newSize > 0)
                 fwrite(rom, sizeof(uint8_t), newSize, romFile);
             fclose(romFile);
@@ -150,21 +137,18 @@ void Cartridge::trimRom()
     }
 }
 
-void Cartridge::resizeSave(int newSize, bool dirty)
-{
+void Cartridge::resizeSave(int newSize, bool dirty) {
     mutex.lock();
     uint8_t *newSave = new uint8_t[newSize];
 
     // Resize the save
-    if (saveSize < newSize) // New save is larger
-    {
+    if (saveSize < newSize) { // New save is larger
         // Copy all of the old save and fill the rest with 0xFF
         if (saveSize < 0) saveSize = 0;
         memcpy(newSave, save, saveSize * sizeof(uint8_t));
         memset(&newSave[saveSize], 0xFF, (newSize - saveSize) * sizeof(uint8_t));
     }
-    else // New save is smaller
-    {
+    else { // New save is smaller
         // Copy as much of the old save as possible
         memcpy(newSave, save, newSize * sizeof(uint8_t));
     }
@@ -177,8 +161,7 @@ void Cartridge::resizeSave(int newSize, bool dirty)
     mutex.unlock();
 }
 
-void CartridgeNds::saveState(FILE *file)
-{
+void CartridgeNds::saveState(FILE *file) {
     // Write state data to the file
     fwrite(&saveSize, sizeof(saveSize), 1, file);
     if (saveSize > 0) fwrite(save, 1, saveSize, file);
@@ -200,8 +183,7 @@ void CartridgeNds::saveState(FILE *file)
     fwrite(romCmdOut, 8, sizeof(romCmdOut) / 8, file);
 }
 
-void CartridgeNds::loadState(FILE *file)
-{
+void CartridgeNds::loadState(FILE *file) {
     // Read state data from the file
     fread(&saveSize, sizeof(saveSize), 1, file);
     if (saveSize > 0) fread(save, 1, saveSize, file);
@@ -226,11 +208,9 @@ void CartridgeNds::loadState(FILE *file)
     saveDirty = false;
 }
 
-bool CartridgeNds::loadRom()
-{
+bool CartridgeNds::loadRom() {
     // Set the valid NDS save sizes
-    if (saveSizes.empty())
-    {
+    if (saveSizes.empty()) {
         saveSizes.push_back(0x000000); // None
         saveSizes.push_back(0x000200); // EEPROM 0.5KB
         saveSizes.push_back(0x002000); // EEPROM 8KB
@@ -244,25 +224,20 @@ bool CartridgeNds::loadRom()
     }
 
     // Try to load the ROM into RAM if enabled; otherwise fall back to file-based loading
-    if (!Cartridge::loadRom())
-    {
+    if (!Cartridge::loadRom()) {
         return false;
     }
-    else if (Settings::romInRam)
-    {
-        try
-        {
+    else if (Settings::romInRam) {
+        try {
             loadRomSection(0, romSize);
             fclose(romFile);
             romFile = nullptr;
         }
-        catch (std::bad_alloc &ba)
-        {
+        catch (std::bad_alloc &ba) {
             loadRomSection(0, 0x5000);
         }
     }
-    else
-    {
+    else {
         loadRomSection(0, 0x5000);
     }
 
@@ -277,8 +252,7 @@ bool CartridgeNds::loadRom()
     romCode = U8TO32(rom, 0x0C);
 
     // Check if the ROM is encrypted
-    if (romSize >= 0x8000) // ROM has secure area
-    {
+    if (romSize >= 0x8000) { // ROM has secure area
         // Decrypt the 'encryObj' string
         uint64_t data = U8TO64(rom, 0x4000);
         initKeycode(2);
@@ -287,8 +261,7 @@ bool CartridgeNds::loadRom()
         data = decrypt64(data);
 
         // If decryption was successful, the ROM is encrypted
-        if (data == 0x6A624F7972636E65) // encryObj
-        {
+        if (data == 0x6A624F7972636E65) { // encryObj
             LOG_INFO("Detected an encrypted ROM!\n");
             romEncrypted = true;
         }
@@ -296,8 +269,7 @@ bool CartridgeNds::loadRom()
     return true;
 }
 
-void CartridgeNds::directBoot()
-{
+void CartridgeNds::directBoot() {
     // Load the ROM header from file if needed
     if (romFile)
         loadRomSection(0, 0x170);
@@ -328,86 +300,70 @@ void CartridgeNds::directBoot()
 
     // Load the initial ARM9 code from file if needed
     uint32_t offset;
-    if (romFile)
-    {
+    if (romFile) {
         loadRomSection(offset9, size9);
         offset = 0;
     }
-    else
-    {
+    else {
         offset = offset9;
     }
 
     // Load the initial ARM9 code into memory
-    for (uint32_t i = 0; i < size9; i += 4)
-    {
-        if (romEncrypted && offset9 + i >= 0x4000 && offset9 + i < 0x4800)
-        {
-            if (offset9 + i < 0x4008)
-            {
+    for (uint32_t i = 0; i < size9; i += 4) {
+        if (romEncrypted && offset9 + i >= 0x4000 && offset9 + i < 0x4800) {
+            if (offset9 + i < 0x4008) {
                 // Overwrite the 'encryObj' string
                 core->memory.write<uint32_t>(0, ramAddr9 + i, 0xE7FFDEFF);
             }
-            else
-            {
+            else {
                 // Decrypt the first 2KB of the secure area
                 initKeycode(3);
                 uint64_t data = decrypt64(U8TO64(rom, (offset + i) & ~7));
                 core->memory.write<uint32_t>(0, ramAddr9 + i, data >> (((offset + i) & 4) ? 32 : 0));
             }
         }
-        else
-        {
+        else {
             core->memory.write<uint32_t>(0, ramAddr9 + i, U8TO32(rom, offset + i));
         }
     }
 
     // Load the initial ARM7 code from file if needed
-    if (romFile)
-    {
+    if (romFile) {
         loadRomSection(offset7, size7);
         offset = 0;
     }
-    else
-    {
+    else {
         offset = offset7;
     }
 
     // Load the initial ARM7 code into memory
-    for (uint32_t i = 0; i < size7; i += 4)
-    {
-        if (romEncrypted && offset7 + i >= 0x4000 && offset7 + i < 0x4800)
-        {
-            if (offset7 + i < 0x4008)
-            {
+    for (uint32_t i = 0; i < size7; i += 4) {
+        if (romEncrypted && offset7 + i >= 0x4000 && offset7 + i < 0x4800) {
+            if (offset7 + i < 0x4008) {
                 // Overwrite the 'encryObj' string
                 core->memory.write<uint32_t>(1, ramAddr7 + i, 0xE7FFDEFF);
             }
-            else
-            {
+            else {
                 // Decrypt the first 2KB of the secure area
                 initKeycode(3);
                 uint64_t data = decrypt64(U8TO64(rom, (offset + i) & ~7));
                 core->memory.write<uint32_t>(1, ramAddr7 + i, data >> (((offset + i) & 4) ? 32 : 0));
             }
         }
-        else
-        {
+        else {
             core->memory.write<uint32_t>(1, ramAddr7 + i, U8TO32(rom, offset + i));
         }
     }
 }
 
-uint64_t CartridgeNds::encrypt64(uint64_t value)
-{
+uint64_t CartridgeNds::encrypt64(uint64_t value) {
     // Encrypt a 64-bit value using the Blowfish algorithm
     // This is a translation of the pseudocode from GBATEK to C++
 
     uint32_t y = value;
     uint32_t x = value >> 32;
 
-    for (int i = 0x00; i <= 0x0F; i++)
-    {
+    for (int i = 0x00; i <= 0x0F; i++) {
         uint32_t z = encTable[i] ^ x;
         x = encTable[0x012 + ((z >> 24) & 0xFF)];
         x = encTable[0x112 + ((z >> 16) & 0xFF)] + x;
@@ -420,16 +376,14 @@ uint64_t CartridgeNds::encrypt64(uint64_t value)
     return ((uint64_t)(y ^ encTable[0x11]) << 32) | (x ^ encTable[0x10]);
 }
 
-uint64_t CartridgeNds::decrypt64(uint64_t value)
-{
+uint64_t CartridgeNds::decrypt64(uint64_t value) {
     // Decrypt a 64-bit value using the Blowfish algorithm
     // This is a translation of the pseudocode from GBATEK to C++
 
     uint32_t y = value;
     uint32_t x = value >> 32;
 
-    for (int i = 0x11; i >= 0x02; i--)
-    {
+    for (int i = 0x11; i >= 0x02; i--) {
         uint32_t z = encTable[i] ^ x;
         x = encTable[0x012 + ((z >> 24) & 0xFF)];
         x = encTable[0x112 + ((z >> 16) & 0xFF)] + x;
@@ -442,8 +396,7 @@ uint64_t CartridgeNds::decrypt64(uint64_t value)
     return ((uint64_t)(y ^ encTable[0x00]) << 32) | (x ^ encTable[0x01]);
 }
 
-void CartridgeNds::initKeycode(int level)
-{
+void CartridgeNds::initKeycode(int level) {
     // Initialize the Blowfish encryption table
     // This is a translation of the pseudocode from GBATEK to C++
 
@@ -463,8 +416,7 @@ void CartridgeNds::initKeycode(int level)
     if (level >= 3) applyKeycode();
 }
 
-void CartridgeNds::applyKeycode()
-{
+void CartridgeNds::applyKeycode() {
     // Apply a keycode to the Blowfish encryption table
     // This is a translation of the pseudocode from GBATEK to C++
     
@@ -476,8 +428,7 @@ void CartridgeNds::applyKeycode()
     encCode[0] = enc2;
     encCode[1] = enc2 >> 32;
 
-    for (int i = 0; i <= 0x11; i++)
-    {
+    for (int i = 0; i <= 0x11; i++) {
         uint32_t byteReverse = 0;
         for (int j = 0; j < 4; j++)
             byteReverse |= ((encCode[i % 2] >> (j * 8)) & 0xFF) << ((3 - j) * 8);
@@ -487,16 +438,14 @@ void CartridgeNds::applyKeycode()
 
     uint64_t scratch = 0;
 
-    for (int i = 0; i <= 0x410; i += 2)
-    {
+    for (int i = 0; i <= 0x410; i += 2) {
         scratch = encrypt64(scratch);
         encTable[i + 0] = scratch >> 32;
         encTable[i + 1] = scratch;
     }
 }
 
-void CartridgeNds::wordReady(bool cpu)
-{
+void CartridgeNds::wordReady(bool cpu) {
     // Indicate that a word is ready
     romCtrl[cpu] |= BIT(23);
 
@@ -504,45 +453,37 @@ void CartridgeNds::wordReady(bool cpu)
     core->dma[cpu].trigger((cpu == 0) ? 5 : 2);
 }
 
-void CartridgeNds::writeAuxSpiCnt(bool cpu, uint16_t mask, uint16_t value)
-{
+void CartridgeNds::writeAuxSpiCnt(bool cpu, uint16_t mask, uint16_t value) {
     // Write to one of the AUXSPICNT registers
     mask &= 0xE043;
     auxSpiCnt[cpu] = (auxSpiCnt[cpu] & ~mask) | (value & mask);
 }
 
-void CartridgeNds::writeRomCmdOutL(bool cpu, uint32_t mask, uint32_t value)
-{
+void CartridgeNds::writeRomCmdOutL(bool cpu, uint32_t mask, uint32_t value) {
     // Write to one of the ROMCMDOUT registers (low)
     romCmdOut[cpu] = (romCmdOut[cpu] & ~((uint64_t)mask)) | (value & mask);
 }
 
-void CartridgeNds::writeRomCmdOutH(bool cpu, uint32_t mask, uint32_t value)
-{
+void CartridgeNds::writeRomCmdOutH(bool cpu, uint32_t mask, uint32_t value) {
     // Write to one of the ROMCMDOUT registers (high)
     romCmdOut[cpu] = (romCmdOut[cpu] & ~((uint64_t)mask << 32)) | ((uint64_t)(value & mask) << 32);
 }
 
-void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
-{
+void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value) {
     // Do nothing if there is no save
     if (saveSize == 0) return;
 
-    if (auxWriteCount[cpu] == 0)
-    {
+    if (auxWriteCount[cpu] == 0) {
         // On the first write, set the command byte
         if (value == 0) return;
         auxCommand[cpu] = value;
         auxAddress[cpu] = 0;
         auxSpiData[cpu] = 0;
     }
-    else
-    {
+    else {
         // Incredibly naive save type detection, based on commands that might be sent
-        if (saveSize == -1)
-        {
-            switch (auxCommand[cpu])
-            {
+        if (saveSize == -1) {
+            switch (auxCommand[cpu]) {
                 case 0x0B: // EEPROM 0.5KB: Read from upper memory
                     LOG_INFO("Detected EEPROM 0.5KB save type\n");
                     resizeSave(0x200, false);
@@ -566,22 +507,16 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
             }
         }
 
-        switch (saveSize)
-        {
-            case 0x200: // EEPROM 0.5KB
-            {
-                switch (auxCommand[cpu])
-                {
-                    case 0x03: // Read from lower memory
-                    {
-                        if (auxWriteCount[cpu] < 2)
-                        {
+        switch (saveSize) {
+            case 0x200: { // EEPROM 0.5KB
+                switch (auxCommand[cpu]) {
+                    case 0x03: { // Read from lower memory
+                        if (auxWriteCount[cpu] < 2) {
                             // On the second write, set the 1 byte address to read from
                             auxAddress[cpu] = value;
                             auxSpiData[cpu] = 0;
                         }
-                        else
-                        {
+                        else {
                             // On writes 3+, read data from the save and send it back
                             auxSpiData[cpu] = (auxAddress[cpu] < 0x200) ? save[auxAddress[cpu]] : 0;
                             auxAddress[cpu]++;
@@ -589,16 +524,13 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                         break;
                     }
 
-                    case 0x0B: // Read from upper memory
-                    {
-                        if (auxWriteCount[cpu] < 2)
-                        {
+                    case 0x0B: { // Read from upper memory
+                        if (auxWriteCount[cpu] < 2) {
                             // On the second write, set the 1 byte address to read from
                             auxAddress[cpu] = 0x100 + value;
                             auxSpiData[cpu] = 0;
                         }
-                        else
-                        {
+                        else {
                             // On writes 3+, read data from the save and send it back
                             auxSpiData[cpu] = (auxAddress[cpu] < 0x200) ? save[auxAddress[cpu]] : 0;
                             auxAddress[cpu]++;
@@ -606,19 +538,15 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                         break;
                     }
 
-                    case 0x02: // Write to lower memory
-                    {
-                        if (auxWriteCount[cpu] < 2)
-                        {
+                    case 0x02: { // Write to lower memory
+                        if (auxWriteCount[cpu] < 2) {
                             // On the second write, set the 1 byte address to write to
                             auxAddress[cpu] = value;
                             auxSpiData[cpu] = 0;
                         }
-                        else
-                        {
+                        else {
                             // On writes 3+, write data to the save
-                            if (auxAddress[cpu] < 0x200)
-                            {
+                            if (auxAddress[cpu] < 0x200) {
                                 mutex.lock();
                                 save[auxAddress[cpu]] = value;
                                 saveDirty = true;
@@ -631,19 +559,15 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                         break;
                     }
 
-                    case 0x0A: // Write to upper memory
-                    {
-                        if (auxWriteCount[cpu] < 2)
-                        {
+                    case 0x0A: { // Write to upper memory
+                        if (auxWriteCount[cpu] < 2) {
                             // On the second write, set the 1 byte address to write to
                             auxAddress[cpu] = 0x100 + value;
                             auxSpiData[cpu] = 0;
                         }
-                        else
-                        {
+                        else {
                             // On writes 3+, write data to the save
-                            if (auxAddress[cpu] < 0x200)
-                            {
+                            if (auxAddress[cpu] < 0x200) {
                                 mutex.lock();
                                 save[auxAddress[cpu]] = value;
                                 saveDirty = true;
@@ -656,8 +580,7 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                         break;
                     }
 
-                    default:
-                    {
+                    default: {
                         LOG_CRIT("Write to AUX SPI with unknown EEPROM 0.5KB command: 0x%X\n", auxCommand[cpu]);
                         auxSpiData[cpu] = 0;
                         break;
@@ -666,21 +589,16 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                 break;
             }
 
-            case 0x2000: case 0x8000: case 0x10000: case 0x20000: // EEPROM 8KB, 64KB, 128KB; FRAM 32KB
-            {
-                switch (auxCommand[cpu])
-                {
-                    case 0x03: // Read from memory
-                    {
-                        if (auxWriteCount[cpu] < ((saveSize == 0x20000) ? 4 : 3))
-                        {
+            case 0x2000: case 0x8000: case 0x10000: case 0x20000: { // EEPROM 8KB, 64KB, 128KB; FRAM 32KB
+                switch (auxCommand[cpu]) {
+                    case 0x03: { // Read from memory
+                        if (auxWriteCount[cpu] < ((saveSize == 0x20000) ? 4 : 3)) {
                             // On writes 2-3, set the 2 byte address to read from (not EEPROM 128KB)
                             // EEPROM 128KB uses a 3 byte address, so it's set on writes 2-4
                             auxAddress[cpu] |= value << ((((saveSize == 0x20000) ? 3 : 2) - auxWriteCount[cpu]) * 8);
                             auxSpiData[cpu] = 0;
                         }
-                        else
-                        {
+                        else {
                             // On writes 4+, read data from the save and send it back
                             auxSpiData[cpu] = (auxAddress[cpu] < saveSize) ? save[auxAddress[cpu]] : 0;
                             auxAddress[cpu]++;
@@ -688,20 +606,16 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                         break;
                     }
 
-                    case 0x02: // Write to memory
-                    {
-                        if (auxWriteCount[cpu] < ((saveSize == 0x20000) ? 4 : 3))
-                        {
+                    case 0x02: { // Write to memory
+                        if (auxWriteCount[cpu] < ((saveSize == 0x20000) ? 4 : 3)) {
                             // On writes 2-3, set the 2 byte address to write to (not EEPROM 128KB)
                             // EEPROM 128KB uses a 3 byte address, so it's set on writes 2-4
                             auxAddress[cpu] |= value << ((((saveSize == 0x20000) ? 3 : 2) - auxWriteCount[cpu]) * 8);
                             auxSpiData[cpu] = 0;
                         }
-                        else
-                        {
+                        else {
                             // On writes 4+, write data to the save
-                            if (auxAddress[cpu] < saveSize)
-                            {
+                            if (auxAddress[cpu] < saveSize) {
                                 mutex.lock();
                                 save[auxAddress[cpu]] = value;
                                 saveDirty = true;
@@ -714,8 +628,7 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                         break;
                     }
 
-                    default:
-                    {
+                    default: {
                         LOG_CRIT("Write to AUX SPI with unknown EEPROM/FRAM command: 0x%X\n", auxCommand[cpu]);
                         auxSpiData[cpu] = 0;
                         break;
@@ -724,20 +637,15 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                 break;
             }
 
-            case 0x40000: case 0x80000: case 0x100000: case 0x800000: // FLASH 256KB, 512KB, 1024KB, 8192KB
-            {
-                switch (auxCommand[cpu])
-                {
-                    case 0x03: // Read data bytes
-                    {
-                        if (auxWriteCount[cpu] < 4)
-                        {
+            case 0x40000: case 0x80000: case 0x100000: case 0x800000: { // FLASH 256KB, 512KB, 1024KB, 8192KB
+                switch (auxCommand[cpu]) {
+                    case 0x03: { // Read data bytes
+                        if (auxWriteCount[cpu] < 4) {
                             // On writes 2-4, set the 3 byte address to read from
                             auxAddress[cpu] |= value << ((3 - auxWriteCount[cpu]) * 8);
                             auxSpiData[cpu] = 0;
                         }
-                        else
-                        {
+                        else {
                             // On writes 5+, read data from the save and send it back
                             auxSpiData[cpu] = (auxAddress[cpu] < saveSize) ? save[auxAddress[cpu]] : 0;
                             auxAddress[cpu]++;
@@ -745,19 +653,15 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                         break;
                     }
 
-                    case 0x0A: // Page write
-                    {
-                        if (auxWriteCount[cpu] < 4)
-                        {
+                    case 0x0A: { // Page write
+                        if (auxWriteCount[cpu] < 4) {
                             // On writes 2-4, set the 3 byte address to write to
                             auxAddress[cpu] |= value << ((3 - auxWriteCount[cpu]) * 8);
                             auxSpiData[cpu] = 0;
                         }
-                        else
-                        {
+                        else {
                             // On writes 5+, write data to the save
-                            if (auxAddress[cpu] < saveSize)
-                            {
+                            if (auxAddress[cpu] < saveSize) {
                                 mutex.lock();
                                 save[auxAddress[cpu]] = value;
                                 saveDirty = true;
@@ -770,8 +674,7 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                         break;
                     }
 
-                    case 0x08: // IR-related
-                    {
+                    case 0x08: { // IR-related
                         // If a gamecode starts with 'I', the game has an infrared port in its cartridge
                         // This shares the same SPI as FLASH memory
                         // Some games check this command as an anti-piracy measure
@@ -779,8 +682,7 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                         break;
                     }
 
-                    default:
-                    {
+                    default: {
                         LOG_CRIT("Write to AUX SPI with unknown FLASH command: 0x%X\n", auxCommand[cpu]);
                         auxSpiData[cpu] = 0;
                         break;
@@ -789,8 +691,7 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
                 break;
             }
 
-            default:
-            {
+            default: {
                 LOG_CRIT("Write to AUX SPI with unknown save size: 0x%X\n", saveSize);
                 break;
             }
@@ -804,8 +705,7 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value)
         auxWriteCount[cpu] = 0;
 }
 
-void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
-{
+void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value) {
     bool transfer = false;
 
     // Set the release reset bit, but never clear it
@@ -826,8 +726,7 @@ void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
 
     // Determine the size of the block to transfer
     uint8_t size = (romCtrl[cpu] & 0x07000000) >> 24;
-    switch (size)
-    {
+    switch (size) {
         case 0: blockSize[cpu] = 0; break;
         case 7: blockSize[cpu] = 4; break;
         default: blockSize[cpu] = 0x100 << size; break;
@@ -839,8 +738,7 @@ void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
         command |= ((romCmdOut[cpu] >> (i * 8)) & 0xFF) << ((7 - i) * 8);
 
     // Decrypt the ROM command if encryption is enabled
-    if (encrypted[cpu])
-    {
+    if (encrypted[cpu]) {
         initKeycode(2);
         command = decrypt64(command);
     }
@@ -848,80 +746,65 @@ void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
     cmdMode = CMD_NONE;
 
     // Interpret the ROM command
-    if (rom)
-    {
-        if (command == 0x0000000000000000) // Get header
-        {
+    if (rom) {
+        if (command == 0x0000000000000000) { // Get header
             cmdMode = CMD_HEADER;
 
             // Load the header from file if needed
             if (romFile)
                 loadRomSection(0, blockSize[cpu]);
         }
-        else if (command == 0x9000000000000000 || (command >> 60) == 0x1 || command == 0xB800000000000000) // Get chip ID
-        {
+        else if (command == 0x9000000000000000 || (command >> 60) == 0x1 || command == 0xB800000000000000) { // Get chip ID
             cmdMode = CMD_CHIP;
         }
-        else if ((command >> 56) == 0x3C) // Activate KEY1 encryption mode
-        {
+        else if ((command >> 56) == 0x3C) { // Activate KEY1 encryption mode
             // Initialize KEY1 encryption
             encrypted[cpu] = true;
         }
-        else if ((command >> 60) == 0x2) // Get secure area
-        {
+        else if ((command >> 60) == 0x2) { // Get secure area
             cmdMode = CMD_SECURE;
             romAddrReal[cpu] = ((command & 0x0FFFF00000000000) >> 44) * 0x1000;
 
             // Load the secure area block from file if needed
-            if (romFile)
-            {
+            if (romFile) {
                 loadRomSection(romAddrReal[cpu], blockSize[cpu]);
                 romAddrVirt[cpu] = 0;
             }
-            else
-            {
+            else {
                 romAddrVirt[cpu] = romAddrReal[cpu];
             }
         }
-        else if ((command >> 60) == 0xA) // Enter main data mode
-        {
+        else if ((command >> 60) == 0xA) { // Enter main data mode
             // Disable KEY1 encryption
             // On hardware, this is where KEY2 encryption would start
             encrypted[cpu] = false;
         }
-        else if ((command >> 56) == 0xB7) // Get data
-        {
+        else if ((command >> 56) == 0xB7) { // Get data
             cmdMode = CMD_DATA;
             romAddrReal[cpu] = (command >> 24) & romMask;
 
             // Load the ROM data from file if needed
-            if (romFile)
-            {
-                if (romAddrReal[cpu] < 0x8000)
-                {
+            if (romFile) {
+                if (romAddrReal[cpu] < 0x8000) {
                     // Workaround for address redirection when loading from file
                     loadRomSection(0, 0x8200 + blockSize[cpu]);
                     romAddrVirt[cpu] = romAddrReal[cpu];
                 }
-                else
-                {
+                else {
                     loadRomSection(romAddrReal[cpu], blockSize[cpu]);
                     romAddrVirt[cpu] = 0;
                 }
             }
-            else
-            {
+            else {
                 romAddrVirt[cpu] = romAddrReal[cpu];
             }
         }
-        else if (command != 0x9F00000000000000) // Unknown (not dummy)
-        {
+        else if (command != 0x9F00000000000000) { // Unknown (not dummy)
             LOG_CRIT("ROM transfer with unknown command: 0x%llX\n", command);
         }
     }
 
-    if (blockSize[cpu] == 0)
-    {
+    if (blockSize[cpu] == 0) {
         // End the transfer right away if the block size is 0
         romCtrl[cpu] &= ~BIT(23); // Word not ready
         romCtrl[cpu] &= ~BIT(31); // Block ready
@@ -930,16 +813,14 @@ void CartridgeNds::writeRomCtrl(bool cpu, uint32_t mask, uint32_t value)
         if (auxSpiCnt[cpu] & BIT(14))
             core->interpreter[cpu].sendInterrupt(19);
     }
-    else
-    {
+    else {
         // Schedule the first word to be ready
         core->schedule(SchedTask(CART9_WORD_READY + cpu), wordCycles[cpu]);
         readCount[cpu] = 0;
     }
 }
 
-uint32_t CartridgeNds::readRomDataIn(bool cpu)
-{
+uint32_t CartridgeNds::readRomDataIn(bool cpu) {
     // Don't transfer if the word ready bit isn't set
     if (!(romCtrl[cpu] & BIT(23)))
         return 0;
@@ -948,8 +829,7 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
     romCtrl[cpu] &= ~BIT(23);
 
     // Increment the read counter
-    if ((readCount[cpu] += 4) == blockSize[cpu])
-    {
+    if ((readCount[cpu] += 4) == blockSize[cpu]) {
         // End the transfer when the block size has been reached
         romCtrl[cpu] &= ~BIT(31); // Block ready
 
@@ -957,33 +837,27 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
         if (auxSpiCnt[cpu] & BIT(14))
             core->interpreter[cpu].sendInterrupt(19);
     }
-    else
-    {
+    else {
         // Schedule the next word to be ready
         core->schedule(SchedTask(CART9_WORD_READY + cpu), wordCycles[cpu]);
     }
 
     // Return a value from the cart depending on the current command
-    switch (cmdMode)
-    {
-        case CMD_HEADER:
-        {
+    switch (cmdMode) {
+        case CMD_HEADER: {
             // Read the ROM header, repeated every 0x1000 bytes
             return U8TO32(rom, (readCount[cpu] - 4) & 0xFFF);
         }
 
-        case CMD_CHIP:
-        {
+        case CMD_CHIP: {
             // Read the chip ID, repeated every 4 bytes
             // ROM dumps don't provide a chip ID, so use a fake one
             return 0x00001FC2;
         }
 
-        case CMD_SECURE:
-        {
+        case CMD_SECURE: {
             // Encrypt the first 2KB of the secure area
-            if (!romEncrypted && romAddrReal[cpu] == 0x4000 && readCount[cpu] <= 0x800)
-            {
+            if (!romEncrypted && romAddrReal[cpu] == 0x4000 && readCount[cpu] <= 0x800) {
                 // Supply the 'encryObj' string for the first 8 bytes (overwritten during decryption)
                 uint64_t data = (readCount[cpu] <= 8) ? 0x6A624F7972636E65 :
                     U8TO64(rom, (romAddrVirt[cpu] + readCount[cpu] - 4) & ~7);
@@ -993,8 +867,7 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
                 data = encrypt64(data);
 
                 // Double-encrypt the 'encryObj' string
-                if (readCount[cpu] <= 8)
-                {
+                if (readCount[cpu] <= 8) {
                     initKeycode(2);
                     data = encrypt64(data);
                 }
@@ -1006,8 +879,7 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
             return U8TO32(rom, romAddrVirt[cpu] + readCount[cpu] - 4);
         }
 
-        case CMD_DATA:
-        {
+        case CMD_DATA: {
             // Read ROM data from the given address
             // This command can't read the first 32KB of a ROM, so it redirects the address
             // Some games verify that the first 32KB are unreadable as an anti-piracy measure
@@ -1021,8 +893,7 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu)
     return 0xFFFFFFFF;
 }
 
-void CartridgeGba::saveState(FILE *file)
-{
+void CartridgeGba::saveState(FILE *file) {
     // Write state data to the file
     fwrite(&saveSize, sizeof(saveSize), 1, file);
     if (saveSize > 0) fwrite(save, 1, saveSize, file);
@@ -1035,8 +906,7 @@ void CartridgeGba::saveState(FILE *file)
     fwrite(&flashErase, sizeof(flashErase), 1, file);
 }
 
-void CartridgeGba::loadState(FILE *file)
-{
+void CartridgeGba::loadState(FILE *file) {
     // Read state data from the file
     fread(&saveSize, sizeof(saveSize), 1, file);
     if (saveSize > 0) fread(save, 1, saveSize, file);
@@ -1052,17 +922,13 @@ void CartridgeGba::loadState(FILE *file)
     saveDirty = false;
 }
 
-bool CartridgeGba::findString(std::string string)
-{
+bool CartridgeGba::findString(std::string string) {
     // Scan a GBA ROM for a string and report if it was found
-    for (int i = 0; i < romSize; i += 4)
-    {
+    for (int i = 0; i < romSize; i += 4) {
         bool found = true;
 
-        for (size_t j = 0; j < string.length(); j++)
-        {
-            if (i + j >= romSize || rom[i + j] != string[j])
-            {
+        for (size_t j = 0; j < string.length(); j++) {
+            if (i + j >= romSize || rom[i + j] != string[j]) {
                 found = false;
                 break;
             }
@@ -1075,11 +941,9 @@ bool CartridgeGba::findString(std::string string)
     return false;
 }
 
-bool CartridgeGba::loadRom()
-{
+bool CartridgeGba::loadRom() {
     // Set the valid GBA save sizes
-    if (saveSizes.empty())
-    {
+    if (saveSizes.empty()) {
         saveSizes.push_back(0x00000); // None
         saveSizes.push_back(0x00200); // EEPROM 0.5KB
         saveSizes.push_back(0x02000); // EEPROM 8KB
@@ -1095,14 +959,12 @@ bool CartridgeGba::loadRom()
     romFile = nullptr;
 
     // Calculate the mask for ROM mirroring
-    if (romSize > 0xAC && rom[0xAC] == 'F') // NES classic
-    {
+    if (romSize > 0xAC && rom[0xAC] == 'F') { // NES classic
         // NES classic ROMs are mirrored based on their size
         for (romMask = 1; romMask < romSize; romMask <<= 1);
         romMask--;
     }
-    else
-    {
+    else {
         // Most ROMs are only mirrored each 32MB wait state area
         romMask = 0x1FFFFFF;
     }
@@ -1116,20 +978,17 @@ bool CartridgeGba::loadRom()
     core->memory.updateMap7(0x08000000, 0x0D000000);
 
     // If the save size is unknown, try to detect it
-    if (saveSize == -1)
-    {
+    if (saveSize == -1) {
         const std::string saveStrs[] = { "EEPROM_V", "SRAM_V", "FLASH_V", "FLASH512_V", "FLASH1M_V" };
 
         // Unlike the DS, a GBA cart's save type can be detected by searching for strings in the ROM
         // Search the ROM for a save string so a new save of that type can be created
-        for (int i = 0; i < 5; i++)
-        {
+        for (int i = 0; i < 5; i++) {
             if (!findString(saveStrs[i]))
                 continue;
 
             // Create a new GBA save of the detected type
-            switch (i)
-            {
+            switch (i) {
                 case 0: // EEPROM
                     // EEPROM can be either 0.5KB or 8KB, so it must be guessed based on how the game uses it
                     return true;
@@ -1154,18 +1013,14 @@ bool CartridgeGba::loadRom()
     return true;
 }
 
-uint8_t CartridgeGba::eepromRead()
-{
-    if (saveSize == -1)
-    {
+uint8_t CartridgeGba::eepromRead() {
+    if (saveSize == -1) {
         // Detect the save size based on how many command bits were sent before reading
-        if (eepromCount == 9)
-        {
+        if (eepromCount == 9) {
             LOG_INFO("Detected EEPROM 0.5KB save type\n");
             resizeSave(0x200, false);
         }
-        else
-        {
+        else {
             LOG_INFO("Detected EEPROM 8KB save type\n");
             resizeSave(0x2000, false);
         }
@@ -1174,18 +1029,15 @@ uint8_t CartridgeGba::eepromRead()
     // EEPROM 0.5KB uses 8-bit commands, and EEPROM 8KB uses 16-bit commands
     uint8_t length = (saveSize == 0x200) ? 8 : 16;
 
-    if (((eepromCmd & 0xC000) >> 14) == 0x3 && eepromCount >= length + 1) // Read
-    {
-        if (++eepromCount >= length + 6)
-        {
+    if (((eepromCmd & 0xC000) >> 14) == 0x3 && eepromCount >= length + 1) { // Read
+        if (++eepromCount >= length + 6) {
             // Read the data bits, MSB first
             int bit = 63 - (eepromCount - (length + 6));
             uint16_t addr = (saveSize == 0x200) ? ((eepromCmd & 0x3F00) >> 8) : (eepromCmd & 0x03FF);
             uint8_t value = (save[addr * 8 + bit / 8] & BIT(bit % 8)) >> (bit % 8);
 
             // Reset the transfer at the end
-            if (eepromCount >= length + 69)
-            {
+            if (eepromCount >= length + 69) {
                 eepromCount = 0;
                 eepromCmd = 0;
                 eepromData = 0;
@@ -1194,8 +1046,7 @@ uint8_t CartridgeGba::eepromRead()
             return value;
         }
     }
-    else if (eepromDone)
-    {
+    else if (eepromDone) {
         // Signal that a write has finished
         return 1;
     }
@@ -1203,37 +1054,31 @@ uint8_t CartridgeGba::eepromRead()
     return 0;
 }
 
-void CartridgeGba::eepromWrite(uint8_t value)
-{
+void CartridgeGba::eepromWrite(uint8_t value) {
     eepromDone = false;
 
     // EEPROM 0.5KB uses 8-bit commands, and EEPROM 8KB uses 16-bit commands
     uint8_t length = (saveSize == 0x200) ? 8 : 16;
 
-    if (eepromCount < length)
-    {
+    if (eepromCount < length) {
         // Get the command bits
         eepromCmd |= (value & BIT(0)) << (16 - ++eepromCount);
     }
-    else if (((eepromCmd & 0xC000) >> 14) == 0x3) // Read
-    {
+    else if (((eepromCmd & 0xC000) >> 14) == 0x3) { // Read
         // Accept the last bit to finish the read command
         if (eepromCount < length + 1)
             eepromCount++;
     }
-    else if (((eepromCmd & 0xC000) >> 14) == 0x2) // Write
-    {
+    else if (((eepromCmd & 0xC000) >> 14) == 0x2) { // Write
         // Get the data bits, MSB first
         if (++eepromCount <= length + 64)
             eepromData |= (uint64_t)(value & BIT(0)) << (length + 64 - eepromCount);
 
-        if (eepromCount >= length + 65)
-        {
+        if (eepromCount >= length + 65) {
             // Games will probably read first, so the save size can be detected from that
             // If something decides to write first, it becomes a lot harder to detect the size
             // In this case, just assume EEPROM 8KB and create an empty save
-            if (saveSize == -1)
-            {
+            if (saveSize == -1) {
                 LOG_INFO("Detected EEPROM 8KB save type\n");
                 resizeSave(0x2000, false);
             }
@@ -1255,28 +1100,22 @@ void CartridgeGba::eepromWrite(uint8_t value)
     }
 }
 
-uint8_t CartridgeGba::sramRead(uint32_t address)
-{
-    if (saveSize == 0x8000 && address < 0xE008000) // SRAM
-    {
+uint8_t CartridgeGba::sramRead(uint32_t address) {
+    if (saveSize == 0x8000 && address < 0xE008000) { // SRAM
         // Read a single byte because the data bus is only 8 bits
         return save[address - 0xE000000];
     }
-    else if ((saveSize == 0x10000 || saveSize == 0x20000) && address < 0xE010000) // FLASH
-    {
+    else if ((saveSize == 0x10000 || saveSize == 0x20000) && address < 0xE010000) { // FLASH
         // Run a FLASH command
-        if (flashCmd == 0x90 && address == 0xE000000)
-        {
+        if (flashCmd == 0x90 && address == 0xE000000) {
             // Read the chip manufacturer ID
             return 0xC2;
         }
-        else if (flashCmd == 0x90 && address == 0xE000001)
-        {
+        else if (flashCmd == 0x90 && address == 0xE000001) {
             // Read the chip device ID
             return (saveSize == 0x10000) ? 0x1C : 0x09;
         }
-        else
-        {
+        else {
             // Read a single byte
             if (bankSwap) address += 0x10000;
             return save[address - 0xE000000];
@@ -1286,21 +1125,17 @@ uint8_t CartridgeGba::sramRead(uint32_t address)
     return 0xFF;
 }
 
-void CartridgeGba::sramWrite(uint32_t address, uint8_t value)
-{
-    if (saveSize == 0x8000 && address < 0xE008000) // SRAM
-    {
+void CartridgeGba::sramWrite(uint32_t address, uint8_t value) {
+    if (saveSize == 0x8000 && address < 0xE008000) { // SRAM
         // Write a single byte because the data bus is only 8 bits
         mutex.lock();
         save[address - 0xE000000] = value;
         saveDirty = true;
         mutex.unlock();
     }
-    else if ((saveSize == 0x10000 || saveSize == 0x20000) && address < 0xE010000) // FLASH
-    {
+    else if ((saveSize == 0x10000 || saveSize == 0x20000) && address < 0xE010000) { // FLASH
         // Run a FLASH command
-        if (flashCmd == 0xA0)
-        {
+        if (flashCmd == 0xA0) {
             // Write a single byte
             if (bankSwap) address += 0x10000;
             mutex.lock();
@@ -1309,8 +1144,7 @@ void CartridgeGba::sramWrite(uint32_t address, uint8_t value)
             mutex.unlock();
             flashCmd = 0xF0;
         }
-        else if (flashErase && (address & ~0x000F000) == 0xE000000 && (value & 0xFF) == 0x30)
-        {
+        else if (flashErase && (address & ~0x000F000) == 0xE000000 && (value & 0xFF) == 0x30) {
             // Erase a sector
             if (bankSwap) address += 0x10000;
             mutex.lock();
@@ -1319,28 +1153,23 @@ void CartridgeGba::sramWrite(uint32_t address, uint8_t value)
             mutex.unlock();
             flashErase = false;
         }
-        else if (saveSize == 0x20000 && flashCmd == 0xB0 && address == 0xE000000)
-        {
+        else if (saveSize == 0x20000 && flashCmd == 0xB0 && address == 0xE000000) {
             // Swap the ROM banks on 128KB carts
             bankSwap = value;
             flashCmd = 0xF0;
         }
-        else if (address == 0xE005555)
-        {
+        else if (address == 0xE005555) {
             // Write the FLASH command byte
             flashCmd = value;
 
             // Handle erase commands
-            if (flashCmd == 0x80)
-            {
+            if (flashCmd == 0x80) {
                 flashErase = true;
             }
-            else if (flashCmd != 0xAA)
-            {
+            else if (flashCmd != 0xAA) {
                 flashErase = false;
             }
-            else if (flashErase && flashCmd == 0x10)
-            {
+            else if (flashErase && flashCmd == 0x10) {
                 mutex.lock();
                 memset(save, 0xFF, saveSize * sizeof(uint8_t));
                 saveDirty = true;

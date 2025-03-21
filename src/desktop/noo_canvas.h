@@ -37,8 +37,7 @@ class wxGLContext;
 #define CANVAS_PARAM wxDefaultPosition
 #endif
 
-class NooCanvas: public CANVAS_CLASS
-{
+class NooCanvas: public CANVAS_CLASS {
     public:
         bool gbaMode = false;
 

@@ -25,8 +25,7 @@
 
 class Core;
 
-enum DldiFunc
-{
+enum DldiFunc {
     DLDI_START = 0xF0000000,
     DLDI_INSERT,
     DLDI_READ,
@@ -35,8 +34,7 @@ enum DldiFunc
     DLDI_STOP
 };
 
-class Dldi
-{
+class Dldi {
     public:
         Dldi(Core *core): core(core) {}
         ~Dldi();

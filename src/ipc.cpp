@@ -20,16 +20,14 @@
 #include "ipc.h"
 #include "core.h"
 
-void Ipc::saveState(FILE *file)
-{
+void Ipc::saveState(FILE *file) {
     // Write state data to the file
     fwrite(ipcSync, 2, sizeof(ipcSync) / 2, file);
     fwrite(ipcFifoCnt, 2, sizeof(ipcFifoCnt) / 2, file);
     fwrite(ipcFifoRecv, 4, sizeof(ipcFifoRecv) / 4, file);
 
     // Parse the FIFOs and save their values
-    for (int i = 0; i < 2; i++)
-    {
+    for (int i = 0; i < 2; i++) {
         uint32_t count = fifos[i].size();
         fwrite(&count, sizeof(count), 1, file);
         for (uint32_t j = 0; j < count; j++)
@@ -37,29 +35,25 @@ void Ipc::saveState(FILE *file)
     }
 }
 
-void Ipc::loadState(FILE *file)
-{
+void Ipc::loadState(FILE *file) {
     // Read state data from the file
     fread(ipcSync, 2, sizeof(ipcSync) / 2, file);
     fread(ipcFifoCnt, 2, sizeof(ipcFifoCnt) / 2, file);
     fread(ipcFifoRecv, 4, sizeof(ipcFifoRecv) / 4, file);
 
     // Reset the FIFOs and refill them with loaded values
-    for (int i = 0; i < 2; i++)
-    {
+    for (int i = 0; i < 2; i++) {
         fifos[i].clear();
         uint32_t count, value;
         fread(&count, sizeof(count), 1, file);
-        for (uint32_t j = 0; j < count; j++)
-        {
+        for (uint32_t j = 0; j < count; j++) {
             fread(&value, sizeof(value), 1, file);
             fifos[i].push_back(value);
         }
     }
 }
 
-void Ipc::writeIpcSync(bool arm7, uint16_t mask, uint16_t value)
-{
+void Ipc::writeIpcSync(bool arm7, uint16_t mask, uint16_t value) {
     // Write to one of the IPCSYNC registers
     mask &= 0x4F00;
     ipcSync[arm7] = (ipcSync[arm7] & ~mask) | (value & mask);
@@ -72,11 +66,9 @@ void Ipc::writeIpcSync(bool arm7, uint16_t mask, uint16_t value)
         core->interpreter[!arm7].sendInterrupt(16);
 }
 
-void Ipc::writeIpcFifoCnt(bool arm7, uint16_t mask, uint16_t value)
-{
+void Ipc::writeIpcFifoCnt(bool arm7, uint16_t mask, uint16_t value) {
     // Clear the FIFO if the clear bit is set
-    if ((value & BIT(3)) && !fifos[arm7].empty())
-    {
+    if ((value & BIT(3)) && !fifos[arm7].empty()) {
         // Empty the FIFO
         while (!fifos[arm7].empty())
             fifos[arm7].pop_front();
@@ -109,18 +101,14 @@ void Ipc::writeIpcFifoCnt(bool arm7, uint16_t mask, uint16_t value)
     ipcFifoCnt[arm7] = (ipcFifoCnt[arm7] & ~mask) | (value & mask);
 }
 
-void Ipc::writeIpcFifoSend(bool arm7, uint32_t mask, uint32_t value)
-{
-    if (ipcFifoCnt[arm7] & BIT(15)) // FIFO enabled
-    {
-        if (fifos[arm7].size() < 16) // FIFO not full
-        {
+void Ipc::writeIpcFifoSend(bool arm7, uint32_t mask, uint32_t value) {
+    if (ipcFifoCnt[arm7] & BIT(15)) { // FIFO enabled
+        if (fifos[arm7].size() < 16) { // FIFO not full
             // Push a word to the FIFO
             fifos[arm7].push_back(value & mask);
             LOG_INFO("ARM%d sending value through IPC FIFO: 0x%X\n", arm7 ? 7 : 9, value & mask);
 
-            if (fifos[arm7].size() == 1)
-            {
+            if (fifos[arm7].size() == 1) {
                 // If the FIFO is no longer empty, clear the empty bits
                 ipcFifoCnt[arm7] &= ~BIT(0);
                 ipcFifoCnt[!arm7] &= ~BIT(8);
@@ -129,35 +117,29 @@ void Ipc::writeIpcFifoSend(bool arm7, uint32_t mask, uint32_t value)
                 if (ipcFifoCnt[!arm7] & BIT(10))
                     core->interpreter[!arm7].sendInterrupt(18);
             }
-            else if (fifos[arm7].size() == 16)
-            {
+            else if (fifos[arm7].size() == 16) {
                 // If the FIFO is now full, set the full bits
                 ipcFifoCnt[arm7] |= BIT(1);
                 ipcFifoCnt[!arm7] |= BIT(9);
             }
         }
-        else
-        {
+        else {
             // The FIFO can only hold 16 words, so indicate a send full error
             ipcFifoCnt[arm7] |= BIT(14);
         }
     }
 }
 
-uint32_t Ipc::readIpcFifoRecv(bool arm7)
-{
-    if (!fifos[!arm7].empty())
-    {
+uint32_t Ipc::readIpcFifoRecv(bool arm7) {
+    if (!fifos[!arm7].empty()) {
         // Receive a word from the FIFO
         ipcFifoRecv[arm7] = fifos[!arm7].front();
 
-        if (ipcFifoCnt[arm7] & BIT(15)) // FIFO enabled
-        {
+        if (ipcFifoCnt[arm7] & BIT(15)) { // FIFO enabled
             // Remove the received word from the FIFO
             fifos[!arm7].pop_front();
 
-            if (fifos[!arm7].empty())
-            {
+            if (fifos[!arm7].empty()) {
                 // If the FIFO is now empty, set the empty bits
                 ipcFifoCnt[arm7] |= BIT(8);
                 ipcFifoCnt[!arm7] |= BIT(0);
@@ -166,16 +148,14 @@ uint32_t Ipc::readIpcFifoRecv(bool arm7)
                 if (ipcFifoCnt[!arm7] & BIT(2))
                     core->interpreter[!arm7].sendInterrupt(17);
             }
-            else if (fifos[!arm7].size() == 15)
-            {
+            else if (fifos[!arm7].size() == 15) {
                 // If the FIFO is no longer full, clear the full bits
                 ipcFifoCnt[arm7] &= ~BIT(9);
                 ipcFifoCnt[!arm7] &= ~BIT(1);
             }
         }
     }
-    else
-    {
+    else {
         // If the FIFO is empty, indicate a receive empty error
         ipcFifoCnt[arm7] |= BIT(14);
     }

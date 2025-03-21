@@ -23,27 +23,23 @@
 #include "core.h"
 #include "settings.h"
 
-Gpu::Gpu(Core *core): core(core)
-{
+Gpu::Gpu(Core *core): core(core) {
     // Mark the thread as not drawing to start
     ready.store(false);
     running.store(false);
     drawing.store(0);
 }
 
-Gpu::~Gpu()
-{
+Gpu::~Gpu() {
     // Clean up the thread
-    if (thread)
-    {
+    if (thread) {
         running.store(false);
         thread->join();
         delete thread;
     }
 
     // Clean up any queued framebuffers
-    while (!framebuffers.empty())
-    {
+    while (!framebuffers.empty()) {
         Buffers &buffers = framebuffers.front();
         delete[] buffers.framebuffer;
         delete[] buffers.hiRes3D;
@@ -51,8 +47,7 @@ Gpu::~Gpu()
     }
 }
 
-void Gpu::saveState(FILE *file)
-{
+void Gpu::saveState(FILE *file) {
     // Write state data to the file
     fwrite(dispStat, 2, sizeof(dispStat) / 2, file);
     fwrite(&vCount, sizeof(vCount), 1, file);
@@ -60,8 +55,7 @@ void Gpu::saveState(FILE *file)
     fwrite(&powCnt1, sizeof(powCnt1), 1, file);
 }
 
-void Gpu::loadState(FILE *file)
-{
+void Gpu::loadState(FILE *file) {
     // Read state data from the file
     fread(dispStat, 2, sizeof(dispStat) / 2, file);
     fread(&vCount, sizeof(vCount), 1, file);
@@ -69,8 +63,7 @@ void Gpu::loadState(FILE *file)
     fread(&powCnt1, sizeof(powCnt1), 1, file);
 }
 
-uint32_t Gpu::rgb5ToRgb8(uint32_t color)
-{
+uint32_t Gpu::rgb5ToRgb8(uint32_t color) {
     // Convert an RGB5 value to an RGB8 value, with RGB6 as an intermediate
     uint8_t r = (((color >> 0) & 0x1F) << 1) * 255 / 63;
     uint8_t g = (((color >> 5) & 0x1F) << 1) * 255 / 63;
@@ -78,8 +71,7 @@ uint32_t Gpu::rgb5ToRgb8(uint32_t color)
     return (0xFF << 24) | (b << 16) | (g << 8) | r;
 }
 
-uint32_t Gpu::rgb6ToRgb8(uint32_t color)
-{
+uint32_t Gpu::rgb6ToRgb8(uint32_t color) {
     // Convert an RGB6 value to an RGB8 value
     uint8_t r = ((color >> 0) & 0x3F) * 255 / 63;
     uint8_t g = ((color >> 6) & 0x3F) * 255 / 63;
@@ -87,8 +79,7 @@ uint32_t Gpu::rgb6ToRgb8(uint32_t color)
     return (0xFF << 24) | (b << 16) | (g << 8) | r;
 }
 
-uint16_t Gpu::rgb6ToRgb5(uint32_t color)
-{
+uint16_t Gpu::rgb6ToRgb5(uint32_t color) {
     // Convert an RGB6 value to an RGB5 value
     uint8_t r = ((color >> 0) & 0x3F) / 2;
     uint8_t g = ((color >> 6) & 0x3F) / 2;
@@ -96,8 +87,7 @@ uint16_t Gpu::rgb6ToRgb5(uint32_t color)
     return BIT(15) | (b << 10) | (g << 5) | r;
 }
 
-bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
-{
+bool Gpu::getFrame(uint32_t *out, bool gbaCrop) {
     // Check if a new frame is ready
     if (!ready.load())
         return false;
@@ -105,30 +95,25 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     // Get the next queued buffers
     Buffers &buffers = framebuffers.front();
 
-    if (gbaCrop)
-    {
+    if (gbaCrop) {
         // Output the frame in RGB8 format, cropped for GBA
-        if (Settings::highRes3D || Settings::screenFilter == 1)
-        {
+        if (Settings::highRes3D || Settings::screenFilter == 1) {
             // GBA doesn't have 3D, but draw the screen upscaled for consistency
-            for (int y = 0; y < 160; y++)
-            {
+            for (int y = 0; y < 160; y++) {
                 uint32_t *line = &out[y * 240 * 4];
                 for (int x = 0; x < 240; x++)
                     line[x * 2] = line[x * 2 + 1] = rgb5ToRgb8(buffers.framebuffer[y * 256 + x]);
                 memcpy(&line[240 * 2], line, 240 * 8);
             }
         }
-        else
-        {
+        else {
             // Draw to a native resolution buffer
             for (int y = 0; y < 160; y++)
                 for (int x = 0; x < 240; x++)
                     out[y * 240 + x] = rgb5ToRgb8(buffers.framebuffer[y * 256 + x]);
         }
     }
-    else if (core->gbaMode)
-    {
+    else if (core->gbaMode) {
         int offset = (powCnt1 & BIT(15)) ? 0 : (256 * 192); // Display swap
         uint32_t base = 0x6800000 + gbaBlock * 0x20000;
         gbaBlock = !gbaBlock;
@@ -136,11 +121,9 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
         // The DS draws the GBA screen by capturing it to alternating VRAM blocks and then displaying that
         // While not used officially, it's possible to copy images into VRAM before entering GBA mode to use as a border
         // Output the GBA frame, centered, with the current VRAM border around it
-        if (Settings::highRes3D || Settings::screenFilter == 1)
-        {
+        if (Settings::highRes3D || Settings::screenFilter == 1) {
             // GBA doesn't have 3D, but draw the screen upscaled for consistency
-            for (int y = 0; y < 192; y++)
-            {
+            for (int y = 0; y < 192; y++) {
                 uint32_t *line = &out[offset * 4 + y * 256 * 4];
                 for (int x = 0; x < 256; x++)
                     line[x * 2] = line[x * 2 + 1] = rgb5ToRgb8((x >= 8 && x < 248 && y >= 16 && y < 176) ? buffers.
@@ -151,8 +134,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
             // Clear the secondary display
             memset(&out[(256 * 192 - offset) * 4], 0, 256 * 192 * 4 * sizeof(uint32_t));
         }
-        else
-        {
+        else {
             // Draw to a native resolution buffer
             for (int y = 0; y < 192; y++)
                 for (int x = 0; x < 256; x++)
@@ -163,22 +145,16 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
             memset(&out[256 * 192 - offset], 0, 256 * 192 * sizeof(uint32_t));
         }
     }
-    else
-    {
+    else {
         // Output the full frame in RGB8 format
-        if (Settings::highRes3D || Settings::screenFilter == 1)
-        {
-            if (buffers.hiRes3D)
-            {
+        if (Settings::highRes3D || Settings::screenFilter == 1) {
+            if (buffers.hiRes3D) {
                 // Draw the screens upscaled, replacing any 3D pixels with high-res output
-                for (int y = 0; y < 192 * 2; y++)
-                {
-                    for (int x = 0; x < 256; x++)
-                    {
+                for (int y = 0; y < 192 * 2; y++) {
+                    for (int x = 0; x < 256; x++) {
                         uint32_t value = buffers.framebuffer[y * 256 + x];
                         int i = (y * 2) * (256 * 2) + (x * 2);
-                        if (value & BIT(26)) // 3D
-                        {
+                        if (value & BIT(26)) { // 3D
                             uint32_t value2 = buffers.hiRes3D[(i + 0) % (256 * 192 * 4)];
                             out[i + 0] = rgb6ToRgb8((value2 & 0xFC0000) ? value2 : value);
                             value2 = buffers.hiRes3D[(i + 1) % (256 * 192 * 4)];
@@ -188,8 +164,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                             value2 = buffers.hiRes3D[(i + 513) % (256 * 192 * 4)];
                             out[i + 513] = rgb6ToRgb8((value2 & 0xFC0000) ? value2 : value);
                         }
-                        else
-                        {
+                        else {
                             uint32_t color = rgb6ToRgb8(value);
                             out[i + 0] = out[i + 1] = color;
                             out[i + 512] = out[i + 513] = color;
@@ -197,11 +172,9 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                     }
                 }
             }
-            else
-            {
+            else {
                 // Even when 3D isn't enabled, draw the screens upscaled for consistency
-                for (int y = 0; y < 192 * 2; y++)
-                {
+                for (int y = 0; y < 192 * 2; y++) {
                     uint32_t *line = &out[y * 256 * 4];
                     for (int x = 0; x < 256; x++)
                         line[x * 2] = line[x * 2 + 1] = rgb6ToRgb8(buffers.framebuffer[y * 256 + x]);
@@ -209,8 +182,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
                 }
             }
         }
-        else
-        {
+        else {
             // Draw to a native resolution buffer
             for (int i = 0; i < 256 * 192 * 2; i++)
                 out[i] = rgb6ToRgb8(buffers.framebuffer[i]);
@@ -221,8 +193,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     delete[] buffers.framebuffer;
     delete[] buffers.hiRes3D;
 
-    if (Settings::screenGhost)
-    {
+    if (Settings::screenGhost) {
         // Get the size of the output framebuffer
         static uint32_t prev[256 * 192 * 8];
         uint32_t width = (gbaCrop ? 240 : 256) << (Settings::highRes3D || Settings::screenFilter == 1);
@@ -230,8 +201,7 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
         uint32_t size = width * height;
 
         // Blend output with the previous frame if ghosting is enabled
-        for (uint32_t i = 0; i < size; i++)
-        {
+        for (uint32_t i = 0; i < size; i++) {
             uint8_t r = (((prev[i] >> 0) & 0xFF) + ((out[i] >> 0) & 0xFF)) >> 1;
             uint8_t g = (((prev[i] >> 8) & 0xFF) + ((out[i] >> 8) & 0xFF)) >> 1;
             uint8_t b = (((prev[i] >> 16) & 0xFF) + ((out[i] >> 16) & 0xFF)) >> 1;
@@ -248,18 +218,14 @@ bool Gpu::getFrame(uint32_t *out, bool gbaCrop)
     return true;
 }
 
-void Gpu::gbaScanline240()
-{
-    if (vCount < 160)
-    {
-        if (thread)
-        {
+void Gpu::gbaScanline240() {
+    if (vCount < 160) {
+        if (thread) {
             // Wait for the thread to finish the scanline
             while (drawing.load() != 0)
                 std::this_thread::yield();
         }
-        else if (frames == 0)
-        {
+        else if (frames == 0) {
             // Draw the current scanline
             core->gpu2D[0].drawGbaScanline(vCount);
         }
@@ -279,18 +245,15 @@ void Gpu::gbaScanline240()
     core->schedule(GBA_SCANLINE240, 308 * 4);
 }
 
-void Gpu::gbaScanline308()
-{
+void Gpu::gbaScanline308() {
     // Clear the H-blank flag
     dispStat[1] &= ~BIT(1);
 
     // Move to the next scanline
-    switch (++vCount)
-    {
+    switch (++vCount) {
         case 160: // End of visible scanlines
             // Stop the thread now that the frame has been drawn
-            if (thread)
-            {
+            if (thread) {
                 running.store(false);
                 thread->join();
                 delete thread;
@@ -308,8 +271,7 @@ void Gpu::gbaScanline308()
             core->dma[1].trigger(1);
 
             // Allow up to 2 framebuffers to be queued, to preserve frame pacing if emulation runs ahead
-            if (frames == 0 && framebuffers.size() < 2)
-            {
+            if (frames == 0 && framebuffers.size() < 2) {
                 // Copy the completed sub-framebuffer to a new framebuffer
                 Buffers buffers;
                 buffers.framebuffer = new uint32_t[256 * 160];
@@ -341,8 +303,7 @@ void Gpu::gbaScanline308()
             core->gpu2D[0].reloadRegisters();
 
             // Start the 2D thread if enabled
-            if (Settings::threaded2D && frames == 0 && !thread)
-            {
+            if (Settings::threaded2D && frames == 0 && !thread) {
                 running.store(true);
                 thread = new std::thread(&Gpu::drawGbaThreaded, this);
             }
@@ -357,8 +318,7 @@ void Gpu::gbaScanline308()
         drawing.store(1);
 
     // Check if the current scanline matches the V-counter
-    if (vCount == (dispStat[1] >> 8))
-    {
+    if (vCount == (dispStat[1] >> 8)) {
         // Set the V-counter flag
         dispStat[1] |= BIT(2);
 
@@ -366,8 +326,7 @@ void Gpu::gbaScanline308()
         if (dispStat[1] & BIT(5))
             core->interpreter[1].sendInterrupt(2);
     }
-    else if (dispStat[1] & BIT(2))
-    {
+    else if (dispStat[1] & BIT(2)) {
         // Clear the V-counter flag on the next line
         dispStat[1] &= ~BIT(2);
     }
@@ -376,18 +335,14 @@ void Gpu::gbaScanline308()
     core->schedule(GBA_SCANLINE308, 308 * 4);
 }
 
-void Gpu::scanline256()
-{
-    if (vCount < 192)
-    {
-        if (thread)
-        {
+void Gpu::scanline256() {
+    if (vCount < 192) {
+        if (thread) {
             // Make sure the thread has started before changing the state
             while (drawing.load() == 1)
                 std::this_thread::yield();
 
-            switch (drawing.exchange(3))
-            {
+            switch (drawing.exchange(3)) {
                 case 2:
                     // Draw engine B's scanline if it hasn't started yet (and purposely fall through)
                     core->gpu2D[1].drawScanline(vCount);
@@ -399,8 +354,7 @@ void Gpu::scanline256()
                     break;
             }
         }
-        else if (frames == 0)
-        {
+        else if (frames == 0) {
             // Draw the current scanlines
             core->gpu2D[0].drawScanline(vCount);
             core->gpu2D[1].drawScanline(vCount);
@@ -414,8 +368,7 @@ void Gpu::scanline256()
             displayCapture = true;
 
         // Perform a display capture
-        if (displayCapture)
-        {
+        if (displayCapture) {
             // Determine the capture size
             static const uint16_t sizes[] = { 128, 128, 256, 64, 256, 128, 256, 192 };
             const uint16_t *size = &sizes[(dispCapCnt >> 19) & 0x6];
@@ -427,10 +380,8 @@ void Gpu::scanline256()
             uint32_t writeOffset = ((dispCapCnt & 0x000C0000) >> 3) + vCount * width * 2;
 
             // Copy the source contents to memory as a 15-bit bitmap
-            switch ((dispCapCnt & 0x60000000) >> 29) // Capture source
-            {
-                case 0: // Source A
-                {
+            switch ((dispCapCnt & 0x60000000) >> 29) { // Capture source
+                case 0: { // Source A
                     // Choose from 2D engine A or the 3D engine
                     // In high-res mode, skip every other pixel when capturing 3D
                     uint32_t *source = (dispCapCnt & BIT(24)) ? core->gpu3DRenderer.getLine(vCount) : core->gpu2D[0].getRawLine();
@@ -442,10 +393,8 @@ void Gpu::scanline256()
                     break;
                 }
 
-                case 1: // Source B
-                {
-                    if (dispCapCnt & BIT(25))
-                    {
+                case 1: { // Source B
+                    if (dispCapCnt & BIT(25)) {
                         LOG_CRIT("Unimplemented display capture source: display FIFO\n");
                         break;
                     }
@@ -454,18 +403,15 @@ void Gpu::scanline256()
                     uint32_t readOffset = ((dispCapCnt & 0x0C000000) >> 11) + vCount * width * 2;
 
                     // Copy a scanline to memory
-                    for (int i = 0; i < width; i++)
-                    {
+                    for (int i = 0; i < width; i++) {
                         uint16_t color = core->memory.read<uint16_t>(0, base + ((readOffset + i * 2) & 0x1FFFF));
                         core->memory.write<uint16_t>(0, base + ((writeOffset + i * 2) & 0x1FFFF), color);
                     }
                     break;
                 }
 
-                default: // Blended
-                {
-                    if (dispCapCnt & BIT(25))
-                    {
+                default: { // Blended
+                    if (dispCapCnt & BIT(25)) {
                         LOG_CRIT("Unimplemented display capture source: display FIFO\n");
                         break;
                     }
@@ -483,8 +429,7 @@ void Gpu::scanline256()
                     uint8_t evb = std::min((dispCapCnt >> 8) & 0x1F, 16U);
 
                     // Copy a scanline to memory
-                    for (int i = 0; i < width; i++)
-                    {
+                    for (int i = 0; i < width; i++) {
                         // Get colors from the two sources
                         uint16_t c1 = rgb6ToRgb5(source[i << resShift]);
                         uint16_t c2 = core->memory.read<uint16_t>(0, base + ((readOffset + i * 2) & 0x1FFFF));
@@ -502,8 +447,7 @@ void Gpu::scanline256()
             }
 
             // End the display capture
-            if (vCount + 1 == height)
-            {
+            if (vCount + 1 == height) {
                 displayCapture = false;
                 dispCapCnt &= ~BIT(31);
             }
@@ -513,15 +457,13 @@ void Gpu::scanline256()
     // Draw 3D scanlines 48 lines in advance, if the current 3D is dirty
     // If the 3D parameters haven't changed since the last frame, there's no need to draw it again
     // Bit 0 of the dirty variable represents invalidation, and bit 1 represents a frame currently drawing
-    if (frames == 0 && dirty3D && (core->gpu2D[0].readDispCnt() & BIT(3)) && ((vCount + 48) % 263) < 192)
-    {
+    if (frames == 0 && dirty3D && (core->gpu2D[0].readDispCnt() & BIT(3)) && ((vCount + 48) % 263) < 192) {
         if (vCount == 215) dirty3D = BIT(1);
         core->gpu3DRenderer.drawScanline((vCount + 48) % 263);
         if (vCount == 143) dirty3D &= ~BIT(1);
     }
 
-    for (int i = 0; i < 2; i++)
-    {
+    for (int i = 0; i < 2; i++) {
         // Set the H-blank flag
         dispStat[i] |= BIT(1);
 
@@ -534,23 +476,19 @@ void Gpu::scanline256()
     core->schedule(NDS_SCANLINE256, 355 * 6);
 }
 
-void Gpu::scanline355()
-{
+void Gpu::scanline355() {
     // Move to the next scanline
-    switch (++vCount)
-    {
+    switch (++vCount) {
         case 192: // End of visible scanlines
             // Stop the thread now that the frame has been drawn
-            if (thread)
-            {
+            if (thread) {
                 running.store(false);
                 thread->join();
                 delete thread;
                 thread = nullptr;
             }
 
-            for (int i = 0; i < 2; i++)
-            {
+            for (int i = 0; i < 2; i++) {
                 // Set the V-blank flag
                 dispStat[i] |= BIT(0);
 
@@ -567,32 +505,26 @@ void Gpu::scanline355()
                 core->gpu3D.swapBuffers();
 
             // Allow up to 2 framebuffers to be queued, to preserve frame pacing if emulation runs ahead
-            if (frames == 0 && framebuffers.size() < 2)
-            {
+            if (frames == 0 && framebuffers.size() < 2) {
                 // Copy the completed sub-framebuffers to a new framebuffer
                 Buffers buffers;
                 buffers.framebuffer = new uint32_t[256 * 192 * 2];
-                if (powCnt1 & BIT(0)) // LCDs enabled
-                {
-                    if (powCnt1 & BIT(15)) // Display swap
-                    {
+                if (powCnt1 & BIT(0)) { // LCDs enabled
+                    if (powCnt1 & BIT(15)) { // Display swap
                         memcpy(&buffers.framebuffer[0], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                         memcpy(&buffers.framebuffer[256 * 192], core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                     }
-                    else
-                    {
+                    else {
                         memcpy(&buffers.framebuffer[0], core->gpu2D[1].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                         memcpy(&buffers.framebuffer[256 * 192], core->gpu2D[0].getFramebuffer(), 256 * 192 * sizeof(uint32_t));
                     }
                 }
-                else
-                {
+                else {
                     memset(buffers.framebuffer, 0, 256 * 192 * 2 * sizeof(uint32_t));
                 }
 
                 // Copy the upscaled 3D output to a new buffer if enabled
-                if (Settings::highRes3D && (core->gpu2D[0].readDispCnt() & BIT(3)))
-                {
+                if (Settings::highRes3D && (core->gpu2D[0].readDispCnt() & BIT(3))) {
                     buffers.hiRes3D = new uint32_t[256 * 192 * 4];
                     memcpy(buffers.hiRes3D, core->gpu3DRenderer.getLine(0), 256 * 192 * 4 * sizeof(uint32_t));
                     buffers.top3D = (powCnt1 & BIT(15));
@@ -627,8 +559,7 @@ void Gpu::scanline355()
             core->gpu2D[1].reloadRegisters();
 
             // Start the 2D thread if enabled
-            if (Settings::threaded2D && frames == 0 && !thread)
-            {
+            if (Settings::threaded2D && frames == 0 && !thread) {
                 running.store(true);
                 thread = new std::thread(&Gpu::drawThreaded, this);
             }
@@ -643,11 +574,9 @@ void Gpu::scanline355()
     if (vCount < 192 && thread)
         drawing.store(1);
 
-    for (int i = 0; i < 2; i++)
-    {
+    for (int i = 0; i < 2; i++) {
         // Check if the current scanline matches the V-counter
-        if (vCount == ((dispStat[i] >> 8) | ((dispStat[i] & BIT(7)) << 1)))
-        {
+        if (vCount == ((dispStat[i] >> 8) | ((dispStat[i] & BIT(7)) << 1))) {
             // Set the V-counter flag
             dispStat[i] |= BIT(2);
 
@@ -655,8 +584,7 @@ void Gpu::scanline355()
             if (dispStat[i] & BIT(5))
                 core->interpreter[i].sendInterrupt(2);
         }
-        else if (dispStat[i] & BIT(2))
-        {
+        else if (dispStat[i] & BIT(2)) {
             // Clear the V-counter flag on the next line
             dispStat[i] &= ~BIT(2);
         }
@@ -669,13 +597,10 @@ void Gpu::scanline355()
     core->schedule(NDS_SCANLINE355, 355 * 6);
 }
 
-void Gpu::drawGbaThreaded()
-{
-    while (running.load())
-    {
+void Gpu::drawGbaThreaded() {
+    while (running.load()) {
         // Wait until the next scanline should start
-        while (drawing.load() != 1)
-        {
+        while (drawing.load() != 1) {
             if (!running.load()) return;
             std::this_thread::yield();
         }
@@ -688,13 +613,10 @@ void Gpu::drawGbaThreaded()
     }
 }
 
-void Gpu::drawThreaded()
-{
-    while (running.load())
-    {
+void Gpu::drawThreaded() {
+    while (running.load()) {
         // Wait until the next scanline should start
-        while (drawing.load() != 1)
-        {
+        while (drawing.load() != 1) {
             if (!running.load()) return;
             std::this_thread::yield();
         }
@@ -712,22 +634,19 @@ void Gpu::drawThreaded()
     }
 }
 
-void Gpu::writeDispStat(bool cpu, uint16_t mask, uint16_t value)
-{
+void Gpu::writeDispStat(bool cpu, uint16_t mask, uint16_t value) {
     // Write to one of the DISPSTAT registers
     mask &= 0xFFB8;
     dispStat[cpu] = (dispStat[cpu] & ~mask) | (value & mask);
 }
 
-void Gpu::writeDispCapCnt(uint32_t mask, uint32_t value)
-{
+void Gpu::writeDispCapCnt(uint32_t mask, uint32_t value) {
     // Write to the DISPCAPCNT register
     mask &= 0xEF3F1F1F;
     dispCapCnt = (dispCapCnt & ~mask) | (value & mask);
 }
 
-void Gpu::writePowCnt1(uint16_t mask, uint16_t value)
-{
+void Gpu::writePowCnt1(uint16_t mask, uint16_t value) {
     // Write to the POWCNT1 register
     mask &= 0x820F;
     powCnt1 = (powCnt1 & ~mask) | (value & mask);

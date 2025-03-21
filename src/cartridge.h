@@ -29,8 +29,7 @@
 
 class Core;
 
-enum NdsCmdMode
-{
+enum NdsCmdMode {
     CMD_NONE = 0,
     CMD_HEADER,
     CMD_CHIP,
@@ -38,8 +37,7 @@ enum NdsCmdMode
     CMD_DATA
 };
 
-class Cartridge
-{
+class Cartridge {
     public:
         Cartridge(Core *core): core(core) {}
         ~Cartridge();
@@ -73,8 +71,7 @@ class Cartridge
         int romFd = -1, saveFd = -1;
 };
 
-class CartridgeNds: public Cartridge
-{
+class CartridgeNds: public Cartridge {
     public:
         CartridgeNds(Core *core): Cartridge(core) {}
         void saveState(FILE *file);
@@ -124,8 +121,7 @@ class CartridgeNds: public Cartridge
         void applyKeycode();
 };
 
-class CartridgeGba: public Cartridge
-{
+class CartridgeGba: public Cartridge {
     public:
         CartridgeGba(Core *core): Cartridge(core) {}
         void saveState(FILE *file);
@@ -154,13 +150,11 @@ class CartridgeGba: public Cartridge
         virtual bool loadRom();
 };
 
-FORCE_INLINE uint8_t *CartridgeGba::getRom(uint32_t address)
-{
+FORCE_INLINE uint8_t *CartridgeGba::getRom(uint32_t address) {
     return ((address &= romMask) < romSize) ? &rom[address] : nullptr;
 }
 
-FORCE_INLINE bool CartridgeGba::isEeprom(uint32_t address)
-{
+FORCE_INLINE bool CartridgeGba::isEeprom(uint32_t address) {
     return (saveSize == -1 || saveSize == 0x200 || saveSize == 0x2000) && (romSize <= 0x1000000 || address >= 0x0DFFFF00);
 }
 

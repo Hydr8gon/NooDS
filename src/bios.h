@@ -25,8 +25,7 @@
 
 class Core;
 
-class Bios
-{
+class Bios {
     public:
         static int (Bios::*swiTable9[0x21])(uint32_t**);
         static int (Bios::*swiTable7[0x21])(uint32_t**);

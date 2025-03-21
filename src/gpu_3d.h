@@ -28,25 +28,21 @@
 
 class Core;
 
-enum GXState
-{
+enum GXState {
     GX_IDLE = 0,
     GX_RUNNING,
     GX_HALTED
 };
 
-struct Entry
-{
+struct Entry {
     uint8_t command;
     uint32_t param;
 
     Entry(uint8_t command, uint32_t param): command(command), param(param) {}
 };
 
-struct Matrix
-{
-    int32_t data[4 * 4] =
-    {
+struct Matrix {
+    int32_t data[4 * 4] = {
         1 << 12, 0 << 12, 0 << 12, 0 << 12,
         0 << 12, 1 << 12, 0 << 12, 0 << 12,
         0 << 12, 0 << 12, 1 << 12, 0 << 12,
@@ -56,16 +52,14 @@ struct Matrix
     Matrix operator*(Matrix &mtx);
 };
 
-struct Vector
-{
+struct Vector {
     int32_t x = 0, y = 0, z = 0;
 
     int32_t operator*(Vector &vtr);
     Vector operator*(Matrix &mtx);
 };
 
-struct Vertex: Vector
-{
+struct Vertex: Vector {
     int32_t w = 0;
     int16_t s = 0, t = 0;
     uint32_t color = 0;
@@ -73,8 +67,7 @@ struct Vertex: Vector
     Vertex operator*(Matrix &mtx);
 };
 
-struct _Polygon
-{
+struct _Polygon {
     uint32_t textureAddr = 0, paletteAddr = 0;
     uint16_t sizeS = 0, sizeT = 0;
     uint8_t textureFmt = 0;
@@ -97,8 +90,7 @@ struct _Polygon
     bool fog = false;
 };
 
-class Gpu3D
-{
+class Gpu3D {
     public:
         _Polygon *polygonsOut = polygons2;
         Vertex *verticesOut = vertices2;

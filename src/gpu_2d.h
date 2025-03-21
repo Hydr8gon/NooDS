@@ -25,8 +25,7 @@
 
 class Core;
 
-class Gpu2D
-{
+class Gpu2D {
     public:
         Gpu2D(Core *core, bool engine);
         void saveState(FILE *file);

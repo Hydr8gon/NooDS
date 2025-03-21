@@ -64,10 +64,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Stack;
 
-public class FileBrowser extends AppCompatActivity
-{
-    static
-    {
+public class FileBrowser extends AppCompatActivity {
+    static {
         // Load the native library
         System.loadLibrary("noods-core");
     }
@@ -87,8 +85,7 @@ public class FileBrowser extends AppCompatActivity
     private boolean scoped;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         // Storage paths can be checked without permissions; prepare them for the options menu
         updateStoragePaths();
         super.onCreate(savedInstanceState);
@@ -110,8 +107,7 @@ public class FileBrowser extends AppCompatActivity
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)
-    {
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         // Continue requesting storage permissions until they are given
         if (checkPermissions())
             initialize();
@@ -120,8 +116,7 @@ public class FileBrowser extends AppCompatActivity
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu)
-    {
+    public boolean onCreateOptionsMenu(Menu menu) {
         // Only show the storage switcher if there are multiple storage paths
         getMenuInflater().inflate(R.menu.file_menu, menu);
         if (storagePaths.size() > 1 || scoped)
@@ -134,10 +129,8 @@ public class FileBrowser extends AppCompatActivity
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        switch (item.getItemId())
-        {
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
             case R.id.info_action:
                 // Show the Play Store information dialog
                 showInfo(false);
@@ -145,8 +138,7 @@ public class FileBrowser extends AppCompatActivity
 
             case R.id.storage_action:
                 // Open the scoped storage selector in scoped mode
-                if (scoped)
-                {
+                if (scoped) {
                     startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
                     break;
                 }
@@ -167,10 +159,8 @@ public class FileBrowser extends AppCompatActivity
     }
 
     @Override
-    public void onBackPressed()
-    {
-        if (curDepth > 0)
-        {
+    public void onBackPressed() {
+        if (curDepth > 0) {
             // Navigate to the previous directory
             if (scoped)
                 pathUris.pop();
@@ -179,18 +169,15 @@ public class FileBrowser extends AppCompatActivity
             curDepth--;
             update();
         }
-        else
-        {
+        else {
             // On the top directory, close the app
             this.finishAffinity();
         }
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent resultData)
-    {
-        switch (requestCode)
-        {
+    public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
+        switch (requestCode) {
             case 1: // Manage files permission
                 // Fall back to scoped storage if permission wasn't granted
                 if (checkPermissions())
@@ -201,8 +188,7 @@ public class FileBrowser extends AppCompatActivity
 
             case 2: // Scoped directory selection
                 // Reload if nothing was selected
-                if (resultData == null)
-                {
+                if (resultData == null) {
                     openScoped();
                     return;
                 }
@@ -223,8 +209,7 @@ public class FileBrowser extends AppCompatActivity
         }
     }
 
-    private void showInfo(final boolean start)
-    {
+    private void showInfo(final boolean start) {
         // Create the Play Store information text
         TextView view = new TextView(this);
         float d = getResources().getDisplayMetrics().density;
@@ -246,11 +231,9 @@ public class FileBrowser extends AppCompatActivity
         builder.setTitle("Welcome to NooDS");
         builder.setView(view);
         builder.setCancelable(!start);
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener()
-        {
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             @Override
-            public void onClick(DialogInterface dialog, int id)
-            {
+            public void onClick(DialogInterface dialog, int id) {
                 // Request storage permissions if this was run on start
                 if (!start)
                     return;
@@ -264,14 +247,11 @@ public class FileBrowser extends AppCompatActivity
         }).create().show();
     }
 
-    private void openScoped()
-    {
+    private void openScoped() {
         // Try to restore the previous URI and initialize for scoped storage mode
-        try
-        {
+        try {
             Uri scopedUri = Uri.parse(PreferenceManager.getDefaultSharedPreferences(this).getString("scoped_uri", ""));
-            if (DocumentFile.fromTreeUri(this, scopedUri).isDirectory())
-            {
+            if (DocumentFile.fromTreeUri(this, scopedUri).isDirectory()) {
                 pathUris = new Stack<Uri>();
                 pathUris.push(scopedUri);
                 scoped = true;
@@ -285,8 +265,7 @@ public class FileBrowser extends AppCompatActivity
         startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
     }
 
-    private boolean checkPermissions()
-    {
+    private boolean checkPermissions() {
         // Check for the manage files permission on Android 11 and up
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R)
             return Environment.isExternalStorageManager();
@@ -297,24 +276,20 @@ public class FileBrowser extends AppCompatActivity
         return perm1 == PackageManager.PERMISSION_GRANTED && perm2 == PackageManager.PERMISSION_GRANTED;
     }
 
-    private void requestPermissions()
-    {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R)
-        {
+    private void requestPermissions() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             // Request the manage files permission on Android 11 and up
             Uri uri = Uri.parse("package:" + BuildConfig.APPLICATION_ID);
             startActivityForResult(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, uri), 1);
         }
-        else
-        {
+        else {
             // Request legacy storage permissions on Android 10 and below
             ActivityCompat.requestPermissions(this, new String[] {android.Manifest.permission.READ_EXTERNAL_STORAGE,
                 android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
         }
     }
 
-    private void updateStoragePaths()
-    {
+    private void updateStoragePaths() {
         // There's no way to directly get root storage paths, but media paths contain them
         storagePaths = new ArrayList<String>();
         File[] mediaDirs = getExternalMediaDirs();
@@ -322,35 +297,29 @@ public class FileBrowser extends AppCompatActivity
         String mediaPath = "";
 
         // Extract the media sub-path so it can be removed from all paths
-        for (int i = 0; i < mediaDirs.length; i++)
-        {
-            if (mediaDirs[i].getAbsolutePath().contains(basePath))
-            {
+        for (int i = 0; i < mediaDirs.length; i++) {
+            if (mediaDirs[i].getAbsolutePath().contains(basePath)) {
                 mediaPath = mediaDirs[i].getAbsolutePath().substring(basePath.length());
                 break;
             }
         }
 
         // Add all mounted storage paths to the list
-        for (int i = 0; i < mediaDirs.length; i++)
-        {
+        for (int i = 0; i < mediaDirs.length; i++) {
             if (Environment.getExternalStorageState(mediaDirs[i]).equals(Environment.MEDIA_MOUNTED))
                 storagePaths.add(mediaDirs[i].getAbsolutePath().replace(mediaPath, ""));
         }
     }
 
-    private void initialize()
-    {
+    private void initialize() {
         fileView = new ListView(this);
         path = storagePaths.get(0);
         curStorage = 0;
         curDepth = 0;
 
-        fileView.setOnItemClickListener(new AdapterView.OnItemClickListener()
-        {
+        fileView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id)
-            {
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 // Navigate to the selected directory
                 if (scoped)
                     pathUris.push(fileInfo.get(position).uri);
@@ -363,8 +332,7 @@ public class FileBrowser extends AppCompatActivity
 
         // Set a custom launch path if one is specified
         Bundle extras = getIntent().getExtras();
-        if (extras != null)
-        {
+        if (extras != null) {
             String launchPath = extras.getString("LaunchPath");
             if (launchPath != null)
                 path = launchPath;
@@ -374,25 +342,21 @@ public class FileBrowser extends AppCompatActivity
         update();
     }
 
-    private void tryStartCore()
-    {
+    private void tryStartCore() {
         // Attempt to start the core
         int result = startCore();
 
-        if (result == 0)
-        {
+        if (result == 0) {
             // Switch to the emulator activity if loading was successful
             startActivity(new Intent(this, NooActivity.class));
             finish();
         }
-        else
-        {
+        else {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setPositiveButton("OK", null);
 
             // Inform the user of the error if loading wasn't successful
-            switch (result)
-            {
+            switch (result) {
                 case 1: // Missing BIOS files
                     builder.setTitle("Error Loading BIOS");
                     builder.setMessage("Make sure the path settings point to valid BIOS files and try again. " +
@@ -416,51 +380,41 @@ public class FileBrowser extends AppCompatActivity
         }
     }
 
-    private void update()
-    {
+    private void update() {
         DocumentFile file = scoped ? DocumentFile.fromTreeUri(this, pathUris.peek()) : DocumentFile.fromFile(new File(path));
         String ext = (file.getName().length() >= 4) ? file.getName().substring(file.getName().length() - 4) : "";
 
         // Check if the current file is a ROM
-        if (!file.isDirectory() && (ext.equals(".nds") || ext.equals(".gba")))
-        {
+        if (!file.isDirectory() && (ext.equals(".nds") || ext.equals(".gba"))) {
             // Set the NDS or GBA ROM path depending on the file extension, and try to start the core
             // If a ROM of the other type is already loaded, ask if it should be loaded alongside the new ROM
-            if (ext.equals(".nds"))
-            {
+            if (ext.equals(".nds")) {
                 Uri uri = file.getUri();
                 setNdsRom(uri.getPath(), getRomFd(uri, false), getSaveFd(file), getStateFd(file), getCheatFd(file));
 
-                if (isGbaLoaded())
-                {
+                if (isGbaLoaded()) {
                     AlertDialog.Builder builder = new AlertDialog.Builder(this);
                     builder.setTitle("Loading NDS ROM");
                     builder.setMessage("Load the previous GBA ROM alongside this ROM?");
 
-                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener()
-                    {
+                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                         @Override
-                        public void onClick(DialogInterface dialog, int id)
-                        {
+                        public void onClick(DialogInterface dialog, int id) {
                             tryStartCore();
                         }
                     });
 
-                    builder.setNegativeButton("No", new DialogInterface.OnClickListener()
-                    {
+                    builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
                         @Override
-                        public void onClick(DialogInterface dialog, int id)
-                        {
+                        public void onClick(DialogInterface dialog, int id) {
                             setGbaRom("", -1, -1, -1);
                             tryStartCore();
                         }
                     });
 
-                    builder.setOnCancelListener(new DialogInterface.OnCancelListener()
-                    {
+                    builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
                         @Override
-                        public void onCancel(DialogInterface dialog)
-                        {
+                        public void onCancel(DialogInterface dialog) {
                             setGbaRom("", -1, -1, -1);
                             tryStartCore();
                         }
@@ -470,41 +424,33 @@ public class FileBrowser extends AppCompatActivity
                     return;
                 }
             }
-            else
-            {
+            else {
                 Uri uri = file.getUri();
                 setGbaRom(uri.getPath(), getRomFd(uri, false), getSaveFd(file), getStateFd(file));
 
-                if (isNdsLoaded())
-                {
+                if (isNdsLoaded()) {
                     AlertDialog.Builder builder = new AlertDialog.Builder(this);
                     builder.setTitle("Loading GBA ROM");
                     builder.setMessage("Load the previous NDS ROM alongside this ROM?");
 
-                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener()
-                    {
+                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                         @Override
-                        public void onClick(DialogInterface dialog, int id)
-                        {
+                        public void onClick(DialogInterface dialog, int id) {
                             tryStartCore();
                         }
                     });
 
-                    builder.setNegativeButton("No", new DialogInterface.OnClickListener()
-                    {
+                    builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
                         @Override
-                        public void onClick(DialogInterface dialog, int id)
-                        {
+                        public void onClick(DialogInterface dialog, int id) {
                             setNdsRom("", -1, -1, -1, -1);
                             tryStartCore();
                         }
                     });
 
-                    builder.setOnCancelListener(new DialogInterface.OnCancelListener()
-                    {
+                    builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
                         @Override
-                        public void onCancel(DialogInterface dialog)
-                        {
+                        public void onCancel(DialogInterface dialog) {
                             setNdsRom("", -1, -1, -1, -1);
                             tryStartCore();
                         }
@@ -522,8 +468,7 @@ public class FileBrowser extends AppCompatActivity
         FileAdapter fileAdapter = new FileAdapter(this);
         fileInfo = new ArrayList<FileAdapter.FileInfo>();
 
-        if (scoped)
-        {
+        if (scoped) {
             // Populate the file list in a way optimized for scoped storage
             Uri uri = file.getUri();
             String docId = DocumentsContract.getDocumentId(uri);
@@ -531,8 +476,7 @@ public class FileBrowser extends AppCompatActivity
             String[] fields = new String[] {DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE};
             Cursor cursor = getContentResolver().query(childUri, fields, null, null, null);
-            while (cursor.moveToNext())
-            {
+            while (cursor.moveToNext()) {
                 FileAdapter.FileInfo info = fileAdapter.new FileInfo();
                 info.name = cursor.getString(1);
                 info.uri = DocumentsContract.buildDocumentUriUsingTree(uri, cursor.getString(0));
@@ -540,12 +484,10 @@ public class FileBrowser extends AppCompatActivity
                 processFile(info, directory);
             }
         }
-        else
-        {
+        else {
             // Populate the file list normally
             DocumentFile[] files = file.listFiles();
-            for (int i = 0; i < files.length; i++)
-            {
+            for (int i = 0; i < files.length; i++) {
                 FileAdapter.FileInfo info = fileAdapter.new FileInfo();
                 info.name = files[i].getName();
                 info.uri = files[i].getUri();
@@ -555,10 +497,8 @@ public class FileBrowser extends AppCompatActivity
         }
 
         // Sort the file list by name
-        Collections.sort(fileInfo, new Comparator<FileAdapter.FileInfo>()
-        {
-            public int compare(FileAdapter.FileInfo f1, FileAdapter.FileInfo f2)
-            {
+        Collections.sort(fileInfo, new Comparator<FileAdapter.FileInfo>() {
+            public int compare(FileAdapter.FileInfo f1, FileAdapter.FileInfo f2) {
                 return f1.name.compareTo(f2.name);
             }
         });
@@ -567,11 +507,9 @@ public class FileBrowser extends AppCompatActivity
         fileView.setAdapter(fileAdapter);
     }
 
-    private void processFile(FileAdapter.FileInfo info, boolean directory)
-    {
+    private void processFile(FileAdapter.FileInfo info, boolean directory) {
         // Add a directory with icon to the file list
-        if (directory)
-        {
+        if (directory) {
             info.icon = filterBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.folder));
             fileInfo.add(info);
             return;
@@ -579,22 +517,19 @@ public class FileBrowser extends AppCompatActivity
 
         // Add a DS or GBA ROM with icon to the file list
         String ext = (info.name.length() >= 4) ? info.name.substring(info.name.length() - 4) : "";
-        if (ext.equals(".nds"))
-        {
+        if (ext.equals(".nds")) {
             Bitmap bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
             getNdsIcon(getRomFd(info.uri, true), bitmap);
             info.icon = bitmap;
             fileInfo.add(info);
         }
-        else if (ext.equals(".gba"))
-        {
+        else if (ext.equals(".gba")) {
             info.icon = filterBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.file));
             fileInfo.add(info);
         }
     }
 
-    private static Bitmap filterBitmap(Bitmap bitmap)
-    {
+    private static Bitmap filterBitmap(Bitmap bitmap) {
         // Redraw a bitmap using the theme filter
         Bitmap result = bitmap.copy(bitmap.getConfig(), true);
         Paint paint = new Paint();
@@ -604,70 +539,59 @@ public class FileBrowser extends AppCompatActivity
         return result;
     }
 
-    private int getRomFd(Uri romUri, boolean override)
-    {
-        try
-        {
+    private int getRomFd(Uri romUri, boolean override) {
+        try {
             // Get a descriptor for the file in scoped mode
             if (!scoped && !override) return -1;
             return getContentResolver().openFileDescriptor(romUri, "r").detachFd();
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             // Oh well, I guess
             return -1;
         }
     }
 
-    private int getSaveFd(DocumentFile rom)
-    {
+    private int getSaveFd(DocumentFile rom) {
         // Make a save file URI based on the ROM file URI
         String str = rom.getUri().toString();
         Uri uri = Uri.parse(str.substring(0, str.length() - 4) + ".sav");
 
-        try
-        {
+        try {
             // Get a descriptor for the file in scoped mode
             if (!scoped || SettingsMenu.getSavesFolder() == 1) return -1;
             return getContentResolver().openFileDescriptor(uri, "rw").detachFd();
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             // Create a new save file if one doesn't exist
             str = rom.getName().toString();
             DocumentFile save = DocumentFile.fromTreeUri(this, pathUris.get(pathUris.size() - 2));
             save.createFile("application/sav", str.substring(0, str.length() - 4) + ".sav");
 
-            try
-            {
+            try {
                 // Give the save an invalid size so the core treats it as new
                 OutputStream out = getContentResolver().openOutputStream(uri);
                 out.write(0xFF);
                 out.close();
                 return getSaveFd(rom);
             }
-            catch (Exception e2)
-            {
+            catch (Exception e2) {
                 // Oh well, I guess
                 return -1;
             }
         }
     }
 
-    private int getStateFd(DocumentFile rom)
-    {
+    private int getStateFd(DocumentFile rom) {
         // Make a state file URI based on the ROM file URI
         String str = rom.getUri().toString();
         Uri uri = Uri.parse(str.substring(0, str.length() - 4) + ".noo");
 
-        try
-        {
+        try {
             // Get a descriptor for the file in scoped mode
             if (!scoped || SettingsMenu.getStatesFolder() == 1) return -1;
             return getContentResolver().openFileDescriptor(uri, "rw").detachFd();
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             // Create a new state file if one doesn't exist
             str = rom.getName().toString();
             DocumentFile save = DocumentFile.fromTreeUri(this, pathUris.get(pathUris.size() - 2));
@@ -676,20 +600,17 @@ public class FileBrowser extends AppCompatActivity
         }
     }
 
-    private int getCheatFd(DocumentFile rom)
-    {
+    private int getCheatFd(DocumentFile rom) {
         // Make a cheat file URI based on the ROM file URI
         String str = rom.getUri().toString();
         Uri uri = Uri.parse(str.substring(0, str.length() - 4) + ".cht");
 
-        try
-        {
+        try {
             // Get a descriptor for the file in scoped mode
             if (!scoped || SettingsMenu.getCheatsFolder() == 1) return -1;
             return getContentResolver().openFileDescriptor(uri, "rw").detachFd();
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             // Create a new cheat file if one doesn't exist
             str = rom.getName().toString();
             DocumentFile save = DocumentFile.fromTreeUri(this, pathUris.get(pathUris.size() - 2));

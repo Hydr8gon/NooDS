@@ -36,25 +36,20 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 
-public class SettingsMenu extends AppCompatActivity
-{
+public class SettingsMenu extends AppCompatActivity {
     private SharedPreferences prefs;
     private SettingsFragment fragment;
 
-    public static class SettingsFragment extends PreferenceFragmentCompat
-    {
+    public static class SettingsFragment extends PreferenceFragmentCompat {
         @Override
-        public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
-        {
+        public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             // Load settings from the XML file
             setPreferencesFromResource(R.xml.settings, rootKey);
 
             // Request the microphone permission if not granted when the setting is enabled
-            findPreference("mic_enable").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener()
-            {
+            findPreference("mic_enable").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
                 @Override
-                public boolean onPreferenceClick(Preference pref)
-                {
+                public boolean onPreferenceClick(Preference pref) {
                     if (!((SwitchPreference)pref).isChecked()) return true;
                     String perm = android.Manifest.permission.RECORD_AUDIO;
                     if (ContextCompat.checkSelfPermission(getActivity(), perm) != PackageManager.PERMISSION_GRANTED)
@@ -66,8 +61,7 @@ public class SettingsMenu extends AppCompatActivity
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)
-    {
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         // Disable the microphone setting if permission wasn't granted
         int perm = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
         if (perm != PackageManager.PERMISSION_GRANTED)
@@ -75,8 +69,7 @@ public class SettingsMenu extends AppCompatActivity
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         // Load the settings from the core
@@ -119,8 +112,7 @@ public class SettingsMenu extends AppCompatActivity
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu)
-    {
+    public boolean onCreateOptionsMenu(Menu menu) {
         // Apply the theme filter to all icons
         getMenuInflater().inflate(R.menu.settings_menu, menu);
         for (int i = 0; i < menu.size(); i++)
@@ -129,10 +121,8 @@ public class SettingsMenu extends AppCompatActivity
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        switch (item.getItemId())
-        {
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
             case R.id.bindings_action:
                 // Open the input bindings menu
                 startActivity(new Intent(this, BindingsMenu.class));
@@ -142,8 +132,7 @@ public class SettingsMenu extends AppCompatActivity
     }
 
     @Override
-    public void onBackPressed()
-    {
+    public void onBackPressed() {
         // Save the settings to the core
         setDirectBoot(prefs.getBoolean("direct_boot", true) ? 1 : 0);
         setRomInRam(prefs.getBoolean("rom_in_ram", false) ? 1 : 0);

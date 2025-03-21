@@ -28,8 +28,7 @@
 class NooApp;
 class NooCanvas;
 
-class NooFrame: public wxFrame
-{
+class NooFrame: public wxFrame {
     public:
         NooCanvas *canvas;
         NooFrame *partner;

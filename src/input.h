@@ -24,8 +24,7 @@
 
 class Core;
 
-class Input
-{
+class Input {
     public:
         Input(Core *core): core(core) {}
 

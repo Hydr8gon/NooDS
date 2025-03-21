@@ -31,10 +31,8 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 
-public class FileAdapter extends BaseAdapter
-{
-    public class FileInfo
-    {
+public class FileAdapter extends BaseAdapter {
+    public class FileInfo {
         public String name;
         public Bitmap icon;
         public Uri uri;
@@ -43,40 +41,33 @@ public class FileAdapter extends BaseAdapter
     private Context context;
     private ArrayList<FileInfo> info;
 
-    public FileAdapter(Context context)
-    {
+    public FileAdapter(Context context) {
         this.context = context;
     }
 
-    public void setInfo(ArrayList<FileInfo> info)
-    {
+    public void setInfo(ArrayList<FileInfo> info) {
         this.info = info;
     }
 
     @Override
-    public int getCount()
-    {
+    public int getCount() {
         return info.size();
     }
 
     @Override
-    public Object getItem(int position)
-    {
+    public Object getItem(int position) {
         return null;
     }
 
     @Override
-    public long getItemId(int position)
-    {
+    public long getItemId(int position) {
         return position;
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent)
-    {
+    public View getView(int position, View convertView, ViewGroup parent) {
         // Create a new file row
-        if (convertView == null)
-        {
+        if (convertView == null) {
             LayoutInflater inflater = LayoutInflater.from(context);
             convertView = inflater.inflate(R.layout.file_row, parent, false);
         }

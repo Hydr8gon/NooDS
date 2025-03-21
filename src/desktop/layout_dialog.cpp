@@ -22,8 +22,7 @@
 #include "../common/screen_layout.h"
 #include "../settings.h"
 
-enum LayoutEvent
-{
+enum LayoutEvent {
     POS_CENTER = 1,
     POS_TOP,
     POS_BOTTOM,
@@ -89,8 +88,7 @@ EVT_BUTTON(wxID_CANCEL, LayoutDialog::cancel)
 EVT_BUTTON(wxID_OK, LayoutDialog::confirm)
 wxEND_EVENT_TABLE()
 
-LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Layout"), app(app)
-{
+LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Layout"), app(app) {
     // Remember the previous settings in case the changes are discarded
     prevSettings[0] = ScreenLayout::screenPosition;
     prevSettings[1] = ScreenLayout::screenRotation;
@@ -241,211 +239,181 @@ LayoutDialog::LayoutDialog(NooApp *app): wxDialog(nullptr, wxID_ANY, "Screen Lay
     SetMaxSize(GetSize());
 }
 
-void LayoutDialog::posCenter(wxCommandEvent &event)
-{
+void LayoutDialog::posCenter(wxCommandEvent &event) {
     // Set the screen position setting to center
     ScreenLayout::screenPosition = 0;
     app->updateLayouts();
 }
 
-void LayoutDialog::posTop(wxCommandEvent &event)
-{
+void LayoutDialog::posTop(wxCommandEvent &event) {
     // Set the screen position setting to top
     ScreenLayout::screenPosition = 1;
     app->updateLayouts();
 }
 
-void LayoutDialog::posBottom(wxCommandEvent &event)
-{
+void LayoutDialog::posBottom(wxCommandEvent &event) {
     // Set the screen position setting to bottom
     ScreenLayout::screenPosition = 2;
     app->updateLayouts();
 }
 
-void LayoutDialog::posLeft(wxCommandEvent &event)
-{
+void LayoutDialog::posLeft(wxCommandEvent &event) {
     // Set the screen position setting to left
     ScreenLayout::screenPosition = 3;
     app->updateLayouts();
 }
 
-void LayoutDialog::posRight(wxCommandEvent &event)
-{
+void LayoutDialog::posRight(wxCommandEvent &event) {
     // Set the screen position setting to right
     ScreenLayout::screenPosition = 4;
     app->updateLayouts();
 }
 
-void LayoutDialog::rotateNone(wxCommandEvent &event)
-{
+void LayoutDialog::rotateNone(wxCommandEvent &event) {
     // Set the screen rotation setting to none
     ScreenLayout::screenRotation = 0;
     app->updateLayouts();
 }
 
-void LayoutDialog::rotateCw(wxCommandEvent &event)
-{
+void LayoutDialog::rotateCw(wxCommandEvent &event) {
     // Set the screen rotation setting to clockwise
     ScreenLayout::screenRotation = 1;
     app->updateLayouts();
 }
 
-void LayoutDialog::rotateCcw(wxCommandEvent &event)
-{
+void LayoutDialog::rotateCcw(wxCommandEvent &event) {
     // Set the screen rotation setting to counter-clockwise
     ScreenLayout::screenRotation = 2;
     app->updateLayouts();
 }
 
-void LayoutDialog::arrangeAuto(wxCommandEvent &event)
-{
+void LayoutDialog::arrangeAuto(wxCommandEvent &event) {
     // Set the screen arrangement setting to automatic
     ScreenLayout::screenArrangement = 0;
     app->updateLayouts();
 }
 
-void LayoutDialog::arrangeVert(wxCommandEvent &event)
-{
+void LayoutDialog::arrangeVert(wxCommandEvent &event) {
     // Set the screen arrangement setting to vertical
     ScreenLayout::screenArrangement = 1;
     app->updateLayouts();
 }
 
-void LayoutDialog::arrangeHori(wxCommandEvent &event)
-{
+void LayoutDialog::arrangeHori(wxCommandEvent &event) {
     // Set the screen arrangement setting to horizontal
     ScreenLayout::screenArrangement = 2;
     app->updateLayouts();
 }
 
-void LayoutDialog::arrangeSing(wxCommandEvent &event)
-{
+void LayoutDialog::arrangeSing(wxCommandEvent &event) {
     // Set the screen arrangement setting to single screen
     ScreenLayout::screenArrangement = 3;
     app->updateLayouts();
 }
 
-void LayoutDialog::sizeEven(wxCommandEvent &event)
-{
+void LayoutDialog::sizeEven(wxCommandEvent &event) {
     // Set the screen sizing setting to even
     ScreenLayout::screenSizing = 0;
     app->updateLayouts();
 }
 
-void LayoutDialog::sizeTop(wxCommandEvent &event)
-{
+void LayoutDialog::sizeTop(wxCommandEvent &event) {
     // Set the screen sizing setting to enlarge top
     ScreenLayout::screenSizing = 1;
     app->updateLayouts();
 }
 
-void LayoutDialog::sizeBot(wxCommandEvent &event)
-{
+void LayoutDialog::sizeBot(wxCommandEvent &event) {
     // Set the screen sizing setting to enlarge bottom
     ScreenLayout::screenSizing = 2;
     app->updateLayouts();
 }
 
-void LayoutDialog::gapNone(wxCommandEvent &event)
-{
+void LayoutDialog::gapNone(wxCommandEvent &event) {
     // Set the screen gap setting to none
     ScreenLayout::screenGap = 0;
     app->updateLayouts();
 }
 
-void LayoutDialog::gapQuart(wxCommandEvent &event)
-{
+void LayoutDialog::gapQuart(wxCommandEvent &event) {
     // Set the screen gap setting to quarter
     ScreenLayout::screenGap = 1;
     app->updateLayouts();
 }
 
-void LayoutDialog::gapHalf(wxCommandEvent &event)
-{
+void LayoutDialog::gapHalf(wxCommandEvent &event) {
     // Set the screen gap setting to half
     ScreenLayout::screenGap = 2;
     app->updateLayouts();
 }
 
-void LayoutDialog::gapFull(wxCommandEvent &event)
-{
+void LayoutDialog::gapFull(wxCommandEvent &event) {
     // Set the screen gap setting to full
     ScreenLayout::screenGap = 3;
     app->updateLayouts();
 }
 
-void LayoutDialog::filtNearest(wxCommandEvent &event)
-{
+void LayoutDialog::filtNearest(wxCommandEvent &event) {
     // Set the screen filter setting to nearest
     Settings::screenFilter = 0;
     app->updateLayouts();
 }
 
-void LayoutDialog::filtUpscale(wxCommandEvent &event)
-{
+void LayoutDialog::filtUpscale(wxCommandEvent &event) {
     // Set the screen filter setting to upscaled
     Settings::screenFilter = 1;
     app->updateLayouts();
 }
 
-void LayoutDialog::filtLinear(wxCommandEvent &event)
-{
+void LayoutDialog::filtLinear(wxCommandEvent &event) {
     // Set the screen filter setting to linear
     Settings::screenFilter = 2;
     app->updateLayouts();
 }
 
-void LayoutDialog::aspectDefault(wxCommandEvent &event)
-{
+void LayoutDialog::aspectDefault(wxCommandEvent &event) {
     // Set the aspect ratio setting to default
     ScreenLayout::aspectRatio = 0;
     app->updateLayouts();
 }
 
-void LayoutDialog::aspect16x10(wxCommandEvent &event)
-{
+void LayoutDialog::aspect16x10(wxCommandEvent &event) {
     // Set the aspect ratio setting to 16:10
     ScreenLayout::aspectRatio = 1;
     app->updateLayouts();
 }
 
-void LayoutDialog::aspect16x9(wxCommandEvent &event)
-{
+void LayoutDialog::aspect16x9(wxCommandEvent &event) {
     // Set the aspect ratio setting to 16:9
     ScreenLayout::aspectRatio = 2;
     app->updateLayouts();
 }
 
-void LayoutDialog::aspect18x9(wxCommandEvent &event)
-{
+void LayoutDialog::aspect18x9(wxCommandEvent &event) {
     // Set the aspect ratio setting to 18:9
     ScreenLayout::aspectRatio = 3;
     app->updateLayouts();
 }
 
-void LayoutDialog::intScale(wxCommandEvent &event)
-{
+void LayoutDialog::intScale(wxCommandEvent &event) {
     // Toggle the integer scale setting
     ScreenLayout::integerScale = !ScreenLayout::integerScale;
     app->updateLayouts();
 }
 
-void LayoutDialog::gbaCrop(wxCommandEvent &event)
-{
+void LayoutDialog::gbaCrop(wxCommandEvent &event) {
     // Toggle the GBA crop setting
     ScreenLayout::gbaCrop = !ScreenLayout::gbaCrop;
     app->updateLayouts();
 }
 
-void LayoutDialog::splitScreens(wxCommandEvent &event)
-{
+void LayoutDialog::splitScreens(wxCommandEvent &event) {
     // Toggle the split screens setting
     NooApp::splitScreens = !NooApp::splitScreens;
     app->updateLayouts();
 }
 
-void LayoutDialog::cancel(wxCommandEvent &event)
-{
+void LayoutDialog::cancel(wxCommandEvent &event) {
     // Reset the settings to their previous values
     ScreenLayout::screenPosition = prevSettings[0];
     ScreenLayout::screenRotation = prevSettings[1];
@@ -461,8 +429,7 @@ void LayoutDialog::cancel(wxCommandEvent &event)
     event.Skip(true);
 }
 
-void LayoutDialog::confirm(wxCommandEvent &event)
-{
+void LayoutDialog::confirm(wxCommandEvent &event) {
     // Save the layout settings
     Settings::save();
     event.Skip(true);

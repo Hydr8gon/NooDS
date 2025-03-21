@@ -25,8 +25,7 @@
 
 class Core;
 
-struct VramMapping
-{
+struct VramMapping {
     uint8_t *mappings[7] = {};
     uint8_t count = 0;
 
@@ -35,8 +34,7 @@ struct VramMapping
     template <typename T> void write(uint32_t address, T value);
 };
 
-class Memory
-{
+class Memory {
     public:
         // 32-bit address space, split into 4KB blocks
         uint8_t *readMap9A[0x100000] = {};
@@ -133,12 +131,10 @@ class Memory
 template uint8_t Memory::read(bool arm7, uint32_t address, bool tcm);
 template uint16_t Memory::read(bool arm7, uint32_t address, bool tcm);
 template uint32_t Memory::read(bool arm7, uint32_t address, bool tcm);
-template <typename T> FORCE_INLINE T Memory::read(bool arm7, uint32_t address, bool tcm)
-{
+template <typename T> FORCE_INLINE T Memory::read(bool arm7, uint32_t address, bool tcm) {
     // Look up a pointer to readable memory and read a value from it LSB-first
     uint8_t **readMap = arm7 ? readMap7 : (tcm ? readMap9A : readMap9B);
-    if (uint8_t *data = readMap[address >> 12])
-    {
+    if (uint8_t *data = readMap[address >> 12]) {
         T value = 0;
         data += address & (0x1000 - sizeof(T));
         for (uint32_t i = 0; i < sizeof(T); i++)
@@ -153,12 +149,10 @@ template <typename T> FORCE_INLINE T Memory::read(bool arm7, uint32_t address, b
 template void Memory::write(bool arm7, uint32_t address, uint8_t value, bool tcm);
 template void Memory::write(bool arm7, uint32_t address, uint16_t value, bool tcm);
 template void Memory::write(bool arm7, uint32_t address, uint32_t value, bool tcm);
-template <typename T> FORCE_INLINE void Memory::write(bool arm7, uint32_t address, T value, bool tcm)
-{
+template <typename T> FORCE_INLINE void Memory::write(bool arm7, uint32_t address, T value, bool tcm) {
     // Look up a pointer to writable memory and write a value to it LSB-first
     uint8_t **writeMap = arm7 ? writeMap7 : (tcm ? writeMap9A : writeMap9B);
-    if (uint8_t *data = writeMap[address >> 12])
-    {
+    if (uint8_t *data = writeMap[address >> 12]) {
         data += address & (0x1000 - sizeof(T));
         for (uint32_t i = 0; i < sizeof(T); i++)
             data[i] = value >> (i * 8);

@@ -22,8 +22,7 @@
 
 #include "noo_frame.h"
 
-class CheatDialog: public wxDialog
-{
+class CheatDialog: public wxDialog {
     public:
         CheatDialog(Core *core);
 

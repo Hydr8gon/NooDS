@@ -27,15 +27,13 @@
 
 class Core;
 
-struct ARCheat
-{
+struct ARCheat {
     std::string name;
     std::vector<uint32_t> code;
     bool enabled;
 };
 
-class ActionReplay
-{
+class ActionReplay {
     public:
         std::vector<ARCheat> cheats;
 

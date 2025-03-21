@@ -24,8 +24,7 @@
 
 class NooApp;
 
-class LayoutDialog: public wxDialog
-{
+class LayoutDialog: public wxDialog {
     public:
         LayoutDialog(NooApp *app);
 

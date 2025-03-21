@@ -24,8 +24,7 @@
 #include <cstdio>
 #include <mutex>
 
-enum Language
-{
+enum Language {
     LG_JAPANESE = 0,
     LG_ENGLISH,
     LG_FRENCH,
@@ -36,8 +35,7 @@ enum Language
 
 class Core;
 
-class Spi
-{
+class Spi {
     public:
         Spi(Core *core): core(core) {}
         ~Spi();

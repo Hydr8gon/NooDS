@@ -26,8 +26,7 @@
 
 class Core;
 
-class Ipc
-{
+class Ipc {
     public:
         Ipc(Core *core): core(core) {}
         void saveState(FILE *file);

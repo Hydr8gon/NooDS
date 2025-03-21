@@ -49,15 +49,13 @@
 #include "timers.h"
 #include "wifi.h"
 
-enum CoreError
-{
+enum CoreError {
     ERROR_BIOS,
     ERROR_FIRM,
     ERROR_ROM
 };
 
-enum SchedTask
-{
+enum SchedTask {
     UPDATE_RUN,
     RESET_CYCLES,
     CART9_WORD_READY,
@@ -93,8 +91,7 @@ enum SchedTask
     MAX_TASKS
 };
 
-struct SchedEvent
-{
+struct SchedEvent {
     SchedTask task;
     uint32_t cycles;
 
@@ -102,8 +99,7 @@ struct SchedEvent
     bool operator<(const SchedEvent &event) const { return cycles < event.cycles; }
 };
 
-class Core
-{
+class Core {
     public:
         int id = 0;
         int fps = 0;

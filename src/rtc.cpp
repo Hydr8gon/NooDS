@@ -22,8 +22,7 @@
 #include "rtc.h"
 #include "core.h"
 
-void Rtc::saveState(FILE *file)
-{
+void Rtc::saveState(FILE *file) {
     // Write state data to the file
     fwrite(&csCur, sizeof(csCur), 1, file);
     fwrite(&sckCur, sizeof(sckCur), 1, file);
@@ -37,8 +36,7 @@ void Rtc::saveState(FILE *file)
     fwrite(&gpControl, sizeof(gpControl), 1, file);
 }
 
-void Rtc::loadState(FILE *file)
-{
+void Rtc::loadState(FILE *file) {
     // Read state data from the file
     fread(&csCur, sizeof(csCur), 1, file);
     fread(&sckCur, sizeof(sckCur), 1, file);
@@ -52,34 +50,27 @@ void Rtc::loadState(FILE *file)
     fread(&gpControl, sizeof(gpControl), 1, file);
 }
 
-void Rtc::updateRtc(bool cs, bool sck, bool sio)
-{
-    if (cs)
-    {
+void Rtc::updateRtc(bool cs, bool sck, bool sio) {
+    if (cs) {
         // Transfer a bit to the RTC when SCK changes from low to high
-        if (!sckCur && sck)
-        {
-            if (writeCount < 8)
-            {
+        if (!sckCur && sck) {
+            if (writeCount < 8) {
                 // Write the first 8 bits to the command register
                 command |= sio << (7 - writeCount);
 
                 // Once the command is written, reverse the bit order if necessary
-                if (writeCount == 7 && (command & 0xF0) != 0x60)
-                {
+                if (writeCount == 7 && (command & 0xF0) != 0x60) {
                     uint8_t value = 0;
                     for (int i = 0; i < 8; i++)
                         value |= ((command >> i) & BIT(0)) << (7 - i);
                     command = value;
                 }
             }
-            else if (command & BIT(0))
-            {
+            else if (command & BIT(0)) {
                 // Read a bit from an RTC register
                 sio = readRegister((command >> 1) & 0x7);
             }
-            else
-            {
+            else {
                 // Write a bit to an RTC register
                 writeRegister((command >> 1) & 0x7, sio);
             }
@@ -87,8 +78,7 @@ void Rtc::updateRtc(bool cs, bool sck, bool sio)
             writeCount++;
         }
     }
-    else
-    {
+    else {
         // Reset the transfer when CS is low
         writeCount = 0;
         command = 0;
@@ -100,8 +90,7 @@ void Rtc::updateRtc(bool cs, bool sck, bool sio)
     sioCur = sio;
 }
 
-void Rtc::updateDateTime()
-{
+void Rtc::updateDateTime() {
     // Get the local time
     std::time_t t = std::time(nullptr);
     std::tm *time = std::localtime(&t);
@@ -126,8 +115,7 @@ void Rtc::updateDateTime()
         dateTime[4] |= BIT(6 << core->gbaMode);
 }
 
-void Rtc::reset()
-{
+void Rtc::reset() {
     // Reset the RTC registers
     updateRtc(0, 0, 0);
     control = 0;
@@ -136,13 +124,10 @@ void Rtc::reset()
     gpControl = 0;
 }
 
-bool Rtc::readRegister(uint8_t index)
-{
-    if (core->gbaMode)
-    {
+bool Rtc::readRegister(uint8_t index) {
+    if (core->gbaMode) {
         // Read a bit from a GBA RTC register
-        switch (index)
-        {
+        switch (index) {
             case 0: // Reset
                 reset();
                 return 0;
@@ -165,8 +150,7 @@ bool Rtc::readRegister(uint8_t index)
     }
 
     // Read a bit from an NDS RTC register
-    switch (index)
-    {
+    switch (index) {
         case 0: // Status 1
             return (control >> (writeCount & 7)) & BIT(0);
 
@@ -184,13 +168,10 @@ bool Rtc::readRegister(uint8_t index)
     }
 }
 
-void Rtc::writeRegister(uint8_t index, bool value)
-{
-    if (core->gbaMode)
-    {
+void Rtc::writeRegister(uint8_t index, bool value) {
+    if (core->gbaMode) {
         // Read a bit from a GBA RTC register
-        switch (index)
-        {
+        switch (index) {
             case 1: // Control
                 if (BIT(writeCount & 7) & 0x6A) // R/W bits
                     control = (control & ~BIT(writeCount & 7)) | (value << (writeCount & 7));
@@ -203,8 +184,7 @@ void Rtc::writeRegister(uint8_t index, bool value)
     }
 
     // Write a bit to an NDS RTC register
-    switch (index)
-    {
+    switch (index) {
         case 0: // Status 1
             if ((BIT(writeCount & 7) & 0x01) && value) // Reset bit
                 reset();
@@ -218,8 +198,7 @@ void Rtc::writeRegister(uint8_t index, bool value)
     }
 }
 
-void Rtc::writeRtc(uint8_t value)
-{
+void Rtc::writeRtc(uint8_t value) {
     // Write to the RTC register
     rtc = value & ~0x07;
 
@@ -230,10 +209,8 @@ void Rtc::writeRtc(uint8_t value)
     updateRtc(cs, sck, sio);
 }
 
-void Rtc::writeGpData(uint16_t mask, uint16_t value)
-{
-    if (mask & 0xFF)
-    {
+void Rtc::writeGpData(uint16_t mask, uint16_t value) {
+    if (mask & 0xFF) {
         // Change the CS/SCK/SIO bits if writable and update the RTC
         bool cs = (gpDirection & BIT(2)) ? (value & BIT(2)) : csCur;
         bool sio = (gpDirection & BIT(1)) ? (value & BIT(1)) : sioCur;
@@ -242,15 +219,13 @@ void Rtc::writeGpData(uint16_t mask, uint16_t value)
     }
 }
 
-void Rtc::writeGpDirection(uint16_t mask, uint16_t value)
-{
+void Rtc::writeGpDirection(uint16_t mask, uint16_t value) {
     // Write to the GP_DIRECTION register
     mask &= 0x000F;
     gpDirection = (gpDirection & ~mask) | (value & mask);
 }
 
-void Rtc::writeGpControl(uint16_t mask, uint16_t value)
-{
+void Rtc::writeGpControl(uint16_t mask, uint16_t value) {
     // Only allow enabling register reads if an RTC was detected
     if (!gpRtc)
         return;
@@ -263,8 +238,7 @@ void Rtc::writeGpControl(uint16_t mask, uint16_t value)
     core->memory.updateMap7(0x8000000, 0x8001000);
 }
 
-uint8_t Rtc::readRtc()
-{
+uint8_t Rtc::readRtc() {
     // Get the CS/SCK/SIO bits if readable and read from the RTC register
     bool cs = csCur;
     bool sck = (rtc & BIT(5)) ? 0 : sckCur;
@@ -272,8 +246,7 @@ uint8_t Rtc::readRtc()
     return rtc | (cs << 2) | (sck << 1) | (sio << 0);
 }
 
-uint16_t Rtc::readGpData()
-{
+uint16_t Rtc::readGpData() {
     // Get the CS/SCK/SIO bits if readable and read from the GP_DATA register
     bool cs = (gpDirection & BIT(2)) ? 0 : csCur;
     bool sio = (gpDirection & BIT(1)) ? 0 : sioCur;

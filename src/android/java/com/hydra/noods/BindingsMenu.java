@@ -24,20 +24,16 @@ import androidx.preference.PreferenceFragmentCompat;
 
 import android.os.Bundle;
 
-public class BindingsMenu extends AppCompatActivity
-{
-    public static class BindingsFragment extends PreferenceFragmentCompat
-    {
+public class BindingsMenu extends AppCompatActivity {
+    public static class BindingsFragment extends PreferenceFragmentCompat {
         @Override
-        public void onCreatePreferences(Bundle savedInstanceState, String rootKey)
-        {
+        public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             setPreferencesFromResource(R.xml.bindings, rootKey);
         }
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
-    {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         // Populate the input bindings UI
@@ -47,8 +43,7 @@ public class BindingsMenu extends AppCompatActivity
     }
 
     @Override
-    public void onBackPressed()
-    {
+    public void onBackPressed() {
         // Save the bindings and return to the previous activity
         SettingsMenu.saveSettings();
         finish();

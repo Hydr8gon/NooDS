@@ -20,8 +20,7 @@
 #include "path_dialog.h"
 #include "../settings.h"
 
-enum PathEvent
-{
+enum PathEvent {
     BIOS9_BROWSE = 1,
     BIOS7_BROWSE,
     FIRMWARE_BROWSE,
@@ -43,8 +42,7 @@ EVT_BUTTON(OPEN_FOLDER, PathDialog::openFolder)
 EVT_BUTTON(wxID_OK, PathDialog::confirm)
 wxEND_EVENT_TABLE()
 
-PathDialog::PathDialog(): wxDialog(nullptr, wxID_ANY, "Path Settings")
-{
+PathDialog::PathDialog(): wxDialog(nullptr, wxID_ANY, "Path Settings") {
     // Use the height of a button as a unit to scale pixel values based on DPI/font
     wxButton *dummy = new wxButton(this, wxID_ANY, "");
     int size = dummy->GetSize().y;
@@ -125,8 +123,7 @@ PathDialog::PathDialog(): wxDialog(nullptr, wxID_ANY, "Path Settings")
     SetMaxSize(GetSize());
 }
 
-void PathDialog::bios9Browse(wxCommandEvent &event)
-{
+void PathDialog::bios9Browse(wxCommandEvent &event) {
     // Show the file browser
     wxFileDialog bios9Select(this, "Select ARM9 BIOS File", "", "",
         "Binary files (*.bin)|*.bin", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
@@ -137,8 +134,7 @@ void PathDialog::bios9Browse(wxCommandEvent &event)
     *bios9Path << bios9Select.GetPath();
 }
 
-void PathDialog::bios7Browse(wxCommandEvent &event)
-{
+void PathDialog::bios7Browse(wxCommandEvent &event) {
     // Show the file browser
     wxFileDialog bios7Select(this, "Select ARM7 BIOS File", "", "",
         "Binary files (*.bin)|*.bin", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
@@ -149,8 +145,7 @@ void PathDialog::bios7Browse(wxCommandEvent &event)
     *bios7Path << bios7Select.GetPath();
 }
 
-void PathDialog::firmwareBrowse(wxCommandEvent &event)
-{
+void PathDialog::firmwareBrowse(wxCommandEvent &event) {
     // Show the file browser
     wxFileDialog firmwareSelect(this, "Select Firmware File", "", "",
         "Binary files (*.bin)|*.bin", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
@@ -161,8 +156,7 @@ void PathDialog::firmwareBrowse(wxCommandEvent &event)
     *firmwarePath << firmwareSelect.GetPath();
 }
 
-void PathDialog::gbaBiosBrowse(wxCommandEvent &event)
-{
+void PathDialog::gbaBiosBrowse(wxCommandEvent &event) {
     // Show the file browser
     wxFileDialog gbaBiosSelect(this, "Select GBA BIOS File", "", "",
         "Binary files (*.bin)|*.bin", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
@@ -173,8 +167,7 @@ void PathDialog::gbaBiosBrowse(wxCommandEvent &event)
     *gbaBiosPath << gbaBiosSelect.GetPath();
 }
 
-void PathDialog::sdImageBrowse(wxCommandEvent &event)
-{
+void PathDialog::sdImageBrowse(wxCommandEvent &event) {
     // Show the file browser
     wxFileDialog sdImageSelect(this, "Select SD Image File", "", "",
         "Image files (*.img)|*.img", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
@@ -185,14 +178,12 @@ void PathDialog::sdImageBrowse(wxCommandEvent &event)
     *sdImagePath << sdImageSelect.GetPath();
 }
 
-void PathDialog::openFolder(wxCommandEvent &event)
-{
+void PathDialog::openFolder(wxCommandEvent &event) {
     // Open the folder containing settings and other files
     wxLaunchDefaultApplication(Settings::basePath);
 }
 
-void PathDialog::confirm(wxCommandEvent &event)
-{
+void PathDialog::confirm(wxCommandEvent &event) {
     // Update and save the path settings
     Settings::bios9Path = bios9Path->GetValue().ToStdString();
     Settings::bios7Path = bios7Path->GetValue().ToStdString();

@@ -23,15 +23,12 @@
 #include "core.h"
 #include "settings.h"
 
-Matrix Matrix::operator*(Matrix &mtx)
-{
+Matrix Matrix::operator*(Matrix &mtx) {
     Matrix result;
 
     // Multiply 2 matrices
-    for (int y = 0; y < 4; y++)
-    {
-        for (int x = 0; x < 4; x++)
-        {
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
             result.data[y * 4 + x] = ((int64_t)data[y * 4 + 0] * mtx.data[0 + x] + (int64_t)data[y * 4 + 1] * mtx.data[4 + x] +
                 (int64_t)data[y * 4 + 2] * mtx.data[8 + x] + (int64_t)data[y * 4 + 3] * mtx.data[12 + x]) >> 12;
         }
@@ -40,14 +37,12 @@ Matrix Matrix::operator*(Matrix &mtx)
     return result;
 }
 
-int32_t Vector::operator*(Vector &vtr)
-{
+int32_t Vector::operator*(Vector &vtr) {
     // Multiply 2 vectors
     return ((int64_t)x * vtr.x + (int64_t)y * vtr.y + (int64_t)z * vtr.z) >> 12;
 }
 
-Vector Vector::operator*(Matrix &mtx)
-{
+Vector Vector::operator*(Matrix &mtx) {
     Vector result;
 
     // Multiply a vector with a matrix
@@ -58,8 +53,7 @@ Vector Vector::operator*(Matrix &mtx)
     return result;
 }
 
-Vertex Vertex::operator*(Matrix &mtx)
-{
+Vertex Vertex::operator*(Matrix &mtx) {
     Vertex result = *this;
 
     // Multiply a vertex with a matrix
@@ -71,8 +65,7 @@ Vertex Vertex::operator*(Matrix &mtx)
     return result;
 }
 
-const uint8_t Gpu3D::paramCounts[] =
-{
+const uint8_t Gpu3D::paramCounts[] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x00-0x0F
     1, 0, 1, 1, 1, 0, 16, 12, 16, 12, 9, 3, 3, 0, 0, 0, // 0x10-0x1F
     1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, // 0x20-0x2F
@@ -83,8 +76,7 @@ const uint8_t Gpu3D::paramCounts[] =
     3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x70-0x7F
 };
 
-void Gpu3D::saveState(FILE *file)
-{
+void Gpu3D::saveState(FILE *file) {
     // Write state data to the file
     fwrite(&state, sizeof(state), 1, file);
     fwrite(&pipeSize, sizeof(pipeSize), 1, file);
@@ -146,8 +138,7 @@ void Gpu3D::saveState(FILE *file)
         fwrite(&fifo[i], sizeof(fifo[i]), 1, file);
 }
 
-void Gpu3D::loadState(FILE *file)
-{
+void Gpu3D::loadState(FILE *file) {
     // Read state data from the file
     fread(&state, sizeof(state), 1, file);
     fread(&pipeSize, sizeof(pipeSize), 1, file);
@@ -213,15 +204,13 @@ void Gpu3D::loadState(FILE *file)
     uint32_t count;
     Entry entry(0, 0);
     fread(&count, sizeof(count), 1, file);
-    for (uint32_t j = 0; j < count; j++)
-    {
+    for (uint32_t j = 0; j < count; j++) {
         fread(&entry, sizeof(entry), 1, file);
         fifo.push_back(entry);
     }
 }
 
-uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
-{
+uint32_t Gpu3D::rgb5ToRgb6(uint16_t color) {
     // Convert an RGB5 value to an RGB6 value (the way the 3D engine does it)
     uint8_t r = ((color >> 0) & 0x1F) * 2; if (r > 0) r++;
     uint8_t g = ((color >> 5) & 0x1F) * 2; if (g > 0) g++;
@@ -229,8 +218,7 @@ uint32_t Gpu3D::rgb5ToRgb6(uint16_t color)
     return (b << 12) | (g << 6) | r;
 }
 
-Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2)
-{
+Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val2) {
     // Calculate the interpolation coefficients
     int64_t d1 = val1 + vtx1->w;
     int64_t d2 = val2 + vtx2->w;
@@ -253,28 +241,24 @@ Vertex Gpu3D::intersection(Vertex *vtx1, Vertex *vtx2, int32_t val1, int32_t val
     return vertex;
 }
 
-bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size)
-{
+bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size) {
     // Start with the original unclipped vertices
     bool clip = false;
     Vertex vertices[10];
     memcpy(vertices, unclipped, *size * sizeof(Vertex));
 
     // Clip a polygon using the Sutherland-Hodgman algorithm
-    for (int i = 0; i < 6; i++)
-    {
+    for (int i = 0; i < 6; i++) {
         int oldSize = *size;
         *size = 0;
-        for (int j = 0; j < oldSize; j++)
-        {
+        for (int j = 0; j < oldSize; j++) {
             // Get the unclipped vertices 
             Vertex *current = &vertices[j];
             Vertex *previous = &vertices[(j - 1 + oldSize) % oldSize];
 
             // Choose which coordinates to check based on the current side being clipped against
             int32_t currentVal, previousVal;
-            switch (i)
-            {
+            switch (i) {
                 case 0: currentVal = current->x; previousVal = previous->x; break;
                 case 1: currentVal = -current->x; previousVal = -previous->x; break;
                 case 2: currentVal = current->y; previousVal = previous->y; break;
@@ -284,17 +268,14 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size)
             }
 
             // Add the clipped vertices
-            if (currentVal >= -current->w) // Current vertex in bounds
-            {
-                if (previousVal < -previous->w) // Previous vertex not in bounds
-                {
+            if (currentVal >= -current->w) { // Current vertex in bounds
+                if (previousVal < -previous->w) { // Previous vertex not in bounds
                     clipped[(*size)++] = intersection(current, previous, currentVal, previousVal);
                     clip = true;
                 }
                 clipped[(*size)++] = *current;
             }
-            else if (previousVal >= -previous->w) // Previous vertex in bounds
-            {
+            else if (previousVal >= -previous->w) { // Previous vertex in bounds
                 clipped[(*size)++] = intersection(current, previous, currentVal, previousVal);
                 clip = true;
             }
@@ -306,36 +287,30 @@ bool Gpu3D::clipPolygon(Vertex *unclipped, Vertex *clipped, uint8_t *size)
     return clip;
 }
 
-void Gpu3D::runCommands()
-{
+void Gpu3D::runCommands() {
     // Run a batch of geometry commands
     uint32_t cycles = 0;
-    while (cycles < GPU3D_BATCH)
-    {
+    while (cycles < GPU3D_BATCH) {
         // Fetch the next geometry command
         Entry entry = fifo.front();
         int count = paramCounts[entry.command];
         std::vector<uint32_t> params;
 
         // If the command has multiple parameters, fetch them all
-        if (count > 1)
-        {
+        if (count > 1) {
             params.reserve(count);
-            for (int i = 0; i < count; i++)
-            {
+            for (int i = 0; i < count; i++) {
                 params.push_back(fifo.front().param);
                 fifo.pop_front();
             }
         }
-        else
-        {
+        else {
             count = 1;
             fifo.pop_front();
         }
 
         // Execute the geometry command
-        switch (entry.command)
-        {
+        switch (entry.command) {
             case 0x10: mtxModeCmd(entry.param); break; // MTX_MODE
             case 0x11: mtxPushCmd(); break; // MTX_PUSH
             case 0x12: mtxPopCmd(entry.param); break; // MTX_POP
@@ -398,15 +373,13 @@ void Gpu3D::runCommands()
 
     // If the FIFO becomes less than half full, trigger GXFIFO DMA transfers
     // If the FIFO is already less than half full when a DMA starts, it will automatically activate
-    if (fifo.size() - pipeSize < 128 && !(gxStat & BIT(25)))
-    {
+    if (fifo.size() - pipeSize < 128 && !(gxStat & BIT(25))) {
         gxStat |= BIT(25);
         core->dma[0].trigger(7);
     }
 
     // Send a GXFIFO interrupt if enabled
-    switch ((gxStat & 0xC0000000) >> 30)
-    {
+    switch ((gxStat & 0xC0000000) >> 30) {
         case 1: if (gxStat & BIT(25)) core->interpreter[0].sendInterrupt(21); break;
         case 2: if (gxStat & BIT(26)) core->interpreter[0].sendInterrupt(21); break;
     }
@@ -416,8 +389,7 @@ void Gpu3D::runCommands()
         core->interpreter[0].unhalt(1);
 
     // Keep executing commands as long as they're ready
-    if (state != GX_HALTED)
-    {
+    if (state != GX_HALTED) {
         if (!fifo.empty() && fifo.size() >= paramCounts[fifo.front().command])
             core->schedule(GPU3D_COMMANDS, cycles);
         else
@@ -425,8 +397,7 @@ void Gpu3D::runCommands()
     }
 }
 
-void Gpu3D::processVertices()
-{
+void Gpu3D::processVertices() {
     // Scale the viewport based on the high-res 3D setting
     bool resShift = Settings::highRes3D;
     uint16_t x = viewport[0] << resShift;
@@ -439,10 +410,8 @@ void Gpu3D::processVertices()
     // Normalize and scale new vertices to the viewport
     // X coordinates are 9-bit and Y coordinates are 8-bit; invalid viewports can cause wraparound
     // Z coordinates (and depth values in general) are 24-bit
-    for (int i = processCount; i < vertexCountIn; i++)
-    {
-        if (verticesIn[i].w != 0)
-        {
+    for (int i = processCount; i < vertexCountIn; i++) {
+        if (verticesIn[i].w != 0) {
             verticesIn[i].x = (( (int64_t)verticesIn[i].x + verticesIn[i].w) * w / (verticesIn[i].w * 2) + x) & xMask;
             verticesIn[i].y = ((-(int64_t)verticesIn[i].y + verticesIn[i].w) * h / (verticesIn[i].w * 2) + y) & yMask;
             verticesIn[i].z = (((((int64_t)verticesIn[i].z << 14) / verticesIn[i].w) + 0x3FFF) << 9);
@@ -454,15 +423,13 @@ void Gpu3D::processVertices()
     memcpy(viewport, viewportNext, sizeof(viewport));
 }
 
-void Gpu3D::swapBuffers()
-{
+void Gpu3D::swapBuffers() {
     // Process final vertices and reset the count
     processVertices();
     processCount = 0;
 
     // Determine each polygon's W-shift value to be used for reducing (or expanding) W values to 16 bits
-    for (int i = 0; i < polygonCountIn; i++)
-    {
+    for (int i = 0; i < polygonCountIn; i++) {
         _Polygon *p = &polygonsIn[i];
 
         // Find the polygon's greatest W value
@@ -496,27 +463,23 @@ void Gpu3D::swapBuffers()
     core->gpu.invalidate3D();
 
     // Unhalt the GXFIFO, and start executing commands if one is ready
-    if (!fifo.empty() && fifo.size() >= paramCounts[fifo.front().command])
-    {
+    if (!fifo.empty() && fifo.size() >= paramCounts[fifo.front().command]) {
         core->schedule(GPU3D_COMMANDS, 2);
         state = GX_RUNNING;
     }
-    else
-    {
+    else {
         state = GX_IDLE;
     }
 }
 
-void Gpu3D::addVertex()
-{
+void Gpu3D::addVertex() {
     // Set the new vertex
     if (vertexCountIn >= 6144) return;
     verticesIn[vertexCountIn] = savedVertex;
     verticesIn[vertexCountIn].w = 1 << 12;
 
     // Transform the texture coordinates
-    if (textureCoordMode == 3)
-    {
+    if (textureCoordMode == 3) {
         // Get the texture matrix with the texture coordinates
         Matrix matrix = texture;
         matrix.data[12] = (int32_t)s << 12;
@@ -531,8 +494,7 @@ void Gpu3D::addVertex()
     }
 
     // Update the clip matrix if necessary
-    if (clipDirty)
-    {
+    if (clipDirty) {
         clip = coordinate * projection;
         clipDirty = false;
     }
@@ -545,8 +507,7 @@ void Gpu3D::addVertex()
     vertexCount++;
 
     // Move to the next polygon if one has been completed
-    switch (polygonType)
-    {
+    switch (polygonType) {
         case 0: if (vertexCount % 3 == 0) addPolygon(); break; // Separate triangles
         case 1: if (vertexCount % 4 == 0) addPolygon(); break; // Separate quads
         case 2: if (vertexCount >= 3) addPolygon(); break; // Triangle strips
@@ -554,8 +515,7 @@ void Gpu3D::addVertex()
     }
 }
 
-void Gpu3D::addPolygon()
-{
+void Gpu3D::addPolygon() {
     // Set the polygon vertex information
     if (polygonCountIn >= 2048) return;
     int size = 3 + (polygonType & 1);
@@ -584,8 +544,7 @@ void Gpu3D::addPolygon()
     int64_t wc = x1 * y2 - y1 * x2;
 
     // Reduce the result to 32 bits to avoid overflow
-    while (xc != (int32_t)xc || yc != (int32_t)yc || wc != (int32_t)wc)
-    {
+    while (xc != (int32_t)xc || yc != (int32_t)yc || wc != (int32_t)wc) {
         xc >>= 4;
         yc >>= 4;
         wc >>= 4;
@@ -599,8 +558,7 @@ void Gpu3D::addPolygon()
 
     // Every other triangle strip polygon is stored clockwise instead of counter-clockwise
     // Keep track of this, and reverse the dot product of clockwise polygons to accomodate
-    if (polygonType == 2)
-    {
+    if (polygonType == 2) {
         if (clockwise) dot = -dot;
         clockwise = !clockwise;
     }
@@ -611,26 +569,22 @@ void Gpu3D::addPolygon()
     bool clip = cull ? false : clipPolygon(unclipped, clipped, &savedPolygon.size);
 
     // Discard polygons that should be culled or are outside of the view area
-    if (cull || savedPolygon.size == 0)
-    {
-        switch (polygonType)
-        {
+    if (cull || savedPolygon.size == 0) {
+        switch (polygonType) {
             case 0: case 1: // Separate polygons
                 // Discard the vertices
                 vertexCountIn -= size;
                 return;
 
             case 2: // Triangle strips
-                if (vertexCount == 3) // First triangle in the strip
-                {
+                if (vertexCount == 3) { // First triangle in the strip
                     // Discard the first vertex, but keep the other 2 for the next triangle
                     verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 2];
                     verticesIn[vertexCountIn - 2] = verticesIn[vertexCountIn - 1];
                     vertexCountIn--;
                     vertexCount--;
                 }
-                else if (vertexCountIn < 6144)
-                {
+                else if (vertexCountIn < 6144) {
                     // End the previous strip, and start a new one with the last 2 vertices
                     verticesIn[vertexCountIn - 0] = verticesIn[vertexCountIn - 1];
                     verticesIn[vertexCountIn - 1] = verticesIn[vertexCountIn - 2];
@@ -640,16 +594,14 @@ void Gpu3D::addPolygon()
                 return;
 
             case 3: // Quad strips
-                if (vertexCount == 4) // First quad in the strip
-                {
+                if (vertexCount == 4) { // First quad in the strip
                     // Discard the first 2 vertices, but keep the other 2 for the next quad
                     verticesIn[vertexCountIn - 4] = verticesIn[vertexCountIn - 2];
                     verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 1];
                     vertexCountIn -= 2;
                     vertexCount -= 2;
                 }
-                else
-                {
+                else {
                     // End the previous strip, and start a new one with the last 2 vertices
                     vertexCount = 2;
                 }
@@ -658,17 +610,14 @@ void Gpu3D::addPolygon()
     }
 
     // Update the vertices of clipped polygons
-    if (clip)
-    {
-        switch (polygonType)
-        {
+    if (clip) {
+        switch (polygonType) {
             case 0: case 1: // Separate polygons
                 // Remove the unclipped vertices
                 vertexCountIn -= size;
 
                 // Add the clipped vertices
-                for (int i = 0; i < savedPolygon.size; i++)
-                {
+                for (int i = 0; i < savedPolygon.size; i++) {
                     if (vertexCountIn >= 6144) return;
                     verticesIn[vertexCountIn] = clipped[i];
                     vertexCountIn++;
@@ -681,16 +630,14 @@ void Gpu3D::addPolygon()
                 savedPolygon.vertices = vertexCountIn;
 
                 // Add the clipped vertices
-                for (int i = 0; i < savedPolygon.size; i++)
-                {
+                for (int i = 0; i < savedPolygon.size; i++) {
                     if (vertexCountIn >= 6144) return;
                     verticesIn[vertexCountIn] = clipped[i];
                     vertexCountIn++;
                 }
 
                 // End the previous strip, and start a new one with the last 2 vertices
-                for (int i = 0; i < 2; i++)
-                {
+                for (int i = 0; i < 2; i++) {
                     if (vertexCountIn >= 6144) return;
                     verticesIn[vertexCountIn] = unclipped[1 + i];
                     vertexCountIn++;
@@ -704,16 +651,14 @@ void Gpu3D::addPolygon()
                 savedPolygon.vertices = vertexCountIn;
 
                 // Add the clipped vertices
-                for (int i = 0; i < savedPolygon.size; i++)
-                {
+                for (int i = 0; i < savedPolygon.size; i++) {
                     if (vertexCountIn >= 6144) return;
                     verticesIn[vertexCountIn] = clipped[i];
                     vertexCountIn++;
                 }
 
                 // End the previous strip, and start a new one with the last 2 vertices
-                for (int i = 0; i < 2; i++)
-                {
+                for (int i = 0; i < 2; i++) {
                     if (vertexCountIn >= 6144) return;
                     verticesIn[vertexCountIn] = unclipped[3 - i];
                     vertexCountIn++;
@@ -732,33 +677,27 @@ void Gpu3D::addPolygon()
     polygonCountIn++;
 }
 
-void Gpu3D::mtxModeCmd(uint32_t param)
-{
+void Gpu3D::mtxModeCmd(uint32_t param) {
     // Set the matrix mode
     matrixMode = param & 0x00000003;
 }
 
-void Gpu3D::mtxPushCmd()
-{
+void Gpu3D::mtxPushCmd() {
     // Push the current matrix onto a stack
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
-            if (!(gxStat & BIT(13)))
-            {
+            if (!(gxStat & BIT(13))) {
                 // Push to the single projection stack slot and increment the pointer
                 projectionStack = projection;
                 gxStat |= BIT(13);
             }
-            else
-            {
+            else {
                 // Indicate a matrix stack overflow error
                 gxStat |= BIT(15);
             }
             break;
 
-        case 1: case 2: // Coordinate and directional stacks
-        {
+        case 1: case 2: { // Coordinate and directional stacks
             // Get the stack pointer to push to
             uint8_t pointer = (gxStat >> 8) & 0x1F;
 
@@ -768,8 +707,7 @@ void Gpu3D::mtxPushCmd()
                 gxStat |= BIT(15);
 
             // Push to the current coordinate and directional stack slots and increment the pointer
-            if (pointer < 31)
-            {
+            if (pointer < 31) {
                 coordinateStack[pointer] = coordinate;
                 directionStack[pointer] = direction;
                 gxStat += BIT(8);
@@ -788,28 +726,23 @@ void Gpu3D::mtxPushCmd()
         gxStat &= ~BIT(14);
 }
 
-void Gpu3D::mtxPopCmd(uint32_t param)
-{
+void Gpu3D::mtxPopCmd(uint32_t param) {
     // Pop a matrix from a stack
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
-            if (gxStat & BIT(13))
-            {
+            if (gxStat & BIT(13)) {
                 // Pop from the single projection stack slot and decrement the pointer
                 gxStat &= ~BIT(13);
                 projection = projectionStack;
                 clipDirty = true;
             }
-            else
-            {
+            else {
                 // Indicate a matrix stack underflow error
                 gxStat |= BIT(15);
             }
             break;
 
-        case 1: case 2: // Coordinate and directional stacks
-        {
+        case 1: case 2: { // Coordinate and directional stacks
             // Get the stack pointer to pop from
             uint8_t pointer = ((gxStat >> 8) & 0x1F) - ((int8_t)(param << 2) >> 2);
 
@@ -819,8 +752,7 @@ void Gpu3D::mtxPopCmd(uint32_t param)
                 gxStat |= BIT(15);
 
             // Pop from the current coordinate and directional stack slots and update the pointer
-            if (pointer < 31)
-            {
+            if (pointer < 31) {
                 gxStat = (gxStat & ~0x1F00) | (pointer << 8);
                 coordinate = coordinateStack[pointer];
                 direction = directionStack[pointer];
@@ -840,18 +772,15 @@ void Gpu3D::mtxPopCmd(uint32_t param)
         gxStat &= ~BIT(14);
 }
 
-void Gpu3D::mtxStoreCmd(uint32_t param)
-{
+void Gpu3D::mtxStoreCmd(uint32_t param) {
     // Store a matrix to the stack
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
             // Store to the single projection stack slot
             projectionStack = projection;
             break;
 
-        case 1: case 2: // Coordinate and directional stacks
-        {
+        case 1: case 2: { // Coordinate and directional stacks
             // Get the stack address to store to
             int address = param & 0x0000001F;
 
@@ -872,19 +801,16 @@ void Gpu3D::mtxStoreCmd(uint32_t param)
     }
 }
 
-void Gpu3D::mtxRestoreCmd(uint32_t param)
-{
+void Gpu3D::mtxRestoreCmd(uint32_t param) {
     // Restore a matrix from the stack
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
             // Restore from the single projection stack slot
             projection = projectionStack;
             clipDirty = true;
             break;
 
-        case 1: case 2: // Coordinate and directional stacks
-        {
+        case 1: case 2: { // Coordinate and directional stacks
             // Get the stack address to store to
             int address = param & 0x0000001F;
 
@@ -906,11 +832,9 @@ void Gpu3D::mtxRestoreCmd(uint32_t param)
     }
 }
 
-void Gpu3D::mtxIdentityCmd()
-{
+void Gpu3D::mtxIdentityCmd() {
     // Set a matrix to the identity matrix
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
             projection = Matrix();
             clipDirty = true;
@@ -933,14 +857,12 @@ void Gpu3D::mtxIdentityCmd()
     }
 }
 
-void Gpu3D::mtxLoad44Cmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::mtxLoad44Cmd(std::vector<uint32_t> &params) {
     // Convert the parameters to a 4x4 matrix
     Matrix matrix = *(Matrix*)&params[0];
 
     // Set a matrix to the 4x4 matrix
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
             projection = matrix;
             clipDirty = true;
@@ -963,16 +885,14 @@ void Gpu3D::mtxLoad44Cmd(std::vector<uint32_t> &params)
     }
 }
 
-void Gpu3D::mtxLoad43Cmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::mtxLoad43Cmd(std::vector<uint32_t> &params) {
     // Convert the parameters to a 4x3 matrix
     Matrix matrix;
     for (int i = 0; i < 4; i++)
         memcpy(&matrix.data[i * 4], &params[i * 3], 3 * sizeof(int32_t));
 
     // Set a matrix to the 4x3 matrix
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
             projection = matrix;
             clipDirty = true;
@@ -995,14 +915,12 @@ void Gpu3D::mtxLoad43Cmd(std::vector<uint32_t> &params)
     }
 }
 
-void Gpu3D::mtxMult44Cmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::mtxMult44Cmd(std::vector<uint32_t> &params) {
     // Convert the parameters to a 4x4 matrix
     Matrix matrix = *(Matrix*)&params[0];
 
     // Multiply a matrix by the 4x4 matrix
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
             projection = matrix * projection;
             clipDirty = true;
@@ -1025,16 +943,14 @@ void Gpu3D::mtxMult44Cmd(std::vector<uint32_t> &params)
     }
 }
 
-void Gpu3D::mtxMult43Cmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::mtxMult43Cmd(std::vector<uint32_t> &params) {
     // Convert the parameters to a 4x3 matrix
     Matrix matrix;
     for (int i = 0; i < 4; i++)
         memcpy(&matrix.data[i * 4], &params[i * 3], 3 * sizeof(int32_t));
 
     // Multiply a matrix by the 4x3 matrix
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
             projection = matrix * projection;
             clipDirty = true;
@@ -1057,16 +973,14 @@ void Gpu3D::mtxMult43Cmd(std::vector<uint32_t> &params)
     }
 }
 
-void Gpu3D::mtxMult33Cmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::mtxMult33Cmd(std::vector<uint32_t> &params) {
     // Convert the parameters to a 3x3 matrix
     Matrix matrix;
     for (int i = 0; i < 3; i++)
         memcpy(&matrix.data[i * 4], &params[i * 3], 3 * sizeof(int32_t));
 
     // Multiply a matrix by the 3x3 matrix
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
             projection = matrix * projection;
             clipDirty = true;
@@ -1089,16 +1003,14 @@ void Gpu3D::mtxMult33Cmd(std::vector<uint32_t> &params)
     }
 }
 
-void Gpu3D::mtxScaleCmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::mtxScaleCmd(std::vector<uint32_t> &params) {
     // Convert the parameters to a scale matrix
     Matrix matrix;
     for (int i = 0; i < 3; i++)
         matrix.data[i * 5] = (int32_t)params[i];
 
     // Multiply a matrix by the scale matrix
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
             projection = matrix * projection;
             clipDirty = true;
@@ -1115,15 +1027,13 @@ void Gpu3D::mtxScaleCmd(std::vector<uint32_t> &params)
     }
 }
 
-void Gpu3D::mtxTransCmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::mtxTransCmd(std::vector<uint32_t> &params) {
     // Convert the parameters to a translation matrix
     Matrix matrix;
     memcpy(&matrix.data[12], &params[0], 3 * sizeof(int32_t));
 
     // Multiply a matrix by the translation matrix
-    switch (matrixMode)
-    {
+    switch (matrixMode) {
         case 0: // Projection stack
             projection = matrix * projection;
             clipDirty = true;
@@ -1146,14 +1056,12 @@ void Gpu3D::mtxTransCmd(std::vector<uint32_t> &params)
     }
 }
 
-void Gpu3D::colorCmd(uint32_t param)
-{
+void Gpu3D::colorCmd(uint32_t param) {
     // Set the vertex color
     savedVertex.color = rgb5ToRgb6(param);
 }
 
-void Gpu3D::normalCmd(uint32_t param)
-{
+void Gpu3D::normalCmd(uint32_t param) {
     // Get the normal vector
     Vertex normalVector;
     normalVector.x = ((int16_t)((param & 0x000003FF) << 6)) >> 3;
@@ -1161,8 +1069,7 @@ void Gpu3D::normalCmd(uint32_t param)
     normalVector.z = ((int16_t)((param & 0x3FF00000) >> 14)) >> 3;
 
     // Transform the texture coordinates
-    if (textureCoordMode == 2)
-    {
+    if (textureCoordMode == 2) {
         // Get the normal vector as a vertex
         Vertex vertex = normalVector;
         vertex.w = 1 << 12;
@@ -1188,10 +1095,8 @@ void Gpu3D::normalCmd(uint32_t param)
 
     // Calculate the vertex color
     // This is a translation of the pseudocode from GBATEK to C++
-    for (int i = 0; i < 4; i++)
-    {
-        if (enabledLights & BIT(i))
-        {
+    for (int i = 0; i < 4; i++) {
+        if (enabledLights & BIT(i)) {
             int diffuseLevel = -(lightVector[i] * normalVector);
             if (diffuseLevel < (0 << 12)) diffuseLevel = (0 << 12);
             if (diffuseLevel > (1 << 12)) diffuseLevel = (1 << 12);
@@ -1228,15 +1133,13 @@ void Gpu3D::normalCmd(uint32_t param)
     }
 }
 
-void Gpu3D::texCoordCmd(uint32_t param)
-{
+void Gpu3D::texCoordCmd(uint32_t param) {
     // Set the untransformed texture coordinates
     s = (int16_t)(param >> 0);
     t = (int16_t)(param >> 16);
 
     // Transform the texture coordinates
-    if (textureCoordMode == 1)
-    {
+    if (textureCoordMode == 1) {
         // Create a vertex with the texture coordinates
         Vertex vertex;
         vertex.x = s << 8;
@@ -1251,15 +1154,13 @@ void Gpu3D::texCoordCmd(uint32_t param)
         savedVertex.s = vertex.x >> 8;
         savedVertex.t = vertex.y >> 8;
     }
-    else
-    {
+    else {
         savedVertex.s = s;
         savedVertex.t = t;
     }
 }
 
-void Gpu3D::vtx16Cmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::vtx16Cmd(std::vector<uint32_t> &params) {
     // Set the X, Y, and Z coordinates
     savedVertex.x = (int16_t)(params[0] >> 0);
     savedVertex.y = (int16_t)(params[0] >> 16);
@@ -1267,8 +1168,7 @@ void Gpu3D::vtx16Cmd(std::vector<uint32_t> &params)
     addVertex();
 }
 
-void Gpu3D::vtx10Cmd(uint32_t param)
-{
+void Gpu3D::vtx10Cmd(uint32_t param) {
     // Set the X, Y, and Z coordinates
     savedVertex.x = (int16_t)((param & 0x000003FF) << 6);
     savedVertex.y = (int16_t)((param & 0x000FFC00) >> 4);
@@ -1276,32 +1176,28 @@ void Gpu3D::vtx10Cmd(uint32_t param)
     addVertex();
 }
 
-void Gpu3D::vtxXYCmd(uint32_t param)
-{
+void Gpu3D::vtxXYCmd(uint32_t param) {
     // Set the X and Y coordinates
     savedVertex.x = (int16_t)(param >> 0);
     savedVertex.y = (int16_t)(param >> 16);
     addVertex();
 }
 
-void Gpu3D::vtxXZCmd(uint32_t param)
-{
+void Gpu3D::vtxXZCmd(uint32_t param) {
     // Set the X and Z coordinates
     savedVertex.x = (int16_t)(param >> 0);
     savedVertex.z = (int16_t)(param >> 16);
     addVertex();
 }
 
-void Gpu3D::vtxYZCmd(uint32_t param)
-{
+void Gpu3D::vtxYZCmd(uint32_t param) {
     // Set the Y and Z coordinates
     savedVertex.y = (int16_t)(param >> 0);
     savedVertex.z = (int16_t)(param >> 16);
     addVertex();
 }
 
-void Gpu3D::vtxDiffCmd(uint32_t param)
-{
+void Gpu3D::vtxDiffCmd(uint32_t param) {
     // Add offsets to the X, Y, and Z coordinates
     savedVertex.x += ((int16_t)((param & 0x000003FF) << 6) / 8) >> 3;
     savedVertex.y += ((int16_t)((param & 0x000FFC00) >> 4) / 8) >> 3;
@@ -1309,15 +1205,13 @@ void Gpu3D::vtxDiffCmd(uint32_t param)
     addVertex();
 }
 
-void Gpu3D::polygonAttrCmd(uint32_t param)
-{
+void Gpu3D::polygonAttrCmd(uint32_t param) {
     // Set the polygon attributes
     // Values are not actually applied until the next vertex list
     polygonAttr = param;
 }
 
-void Gpu3D::texImageParamCmd(uint32_t param)
-{
+void Gpu3D::texImageParamCmd(uint32_t param) {
     // Set the texture parameters
     savedPolygon.textureAddr = (param & 0x0000FFFF) << 3;
     savedPolygon.sizeS = 8 << ((param & 0x00700000) >> 20);
@@ -1331,14 +1225,12 @@ void Gpu3D::texImageParamCmd(uint32_t param)
     textureCoordMode = (param & 0xC0000000) >> 30;
 }
 
-void Gpu3D::plttBaseCmd(uint32_t param)
-{
+void Gpu3D::plttBaseCmd(uint32_t param) {
     // Set the palette base address
     savedPolygon.paletteAddr = param & 0x00001FFF;
 }
 
-void Gpu3D::difAmbCmd(uint32_t param)
-{
+void Gpu3D::difAmbCmd(uint32_t param) {
     // Set the diffuse and ambient reflection colors
     diffuseColor = rgb5ToRgb6(param >> 0);
     ambientColor = rgb5ToRgb6(param >> 16);
@@ -1348,8 +1240,7 @@ void Gpu3D::difAmbCmd(uint32_t param)
         savedVertex.color = diffuseColor;
 }
 
-void Gpu3D::speEmiCmd(uint32_t param)
-{
+void Gpu3D::speEmiCmd(uint32_t param) {
     // Set the specular reflection and emission colors
     specularColor = rgb5ToRgb6(param >> 0);
     emissionColor = rgb5ToRgb6(param >> 16);
@@ -1358,8 +1249,7 @@ void Gpu3D::speEmiCmd(uint32_t param)
     shininessEnabled = param & BIT(15);
 }
 
-void Gpu3D::lightVectorCmd(uint32_t param)
-{
+void Gpu3D::lightVectorCmd(uint32_t param) {
     // Set one of the light vectors
     lightVector[param >> 30].x = ((int16_t)((param & 0x000003FF) << 6)) >> 3;
     lightVector[param >> 30].y = ((int16_t)((param & 0x000FFC00) >> 4)) >> 3;
@@ -1374,17 +1264,14 @@ void Gpu3D::lightVectorCmd(uint32_t param)
     halfVector[param >> 30].z = (lightVector[param >> 30].z - (1 << 12)) / 2;
 }
 
-void Gpu3D::lightColorCmd(uint32_t param)
-{
+void Gpu3D::lightColorCmd(uint32_t param) {
     // Set one of the light colors
     lightColor[param >> 30] = rgb5ToRgb6(param);
 }
 
-void Gpu3D::shininessCmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::shininessCmd(std::vector<uint32_t> &params) {
     // Set the values of the specular reflection shininess table
-    for (int i = 0; i < 32; i++)
-    {
+    for (int i = 0; i < 32; i++) {
         shininess[i * 4 + 0] = params[i] >> 0;
         shininess[i * 4 + 1] = params[i] >> 8;
         shininess[i * 4 + 2] = params[i] >> 16;
@@ -1392,8 +1279,7 @@ void Gpu3D::shininessCmd(std::vector<uint32_t> &params)
     }
 }
 
-void Gpu3D::beginVtxsCmd(uint32_t param)
-{
+void Gpu3D::beginVtxsCmd(uint32_t param) {
     // Clipping a polygon strip starts a new strip with the last 2 vertices of the old one
     // Discard these vertices if they're unused
     if (vertexCount < 3 + (polygonType & 1))
@@ -1418,8 +1304,7 @@ void Gpu3D::beginVtxsCmd(uint32_t param)
     savedPolygon.id = (polygonAttr & 0x3F000000) >> 24;
 }
 
-void Gpu3D::swapBuffersCmd(uint32_t param)
-{
+void Gpu3D::swapBuffersCmd(uint32_t param) {
     // Set the W-buffering toggle
     savedPolygon.wBuffer = param & BIT(1);
 
@@ -1428,8 +1313,7 @@ void Gpu3D::swapBuffersCmd(uint32_t param)
     state = GX_HALTED;
 }
 
-void Gpu3D::viewportCmd(uint32_t param)
-{
+void Gpu3D::viewportCmd(uint32_t param) {
     // Set the viewport dimensions to apply for the next vertex list
     viewportNext[0] = ((param >> 0) & 0xFF) & 0x1FF;
     viewportNext[1] = (191 - ((param >> 24) & 0xFF)) & 0xFF;
@@ -1437,11 +1321,9 @@ void Gpu3D::viewportCmd(uint32_t param)
     viewportNext[3] = ((191 - ((param >> 8) & 0xFF)) - viewportNext[1] + 1) & 0xFF;
 }
 
-void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::boxTestCmd(std::vector<uint32_t> &params) {
     // Store the parameters (X-pos, Y-pos, Z-pos, width, height, depth)
-    int16_t boxTestCoords[6] =
-    {
+    int16_t boxTestCoords[6] = {
         (int16_t)params[0], (int16_t)(params[0] >> 16),
         (int16_t)params[1], (int16_t)(params[1] >> 16),
         (int16_t)params[2], (int16_t)(params[2] >> 16)
@@ -1453,8 +1335,7 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
     boxTestCoords[5] += boxTestCoords[2];
 
     // Define the coordinate indices that make up the box vertices
-    static const uint8_t indices[8 * 3] =
-    {
+    static const uint8_t indices[8 * 3] = {
         0, 1, 2,
         3, 1, 2,
         0, 4, 2,
@@ -1466,16 +1347,14 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
     };
 
     // Update the clip matrix if necessary
-    if (clipDirty)
-    {
+    if (clipDirty) {
         clip = coordinate * projection;
         clipDirty = false;
     }
 
     // Get the transformed vertices of the box
     Vertex vertices[8];
-    for (int i = 0; i < 8; i++)
-    {
+    for (int i = 0; i < 8; i++) {
         vertices[i].x = boxTestCoords[indices[i * 3 + 0]];
         vertices[i].y = boxTestCoords[indices[i * 3 + 1]];
         vertices[i].z = boxTestCoords[indices[i * 3 + 2]];
@@ -1484,8 +1363,7 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
     }
 
     // Arrange the vertices to represent the faces of the box
-    Vertex faces[6][4] =
-    {
+    Vertex faces[6][4] = {
         { vertices[0], vertices[1], vertices[4], vertices[2] },
         { vertices[3], vertices[5], vertices[7], vertices[6] },
         { vertices[3], vertices[5], vertices[1], vertices[0] },
@@ -1500,14 +1378,12 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
 
     // Clip the faces of the box
     // If any of the faces are in view, set the result bit
-    for (int i = 0; i < 6; i++)
-    {
+    for (int i = 0; i < 6; i++) {
         uint8_t size = 4;
         Vertex clipped[10];
         clipPolygon(faces[i], clipped, &size);
 
-        if (size > 0)
-        {
+        if (size > 0) {
             gxStat |= BIT(1);
             return;
         }
@@ -1517,8 +1393,7 @@ void Gpu3D::boxTestCmd(std::vector<uint32_t> &params)
     gxStat &= ~BIT(1);
 }
 
-void Gpu3D::posTestCmd(std::vector<uint32_t> &params)
-{
+void Gpu3D::posTestCmd(std::vector<uint32_t> &params) {
     // Set the X, Y, and Z coordinates, overwriting the saved vertex
     savedVertex.x = (int16_t)(params[0] >> 0);
     savedVertex.y = (int16_t)(params[0] >> 16);
@@ -1526,8 +1401,7 @@ void Gpu3D::posTestCmd(std::vector<uint32_t> &params)
     savedVertex.w = 1 << 12;
 
     // Update the clip matrix if necessary
-    if (clipDirty)
-    {
+    if (clipDirty) {
         clip = coordinate * projection;
         clipDirty = false;
     }
@@ -1544,8 +1418,7 @@ void Gpu3D::posTestCmd(std::vector<uint32_t> &params)
         gxStat &= ~BIT(0);
 }
 
-void Gpu3D::vecTestCmd(uint32_t param)
-{
+void Gpu3D::vecTestCmd(uint32_t param) {
     // Set the vector components
     Vertex vector;
     vector.x = ((int16_t)((param & 0x000003FF) << 6)) >> 3;
@@ -1564,10 +1437,8 @@ void Gpu3D::vecTestCmd(uint32_t param)
         gxStat &= ~BIT(0);
 }
 
-void Gpu3D::addEntry(Entry entry)
-{
-    if (fifo.size() - pipeSize == 0 && pipeSize < 4)
-    {
+void Gpu3D::addEntry(Entry entry) {
+    if (fifo.size() - pipeSize == 0 && pipeSize < 4) {
         // Move data directly into the pipe if the FIFO is empty and the pipe isn't full
         fifo.push_back(entry);
         pipeSize++;
@@ -1575,8 +1446,7 @@ void Gpu3D::addEntry(Entry entry)
         // Update the FIFO status
         gxStat |= BIT(27); // Commands executing
     }
-    else
-    {
+    else {
         // If the FIFO is full, halt the CPU until space is free
         if (fifo.size() - pipeSize >= 256)
             core->interpreter[0].halt(1);
@@ -1593,8 +1463,7 @@ void Gpu3D::addEntry(Entry entry)
             gxStat &= ~BIT(25);
     }
 
-    switch (entry.command)
-    {
+    switch (entry.command) {
         case 0x11: case 0x12: // MTX_PUSH, MTX_POP
             // Track queued matrix commands and set the busy bit until they finish
             matrixQueue++;
@@ -1609,305 +1478,261 @@ void Gpu3D::addEntry(Entry entry)
     }
 
     // Start executing commands if one is ready
-    if (state == GX_IDLE && fifo.size() >= paramCounts[fifo.front().command])
-    {
+    if (state == GX_IDLE && fifo.size() >= paramCounts[fifo.front().command]) {
         core->schedule(GPU3D_COMMANDS, 2);
         state = GX_RUNNING;
     }
 }
 
-void Gpu3D::writeGxFifo(uint32_t mask, uint32_t value)
-{
-    if (gxFifo == 0)
-    {
+void Gpu3D::writeGxFifo(uint32_t mask, uint32_t value) {
+    if (gxFifo == 0) {
         // Read new packed commands
         gxFifo = value & mask;
     }
-    else
-    {
+    else {
         // Add a command parameter
         Entry entry(gxFifo, value & mask);
         addEntry(entry);
         gxFifoCount++;
 
         // Move to the next command once all parameters have been sent
-        if (gxFifoCount == paramCounts[gxFifo & 0xFF])
-        {
+        if (gxFifoCount == paramCounts[gxFifo & 0xFF]) {
             gxFifo >>= 8;
             gxFifoCount = 0;
         }
     }
 
     // Add entries for commands with no parameters
-    while (gxFifo != 0 && paramCounts[gxFifo & 0xFF] == 0)
-    {
+    while (gxFifo != 0 && paramCounts[gxFifo & 0xFF] == 0) {
         Entry entry(gxFifo, 0);
         addEntry(entry);
         gxFifo >>= 8;
     }
 }
 
-void Gpu3D::writeMtxMode(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxMode(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x10, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxPush(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxPush(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x11, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxPop(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxPop(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x12, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxStore(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxStore(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x13, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxRestore(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxRestore(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x14, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxIdentity(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxIdentity(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x15, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxLoad44(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxLoad44(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x16, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxLoad43(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxLoad43(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x17, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxMult44(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxMult44(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x18, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxMult43(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxMult43(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x19, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxMult33(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxMult33(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x1A, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxScale(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxScale(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x1B, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeMtxTrans(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeMtxTrans(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x1C, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeColor(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeColor(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x20, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeNormal(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeNormal(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x21, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeTexCoord(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeTexCoord(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x22, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeVtx16(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeVtx16(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x23, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeVtx10(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeVtx10(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x24, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeVtxXY(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeVtxXY(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x25, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeVtxXZ(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeVtxXZ(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x26, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeVtxYZ(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeVtxYZ(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x27, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeVtxDiff(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeVtxDiff(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x28, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writePolygonAttr(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writePolygonAttr(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x29, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeTexImageParam(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeTexImageParam(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x2A, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writePlttBase(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writePlttBase(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x2B, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeDifAmb(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeDifAmb(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x30, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeSpeEmi(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeSpeEmi(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x31, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeLightVector(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeLightVector(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x32, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeLightColor(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeLightColor(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x33, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeShininess(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeShininess(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x34, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeBeginVtxs(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeBeginVtxs(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x40, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeEndVtxs(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeEndVtxs(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x41, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeSwapBuffers(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeSwapBuffers(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x50, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeViewport(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeViewport(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x60, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeBoxTest(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeBoxTest(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x70, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writePosTest(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writePosTest(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x71, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeVecTest(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeVecTest(uint32_t mask, uint32_t value) {
     // Add an entry to the FIFO
     Entry entry(0x72, value & mask);
     addEntry(entry);
 }
 
-void Gpu3D::writeGxStat(uint32_t mask, uint32_t value)
-{
+void Gpu3D::writeGxStat(uint32_t mask, uint32_t value) {
     // Clear the error bit and reset the projection stack pointer
     if (value & BIT(15))
         gxStat &= ~0xA000;
@@ -1917,17 +1742,14 @@ void Gpu3D::writeGxStat(uint32_t mask, uint32_t value)
     gxStat = (gxStat & ~mask) | (value & mask);
 }
 
-uint32_t Gpu3D::readRamCount()
-{
+uint32_t Gpu3D::readRamCount() {
     // Read from the RAM_COUNT register
     return (vertexCountIn << 16) | polygonCountIn;
 }
 
-uint32_t Gpu3D::readClipMtxResult(int index)
-{
+uint32_t Gpu3D::readClipMtxResult(int index) {
     // Update the clip matrix if necessary
-    if (clipDirty)
-    {
+    if (clipDirty) {
         clip = coordinate * projection;
         clipDirty = false;
     }
@@ -1936,8 +1758,7 @@ uint32_t Gpu3D::readClipMtxResult(int index)
     return clip.data[index];
 }
 
-uint32_t Gpu3D::readVecMtxResult(int index)
-{
+uint32_t Gpu3D::readVecMtxResult(int index) {
     // Read from one of the VECMTX_RESULT registers
     return direction.data[(index / 3) * 4 + index % 3];
 }
