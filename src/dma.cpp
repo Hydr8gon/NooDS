@@ -52,6 +52,8 @@ void Dma::transfer(int channel)
     // Perform the transfer
     if (core->gbaMode && mode == 6 && (channel == 1 || channel == 2)) // GBA sound DMA
     {
+        LOG_INFO("ARM%d DMA channel %d transferring 4 words from 0x%X to 0x%X in mode %d\n",
+            cpu ? 7 : 9, channel, srcAddrs[channel], dstAddrs[channel], mode);
         for (unsigned int i = 0; i < 4; i++)
         {
             // Transfer a word
@@ -68,6 +70,8 @@ void Dma::transfer(int channel)
     }
     else if (dmaCnt[channel] & BIT(26)) // Whole word transfer
     {
+        LOG_INFO("ARM%d DMA channel %d transferring %d words from 0x%X to 0x%X in mode %d\n",
+            cpu ? 7 : 9, channel, wordCounts[channel], srcAddrs[channel], dstAddrs[channel], mode);
         for (unsigned int i = 0; i < wordCounts[channel]; i++)
         {
             // Transfer a word
@@ -93,6 +97,8 @@ void Dma::transfer(int channel)
     }
     else // Half-word transfer
     {
+        LOG_INFO("ARM%d DMA channel %d transferring %d half-words from 0x%X to 0x%X in mode %d\n",
+            cpu ? 7 : 9, channel, wordCounts[channel], srcAddrs[channel], dstAddrs[channel], mode);
         for (unsigned int i = 0; i < wordCounts[channel]; i++)
         {
             // Transfer a half-word

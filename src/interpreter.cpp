@@ -412,7 +412,7 @@ void Interpreter::swapRegisters(uint32_t value)
             break;
 
         default:
-            LOG("Unknown ARM%d CPU mode: 0x%X\n", arm7 ? 7 : 9, value & 0x1F);
+            LOG_CRIT("Unknown ARM%d CPU mode: 0x%X\n", arm7 ? 7 : 9, value & 0x1F);
             break;
     }
 }
@@ -493,14 +493,14 @@ int Interpreter::finishHleIrq()
 int Interpreter::unkArm(uint32_t opcode)
 {
     // Handle an unknown ARM opcode
-    LOG("Unknown ARM%d ARM opcode: 0x%X\n", arm7 ? 7 : 9, opcode);
+    LOG_CRIT("Unknown ARM%d ARM opcode: 0x%X\n", arm7 ? 7 : 9, opcode);
     return 1;
 }
 
 int Interpreter::unkThumb(uint16_t opcode)
 {
     // Handle an unknown THUMB opcode
-    LOG("Unknown ARM%d THUMB opcode: 0x%X\n", arm7 ? 7 : 9, opcode);
+    LOG_CRIT("Unknown ARM%d THUMB opcode: 0x%X\n", arm7 ? 7 : 9, opcode);
     return 1;
 }
 

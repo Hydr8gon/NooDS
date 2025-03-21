@@ -375,7 +375,7 @@ void Gpu3D::runCommands()
             case 0x72: vecTestCmd(entry.param); break; // VEC_TEST
 
             default:
-                LOG("Unknown GXFIFO command: 0x%X\n", entry.command);
+                LOG_CRIT("Unknown GXFIFO command: 0x%X\n", entry.command);
                 break;
         }
 

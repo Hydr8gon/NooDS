@@ -30,7 +30,7 @@ NdsIcon::NdsIcon(std::string path, int fd)
     // Create an empty icon if ROM loading failed
     if (!rom)
     {
-        LOG("Failed to open ROM for icon decoding!\n");
+        LOG_WARN("Failed to open ROM for icon decoding!\n");
         memset(icon, 0, 32 * 32 * sizeof(uint32_t));
         return;
     }

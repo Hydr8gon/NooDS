@@ -50,7 +50,7 @@ void Dldi::patchRom(uint8_t *rom, uint32_t offset, uint32_t size)
         // Ensure there's room to patch the DLDI driver
         if (rom[i + 0x0F] < 0x08) // Space in ROM
         {
-            LOG("Not enough space to patch DLDI driver at ROM offset 0x%X\n", offset + i);
+            LOG_CRIT("Not enough space to patch DLDI driver at ROM offset 0x%X\n", offset + i);
             break;
         }
 
@@ -79,7 +79,7 @@ void Dldi::patchRom(uint8_t *rom, uint32_t offset, uint32_t size)
         U32TO8(rom, i + 0x94, DLDI_STOP); // shutdown()
 
         // Confirm that a driver has been patched
-        LOG("Patched DLDI driver at ROM offset 0x%X\n", offset + i);
+        LOG_INFO("Patched DLDI driver at ROM offset 0x%X\n", offset + i);
         patched = true;
     }
 }

@@ -117,6 +117,7 @@ void Ipc::writeIpcFifoSend(bool arm7, uint32_t mask, uint32_t value)
         {
             // Push a word to the FIFO
             fifos[arm7].push_back(value & mask);
+            LOG_INFO("ARM%d sending value through IPC FIFO: 0x%X\n", arm7 ? 7 : 9, value & mask);
 
             if (fifos[arm7].size() == 1)
             {

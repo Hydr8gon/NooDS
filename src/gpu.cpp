@@ -446,7 +446,7 @@ void Gpu::scanline256()
                 {
                     if (dispCapCnt & BIT(25))
                     {
-                        LOG("Unimplemented display capture source: display FIFO\n");
+                        LOG_CRIT("Unimplemented display capture source: display FIFO\n");
                         break;
                     }
 
@@ -466,7 +466,7 @@ void Gpu::scanline256()
                 {
                     if (dispCapCnt & BIT(25))
                     {
-                        LOG("Unimplemented display capture source: display FIFO\n");
+                        LOG_CRIT("Unimplemented display capture source: display FIFO\n");
                         break;
                     }
 

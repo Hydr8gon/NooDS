@@ -63,7 +63,7 @@ bool ActionReplay::loadCheats()
         cheat.name = &data[1];
         cheat.enabled = (cheat.name[cheat.name.size() - 2] == '+');
         cheat.name = cheat.name.substr(0, cheat.name.size() - 3);
-        LOG("Loaded cheat: %s (%s)\n", cheat.name.c_str(), cheat.enabled ? "enabled" : "disabled");
+        LOG_INFO("Loaded cheat: %s (%s)\n", cheat.name.c_str(), cheat.enabled ? "enabled" : "disabled");
 
         // Load the cheat code up until an empty line
         while (fgets(data, 512, file) != nullptr && data[0] != '\n')
@@ -351,7 +351,7 @@ void ActionReplay::applyCheats()
 
                 default:
                 invalid:
-                    LOG("Invalid AR code: %08X %08X\n", line[0], line[1]);
+                    LOG_CRIT("Invalid AR code: %08X %08X\n", line[0], line[1]);
                     continue;
             }
         }

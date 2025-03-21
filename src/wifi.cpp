@@ -304,7 +304,7 @@ void Wifi::transmitPacket(PacketType type)
 
 start:
     // Start transmitting a packet
-    LOG("Instance %d sending packet of type %d with size 0x%X\n", core->id, type, size);
+    LOG_INFO("Instance %d sending packet of type %d with size 0x%X\n", core->id, type, size);
     sendInterrupt(7);
     mutex.lock();
 

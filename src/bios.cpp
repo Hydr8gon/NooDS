@@ -97,7 +97,7 @@ int Bios::execute(uint8_t vector, uint32_t **registers)
             return core->interpreter[arm7].handleHleIrq();
 
         default:
-            LOG("Unimplemented ARM%d BIOS vector: 0x%02X\n", (arm7 ? 7 : 9), vector);
+            LOG_CRIT("Unimplemented ARM%d BIOS vector: 0x%02X\n", (arm7 ? 7 : 9), vector);
             return 3;
     }
 }
@@ -152,7 +152,7 @@ int Bios::swiRegRamReset(uint32_t **registers)
 
     // Don't handle register resets for now
     if (uint8_t bits = *registers[0] & 0xE0)
-        LOG("Unimplemented GBA HLE reset bits: 0x%X\n", bits);
+        LOG_WARN("Unimplemented GBA HLE reset bits: 0x%X\n", bits);
     return 3;
 }
 
@@ -878,8 +878,8 @@ int Bios::swiUnknown(uint32_t **registers)
     uint32_t address = *registers[15] - (core->interpreter[arm7].isThumb() ? 4 : 6);
     uint8_t comment = core->memory.read<uint8_t>(arm7, address);
     if (swiTable == swiTableGba)
-        LOG("Unknown GBA BIOS SWI: 0x%02X\n", comment);
+        LOG_CRIT("Unknown GBA BIOS SWI: 0x%02X\n", comment);
     else
-        LOG("Unknown ARM%d BIOS SWI: 0x%02X\n", (arm7 ? 7 : 9), comment);
+        LOG_CRIT("Unknown ARM%d BIOS SWI: 0x%02X\n", (arm7 ? 7 : 9), comment);
     return 3;
 }

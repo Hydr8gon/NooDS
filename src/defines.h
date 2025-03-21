@@ -25,11 +25,25 @@
 // Control how many cycles of 3D GPU commands are batched
 #define GPU3D_BATCH 32
 
-// Enable or disable debug log printing
-#ifdef DEBUG
-#define LOG(...) printf(__VA_ARGS__)
+// Print critical logs in red if enabled
+#if LOG_LEVEL > 0
+#define LOG_CRIT(...) printf("\x1b[31m" __VA_ARGS__)
 #else
-#define LOG(...) (0)
+#define LOG_CRIT(...) (0)
+#endif
+
+// Print warning logs in yellow if enabled
+#if LOG_LEVEL > 1
+#define LOG_WARN(...) printf("\x1b[33m" __VA_ARGS__)
+#else
+#define LOG_WARN(...) (0)
+#endif
+
+// Print info logs normally if enabled
+#if LOG_LEVEL > 2
+#define LOG_INFO(...) printf("\x1b[0m" __VA_ARGS__)
+#else
+#define LOG_INFO(...) (0)
 #endif
 
 // Compatibility toggle for systems that don't have fdopen

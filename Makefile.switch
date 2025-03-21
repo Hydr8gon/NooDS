@@ -17,7 +17,7 @@ APP_VERSION := 0.1
 APP_ICON := ../icon/icon-switch.jpg
 
 ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
-CXXFLAGS := -Ofast -flto -std=c++11 -ffunction-sections $(ARCH) $(INCLUDE) -D__SWITCH__ -DNO_FDOPEN #-DDEBUG
+CXXFLAGS := -Ofast -flto -std=c++11 -ffunction-sections $(ARCH) $(INCLUDE) -D__SWITCH__ -DNO_FDOPEN -DLOG_LEVEL=0
 LDFLAGS = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))

@@ -76,6 +76,7 @@ int Interpreter::blx(uint32_t opcode) // BLX label
 int Interpreter::swi(uint32_t opcode) // SWI #i
 {
     // Software interrupt
+    LOG_INFO("Triggering ARM%d software interrupt: 0x%X\n", arm7 ? 7 : 9, opcode & 0xFFFFFF);
     *registers[15] -= 4;
     return exception(0x08);
 }
@@ -286,6 +287,7 @@ int Interpreter::blxOffT(uint16_t opcode) // BLX label
 int Interpreter::swiT(uint16_t opcode) // SWI #i
 {
     // Software interrupt (THUMB)
+    LOG_INFO("Triggering ARM%d software interrupt: 0x%X\n", arm7 ? 7 : 9, opcode & 0xFF);
     *registers[15] -= 4;
     return exception(0x08);
 }

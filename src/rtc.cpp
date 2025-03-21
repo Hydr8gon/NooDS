@@ -159,7 +159,7 @@ bool Rtc::readRegister(uint8_t index)
                 return (dateTime[(writeCount / 8) - 5] >> (writeCount % 8)) & BIT(0);
 
             default:
-                LOG("Read from unknown GBA RTC register: %d\n", index);
+                LOG_WARN("Read from unknown GBA RTC register: %d\n", index);
                 return 0;
         }
     }
@@ -179,7 +179,7 @@ bool Rtc::readRegister(uint8_t index)
             return (dateTime[(writeCount / 8) - 5] >> (writeCount & 7)) & BIT(0);
 
         default:
-            LOG("Read from unknown RTC register: %d\n", index);
+            LOG_WARN("Read from unknown RTC register: %d\n", index);
             return 0;
     }
 }
@@ -197,7 +197,7 @@ void Rtc::writeRegister(uint8_t index, bool value)
                 return;
 
             default:
-                LOG("Write to unknown GBA RTC register: %d\n", index);
+                LOG_WARN("Write to unknown GBA RTC register: %d\n", index);
                 return;
         }
     }
@@ -213,7 +213,7 @@ void Rtc::writeRegister(uint8_t index, bool value)
             return;
 
         default:
-            LOG("Write to unknown RTC register: %d\n", index);
+            LOG_WARN("Write to unknown RTC register: %d\n", index);
             return;
     }
 }

@@ -773,12 +773,12 @@ template <typename T> T Memory::readFallback(bool arm7, uint32_t address)
     // Handle unknown NDS reads by returning nothing
     if (!core->gbaMode)
     {
-        LOG("Unmapped ARM%d memory read: 0x%X\n", (arm7 ? 7 : 9), address);
+        LOG_WARN("Unmapped ARM%d memory read: 0x%X\n", (arm7 ? 7 : 9), address);
         return 0;
     }
 
     // Handle unknown GBA reads by returning the last prefetched opcode (open bus)
-    LOG("Unmapped GBA memory read: 0x%X\n", address);
+    LOG_WARN("Unmapped GBA memory read: 0x%X\n", address);
     if (address == core->interpreter[1].getPC()) return 0;
     return read<T>(arm7, core->interpreter[1].getPC());
 }
@@ -890,9 +890,9 @@ template <typename T> void Memory::writeFallback(bool arm7, uint32_t address, T 
 
     // Handle unknown writes by doing nothing
     if (!core->gbaMode)
-        LOG("Unmapped ARM%d memory write: 0x%X\n", (arm7 ? 7 : 9), address);
+        LOG_WARN("Unmapped ARM%d memory write: 0x%X\n", (arm7 ? 7 : 9), address);
     else
-        LOG("Unmapped GBA memory write: 0x%X\n", address);
+        LOG_WARN("Unmapped GBA memory write: 0x%X\n", address);
 }
 
 template <typename T> T Memory::ioRead9(uint32_t address)
@@ -1029,7 +1029,7 @@ template <typename T> T Memory::ioRead9(uint32_t address)
                 // Handle unknown reads by returning nothing
                 if (i == 0)
                 {
-                    LOG("Unknown ARM9 I/O register read: 0x%X\n", address);
+                    LOG_WARN("Unknown ARM9 I/O register read: 0x%X\n", address);
                     return 0;
                 }
 
@@ -1198,7 +1198,7 @@ template <typename T> T Memory::ioRead7(uint32_t address)
                 // Handle unknown reads by returning nothing
                 if (i == 0)
                 {
-                    LOG("Unknown ARM7 I/O register read: 0x%X\n", address);
+                    LOG_WARN("Unknown ARM7 I/O register read: 0x%X\n", address);
                     return 0;
                 }
 
@@ -1290,7 +1290,7 @@ template <typename T> T Memory::ioReadGba(uint32_t address)
                 // Handle unknown reads by returning nothing
                 if (i == 0)
                 {
-                    LOG("Unknown GBA I/O register read: 0x%X\n", address);
+                    LOG_WARN("Unknown GBA I/O register read: 0x%X\n", address);
                     return 0;
                 }
 
@@ -1581,7 +1581,7 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value)
                 // Handle unknown writes by doing nothing
                 if (i == 0)
                 {
-                    LOG("Unknown ARM9 I/O register write: 0x%X\n", address);
+                    LOG_WARN("Unknown ARM9 I/O register write: 0x%X\n", address);
                     return;
                 }
 
@@ -1808,7 +1808,7 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value)
                 // Handle unknown writes by doing nothing
                 if (i == 0)
                 {
-                    LOG("Unknown ARM7 I/O register write: 0x%X\n", address);
+                    LOG_WARN("Unknown ARM7 I/O register write: 0x%X\n", address);
                     return;
                 }
 
@@ -1933,7 +1933,7 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value)
                 // Handle unknown writes by doing nothing
                 if (i == 0)
                 {
-                    LOG("Unknown GBA I/O register write: 0x%X\n", address);
+                    LOG_WARN("Unknown GBA I/O register write: 0x%X\n", address);
                     return;
                 }
 
@@ -1987,7 +1987,7 @@ void Memory::writeHaltCnt(uint8_t value)
             break;
 
         case 3: // Sleep
-            LOG("Unhandled request for sleep mode\n");
+            LOG_CRIT("Unhandled request for sleep mode\n");
             break;
     }
 }
@@ -1997,5 +1997,5 @@ void Memory::writeGbaHaltCnt(uint8_t value)
     // Halt the CPU
     core->interpreter[1].halt(0);
     if (value & BIT(7)) // Stop
-        LOG("Unhandled request for stop mode\n");
+        LOG_CRIT("Unhandled request for stop mode\n");
 }

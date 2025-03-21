@@ -57,7 +57,7 @@ uint32_t Cp15::read(uint8_t cn, uint8_t cm, uint8_t cp)
         case 0x0D0001: case 0x0D0101: return procId; // Trace process ID
 
         default:
-            LOG("Unknown CP15 register read: C%d,C%d,%d\n", cn, cm, cp);
+            LOG_WARN("Unknown CP15 register read: C%d,C%d,%d\n", cn, cm, cp);
             return 0;
     }
 }
@@ -116,7 +116,7 @@ void Cp15::write(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value)
             return;
 
         default:
-            LOG("Unknown CP15 register write: C%d,C%d,%d\n", cn, cm, cp);
+            LOG_WARN("Unknown CP15 register write: C%d,C%d,%d\n", cn, cm, cp);
             return;
     }
 }

@@ -6,7 +6,7 @@ NAME := noods
 BUILD := build-vita
 SRCS := src src/common src/console
 DATA := src/console/images
-ARGS := -Ofast -flto -std=c++11 -march=armv7-a -mtune=generic-armv7-a -D__VITA__ -DNO_FDOPEN #-DDEBUG
+ARGS := -Ofast -flto -std=c++11 -march=armv7-a -mtune=generic-armv7-a -D__VITA__ -DNO_FDOPEN -DLOG_LEVEL=0
 LIBS := -Wl,-q -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -lvita2d -lSceAppMgr_stub -lSceAudio_stub \
     -lSceCommonDialog_stub -lSceCtrl_stub -lSceDisplay_stub -lSceGxm_stub -lSceSysmodule_stub -lSceTouch_stub \
     -lScePower_stub
