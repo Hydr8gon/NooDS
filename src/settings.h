@@ -48,6 +48,7 @@ class Settings {
         static int statesFolder;
         static int cheatsFolder;
         static int screenFilter;
+        static int arm7Hle;
         static int dsiMode;
 
         static std::string bios9Path;

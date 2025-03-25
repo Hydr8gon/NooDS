@@ -334,6 +334,14 @@ extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getMicEnable
     return micEnable;
 }
 
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getArm7Hle(JNIEnv* env, jobject obj) {
+    return Settings::arm7Hle;
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getDsiMode(JNIEnv* env, jobject obj) {
+    return Settings::dsiMode;
+}
+
 extern "C" JNIEXPORT jint JNICALL Java_com_hydra_noods_SettingsMenu_getSavesFolder(JNIEnv* env, jobject obj) {
     return Settings::savesFolder;
 }
@@ -440,6 +448,14 @@ extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setAudio16Bi
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setMicEnable(JNIEnv* env, jobject obj, jint value) {
     micEnable = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setArm7Hle(JNIEnv* env, jobject obj, jint value) {
+    Settings::arm7Hle = value;
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setDsiMode(JNIEnv* env, jobject obj, jint value) {
+    Settings::dsiMode = value;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_hydra_noods_SettingsMenu_setSavesFolder(JNIEnv* env, jobject obj, jint value) {

@@ -140,7 +140,7 @@ bool Memory::loadBios9() {
 
     // Prepare HLE BIOS with a special opcode for interrupt return
     bios9[3] = 0xFF;
-    core->interpreter[0].bios = &core->bios[0];
+    core->interpreter[0].bios = &core->hleBios[0];
     return false;
 }
 
@@ -154,7 +154,7 @@ bool Memory::loadBios7() {
 
     // Prepare HLE BIOS with a special opcode for interrupt return
     bios7[3] = 0xFF;
-    core->interpreter[1].bios = &core->bios[1];
+    core->interpreter[1].bios = &core->hleBios[1];
     return false;
 }
 

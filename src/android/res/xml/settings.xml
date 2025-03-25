@@ -108,6 +108,25 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        app:title="Experimental Settings"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreference
+            app:key="arm7_hle"
+            app:title="High-Level ARM7"
+            app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+
+        <SwitchPreference
+            app:key="dsi_mode"
+            app:title="DSi Homebrew Mode"
+            app:iconSpaceReserved="false"
+            app:allowDividerAbove="true"
+            app:allowDividerBelow="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
         app:title="Path Settings"
         app:iconSpaceReserved="false">
 

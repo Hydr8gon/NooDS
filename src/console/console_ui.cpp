@@ -777,6 +777,9 @@ void ConsoleUI::settingsMenu() {
             MenuItem("Audio Settings", true),
             MenuItem("Audio Emulation", toggle[Settings::emulateAudio]),
             MenuItem("16-bit Audio Output", toggle[Settings::audio16Bit]),
+            MenuItem("Experimental Settings", true),
+            MenuItem("High-Level ARM7", toggle[Settings::arm7Hle]),
+            MenuItem("DSi Homebrew Mode", toggle[Settings::dsiMode]),
             MenuItem("Path Settings", true),
             MenuItem("Separate Saves Folder", toggle[Settings::savesFolder]),
             MenuItem("Separate States Folder", toggle[Settings::statesFolder]),
@@ -811,18 +814,20 @@ void ConsoleUI::settingsMenu() {
                 case 11: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
                 case 13: Settings::emulateAudio = (Settings::emulateAudio + 1) % 2; break;
                 case 14: Settings::audio16Bit = (Settings::audio16Bit + 1) % 2; break;
-                case 16: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;
-                case 17: Settings::statesFolder = (Settings::statesFolder + 1) % 2; break;
-                case 18: Settings::cheatsFolder = (Settings::cheatsFolder + 1) % 2; break;
-                case 20: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
-                case 21: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
-                case 22: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
-                case 23: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
-                case 24: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
-                case 25: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
-                case 26: ScreenLayout::aspectRatio = (ScreenLayout::aspectRatio + 1) % 4; break;
-                case 27: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
-                case 28: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
+                case 16: Settings::arm7Hle = (Settings::arm7Hle + 1) % 2; break;
+                case 17: Settings::dsiMode = (Settings::dsiMode + 1) % 2; break;
+                case 19: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;
+                case 20: Settings::statesFolder = (Settings::statesFolder + 1) % 2; break;
+                case 21: Settings::cheatsFolder = (Settings::cheatsFolder + 1) % 2; break;
+                case 23: ScreenLayout::screenPosition = (ScreenLayout::screenPosition + 1) % 5; break;
+                case 24: ScreenLayout::screenRotation = (ScreenLayout::screenRotation + 1) % 3; break;
+                case 25: ScreenLayout::screenArrangement = (ScreenLayout::screenArrangement + 1) % 4; break;
+                case 26: ScreenLayout::screenSizing = (ScreenLayout::screenSizing + 1) % 3; break;
+                case 27: ScreenLayout::screenGap = (ScreenLayout::screenGap + 1) % 4; break;
+                case 28: Settings::screenFilter = (Settings::screenFilter + 1) % 3; break;
+                case 29: ScreenLayout::aspectRatio = (ScreenLayout::aspectRatio + 1) % 4; break;
+                case 30: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
+                case 31: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
 
                 case 5:
                     // Update the palette when changing themes

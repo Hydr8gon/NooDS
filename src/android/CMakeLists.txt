@@ -8,7 +8,6 @@ add_library(noods-core SHARED
             ../common/nds_icon.cpp
             ../common/screen_layout.cpp
             ../action_replay.cpp
-            ../bios.cpp
             ../cartridge.cpp
             ../core.cpp
             ../cp15.cpp
@@ -19,6 +18,8 @@ add_library(noods-core SHARED
             ../gpu_2d.cpp
             ../gpu_3d.cpp
             ../gpu_3d_renderer.cpp
+            ../hle_arm7.cpp
+            ../hle_bios.cpp
             ../input.cpp
             ../interpreter.cpp
             ../interpreter_alu.cpp

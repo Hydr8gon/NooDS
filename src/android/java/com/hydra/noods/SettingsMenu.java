@@ -87,6 +87,8 @@ public class SettingsMenu extends AppCompatActivity {
         editor.putBoolean("emulate_audio", (getEmulateAudio() == 0) ? false : true);
         editor.putBoolean("audio_16_bit", (getAudio16Bit() == 0) ? false : true);
         editor.putBoolean("mic_enable", (getMicEnable() == 0) ? false : true);
+        editor.putBoolean("arm7_hle", (getArm7Hle() == 0) ? false : true);
+        editor.putBoolean("dsi_mode", (getDsiMode() == 0) ? false : true);
         editor.putBoolean("saves_folder", (getSavesFolder() == 0) ? false : true);
         editor.putBoolean("states_folder", (getStatesFolder() == 0) ? false : true);
         editor.putBoolean("cheats_folder", (getCheatsFolder() == 0) ? false : true);
@@ -146,6 +148,8 @@ public class SettingsMenu extends AppCompatActivity {
         setEmulateAudio(prefs.getBoolean("emulate_audio", true) ? 1 : 0);
         setAudio16Bit(prefs.getBoolean("audio_16_bit", true) ? 1 : 0);
         setMicEnable(prefs.getBoolean("mic_enable", false) ? 1 : 0);
+        setArm7Hle(prefs.getBoolean("arm7_hle", false) ? 1 : 0);
+        setDsiMode(prefs.getBoolean("dsi_mode", false) ? 1 : 0);
         setSavesFolder(prefs.getBoolean("saves_folder", false) ? 1 : 0);
         setStatesFolder(prefs.getBoolean("states_folder", true) ? 1 : 0);
         setCheatsFolder(prefs.getBoolean("cheats_folder", true) ? 1 : 0);
@@ -179,6 +183,8 @@ public class SettingsMenu extends AppCompatActivity {
     public static native int getEmulateAudio();
     public static native int getAudio16Bit();
     public static native int getMicEnable();
+    public static native int getArm7Hle();
+    public static native int getDsiMode();
     public static native int getSavesFolder();
     public static native int getStatesFolder();
     public static native int getCheatsFolder();
@@ -206,6 +212,8 @@ public class SettingsMenu extends AppCompatActivity {
     public static native void setEmulateAudio(int value);
     public static native void setAudio16Bit(int value);
     public static native void setMicEnable(int value);
+    public static native void setArm7Hle(int value);
+    public static native void setDsiMode(int value);
     public static native void setSavesFolder(int value);
     public static native void setStatesFolder(int value);
     public static native void setCheatsFolder(int value);

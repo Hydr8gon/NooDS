@@ -25,11 +25,11 @@
 #include "defines.h"
 
 class Core;
-class Bios;
+class HleBios;
 
 class Interpreter {
     public:
-        Bios *bios = nullptr;
+        HleBios *bios = nullptr;
         uint32_t entryAddr = 0;
         uint8_t halted = 0;
 

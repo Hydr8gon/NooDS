@@ -19,59 +19,59 @@
 
 #include <cmath>
 
-#include "bios.h"
+#include "hle_bios.h"
 #include "core.h"
 
 // HLE ARM9 BIOS SWI lookup table
-int (Bios::*Bios::swiTable9[])(uint32_t**) = {
-    &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiWaitByLoop, // 0x00-0x03
-    &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiHalt, &Bios::swiUnknown, // 0x04-0x07
-    &Bios::swiUnknown, &Bios::swiDivide, &Bios::swiUnknown, &Bios::swiCpuSet, // 0x08-0x0B
-    &Bios::swiCpuFastSet, &Bios::swiSquareRoot, &Bios::swiGetCrc16, &Bios::swiIsDebugger, // 0x0C-0x0F
-    &Bios::swiBitUnpack, &Bios::swiLz77Uncomp, &Bios::swiLz77Uncomp, &Bios::swiHuffUncomp, // 0x10-0x13
-    &Bios::swiRunlenUncomp, &Bios::swiRunlenUncomp, &Bios::swiDiffUnfilt8, &Bios::swiUnknown, // 0x14-0x17
-    &Bios::swiDiffUnfilt16, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, // 0x18-0x1B
-    &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, // 0x1C-0x1F
-    &Bios::swiUnknown // 0x20
+int (HleBios::*HleBios::swiTable9[])(uint32_t**) = {
+    &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiWaitByLoop, // 0x00-0x03
+    &HleBios::swiInterruptWait, &HleBios::swiVBlankIntrWait, &HleBios::swiHalt, &HleBios::swiUnknown, // 0x04-0x07
+    &HleBios::swiUnknown, &HleBios::swiDivide, &HleBios::swiUnknown, &HleBios::swiCpuSet, // 0x08-0x0B
+    &HleBios::swiCpuFastSet, &HleBios::swiSquareRoot, &HleBios::swiGetCrc16, &HleBios::swiIsDebugger, // 0x0C-0x0F
+    &HleBios::swiBitUnpack, &HleBios::swiLz77Uncomp, &HleBios::swiLz77Uncomp, &HleBios::swiHuffUncomp, // 0x10-0x13
+    &HleBios::swiRunlenUncomp, &HleBios::swiRunlenUncomp, &HleBios::swiDiffUnfilt8, &HleBios::swiUnknown, // 0x14-0x17
+    &HleBios::swiDiffUnfilt16, &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiUnknown, // 0x18-0x1B
+    &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiUnknown, // 0x1C-0x1F
+    &HleBios::swiUnknown // 0x20
 };
 
 // HLE ARM7 BIOS SWI lookup table
-int (Bios::*Bios::swiTable7[])(uint32_t**) = {
-    &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiWaitByLoop, // 0x00-0x03
-    &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiHalt, &Bios::swiSleep, // 0x04-0x07
-    &Bios::swiSoundBias, &Bios::swiDivide, &Bios::swiUnknown, &Bios::swiCpuSet, // 0x08-0x0B
-    &Bios::swiCpuFastSet, &Bios::swiSquareRoot, &Bios::swiGetCrc16, &Bios::swiIsDebugger, // 0x0C-0x0F
-    &Bios::swiBitUnpack, &Bios::swiLz77Uncomp, &Bios::swiLz77Uncomp, &Bios::swiHuffUncomp, // 0x10-0x13
-    &Bios::swiRunlenUncomp, &Bios::swiRunlenUncomp, &Bios::swiUnknown, &Bios::swiUnknown, // 0x14-0x17
-    &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiGetSineTable, &Bios::swiGetPitchTable, // 0x18-0x1B
-    &Bios::swiGetVolumeTable, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, // 0x1C-0x1F
-    &Bios::swiUnknown // 0x20
+int (HleBios::*HleBios::swiTable7[])(uint32_t**) = {
+    &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiWaitByLoop, // 0x00-0x03
+    &HleBios::swiInterruptWait, &HleBios::swiVBlankIntrWait, &HleBios::swiHalt, &HleBios::swiSleep, // 0x04-0x07
+    &HleBios::swiSoundBias, &HleBios::swiDivide, &HleBios::swiUnknown, &HleBios::swiCpuSet, // 0x08-0x0B
+    &HleBios::swiCpuFastSet, &HleBios::swiSquareRoot, &HleBios::swiGetCrc16, &HleBios::swiIsDebugger, // 0x0C-0x0F
+    &HleBios::swiBitUnpack, &HleBios::swiLz77Uncomp, &HleBios::swiLz77Uncomp, &HleBios::swiHuffUncomp, // 0x10-0x13
+    &HleBios::swiRunlenUncomp, &HleBios::swiRunlenUncomp, &HleBios::swiUnknown, &HleBios::swiUnknown, // 0x14-0x17
+    &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiGetSineTable, &HleBios::swiGetPitchTable, // 0x18-0x1B
+    &HleBios::swiGetVolumeTable, &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiUnknown, // 0x1C-0x1F
+    &HleBios::swiUnknown // 0x20
 };
 
 // HLE GBA BIOS SWI lookup table
-int (Bios::*Bios::swiTableGba[])(uint32_t**) = {
-    &Bios::swiUnknown, &Bios::swiRegRamReset, &Bios::swiHalt, &Bios::swiSleep, // 0x00-0x03
-    &Bios::swiInterruptWait, &Bios::swiVBlankIntrWait, &Bios::swiDivide, &Bios::swiDivArm, // 0x04-0x07
-    &Bios::swiSquareRoot, &Bios::swiArcTan, &Bios::swiArcTan2, &Bios::swiCpuSet, // 0x08-0x0B
-    &Bios::swiCpuFastSet, &Bios::swiUnknown, &Bios::swiBgAffineSet, &Bios::swiObjAffineSet, // 0x0C-0x0F
-    &Bios::swiBitUnpack, &Bios::swiLz77Uncomp, &Bios::swiLz77Uncomp, &Bios::swiHuffUncomp, // 0x10-0x13
-    &Bios::swiRunlenUncomp, &Bios::swiRunlenUncomp, &Bios::swiDiffUnfilt8, &Bios::swiDiffUnfilt8, // 0x14-0x17
-    &Bios::swiDiffUnfilt16, &Bios::swiSoundBias, &Bios::swiUnknown, &Bios::swiUnknown, // 0x18-0x1B
-    &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, &Bios::swiUnknown, // 0x1C-0x1F
-    &Bios::swiUnknown // 0x20
+int (HleBios::*HleBios::swiTableGba[])(uint32_t**) = {
+    &HleBios::swiUnknown, &HleBios::swiRegRamReset, &HleBios::swiHalt, &HleBios::swiSleep, // 0x00-0x03
+    &HleBios::swiInterruptWait, &HleBios::swiVBlankIntrWait, &HleBios::swiDivide, &HleBios::swiDivArm, // 0x04-0x07
+    &HleBios::swiSquareRoot, &HleBios::swiArcTan, &HleBios::swiArcTan2, &HleBios::swiCpuSet, // 0x08-0x0B
+    &HleBios::swiCpuFastSet, &HleBios::swiUnknown, &HleBios::swiBgAffineSet, &HleBios::swiObjAffineSet, // 0x0C-0x0F
+    &HleBios::swiBitUnpack, &HleBios::swiLz77Uncomp, &HleBios::swiLz77Uncomp, &HleBios::swiHuffUncomp, // 0x10-0x13
+    &HleBios::swiRunlenUncomp, &HleBios::swiRunlenUncomp, &HleBios::swiDiffUnfilt8, &HleBios::swiDiffUnfilt8, // 0x14-0x17
+    &HleBios::swiDiffUnfilt16, &HleBios::swiSoundBias, &HleBios::swiUnknown, &HleBios::swiUnknown, // 0x18-0x1B
+    &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiUnknown, &HleBios::swiUnknown, // 0x1C-0x1F
+    &HleBios::swiUnknown // 0x20
 };
 
-void Bios::saveState(FILE *file) {
+void HleBios::saveState(FILE *file) {
     // Write state data to the file
     fwrite(&waitFlags, sizeof(waitFlags), 1, file);
 }
 
-void Bios::loadState(FILE *file) {
+void HleBios::loadState(FILE *file) {
     // Read state data from the file
     fread(&waitFlags, sizeof(waitFlags), 1, file);
 }
 
-int Bios::execute(uint8_t vector, uint32_t **registers) {
+int HleBios::execute(uint8_t vector, uint32_t **registers) {
     // Execute the HLE version of the given exception vector
     switch (vector) {
         case 0x08: { // SWI
@@ -94,7 +94,7 @@ int Bios::execute(uint8_t vector, uint32_t **registers) {
     }
 }
 
-void Bios::checkWaitFlags() {
+void HleBios::checkWaitFlags() {
     // Read the BIOS interrupt flags from memory
     uint32_t address = arm7 ? 0x3FFFFF8 : (core->cp15.dtcmAddr + 0x3FF8);
     uint32_t flags = core->memory.read<uint32_t>(arm7, address);
@@ -110,7 +110,7 @@ void Bios::checkWaitFlags() {
     core->interpreter[arm7].halt(0);
 }
 
-int Bios::swiRegRamReset(uint32_t **registers) {
+int HleBios::swiRegRamReset(uint32_t **registers) {
     // Enable forced blank for PPU memory access
     core->memory.write<uint16_t>(arm7, 0x4000000, 0x80);
 
@@ -145,14 +145,14 @@ int Bios::swiRegRamReset(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiWaitByLoop(uint32_t **registers) {
+int HleBios::swiWaitByLoop(uint32_t **registers) {
     // Wait 4 cycles for each loop iteration (1 for subtraction, 3 for branch)
     uint32_t loops = *registers[0];
     *registers[0] = 0;
     return loops * 4 + 3;
 }
 
-int Bios::swiInterruptWait(uint32_t **registers) {
+int HleBios::swiInterruptWait(uint32_t **registers) {
     // Set the flags to wait for and start waiting
     waitFlags = *registers[1];
     core->interpreter[arm7].halt(0);
@@ -171,33 +171,33 @@ int Bios::swiInterruptWait(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiVBlankIntrWait(uint32_t **registers) {
+int HleBios::swiVBlankIntrWait(uint32_t **registers) {
     // Wait until a new V-blank interrupt occurs
     *registers[0] = 1;
     *registers[1] = 1;
     return swiInterruptWait(registers);
 }
 
-int Bios::swiHalt(uint32_t **registers) {
+int HleBios::swiHalt(uint32_t **registers) {
     // Halt the CPU
     core->interpreter[arm7].halt(0);
     return 3;
 }
 
-int Bios::swiSleep(uint32_t **registers) {
+int HleBios::swiSleep(uint32_t **registers) {
     // Put the ARM7 in sleep mode
     core->memory.write<uint8_t>(1, 0x4000301, 0xC0); // HALTCNT
     return 3;
 }
 
-int Bios::swiSoundBias(uint32_t **registers) {
+int HleBios::swiSoundBias(uint32_t **registers) {
     // Set the sound bias value
     // Actual BIOS adjusts this over time with delay, but oh well
     core->memory.write<uint16_t>(1, 0x4000504, *registers[0] ? 0x200 : 0); // SOUNDBIAS
     return 3;
 }
 
-int Bios::swiDivide(uint32_t **registers) {
+int HleBios::swiDivide(uint32_t **registers) {
     // Calculate the division result and remainder
     int32_t div = int32_t(*registers[0]) / int32_t(*registers[1]);
     int32_t mod = int32_t(*registers[0]) % int32_t(*registers[1]);
@@ -209,19 +209,19 @@ int Bios::swiDivide(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiDivArm(uint32_t **registers) {
+int HleBios::swiDivArm(uint32_t **registers) {
     // Divide with numerator and denominator swapped
     SWAP(*registers[0], *registers[1]);
     return swiDivide(registers);
 }
 
-int Bios::swiSquareRoot(uint32_t **registers) {
+int HleBios::swiSquareRoot(uint32_t **registers) {
     // Calculate the square root result
     *registers[0] = sqrt(*registers[0]);
     return 3;
 }
 
-int Bios::swiArcTan(uint32_t **registers) {
+int HleBios::swiArcTan(uint32_t **registers) {
     // Calculate the inverse of a fixed-point tangent
     int32_t square = -(int32_t(*registers[0] * *registers[0]) >> 14);
     int32_t result = ((square * 0xA9) >> 14) + 0x390;
@@ -235,7 +235,7 @@ int Bios::swiArcTan(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiArcTan2(uint32_t **registers) {
+int HleBios::swiArcTan2(uint32_t **registers) {
     // Define parameters for calculating inverse tangent with correction processing
     static const uint8_t offsets[] = { 0, 1, 1, 2, 2, 3, 3, 4 };
     int32_t x = *registers[0];
@@ -259,7 +259,7 @@ int Bios::swiArcTan2(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiCpuSet(uint32_t **registers) {
+int HleBios::swiCpuSet(uint32_t **registers) {
     // Decode some parameters
     bool word = (*registers[2] & BIT(26));
     bool fixed = (*registers[2] & BIT(24));
@@ -284,7 +284,7 @@ int Bios::swiCpuSet(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiCpuFastSet(uint32_t **registers) {
+int HleBios::swiCpuFastSet(uint32_t **registers) {
     // Decode some parameters
     bool fixed = (*registers[2] & BIT(24));
     uint32_t size = (*registers[2] & 0xFFFFF) << 2;
@@ -298,7 +298,7 @@ int Bios::swiCpuFastSet(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiGetCrc16(uint32_t **registers) {
+int HleBios::swiGetCrc16(uint32_t **registers) {
     static const uint16_t table[] = { 0xC0C1, 0xC181, 0xC301, 0xC601, 0xCC01, 0xD801, 0xF001, 0xA001 };
 
     // Calculate a CRC16 value for the given data
@@ -310,14 +310,14 @@ int Bios::swiGetCrc16(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiIsDebugger(uint32_t **registers) {
+int HleBios::swiIsDebugger(uint32_t **registers) {
     // Report that this isn't a debugger
     *registers[0] = 0;
     return 3;
 }
 
 // Affine table taken from the open-source Cult of GBA BIOS
-const uint16_t Bios::affineTable[0x100] = {
+const uint16_t HleBios::affineTable[0x100] = {
     0x0000, 0x0192, 0x0323, 0x04B5, 0x0645, 0x07D5, 0x0964, 0x0AF1,
     0x0C7C, 0x0E05, 0x0F8C, 0x1111, 0x1294, 0x1413, 0x158F, 0x1708,
     0x187D, 0x19EF, 0x1B5D, 0x1CC6, 0x1E2B, 0x1F8B, 0x20E7, 0x223D,
@@ -352,7 +352,7 @@ const uint16_t Bios::affineTable[0x100] = {
     0xF384, 0xF50F, 0xF69C, 0xF82B, 0xF9BB, 0xFB4B, 0xFCDD, 0xFE6E
 };
 
-int Bios::swiBgAffineSet(uint32_t **registers) {
+int HleBios::swiBgAffineSet(uint32_t **registers) {
     // Process the specified number of background affine parameters
     for (int i = 0; i < *registers[2]; i++) {
         // Read the input parameters
@@ -380,7 +380,7 @@ int Bios::swiBgAffineSet(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiObjAffineSet(uint32_t **registers) {
+int HleBios::swiObjAffineSet(uint32_t **registers) {
     // Process the specified number of object affine parameters
     for (int i = 0; i < *registers[2]; i++) {
         // Read the input parameters
@@ -401,7 +401,7 @@ int Bios::swiObjAffineSet(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiBitUnpack(uint32_t **registers) {
+int HleBios::swiBitUnpack(uint32_t **registers) {
     // Read the parameters from memory
     uint16_t size = core->memory.read<uint16_t>(arm7, *registers[2]);
     uint8_t srcWidth = core->memory.read<uint8_t>(arm7, *registers[2] + 2);
@@ -445,7 +445,7 @@ int Bios::swiBitUnpack(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiLz77Uncomp(uint32_t **registers) {
+int HleBios::swiLz77Uncomp(uint32_t **registers) {
     // Get the size from the header and set the initial addresses
     uint32_t size = core->memory.read<uint32_t>(arm7, *registers[0]) >> 8;
     uint32_t src = 4;
@@ -482,7 +482,7 @@ int Bios::swiLz77Uncomp(uint32_t **registers) {
     }
 }
 
-int Bios::swiHuffUncomp(uint32_t **registers) {
+int HleBios::swiHuffUncomp(uint32_t **registers) {
     // Read the header and set size parameters
     uint32_t header = core->memory.read<uint32_t>(arm7, *registers[0]);
     uint8_t treeSize = core->memory.read<uint8_t>(arm7, *registers[0] + 4);
@@ -525,7 +525,7 @@ int Bios::swiHuffUncomp(uint32_t **registers) {
     }
 }
 
-int Bios::swiRunlenUncomp(uint32_t **registers) {
+int HleBios::swiRunlenUncomp(uint32_t **registers) {
     // Get the size from the header and set the initial addresses
     uint32_t size = core->memory.read<uint32_t>(arm7, *registers[0]) >> 8;
     uint32_t src = 4;
@@ -552,7 +552,7 @@ int Bios::swiRunlenUncomp(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiDiffUnfilt8(uint32_t **registers) {
+int HleBios::swiDiffUnfilt8(uint32_t **registers) {
     // Get the size from the header and set the initial value
     uint32_t size = core->memory.read<uint32_t>(0, *registers[0]) >> 8;
     uint8_t value = 0;
@@ -566,7 +566,7 @@ int Bios::swiDiffUnfilt8(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiDiffUnfilt16(uint32_t **registers) {
+int HleBios::swiDiffUnfilt16(uint32_t **registers) {
     // Get the size from the header and set the initial value
     uint32_t size = core->memory.read<uint32_t>(0, *registers[0]) >> 8;
     uint16_t value = 0;
@@ -580,7 +580,7 @@ int Bios::swiDiffUnfilt16(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiGetSineTable(uint32_t **registers) {
+int HleBios::swiGetSineTable(uint32_t **registers) {
     // Sine table taken from the open-source DraStic BIOS
     static const uint16_t sineTable[] = {
         0x0000, 0x0324, 0x0648, 0x096A, 0x0C8C, 0x0FAB, 0x12C8, 0x15E2,
@@ -598,7 +598,7 @@ int Bios::swiGetSineTable(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiGetPitchTable(uint32_t **registers) {
+int HleBios::swiGetPitchTable(uint32_t **registers) {
     // Pitch table taken from the open-source DraStic BIOS
     static const uint16_t pitchTable[] = {
         0x0000, 0x003B, 0x0076, 0x00B2, 0x00ED, 0x0128, 0x0164, 0x019F,
@@ -704,7 +704,7 @@ int Bios::swiGetPitchTable(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiGetVolumeTable(uint32_t **registers) {
+int HleBios::swiGetVolumeTable(uint32_t **registers) {
     // Volume table taken from the open-source DraStic BIOS
     static const uint8_t volumeTable[] = {
         0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
@@ -805,7 +805,7 @@ int Bios::swiGetVolumeTable(uint32_t **registers) {
     return 3;
 }
 
-int Bios::swiUnknown(uint32_t **registers) {
+int HleBios::swiUnknown(uint32_t **registers) {
     // Handle an unknown SWI comment
     uint32_t address = *registers[15] - (core->interpreter[arm7].isThumb() ? 4 : 6);
     uint8_t comment = core->memory.read<uint8_t>(arm7, address);

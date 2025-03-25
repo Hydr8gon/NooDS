@@ -17,21 +17,21 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef BIOS_H
-#define BIOS_H
+#ifndef HLE_BIOS_H
+#define HLE_BIOS_H
 
 #include <cstdint>
 #include <cstdio>
 
 class Core;
 
-class Bios {
+class HleBios {
     public:
-        static int (Bios::*swiTable9[0x21])(uint32_t**);
-        static int (Bios::*swiTable7[0x21])(uint32_t**);
-        static int (Bios::*swiTableGba[0x21])(uint32_t**);
+        static int (HleBios::*swiTable9[0x21])(uint32_t**);
+        static int (HleBios::*swiTable7[0x21])(uint32_t**);
+        static int (HleBios::*swiTableGba[0x21])(uint32_t**);
 
-        Bios(Core *core, bool arm7, int (Bios::**swiTable)(uint32_t**)):
+        HleBios(Core *core, bool arm7, int (HleBios::**swiTable)(uint32_t**)):
             core(core), arm7(arm7), swiTable(swiTable) {}
         void saveState(FILE *file);
         void loadState(FILE *file);
@@ -72,10 +72,10 @@ class Bios {
     private:
         Core *core;
         bool arm7;
-        int (Bios::**swiTable)(uint32_t**);
+        int (HleBios::**swiTable)(uint32_t**);
 
         static const uint16_t affineTable[0x100];
         uint32_t waitFlags = 0;
 };
 
-#endif // BIOS_H
+#endif // HLE_BIOS_H

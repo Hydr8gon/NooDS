@@ -41,7 +41,6 @@ enum FrameEvent {
     STOP,
     ACTION_REPLAY,
     ADD_SYSTEM,
-    DSI_MODE,
     DIRECT_BOOT,
     ROM_IN_RAM,
     FPS_LIMITER,
@@ -62,6 +61,8 @@ enum FrameEvent {
     EMULATE_AUDIO,
     AUDIO_16_BIT,
     MIC_ENABLE,
+    ARM7_HLE,
+    DSI_MODE,
     PATH_SETTINGS,
     SCREEN_LAYOUT,
     INPUT_BINDINGS,
@@ -81,8 +82,7 @@ EVT_MENU(RESTART, NooFrame::restart)
 EVT_MENU(STOP, NooFrame::stop)
 EVT_MENU(ACTION_REPLAY, NooFrame::actionReplay)
 EVT_MENU(ADD_SYSTEM, NooFrame::addSystem)
-EVT_MENU(DSI_MODE, NooFrame::dsiModeToggle)
-EVT_MENU(DIRECT_BOOT, NooFrame::directBootToggle)
+EVT_MENU(DIRECT_BOOT, NooFrame::directBoot)
 EVT_MENU(ROM_IN_RAM, NooFrame::romInRam)
 EVT_MENU(FPS_LIMITER, NooFrame::fpsLimiter)
 EVT_MENU(FRAMESKIP_0, NooFrame::frameskip<0>)
@@ -102,6 +102,8 @@ EVT_MENU(SCREEN_GHOST, NooFrame::screenGhost)
 EVT_MENU(EMULATE_AUDIO, NooFrame::emulateAudio)
 EVT_MENU(AUDIO_16_BIT, NooFrame::audio16Bit)
 EVT_MENU(MIC_ENABLE, NooFrame::micEnable)
+EVT_MENU(ARM7_HLE, NooFrame::arm7Hle)
+EVT_MENU(DSI_MODE, NooFrame::dsiMode)
 EVT_MENU(PATH_SETTINGS, NooFrame::pathSettings)
 EVT_MENU(SCREEN_LAYOUT, NooFrame::layoutSettings)
 EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
@@ -138,11 +140,6 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         systemMenu->AppendSeparator();
         systemMenu->Append(ACTION_REPLAY, "&Action Replay");
         systemMenu->Append(ADD_SYSTEM, "&Add System");
-        systemMenu->AppendSeparator();
-        systemMenu->AppendCheckItem(DSI_MODE, "&DSi Homebrew Mode");
-
-        // Set the initial system checkbox states
-        systemMenu->Check(DSI_MODE, Settings::dsiMode);
 
         // Disable some menu items until the core is running
         fileMenu->Enable(TRIM_ROM, false);
@@ -191,11 +188,17 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         audioMenu->AppendCheckItem(AUDIO_16_BIT, "&16-bit Audio Output");
         audioMenu->AppendCheckItem(MIC_ENABLE, "&Use Microphone");
 
+        // Set up the experimental settings submenu
+        wxMenu *experiMenu = new wxMenu();
+        experiMenu->AppendCheckItem(ARM7_HLE, "&High-Level ARM7");
+        experiMenu->AppendCheckItem(DSI_MODE, "&DSi Homebrew Mode");
+
         // Set up the settings menu
         wxMenu *settingsMenu = new wxMenu();
         settingsMenu->AppendSubMenu(generalMenu, "&General Settings");
         settingsMenu->AppendSubMenu(graphicsMenu, "&Graphics Settings");
         settingsMenu->AppendSubMenu(audioMenu, "&Audio Settings");
+        settingsMenu->AppendSubMenu(experiMenu, "&Experimental Settings");
         settingsMenu->AppendSeparator();
         settingsMenu->Append(PATH_SETTINGS, "&Path Settings");
         settingsMenu->Append(SCREEN_LAYOUT, "&Screen Layout");
@@ -211,6 +214,8 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         settingsMenu->Check(EMULATE_AUDIO, Settings::emulateAudio);
         settingsMenu->Check(AUDIO_16_BIT, Settings::audio16Bit);
         settingsMenu->Check(MIC_ENABLE, NooApp::micEnable);
+        settingsMenu->Check(ARM7_HLE, Settings::arm7Hle);
+        settingsMenu->Check(DSI_MODE, Settings::dsiMode);
 
         // Set the initial radio setting selections
         frameskip->Check(FRAMESKIP_0 + std::min<uint8_t>(Settings::frameskip, 5), true);
@@ -663,13 +668,7 @@ void NooFrame::addSystem(wxCommandEvent &event) {
     app->createFrame();
 }
 
-void NooFrame::dsiModeToggle(wxCommandEvent &event) {
-    // Toggle the DSi homebrew mode setting
-    Settings::dsiMode = !Settings::dsiMode;
-    Settings::save();
-}
-
-void NooFrame::directBootToggle(wxCommandEvent &event) {
+void NooFrame::directBoot(wxCommandEvent &event) {
     // Toggle the direct boot setting
     Settings::directBoot = !Settings::directBoot;
     Settings::save();
@@ -714,7 +713,7 @@ void NooFrame::highRes3D(wxCommandEvent &event) {
 void NooFrame::screenGhost(wxCommandEvent &event) {
     // Toggle the simulate ghosting setting
     Settings::screenGhost = !Settings::screenGhost;
-    app->updateLayouts();
+    Settings::save();
 }
 
 void NooFrame::emulateAudio(wxCommandEvent &event) {
@@ -733,6 +732,18 @@ void NooFrame::micEnable(wxCommandEvent &event) {
     // Toggle the use microphone setting
     NooApp::micEnable = !NooApp::micEnable;
     NooApp::micEnable ? app->startStream(1) : app->stopStream(1);
+    Settings::save();
+}
+
+void NooFrame::arm7Hle(wxCommandEvent &event) {
+    // Toggle the high-level ARM7 setting
+    Settings::arm7Hle = !Settings::arm7Hle;
+    Settings::save();
+}
+
+void NooFrame::dsiMode(wxCommandEvent &event) {
+    // Toggle the DSi homebrew mode setting
+    Settings::dsiMode = !Settings::dsiMode;
     Settings::save();
 }
 

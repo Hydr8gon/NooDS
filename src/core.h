@@ -27,7 +27,6 @@
 #include <vector>
 
 #include "action_replay.h"
-#include "bios.h"
 #include "cartridge.h"
 #include "cp15.h"
 #include "defines.h"
@@ -38,6 +37,8 @@
 #include "gpu_2d.h"
 #include "gpu_3d.h"
 #include "gpu_3d_renderer.h"
+#include "hle_arm7.h"
+#include "hle_bios.h"
 #include "input.h"
 #include "interpreter.h"
 #include "ipc.h"
@@ -103,11 +104,11 @@ class Core {
     public:
         int id = 0;
         int fps = 0;
+        bool arm7Hle = false;
         bool dsiMode = false;
         bool gbaMode = false;
 
         ActionReplay actionReplay;
-        Bios bios[3];
         CartridgeGba cartridgeGba;
         CartridgeNds cartridgeNds;
         Cp15 cp15;
@@ -118,6 +119,8 @@ class Core {
         Gpu2D gpu2D[2];
         Gpu3D gpu3D;
         Gpu3DRenderer gpu3DRenderer;
+        HleArm7 hleArm7;
+        HleBios hleBios[3];
         Input input;
         Interpreter interpreter[2];
         Ipc ipc;

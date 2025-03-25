@@ -79,8 +79,7 @@ class NooFrame: public wxFrame {
         void stop(wxCommandEvent &event);
         void actionReplay(wxCommandEvent &event);
         void addSystem(wxCommandEvent &event);
-        void dsiModeToggle(wxCommandEvent &event);
-        void directBootToggle(wxCommandEvent &event);
+        void directBoot(wxCommandEvent &event);
         void romInRam(wxCommandEvent &event);
         void fpsLimiter(wxCommandEvent &event);
         template <int> void frameskip(wxCommandEvent &event);
@@ -91,6 +90,8 @@ class NooFrame: public wxFrame {
         void emulateAudio(wxCommandEvent &event);
         void audio16Bit(wxCommandEvent &event);
         void micEnable(wxCommandEvent &event);
+        void arm7Hle(wxCommandEvent &event);
+        void dsiMode(wxCommandEvent &event);
         void pathSettings(wxCommandEvent &event);
         void layoutSettings(wxCommandEvent &event);
         void inputSettings(wxCommandEvent &event);

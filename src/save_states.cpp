@@ -21,7 +21,7 @@
 #include "core.h"
 
 const char *SaveStates::stateTag = "NOOD";
-const uint32_t SaveStates::stateVersion = 5;
+const uint32_t SaveStates::stateVersion = 6;
 
 void SaveStates::setPath(std::string path, bool gba) {
     // Set the NDS or GBA state path
@@ -82,9 +82,6 @@ bool SaveStates::saveState() {
 
     // Save the state of every component
     core->saveState(file);
-    core->bios[0].saveState(file);
-    core->bios[1].saveState(file);
-    core->bios[2].saveState(file);
     core->cartridgeGba.saveState(file);
     core->cartridgeNds.saveState(file);
     core->cp15.saveState(file);
@@ -96,6 +93,10 @@ bool SaveStates::saveState() {
     core->gpu2D[1].saveState(file);
     core->gpu3D.saveState(file);
     core->gpu3DRenderer.saveState(file);
+    core->hleArm7.saveState(file);
+    core->hleBios[0].saveState(file);
+    core->hleBios[1].saveState(file);
+    core->hleBios[2].saveState(file);
     core->interpreter[0].saveState(file);
     core->interpreter[1].saveState(file);
     core->ipc.saveState(file);
@@ -118,9 +119,6 @@ bool SaveStates::loadState() {
 
     // Load the state of every component
     core->loadState(file);
-    core->bios[0].loadState(file);
-    core->bios[1].loadState(file);
-    core->bios[2].loadState(file);
     core->cartridgeGba.loadState(file);
     core->cartridgeNds.loadState(file);
     core->cp15.loadState(file);
@@ -132,6 +130,10 @@ bool SaveStates::loadState() {
     core->gpu2D[1].loadState(file);
     core->gpu3D.loadState(file);
     core->gpu3DRenderer.loadState(file);
+    core->hleArm7.loadState(file);
+    core->hleBios[0].loadState(file);
+    core->hleBios[1].loadState(file);
+    core->hleBios[2].loadState(file);
     core->interpreter[0].loadState(file);
     core->interpreter[1].loadState(file);
     core->ipc.loadState(file);

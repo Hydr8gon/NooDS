@@ -26,11 +26,12 @@
 
 Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gbaRomFd,
     int ndsSaveFd, int gbaSaveFd, int ndsStateFd, int gbaStateFd, int ndsCheatFd):
-    id(id), actionReplay(this), bios { Bios(this, 0, Bios::swiTable9), Bios(this, 1, Bios::swiTable7), Bios(this, 1,
-    Bios::swiTableGba) }, cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this), dldi(this), dma {
-    Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) }, gpu3D(this), gpu3DRenderer(this),
-    input(this), interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this),
-    rtc(this), saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this) {
+        id(id), actionReplay(this), cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this),
+        dldi(this), dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) },
+        gpu3D(this), gpu3DRenderer(this), hleArm7(this), hleBios { HleBios(this, 0, HleBios::swiTable9),
+        HleBios(this, 1, HleBios::swiTable7), HleBios(this, 1, HleBios::swiTableGba) }, input(this),
+        interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this), rtc(this),
+        saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this) {
     // Try to load BIOS and firmware; require DS files when not direct booting
     bool required = !Settings::directBoot || (ndsRom == "" && gbaRom == "" && ndsRomFd == -1 && gbaRomFd == -1);
     if (!memory.loadBios9() && required) throw ERROR_BIOS;
@@ -138,12 +139,19 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
         }
     }
 
+    // Initialize HLE ARM7 if enabled in DS mode
+    if (!gbaMode && Settings::arm7Hle) {
+        arm7Hle = true;
+        hleArm7.init();
+    }
+
     // Let the core run
     running.store(true);
 }
 
 void Core::saveState(FILE *file) {
     // Write state data to the file
+    fwrite(&arm7Hle, sizeof(arm7Hle), 1, file);
     fwrite(&dsiMode, sizeof(dsiMode), 1, file);
     fwrite(&gbaMode, sizeof(gbaMode), 1, file);
     fwrite(&globalCycles, sizeof(globalCycles), 1, file);
@@ -157,6 +165,7 @@ void Core::saveState(FILE *file) {
 
 void Core::loadState(FILE *file) {
     // Read state data from the file
+    fread(&arm7Hle, sizeof(arm7Hle), 1, file);
     fread(&dsiMode, sizeof(dsiMode), 1, file);
     fread(&gbaMode, sizeof(gbaMode), 1, file);
     fread(&globalCycles, sizeof(globalCycles), 1, file);
@@ -239,7 +248,7 @@ void Core::enterGbaMode() {
     }
 
     // Enable HLE BIOS and boot the GBA ROM directly
-    interpreter[1].bios = &bios[2];
+    interpreter[1].bios = &hleBios[2];
     interpreter[1].directBoot();
     memory.write<uint16_t>(1, 0x4000088, 0x200); // SOUNDBIAS
 }
