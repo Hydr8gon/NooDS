@@ -35,10 +35,14 @@ class HleArm7 {
 
         void ipcSync(uint8_t value);
         void ipcFifo(uint32_t value);
+        void runFrame();
 
     private:
         Core *core;
         bool inited = false;
+        bool autoTouch = false;
+
+        void pollTouch(uint32_t value);
 };
 
 #endif // HLE_ARM7_H

@@ -54,8 +54,43 @@ void HleArm7::ipcSync(uint8_t value) {
 }
 
 void HleArm7::ipcFifo(uint32_t value) {
-    // Stub FIFO commands by replying with the same value
+    // Handle FIFO commands based on the subsystem tag
     if (!inited) return;
-    LOG_CRIT("Unknown HLE IPC FIFO command: 0x%X\n", value);
+    switch (value & 0x1F) { // Subsystem
+        case 0x6: // Touch screen
+            // Poll touch input manually or enable auto-polling
+            if ((value & 0xC0000000) == 0xC0000000) {
+                pollTouch(value | BIT(21));
+            }
+            else if ((value & 0xC0000000) == 0x40000000) {
+                autoTouch = (value & BIT(22));
+                pollTouch(0xC0204006);
+            }
+            return;
+
+        default:
+            // Stub unknown FIFO commands by replying with the same value
+            LOG_CRIT("Unknown HLE IPC FIFO command: 0x%X\n", value);
+            return core->ipc.writeIpcFifoSend(1, -1, value);
+    }
+}
+
+void HleArm7::runFrame() {
+    // Automatically poll extra keys and touch if enabled
+    if (!inited) return;
+    core->memory.write<uint16_t>(1, 0x27FFFA8, (core->input.readExtKeyIn() & 0xB) << 10);
+    if (autoTouch) pollTouch(0xC0240006);
+}
+
+void HleArm7::pollTouch(uint32_t value) {
+    // Update touch values in shared memory and send a FIFO reply
+    if (core->input.readExtKeyIn() & BIT(6)) { // Released
+        core->memory.write<uint16_t>(1, 0x27FFFAA, 0x000);
+        core->memory.write<uint16_t>(1, 0x27FFFAC, 0x600);
+    }
+    else { // Pressed
+        core->memory.write<uint16_t>(1, 0x27FFFAA, (core->spi.touchX >> 0));
+        core->memory.write<uint16_t>(1, 0x27FFFAC, (core->spi.touchY >> 4) | 0x100);
+    }
     core->ipc.writeIpcFifoSend(1, -1, value);
 }

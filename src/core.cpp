@@ -258,6 +258,10 @@ void Core::endFrame() {
     running.store(false);
     fpsCount++;
 
+    // Run HLE ARM7 per-frame tasks if enabled
+    if (arm7Hle)
+        hleArm7.runFrame();
+
     // Update the FPS and reset the counter every second
     std::chrono::duration<double> fpsTime = std::chrono::steady_clock::now() - lastFpsTime;
     if (fpsTime.count() >= 1.0f) {

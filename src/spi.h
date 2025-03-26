@@ -37,6 +37,9 @@ class Core;
 
 class Spi {
     public:
+        uint16_t touchX = 0x000;
+        uint16_t touchY = 0xFFF;
+
         Spi(Core *core): core(core) {}
         ~Spi();
 
@@ -76,7 +79,6 @@ class Spi {
         uint32_t address = 0;
         uint8_t command = 0;
 
-        uint16_t touchX = 0x000, touchY = 0xFFF;
         uint16_t spiCnt = 0;
         uint8_t spiData = 0;
 
