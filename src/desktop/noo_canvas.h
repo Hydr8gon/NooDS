@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef NOO_CANVAS_H
-#define NOO_CANVAS_H
+#pragma once
 
 #include <chrono>
 #include <wx/wx.h>
@@ -38,40 +37,37 @@ class wxGLContext;
 #endif
 
 class NooCanvas: public CANVAS_CLASS {
-    public:
-        bool gbaMode = false;
+public:
+    bool gbaMode = false;
 
-        NooCanvas(NooFrame *frame);
-        ~NooCanvas();
+    NooCanvas(NooFrame *frame);
+    ~NooCanvas();
 
-        void resetFrame() { sizeReset = 2; }
-        void finish() { finished = true; }
+    void resetFrame() { sizeReset = 2; }
+    void finish() { finished = true; }
 
-    private:
-        NooFrame *frame;
-        wxGLContext *context;
-        uint32_t *framebuffer;
-        bool splitScreens;
+private:
+    NooFrame *frame;
+    wxGLContext *context;
+    uint32_t *framebuffer;
+    bool splitScreens;
 
-        ScreenLayout layout;
-        uint8_t sizeReset = 0;
-        bool finished = false;
+    ScreenLayout layout;
+    uint8_t sizeReset = 0;
+    bool finished = false;
 
-        int frameCount = 0;
-        int swapInterval = 0;
-        int refreshRate = 0;
-        std::chrono::steady_clock::time_point lastRateTime;
+    int frameCount = 0;
+    int swapInterval = 0;
+    int refreshRate = 0;
+    std::chrono::steady_clock::time_point lastRateTime;
 
-        void drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t *buf);
+    void drawScreen(int x, int y, int w, int h, int wb, int hb, uint32_t *buf);
 
-        void draw(wxPaintEvent &event);
-        void resize(wxSizeEvent &event);
-        void pressKey(wxKeyEvent &event);
-        void releaseKey(wxKeyEvent &event);
-        void pressScreen(wxMouseEvent &event);
-        void releaseScreen(wxMouseEvent &event);
-
-        wxDECLARE_EVENT_TABLE();
+    void draw(wxPaintEvent &event);
+    void resize(wxSizeEvent &event);
+    void pressKey(wxKeyEvent &event);
+    void releaseKey(wxKeyEvent &event);
+    void pressScreen(wxMouseEvent &event);
+    void releaseScreen(wxMouseEvent &event);
+    wxDECLARE_EVENT_TABLE();
 };
-
-#endif // NOO_CANVAS_H

@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CORE_H
-#define CORE_H
+#pragma once
 
 #include <chrono>
 #include <cstdint>
@@ -45,6 +44,7 @@
 #include "memory.h"
 #include "rtc.h"
 #include "save_states.h"
+#include "settings.h"
 #include "spi.h"
 #include "spu.h"
 #include "timers.h"
@@ -101,60 +101,58 @@ struct SchedEvent {
 };
 
 class Core {
-    public:
-        int id = 0;
-        int fps = 0;
-        bool arm7Hle = false;
-        bool dsiMode = false;
-        bool gbaMode = false;
+public:
+    int id = 0;
+    int fps = 0;
+    bool arm7Hle = false;
+    bool dsiMode = false;
+    bool gbaMode = false;
 
-        ActionReplay actionReplay;
-        CartridgeGba cartridgeGba;
-        CartridgeNds cartridgeNds;
-        Cp15 cp15;
-        DivSqrt divSqrt;
-        Dldi dldi;
-        Dma dma[2];
-        Gpu gpu;
-        Gpu2D gpu2D[2];
-        Gpu3D gpu3D;
-        Gpu3DRenderer gpu3DRenderer;
-        HleArm7 hleArm7;
-        HleBios hleBios[3];
-        Input input;
-        Interpreter interpreter[2];
-        Ipc ipc;
-        Memory memory;
-        Rtc rtc;
-        SaveStates saveStates;
-        Spi spi;
-        Spu spu;
-        Timers timers[2];
-        Wifi wifi;
+    ActionReplay actionReplay;
+    CartridgeGba cartridgeGba;
+    CartridgeNds cartridgeNds;
+    Cp15 cp15;
+    DivSqrt divSqrt;
+    Dldi dldi;
+    Dma dma[2];
+    Gpu gpu;
+    Gpu2D gpu2D[2];
+    Gpu3D gpu3D;
+    Gpu3DRenderer gpu3DRenderer;
+    HleArm7 hleArm7;
+    HleBios hleBios[3];
+    Input input;
+    Interpreter interpreter[2];
+    Ipc ipc;
+    Memory memory;
+    Rtc rtc;
+    SaveStates saveStates;
+    Spi spi;
+    Spu spu;
+    Timers timers[2];
+    Wifi wifi;
 
-        std::atomic<bool> running;
-        std::vector<SchedEvent> events;
-        std::function<void()> tasks[MAX_TASKS];
-        uint32_t globalCycles = 0;
+    std::atomic<bool> running;
+    std::vector<SchedEvent> events;
+    std::function<void()> tasks[MAX_TASKS];
+    uint32_t globalCycles = 0;
 
-        Core(std::string ndsRom = "", std::string gbaRom = "", int id = 0, int ndsRomFd = -1, int gbaRomFd = -1,
-            int ndsSaveFd = -1, int gbaSaveFd = -1, int ndsStateFd = -1, int gbaStateFd = -1, int ndsCheatFd = -1);
-        void saveState(FILE *file);
-        void loadState(FILE *file);
+    Core(std::string ndsRom = "", std::string gbaRom = "", int id = 0, int ndsRomFd = -1, int gbaRomFd = -1,
+        int ndsSaveFd = -1, int gbaSaveFd = -1, int ndsStateFd = -1, int gbaStateFd = -1, int ndsCheatFd = -1);
+    void saveState(FILE *file);
+    void loadState(FILE *file);
 
-        void runCore() { (*runFunc)(*this); }
-        void schedule(SchedTask task, uint32_t cycles);
-        void enterGbaMode();
-        void endFrame();
+    void runCore() { (*runFunc)(*this); }
+    void schedule(SchedTask task, uint32_t cycles);
+    void enterGbaMode();
+    void endFrame();
 
-    private:
-        bool realGbaBios;
-        void (*runFunc)(Core&) = &Interpreter::runCoreNds;
-        std::chrono::steady_clock::time_point lastFpsTime;
-        int fpsCount = 0;
+private:
+    bool realGbaBios;
+    void (*runFunc)(Core&) = &Interpreter::runCoreNds;
+    std::chrono::steady_clock::time_point lastFpsTime;
+    int fpsCount = 0;
 
-        void updateRun();
-        void resetCycles();
+    void updateRun();
+    void resetCycles();
 };
-
-#endif // CORE_H

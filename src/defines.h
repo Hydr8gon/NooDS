@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef DEFINES_H
-#define DEFINES_H
+#pragma once
 
 #include <cstdio>
 
@@ -95,5 +94,3 @@
 #else
 #define U32TO8(data, index, value) (*(uint32_t*)&(data)[index] = (value))
 #endif
-
-#endif // DEFINES_H

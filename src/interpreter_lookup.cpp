@@ -17,7 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "interpreter.h"
+#include "core.h"
 
 // ARM lookup table, based on the map found at http://imrannazar.com/ARM-Opcode-Map
 // Uses bits 27-20 and 7-4 of an opcode to find the appropriate instruction

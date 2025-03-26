@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "input.h"
 #include "core.h"
 
 void Input::pressKey(int key) {

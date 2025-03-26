@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CP15_H
-#define CP15_H
+#pragma once
 
 #include <cstdint>
 #include <cstdio>
@@ -26,26 +25,24 @@
 class Core;
 
 class Cp15 {
-    public:
-        uint32_t exceptionAddr = 0;
-        bool dtcmCanRead = false, dtcmCanWrite = false;
-        bool itcmCanRead = false, itcmCanWrite = false;
-        uint32_t dtcmAddr = 0, dtcmSize = 0;
-        uint32_t itcmSize = 0;
+public:
+    uint32_t exceptionAddr = 0;
+    bool dtcmCanRead = false, dtcmCanWrite = false;
+    bool itcmCanRead = false, itcmCanWrite = false;
+    uint32_t dtcmAddr = 0, dtcmSize = 0;
+    uint32_t itcmSize = 0;
 
-        Cp15(Core *core): core(core) {}
-        void saveState(FILE *file);
-        void loadState(FILE *file);
+    Cp15(Core *core): core(core) {}
+    void saveState(FILE *file);
+    void loadState(FILE *file);
 
-        uint32_t read(uint8_t cn, uint8_t cm, uint8_t cp);
-        void write(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value);
+    uint32_t read(uint8_t cn, uint8_t cm, uint8_t cp);
+    void write(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value);
 
-    private:
-        Core *core;
-        uint32_t ctrlReg = 0x78;
-        uint32_t dtcmReg = 0x00;
-        uint32_t itcmReg = 0x00;
-        uint32_t procId = 0x00;
+private:
+    Core *core;
+    uint32_t ctrlReg = 0x78;
+    uint32_t dtcmReg = 0x00;
+    uint32_t itcmReg = 0x00;
+    uint32_t procId = 0x00;
 };
-
-#endif // CP15_H

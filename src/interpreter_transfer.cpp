@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "interpreter.h"
 #include "core.h"
 
 // Define functions for each ARM offset variation (half type)

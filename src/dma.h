@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef DMA_H
-#define DMA_H
+#pragma once
 
 #include <cstdint>
 #include <cstdio>
@@ -26,33 +25,31 @@
 class Core;
 
 class Dma {
-    public:
-        Dma(Core *core, bool cpu): core(core), cpu(cpu) {}
-        void saveState(FILE *file);
-        void loadState(FILE *file);
+public:
+    Dma(Core *core, bool cpu): core(core), cpu(cpu) {}
+    void saveState(FILE *file);
+    void loadState(FILE *file);
 
-        void transfer(int channel);
-        void trigger(int mode, uint8_t channels = 0xF);
+    void transfer(int channel);
+    void trigger(int mode, uint8_t channels = 0xF);
 
-        uint32_t readDmaSad(int channel) { return dmaSad[channel]; }
-        uint32_t readDmaDad(int channel) { return dmaDad[channel]; }
-        uint32_t readDmaCnt(int channel);
+    uint32_t readDmaSad(int channel) { return dmaSad[channel]; }
+    uint32_t readDmaDad(int channel) { return dmaDad[channel]; }
+    uint32_t readDmaCnt(int channel);
 
-        void writeDmaSad(int channel, uint32_t mask, uint32_t value);
-        void writeDmaDad(int channel, uint32_t mask, uint32_t value);
-        void writeDmaCnt(int channel, uint32_t mask, uint32_t value);
+    void writeDmaSad(int channel, uint32_t mask, uint32_t value);
+    void writeDmaDad(int channel, uint32_t mask, uint32_t value);
+    void writeDmaCnt(int channel, uint32_t mask, uint32_t value);
 
-    private:
-        Core *core;
-        bool cpu;
+private:
+    Core *core;
+    bool cpu;
 
-        uint32_t srcAddrs[4] = {};
-        uint32_t dstAddrs[4] = {};
-        uint32_t wordCounts[4] = {};
+    uint32_t srcAddrs[4] = {};
+    uint32_t dstAddrs[4] = {};
+    uint32_t wordCounts[4] = {};
 
-        uint32_t dmaSad[4] = {};
-        uint32_t dmaDad[4] = {};
-        uint32_t dmaCnt[4] = {};
+    uint32_t dmaSad[4] = {};
+    uint32_t dmaDad[4] = {};
+    uint32_t dmaCnt[4] = {};
 };
-
-#endif // DMA_H

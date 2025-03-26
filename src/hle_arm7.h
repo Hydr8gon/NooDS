@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef HLE_ARM7_H
-#define HLE_ARM7_H
+#pragma once
 
 #include <cstdint>
 #include <cstdio>
@@ -26,23 +25,21 @@
 class Core;
 
 class HleArm7 {
-    public:
-        HleArm7(Core *core): core(core) {}
-        void init();
+public:
+    HleArm7(Core *core): core(core) {}
+    void init();
 
-        void saveState(FILE *file);
-        void loadState(FILE *file);
+    void saveState(FILE *file);
+    void loadState(FILE *file);
 
-        void ipcSync(uint8_t value);
-        void ipcFifo(uint32_t value);
-        void runFrame();
+    void ipcSync(uint8_t value);
+    void ipcFifo(uint32_t value);
+    void runFrame();
 
-    private:
-        Core *core;
-        bool inited = false;
-        bool autoTouch = false;
+private:
+    Core *core;
+    bool inited = false;
+    bool autoTouch = false;
 
-        void pollTouch(uint32_t value);
+    void pollTouch(uint32_t value);
 };
-
-#endif // HLE_ARM7_H

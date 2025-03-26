@@ -18,22 +18,15 @@
 */
 
 #include <cstring>
-
-#include "gpu_3d.h"
 #include "core.h"
-#include "settings.h"
 
 Matrix Matrix::operator*(Matrix &mtx) {
-    Matrix result;
-
     // Multiply 2 matrices
-    for (int y = 0; y < 4; y++) {
-        for (int x = 0; x < 4; x++) {
+    Matrix result;
+    for (int y = 0; y < 4; y++)
+        for (int x = 0; x < 4; x++)
             result.data[y * 4 + x] = ((int64_t)data[y * 4 + 0] * mtx.data[0 + x] + (int64_t)data[y * 4 + 1] * mtx.data[4 + x] +
                 (int64_t)data[y * 4 + 2] * mtx.data[8 + x] + (int64_t)data[y * 4 + 3] * mtx.data[12 + x]) >> 12;
-        }
-    }
-
     return result;
 }
 
@@ -43,25 +36,21 @@ int32_t Vector::operator*(Vector &vtr) {
 }
 
 Vector Vector::operator*(Matrix &mtx) {
-    Vector result;
-
     // Multiply a vector with a matrix
+    Vector result;
     result.x = ((int64_t)x * mtx.data[0] + (int64_t)y * mtx.data[4] + (int64_t)z * mtx.data[8]) >> 12;
     result.y = ((int64_t)x * mtx.data[1] + (int64_t)y * mtx.data[5] + (int64_t)z * mtx.data[9]) >> 12;
     result.z = ((int64_t)x * mtx.data[2] + (int64_t)y * mtx.data[6] + (int64_t)z * mtx.data[10]) >> 12;
-
     return result;
 }
 
 Vertex Vertex::operator*(Matrix &mtx) {
-    Vertex result = *this;
-
     // Multiply a vertex with a matrix
+    Vertex result = *this;
     result.x = ((int64_t)x * mtx.data[0] + (int64_t)y * mtx.data[4] + (int64_t)z * mtx.data[8] + (int64_t)w * mtx.data[12]) >> 12;
     result.y = ((int64_t)x * mtx.data[1] + (int64_t)y * mtx.data[5] + (int64_t)z * mtx.data[9] + (int64_t)w * mtx.data[13]) >> 12;
     result.z = ((int64_t)x * mtx.data[2] + (int64_t)y * mtx.data[6] + (int64_t)z * mtx.data[10] + (int64_t)w * mtx.data[14]) >> 12;
     result.w = ((int64_t)x * mtx.data[3] + (int64_t)y * mtx.data[7] + (int64_t)z * mtx.data[11] + (int64_t)w * mtx.data[15]) >> 12;
-
     return result;
 }
 
@@ -349,9 +338,9 @@ void Gpu3D::runCommands() {
             case 0x71: posTestCmd(params); break; // POS_TEST
             case 0x72: vecTestCmd(entry.param); break; // VEC_TEST
 
-            default:
-                LOG_CRIT("Unknown GXFIFO command: 0x%X\n", entry.command);
-                break;
+        default:
+            LOG_CRIT("Unknown GXFIFO command: 0x%X\n", entry.command);
+            break;
         }
 
         // On hardware, FIFO entries are moved into a pipe before being executed
@@ -571,100 +560,100 @@ void Gpu3D::addPolygon() {
     // Discard polygons that should be culled or are outside of the view area
     if (cull || savedPolygon.size == 0) {
         switch (polygonType) {
-            case 0: case 1: // Separate polygons
-                // Discard the vertices
-                vertexCountIn -= size;
-                return;
+        case 0: case 1: // Separate polygons
+            // Discard the vertices
+            vertexCountIn -= size;
+            return;
 
-            case 2: // Triangle strips
-                if (vertexCount == 3) { // First triangle in the strip
-                    // Discard the first vertex, but keep the other 2 for the next triangle
-                    verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 2];
-                    verticesIn[vertexCountIn - 2] = verticesIn[vertexCountIn - 1];
-                    vertexCountIn--;
-                    vertexCount--;
-                }
-                else if (vertexCountIn < 6144) {
-                    // End the previous strip, and start a new one with the last 2 vertices
-                    verticesIn[vertexCountIn - 0] = verticesIn[vertexCountIn - 1];
-                    verticesIn[vertexCountIn - 1] = verticesIn[vertexCountIn - 2];
-                    vertexCountIn++;
-                    vertexCount = 2;
-                }
-                return;
+        case 2: // Triangle strips
+            if (vertexCount == 3) { // First triangle in the strip
+                // Discard the first vertex, but keep the other 2 for the next triangle
+                verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 2];
+                verticesIn[vertexCountIn - 2] = verticesIn[vertexCountIn - 1];
+                vertexCountIn--;
+                vertexCount--;
+            }
+            else if (vertexCountIn < 6144) {
+                // End the previous strip, and start a new one with the last 2 vertices
+                verticesIn[vertexCountIn - 0] = verticesIn[vertexCountIn - 1];
+                verticesIn[vertexCountIn - 1] = verticesIn[vertexCountIn - 2];
+                vertexCountIn++;
+                vertexCount = 2;
+            }
+            return;
 
-            case 3: // Quad strips
-                if (vertexCount == 4) { // First quad in the strip
-                    // Discard the first 2 vertices, but keep the other 2 for the next quad
-                    verticesIn[vertexCountIn - 4] = verticesIn[vertexCountIn - 2];
-                    verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 1];
-                    vertexCountIn -= 2;
-                    vertexCount -= 2;
-                }
-                else {
-                    // End the previous strip, and start a new one with the last 2 vertices
-                    vertexCount = 2;
-                }
-                return;
+        case 3: // Quad strips
+            if (vertexCount == 4) { // First quad in the strip
+                // Discard the first 2 vertices, but keep the other 2 for the next quad
+                verticesIn[vertexCountIn - 4] = verticesIn[vertexCountIn - 2];
+                verticesIn[vertexCountIn - 3] = verticesIn[vertexCountIn - 1];
+                vertexCountIn -= 2;
+                vertexCount -= 2;
+            }
+            else {
+                // End the previous strip, and start a new one with the last 2 vertices
+                vertexCount = 2;
+            }
+            return;
         }
     }
 
     // Update the vertices of clipped polygons
     if (clip) {
         switch (polygonType) {
-            case 0: case 1: // Separate polygons
-                // Remove the unclipped vertices
-                vertexCountIn -= size;
+        case 0: case 1: // Separate polygons
+            // Remove the unclipped vertices
+            vertexCountIn -= size;
 
-                // Add the clipped vertices
-                for (int i = 0; i < savedPolygon.size; i++) {
-                    if (vertexCountIn >= 6144) return;
-                    verticesIn[vertexCountIn] = clipped[i];
-                    vertexCountIn++;
-                }
-                break;
+            // Add the clipped vertices
+            for (int i = 0; i < savedPolygon.size; i++) {
+                if (vertexCountIn >= 6144) return;
+                verticesIn[vertexCountIn] = clipped[i];
+                vertexCountIn++;
+            }
+            break;
 
-            case 2: // Triangle strips
-                // Remove the unclipped vertices
-                vertexCountIn -= (vertexCount == 3) ? 3 : 1;
-                savedPolygon.vertices = vertexCountIn;
+        case 2: // Triangle strips
+            // Remove the unclipped vertices
+            vertexCountIn -= (vertexCount == 3) ? 3 : 1;
+            savedPolygon.vertices = vertexCountIn;
 
-                // Add the clipped vertices
-                for (int i = 0; i < savedPolygon.size; i++) {
-                    if (vertexCountIn >= 6144) return;
-                    verticesIn[vertexCountIn] = clipped[i];
-                    vertexCountIn++;
-                }
+            // Add the clipped vertices
+            for (int i = 0; i < savedPolygon.size; i++) {
+                if (vertexCountIn >= 6144) return;
+                verticesIn[vertexCountIn] = clipped[i];
+                vertexCountIn++;
+            }
 
-                // End the previous strip, and start a new one with the last 2 vertices
-                for (int i = 0; i < 2; i++) {
-                    if (vertexCountIn >= 6144) return;
-                    verticesIn[vertexCountIn] = unclipped[1 + i];
-                    vertexCountIn++;
-                }
-                vertexCount = 2;
-                break;
+            // End the previous strip, and start a new one with the last 2 vertices
+            for (int i = 0; i < 2; i++) {
+                if (vertexCountIn >= 6144) return;
+                verticesIn[vertexCountIn] = unclipped[1 + i];
+                vertexCountIn++;
+            }
+            vertexCount = 2;
+            break;
 
-            case 3: // Quad strips
-                // Remove the unclipped vertices
-                vertexCountIn -= (vertexCount == 4) ? 4 : 2;
-                savedPolygon.vertices = vertexCountIn;
+        case 3: // Quad strips
+            // Remove the unclipped vertices
+            vertexCountIn -= (vertexCount == 4) ? 4 : 2;
+            savedPolygon.vertices = vertexCountIn;
 
-                // Add the clipped vertices
-                for (int i = 0; i < savedPolygon.size; i++) {
-                    if (vertexCountIn >= 6144) return;
-                    verticesIn[vertexCountIn] = clipped[i];
-                    vertexCountIn++;
-                }
+            // Add the clipped vertices
+            for (int i = 0; i < savedPolygon.size; i++) {
+                if (vertexCountIn >= 6144) return;
+                verticesIn[vertexCountIn] = clipped[i];
+                vertexCountIn++;
+            }
 
-                // End the previous strip, and start a new one with the last 2 vertices
-                for (int i = 0; i < 2; i++) {
-                    if (vertexCountIn >= 6144) return;
-                    verticesIn[vertexCountIn] = unclipped[3 - i];
-                    vertexCountIn++;
-                }
-                vertexCount = 2;
-                break;
+            // End the previous strip, and start a new one with the last 2 vertices
+            for (int i = 0; i < 2; i++) {
+                if (vertexCountIn >= 6144) return;
+                verticesIn[vertexCountIn] = unclipped[3 - i];
+                vertexCountIn++;
+            }
+            vertexCount = 2;
+            break;
         }
     }
 
@@ -685,40 +674,40 @@ void Gpu3D::mtxModeCmd(uint32_t param) {
 void Gpu3D::mtxPushCmd() {
     // Push the current matrix onto a stack
     switch (matrixMode) {
-        case 0: // Projection stack
-            if (!(gxStat & BIT(13))) {
-                // Push to the single projection stack slot and increment the pointer
-                projectionStack = projection;
-                gxStat |= BIT(13);
-            }
-            else {
-                // Indicate a matrix stack overflow error
-                gxStat |= BIT(15);
-            }
-            break;
-
-        case 1: case 2: { // Coordinate and directional stacks
-            // Get the stack pointer to push to
-            uint8_t pointer = (gxStat >> 8) & 0x1F;
-
-            // Indicate a matrix stack overflow error
-            // Even though the 31st slot exists, it still causes an overflow error
-            if (pointer >= 30)
-                gxStat |= BIT(15);
-
-            // Push to the current coordinate and directional stack slots and increment the pointer
-            if (pointer < 31) {
-                coordinateStack[pointer] = coordinate;
-                directionStack[pointer] = direction;
-                gxStat += BIT(8);
-            }
-            break;
+    case 0: // Projection stack
+        if (!(gxStat & BIT(13))) {
+            // Push to the single projection stack slot and increment the pointer
+            projectionStack = projection;
+            gxStat |= BIT(13);
         }
+        else {
+            // Indicate a matrix stack overflow error
+            gxStat |= BIT(15);
+        }
+        break;
 
-        case 3: // Texture stack
-            // Push to the single texture stack slot
-            textureStack = texture;
-            break;
+    case 1: case 2: { // Coordinate and directional stacks
+        // Get the stack pointer to push to
+        uint8_t pointer = (gxStat >> 8) & 0x1F;
+
+        // Indicate a matrix stack overflow error
+        // Even though the 31st slot exists, it still causes an overflow error
+        if (pointer >= 30)
+            gxStat |= BIT(15);
+
+        // Push to the current coordinate and directional stack slots and increment the pointer
+        if (pointer < 31) {
+            coordinateStack[pointer] = coordinate;
+            directionStack[pointer] = direction;
+            gxStat += BIT(8);
+        }
+        break;
+    }
+
+    case 3: // Texture stack
+        // Push to the single texture stack slot
+        textureStack = texture;
+        break;
     }
 
     // Clear the busy bit if no more matrix commands are queued
@@ -729,42 +718,42 @@ void Gpu3D::mtxPushCmd() {
 void Gpu3D::mtxPopCmd(uint32_t param) {
     // Pop a matrix from a stack
     switch (matrixMode) {
-        case 0: // Projection stack
-            if (gxStat & BIT(13)) {
-                // Pop from the single projection stack slot and decrement the pointer
-                gxStat &= ~BIT(13);
-                projection = projectionStack;
-                clipDirty = true;
-            }
-            else {
-                // Indicate a matrix stack underflow error
-                gxStat |= BIT(15);
-            }
-            break;
-
-        case 1: case 2: { // Coordinate and directional stacks
-            // Get the stack pointer to pop from
-            uint8_t pointer = ((gxStat >> 8) & 0x1F) - ((int8_t)(param << 2) >> 2);
-
-            // Indicate a matrix stack underflow or overflow error
-            // Even though the 31st slot exists, it still causes an overflow error
-            if (pointer >= 30)
-                gxStat |= BIT(15);
-
-            // Pop from the current coordinate and directional stack slots and update the pointer
-            if (pointer < 31) {
-                gxStat = (gxStat & ~0x1F00) | (pointer << 8);
-                coordinate = coordinateStack[pointer];
-                direction = directionStack[pointer];
-                clipDirty = true;
-            }
-            break;
+    case 0: // Projection stack
+        if (gxStat & BIT(13)) {
+            // Pop from the single projection stack slot and decrement the pointer
+            gxStat &= ~BIT(13);
+            projection = projectionStack;
+            clipDirty = true;
         }
+        else {
+            // Indicate a matrix stack underflow error
+            gxStat |= BIT(15);
+        }
+        break;
 
-        case 3: // Texture stack
-            // Pop from the single texture stack slot
-            texture = textureStack;
-            break;
+    case 1: case 2: { // Coordinate and directional stacks
+        // Get the stack pointer to pop from
+        uint8_t pointer = ((gxStat >> 8) & 0x1F) - ((int8_t)(param << 2) >> 2);
+
+        // Indicate a matrix stack underflow or overflow error
+        // Even though the 31st slot exists, it still causes an overflow error
+        if (pointer >= 30)
+            gxStat |= BIT(15);
+
+        // Pop from the current coordinate and directional stack slots and update the pointer
+        if (pointer < 31) {
+            gxStat = (gxStat & ~0x1F00) | (pointer << 8);
+            coordinate = coordinateStack[pointer];
+            direction = directionStack[pointer];
+            clipDirty = true;
+        }
+        break;
+    }
+
+    case 3: // Texture stack
+        // Pop from the single texture stack slot
+        texture = textureStack;
+        break;
     }
 
     // Clear the busy bit if no more matrix commands are queued
@@ -775,85 +764,85 @@ void Gpu3D::mtxPopCmd(uint32_t param) {
 void Gpu3D::mtxStoreCmd(uint32_t param) {
     // Store a matrix to the stack
     switch (matrixMode) {
-        case 0: // Projection stack
-            // Store to the single projection stack slot
-            projectionStack = projection;
-            break;
+    case 0: // Projection stack
+        // Store to the single projection stack slot
+        projectionStack = projection;
+        break;
 
-        case 1: case 2: { // Coordinate and directional stacks
-            // Get the stack address to store to
-            int address = param & 0x0000001F;
+    case 1: case 2: { // Coordinate and directional stacks
+        // Get the stack address to store to
+        int address = param & 0x0000001F;
 
-            // Indicate a matrix stack overflow error
-            // Even though the 31st slot exists, it still causes an overflow error
-            if (address == 31) gxStat |= BIT(15);
+        // Indicate a matrix stack overflow error
+        // Even though the 31st slot exists, it still causes an overflow error
+        if (address == 31) gxStat |= BIT(15);
 
-            // Store to the current coordinate and directional stack slots
-            coordinateStack[address] = coordinate;
-            directionStack[address] = direction;
-            break;
-        }
+        // Store to the current coordinate and directional stack slots
+        coordinateStack[address] = coordinate;
+        directionStack[address] = direction;
+        break;
+    }
 
-        case 3: // Texture stack
-            // Store to the single texture stack slot
-            textureStack = texture;
-            break;
+    case 3: // Texture stack
+        // Store to the single texture stack slot
+        textureStack = texture;
+        break;
     }
 }
 
 void Gpu3D::mtxRestoreCmd(uint32_t param) {
     // Restore a matrix from the stack
     switch (matrixMode) {
-        case 0: // Projection stack
-            // Restore from the single projection stack slot
-            projection = projectionStack;
-            clipDirty = true;
-            break;
+    case 0: // Projection stack
+        // Restore from the single projection stack slot
+        projection = projectionStack;
+        clipDirty = true;
+        break;
 
-        case 1: case 2: { // Coordinate and directional stacks
-            // Get the stack address to store to
-            int address = param & 0x0000001F;
+    case 1: case 2: { // Coordinate and directional stacks
+        // Get the stack address to store to
+        int address = param & 0x0000001F;
 
-            // Indicate a matrix stack overflow error
-            // Even though the 31st slot exists, it still causes an overflow error
-            if (address == 31) gxStat |= BIT(15);
+        // Indicate a matrix stack overflow error
+        // Even though the 31st slot exists, it still causes an overflow error
+        if (address == 31) gxStat |= BIT(15);
 
-            // Restore from the current coordinate and directional stack slots
-            coordinate = coordinateStack[address];
-            direction = directionStack[address];
-            clipDirty = true;
-            break;
-       }
+        // Restore from the current coordinate and directional stack slots
+        coordinate = coordinateStack[address];
+        direction = directionStack[address];
+        clipDirty = true;
+        break;
+   }
 
-        case 3: // Texture stack
-            // Restore from the single texture stack slot
-            texture = textureStack;
-            break;
+    case 3: // Texture stack
+        // Restore from the single texture stack slot
+        texture = textureStack;
+        break;
     }
 }
 
 void Gpu3D::mtxIdentityCmd() {
     // Set a matrix to the identity matrix
     switch (matrixMode) {
-        case 0: // Projection stack
-            projection = Matrix();
-            clipDirty = true;
-            break;
+    case 0: // Projection stack
+        projection = Matrix();
+        clipDirty = true;
+        break;
 
-        case 1: // Coordinate stack
-            coordinate = Matrix();
-            clipDirty = true;
-            break;
+    case 1: // Coordinate stack
+        coordinate = Matrix();
+        clipDirty = true;
+        break;
 
-        case 2: // Coordinate and directional stacks
-            coordinate = Matrix();
-            direction = Matrix();
-            clipDirty = true;
-            break;
+    case 2: // Coordinate and directional stacks
+        coordinate = Matrix();
+        direction = Matrix();
+        clipDirty = true;
+        break;
 
-        case 3: // Texture stack
-            texture = Matrix();
-            break;
+    case 3: // Texture stack
+        texture = Matrix();
+        break;
     }
 }
 
@@ -863,25 +852,25 @@ void Gpu3D::mtxLoad44Cmd(std::vector<uint32_t> &params) {
 
     // Set a matrix to the 4x4 matrix
     switch (matrixMode) {
-        case 0: // Projection stack
-            projection = matrix;
-            clipDirty = true;
-            break;
+    case 0: // Projection stack
+        projection = matrix;
+        clipDirty = true;
+        break;
 
-        case 1: // Coordinate stack
-            coordinate = matrix;
-            clipDirty = true;
-            break;
+    case 1: // Coordinate stack
+        coordinate = matrix;
+        clipDirty = true;
+        break;
 
-        case 2: // Coordinate and directional stacks
-            coordinate = matrix;
-            direction = matrix;
-            clipDirty = true;
-            break;
+    case 2: // Coordinate and directional stacks
+        coordinate = matrix;
+        direction = matrix;
+        clipDirty = true;
+        break;
 
-        case 3: // Texture stack
-            texture = matrix;
-            break;
+    case 3: // Texture stack
+        texture = matrix;
+        break;
     }
 }
 
@@ -893,25 +882,25 @@ void Gpu3D::mtxLoad43Cmd(std::vector<uint32_t> &params) {
 
     // Set a matrix to the 4x3 matrix
     switch (matrixMode) {
-        case 0: // Projection stack
-            projection = matrix;
-            clipDirty = true;
-            break;
+    case 0: // Projection stack
+        projection = matrix;
+        clipDirty = true;
+        break;
 
-        case 1: // Coordinate stack
-            coordinate = matrix;
-            clipDirty = true;
-            break;
+    case 1: // Coordinate stack
+        coordinate = matrix;
+        clipDirty = true;
+        break;
 
-        case 2: // Coordinate and directional stacks
-            coordinate = matrix;
-            direction = matrix;
-            clipDirty = true;
-            break;
+    case 2: // Coordinate and directional stacks
+        coordinate = matrix;
+        direction = matrix;
+        clipDirty = true;
+        break;
 
-        case 3: // Texture stack
-            texture = matrix;
-            break;
+    case 3: // Texture stack
+        texture = matrix;
+        break;
     }
 }
 
@@ -921,25 +910,25 @@ void Gpu3D::mtxMult44Cmd(std::vector<uint32_t> &params) {
 
     // Multiply a matrix by the 4x4 matrix
     switch (matrixMode) {
-        case 0: // Projection stack
-            projection = matrix * projection;
-            clipDirty = true;
-            break;
+    case 0: // Projection stack
+        projection = matrix * projection;
+        clipDirty = true;
+        break;
 
-        case 1: // Coordinate stack
-            coordinate = matrix * coordinate;
-            clipDirty = true;
-            break;
+    case 1: // Coordinate stack
+        coordinate = matrix * coordinate;
+        clipDirty = true;
+        break;
 
-        case 2: // Coordinate and directional stacks
-            coordinate = matrix * coordinate;
-            direction = matrix * direction;
-            clipDirty = true;
-            break;
+    case 2: // Coordinate and directional stacks
+        coordinate = matrix * coordinate;
+        direction = matrix * direction;
+        clipDirty = true;
+        break;
 
-        case 3: // Texture stack
-            texture = matrix * texture;
-            break;
+    case 3: // Texture stack
+        texture = matrix * texture;
+        break;
     }
 }
 
@@ -951,25 +940,25 @@ void Gpu3D::mtxMult43Cmd(std::vector<uint32_t> &params) {
 
     // Multiply a matrix by the 4x3 matrix
     switch (matrixMode) {
-        case 0: // Projection stack
-            projection = matrix * projection;
-            clipDirty = true;
-            break;
+    case 0: // Projection stack
+        projection = matrix * projection;
+        clipDirty = true;
+        break;
 
-        case 1: // Coordinate stack
-            coordinate = matrix * coordinate;
-            clipDirty = true;
-            break;
+    case 1: // Coordinate stack
+        coordinate = matrix * coordinate;
+        clipDirty = true;
+        break;
 
-        case 2: // Coordinate and directional stacks
-            coordinate = matrix * coordinate;
-            direction = matrix * direction;
-            clipDirty = true;
-            break;
+    case 2: // Coordinate and directional stacks
+        coordinate = matrix * coordinate;
+        direction = matrix * direction;
+        clipDirty = true;
+        break;
 
-        case 3: // Texture stack
-            texture = matrix * texture;
-            break;
+    case 3: // Texture stack
+        texture = matrix * texture;
+        break;
     }
 }
 
@@ -981,25 +970,25 @@ void Gpu3D::mtxMult33Cmd(std::vector<uint32_t> &params) {
 
     // Multiply a matrix by the 3x3 matrix
     switch (matrixMode) {
-        case 0: // Projection stack
-            projection = matrix * projection;
-            clipDirty = true;
-            break;
+    case 0: // Projection stack
+        projection = matrix * projection;
+        clipDirty = true;
+        break;
 
-        case 1: // Coordinate stack
-            coordinate = matrix * coordinate;
-            clipDirty = true;
-            break;
+    case 1: // Coordinate stack
+        coordinate = matrix * coordinate;
+        clipDirty = true;
+        break;
 
-        case 2: // Coordinate and directional stacks
-            coordinate = matrix * coordinate;
-            direction = matrix * direction;
-            clipDirty = true;
-            break;
+    case 2: // Coordinate and directional stacks
+        coordinate = matrix * coordinate;
+        direction = matrix * direction;
+        clipDirty = true;
+        break;
 
-        case 3: // Texture stack
-            texture = matrix * texture;
-            break;
+    case 3: // Texture stack
+        texture = matrix * texture;
+        break;
     }
 }
 
@@ -1011,19 +1000,19 @@ void Gpu3D::mtxScaleCmd(std::vector<uint32_t> &params) {
 
     // Multiply a matrix by the scale matrix
     switch (matrixMode) {
-        case 0: // Projection stack
-            projection = matrix * projection;
-            clipDirty = true;
-            break;
+    case 0: // Projection stack
+        projection = matrix * projection;
+        clipDirty = true;
+        break;
 
-        case 1: case 2: // Coordinate stack
-            coordinate = matrix * coordinate;
-            clipDirty = true;
-            break;
+    case 1: case 2: // Coordinate stack
+        coordinate = matrix * coordinate;
+        clipDirty = true;
+        break;
 
-        case 3: // Texture stack
-            texture = matrix * texture;
-            break;
+    case 3: // Texture stack
+        texture = matrix * texture;
+        break;
     }
 }
 
@@ -1034,25 +1023,25 @@ void Gpu3D::mtxTransCmd(std::vector<uint32_t> &params) {
 
     // Multiply a matrix by the translation matrix
     switch (matrixMode) {
-        case 0: // Projection stack
-            projection = matrix * projection;
-            clipDirty = true;
-            break;
+    case 0: // Projection stack
+        projection = matrix * projection;
+        clipDirty = true;
+        break;
 
-        case 1: // Coordinate stack
-            coordinate = matrix * coordinate;
-            clipDirty = true;
-            break;
+    case 1: // Coordinate stack
+        coordinate = matrix * coordinate;
+        clipDirty = true;
+        break;
 
-        case 2: // Coordinate and directional stacks
-            coordinate = matrix * coordinate;
-            direction = matrix * direction;
-            clipDirty = true;
-            break;
+    case 2: // Coordinate and directional stacks
+        coordinate = matrix * coordinate;
+        direction = matrix * direction;
+        clipDirty = true;
+        break;
 
-        case 3: // Texture stack
-            texture = matrix * texture;
-            break;
+    case 3: // Texture stack
+        texture = matrix * texture;
+        break;
     }
 }
 
@@ -1464,17 +1453,17 @@ void Gpu3D::addEntry(Entry entry) {
     }
 
     switch (entry.command) {
-        case 0x11: case 0x12: // MTX_PUSH, MTX_POP
-            // Track queued matrix commands and set the busy bit until they finish
-            matrixQueue++;
-            gxStat |= BIT(14);
-            break;
+    case 0x11: case 0x12: // MTX_PUSH, MTX_POP
+        // Track queued matrix commands and set the busy bit until they finish
+        matrixQueue++;
+        gxStat |= BIT(14);
+        break;
 
-        case 0x70: case 0x71: case 0x72: // BOX_TEST, POS_TEST, VEC_TEST
-            // Track queued test commands and set the busy bit until they finish
-            testQueue++;
-            gxStat |= BIT(0);
-            break;
+    case 0x70: case 0x71: case 0x72: // BOX_TEST, POS_TEST, VEC_TEST
+        // Track queued test commands and set the busy bit until they finish
+        testQueue++;
+        gxStat |= BIT(0);
+        break;
     }
 
     // Start executing commands if one is ready

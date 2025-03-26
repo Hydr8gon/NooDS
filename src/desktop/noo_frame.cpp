@@ -330,20 +330,20 @@ void NooFrame::startCore(bool full) {
         catch (CoreError e) {
             // Inform the user of the error if loading wasn't successful
             switch (e) {
-                case ERROR_BIOS: // Missing BIOS files
-                    wxMessageDialog(this, "Make sure the path settings point to valid BIOS files and try again.",
-                        "Error Loading BIOS", wxICON_NONE).ShowModal();
-                    return;
+            case ERROR_BIOS: // Missing BIOS files
+                wxMessageDialog(this, "Make sure the path settings point to valid BIOS files and try again.",
+                    "Error Loading BIOS", wxICON_NONE).ShowModal();
+                return;
 
-                case ERROR_FIRM: // Non-bootable firmware file
-                    wxMessageDialog(this, "Make sure the path settings point to a bootable firmware file or try another boot method.",
-                        "Error Loading Firmware", wxICON_NONE).ShowModal();
-                    return;
+            case ERROR_FIRM: // Non-bootable firmware file
+                wxMessageDialog(this, "Make sure the path settings point to a bootable firmware file or try another boot method.",
+                    "Error Loading Firmware", wxICON_NONE).ShowModal();
+                return;
 
-                case ERROR_ROM: // Unreadable ROM file
-                    wxMessageDialog(this, "Make sure the ROM file is accessible and try again.",
-                        "Error Loading ROM", wxICON_NONE).ShowModal();
-                    return;
+            case ERROR_ROM: // Unreadable ROM file
+                wxMessageDialog(this, "Make sure the ROM file is accessible and try again.",
+                    "Error Loading ROM", wxICON_NONE).ShowModal();
+                return;
             }
         }
     }
@@ -420,86 +420,86 @@ void NooFrame::stopCore(bool full) {
 void NooFrame::pressKey(int key) {
     // Handle a key press separate from the key's actual mapping
     switch (key) {
-        case 12: // Fast Forward Hold
-            // Disable the FPS limiter
+    case 12: // Fast Forward Hold
+        // Disable the FPS limiter
+        if (Settings::fpsLimiter != 0) {
+            fpsLimiterBackup = Settings::fpsLimiter;
+            Settings::fpsLimiter = 0;
+        }
+        break;
+
+    case 13: // Fast Forward Toggle
+        // Toggle the FPS limiter on or off
+        if (!(hotkeyToggles & BIT(0))) {
             if (Settings::fpsLimiter != 0) {
+                // Disable the FPS limiter
                 fpsLimiterBackup = Settings::fpsLimiter;
                 Settings::fpsLimiter = 0;
             }
-            break;
-
-        case 13: // Fast Forward Toggle
-            // Toggle the FPS limiter on or off
-            if (!(hotkeyToggles & BIT(0))) {
-                if (Settings::fpsLimiter != 0) {
-                    // Disable the FPS limiter
-                    fpsLimiterBackup = Settings::fpsLimiter;
-                    Settings::fpsLimiter = 0;
-                }
-                else if (fpsLimiterBackup != 0) {
-                    // Restore the previous FPS limiter setting
-                    Settings::fpsLimiter = fpsLimiterBackup;
-                    fpsLimiterBackup = 0;
-                }
-
-                hotkeyToggles |= BIT(0);
+            else if (fpsLimiterBackup != 0) {
+                // Restore the previous FPS limiter setting
+                Settings::fpsLimiter = fpsLimiterBackup;
+                fpsLimiterBackup = 0;
             }
-            break;
 
-        case 14: // Full Screen Toggle
-            // Toggle full screen mode
-            ShowFullScreen(fullScreen = !fullScreen);
-            if (!fullScreen) canvas->resetFrame();
-            break;
+            hotkeyToggles |= BIT(0);
+        }
+        break;
 
-        case 15: // Screen Swap Toggle
-            // Toggle between favoring the top or bottom screen
-            if (!(hotkeyToggles & BIT(2))) {
-                ScreenLayout::screenSizing = (ScreenLayout::screenSizing == 1) ? 2 : 1;
-                app->updateLayouts();
-                hotkeyToggles |= BIT(2);
-            }
-            break;
+    case 14: // Full Screen Toggle
+        // Toggle full screen mode
+        ShowFullScreen(fullScreen = !fullScreen);
+        if (!fullScreen) canvas->resetFrame();
+        break;
 
-        case 16: // System Pause Toggle
-            // Toggle between pausing or resuming the core
-            if (!(hotkeyToggles & BIT(3))) {
-                running ? stopCore(false) : startCore(false);
-                hotkeyToggles |= BIT(3);
-            }
-            break;
+    case 15: // Screen Swap Toggle
+        // Toggle between favoring the top or bottom screen
+        if (!(hotkeyToggles & BIT(2))) {
+            ScreenLayout::screenSizing = (ScreenLayout::screenSizing == 1) ? 2 : 1;
+            app->updateLayouts();
+            hotkeyToggles |= BIT(2);
+        }
+        break;
 
-        default: // Core input
-            // Send a key press to the core
-            if (running)
-                core->input.pressKey(key);
-            break;
+    case 16: // System Pause Toggle
+        // Toggle between pausing or resuming the core
+        if (!(hotkeyToggles & BIT(3))) {
+            running ? stopCore(false) : startCore(false);
+            hotkeyToggles |= BIT(3);
+        }
+        break;
+
+    default: // Core input
+        // Send a key press to the core
+        if (running)
+            core->input.pressKey(key);
+        break;
     }
 }
 
 void NooFrame::releaseKey(int key) {
     // Handle a key release separate from the key's actual mapping
     switch (key) {
-        case 12: // Fast Forward Hold
-            // Restore the previous FPS limiter setting
-            if (fpsLimiterBackup != 0) {
-                Settings::fpsLimiter = fpsLimiterBackup;
-                fpsLimiterBackup = 0;
-            }
-            break;
+    case 12: // Fast Forward Hold
+        // Restore the previous FPS limiter setting
+        if (fpsLimiterBackup != 0) {
+            Settings::fpsLimiter = fpsLimiterBackup;
+            fpsLimiterBackup = 0;
+        }
+        break;
 
-        case 13: // Fast Forward Toggle
-        case 15: // Screen Swap Toggle
-        case 16: // System Pause Toggle
-            // Clear a toggle bit so a hotkey can be used again
-            hotkeyToggles &= ~BIT(key - 13);
-            break;
+    case 13: // Fast Forward Toggle
+    case 15: // Screen Swap Toggle
+    case 16: // System Pause Toggle
+        // Clear a toggle bit so a hotkey can be used again
+        hotkeyToggles &= ~BIT(key - 13);
+        break;
 
-        default: // Core input
-            // Send a key release to the core
-            if (running)
-                core->input.releaseKey(key);
-            break;
+    default: // Core input
+        // Send a key release to the core
+        if (running)
+            core->input.releaseKey(key);
+        break;
     }
 }
 
@@ -578,17 +578,17 @@ void NooFrame::saveState(wxCommandEvent &event) {
     // Create a confirmation dialog, with extra information if a state file doesn't exist yet
     wxMessageDialog *dialog;
     switch (core->saveStates.checkState()) {
-        case STATE_FILE_FAIL:
-            dialog = new wxMessageDialog(this, "Saving and loading states is dangerous and can lead to data "
-                "loss. States are also not guaranteed to be compatible across emulator versions. Please "
-                "rely on in-game saving to keep your progress, and back up .sav files before using this "
-                "feature. Do you want to save the current state?", "Save State", wxYES_NO | wxICON_NONE);
-            break;
+    case STATE_FILE_FAIL:
+        dialog = new wxMessageDialog(this, "Saving and loading states is dangerous and can lead to data "
+            "loss. States are also not guaranteed to be compatible across emulator versions. Please "
+            "rely on in-game saving to keep your progress, and back up .sav files before using this "
+            "feature. Do you want to save the current state?", "Save State", wxYES_NO | wxICON_NONE);
+        break;
 
-        default:
-            dialog = new wxMessageDialog(this, "Do you want to overwrite the saved state with the "
-                "current state? This can't be undone!", "Save State", wxYES_NO | wxICON_NONE);
-            break;
+    default:
+        dialog = new wxMessageDialog(this, "Do you want to overwrite the saved state with the "
+            "current state? This can't be undone!", "Save State", wxYES_NO | wxICON_NONE);
+        break;
     }
 
     // Show the dialog and save the state if confirmed
@@ -604,25 +604,25 @@ void NooFrame::loadState(wxCommandEvent &event) {
     // Create a confirmation dialog, or an error if something went wrong
     wxMessageDialog *dialog;
     switch (core->saveStates.checkState()) {
-        case STATE_SUCCESS:
-            dialog = new wxMessageDialog(this, "Do you want to load the saved state and lose the "
-                "current state? This can't be undone!", "Load State", wxYES_NO | wxICON_NONE);
-            break;
+    case STATE_SUCCESS:
+        dialog = new wxMessageDialog(this, "Do you want to load the saved state and lose the "
+            "current state? This can't be undone!", "Load State", wxYES_NO | wxICON_NONE);
+        break;
 
-        case STATE_FILE_FAIL:
-            dialog = new wxMessageDialog(this, "The state file doesn't "
-                "exist or couldn't be opened.", "Error", wxICON_NONE);
-            break;
+    case STATE_FILE_FAIL:
+        dialog = new wxMessageDialog(this, "The state file doesn't "
+            "exist or couldn't be opened.", "Error", wxICON_NONE);
+        break;
 
-        case STATE_FORMAT_FAIL:
-            dialog = new wxMessageDialog(this, "The state file "
-                "doesn't have a valid format.", "Error", wxICON_NONE);
-            break;
+    case STATE_FORMAT_FAIL:
+        dialog = new wxMessageDialog(this, "The state file "
+            "doesn't have a valid format.", "Error", wxICON_NONE);
+        break;
 
-        case STATE_VERSION_FAIL:
-            dialog = new wxMessageDialog(this, "The state file isn't "
-                "compatible with this version of NooDS.", "Error", wxICON_NONE);
-            break;
+    case STATE_VERSION_FAIL:
+        dialog = new wxMessageDialog(this, "The state file isn't "
+            "compatible with this version of NooDS.", "Error", wxICON_NONE);
+        break;
     }
 
     // Show the dialog and load the state if confirmed

@@ -18,8 +18,6 @@
 */
 
 #include <ctime>
-
-#include "rtc.h"
 #include "core.h"
 
 void Rtc::saveState(FILE *file) {
@@ -128,43 +126,43 @@ bool Rtc::readRegister(uint8_t index) {
     if (core->gbaMode) {
         // Read a bit from a GBA RTC register
         switch (index) {
-            case 0: // Reset
-                reset();
-                return 0;
+        case 0: // Reset
+            reset();
+            return 0;
 
-            case 1: // Control
-                return (control >> (writeCount & 7)) & BIT(0);
+        case 1: // Control
+            return (control >> (writeCount & 7)) & BIT(0);
 
-            case 2: // Date and time
-                if (writeCount == 8) updateDateTime();
-                return (dateTime[(writeCount / 8) - 1] >> (writeCount % 8)) & BIT(0);
+        case 2: // Date and time
+            if (writeCount == 8) updateDateTime();
+            return (dateTime[(writeCount / 8) - 1] >> (writeCount % 8)) & BIT(0);
 
-            case 3: // Time
-                if (writeCount == 8) updateDateTime();
-                return (dateTime[(writeCount / 8) - 5] >> (writeCount % 8)) & BIT(0);
+        case 3: // Time
+            if (writeCount == 8) updateDateTime();
+            return (dateTime[(writeCount / 8) - 5] >> (writeCount % 8)) & BIT(0);
 
-            default:
-                LOG_WARN("Read from unknown GBA RTC register: %d\n", index);
-                return 0;
+        default:
+            LOG_WARN("Read from unknown GBA RTC register: %d\n", index);
+            return 0;
         }
     }
 
     // Read a bit from an NDS RTC register
     switch (index) {
-        case 0: // Status 1
-            return (control >> (writeCount & 7)) & BIT(0);
+    case 0: // Status 1
+        return (control >> (writeCount & 7)) & BIT(0);
 
-        case 2: // Date and time
-            if (writeCount == 8) updateDateTime();
-            return (dateTime[(writeCount / 8) - 1] >> (writeCount & 7)) & BIT(0);
+    case 2: // Date and time
+        if (writeCount == 8) updateDateTime();
+        return (dateTime[(writeCount / 8) - 1] >> (writeCount & 7)) & BIT(0);
 
-        case 3: // Time
-            if (writeCount == 8) updateDateTime();
-            return (dateTime[(writeCount / 8) - 5] >> (writeCount & 7)) & BIT(0);
+    case 3: // Time
+        if (writeCount == 8) updateDateTime();
+        return (dateTime[(writeCount / 8) - 5] >> (writeCount & 7)) & BIT(0);
 
-        default:
-            LOG_WARN("Read from unknown RTC register: %d\n", index);
-            return 0;
+    default:
+        LOG_WARN("Read from unknown RTC register: %d\n", index);
+        return 0;
     }
 }
 
@@ -172,29 +170,29 @@ void Rtc::writeRegister(uint8_t index, bool value) {
     if (core->gbaMode) {
         // Read a bit from a GBA RTC register
         switch (index) {
-            case 1: // Control
-                if (BIT(writeCount & 7) & 0x6A) // R/W bits
-                    control = (control & ~BIT(writeCount & 7)) | (value << (writeCount & 7));
-                return;
+        case 1: // Control
+            if (BIT(writeCount & 7) & 0x6A) // R/W bits
+                control = (control & ~BIT(writeCount & 7)) | (value << (writeCount & 7));
+            return;
 
-            default:
-                LOG_WARN("Write to unknown GBA RTC register: %d\n", index);
-                return;
+        default:
+            LOG_WARN("Write to unknown GBA RTC register: %d\n", index);
+            return;
         }
     }
 
     // Write a bit to an NDS RTC register
     switch (index) {
-        case 0: // Status 1
-            if ((BIT(writeCount & 7) & 0x01) && value) // Reset bit
-                reset();
-            else if (BIT(writeCount & 7) & 0x0E) // R/W bits
-                control = (control & ~BIT(writeCount & 7)) | (value << (writeCount & 7));
-            return;
+    case 0: // Status 1
+        if ((BIT(writeCount & 7) & 0x01) && value) // Reset bit
+            reset();
+        else if (BIT(writeCount & 7) & 0x0E) // R/W bits
+            control = (control & ~BIT(writeCount & 7)) | (value << (writeCount & 7));
+        return;
 
-        default:
-            LOG_WARN("Write to unknown RTC register: %d\n", index);
-            return;
+    default:
+        LOG_WARN("Write to unknown RTC register: %d\n", index);
+        return;
     }
 }
 

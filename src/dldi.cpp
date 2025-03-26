@@ -18,9 +18,7 @@
 */
 
 #include <cstring>
-#include "dldi.h"
 #include "core.h"
-#include "settings.h"
 
 Dldi::~Dldi() {
     // Ensure the SD image is closed

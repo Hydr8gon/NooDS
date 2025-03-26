@@ -131,29 +131,29 @@ public class FileBrowser extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.info_action:
-                // Show the Play Store information dialog
-                showInfo(false);
+        case R.id.info_action:
+            // Show the Play Store information dialog
+            showInfo(false);
+            break;
+
+        case R.id.storage_action:
+            // Open the scoped storage selector in scoped mode
+            if (scoped) {
+                startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
                 break;
+            }
 
-            case R.id.storage_action:
-                // Open the scoped storage selector in scoped mode
-                if (scoped) {
-                    startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2);
-                    break;
-                }
+            // Switch to the next storage device
+            curStorage = (curStorage + 1) % storagePaths.size();
+            path = storagePaths.get(curStorage);
+            curDepth = 0;
+            update();
+            break;
 
-                // Switch to the next storage device
-                curStorage = (curStorage + 1) % storagePaths.size();
-                path = storagePaths.get(curStorage);
-                curDepth = 0;
-                update();
-                break;
-
-            case R.id.settings_action:
-                // Open the settings menu
-                startActivity(new Intent(this, SettingsMenu.class));
-                return true;
+        case R.id.settings_action:
+            // Open the settings menu
+            startActivity(new Intent(this, SettingsMenu.class));
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -178,34 +178,34 @@ public class FileBrowser extends AppCompatActivity {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent resultData) {
         switch (requestCode) {
-            case 1: // Manage files permission
-                // Fall back to scoped storage if permission wasn't granted
-                if (checkPermissions())
-                    initialize();
-                else
-                    openScoped();
-                return;
-
-            case 2: // Scoped directory selection
-                // Reload if nothing was selected
-                if (resultData == null) {
-                    openScoped();
-                    return;
-                }
-
-                // Save the returned URI with persistent permissions so it can be restored next time
-                SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
-                int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
-                getContentResolver().takePersistableUriPermission(resultData.getData(), flags);
-                editor.putString("scoped_uri", resultData.getData().toString());
-                editor.commit();
-
-                // Initialize for scoped storage mode
-                pathUris = new Stack<Uri>();
-                pathUris.push(resultData.getData());
-                scoped = true;
+        case 1: // Manage files permission
+            // Fall back to scoped storage if permission wasn't granted
+            if (checkPermissions())
                 initialize();
+            else
+                openScoped();
+            return;
+
+        case 2: // Scoped directory selection
+            // Reload if nothing was selected
+            if (resultData == null) {
+                openScoped();
                 return;
+            }
+
+            // Save the returned URI with persistent permissions so it can be restored next time
+            SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
+            int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+            getContentResolver().takePersistableUriPermission(resultData.getData(), flags);
+            editor.putString("scoped_uri", resultData.getData().toString());
+            editor.commit();
+
+            // Initialize for scoped storage mode
+            pathUris = new Stack<Uri>();
+            pathUris.push(resultData.getData());
+            scoped = true;
+            initialize();
+            return;
         }
     }
 
@@ -357,22 +357,22 @@ public class FileBrowser extends AppCompatActivity {
 
             // Inform the user of the error if loading wasn't successful
             switch (result) {
-                case 1: // Missing BIOS files
-                    builder.setTitle("Error Loading BIOS");
-                    builder.setMessage("Make sure the path settings point to valid BIOS files and try again. " +
-                                       "You can modify path settings in " + getExternalFilesDir(null).getPath() + "/noods.ini.");
-                    break;
+            case 1: // Missing BIOS files
+                builder.setTitle("Error Loading BIOS");
+                builder.setMessage("Make sure the path settings point to valid BIOS files and try again. " +
+                    "You can modify path settings in " + getExternalFilesDir(null).getPath() + "/noods.ini.");
+                break;
 
-                case 2: // Non-bootable firmware file
-                    builder.setTitle("Error Loading Firmware");
-                    builder.setMessage("Make sure the path settings point to a bootable firmware file or try another boot method. " +
-                                       "You can modify path settings in " + getExternalFilesDir(null).getPath() + "/noods.ini.");
-                    break;
+            case 2: // Non-bootable firmware file
+                builder.setTitle("Error Loading Firmware");
+                builder.setMessage("Make sure the path settings point to a bootable firmware file or try another boot method. " +
+                    "You can modify path settings in " + getExternalFilesDir(null).getPath() + "/noods.ini.");
+                break;
 
-                case 3: // Unreadable ROM file
-                    builder.setTitle("Error Loading ROM");
-                    builder.setMessage("Make sure the ROM file is accessible and try again.");
-                    break;
+            case 3: // Unreadable ROM file
+                builder.setTitle("Error Loading ROM");
+                builder.setMessage("Make sure the ROM file is accessible and try again.");
+                break;
             }
 
             builder.create().show();

@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "interpreter.h"
 #include "core.h"
 
 Interpreter::Interpreter(Core *core, bool arm7): core(core), arm7(arm7) {
@@ -305,76 +304,76 @@ void Interpreter::flushPipeline() {
 void Interpreter::swapRegisters(uint32_t value) {
     // Swap banked registers based on a CPU mode value
     switch (value & 0x1F) {
-        case 0x10: // User
-        case 0x1F: // System
-            registers[8] = &registersUsr[8];
-            registers[9] = &registersUsr[9];
-            registers[10] = &registersUsr[10];
-            registers[11] = &registersUsr[11];
-            registers[12] = &registersUsr[12];
-            registers[13] = &registersUsr[13];
-            registers[14] = &registersUsr[14];
-            spsr = nullptr;
-            break;
+    case 0x10: // User
+    case 0x1F: // System
+        registers[8] = &registersUsr[8];
+        registers[9] = &registersUsr[9];
+        registers[10] = &registersUsr[10];
+        registers[11] = &registersUsr[11];
+        registers[12] = &registersUsr[12];
+        registers[13] = &registersUsr[13];
+        registers[14] = &registersUsr[14];
+        spsr = nullptr;
+        break;
 
-        case 0x11: // FIQ
-            registers[8] = &registersFiq[0];
-            registers[9] = &registersFiq[1];
-            registers[10] = &registersFiq[2];
-            registers[11] = &registersFiq[3];
-            registers[12] = &registersFiq[4];
-            registers[13] = &registersFiq[5];
-            registers[14] = &registersFiq[6];
-            spsr = &spsrFiq;
-            break;
+    case 0x11: // FIQ
+        registers[8] = &registersFiq[0];
+        registers[9] = &registersFiq[1];
+        registers[10] = &registersFiq[2];
+        registers[11] = &registersFiq[3];
+        registers[12] = &registersFiq[4];
+        registers[13] = &registersFiq[5];
+        registers[14] = &registersFiq[6];
+        spsr = &spsrFiq;
+        break;
 
-        case 0x12: // IRQ
-            registers[8] = &registersUsr[8];
-            registers[9] = &registersUsr[9];
-            registers[10] = &registersUsr[10];
-            registers[11] = &registersUsr[11];
-            registers[12] = &registersUsr[12];
-            registers[13] = &registersIrq[0];
-            registers[14] = &registersIrq[1];
-            spsr = &spsrIrq;
-            break;
+    case 0x12: // IRQ
+        registers[8] = &registersUsr[8];
+        registers[9] = &registersUsr[9];
+        registers[10] = &registersUsr[10];
+        registers[11] = &registersUsr[11];
+        registers[12] = &registersUsr[12];
+        registers[13] = &registersIrq[0];
+        registers[14] = &registersIrq[1];
+        spsr = &spsrIrq;
+        break;
 
-        case 0x13: // Supervisor
-            registers[8] = &registersUsr[8];
-            registers[9] = &registersUsr[9];
-            registers[10] = &registersUsr[10];
-            registers[11] = &registersUsr[11];
-            registers[12] = &registersUsr[12];
-            registers[13] = &registersSvc[0];
-            registers[14] = &registersSvc[1];
-            spsr = &spsrSvc;
-            break;
+    case 0x13: // Supervisor
+        registers[8] = &registersUsr[8];
+        registers[9] = &registersUsr[9];
+        registers[10] = &registersUsr[10];
+        registers[11] = &registersUsr[11];
+        registers[12] = &registersUsr[12];
+        registers[13] = &registersSvc[0];
+        registers[14] = &registersSvc[1];
+        spsr = &spsrSvc;
+        break;
 
-        case 0x17: // Abort
-            registers[8] = &registersUsr[8];
-            registers[9] = &registersUsr[9];
-            registers[10] = &registersUsr[10];
-            registers[11] = &registersUsr[11];
-            registers[12] = &registersUsr[12];
-            registers[13] = &registersAbt[0];
-            registers[14] = &registersAbt[1];
-            spsr = &spsrAbt;
-            break;
+    case 0x17: // Abort
+        registers[8] = &registersUsr[8];
+        registers[9] = &registersUsr[9];
+        registers[10] = &registersUsr[10];
+        registers[11] = &registersUsr[11];
+        registers[12] = &registersUsr[12];
+        registers[13] = &registersAbt[0];
+        registers[14] = &registersAbt[1];
+        spsr = &spsrAbt;
+        break;
 
-        case 0x1B: // Undefined
-            registers[8] = &registersUsr[8];
-            registers[9] = &registersUsr[9];
-            registers[10] = &registersUsr[10];
-            registers[11] = &registersUsr[11];
-            registers[12] = &registersUsr[12];
-            registers[13] = &registersUnd[0];
-            registers[14] = &registersUnd[1];
-            spsr = &spsrUnd;
-            break;
+    case 0x1B: // Undefined
+        registers[8] = &registersUsr[8];
+        registers[9] = &registersUsr[9];
+        registers[10] = &registersUsr[10];
+        registers[11] = &registersUsr[11];
+        registers[12] = &registersUsr[12];
+        registers[13] = &registersUnd[0];
+        registers[14] = &registersUnd[1];
+        spsr = &spsrUnd;
+        break;
 
-        default:
-            LOG_CRIT("Unknown ARM%d CPU mode: 0x%X\n", arm7 ? 7 : 9, value & 0x1F);
-            break;
+    default:
+        LOG_CRIT("Unknown ARM%d CPU mode: 0x%X\n", arm7 ? 7 : 9, value & 0x1F);
+        break;
     }
 }
 

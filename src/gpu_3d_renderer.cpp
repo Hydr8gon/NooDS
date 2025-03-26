@@ -20,9 +20,7 @@
 #include <cstring>
 #include <vector>
 
-#include "gpu_3d_renderer.h"
 #include "core.h"
-#include "settings.h"
 
 Gpu3DRenderer::Gpu3DRenderer(Core *core): core(core) {
     // Mark the scanlines as ready to start
@@ -89,22 +87,22 @@ uint32_t *Gpu3DRenderer::getLine1(int line) {
     if (ready[line].load() < 3 && line + activeThreads * 2 < (192 << resShift)) {
         int next = line + activeThreads * 2;
         switch (ready[next].exchange(1)) {
-            case 0:
-                // Draw the scanline if it hasn't been started yet
-                drawScanline1(next);
-                ready[next].store(2);
-                break;
+        case 0:
+            // Draw the scanline if it hasn't been started yet
+            drawScanline1(next);
+            ready[next].store(2);
+            break;
 
-            case 2:
-                // If the thread somehow caught up, restore the scanline's state
-                if (ready[next].exchange(2) == 3)
-                    ready[next].store(3);
-                break;
-
-            case 3:
-                // If the thread somehow caught up, restore the scanline's state
+        case 2:
+            // If the thread somehow caught up, restore the scanline's state
+            if (ready[next].exchange(2) == 3)
                 ready[next].store(3);
-                break;
+            break;
+
+        case 3:
+            // If the thread somehow caught up, restore the scanline's state
+            ready[next].store(3);
+            break;
         }
     }
 
@@ -179,16 +177,16 @@ void Gpu3DRenderer::drawThreaded(int thread) {
     int i, end = 192 << resShift;
     for (i = thread; i < end; i += activeThreads) {
         switch (ready[i].exchange(1)) {
-            case 0:
-                // Draw a scanline if it hasn't been started, save for the final pass
-                drawScanline1(i);
-                ready[i].store(2);
-                break;
+        case 0:
+            // Draw a scanline if it hasn't been started, save for the final pass
+            drawScanline1(i);
+            ready[i].store(2);
+            break;
 
-            case 2:
-                // Restore the scanline's state if it was already drawn
-                ready[i].store(2);
-                break;
+        case 2:
+            // Restore the scanline's state if it was already drawn
+            ready[i].store(2);
+            break;
         }
 
         if (i < activeThreads) continue;
@@ -440,165 +438,164 @@ uint32_t Gpu3DRenderer::readTexture(_Polygon *polygon, int s, int t) {
 
     // Decode a texel
     switch (polygon->textureFmt) {
-        case 1: { // A3I5 translucent
-            // Get the 8-bit palette index
-            uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s);
-            uint8_t *data = getTexture(address);
-            if (!data) return 0;
-            uint8_t index = *data;
+    case 1: { // A3I5 translucent
+        // Get the 8-bit palette index
+        uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s);
+        uint8_t *data = getTexture(address);
+        if (!data) return 0;
+        uint8_t index = *data;
 
-            // Get the palette
-            uint8_t *palette = getPalette(polygon->paletteAddr);
-            if (!palette) return 0;
+        // Get the palette
+        uint8_t *palette = getPalette(polygon->paletteAddr);
+        if (!palette) return 0;
 
-            // Return the palette color
-            uint16_t color = U8TO16(palette, (index & 0x1F) * 2) & ~BIT(15);
-            uint8_t alpha = (index >> 5) * 4 + (index >> 5) / 2;
-            return rgba5ToRgba6((alpha << 15) | color);
-        }
+        // Return the palette color
+        uint16_t color = U8TO16(palette, (index & 0x1F) * 2) & ~BIT(15);
+        uint8_t alpha = (index >> 5) * 4 + (index >> 5) / 2;
+        return rgba5ToRgba6((alpha << 15) | color);
+    }
 
-        case 2: { // 4-color palette
-            // Get the 2-bit palette index
-            uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s) / 4;
-            uint8_t *data = getTexture(address);
-            if (!data) return 0;
-            uint8_t index = (*data >> ((s % 4) * 2)) & 0x03;
+    case 2: { // 4-color palette
+        // Get the 2-bit palette index
+        uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s) / 4;
+        uint8_t *data = getTexture(address);
+        if (!data) return 0;
+        uint8_t index = (*data >> ((s % 4) * 2)) & 0x03;
 
-            // Return a transparent pixel if enabled
-            if (polygon->transparent0 && index == 0)
+        // Return a transparent pixel if enabled
+        if (polygon->transparent0 && index == 0)
+            return 0;
+
+        // Get the palette
+        uint8_t *palette = getPalette(polygon->paletteAddr);
+        if (!palette) return 0;
+
+        // Return the palette color
+        return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
+    }
+
+    case 3: { // 16-color palette
+        // Get the 4-bit palette index
+        uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s) / 2;
+        uint8_t *data = getTexture(address);
+        if (!data) return 0;
+        uint8_t index = (*data >> ((s % 2) * 4)) & 0x0F;
+
+        // Return a transparent pixel if enabled
+        if (polygon->transparent0 && index == 0)
+            return 0;
+
+        // Get the palette
+        uint8_t *palette = getPalette(polygon->paletteAddr);
+        if (!palette) return 0;
+
+        // Return the palette color
+        return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
+    }
+
+    case 4: { // 256-color palette
+        // Get the 8-bit palette index
+        uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s);
+        uint8_t *data = getTexture(address);
+        if (!data) return 0;
+        uint8_t index = *data;
+
+        // Return a transparent pixel if enabled
+        if (polygon->transparent0 && index == 0)
+            return 0;
+
+        // Get the palette
+        uint8_t *palette = getPalette(polygon->paletteAddr);
+        if (!palette) return 0;
+
+        // Return the palette color
+        return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
+    }
+
+    case 5: { // 4x4 compressed
+        // Get the 2-bit palette index
+        int tile = (t / 4) * (polygon->sizeS / 4) + (s / 4);
+        uint32_t address = polygon->textureAddr + (tile * 4 + t % 4);
+        uint8_t *data = getTexture(address);
+        if (!data) return 0;
+        uint8_t index = (*data >> ((s % 4) * 2)) & 0x03;
+
+        // Get the palette, using the base for the tile stored in slot 1
+        address = 0x20000 + (polygon->textureAddr % 0x20000) / 2 + ((polygon->textureAddr / 0x20000 == 2) ? 0x10000 : 0);
+        if (!(data = getTexture(address))) return 0;
+        uint16_t palBase = U8TO16(data, tile * 2);
+        uint8_t *palette = getPalette(polygon->paletteAddr + (palBase & 0x3FFF) * 4);
+        if (!palette) return 0;
+
+        // Return the palette color or a transparent or interpolated color based on the mode
+        uint32_t c1, c2;
+        switch ((palBase & 0xC000) >> 14) { // Interpolation mode
+        case 0:
+            if (index == 3) return 0;
+            return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
+
+        case 1:
+            switch (index) {
+            case 2:
+                c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
+                c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
+                return interpolateColor(c1, c2, 0, 1, 2);
+
+            case 3:
                 return 0;
 
-            // Get the palette
-            uint8_t *palette = getPalette(polygon->paletteAddr);
-            if (!palette) return 0;
+            default:
+                return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
+            }
 
-            // Return the palette color
+        case 2:
             return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-        }
 
-        case 3: { // 16-color palette
-            // Get the 4-bit palette index
-            uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s) / 2;
-            uint8_t *data = getTexture(address);
-            if (!data) return 0;
-            uint8_t index = (*data >> ((s % 2) * 4)) & 0x0F;
+        case 3:
+            switch (index) {
+            case 2:
+                c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
+                c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
+                return interpolateColor(c1, c2, 0, 3, 8);
 
-            // Return a transparent pixel if enabled
-            if (polygon->transparent0 && index == 0)
-                return 0;
+            case 3:
+                c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
+                c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
+                return interpolateColor(c1, c2, 0, 5, 8);
 
-            // Get the palette
-            uint8_t *palette = getPalette(polygon->paletteAddr);
-            if (!palette) return 0;
-
-            // Return the palette color
-            return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-        }
-
-        case 4: { // 256-color palette
-            // Get the 8-bit palette index
-            uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s);
-            uint8_t *data = getTexture(address);
-            if (!data) return 0;
-            uint8_t index = *data;
-
-            // Return a transparent pixel if enabled
-            if (polygon->transparent0 && index == 0)
-                return 0;
-
-            // Get the palette
-            uint8_t *palette = getPalette(polygon->paletteAddr);
-            if (!palette) return 0;
-
-            // Return the palette color
-            return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-        }
-
-        case 5: { // 4x4 compressed
-            // Get the 2-bit palette index
-            int tile = (t / 4) * (polygon->sizeS / 4) + (s / 4);
-            uint32_t address = polygon->textureAddr + (tile * 4 + t % 4);
-            uint8_t *data = getTexture(address);
-            if (!data) return 0;
-            uint8_t index = (*data >> ((s % 4) * 2)) & 0x03;
-
-            // Get the palette, using the base for the tile stored in slot 1
-            address = 0x20000 + (polygon->textureAddr % 0x20000) / 2 + ((polygon->textureAddr / 0x20000 == 2) ? 0x10000 : 0);
-            if (!(data = getTexture(address))) return 0;
-            uint16_t palBase = U8TO16(data, tile * 2);
-            uint8_t *palette = getPalette(polygon->paletteAddr + (palBase & 0x3FFF) * 4);
-            if (!palette) return 0;
-
-            // Return the palette color or a transparent or interpolated color based on the mode
-            uint32_t c1, c2;
-            switch ((palBase & 0xC000) >> 14) { // Interpolation mode
-                case 0:
-                    if (index == 3) return 0;
-                    return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-
-                case 1:
-                    switch (index) {
-                        case 2:
-                            c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
-                            c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
-                            return interpolateColor(c1, c2, 0, 1, 2);
-
-                        case 3:
-                            return 0;
-
-                        default:
-                            return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-                    }
-
-                case 2:
-                    return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-
-                case 3:
-                    switch (index) {
-                        case 2:
-                            c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
-                            c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
-                            return interpolateColor(c1, c2, 0, 3, 8);
-
-                        case 3:
-                            c1 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 0));
-                            c2 = rgba5ToRgba6((0x1F << 15) | U8TO16(palette, 2));
-                            return interpolateColor(c1, c2, 0, 5, 8);
-
-                        default:
-                            return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
-                    }
+            default:
+                return rgba5ToRgba6((0x1F << 15) | U8TO16(palette, index * 2));
             }
         }
-
-        case 6: { // A5I3 translucent
-            // Get the 8-bit palette index
-            uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s);
-            uint8_t *data = getTexture(address);
-            if (!data) return 0;
-            uint8_t index = *data;
-
-            // Get the palette
-            uint8_t *palette = getPalette(polygon->paletteAddr);
-            if (!palette) return 0;
-
-            // Return the palette color
-            uint16_t color = U8TO16(palette, (index & 0x07) * 2) & ~BIT(15);
-            uint8_t alpha = index >> 3;
-            return rgba5ToRgba6((alpha << 15) | color);
-        }
-
-        default: { // Direct color
-            // Get the color data
-            uint8_t *data = getTexture(polygon->textureAddr);
-            if (!data) return 0;
-
-            // Return the direct color
-            uint16_t color = U8TO16(data, (t * polygon->sizeS + s) * 2);
-            uint8_t alpha = (color & BIT(15)) ? 0x1F : 0;
-            return rgba5ToRgba6((alpha << 15) | color);
-        }
     }
+
+    case 6: { // A5I3 translucent
+        // Get the 8-bit palette index
+        uint32_t address = polygon->textureAddr + (t * polygon->sizeS + s);
+        uint8_t *data = getTexture(address);
+        if (!data) return 0;
+        uint8_t index = *data;
+
+        // Get the palette
+        uint8_t *palette = getPalette(polygon->paletteAddr);
+        if (!palette) return 0;
+
+        // Return the palette color
+        uint16_t color = U8TO16(palette, (index & 0x07) * 2) & ~BIT(15);
+        uint8_t alpha = index >> 3;
+        return rgba5ToRgba6((alpha << 15) | color);
+    }
+
+    default: { // Direct color
+        // Get the color data
+        uint8_t *data = getTexture(polygon->textureAddr);
+        if (!data) return 0;
+
+        // Return the direct color
+        uint16_t color = U8TO16(data, (t * polygon->sizeS + s) * 2);
+        uint8_t alpha = (color & BIT(15)) ? 0x1F : 0;
+        return rgba5ToRgba6((alpha << 15) | color);
+    }}
 }
 
 void Gpu3DRenderer::drawPolygon(int line, int polygonIndex) {
@@ -1044,49 +1041,48 @@ void Gpu3DRenderer::drawPolygon(int line, int polygonIndex) {
             // Apply texture blending
             // These formulas are a translation of the pseudocode from GBATEK to C++
             switch (polygon->mode) {
-                case 0: { // Modulation
-                    uint8_t r = ((((texel >> 0) & 0x3F) + 1) * (((color >> 0) & 0x3F) + 1) - 1) / 64;
-                    uint8_t g = ((((texel >> 6) & 0x3F) + 1) * (((color >> 6) & 0x3F) + 1) - 1) / 64;
-                    uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
-                    uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
-                    color = (a << 18) | (b << 12) | (g << 6) | r;
-                    break;
-                }
-
-                case 1: // Decal
-                case 3: { // Shadow
-                    uint8_t at = ((texel >> 18) & 0x3F);
-                    uint8_t r = (((texel >> 0) & 0x3F) * at + ((color >> 0) & 0x3F) * (63 - at)) / 64;
-                    uint8_t g = (((texel >> 6) & 0x3F) * at + ((color >> 6) & 0x3F) * (63 - at)) / 64;
-                    uint8_t b = (((texel >> 12) & 0x3F) * at + ((color >> 12) & 0x3F) * (63 - at)) / 64;
-                    uint8_t a = ((color >> 18) & 0x3F);
-                    color = (a << 18) | (b << 12) | (g << 6) | r;
-                    break;
-                }
-
-                case 2: { // Toon/Highlight
-                    uint32_t toon = rgba5ToRgba6(toonTable[(color & 0x3F) / 2]);
-                    uint8_t r, g, b;
-
-                    if (disp3DCnt & BIT(1)) { // Highlight
-                        r = ((((texel >> 0) & 0x3F) + 1) * (((color >> 0) & 0x3F) + 1) - 1) / 64;
-                        g = ((((texel >> 6) & 0x3F) + 1) * (((color >> 6) & 0x3F) + 1) - 1) / 64;
-                        b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
-                        r += ((toon >> 0) & 0x3F); if (r > 63) r = 63;
-                        g += ((toon >> 6) & 0x3F); if (g > 63) g = 63;
-                        b += ((toon >> 12) & 0x3F); if (b > 63) b = 63;
-                    }
-                    else { // Toon
-                        r = ((((texel >> 0) & 0x3F) + 1) * (((toon >> 0) & 0x3F) + 1) - 1) / 64;
-                        g = ((((texel >> 6) & 0x3F) + 1) * (((toon >> 6) & 0x3F) + 1) - 1) / 64;
-                        b = ((((texel >> 12) & 0x3F) + 1) * (((toon >> 12) & 0x3F) + 1) - 1) / 64;
-                    }
-
-                    uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
-                    color = (a << 18) | (b << 12) | (g << 6) | r;
-                    break;
-                }
+            case 0: { // Modulation
+                uint8_t r = ((((texel >> 0) & 0x3F) + 1) * (((color >> 0) & 0x3F) + 1) - 1) / 64;
+                uint8_t g = ((((texel >> 6) & 0x3F) + 1) * (((color >> 6) & 0x3F) + 1) - 1) / 64;
+                uint8_t b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
+                uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
+                color = (a << 18) | (b << 12) | (g << 6) | r;
+                break;
             }
+
+            case 1: // Decal
+            case 3: { // Shadow
+                uint8_t at = ((texel >> 18) & 0x3F);
+                uint8_t r = (((texel >> 0) & 0x3F) * at + ((color >> 0) & 0x3F) * (63 - at)) / 64;
+                uint8_t g = (((texel >> 6) & 0x3F) * at + ((color >> 6) & 0x3F) * (63 - at)) / 64;
+                uint8_t b = (((texel >> 12) & 0x3F) * at + ((color >> 12) & 0x3F) * (63 - at)) / 64;
+                uint8_t a = ((color >> 18) & 0x3F);
+                color = (a << 18) | (b << 12) | (g << 6) | r;
+                break;
+            }
+
+            case 2: { // Toon/Highlight
+                uint32_t toon = rgba5ToRgba6(toonTable[(color & 0x3F) / 2]);
+                uint8_t r, g, b;
+
+                if (disp3DCnt & BIT(1)) { // Highlight
+                    r = ((((texel >> 0) & 0x3F) + 1) * (((color >> 0) & 0x3F) + 1) - 1) / 64;
+                    g = ((((texel >> 6) & 0x3F) + 1) * (((color >> 6) & 0x3F) + 1) - 1) / 64;
+                    b = ((((texel >> 12) & 0x3F) + 1) * (((color >> 12) & 0x3F) + 1) - 1) / 64;
+                    r += ((toon >> 0) & 0x3F); if (r > 63) r = 63;
+                    g += ((toon >> 6) & 0x3F); if (g > 63) g = 63;
+                    b += ((toon >> 12) & 0x3F); if (b > 63) b = 63;
+                }
+                else { // Toon
+                    r = ((((texel >> 0) & 0x3F) + 1) * (((toon >> 0) & 0x3F) + 1) - 1) / 64;
+                    g = ((((texel >> 6) & 0x3F) + 1) * (((toon >> 6) & 0x3F) + 1) - 1) / 64;
+                    b = ((((texel >> 12) & 0x3F) + 1) * (((toon >> 12) & 0x3F) + 1) - 1) / 64;
+                }
+
+                uint8_t a = ((((texel >> 18) & 0x3F) + 1) * (((color >> 18) & 0x3F) + 1) - 1) / 64;
+                color = (a << 18) | (b << 12) | (g << 6) | r;
+                break;
+            }}
         }
         else if (polygon->mode == 2) { // Toon/Highlight (no texture)
             uint32_t toon = rgba5ToRgba6(toonTable[(color & 0x3F) / 2]);

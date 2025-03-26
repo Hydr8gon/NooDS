@@ -18,10 +18,7 @@
 */
 
 #include <cstring>
-
-#include "gpu_2d.h"
 #include "core.h"
-#include "settings.h"
 
 Gpu2D::Gpu2D(Core *core, bool engine): core(core), engine(engine) {
     // Set up 2D GPU engine A or B
@@ -129,31 +126,31 @@ void Gpu2D::drawGbaScanline(int line) {
 
     // Draw the background layers depending on the BG mode
     switch (uint8_t mode = (dispCnt & 0x7)) {
-        case 0:
-            if (dispCnt & BIT(11)) drawText<1>(3, line);
-            if (dispCnt & BIT(10)) drawText<1>(2, line);
-            if (dispCnt & BIT(9)) drawText<1>(1, line);
-            if (dispCnt & BIT(8)) drawText<1>(0, line);
-            break;
+    case 0:
+        if (dispCnt & BIT(11)) drawText<1>(3, line);
+        if (dispCnt & BIT(10)) drawText<1>(2, line);
+        if (dispCnt & BIT(9)) drawText<1>(1, line);
+        if (dispCnt & BIT(8)) drawText<1>(0, line);
+        break;
 
-        case 1:
-            if (dispCnt & BIT(10)) drawAffine<1>(2, line);
-            if (dispCnt & BIT(9)) drawText<1>(1, line);
-            if (dispCnt & BIT(8)) drawText<1>(0, line);
-            break;
+    case 1:
+        if (dispCnt & BIT(10)) drawAffine<1>(2, line);
+        if (dispCnt & BIT(9)) drawText<1>(1, line);
+        if (dispCnt & BIT(8)) drawText<1>(0, line);
+        break;
 
-        case 2:
-            if (dispCnt & BIT(11)) drawAffine<1>(3, line);
-            if (dispCnt & BIT(10)) drawAffine<1>(2, line);
-            break;
+    case 2:
+        if (dispCnt & BIT(11)) drawAffine<1>(3, line);
+        if (dispCnt & BIT(10)) drawAffine<1>(2, line);
+        break;
 
-        case 3: case 4: case 5:
-            if (dispCnt & BIT(10)) drawExtendedGba(2, line);
-            break;
+    case 3: case 4: case 5:
+        if (dispCnt & BIT(10)) drawExtendedGba(2, line);
+        break;
 
-        default:
-            LOG_CRIT("Unknown GBA BG mode: %d\n", mode);
-            break;
+    default:
+        LOG_CRIT("Unknown GBA BG mode: %d\n", mode);
+        break;
     }
 
     // Blend the layers to form the final image
@@ -187,34 +184,34 @@ void Gpu2D::drawGbaScanline(int line) {
 
         // Apply blending, using 15-bit colors in GBA mode
         switch (mode) {
-            case 1: // Alpha blending
-            alpha: {
-                uint8_t eva = std::min((bldAlpha >> 0) & 0x1F, 16);
-                uint8_t evb = std::min((bldAlpha >> 8) & 0x1F, 16);
-                uint8_t r = std::min((((layers[0][i] >> 0) & 0x1F) * eva + ((layers[1][i] >> 0) & 0x1F) * evb) / 16, 31U);
-                uint8_t g = std::min((((layers[0][i] >> 5) & 0x1F) * eva + ((layers[1][i] >> 5) & 0x1F) * evb) / 16, 31U);
-                uint8_t b = std::min((((layers[0][i] >> 10) & 0x1F) * eva + ((layers[1][i] >> 10) & 0x1F) * evb) / 16, 31U);
+        case 1: // Alpha blending
+        alpha: {
+            uint8_t eva = std::min((bldAlpha >> 0) & 0x1F, 16);
+            uint8_t evb = std::min((bldAlpha >> 8) & 0x1F, 16);
+            uint8_t r = std::min((((layers[0][i] >> 0) & 0x1F) * eva + ((layers[1][i] >> 0) & 0x1F) * evb) / 16, 31U);
+            uint8_t g = std::min((((layers[0][i] >> 5) & 0x1F) * eva + ((layers[1][i] >> 5) & 0x1F) * evb) / 16, 31U);
+            uint8_t b = std::min((((layers[0][i] >> 10) & 0x1F) * eva + ((layers[1][i] >> 10) & 0x1F) * evb) / 16, 31U);
+            layers[0][i] = (b << 10) | (g << 5) | r;
+            continue;
+        }
+
+        case 2: // Brightness increase
+            if (bldY) {
+                uint8_t r = (layers[0][i] >> 0) & 0x1F; r += (31 - r) * bldY / 16;
+                uint8_t g = (layers[0][i] >> 5) & 0x1F; g += (31 - g) * bldY / 16;
+                uint8_t b = (layers[0][i] >> 10) & 0x1F; b += (31 - b) * bldY / 16;
                 layers[0][i] = (b << 10) | (g << 5) | r;
-                continue;
             }
+            continue;
 
-            case 2: // Brightness increase
-                if (bldY) {
-                    uint8_t r = (layers[0][i] >> 0) & 0x1F; r += (31 - r) * bldY / 16;
-                    uint8_t g = (layers[0][i] >> 5) & 0x1F; g += (31 - g) * bldY / 16;
-                    uint8_t b = (layers[0][i] >> 10) & 0x1F; b += (31 - b) * bldY / 16;
-                    layers[0][i] = (b << 10) | (g << 5) | r;
-                }
-                continue;
-
-            case 3: // Brightness decrease
-                if (bldY) {
-                    uint8_t r = (layers[0][i] >> 0) & 0x1F; r -= r * bldY / 16;
-                    uint8_t g = (layers[0][i] >> 5) & 0x1F; g -= g * bldY / 16;
-                    uint8_t b = (layers[0][i] >> 10) & 0x1F; b -= b * bldY / 16;
-                    layers[0][i] = (b << 10) | (g << 5) | r;
-                }
-                continue;
+        case 3: // Brightness decrease
+            if (bldY) {
+                uint8_t r = (layers[0][i] >> 0) & 0x1F; r -= r * bldY / 16;
+                uint8_t g = (layers[0][i] >> 5) & 0x1F; g -= g * bldY / 16;
+                uint8_t b = (layers[0][i] >> 10) & 0x1F; b -= b * bldY / 16;
+                layers[0][i] = (b << 10) | (g << 5) | r;
+            }
+            continue;
         }
     }
 
@@ -238,55 +235,55 @@ void Gpu2D::drawScanline(int line) {
 
     // Draw the background layers depending on the BG mode
     switch (uint8_t mode = (dispCnt & 0x7)) {
-        case 0:
-            if (dispCnt & BIT(11)) drawText<0>(3, line);
-            if (dispCnt & BIT(10)) drawText<0>(2, line);
-            if (dispCnt & BIT(9)) drawText<0>(1, line);
-            if (dispCnt & BIT(8)) drawText<0>(0, line);
-            break;
+    case 0:
+        if (dispCnt & BIT(11)) drawText<0>(3, line);
+        if (dispCnt & BIT(10)) drawText<0>(2, line);
+        if (dispCnt & BIT(9)) drawText<0>(1, line);
+        if (dispCnt & BIT(8)) drawText<0>(0, line);
+        break;
 
-        case 1:
-            if (dispCnt & BIT(11)) drawAffine<0>(3, line);
-            if (dispCnt & BIT(10)) drawText<0>(2, line);
-            if (dispCnt & BIT(9)) drawText<0>(1, line);
-            if (dispCnt & BIT(8)) drawText<0>(0, line);
-            break;
+    case 1:
+        if (dispCnt & BIT(11)) drawAffine<0>(3, line);
+        if (dispCnt & BIT(10)) drawText<0>(2, line);
+        if (dispCnt & BIT(9)) drawText<0>(1, line);
+        if (dispCnt & BIT(8)) drawText<0>(0, line);
+        break;
 
-        case 2:
-            if (dispCnt & BIT(11)) drawAffine<0>(3, line);
-            if (dispCnt & BIT(10)) drawAffine<0>(2, line);
-            if (dispCnt & BIT(9)) drawText<0>(1, line);
-            if (dispCnt & BIT(8)) drawText<0>(0, line);
-            break;
+    case 2:
+        if (dispCnt & BIT(11)) drawAffine<0>(3, line);
+        if (dispCnt & BIT(10)) drawAffine<0>(2, line);
+        if (dispCnt & BIT(9)) drawText<0>(1, line);
+        if (dispCnt & BIT(8)) drawText<0>(0, line);
+        break;
 
-        case 3:
-            if (dispCnt & BIT(11)) drawExtended(3, line);
-            if (dispCnt & BIT(10)) drawText<0>(2, line);
-            if (dispCnt & BIT(9)) drawText<0>(1, line);
-            if (dispCnt & BIT(8)) drawText<0>(0, line);
-            break;
+    case 3:
+        if (dispCnt & BIT(11)) drawExtended(3, line);
+        if (dispCnt & BIT(10)) drawText<0>(2, line);
+        if (dispCnt & BIT(9)) drawText<0>(1, line);
+        if (dispCnt & BIT(8)) drawText<0>(0, line);
+        break;
 
-        case 4:
-            if (dispCnt & BIT(11)) drawExtended(3, line);
-            if (dispCnt & BIT(10)) drawAffine<0>(2, line);
-            if (dispCnt & BIT(9)) drawText<0>(1, line);
-            if (dispCnt & BIT(8)) drawText<0>(0, line);
-            break;
+    case 4:
+        if (dispCnt & BIT(11)) drawExtended(3, line);
+        if (dispCnt & BIT(10)) drawAffine<0>(2, line);
+        if (dispCnt & BIT(9)) drawText<0>(1, line);
+        if (dispCnt & BIT(8)) drawText<0>(0, line);
+        break;
 
-        case 5:
-            if (dispCnt & BIT(11)) drawExtended(3, line);
-            if (dispCnt & BIT(10)) drawExtended(2, line);
-            if (dispCnt & BIT(9)) drawText<0>(1, line);
-            if (dispCnt & BIT(8)) drawText<0>(0, line);
-            break;
+    case 5:
+        if (dispCnt & BIT(11)) drawExtended(3, line);
+        if (dispCnt & BIT(10)) drawExtended(2, line);
+        if (dispCnt & BIT(9)) drawText<0>(1, line);
+        if (dispCnt & BIT(8)) drawText<0>(0, line);
+        break;
 
-        case 6:
-            if (dispCnt & BIT(10)) drawLarge(2, line);
-            break;
+    case 6:
+        if (dispCnt & BIT(10)) drawLarge(2, line);
+        break;
 
-        default:
-            LOG_CRIT("Unknown engine %c BG mode: %d\n", (engine == 0) ? 'A' : 'B', mode);
-            break;
+    default:
+        LOG_CRIT("Unknown engine %c BG mode: %d\n", (engine == 0) ? 'A' : 'B', mode);
+        break;
     }
 
     // Blend the layers to form the final image
@@ -344,85 +341,85 @@ void Gpu2D::drawScanline(int line) {
 
         // Apply blending, using 18-bit colors in DS mode
         switch (mode) {
-            case 1: // Alpha blending
-            alpha: {
-                uint32_t blend = (layers[1][i] & BIT(26)) ? layers[1][i] : rgb5ToRgb6(layers[1][i]);
-                uint8_t eva = std::min((bldAlpha >> 0) & 0x1F, 16);
-                uint8_t evb = std::min((bldAlpha >> 8) & 0x1F, 16);
-                uint8_t r = std::min((((layers[0][i] >> 0) & 0x3F) * eva + ((blend >> 0) & 0x3F) * evb) / 16, 63U);
-                uint8_t g = std::min((((layers[0][i] >> 6) & 0x3F) * eva + ((blend >> 6) & 0x3F) * evb) / 16, 63U);
-                uint8_t b = std::min((((layers[0][i] >> 12) & 0x3F) * eva + ((blend >> 12) & 0x3F) * evb) / 16, 63U);
+        case 1: // Alpha blending
+        alpha: {
+            uint32_t blend = (layers[1][i] & BIT(26)) ? layers[1][i] : rgb5ToRgb6(layers[1][i]);
+            uint8_t eva = std::min((bldAlpha >> 0) & 0x1F, 16);
+            uint8_t evb = std::min((bldAlpha >> 8) & 0x1F, 16);
+            uint8_t r = std::min((((layers[0][i] >> 0) & 0x3F) * eva + ((blend >> 0) & 0x3F) * evb) / 16, 63U);
+            uint8_t g = std::min((((layers[0][i] >> 6) & 0x3F) * eva + ((blend >> 6) & 0x3F) * evb) / 16, 63U);
+            uint8_t b = std::min((((layers[0][i] >> 12) & 0x3F) * eva + ((blend >> 12) & 0x3F) * evb) / 16, 63U);
+            layers[0][i] = (b << 12) | (g << 6) | r;
+            continue;
+        }
+
+        case 2: // Brightness increase
+            if (bldY) {
+                uint8_t r = (layers[0][i] >> 0) & 0x3F; r += (63 - r) * bldY / 16;
+                uint8_t g = (layers[0][i] >> 6) & 0x3F; g += (63 - g) * bldY / 16;
+                uint8_t b = (layers[0][i] >> 12) & 0x3F; b += (63 - b) * bldY / 16;
                 layers[0][i] = (b << 12) | (g << 6) | r;
-                continue;
             }
+            continue;
 
-            case 2: // Brightness increase
-                if (bldY) {
-                    uint8_t r = (layers[0][i] >> 0) & 0x3F; r += (63 - r) * bldY / 16;
-                    uint8_t g = (layers[0][i] >> 6) & 0x3F; g += (63 - g) * bldY / 16;
-                    uint8_t b = (layers[0][i] >> 12) & 0x3F; b += (63 - b) * bldY / 16;
-                    layers[0][i] = (b << 12) | (g << 6) | r;
-                }
-                continue;
-
-            case 3: // Brightness decrease
-                if (bldY) {
-                    uint8_t r = (layers[0][i] >> 0) & 0x3F; r -= r * bldY / 16;
-                    uint8_t g = (layers[0][i] >> 6) & 0x3F; g -= g * bldY / 16;
-                    uint8_t b = (layers[0][i] >> 12) & 0x3F; b -= b * bldY / 16;
-                    layers[0][i] = (b << 12) | (g << 6) | r;
-                }
-                continue;
+        case 3: // Brightness decrease
+            if (bldY) {
+                uint8_t r = (layers[0][i] >> 0) & 0x3F; r -= r * bldY / 16;
+                uint8_t g = (layers[0][i] >> 6) & 0x3F; g -= g * bldY / 16;
+                uint8_t b = (layers[0][i] >> 12) & 0x3F; b -= b * bldY / 16;
+                layers[0][i] = (b << 12) | (g << 6) | r;
+            }
+            continue;
         }
     }
 
     // Copy the final image to the framebuffer
     switch ((dispCnt >> 16) & 0x3) { // Display mode
-        case 0: // Display off
-            // Fill the display with white
-            memset(&framebuffer[line * 256], 0xFF, 256 * sizeof(uint32_t));
-            break;
+    case 0: // Display off
+        // Fill the display with white
+        memset(&framebuffer[line * 256], 0xFF, 256 * sizeof(uint32_t));
+        break;
 
-        case 1: // Layers
-            memcpy(&framebuffer[line * 256], layers[0], 256 * sizeof(uint32_t));
-            break;
+    case 1: // Layers
+        memcpy(&framebuffer[line * 256], layers[0], 256 * sizeof(uint32_t));
+        break;
 
-        case 2: // VRAM display
-            // Draw raw bitmap data from a VRAM block
-            for (uint32_t addr = 0x6800000 + ((dispCnt >> 1) & 0x60000) + line * 256 * 2, i = 0; i < 256; i++)
-                framebuffer[line * 256 + i] = rgb5ToRgb6(core->memory.read<uint16_t>(0, addr + i * 2));
-            break;
+    case 2: // VRAM display
+        // Draw raw bitmap data from a VRAM block
+        for (uint32_t addr = 0x6800000 + ((dispCnt >> 1) & 0x60000) + line * 256 * 2, i = 0; i < 256; i++)
+            framebuffer[line * 256 + i] = rgb5ToRgb6(core->memory.read<uint16_t>(0, addr + i * 2));
+        break;
 
-        case 3: // Main memory display
-            LOG_CRIT("Unimplemented engine %c display mode: display FIFO\n", (engine == 0) ? 'A' : 'B');
-            break;
+    case 3: // Main memory display
+        LOG_CRIT("Unimplemented engine %c display mode: display FIFO\n", (engine == 0) ? 'A' : 'B');
+        break;
     }
 
     // Apply master brightness (DS-only, 18-bit)
     switch ((masterBright >> 14) & 0x3) { // Mode
-        case 1: // Increase
-            if (uint8_t factor = std::min(masterBright & 0x1F, 16)) {
-                for (int i = 0; i < 256; i++) {
-                    uint32_t *pixel = &framebuffer[line * 256 + i];
-                    uint8_t r = (*pixel >> 0) & 0x3F; r += (63 - r) * factor / 16;
-                    uint8_t g = (*pixel >> 6) & 0x3F; g += (63 - g) * factor / 16;
-                    uint8_t b = (*pixel >> 12) & 0x3F; b += (63 - b) * factor / 16;
-                    *pixel = (b << 12) | (g << 6) | r;
-                }
+    case 1: // Increase
+        if (uint8_t factor = std::min(masterBright & 0x1F, 16)) {
+            for (int i = 0; i < 256; i++) {
+                uint32_t *pixel = &framebuffer[line * 256 + i];
+                uint8_t r = (*pixel >> 0) & 0x3F; r += (63 - r) * factor / 16;
+                uint8_t g = (*pixel >> 6) & 0x3F; g += (63 - g) * factor / 16;
+                uint8_t b = (*pixel >> 12) & 0x3F; b += (63 - b) * factor / 16;
+                *pixel = (b << 12) | (g << 6) | r;
             }
-            break;
+        }
+        break;
 
-        case 2: // Decrease
-            if (uint8_t factor = std::min(masterBright & 0x1F, 16)) {
-                for (int i = 0; i < 256; i++) {
-                    uint32_t *pixel = &framebuffer[line * 256 + i];
-                    uint8_t r = (*pixel >> 0) & 0x3F; r -= r * factor / 16;
-                    uint8_t g = (*pixel >> 6) & 0x3F; g -= g * factor / 16;
-                    uint8_t b = (*pixel >> 12) & 0x3F; b -= b * factor / 16;
-                    *pixel = (b << 12) | (g << 6) | r;
-                }
+    case 2: // Decrease
+        if (uint8_t factor = std::min(masterBright & 0x1F, 16)) {
+            for (int i = 0; i < 256; i++) {
+                uint32_t *pixel = &framebuffer[line * 256 + i];
+                uint8_t r = (*pixel >> 0) & 0x3F; r -= r * factor / 16;
+                uint8_t g = (*pixel >> 6) & 0x3F; g -= g * factor / 16;
+                uint8_t b = (*pixel >> 12) & 0x3F; b -= b * factor / 16;
+                *pixel = (b << 12) | (g << 6) | r;
             }
-            break;
+        }
+        break;
     }
 }
 

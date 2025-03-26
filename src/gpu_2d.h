@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef GPU_2D_H
-#define GPU_2D_H
+#pragma once
 
 #include <cstdint>
 #include <cstdio>
@@ -26,98 +25,96 @@
 class Core;
 
 class Gpu2D {
-    public:
-        Gpu2D(Core *core, bool engine);
-        void saveState(FILE *file);
-        void loadState(FILE *file);
+public:
+    Gpu2D(Core *core, bool engine);
+    void saveState(FILE *file);
+    void loadState(FILE *file);
 
-        void reloadRegisters();
-        void updateWindows(int line);
-        void drawGbaScanline(int line);
-        void drawScanline(int line);
+    void reloadRegisters();
+    void updateWindows(int line);
+    void drawGbaScanline(int line);
+    void drawScanline(int line);
 
-        uint32_t *getFramebuffer() { return framebuffer; }
-        uint32_t *getRawLine() { return layers[0]; }
+    uint32_t *getFramebuffer() { return framebuffer; }
+    uint32_t *getRawLine() { return layers[0]; }
 
-        uint32_t readDispCnt() { return dispCnt; }
-        uint16_t readBgCnt(int bg) { return bgCnt[bg]; }
-        uint16_t readWinIn() { return winIn; }
-        uint16_t readWinOut() { return winOut; }
-        uint16_t readBldCnt() { return bldCnt; }
-        uint16_t readBldAlpha() { return bldAlpha; }
-        uint16_t readMasterBright() { return masterBright; }
+    uint32_t readDispCnt() { return dispCnt; }
+    uint16_t readBgCnt(int bg) { return bgCnt[bg]; }
+    uint16_t readWinIn() { return winIn; }
+    uint16_t readWinOut() { return winOut; }
+    uint16_t readBldCnt() { return bldCnt; }
+    uint16_t readBldAlpha() { return bldAlpha; }
+    uint16_t readMasterBright() { return masterBright; }
 
-        void writeDispCnt(uint32_t mask, uint32_t value);
-        void writeBgCnt(int bg, uint16_t mask, uint16_t value);
-        void writeBgHOfs(int bg, uint16_t mask, uint16_t value);
-        void writeBgVOfs(int bg, uint16_t mask, uint16_t value);
-        void writeBgPA(int bg, uint16_t mask, uint16_t value);
-        void writeBgPB(int bg, uint16_t mask, uint16_t value);
-        void writeBgPC(int bg, uint16_t mask, uint16_t value);
-        void writeBgPD(int bg, uint16_t mask, uint16_t value);
-        void writeBgX(int bg, uint32_t mask, uint32_t value);
-        void writeBgY(int bg, uint32_t mask, uint32_t value);
-        void writeWinH(int win, uint16_t mask, uint16_t value);
-        void writeWinV(int win, uint16_t mask, uint16_t value);
-        void writeWinIn(uint16_t mask, uint16_t value);
-        void writeWinOut(uint16_t mask, uint16_t value);
-        void writeMosaic(uint16_t mask, uint16_t value);
-        void writeBldCnt(uint16_t mask, uint16_t value);
-        void writeBldAlpha(uint16_t mask, uint16_t value);
-        void writeBldY(uint8_t value);
-        void writeMasterBright(uint16_t mask, uint16_t value);
+    void writeDispCnt(uint32_t mask, uint32_t value);
+    void writeBgCnt(int bg, uint16_t mask, uint16_t value);
+    void writeBgHOfs(int bg, uint16_t mask, uint16_t value);
+    void writeBgVOfs(int bg, uint16_t mask, uint16_t value);
+    void writeBgPA(int bg, uint16_t mask, uint16_t value);
+    void writeBgPB(int bg, uint16_t mask, uint16_t value);
+    void writeBgPC(int bg, uint16_t mask, uint16_t value);
+    void writeBgPD(int bg, uint16_t mask, uint16_t value);
+    void writeBgX(int bg, uint32_t mask, uint32_t value);
+    void writeBgY(int bg, uint32_t mask, uint32_t value);
+    void writeWinH(int win, uint16_t mask, uint16_t value);
+    void writeWinV(int win, uint16_t mask, uint16_t value);
+    void writeWinIn(uint16_t mask, uint16_t value);
+    void writeWinOut(uint16_t mask, uint16_t value);
+    void writeMosaic(uint16_t mask, uint16_t value);
+    void writeBldCnt(uint16_t mask, uint16_t value);
+    void writeBldAlpha(uint16_t mask, uint16_t value);
+    void writeBldY(uint8_t value);
+    void writeMasterBright(uint16_t mask, uint16_t value);
 
-    private:
-        Core *core;
-        bool engine;
+private:
+    Core *core;
+    bool engine;
 
-        uint32_t bgVramAddr, objVramAddr;
-        uint8_t *palette, *oam;
-        uint8_t **extPalettes;
+    uint32_t bgVramAddr, objVramAddr;
+    uint8_t *palette, *oam;
+    uint8_t **extPalettes;
 
-        uint32_t framebuffer[256 * 192] = {};
-        uint32_t layers[2][256] = {};
-        int8_t priorities[2][256] = {};
-        int8_t blendBits[2][256] = {};
+    uint32_t framebuffer[256 * 192] = {};
+    uint32_t layers[2][256] = {};
+    int8_t priorities[2][256] = {};
+    int8_t blendBits[2][256] = {};
 
-        int internalX[2] = {};
-        int internalY[2] = {};
-        bool winHFlip[2] = {};
-        bool winVFlag[2] = {};
+    int internalX[2] = {};
+    int internalY[2] = {};
+    bool winHFlip[2] = {};
+    bool winVFlag[2] = {};
 
-        uint32_t dispCnt = 0;
-        uint16_t bgCnt[4] = {};
-        uint16_t bgHOfs[4] = {};
-        uint16_t bgVOfs[4] = {};
-        int16_t bgPA[2] = {};
-        int16_t bgPB[2] = {};
-        int16_t bgPC[2] = {};
-        int16_t bgPD[2] = {};
-        int32_t bgX[2] = {};
-        int32_t bgY[2] = {};
-        uint16_t winX1[2] = {};
-        uint16_t winX2[2] = {};
-        uint16_t winY1[2] = {};
-        uint16_t winY2[2] = {};
-        uint16_t winIn = 0;
-        uint16_t winOut = 0;
-        uint16_t bldCnt = 0;
-        uint16_t mosaic = 0;
-        uint16_t bldAlpha = 0;
-        uint8_t bldY = 0;
-        uint16_t masterBright = 0;
+    uint32_t dispCnt = 0;
+    uint16_t bgCnt[4] = {};
+    uint16_t bgHOfs[4] = {};
+    uint16_t bgVOfs[4] = {};
+    int16_t bgPA[2] = {};
+    int16_t bgPB[2] = {};
+    int16_t bgPC[2] = {};
+    int16_t bgPD[2] = {};
+    int32_t bgX[2] = {};
+    int32_t bgY[2] = {};
+    uint16_t winX1[2] = {};
+    uint16_t winX2[2] = {};
+    uint16_t winY1[2] = {};
+    uint16_t winY2[2] = {};
+    uint16_t winIn = 0;
+    uint16_t winOut = 0;
+    uint16_t bldCnt = 0;
+    uint16_t mosaic = 0;
+    uint16_t bldAlpha = 0;
+    uint8_t bldY = 0;
+    uint16_t masterBright = 0;
 
-        static uint32_t rgb5ToRgb6(uint32_t color);
+    static uint32_t rgb5ToRgb6(uint32_t color);
 
-        void drawBgPixel(int bg, int line, int x, uint32_t pixel);
-        void drawObjPixel(int line, int x, uint32_t pixel, int8_t priority);
+    void drawBgPixel(int bg, int line, int x, uint32_t pixel);
+    void drawObjPixel(int line, int x, uint32_t pixel, int8_t priority);
 
-        template <bool gbaMode> void drawText(int bg, int line);
-        template <bool gbaMode> void drawAffine(int bg, int line);
-        void drawExtended(int bg, int line);
-        void drawExtendedGba(int bg, int line);
-        void drawLarge(int bg, int line);
-        template <bool gbaMode> void drawObjects(int line, bool window);
+    template <bool gbaMode> void drawText(int bg, int line);
+    template <bool gbaMode> void drawAffine(int bg, int line);
+    void drawExtended(int bg, int line);
+    void drawExtendedGba(int bg, int line);
+    void drawLarge(int bg, int line);
+    template <bool gbaMode> void drawObjects(int line, bool window);
 };
-
-#endif // GPU_2D_H

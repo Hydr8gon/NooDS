@@ -20,9 +20,7 @@
 #include <chrono>
 #include <cstring>
 
-#include "spu.h"
 #include "core.h"
-#include "settings.h"
 
 const int Spu::indexTable[] = {
     -1, -1, -1, -1, 2, 4, 6, 8
@@ -457,29 +455,29 @@ void Spu::runSample() {
 
         // Read the sample data
         switch (format) {
-            case 0: // PCM8
-                data = (int8_t)core->memory.read<uint8_t>(1, soundCurrent[i]) << 8;
-                break;
+        case 0: // PCM8
+            data = (int8_t)core->memory.read<uint8_t>(1, soundCurrent[i]) << 8;
+            break;
 
-            case 1: // PCM16
-                data = (int16_t)core->memory.read<uint16_t>(1, soundCurrent[i]);
-                break;
+        case 1: // PCM16
+            data = (int16_t)core->memory.read<uint16_t>(1, soundCurrent[i]);
+            break;
 
-            case 2: // ADPCM
-                data = adpcmValue[i];
-                break;
+        case 2: // ADPCM
+            data = adpcmValue[i];
+            break;
 
-            case 3: // Pulse/Noise
-                if (i >= 8 && i <= 13) { // Pulse waves
-                    // Set the sample to low or high depending on the position in the duty cycle
-                    uint8_t duty = 7 - ((soundCnt[i] & 0x07000000) >> 24);
-                    data = (dutyCycles[i - 8] < duty) ? -0x7FFF : 0x7FFF;
-                }
-                else if (i >= 14) { // Noise
-                    // Set the sample to low or high depending on the carry bit (saved as bit 15)
-                    data = (noiseValues[i - 14] & BIT(15)) ? -0x7FFF : 0x7FFF;
-                }
-                break;
+        case 3: // Pulse/Noise
+            if (i >= 8 && i <= 13) { // Pulse waves
+                // Set the sample to low or high depending on the position in the duty cycle
+                uint8_t duty = 7 - ((soundCnt[i] & 0x07000000) >> 24);
+                data = (dutyCycles[i - 8] < duty) ? -0x7FFF : 0x7FFF;
+            }
+            else if (i >= 14) { // Noise
+                // Set the sample to low or high depending on the carry bit (saved as bit 15)
+                data = (noiseValues[i - 14] & BIT(15)) ? -0x7FFF : 0x7FFF;
+            }
+            break;
         }
 
         // Increment the timer for the length of a sample
@@ -495,66 +493,66 @@ void Spu::runSample() {
             overflow = (soundTimers[i] < soundTmr[i]);
 
             switch (format) {
-                case 0: case 1: // PCM8/PCM16
-                    // Increment the data pointer by the size of one sample
-                    soundCurrent[i] += 1 + format;
-                    break;
+            case 0: case 1: // PCM8/PCM16
+                // Increment the data pointer by the size of one sample
+                soundCurrent[i] += 1 + format;
+                break;
 
-                case 2: { // ADPCM
-                    // Save the ADPCM values at the loop position
-                    if (soundCurrent[i] == soundSad[i] + soundPnt[i] * 4 && !adpcmToggle[i]) {
-                        adpcmLoopValue[i] = adpcmValue[i];
-                        adpcmLoopIndex[i] = adpcmIndex[i];
-                    }
-
-                    // Get the 4-bit ADPCM data
-                    uint8_t adpcmData = core->memory.read<uint8_t>(1, soundCurrent[i]);
-                    adpcmData = adpcmToggle[i] ? ((adpcmData & 0xF0) >> 4) : (adpcmData & 0x0F);
-
-                    // Calculate the sample difference
-                    int32_t diff = adpcmTable[adpcmIndex[i]] / 8;
-                    if (adpcmData & BIT(0)) diff += adpcmTable[adpcmIndex[i]] / 4;
-                    if (adpcmData & BIT(1)) diff += adpcmTable[adpcmIndex[i]] / 2;
-                    if (adpcmData & BIT(2)) diff += adpcmTable[adpcmIndex[i]] / 1;
-
-                    // Apply the sample difference to the sample
-                    if (adpcmData & BIT(3)) {
-                        adpcmValue[i] += diff;
-                        if (adpcmValue[i] > 0x7FFF) adpcmValue[i] = 0x7FFF;
-                    }
-                    else {
-                        adpcmValue[i] -= diff;
-                        if (adpcmValue[i] < -0x7FFF) adpcmValue[i] = -0x7FFF;
-                    }
-
-                    // Calculate the next index
-                    adpcmIndex[i] += indexTable[adpcmData & 0x7];
-                    if (adpcmIndex[i] < 0) adpcmIndex[i] = 0;
-                    if (adpcmIndex[i] > 88) adpcmIndex[i] = 88;
-
-                    // Move to the next 4-bit ADPCM data
-                    adpcmToggle[i] = !adpcmToggle[i];
-                    if (!adpcmToggle[i]) soundCurrent[i]++;
-
-                    break;
+            case 2: { // ADPCM
+                // Save the ADPCM values at the loop position
+                if (soundCurrent[i] == soundSad[i] + soundPnt[i] * 4 && !adpcmToggle[i]) {
+                    adpcmLoopValue[i] = adpcmValue[i];
+                    adpcmLoopIndex[i] = adpcmIndex[i];
                 }
 
-                case 3: // Pulse/Noise
-                    if (i >= 8 && i <= 13) { // Pulse waves
-                        // Increment the duty cycle counter
-                        dutyCycles[i - 8] = (dutyCycles[i - 8] + 1) % 8;
-                    }
-                    else if (i >= 14) { // Noise
-                        // Clear the previous saved carry bit
-                        noiseValues[i - 14] &= ~BIT(15);
- 
-                        // Advance the random generator and save the carry bit to bit 15
-                        if (noiseValues[i - 14] & BIT(0))
-                            noiseValues[i - 14] = BIT(15) | ((noiseValues[i - 14] >> 1) ^ 0x6000);
-                        else
-                            noiseValues[i - 14] >>= 1;
-                    }
-                    break;
+                // Get the 4-bit ADPCM data
+                uint8_t adpcmData = core->memory.read<uint8_t>(1, soundCurrent[i]);
+                adpcmData = adpcmToggle[i] ? ((adpcmData & 0xF0) >> 4) : (adpcmData & 0x0F);
+
+                // Calculate the sample difference
+                int32_t diff = adpcmTable[adpcmIndex[i]] / 8;
+                if (adpcmData & BIT(0)) diff += adpcmTable[adpcmIndex[i]] / 4;
+                if (adpcmData & BIT(1)) diff += adpcmTable[adpcmIndex[i]] / 2;
+                if (adpcmData & BIT(2)) diff += adpcmTable[adpcmIndex[i]] / 1;
+
+                // Apply the sample difference to the sample
+                if (adpcmData & BIT(3)) {
+                    adpcmValue[i] += diff;
+                    if (adpcmValue[i] > 0x7FFF) adpcmValue[i] = 0x7FFF;
+                }
+                else {
+                    adpcmValue[i] -= diff;
+                    if (adpcmValue[i] < -0x7FFF) adpcmValue[i] = -0x7FFF;
+                }
+
+                // Calculate the next index
+                adpcmIndex[i] += indexTable[adpcmData & 0x7];
+                if (adpcmIndex[i] < 0) adpcmIndex[i] = 0;
+                if (adpcmIndex[i] > 88) adpcmIndex[i] = 88;
+
+                // Move to the next 4-bit ADPCM data
+                adpcmToggle[i] = !adpcmToggle[i];
+                if (!adpcmToggle[i]) soundCurrent[i]++;
+
+                break;
+            }
+
+            case 3: // Pulse/Noise
+                if (i >= 8 && i <= 13) { // Pulse waves
+                    // Increment the duty cycle counter
+                    dutyCycles[i - 8] = (dutyCycles[i - 8] + 1) % 8;
+                }
+                else if (i >= 14) { // Noise
+                    // Clear the previous saved carry bit
+                    noiseValues[i - 14] &= ~BIT(15);
+
+                    // Advance the random generator and save the carry bit to bit 15
+                    if (noiseValues[i - 14] & BIT(0))
+                        noiseValues[i - 14] = BIT(15) | ((noiseValues[i - 14] >> 1) ^ 0x6000);
+                    else
+                        noiseValues[i - 14] >>= 1;
+                }
+                break;
             }
 
             // Repeat or end the sound if the end of the data is reached
@@ -728,25 +726,24 @@ void Spu::startChannel(int channel) {
     soundTimers[channel] = soundTmr[channel];
 
     switch ((soundCnt[channel] & 0x60000000) >> 29) { // Format
-        case 2: { // ADPCM
-            // Read the ADPCM header
-            uint32_t header = core->memory.read<uint32_t>(1, soundSad[channel]);
-            adpcmValue[channel] = (int16_t)header;
-            adpcmIndex[channel] = (header & 0x007F0000) >> 16;
-            if (adpcmIndex[channel] > 88) adpcmIndex[channel] = 88;
-            adpcmToggle[channel] = false;
-            soundCurrent[channel] += 4;
-            break;
-        }
+    case 2: { // ADPCM
+        // Read the ADPCM header
+        uint32_t header = core->memory.read<uint32_t>(1, soundSad[channel]);
+        adpcmValue[channel] = (int16_t)header;
+        adpcmIndex[channel] = (header & 0x007F0000) >> 16;
+        if (adpcmIndex[channel] > 88) adpcmIndex[channel] = 88;
+        adpcmToggle[channel] = false;
+        soundCurrent[channel] += 4;
+        break;
+    }
 
-        case 3: { // Pulse/Noise
-            // Reset the pulse or noise values
-            if (channel >= 8 && channel <= 13) // Pulse waves
-                dutyCycles[channel - 8] = 0;
-            else if (channel >= 14) // Noise
-                noiseValues[channel - 14] = 0x7FFF;
-            break;
-        }
+    case 3: // Pulse/Noise
+        // Reset the pulse or noise values
+        if (channel >= 8 && channel <= 13) // Pulse waves
+            dutyCycles[channel - 8] = 0;
+        else if (channel >= 14) // Noise
+            noiseValues[channel - 14] = 0x7FFF;
+        break;
     }
 
     // Enable the channel

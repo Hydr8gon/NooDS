@@ -18,8 +18,7 @@
 */
 
 #include <sys/stat.h>
-#include "settings.h"
-#include "defines.h"
+#include "core.h"
 
 int Settings::directBoot = 1;
 int Settings::romInRam = 0;

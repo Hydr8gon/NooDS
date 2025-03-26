@@ -17,31 +17,27 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CHEAT_DIALOG_H
-#define CHEAT_DIALOG_H
+#pragma once
 
 #include "noo_frame.h"
 
 class CheatDialog: public wxDialog {
-    public:
-        CheatDialog(Core *core);
+public:
+    CheatDialog(Core *core);
 
-    private:
-        Core *core;
-        wxCheckListBox *cheatList;
-        wxTextCtrl *nameEditor;
-        wxTextCtrl *codeEditor;
-        int curCheat = -1;
+private:
+    Core *core;
+    wxCheckListBox *cheatList;
+    wxTextCtrl *nameEditor;
+    wxTextCtrl *codeEditor;
+    int curCheat = -1;
 
-        void updateCheat();
-        void checkCheat(wxCommandEvent &event);
-        void selectCheat(wxCommandEvent &event);
-        void addCheat(wxCommandEvent &event);
-        void removeCheat(wxCommandEvent &event);
-        void cancel(wxCommandEvent &event);
-        void confirm(wxCommandEvent &event);
-
-        wxDECLARE_EVENT_TABLE();
+    void updateCheat();
+    void checkCheat(wxCommandEvent &event);
+    void selectCheat(wxCommandEvent &event);
+    void addCheat(wxCommandEvent &event);
+    void removeCheat(wxCommandEvent &event);
+    void cancel(wxCommandEvent &event);
+    void confirm(wxCommandEvent &event);
+    wxDECLARE_EVENT_TABLE();
 };
-
-#endif // CHEAT_DIALOG_H

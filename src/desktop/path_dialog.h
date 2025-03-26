@@ -17,32 +17,28 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef PATH_DIALOG_H
-#define PATH_DIALOG_H
+#pragma once
 
 #include <wx/wx.h>
 
 class PathDialog: public wxDialog {
-    public:
-        PathDialog();
+public:
+    PathDialog();
 
-    private:
-        wxTextCtrl *bios9Path;
-        wxTextCtrl *bios7Path;
-        wxTextCtrl *firmwarePath;
-        wxTextCtrl *gbaBiosPath;
-        wxTextCtrl *sdImagePath;
-        wxCheckBox *boxes[3];
+private:
+    wxTextCtrl *bios9Path;
+    wxTextCtrl *bios7Path;
+    wxTextCtrl *firmwarePath;
+    wxTextCtrl *gbaBiosPath;
+    wxTextCtrl *sdImagePath;
+    wxCheckBox *boxes[3];
 
-        void bios9Browse(wxCommandEvent &event);
-        void bios7Browse(wxCommandEvent &event);
-        void firmwareBrowse(wxCommandEvent &event);
-        void gbaBiosBrowse(wxCommandEvent &event);
-        void sdImageBrowse(wxCommandEvent &event);
-        void openFolder(wxCommandEvent &event);
-        void confirm(wxCommandEvent &event);
-
-        wxDECLARE_EVENT_TABLE();
+    void bios9Browse(wxCommandEvent &event);
+    void bios7Browse(wxCommandEvent &event);
+    void firmwareBrowse(wxCommandEvent &event);
+    void gbaBiosBrowse(wxCommandEvent &event);
+    void sdImageBrowse(wxCommandEvent &event);
+    void openFolder(wxCommandEvent &event);
+    void confirm(wxCommandEvent &event);
+    wxDECLARE_EVENT_TABLE();
 };
-
-#endif // PATH_DIALOG_H

@@ -17,11 +17,10 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "save_states.h"
 #include "core.h"
 
 const char *SaveStates::stateTag = "NOOD";
-const uint32_t SaveStates::stateVersion = 6;
+const uint32_t SaveStates::stateVersion = 7;
 
 void SaveStates::setPath(std::string path, bool gba) {
     // Set the NDS or GBA state path

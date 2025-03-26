@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CONSOLE_UI_H
-#define CONSOLE_UI_H
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -71,82 +70,80 @@ struct MenuItem {
 };
 
 class ConsoleUI {
-    public:
-        static Core *core;
-        static bool running;
-        static uint32_t framebuffer[256 * 192 * 8];
-        static ScreenLayout layout;
-        static bool gbaMode;
+public:
+    static Core *core;
+    static bool running;
+    static uint32_t framebuffer[256 * 192 * 8];
+    static ScreenLayout layout;
+    static bool gbaMode;
 
-        static int showFpsCounter;
-        static int menuTheme;
-        static int keyBinds[INPUT_MAX];
+    static int showFpsCounter;
+    static int menuTheme;
+    static int keyBinds[INPUT_MAX];
 
-        // Data that is defined per-platform
-        static uint32_t defaultKeys[INPUT_MAX];
-        static const char *keyNames[32];
+    // Data that is defined per-platform
+    static uint32_t defaultKeys[INPUT_MAX];
+    static const char *keyNames[32];
 
-        // Functions that are implemented per-platform
-        static void startFrame(uint32_t color);
-        static void endFrame();
-        static void *createTexture(uint32_t *data, int width, int height);
-        static void destroyTexture(void *texture);
-        static void drawTexture(void *texture, float tx, float ty, float tw, float th, float x, float y,
-            float w, float h, bool filter = true, int rotation = 0, uint32_t color = 0xFFFFFFFF);
-        static uint32_t getInputHeld();
-        static MenuTouch getInputTouch();
+    // Functions that are implemented per-platform
+    static void startFrame(uint32_t color);
+    static void endFrame();
+    static void *createTexture(uint32_t *data, int width, int height);
+    static void destroyTexture(void *texture);
+    static void drawTexture(void *texture, float tx, float ty, float tw, float th, float x, float y,
+        float w, float h, bool filter = true, int rotation = 0, uint32_t color = 0xFFFFFFFF);
+    static uint32_t getInputHeld();
+    static MenuTouch getInputTouch();
 
-        static void drawRectangle(float x, float y, float w, float h, uint32_t color = 0xFFFFFFFF);
-        static void drawString(std::string string, float x, float y,
-            float size, uint32_t color = 0xFFFFFFFF, bool alignRight = false);
-        static void fillAudioBuffer(uint32_t *buffer, int count, int rate);
-        static uint32_t getInputPress();
+    static void drawRectangle(float x, float y, float w, float h, uint32_t color = 0xFFFFFFFF);
+    static void drawString(std::string string, float x, float y,
+        float size, uint32_t color = 0xFFFFFFFF, bool alignRight = false);
+    static void fillAudioBuffer(uint32_t *buffer, int count, int rate);
+    static uint32_t getInputPress();
 
-        static void initialize(int width, int height, std::string root, std::string prefix);
-        static void mainLoop(MenuTouch (*specialTouch)() = nullptr, ScreenLayout *touchLayout = nullptr);
-        static int setPath(std::string path);
-        static void fileBrowser();
+    static void initialize(int width, int height, std::string root, std::string prefix);
+    static void mainLoop(MenuTouch (*specialTouch)() = nullptr, ScreenLayout *touchLayout = nullptr);
+    static int setPath(std::string path);
+    static void fileBrowser();
 
-    private:
-        static void *fileTextures[2];
-        static void *folderTextures[2];
-        static void *fontTexture;
+private:
+    static void *fileTextures[2];
+    static void *folderTextures[2];
+    static void *fontTexture;
 
-        static const uint32_t *palette;
-        static uint32_t uiWidth, uiHeight;
-        static uint32_t lineHeight;
-        static bool touchMode;
+    static const uint32_t *palette;
+    static uint32_t uiWidth, uiHeight;
+    static uint32_t lineHeight;
+    static bool touchMode;
 
-        static std::string ndsPath, gbaPath;
-        static std::string basePath, curPath;
-        static bool changed;
+    static std::string ndsPath, gbaPath;
+    static std::string basePath, curPath;
+    static bool changed;
 
-        static std::thread *coreThread, *saveThread;
-        static std::condition_variable cond;
-        static std::mutex mutex;
-        static int fpsLimiterBackup;
+    static std::thread *coreThread, *saveThread;
+    static std::condition_variable cond;
+    static std::mutex mutex;
+    static int fpsLimiterBackup;
 
-        static const uint32_t themeColors[];
-        static const uint8_t charWidths[];
+    static const uint32_t themeColors[];
+    static const uint8_t charWidths[];
 
-        ConsoleUI() {} // Private to prevent instantiation
-        static void *bmpToTexture(uint8_t *bmp);
-        static int stringWidth(std::string &string);
+    ConsoleUI() {} // Private to prevent instantiation
+    static void *bmpToTexture(uint8_t *bmp);
+    static int stringWidth(std::string &string);
 
-        static uint32_t menu(std::string title, std::vector<MenuItem> &items,
-            int &index, std::string actionX = "", std::string actionPlus = "");
-        static uint32_t message(std::string title, std::string text, int type = 0);
+    static uint32_t menu(std::string title, std::vector<MenuItem> &items,
+        int &index, std::string actionX = "", std::string actionPlus = "");
+    static uint32_t message(std::string title, std::string text, int type = 0);
 
-        static void settingsMenu();
-        static void controlsMenu();
-        static void pauseMenu();
-        static bool saveTypeMenu();
+    static void settingsMenu();
+    static void controlsMenu();
+    static void pauseMenu();
+    static bool saveTypeMenu();
 
-        static bool createCore();
-        static void startCore();
-        static void stopCore();
-        static void runCore();
-        static void checkSave();
+    static bool createCore();
+    static void startCore();
+    static void stopCore();
+    static void runCore();
+    static void checkSave();
 };
-
-#endif // CONSOLE_UI_H

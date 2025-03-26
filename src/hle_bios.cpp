@@ -18,8 +18,6 @@
 */
 
 #include <cmath>
-
-#include "hle_bios.h"
 #include "core.h"
 
 // HLE ARM9 BIOS SWI lookup table
@@ -74,23 +72,23 @@ void HleBios::loadState(FILE *file) {
 int HleBios::execute(uint8_t vector, uint32_t **registers) {
     // Execute the HLE version of the given exception vector
     switch (vector) {
-        case 0x08: { // SWI
-            // The PC was adjusted for an exception, so adjust it back
-            *registers[15] += 4;
+    case 0x08: { // SWI
+        // The PC was adjusted for an exception, so adjust it back
+        *registers[15] += 4;
 
-            // Use the comment from the SWI opcode to lookup what function to execute
-            uint32_t address = *registers[15] - (core->interpreter[arm7].isThumb() ? 4 : 6);
-            uint8_t comment = core->memory.read<uint8_t>(arm7, address);
-            return (this->*swiTable[std::min<uint8_t>(comment, 0x20)])(registers);
-        }
+        // Use the comment from the SWI opcode to lookup what function to execute
+        uint32_t address = *registers[15] - (core->interpreter[arm7].isThumb() ? 4 : 6);
+        uint8_t comment = core->memory.read<uint8_t>(arm7, address);
+        return (this->*swiTable[std::min<uint8_t>(comment, 0x20)])(registers);
+    }
 
-        case 0x18: // IRQ
-            // Let the interpreter handle HLE interrupts
-            return core->interpreter[arm7].handleHleIrq();
+    case 0x18: // IRQ
+        // Let the interpreter handle HLE interrupts
+        return core->interpreter[arm7].handleHleIrq();
 
-        default:
-            LOG_CRIT("Unimplemented ARM%d BIOS vector: 0x%02X\n", (arm7 ? 7 : 9), vector);
-            return 3;
+    default:
+        LOG_CRIT("Unimplemented ARM%d BIOS vector: 0x%02X\n", (arm7 ? 7 : 9), vector);
+        return 3;
     }
 }
 

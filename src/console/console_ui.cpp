@@ -713,17 +713,17 @@ void ConsoleUI::fileBrowser() {
 
             // Try to set a ROM path
             switch (setPath(curPath)) {
-                case 1: // ROM failed to load
-                    // Remove the ROM from the path and continue browsing
-                    curPath = curPath.substr(0, curPath.rfind("/"));
-                    index = 0;
-                case 0: // ROM not selected
-                    continue;
+            case 1: // ROM failed to load
+                // Remove the ROM from the path and continue browsing
+                curPath = curPath.substr(0, curPath.rfind("/"));
+                index = 0;
+            case 0: // ROM not selected
+                continue;
 
-                case 2: // ROM loaded
-                    // Save the previous directory and close the file browser
-                    curPath = curPath.substr(0, curPath.rfind("/"));
-                    return;
+            case 2: // ROM loaded
+                // Save the previous directory and close the file browser
+                curPath = curPath.substr(0, curPath.rfind("/"));
+                return;
             }
         }
         else if (pressed & defaultKeys[INPUT_B]) {
@@ -829,11 +829,11 @@ void ConsoleUI::settingsMenu() {
                 case 30: ScreenLayout::integerScale = (ScreenLayout::integerScale + 1) % 2; break;
                 case 31: ScreenLayout::gbaCrop = (ScreenLayout::gbaCrop + 1) % 2; break;
 
-                case 5:
-                    // Update the palette when changing themes
-                    menuTheme = (menuTheme + 1) % 2;
-                    palette = &themeColors[menuTheme * 7];
-                    break;
+            case 5:
+                // Update the palette when changing themes
+                menuTheme = (menuTheme + 1) % 2;
+                palette = &themeColors[menuTheme * 7];
+                break;
             }
         }
         else if (pressed & defaultKeys[INPUT_B]) {
@@ -942,80 +942,80 @@ void ConsoleUI::pauseMenu() {
         if (pressed & defaultKeys[INPUT_A]) {
             // Handle the selected item
             switch (index) {
-                case 0: // Resume
-                    // Return to the emulator
-                    startCore();
-                    return;
+            case 0: // Resume
+                // Return to the emulator
+                startCore();
+                return;
 
-                case 1: // Restart
-                    // Restart and return to the emulator
-                    createCore() ? startCore() : fileBrowser();
-                    return;
+            case 1: // Restart
+                // Restart and return to the emulator
+                createCore() ? startCore() : fileBrowser();
+                return;
 
-                case 2: // Save State
-                    // Show a confirmation message, with extra information if a state file doesn't exist yet
-                    if (!message("Save State", (core->saveStates.checkState() == STATE_FILE_FAIL) ? "Saving and "
-                        "loading states is dangerous and can lead to data loss.\nStates are also not guaranteed to "
-                        "be compatible across emulator versions.\nPlease rely on in-game saving to keep your progress, "
-                        "and back up .sav files\nbefore using this feature. Do you want to save the current state?" :
-                        "Do you want to overwrite the saved state with the current state? This can't be undone!", 1))
-                        break;
+            case 2: // Save State
+                // Show a confirmation message, with extra information if a state file doesn't exist yet
+                if (!message("Save State", (core->saveStates.checkState() == STATE_FILE_FAIL) ? "Saving and "
+                    "loading states is dangerous and can lead to data loss.\nStates are also not guaranteed to "
+                    "be compatible across emulator versions.\nPlease rely on in-game saving to keep your progress, "
+                    "and back up .sav files\nbefore using this feature. Do you want to save the current state?" :
+                    "Do you want to overwrite the saved state with the current state? This can't be undone!", 1))
+                    break;
 
-                    // Save the state and return to emulation if confirmed
-                    core->saveStates.saveState();
-                    startCore();
-                    return;
+                // Save the state and return to emulation if confirmed
+                core->saveStates.saveState();
+                startCore();
+                return;
 
-                case 3: { // Load State
-                    // Show a confirmation message, or an error if something went wrong
-                    bool error = true;
-                    std::string title, text;
-                    switch (core->saveStates.checkState()) {
-                        case STATE_SUCCESS:
-                            error = false;
-                            title = "Load State";
-                            text = "Do you want to load the saved state and "
-                                "lose the current state? This can't be undone!";
-                            break;
+            case 3: { // Load State
+                // Show a confirmation message, or an error if something went wrong
+                bool error = true;
+                std::string title, text;
+                switch (core->saveStates.checkState()) {
+                case STATE_SUCCESS:
+                    error = false;
+                    title = "Load State";
+                    text = "Do you want to load the saved state and "
+                        "lose the current state? This can't be undone!";
+                    break;
 
-                        case STATE_FILE_FAIL:
-                            title = "Error";
-                            text = "The state file doesn't exist or couldn't be opened.";
-                            break;
+                case STATE_FILE_FAIL:
+                    title = "Error";
+                    text = "The state file doesn't exist or couldn't be opened.";
+                    break;
 
-                        case STATE_FORMAT_FAIL:
-                            title = "Error";
-                            text = "The state file doesn't have a valid format.";
-                            break;
+                case STATE_FORMAT_FAIL:
+                    title = "Error";
+                    text = "The state file doesn't have a valid format.";
+                    break;
 
-                        case STATE_VERSION_FAIL:
-                            title = "Error";
-                            text = "The state file isn't compatible with this version of NooDS.";
-                            break;
-                    }
-
-                    // Load the state and return to emulation if confirmed
-                    if (!message(title, text, !error) || error) break;
-                    core->saveStates.loadState();
-                    startCore();
-                    return;
+                case STATE_VERSION_FAIL:
+                    title = "Error";
+                    text = "The state file isn't compatible with this version of NooDS.";
+                    break;
                 }
 
-                case 4: // Change Save Type
-                    // Open the save type menu and restart if the save changed
-                    if (saveTypeMenu())
-                        return createCore() ? startCore() : fileBrowser();
-                    break;
+                // Load the state and return to emulation if confirmed
+                if (!message(title, text, !error) || error) break;
+                core->saveStates.loadState();
+                startCore();
+                return;
+            }
 
-                case 5: // Settings
-                    // Open the settings menu
-                    settingsMenu();
-                    break;
+            case 4: // Change Save Type
+                // Open the save type menu and restart if the save changed
+                if (saveTypeMenu())
+                    return createCore() ? startCore() : fileBrowser();
+                break;
 
-                case 6: // File Browser
-                    // Open the file browser and close the pause menu
-                    fileBrowser();
-                    return;
+            case 5: // Settings
+                // Open the settings menu
+                settingsMenu();
+                break;
+
+            case 6: // File Browser
+                // Open the file browser and close the pause menu
+                fileBrowser();
+                return;
             }
         }
         else if (pressed & defaultKeys[INPUT_B]) {
@@ -1110,22 +1110,22 @@ bool ConsoleUI::createCore() {
         // Inform the user of an error if loading wasn't successful
         std::string text;
         switch (e) {
-            case ERROR_BIOS: // Missing BIOS files
-                text = "Make sure the path settings point to valid BIOS files and try again.\n"
-                    "You can modify the path settings in the noods.ini file.";
-                message("Error Loading BIOS", text);
-                break;
+        case ERROR_BIOS: // Missing BIOS files
+            text = "Make sure the path settings point to valid BIOS files and try again.\n"
+                "You can modify the path settings in the noods.ini file.";
+            message("Error Loading BIOS", text);
+            break;
 
-            case ERROR_FIRM: // Non-bootable firmware file
-                text = "Make sure the path settings point to a bootable firmware file or try another boot method.\n"
-                    "You can modify the path settings in the noods.ini file.";
-                message("Error Loading Firmware", text);
-                break;
+        case ERROR_FIRM: // Non-bootable firmware file
+            text = "Make sure the path settings point to a bootable firmware file or try another boot method.\n"
+                "You can modify the path settings in the noods.ini file.";
+            message("Error Loading Firmware", text);
+            break;
 
-            case ERROR_ROM: // Unreadable ROM file
-                text = "Make sure the ROM file is accessible and try again.";
-                message("Error Loading ROM", text);
-                break;
+        case ERROR_ROM: // Unreadable ROM file
+            text = "Make sure the ROM file is accessible and try again.";
+            message("Error Loading ROM", text);
+            break;
         }
 
         // Throw out the incomplete core

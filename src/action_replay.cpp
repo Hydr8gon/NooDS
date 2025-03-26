@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "action_replay.h"
 #include "core.h"
 
 void ActionReplay::setPath(std::string path) {
@@ -125,207 +124,207 @@ void ActionReplay::applyCheats() {
 
             // Interpret a line of the code
             switch (line[0] >> 28) {
-                case 0x0: // Write word
-                    // Write a word to memory
-                    core->memory.write<uint32_t>(1, (line[0] & 0xFFFFFFF) + offset, line[1]);
+            case 0x0: // Write word
+                // Write a word to memory
+                core->memory.write<uint32_t>(1, (line[0] & 0xFFFFFFF) + offset, line[1]);
+                continue;
+
+            case 0x1: // Write half
+                // Write a half-word to memory
+                core->memory.write<uint16_t>(1, (line[0] & 0xFFFFFFF) + offset, line[1]);
+                continue;
+
+            case 0x2: // Write byte
+                // Write a byte to memory
+                core->memory.write<uint8_t>(1, (line[0] & 0xFFFFFFF) + offset, line[1]);
+                continue;
+
+            case 0x3: { // If greater than word
+                // Set the condition flag if a word isn't greater than a memory value
+                uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
+                condFlag = (line[1] <= core->memory.read<uint32_t>(1, addr));
+                continue;
+            }
+
+            case 0x4: { // If less than word
+                // Set the condition flag if a word isn't less than a memory value
+                uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
+                condFlag = (line[1] >= core->memory.read<uint32_t>(1, addr));
+                continue;
+            }
+
+            case 0x5: { // If equal to word
+                // Set the condition flag if a word isn't equal to a memory value
+                uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
+                condFlag = (line[1] != core->memory.read<uint32_t>(1, addr));
+                continue;
+            }
+
+            case 0x6: { // If not equal to word
+                // Set the condition flag if a word is equal to a memory value
+                uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
+                condFlag = (line[1] == core->memory.read<uint32_t>(1, addr));
+                continue;
+            }
+
+            case 0x7: { // If greater than half
+                // Set the condition flag if a half-word isn't greater than a masked memory value
+                uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
+                condFlag = (line[1] & 0xFFFF) <= (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
+                continue;
+            }
+
+            case 0x8: { // If less than half
+                // Set the condition flag if a half-word isn't less than a masked memory value
+                uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
+                condFlag = (line[1] & 0xFFFF) >= (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
+                continue;
+            }
+
+            case 0x9: { // If equal to half
+                // Set the condition flag if a half-word isn't equal to a masked memory value
+                uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
+                condFlag = (line[1] & 0xFFFF) != (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
+                continue;
+            }
+
+            case 0xA: { // If not equal to half
+                // Set the condition flag if a half-word is equal to a masked memory value
+                uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
+                condFlag = (line[1] & 0xFFFF) == (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
+                continue;
+            }
+
+            case 0xB: // Load offset
+                // Set the offset to a word from memory
+                offset = core->memory.read<uint32_t>(1, (line[0] & 0xFFFFFFF) + offset);
+                continue;
+
+            case 0xC:
+                switch (line[0] >> 24) {
+                case 0xC0: // For loop
+                    // Set the loop count and address to loop to
+                    loopCount = line[1];
+                    loopAddress = address;
                     continue;
 
-                case 0x1: // Write half
-                    // Write a half-word to memory
-                    core->memory.write<uint16_t>(1, (line[0] & 0xFFFFFFF) + offset, line[1]);
+                case 0xC5: // If counter
+                    // Set the condition flag if the masked counter isn't equal to a half-word
+                    condFlag = (++counter & line[1] & 0xFFFF) != (line[1] >> 16);
                     continue;
 
-                case 0x2: // Write byte
-                    // Write a byte to memory
-                    core->memory.write<uint8_t>(1, (line[0] & 0xFFFFFFF) + offset, line[1]);
-                    continue;
-
-                case 0x3: { // If greater than word
-                    // Set the condition flag if a word isn't greater than a memory value
-                    uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
-                    condFlag = (line[1] <= core->memory.read<uint32_t>(1, addr));
+                case 0xC6: // Write offset
+                    // Write the offset value to a memory word
+                    core->memory.write<uint32_t>(1, line[1], offset);
                     continue;
                 }
+                goto invalid;
 
-                case 0x4: { // If less than word
-                    // Set the condition flag if a word isn't less than a memory value
-                    uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
-                    condFlag = (line[1] >= core->memory.read<uint32_t>(1, addr));
-                    continue;
-                }
-
-                case 0x5: { // If equal to word
-                    // Set the condition flag if a word isn't equal to a memory value
-                    uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
-                    condFlag = (line[1] != core->memory.read<uint32_t>(1, addr));
-                    continue;
-                }
-
-                case 0x6: { // If not equal to word
-                    // Set the condition flag if a word is equal to a memory value
-                    uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
-                    condFlag = (line[1] == core->memory.read<uint32_t>(1, addr));
-                    continue;
-                }
-
-                case 0x7: { // If greater than half
-                    // Set the condition flag if a half-word isn't greater than a masked memory value
-                    uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
-                    condFlag = (line[1] & 0xFFFF) <= (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
-                    continue;
-                }
-
-                case 0x8: { // If less than half
-                    // Set the condition flag if a half-word isn't less than a masked memory value
-                    uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
-                    condFlag = (line[1] & 0xFFFF) >= (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
-                    continue;
-                }
-
-                case 0x9: { // If equal to half
-                    // Set the condition flag if a half-word isn't equal to a masked memory value
-                    uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
-                    condFlag = (line[1] & 0xFFFF) != (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
-                    continue;
-                }
-
-                case 0xA: { // If not equal to half
-                    // Set the condition flag if a half-word is equal to a masked memory value
-                    uint32_t addr = (line[0] & 0xFFFFFFF) ? (line[0] & 0xFFFFFFF) : offset;
-                    condFlag = (line[1] & 0xFFFF) == (core->memory.read<uint16_t>(1, addr) & ~(line[1] >> 16));
-                    continue;
-                }
-
-                case 0xB: // Load offset
-                    // Set the offset to a word from memory
-                    offset = core->memory.read<uint32_t>(1, (line[0] & 0xFFFFFFF) + offset);
+            case 0xD:
+                switch (line[0] >> 24) {
+                case 0xD0: // End if
+                    // Clear the condition flag
+                    condFlag = false;
                     continue;
 
-                case 0xC:
-                    switch (line[0] >> 24) {
-                        case 0xC0: // For loop
-                            // Set the loop count and address to loop to
-                            loopCount = line[1];
-                            loopAddress = address;
-                            continue;
-
-                        case 0xC5: // If counter
-                            // Set the condition flag if the masked counter isn't equal to a half-word
-                            condFlag = (++counter & line[1] & 0xFFFF) != (line[1] >> 16);
-                            continue;
-
-                        case 0xC6: // Write offset
-                            // Write the offset value to a memory word
-                            core->memory.write<uint32_t>(1, line[1], offset);
-                            continue;
+                case 0xD1: // Next loop
+                    // Jump to the loop address until the loop count runs out
+                    if (loopCount) {
+                        loopCount--;
+                        address = loopAddress;
+                        continue;
                     }
-                    goto invalid;
-
-                case 0xD:
-                    switch (line[0] >> 24) {
-                        case 0xD0: // End if
-                            // Clear the condition flag
-                            condFlag = false;
-                            continue;
-
-                        case 0xD1: // Next loop
-                            // Jump to the loop address until the loop count runs out
-                            if (loopCount) {
-                                loopCount--;
-                                address = loopAddress;
-                                continue;
-                            }
-                            condFlag = false;
-                            continue;
-
-                        case 0xD2: // Next loop and flush
-                            // Jump to the loop address and reset registers after looping
-                            if (loopCount) {
-                                loopCount--;
-                                address = loopAddress;
-                                continue;
-                            }
-                            offset = 0;
-                            dataReg = 0;
-                            condFlag = false;
-                            continue;
-
-                        case 0xD3: // Set offset
-                            // Set the offset to a word
-                            offset = line[1];
-                            continue;
-
-                        case 0xD4: // Add data
-                            // Add a word to the data register
-                            dataReg += line[1];
-                            continue;
-
-                        case 0xD5: // Set data
-                            // Set the data register to a word
-                            dataReg = line[1];
-                            continue;
-
-                        case 0xD6: // Write data word
-                            // Write the data register to a memory word and increment the offset
-                            core->memory.write<uint32_t>(1, line[1] + offset, dataReg);
-                            offset += 4;
-                            continue;
-
-                        case 0xD7: // Write data half
-                            // Write the data register to a memory half-word and increment the offset
-                            core->memory.write<uint16_t>(1, line[1] + offset, dataReg);
-                            offset += 2;
-                            continue;
-
-                        case 0xD8: // Write data byte
-                            // Write the data register to a memory byte and increment the offset
-                            core->memory.write<uint8_t>(1, line[1] + offset, dataReg);
-                            offset += 1;
-                            continue;
-
-                        case 0xD9: // Read data word
-                            // Set the data register to a word from memory
-                            dataReg = core->memory.read<uint32_t>(1, line[1] + offset);
-                            continue;
-
-                        case 0xDA: // Read data half
-                            // Set the data register to a half-word from memory
-                            dataReg = core->memory.read<uint16_t>(1, line[1] + offset);
-                            continue;
-
-                        case 0xDB: // Read data byte
-                            // Set the data register to a byte from memory
-                            dataReg = core->memory.read<uint8_t>(1, line[1] + offset);
-                            continue;
-
-                        case 0xDC: // Add offset
-                            // Add a word to the offset
-                            offset += line[1];
-                            continue;
-                    }
-                    goto invalid;
-
-                case 0xE: // Parameter copy
-                    // Copy parameter bytes to memory and jump to the next opcode
-                    for (uint32_t j = 0; j < line[1]; j++) {
-                        uint8_t value = line[(j >> 2) + 2] >> ((j & 0x3) * 8);
-                        core->memory.write<uint8_t>(1, (line[0] & 0xFFFFFFF) + offset + j, value);
-                    }
-                    address += ((line[1] + 0x7) & ~0x7) >> 2;
+                    condFlag = false;
                     continue;
 
-                case 0xF: // Memory copy
-                    // Copy bytes from one memory location to another
-                    for (uint32_t j = 0; j < line[1]; j++) {
-                        uint8_t value = core->memory.read<uint8_t>(1, offset + j);
-                        core->memory.write<uint8_t>(1, (line[0] & 0xFFFFFFF) + j, value);
+                case 0xD2: // Next loop and flush
+                    // Jump to the loop address and reset registers after looping
+                    if (loopCount) {
+                        loopCount--;
+                        address = loopAddress;
+                        continue;
                     }
+                    offset = 0;
+                    dataReg = 0;
+                    condFlag = false;
                     continue;
 
-                default:
-                invalid:
-                    LOG_CRIT("Invalid AR code: %08X %08X\n", line[0], line[1]);
+                case 0xD3: // Set offset
+                    // Set the offset to a word
+                    offset = line[1];
                     continue;
+
+                case 0xD4: // Add data
+                    // Add a word to the data register
+                    dataReg += line[1];
+                    continue;
+
+                case 0xD5: // Set data
+                    // Set the data register to a word
+                    dataReg = line[1];
+                    continue;
+
+                case 0xD6: // Write data word
+                    // Write the data register to a memory word and increment the offset
+                    core->memory.write<uint32_t>(1, line[1] + offset, dataReg);
+                    offset += 4;
+                    continue;
+
+                case 0xD7: // Write data half
+                    // Write the data register to a memory half-word and increment the offset
+                    core->memory.write<uint16_t>(1, line[1] + offset, dataReg);
+                    offset += 2;
+                    continue;
+
+                case 0xD8: // Write data byte
+                    // Write the data register to a memory byte and increment the offset
+                    core->memory.write<uint8_t>(1, line[1] + offset, dataReg);
+                    offset += 1;
+                    continue;
+
+                case 0xD9: // Read data word
+                    // Set the data register to a word from memory
+                    dataReg = core->memory.read<uint32_t>(1, line[1] + offset);
+                    continue;
+
+                case 0xDA: // Read data half
+                    // Set the data register to a half-word from memory
+                    dataReg = core->memory.read<uint16_t>(1, line[1] + offset);
+                    continue;
+
+                case 0xDB: // Read data byte
+                    // Set the data register to a byte from memory
+                    dataReg = core->memory.read<uint8_t>(1, line[1] + offset);
+                    continue;
+
+                case 0xDC: // Add offset
+                    // Add a word to the offset
+                    offset += line[1];
+                    continue;
+                }
+                goto invalid;
+
+            case 0xE: // Parameter copy
+                // Copy parameter bytes to memory and jump to the next opcode
+                for (uint32_t j = 0; j < line[1]; j++) {
+                    uint8_t value = line[(j >> 2) + 2] >> ((j & 0x3) * 8);
+                    core->memory.write<uint8_t>(1, (line[0] & 0xFFFFFFF) + offset + j, value);
+                }
+                address += ((line[1] + 0x7) & ~0x7) >> 2;
+                continue;
+
+            case 0xF: // Memory copy
+                // Copy bytes from one memory location to another
+                for (uint32_t j = 0; j < line[1]; j++) {
+                    uint8_t value = core->memory.read<uint8_t>(1, offset + j);
+                    core->memory.write<uint8_t>(1, (line[0] & 0xFFFFFFF) + j, value);
+                }
+                continue;
+
+            default:
+            invalid:
+                LOG_CRIT("Invalid AR code: %08X %08X\n", line[0], line[1]);
+                continue;
             }
         }
     }

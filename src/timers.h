@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef TIMERS_H
-#define TIMERS_H
+#pragma once
 
 #include <cstdint>
 #include <cstdio>
@@ -26,30 +25,28 @@
 class Core;
 
 class Timers {
-    public:
-        Timers(Core *core, bool arm7): core(core), arm7(arm7) {}
-        void saveState(FILE *file);
-        void loadState(FILE *file);
+public:
+    Timers(Core *core, bool arm7): core(core), arm7(arm7) {}
+    void saveState(FILE *file);
+    void loadState(FILE *file);
 
-        void resetCycles();
-        void overflow(int timer);
+    void resetCycles();
+    void overflow(int timer);
 
-        uint16_t readTmCntH(int timer) { return tmCntH[timer]; }
-        uint16_t readTmCntL(int timer);
+    uint16_t readTmCntH(int timer) { return tmCntH[timer]; }
+    uint16_t readTmCntL(int timer);
 
-        void writeTmCntL(int timer, uint16_t mask, uint16_t value);
-        void writeTmCntH(int timer, uint16_t mask, uint16_t value);
+    void writeTmCntL(int timer, uint16_t mask, uint16_t value);
+    void writeTmCntH(int timer, uint16_t mask, uint16_t value);
 
-    private:
-        Core *core;
-        bool arm7;
+private:
+    Core *core;
+    bool arm7;
 
-        uint16_t timers[4] = {};
-        uint8_t shifts[4] = {};
-        uint32_t endCycles[4] = {};
+    uint16_t timers[4] = {};
+    uint8_t shifts[4] = {};
+    uint32_t endCycles[4] = {};
 
-        uint16_t tmCntL[4] = {};
-        uint16_t tmCntH[4] = {};
+    uint16_t tmCntL[4] = {};
+    uint16_t tmCntH[4] = {};
 };
-
-#endif // TIMERS_H

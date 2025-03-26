@@ -47,7 +47,6 @@ NdsIcon::NdsIcon(std::string path, int fd) {
     uint8_t palette[32];
     fseek(rom, U8TO32(offset, 0) + 0x220, SEEK_SET);
     fread(palette, sizeof(uint8_t), 32, rom);
-
     fclose(rom);
 
     // Get each pixel's 5-bit palette color and convert it to 8-bit

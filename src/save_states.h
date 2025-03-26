@@ -17,8 +17,7 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef SAVE_STATES_H
-#define SAVE_STATES_H
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -33,24 +32,22 @@ enum StateResult {
 };
 
 class SaveStates {
-    public:
-        SaveStates(Core *core): core(core) {}
-        void setPath(std::string path, bool gba);
-        void setFd(int fd, bool gba);
+public:
+    SaveStates(Core *core): core(core) {}
+    void setPath(std::string path, bool gba);
+    void setFd(int fd, bool gba);
 
-        StateResult checkState();
-        bool saveState();
-        bool loadState();
+    StateResult checkState();
+    bool saveState();
+    bool loadState();
 
-    private:
-        Core *core;
-        std::string ndsPath, gbaPath;
-        int ndsFd = -1, gbaFd = -1;
+private:
+    Core *core;
+    std::string ndsPath, gbaPath;
+    int ndsFd = -1, gbaFd = -1;
 
-        static const char *stateTag;
-        static const uint32_t stateVersion;
+    static const char *stateTag;
+    static const uint32_t stateVersion;
 
-        FILE *openFile(const char *mode);
+    FILE *openFile(const char *mode);
 };
-
-#endif // SAVE_STATES_H

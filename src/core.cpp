@@ -22,7 +22,6 @@
 #include <thread>
 
 #include "core.h"
-#include "settings.h"
 
 Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gbaRomFd,
     int ndsSaveFd, int gbaSaveFd, int ndsStateFd, int gbaStateFd, int ndsCheatFd):

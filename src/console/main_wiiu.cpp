@@ -272,22 +272,22 @@ int main() {
 
     // Get the current TV render dimensions
     switch (GX2GetSystemTVScanMode()) {
-        case GX2_TV_SCAN_MODE_480I:
-        case GX2_TV_SCAN_MODE_480P:
-            tvWidth = 854;
-            tvHeight = 480;
-            break;
+    case GX2_TV_SCAN_MODE_480I:
+    case GX2_TV_SCAN_MODE_480P:
+        tvWidth = 854;
+        tvHeight = 480;
+        break;
 
-        case GX2_TV_SCAN_MODE_1080I:
-        case GX2_TV_SCAN_MODE_1080P:
-            tvWidth = 1920;
-            tvHeight = 1080;
-            break;
+    case GX2_TV_SCAN_MODE_1080I:
+    case GX2_TV_SCAN_MODE_1080P:
+        tvWidth = 1920;
+        tvHeight = 1080;
+        break;
 
-        default:
-            tvWidth = 1280;
-            tvHeight = 720;
-            break;
+    default:
+        tvWidth = 1280;
+        tvHeight = 720;
+        break;
     }
 
     // Initialize the shader
@@ -368,13 +368,13 @@ int main() {
     // Respond to system messages appropriately to allow exiting
     while (true) {
         switch (ProcUIProcessMessages(true)) {
-            case PROCUI_STATUS_EXITING:
-                ProcUIShutdown();
-                return 0;
+        case PROCUI_STATUS_EXITING:
+            ProcUIShutdown();
+            return 0;
 
-            case PROCUI_STATUS_RELEASE_FOREGROUND:
-                ProcUIDrawDoneRelease();
-                break;
+        case PROCUI_STATUS_RELEASE_FOREGROUND:
+            ProcUIDrawDoneRelease();
+            break;
         }
     }
 }

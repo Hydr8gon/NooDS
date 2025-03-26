@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "ipc.h"
 #include "core.h"
 
 void Ipc::saveState(FILE *file) {

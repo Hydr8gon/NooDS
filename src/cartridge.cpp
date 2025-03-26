@@ -18,10 +18,7 @@
 */
 
 #include <cstring>
-
-#include "cartridge.h"
 #include "core.h"
-#include "settings.h"
 
 Cartridge::~Cartridge() {
     // Update the save file before exiting
@@ -484,217 +481,201 @@ void CartridgeNds::writeAuxSpiData(bool cpu, uint8_t value) {
         // Incredibly naive save type detection, based on commands that might be sent
         if (saveSize == -1) {
             switch (auxCommand[cpu]) {
-                case 0x0B: // EEPROM 0.5KB: Read from upper memory
-                    LOG_INFO("Detected EEPROM 0.5KB save type\n");
-                    resizeSave(0x200, false);
-                    break;
+            case 0x0B: // EEPROM 0.5KB: Read from upper memory
+                LOG_INFO("Detected EEPROM 0.5KB save type\n");
+                resizeSave(0x200, false);
+                break;
 
-                case 0x02: // EEPROM 64KB: Write to memory
-                    LOG_INFO("Detected EEPROM 64KB save type\n");
-                    resizeSave(0x10000, false);
-                    break;
+            case 0x02: // EEPROM 64KB: Write to memory
+                LOG_INFO("Detected EEPROM 64KB save type\n");
+                resizeSave(0x10000, false);
+                break;
 
-                case 0x0A: // FLASH 512KB: Page write
-                    LOG_INFO("Detected FLASH 512KB save type\n");
-                    resizeSave(0x80000, false);
-                    break;
+            case 0x0A: // FLASH 512KB: Page write
+                LOG_INFO("Detected FLASH 512KB save type\n");
+                resizeSave(0x80000, false);
+                break;
 
-                default:
-                    // Deselect chip
-                    if (!(auxSpiCnt[cpu] & BIT(6)))
-                        auxWriteCount[cpu] = 0;
-                    return;
+            default:
+                // Deselect chip
+                if (!(auxSpiCnt[cpu] & BIT(6)))
+                    auxWriteCount[cpu] = 0;
+                return;
             }
         }
 
         switch (saveSize) {
-            case 0x200: { // EEPROM 0.5KB
-                switch (auxCommand[cpu]) {
-                    case 0x03: { // Read from lower memory
-                        if (auxWriteCount[cpu] < 2) {
-                            // On the second write, set the 1 byte address to read from
-                            auxAddress[cpu] = value;
-                            auxSpiData[cpu] = 0;
-                        }
-                        else {
-                            // On writes 3+, read data from the save and send it back
-                            auxSpiData[cpu] = (auxAddress[cpu] < 0x200) ? save[auxAddress[cpu]] : 0;
-                            auxAddress[cpu]++;
-                        }
-                        break;
-                    }
-
-                    case 0x0B: { // Read from upper memory
-                        if (auxWriteCount[cpu] < 2) {
-                            // On the second write, set the 1 byte address to read from
-                            auxAddress[cpu] = 0x100 + value;
-                            auxSpiData[cpu] = 0;
-                        }
-                        else {
-                            // On writes 3+, read data from the save and send it back
-                            auxSpiData[cpu] = (auxAddress[cpu] < 0x200) ? save[auxAddress[cpu]] : 0;
-                            auxAddress[cpu]++;
-                        }
-                        break;
-                    }
-
-                    case 0x02: { // Write to lower memory
-                        if (auxWriteCount[cpu] < 2) {
-                            // On the second write, set the 1 byte address to write to
-                            auxAddress[cpu] = value;
-                            auxSpiData[cpu] = 0;
-                        }
-                        else {
-                            // On writes 3+, write data to the save
-                            if (auxAddress[cpu] < 0x200) {
-                                mutex.lock();
-                                save[auxAddress[cpu]] = value;
-                                saveDirty = true;
-                                mutex.unlock();
-                            }
-
-                            auxAddress[cpu]++;
-                            auxSpiData[cpu] = 0;
-                        }
-                        break;
-                    }
-
-                    case 0x0A: { // Write to upper memory
-                        if (auxWriteCount[cpu] < 2) {
-                            // On the second write, set the 1 byte address to write to
-                            auxAddress[cpu] = 0x100 + value;
-                            auxSpiData[cpu] = 0;
-                        }
-                        else {
-                            // On writes 3+, write data to the save
-                            if (auxAddress[cpu] < 0x200) {
-                                mutex.lock();
-                                save[auxAddress[cpu]] = value;
-                                saveDirty = true;
-                                mutex.unlock();
-                            }
-
-                            auxAddress[cpu]++;
-                            auxSpiData[cpu] = 0;
-                        }
-                        break;
-                    }
-
-                    default: {
-                        LOG_CRIT("Write to AUX SPI with unknown EEPROM 0.5KB command: 0x%X\n", auxCommand[cpu]);
-                        auxSpiData[cpu] = 0;
-                        break;
-                    }
+        case 0x200: // EEPROM 0.5KB
+            switch (auxCommand[cpu]) {
+            case 0x03: // Read from lower memory
+                if (auxWriteCount[cpu] < 2) {
+                    // On the second write, set the 1 byte address to read from
+                    auxAddress[cpu] = value;
+                    auxSpiData[cpu] = 0;
+                }
+                else {
+                    // On writes 3+, read data from the save and send it back
+                    auxSpiData[cpu] = (auxAddress[cpu] < 0x200) ? save[auxAddress[cpu]] : 0;
+                    auxAddress[cpu]++;
                 }
                 break;
-            }
 
-            case 0x2000: case 0x8000: case 0x10000: case 0x20000: { // EEPROM 8KB, 64KB, 128KB; FRAM 32KB
-                switch (auxCommand[cpu]) {
-                    case 0x03: { // Read from memory
-                        if (auxWriteCount[cpu] < ((saveSize == 0x20000) ? 4 : 3)) {
-                            // On writes 2-3, set the 2 byte address to read from (not EEPROM 128KB)
-                            // EEPROM 128KB uses a 3 byte address, so it's set on writes 2-4
-                            auxAddress[cpu] |= value << ((((saveSize == 0x20000) ? 3 : 2) - auxWriteCount[cpu]) * 8);
-                            auxSpiData[cpu] = 0;
-                        }
-                        else {
-                            // On writes 4+, read data from the save and send it back
-                            auxSpiData[cpu] = (auxAddress[cpu] < saveSize) ? save[auxAddress[cpu]] : 0;
-                            auxAddress[cpu]++;
-                        }
-                        break;
-                    }
-
-                    case 0x02: { // Write to memory
-                        if (auxWriteCount[cpu] < ((saveSize == 0x20000) ? 4 : 3)) {
-                            // On writes 2-3, set the 2 byte address to write to (not EEPROM 128KB)
-                            // EEPROM 128KB uses a 3 byte address, so it's set on writes 2-4
-                            auxAddress[cpu] |= value << ((((saveSize == 0x20000) ? 3 : 2) - auxWriteCount[cpu]) * 8);
-                            auxSpiData[cpu] = 0;
-                        }
-                        else {
-                            // On writes 4+, write data to the save
-                            if (auxAddress[cpu] < saveSize) {
-                                mutex.lock();
-                                save[auxAddress[cpu]] = value;
-                                saveDirty = true;
-                                mutex.unlock();
-                            }
-
-                            auxAddress[cpu]++;
-                            auxSpiData[cpu] = 0;
-                        }
-                        break;
-                    }
-
-                    default: {
-                        LOG_CRIT("Write to AUX SPI with unknown EEPROM/FRAM command: 0x%X\n", auxCommand[cpu]);
-                        auxSpiData[cpu] = 0;
-                        break;
-                    }
+            case 0x0B: // Read from upper memory
+                if (auxWriteCount[cpu] < 2) {
+                    // On the second write, set the 1 byte address to read from
+                    auxAddress[cpu] = 0x100 + value;
+                    auxSpiData[cpu] = 0;
+                }
+                else {
+                    // On writes 3+, read data from the save and send it back
+                    auxSpiData[cpu] = (auxAddress[cpu] < 0x200) ? save[auxAddress[cpu]] : 0;
+                    auxAddress[cpu]++;
                 }
                 break;
-            }
 
-            case 0x40000: case 0x80000: case 0x100000: case 0x800000: { // FLASH 256KB, 512KB, 1024KB, 8192KB
-                switch (auxCommand[cpu]) {
-                    case 0x03: { // Read data bytes
-                        if (auxWriteCount[cpu] < 4) {
-                            // On writes 2-4, set the 3 byte address to read from
-                            auxAddress[cpu] |= value << ((3 - auxWriteCount[cpu]) * 8);
-                            auxSpiData[cpu] = 0;
-                        }
-                        else {
-                            // On writes 5+, read data from the save and send it back
-                            auxSpiData[cpu] = (auxAddress[cpu] < saveSize) ? save[auxAddress[cpu]] : 0;
-                            auxAddress[cpu]++;
-                        }
-                        break;
+            case 0x02: // Write to lower memory
+                if (auxWriteCount[cpu] < 2) {
+                    // On the second write, set the 1 byte address to write to
+                    auxAddress[cpu] = value;
+                    auxSpiData[cpu] = 0;
+                }
+                else {
+                    // On writes 3+, write data to the save
+                    if (auxAddress[cpu] < 0x200) {
+                        mutex.lock();
+                        save[auxAddress[cpu]] = value;
+                        saveDirty = true;
+                        mutex.unlock();
                     }
 
-                    case 0x0A: { // Page write
-                        if (auxWriteCount[cpu] < 4) {
-                            // On writes 2-4, set the 3 byte address to write to
-                            auxAddress[cpu] |= value << ((3 - auxWriteCount[cpu]) * 8);
-                            auxSpiData[cpu] = 0;
-                        }
-                        else {
-                            // On writes 5+, write data to the save
-                            if (auxAddress[cpu] < saveSize) {
-                                mutex.lock();
-                                save[auxAddress[cpu]] = value;
-                                saveDirty = true;
-                                mutex.unlock();
-                            }
-
-                            auxAddress[cpu]++;
-                            auxSpiData[cpu] = 0;
-                        }
-                        break;
-                    }
-
-                    case 0x08: { // IR-related
-                        // If a gamecode starts with 'I', the game has an infrared port in its cartridge
-                        // This shares the same SPI as FLASH memory
-                        // Some games check this command as an anti-piracy measure
-                        auxSpiData[cpu] = ((romCode & 0xFF) == 'I') ? 0xAA : 0;
-                        break;
-                    }
-
-                    default: {
-                        LOG_CRIT("Write to AUX SPI with unknown FLASH command: 0x%X\n", auxCommand[cpu]);
-                        auxSpiData[cpu] = 0;
-                        break;
-                    }
+                    auxAddress[cpu]++;
+                    auxSpiData[cpu] = 0;
                 }
                 break;
-            }
 
-            default: {
-                LOG_CRIT("Write to AUX SPI with unknown save size: 0x%X\n", saveSize);
+            case 0x0A: // Write to upper memory
+                if (auxWriteCount[cpu] < 2) {
+                    // On the second write, set the 1 byte address to write to
+                    auxAddress[cpu] = 0x100 + value;
+                    auxSpiData[cpu] = 0;
+                }
+                else {
+                    // On writes 3+, write data to the save
+                    if (auxAddress[cpu] < 0x200) {
+                        mutex.lock();
+                        save[auxAddress[cpu]] = value;
+                        saveDirty = true;
+                        mutex.unlock();
+                    }
+
+                    auxAddress[cpu]++;
+                    auxSpiData[cpu] = 0;
+                }
+                break;
+
+            default:
+                LOG_CRIT("Write to AUX SPI with unknown EEPROM 0.5KB command: 0x%X\n", auxCommand[cpu]);
+                auxSpiData[cpu] = 0;
                 break;
             }
+            break;
+
+        case 0x2000: case 0x8000: case 0x10000: case 0x20000: // EEPROM 8KB, 64KB, 128KB; FRAM 32KB
+            switch (auxCommand[cpu]) {
+            case 0x03: // Read from memory
+                if (auxWriteCount[cpu] < ((saveSize == 0x20000) ? 4 : 3)) {
+                    // On writes 2-3, set the 2 byte address to read from (not EEPROM 128KB)
+                    // EEPROM 128KB uses a 3 byte address, so it's set on writes 2-4
+                    auxAddress[cpu] |= value << ((((saveSize == 0x20000) ? 3 : 2) - auxWriteCount[cpu]) * 8);
+                    auxSpiData[cpu] = 0;
+                }
+                else {
+                    // On writes 4+, read data from the save and send it back
+                    auxSpiData[cpu] = (auxAddress[cpu] < saveSize) ? save[auxAddress[cpu]] : 0;
+                    auxAddress[cpu]++;
+                }
+                break;
+
+            case 0x02: // Write to memory
+                if (auxWriteCount[cpu] < ((saveSize == 0x20000) ? 4 : 3)) {
+                    // On writes 2-3, set the 2 byte address to write to (not EEPROM 128KB)
+                    // EEPROM 128KB uses a 3 byte address, so it's set on writes 2-4
+                    auxAddress[cpu] |= value << ((((saveSize == 0x20000) ? 3 : 2) - auxWriteCount[cpu]) * 8);
+                    auxSpiData[cpu] = 0;
+                }
+                else {
+                    // On writes 4+, write data to the save
+                    if (auxAddress[cpu] < saveSize) {
+                        mutex.lock();
+                        save[auxAddress[cpu]] = value;
+                        saveDirty = true;
+                        mutex.unlock();
+                    }
+
+                    auxAddress[cpu]++;
+                    auxSpiData[cpu] = 0;
+                }
+                break;
+
+            default:
+                LOG_CRIT("Write to AUX SPI with unknown EEPROM/FRAM command: 0x%X\n", auxCommand[cpu]);
+                auxSpiData[cpu] = 0;
+                break;
+            }
+            break;
+
+        case 0x40000: case 0x80000: case 0x100000: case 0x800000: // FLASH 256KB, 512KB, 1024KB, 8192KB
+            switch (auxCommand[cpu]) {
+            case 0x03: // Read data bytes
+                if (auxWriteCount[cpu] < 4) {
+                    // On writes 2-4, set the 3 byte address to read from
+                    auxAddress[cpu] |= value << ((3 - auxWriteCount[cpu]) * 8);
+                    auxSpiData[cpu] = 0;
+                }
+                else {
+                    // On writes 5+, read data from the save and send it back
+                    auxSpiData[cpu] = (auxAddress[cpu] < saveSize) ? save[auxAddress[cpu]] : 0;
+                    auxAddress[cpu]++;
+                }
+                break;
+
+            case 0x0A: // Page write
+                if (auxWriteCount[cpu] < 4) {
+                    // On writes 2-4, set the 3 byte address to write to
+                    auxAddress[cpu] |= value << ((3 - auxWriteCount[cpu]) * 8);
+                    auxSpiData[cpu] = 0;
+                }
+                else {
+                    // On writes 5+, write data to the save
+                    if (auxAddress[cpu] < saveSize) {
+                        mutex.lock();
+                        save[auxAddress[cpu]] = value;
+                        saveDirty = true;
+                        mutex.unlock();
+                    }
+
+                    auxAddress[cpu]++;
+                    auxSpiData[cpu] = 0;
+                }
+                break;
+
+            case 0x08: // IR-related
+                // If a gamecode starts with 'I', the game has an infrared port in its cartridge
+                // This shares the same SPI as FLASH memory
+                // Some games check this command as an anti-piracy measure
+                auxSpiData[cpu] = ((romCode & 0xFF) == 'I') ? 0xAA : 0;
+                break;
+
+            default:
+                LOG_CRIT("Write to AUX SPI with unknown FLASH command: 0x%X\n", auxCommand[cpu]);
+                auxSpiData[cpu] = 0;
+                break;
+            }
+            break;
+
+        default:
+            LOG_CRIT("Write to AUX SPI with unknown save size: 0x%X\n", saveSize);
+            break;
         }
     }
 
@@ -844,49 +825,45 @@ uint32_t CartridgeNds::readRomDataIn(bool cpu) {
 
     // Return a value from the cart depending on the current command
     switch (cmdMode) {
-        case CMD_HEADER: {
-            // Read the ROM header, repeated every 0x1000 bytes
-            return U8TO32(rom, (readCount[cpu] - 4) & 0xFFF);
-        }
+    case CMD_HEADER:
+        // Read the ROM header, repeated every 0x1000 bytes
+        return U8TO32(rom, (readCount[cpu] - 4) & 0xFFF);
 
-        case CMD_CHIP: {
-            // Read the chip ID, repeated every 4 bytes
-            // ROM dumps don't provide a chip ID, so use a fake one
-            return 0x00001FC2;
-        }
+    case CMD_CHIP:
+        // Read the chip ID, repeated every 4 bytes
+        // ROM dumps don't provide a chip ID, so use a fake one
+        return 0x00001FC2;
 
-        case CMD_SECURE: {
-            // Encrypt the first 2KB of the secure area
-            if (!romEncrypted && romAddrReal[cpu] == 0x4000 && readCount[cpu] <= 0x800) {
-                // Supply the 'encryObj' string for the first 8 bytes (overwritten during decryption)
-                uint64_t data = (readCount[cpu] <= 8) ? 0x6A624F7972636E65 :
-                    U8TO64(rom, (romAddrVirt[cpu] + readCount[cpu] - 4) & ~7);
+    case CMD_SECURE:
+        // Encrypt the first 2KB of the secure area
+        if (!romEncrypted && romAddrReal[cpu] == 0x4000 && readCount[cpu] <= 0x800) {
+            // Supply the 'encryObj' string for the first 8 bytes (overwritten during decryption)
+            uint64_t data = (readCount[cpu] <= 8) ? 0x6A624F7972636E65 :
+                U8TO64(rom, (romAddrVirt[cpu] + readCount[cpu] - 4) & ~7);
 
-                // Encrypt the data
-                initKeycode(3);
+            // Encrypt the data
+            initKeycode(3);
+            data = encrypt64(data);
+
+            // Double-encrypt the 'encryObj' string
+            if (readCount[cpu] <= 8) {
+                initKeycode(2);
                 data = encrypt64(data);
-
-                // Double-encrypt the 'encryObj' string
-                if (readCount[cpu] <= 8) {
-                    initKeycode(2);
-                    data = encrypt64(data);
-                }
-
-                return data >> (((romAddrReal[cpu] + readCount[cpu]) & 4) ? 0 : 32);
             }
 
-            // Read data from the selected secure area block
-            return U8TO32(rom, romAddrVirt[cpu] + readCount[cpu] - 4);
+            return data >> (((romAddrReal[cpu] + readCount[cpu]) & 4) ? 0 : 32);
         }
 
-        case CMD_DATA: {
-            // Read ROM data from the given address
-            // This command can't read the first 32KB of a ROM, so it redirects the address
-            // Some games verify that the first 32KB are unreadable as an anti-piracy measure
-            uint32_t address = romAddrVirt[cpu] + readCount[cpu] - 4;
-            if (romAddrReal[cpu] + readCount[cpu] <= 0x8000) address = 0x8000 + (address & 0x1FF);
-            if (address < romSize) return U8TO32(rom, address);
-        }
+        // Read data from the selected secure area block
+        return U8TO32(rom, romAddrVirt[cpu] + readCount[cpu] - 4);
+
+    case CMD_DATA:
+        // Read ROM data from the given address
+        // This command can't read the first 32KB of a ROM, so it redirects the address
+        // Some games verify that the first 32KB are unreadable as an anti-piracy measure
+        uint32_t address = romAddrVirt[cpu] + readCount[cpu] - 4;
+        if (romAddrReal[cpu] + readCount[cpu] <= 0x8000) address = 0x8000 + (address & 0x1FF);
+        if (address < romSize) return U8TO32(rom, address);
     }
 
     // Default to endless 0xFFs if there's no actual data to read
@@ -989,24 +966,24 @@ bool CartridgeGba::loadRom() {
 
             // Create a new GBA save of the detected type
             switch (i) {
-                case 0: // EEPROM
-                    // EEPROM can be either 0.5KB or 8KB, so it must be guessed based on how the game uses it
-                    return true;
+            case 0: // EEPROM
+                // EEPROM can be either 0.5KB or 8KB, so it must be guessed based on how the game uses it
+                return true;
 
-                case 1: // SRAM 32KB
-                    LOG_INFO("Detected SRAM 32KB save type\n");
-                    resizeSave(0x8000, false);
-                    return true;
+            case 1: // SRAM 32KB
+                LOG_INFO("Detected SRAM 32KB save type\n");
+                resizeSave(0x8000, false);
+                return true;
 
-                case 2: case 3: // FLASH 64KB
-                    LOG_INFO("Detected FLASH 64KB save type\n");
-                    resizeSave(0x10000, false);
-                    return true;
+            case 2: case 3: // FLASH 64KB
+                LOG_INFO("Detected FLASH 64KB save type\n");
+                resizeSave(0x10000, false);
+                return true;
 
-                case 4: // FLASH 128KB
-                    LOG_INFO("Detected FLASH 128KB save type\n");
-                    resizeSave(0x20000, false);
-                    return true;
+            case 4: // FLASH 128KB
+                LOG_INFO("Detected FLASH 128KB save type\n");
+                resizeSave(0x20000, false);
+                return true;
             }
         }
     }

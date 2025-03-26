@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "hle_arm7.h"
 #include "core.h"
 
 void HleArm7::init() {
@@ -30,11 +29,13 @@ void HleArm7::init() {
 void HleArm7::saveState(FILE *file) {
     // Write state data to the file
     fwrite(&inited, 1, sizeof(inited), file);
+    fwrite(&autoTouch, 1, sizeof(autoTouch), file);
 }
 
 void HleArm7::loadState(FILE *file) {
     // Read state data from the file
     fread(&inited, 1, sizeof(inited), file);
+    fread(&autoTouch, 1, sizeof(autoTouch), file);
 }
 
 void HleArm7::ipcSync(uint8_t value) {
@@ -57,21 +58,21 @@ void HleArm7::ipcFifo(uint32_t value) {
     // Handle FIFO commands based on the subsystem tag
     if (!inited) return;
     switch (value & 0x1F) { // Subsystem
-        case 0x6: // Touch screen
-            // Poll touch input manually or enable auto-polling
-            if ((value & 0xC0000000) == 0xC0000000) {
-                pollTouch(value | BIT(21));
-            }
-            else if ((value & 0xC0000000) == 0x40000000) {
-                autoTouch = (value & BIT(22));
-                pollTouch(0xC0204006);
-            }
-            return;
+    case 0x6: // Touch screen
+        // Poll touch input manually or enable auto-polling
+        if ((value & 0xC0000000) == 0xC0000000) {
+            pollTouch(value | BIT(21));
+        }
+        else if ((value & 0xC0000000) == 0x40000000) {
+            autoTouch = (value & BIT(22));
+            pollTouch(0xC0204006);
+        }
+        return;
 
-        default:
-            // Stub unknown FIFO commands by replying with the same value
-            LOG_CRIT("Unknown HLE IPC FIFO command: 0x%X\n", value);
-            return core->ipc.writeIpcFifoSend(1, -1, value);
+    default:
+        // Stub unknown FIFO commands by replying with the same value
+        LOG_CRIT("Unknown HLE IPC FIFO command: 0x%X\n", value);
+        return core->ipc.writeIpcFifoSend(1, -1, value);
     }
 }
 

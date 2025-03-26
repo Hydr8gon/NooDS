@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "cp15.h"
 #include "core.h"
 
 void Cp15::saveState(FILE *file) {
@@ -52,9 +51,9 @@ uint32_t Cp15::read(uint8_t cn, uint8_t cm, uint8_t cp) {
         case 0x090101: return itcmReg; // Instruction TCM size
         case 0x0D0001: case 0x0D0101: return procId; // Trace process ID
 
-        default:
-            LOG_WARN("Unknown CP15 register read: C%d,C%d,%d\n", cn, cm, cp);
-            return 0;
+    default:
+        LOG_WARN("Unknown CP15 register read: C%d,C%d,%d\n", cn, cm, cp);
+        return 0;
     }
 }
 
@@ -62,55 +61,55 @@ void Cp15::write(uint8_t cn, uint8_t cm, uint8_t cp, uint32_t value) {
     // Write a value to a CP15 register
     uint32_t oldAddr, oldSize;
     switch ((cn << 16) | (cm << 8) | (cp << 0)) {
-        case 0x010000: // Control
-            // Set writable control bits and update their state values
-            ctrlReg = (ctrlReg & ~0xFF085) | (value & 0xFF085);
-            exceptionAddr = (ctrlReg & BIT(13)) ? 0xFFFF0000 : 0x00000000;
-            dtcmCanRead = (ctrlReg & BIT(16)) && !(ctrlReg & BIT(17));
-            dtcmCanWrite = (ctrlReg & BIT(16));
-            itcmCanRead = (ctrlReg & BIT(18)) && !(ctrlReg & BIT(19));
-            itcmCanWrite = (ctrlReg & BIT(18));
+    case 0x010000: // Control
+        // Set writable control bits and update their state values
+        ctrlReg = (ctrlReg & ~0xFF085) | (value & 0xFF085);
+        exceptionAddr = (ctrlReg & BIT(13)) ? 0xFFFF0000 : 0x00000000;
+        dtcmCanRead = (ctrlReg & BIT(16)) && !(ctrlReg & BIT(17));
+        dtcmCanWrite = (ctrlReg & BIT(16));
+        itcmCanRead = (ctrlReg & BIT(18)) && !(ctrlReg & BIT(19));
+        itcmCanWrite = (ctrlReg & BIT(18));
 
-            // Update the memory map at the current TCM locations
-            core->memory.updateMap9(dtcmAddr, dtcmAddr + dtcmSize, true);
-            core->memory.updateMap9(0x00000000, itcmSize, true);
-            return;
+        // Update the memory map at the current TCM locations
+        core->memory.updateMap9(dtcmAddr, dtcmAddr + dtcmSize, true);
+        core->memory.updateMap9(0x00000000, itcmSize, true);
+        return;
 
-        case 0x090100: // Data TCM base/size
-            // Set the DTCM register and update its address and size
-            dtcmReg = value;
-            oldAddr = dtcmAddr;
-            oldSize = dtcmSize;
-            dtcmAddr = dtcmReg & 0xFFFFF000;
-            dtcmSize = std::max(0x1000, 0x200 << ((dtcmReg >> 1) & 0x1F)); // Min 4KB
+    case 0x090100: // Data TCM base/size
+        // Set the DTCM register and update its address and size
+        dtcmReg = value;
+        oldAddr = dtcmAddr;
+        oldSize = dtcmSize;
+        dtcmAddr = dtcmReg & 0xFFFFF000;
+        dtcmSize = std::max(0x1000, 0x200 << ((dtcmReg >> 1) & 0x1F)); // Min 4KB
 
-            // Update the memory map at the old and new DTCM areas
-            core->memory.updateMap9(oldAddr, oldAddr + oldSize, true);
-            core->memory.updateMap9(dtcmAddr, dtcmAddr + dtcmSize, true);
-            return;
+        // Update the memory map at the old and new DTCM areas
+        core->memory.updateMap9(oldAddr, oldAddr + oldSize, true);
+        core->memory.updateMap9(dtcmAddr, dtcmAddr + dtcmSize, true);
+        return;
 
-        case 0x070004: case 0x070802: // Wait for interrupt
-            // Halt the CPU
-            core->interpreter[0].halt(0);
-            return;
+    case 0x070004: case 0x070802: // Wait for interrupt
+        // Halt the CPU
+        core->interpreter[0].halt(0);
+        return;
 
-        case 0x090101: // Instruction TCM size
-            // Set the ITCM register and update its size
-            itcmReg = value;
-            oldSize = itcmSize;
-            itcmSize = std::max(0x1000, 0x200 << ((itcmReg >> 1) & 0x1F)); // Min 4KB
+    case 0x090101: // Instruction TCM size
+        // Set the ITCM register and update its size
+        itcmReg = value;
+        oldSize = itcmSize;
+        itcmSize = std::max(0x1000, 0x200 << ((itcmReg >> 1) & 0x1F)); // Min 4KB
 
-            // Update the memory map at the old and new ITCM areas
-            core->memory.updateMap9(0x00000000, std::max(oldSize, itcmSize), true);
-            return;
+        // Update the memory map at the old and new ITCM areas
+        core->memory.updateMap9(0x00000000, std::max(oldSize, itcmSize), true);
+        return;
 
-        case 0x0D0001: case 0x0D0101: // Trace process ID
-            // Set the trace process ID register
-            procId = value;
-            return;
+    case 0x0D0001: case 0x0D0101: // Trace process ID
+        // Set the trace process ID register
+        procId = value;
+        return;
 
-        default:
-            LOG_WARN("Unknown CP15 register write: C%d,C%d,%d\n", cn, cm, cp);
-            return;
+    default:
+        LOG_WARN("Unknown CP15 register write: C%d,C%d,%d\n", cn, cm, cp);
+        return;
     }
 }

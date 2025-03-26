@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "interpreter.h"
 #include "core.h"
 
 int Interpreter::bx(uint32_t opcode) { // BX Rn

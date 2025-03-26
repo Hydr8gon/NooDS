@@ -17,7 +17,6 @@
     along with NooDS. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "timers.h"
 #include "core.h"
 
 void Timers::saveState(FILE *file) {

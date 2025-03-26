@@ -35,17 +35,17 @@ public class NooButton extends Button {
     private int lastState = 0;
 
     public static int[] resAbxy = {
-        R.drawable.abxy,          R.drawable.abxy_pressed1, R.drawable.abxy_pressed5, R.drawable.abxy,
+        R.drawable.abxy, R.drawable.abxy_pressed1, R.drawable.abxy_pressed5, R.drawable.abxy,
         R.drawable.abxy_pressed7, R.drawable.abxy_pressed8, R.drawable.abxy_pressed6, R.drawable.abxy,
         R.drawable.abxy_pressed3, R.drawable.abxy_pressed2, R.drawable.abxy_pressed4, R.drawable.abxy,
-        R.drawable.abxy,          R.drawable.abxy,          R.drawable.abxy,          R.drawable.abxy
+        R.drawable.abxy, R.drawable.abxy, R.drawable.abxy, R.drawable.abxy
     };
 
     public static int[] resDpad = {
-        R.drawable.dpad,          R.drawable.dpad_pressed1, R.drawable.dpad_pressed5, R.drawable.dpad,
+        R.drawable.dpad, R.drawable.dpad_pressed1, R.drawable.dpad_pressed5, R.drawable.dpad,
         R.drawable.dpad_pressed7, R.drawable.dpad_pressed8, R.drawable.dpad_pressed6, R.drawable.dpad,
         R.drawable.dpad_pressed3, R.drawable.dpad_pressed2, R.drawable.dpad_pressed4, R.drawable.dpad,
-        R.drawable.dpad,          R.drawable.dpad,          R.drawable.dpad,          R.drawable.dpad
+        R.drawable.dpad, R.drawable.dpad, R.drawable.dpad, R.drawable.dpad
     };
 
     public NooButton(Context context, int[] resIds, int[] btnIds, int x, int y, int width, int height) {
@@ -67,48 +67,48 @@ public class NooButton extends Button {
                 @Override
                 public boolean onTouch(View view, MotionEvent event) {
                     switch (event.getAction()) {
-                        case MotionEvent.ACTION_DOWN:
-                        case MotionEvent.ACTION_MOVE:
-                            // Press the right key if in range, otherwise release
-                            if (event.getX() > view.getWidth() * 2 / 3)
-                                pressDKey(0);
-                            else
-                                releaseKey(btnIds[0]);
+                    case MotionEvent.ACTION_DOWN:
+                    case MotionEvent.ACTION_MOVE:
+                        // Press the right key if in range, otherwise release
+                        if (event.getX() > view.getWidth() * 2 / 3)
+                            pressDKey(0);
+                        else
+                            releaseKey(btnIds[0]);
 
-                            // Press the left key if in range, otherwise release
-                            if (event.getX() < view.getWidth() * 1 / 3)
-                                pressDKey(1);
-                            else
-                                releaseKey(btnIds[1]);
+                        // Press the left key if in range, otherwise release
+                        if (event.getX() < view.getWidth() * 1 / 3)
+                            pressDKey(1);
+                        else
+                            releaseKey(btnIds[1]);
 
-                            // Press the up key if in range, otherwise release
-                            if (event.getY() < view.getHeight() * 1 / 3)
-                                pressDKey(2);
-                            else
-                                releaseKey(btnIds[2]);
+                        // Press the up key if in range, otherwise release
+                        if (event.getY() < view.getHeight() * 1 / 3)
+                            pressDKey(2);
+                        else
+                            releaseKey(btnIds[2]);
 
-                            // Press the down key if in range, otherwise release
-                            if (event.getY() > view.getHeight() * 2 / 3)
-                                pressDKey(3);
-                            else
-                                releaseKey(btnIds[3]);
+                        // Press the down key if in range, otherwise release
+                        if (event.getY() > view.getHeight() * 2 / 3)
+                            pressDKey(3);
+                        else
+                            releaseKey(btnIds[3]);
 
-                            // Update the image and vibrate
-                            if (state != lastState)
-                                setBackgroundResource(resIds[state]);
-                            if ((state & ~lastState) != 0)
-                                vibrator.vibrate(SettingsMenu.getVibrateStrength() * 4);
-                            lastState = state;
-                            state = 0;
-                            break;
+                        // Update the image and vibrate
+                        if (state != lastState)
+                            setBackgroundResource(resIds[state]);
+                        if ((state & ~lastState) != 0)
+                            vibrator.vibrate(SettingsMenu.getVibrateStrength() * 4);
+                        lastState = state;
+                        state = 0;
+                        break;
 
-                        case MotionEvent.ACTION_UP:
-                            // Release all directions and update the image
-                            for (int i = 0; i < 4; i++)
-                                releaseKey(btnIds[i]);
-                            setBackgroundResource(resIds[0]);
-                            lastState = state = 0;
-                            break;
+                    case MotionEvent.ACTION_UP:
+                        // Release all directions and update the image
+                        for (int i = 0; i < 4; i++)
+                            releaseKey(btnIds[i]);
+                        setBackgroundResource(resIds[0]);
+                        lastState = state = 0;
+                        break;
                     }
                     return true;
                 }
@@ -119,18 +119,18 @@ public class NooButton extends Button {
                 @Override
                 public boolean onTouch(View view, MotionEvent event) {
                     switch (event.getAction()) {
-                        case MotionEvent.ACTION_DOWN:
-                            // Press a key, update the image, and vibrate
-                            pressKey(btnIds[0]);
-                            setBackgroundResource(resIds[1]);
-                            vibrator.vibrate(SettingsMenu.getVibrateStrength() * 4);
-                            break;
+                    case MotionEvent.ACTION_DOWN:
+                        // Press a key, update the image, and vibrate
+                        pressKey(btnIds[0]);
+                        setBackgroundResource(resIds[1]);
+                        vibrator.vibrate(SettingsMenu.getVibrateStrength() * 4);
+                        break;
 
-                        case MotionEvent.ACTION_UP:
-                            // Release a key and update the image
-                            releaseKey(btnIds[0]);
-                            setBackgroundResource(resIds[0]);
-                            break;
+                    case MotionEvent.ACTION_UP:
+                        // Release a key and update the image
+                        releaseKey(btnIds[0]);
+                        setBackgroundResource(resIds[0]);
+                        break;
                     }
                     return true;
                 }

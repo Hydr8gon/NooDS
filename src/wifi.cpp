@@ -18,8 +18,6 @@
 */
 
 #include <algorithm>
-
-#include "wifi.h"
 #include "core.h"
 
 #define MS_CYCLES 34418
@@ -633,22 +631,19 @@ void Wifi::writeWPostBeacon(uint16_t mask, uint16_t value) {
 }
 
 void Wifi::writeWBbCnt(uint16_t mask, uint16_t value) {
-    int index = value & 0x00FF;
-
     // Perform a BB register transfer
+    int index = value & 0xFF;
     switch ((value & 0xF000) >> 12) {
-        case 5: { // Write
-            if ((index >= 0x01 && index <= 0x0C) || (index >= 0x13 && index <= 0x15) || (index >= 0x1B && index <= 0x26) ||
-                (index >= 0x28 && index <= 0x4C) || (index >= 0x4E && index <= 0x5C) || (index >= 0x62 && index <= 0x63) ||
-                (index == 0x65) || (index >= 0x67 && index <= 0x68)) // Writable registers
-                bbRegisters[index] = wBbWrite;
-            break;
-        }
+    case 5: // Write
+        if ((index >= 0x01 && index <= 0x0C) || (index >= 0x13 && index <= 0x15) || (index >= 0x1B && index <= 0x26) ||
+            (index >= 0x28 && index <= 0x4C) || (index >= 0x4E && index <= 0x5C) || (index >= 0x62 && index <= 0x63) ||
+            (index == 0x65) || (index >= 0x67 && index <= 0x68)) // Writable registers
+            bbRegisters[index] = wBbWrite;
+        break;
 
-        case 6: { // Read
-            wBbRead = bbRegisters[index];
-            break;
-        }
+    case 6: // Read
+        wBbRead = bbRegisters[index];
+        break;
     }
 }
 

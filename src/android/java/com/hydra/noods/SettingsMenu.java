@@ -125,10 +125,10 @@ public class SettingsMenu extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.bindings_action:
-                // Open the input bindings menu
-                startActivity(new Intent(this, BindingsMenu.class));
-                return true;
+        case R.id.bindings_action:
+            // Open the input bindings menu
+            startActivity(new Intent(this, BindingsMenu.class));
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }

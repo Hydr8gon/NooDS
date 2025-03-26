@@ -18,10 +18,7 @@
 */
 
 #include <cstring>
-
-#include "spi.h"
 #include "core.h"
-#include "settings.h"
 
 Language Spi::language = LG_ENGLISH;
 
@@ -237,73 +234,71 @@ void Spi::writeSpiData(uint8_t value) {
     }
     else {
         switch ((spiCnt & 0x0300) >> 8) { // Device
-            case 1: { // Firmware
-                switch (command) {
-                    case 0x03: // Read data bytes
-                        if (writeCount < 4) {
-                            // On writes 2-4, set the 3 byte address to read from
-                            address |= value << ((3 - writeCount) * 8);
-                        }
-                        else {
-                            // On writes 5+, read data from the firmware and send it back
-                            spiData = (address < firmSize) ? firmware[address] : 0;
+        case 1: // Firmware
+            switch (command) {
+            case 0x03: // Read data bytes
+                if (writeCount < 4) {
+                    // On writes 2-4, set the 3 byte address to read from
+                    address |= value << ((3 - writeCount) * 8);
+                }
+                else {
+                    // On writes 5+, read data from the firmware and send it back
+                    spiData = (address < firmSize) ? firmware[address] : 0;
 
-                            // Increment the address
-                            // 16-bit mode is bugged; the address is incremented accordingly, but only the lower 8 bits are sent
-                            address += (spiCnt & BIT(10)) ? 2 : 1;
-                        }
-                        break;
-
-                    default:
-                        LOG_CRIT("Write to SPI with unknown firmware command: 0x%X\n", command);
-                        spiData = 0;
-                        break;
+                    // Increment the address
+                    // 16-bit mode is bugged; the address is incremented accordingly, but only the lower 8 bits are sent
+                    address += (spiCnt & BIT(10)) ? 2 : 1;
                 }
                 break;
-            }
-
-            case 2: { // Touchscreen
-                switch ((command & 0x70) >> 4) { // Channel
-                    case 1: // Y-coordinate
-                        // Send the ADC Y coordinate MSB first, with 3 dummy bits in front
-                        spiData = (writeCount & 1) ? (touchY >> 5) : (touchY << 3);
-                        break;
-
-                    case 5: // X-coordinate
-                        // Send the ADC X coordinate MSB first, with 3 dummy bits in front
-                        spiData = (writeCount & 1) ? (touchX >> 5) : (touchX << 3);
-                        break;
-
-                    case 6: // AUX input
-                        if (writeCount & 1) {
-                            // Load a sample based on cycle time since the buffer was sent
-                            // The sample is converted to an unsigned 12-bit value
-                            mutex.lock();
-                            size_t index = std::min<size_t>((core->globalCycles - micCycles) / micStep, micBufSize);
-                            micSample = (micBufSize > 0) ? ((micBuffer[index] >> 4) + 0x800) : 0;
-                            mutex.unlock();
-
-                            // Send the most significant 7 bits of the sample first
-                            spiData = micSample >> 5;
-                            break;
-                        }
-
-                        // Send the last 5 bits of the sample. with 3 dummy bits in front
-                        spiData = micSample << 3;
-                        break;
-
-                    default:
-                        LOG_WARN("Write to SPI with unknown touchscreen channel: %d\n", (command & 0x70) >> 4);
-                        spiData = 0;
-                        break;
-                }
-                break;
-            }
 
             default:
-                LOG_CRIT("Write to SPI with unknown device: %d\n", (spiCnt & 0x0300) >> 8);
+                LOG_CRIT("Write to SPI with unknown firmware command: 0x%X\n", command);
                 spiData = 0;
                 break;
+            }
+            break;
+
+        case 2: // Touchscreen
+            switch ((command & 0x70) >> 4) { // Channel
+            case 1: // Y-coordinate
+                // Send the ADC Y coordinate MSB first, with 3 dummy bits in front
+                spiData = (writeCount & 1) ? (touchY >> 5) : (touchY << 3);
+                break;
+
+            case 5: // X-coordinate
+                // Send the ADC X coordinate MSB first, with 3 dummy bits in front
+                spiData = (writeCount & 1) ? (touchX >> 5) : (touchX << 3);
+                break;
+
+            case 6: // AUX input
+                if (writeCount & 1) {
+                    // Load a sample based on cycle time since the buffer was sent
+                    // The sample is converted to an unsigned 12-bit value
+                    mutex.lock();
+                    size_t index = std::min<size_t>((core->globalCycles - micCycles) / micStep, micBufSize);
+                    micSample = (micBufSize > 0) ? ((micBuffer[index] >> 4) + 0x800) : 0;
+                    mutex.unlock();
+
+                    // Send the most significant 7 bits of the sample first
+                    spiData = micSample >> 5;
+                    break;
+                }
+
+                // Send the last 5 bits of the sample. with 3 dummy bits in front
+                spiData = micSample << 3;
+                break;
+
+            default:
+                LOG_WARN("Write to SPI with unknown touchscreen channel: %d\n", (command & 0x70) >> 4);
+                spiData = 0;
+                break;
+            }
+            break;
+
+        default:
+            LOG_CRIT("Write to SPI with unknown device: %d\n", (spiCnt & 0x0300) >> 8);
+            spiData = 0;
+            break;
         }
     }
 
