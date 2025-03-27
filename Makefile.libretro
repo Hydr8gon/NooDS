@@ -1,0 +1,36 @@
+NAME := noods_libretro
+BUILD := build-libretro
+GIT_VERSION := "$(shell git describe --abbrev=7 --always --tags)"
+SRCS := src src/common src/libretro
+ARGS := -Ofast -flto -std=c++11 -D__LIBRETRO__ -DVERSION=\"$(GIT_VERSION)\"
+
+CPPFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.cpp))
+HFILES := $(foreach dir,$(SRCS),$(wildcard $(dir)/*.h))
+OFILES := $(patsubst %.cpp,$(BUILD)/%.o,$(CPPFILES))
+
+ifeq ($(OS),Windows_NT)
+  ARGS += -static -DWINDOWS
+  SHARED_EXT := .dll
+else
+  ifeq ($(shell uname -s),Darwin)
+    ARGS += -DMACOS
+    SHARED_EXT := .dylib
+  else
+    SHARED_EXT := .so
+  endif
+endif
+
+all: $(NAME)
+
+$(NAME): $(OFILES)
+	g++ -shared -o $@$(SHARED_EXT) $(ARGS) $^ $(LIBS)
+
+$(BUILD)/%.o: %.cpp $(HFILES) $(BUILD)
+	g++ -c -fPIC -o $@ $(ARGS) $(INCS) $<
+
+$(BUILD):
+	for dir in $(SRCS); do mkdir -p $(BUILD)/$$dir; done
+
+clean:
+	rm -rf $(BUILD)
+	rm -f $(NAME)$(SHARED_EXT)
