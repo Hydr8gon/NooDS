@@ -3,10 +3,14 @@
 /build-switch
 /build-vita
 /build-wiiu
+/build-libretro
 /.gradle
 /src/android/.cxx
 /eboot.bin
 /noods
+/noods*.so
+/noods*.dll
+/noods*.dylib
 /noods.aab
 /NooDS.app
 /NooDS.dmg
