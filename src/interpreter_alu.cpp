@@ -63,11 +63,11 @@ ALU_FUNCS(mvns, S)
 
 FORCE_INLINE int32_t Interpreter::clampQ(int64_t value) {
     // Clamp value and set Q flag for saturated operations
-    if (value > 0x7FFFFFFF) {
+    if (value > 0x7FFFFFFFLL) {
         cpsr |= BIT(27);
         return 0x7FFFFFFF;
     }
-    else if (value < -0x80000000) {
+    else if (value < -0x80000000LL) {
         cpsr |= BIT(27);
         return -0x80000000;
     }
@@ -628,10 +628,9 @@ int Interpreter::umull(uint32_t opcode) { // UMULL RdLo,RdHi,Rm,Rs
     uint32_t *op0 = registers[(opcode >> 12) & 0xF];
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     uint32_t op2 = *registers[opcode & 0xF];
-    int32_t op3 = *registers[(opcode >> 8) & 0xF];
-    uint64_t res = (uint64_t)op2 * (uint32_t)op3;
-    *op1 = res >> 32;
-    *op0 = res;
+    uint32_t op3 = *registers[(opcode >> 8) & 0xF];
+    uint64_t res = uint64_t(op2) * op3;
+    *op0 = res, *op1 = res >> 32;
 
     // Calculate timing
     if (!arm7) return 3;
@@ -644,11 +643,10 @@ int Interpreter::umlal(uint32_t opcode) { // UMLAL RdLo,RdHi,Rm,Rs
     uint32_t *op0 = registers[(opcode >> 12) & 0xF];
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     uint32_t op2 = *registers[opcode & 0xF];
-    int32_t op3 = *registers[(opcode >> 8) & 0xF];
-    uint64_t res = (uint64_t)op2 * (uint32_t)op3;
-    res += ((uint64_t)*op1 << 32) | *op0;
-    *op1 = res >> 32;
-    *op0 = res;
+    uint32_t op3 = *registers[(opcode >> 8) & 0xF];
+    uint64_t res = uint64_t(op2) * op3;
+    res += (uint64_t(*op1) << 32) | *op0;
+    *op0 = res, *op1 = res >> 32;
 
     // Calculate timing
     if (!arm7) return 3;
@@ -662,9 +660,8 @@ int Interpreter::smull(uint32_t opcode) { // SMULL RdLo,RdHi,Rm,Rs
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     int32_t op2 = *registers[opcode & 0xF];
     int32_t op3 = *registers[(opcode >> 8) & 0xF];
-    int64_t res = (int64_t)op2 * op3;
-    *op1 = res >> 32;
-    *op0 = res;
+    int64_t res = int64_t(op2) * op3;
+    *op0 = res, *op1 = res >> 32;
 
     // Calculate timing
     if (!arm7) return 3;
@@ -678,10 +675,9 @@ int Interpreter::smlal(uint32_t opcode) { // SMLAL RdLo,RdHi,Rm,Rs
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     int32_t op2 = *registers[opcode & 0xF];
     int32_t op3 = *registers[(opcode >> 8) & 0xF];
-    int64_t res = (int64_t)op2 * op3;
-    res += ((int64_t)*op1 << 32) | *op0;
-    *op1 = res >> 32;
-    *op0 = res;
+    int64_t res = int64_t(op2) * op3;
+    res += (int64_t(*op1) << 32) | *op0;
+    *op0 = res, *op1 = res >> 32;
 
     // Calculate timing
     if (!arm7) return 3;
@@ -723,11 +719,10 @@ int Interpreter::umulls(uint32_t opcode) { // UMULLS RdLo,RdHi,Rm,Rs
     uint32_t *op0 = registers[(opcode >> 12) & 0xF];
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     uint32_t op2 = *registers[opcode & 0xF];
-    int32_t op3 = *registers[(opcode >> 8) & 0xF];
-    uint64_t res = (uint64_t)op2 * (uint32_t)op3;
-    *op1 = res >> 32;
-    *op0 = res;
-    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((*op1 == 0) << 30);
+    uint32_t op3 = *registers[(opcode >> 8) & 0xF];
+    uint64_t res = uint64_t(op2) * op3;
+    *op0 = res, *op1 = res >> 32;
+    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((res == 0) << 30);
 
     // Calculate timing
     if (!arm7) return 5;
@@ -740,12 +735,11 @@ int Interpreter::umlals(uint32_t opcode) { // UMLALS RdLo,RdHi,Rm,Rs
     uint32_t *op0 = registers[(opcode >> 12) & 0xF];
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     uint32_t op2 = *registers[opcode & 0xF];
-    int32_t op3 = *registers[(opcode >> 8) & 0xF];
-    uint64_t res = (uint64_t)op2 * (uint32_t)op3;
-    res += ((uint64_t)*op1 << 32) | *op0;
-    *op1 = res >> 32;
-    *op0 = res;
-    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((*op1 == 0) << 30);
+    uint32_t op3 = *registers[(opcode >> 8) & 0xF];
+    uint64_t res = uint64_t(op2) * op3;
+    res += (uint64_t(*op1) << 32) | *op0;
+    *op0 = res, *op1 = res >> 32;
+    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((res == 0) << 30);
 
     // Calculate timing
     if (!arm7) return 5;
@@ -759,10 +753,9 @@ int Interpreter::smulls(uint32_t opcode) { // SMULLS RdLo,RdHi,Rm,Rs
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     int32_t op2 = *registers[opcode & 0xF];
     int32_t op3 = *registers[(opcode >> 8) & 0xF];
-    int64_t res = (int64_t)op2 * op3;
-    *op1 = res >> 32;
-    *op0 = res;
-    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((*op1 == 0) << 30);
+    int64_t res = int64_t(op2) * op3;
+    *op0 = res, *op1 = res >> 32;
+    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((res == 0) << 30);
 
     // Calculate timing
     if (!arm7) return 5;
@@ -776,11 +769,10 @@ int Interpreter::smlals(uint32_t opcode) { // SMLALS RdLo,RdHi,Rm,Rs
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     int32_t op2 = *registers[opcode & 0xF];
     int32_t op3 = *registers[(opcode >> 8) & 0xF];
-    int64_t res = (int64_t)op2 * op3;
-    res += ((int64_t)*op1 << 32) | *op0;
-    *op1 = res >> 32;
-    *op0 = res;
-    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((*op1 == 0) << 30);
+    int64_t res = int64_t(op2) * op3;
+    res += (int64_t(*op1) << 32) | *op0;
+    *op0 = res, *op1 = res >> 32;
+    cpsr = (cpsr & ~0xC0000000) | (*op1 & BIT(31)) | ((res == 0) << 30);
 
     // Calculate timing
     if (!arm7) return 5;
@@ -854,10 +846,9 @@ int Interpreter::smlabb(uint32_t opcode) { // SMLABB Rd,Rm,Rs,Rn
     uint32_t *op0 = registers[(opcode >> 16) & 0xF];
     int16_t op1 = *registers[opcode & 0xF];
     int16_t op2 = *registers[(opcode >> 8) & 0xF];
-    uint32_t op3 = *registers[(opcode >> 12) & 0xF];
-    uint32_t res = op1 * op2;
-    *op0 = res + op3;
-    cpsr |= ((*op0 ^ res) & BIT(31)) >> 4;
+    int32_t op3 = *registers[(opcode >> 12) & 0xF];
+    int64_t res = int64_t(op1 * op2) + op3;
+    cpsr |= (res != int32_t(*op0 = res)) << 27; // Q
     return 1;
 }
 
@@ -867,10 +858,9 @@ int Interpreter::smlabt(uint32_t opcode) { // SMLABT Rd,Rm,Rs,Rn
     uint32_t *op0 = registers[(opcode >> 16) & 0xF];
     int16_t op1 = *registers[opcode & 0xF];
     int16_t op2 = *registers[(opcode >> 8) & 0xF] >> 16;
-    uint32_t op3 = *registers[(opcode >> 12) & 0xF];
-    uint32_t res = op1 * op2;
-    *op0 = res + op3;
-    cpsr |= ((*op0 ^ res) & BIT(31)) >> 4;
+    int32_t op3 = *registers[(opcode >> 12) & 0xF];
+    int64_t res = int64_t(op1 * op2) + op3;
+    cpsr |= (res != int32_t(*op0 = res)) << 27; // Q
     return 1;
 }
 
@@ -880,10 +870,9 @@ int Interpreter::smlatb(uint32_t opcode) { // SMLATB Rd,Rm,Rs,Rn
     uint32_t *op0 = registers[(opcode >> 16) & 0xF];
     int16_t op1 = *registers[opcode & 0xF] >> 16;
     int16_t op2 = *registers[(opcode >> 8) & 0xF];
-    uint32_t op3 = *registers[(opcode >> 12) & 0xF];
-    uint32_t res = op1 * op2;
-    *op0 = res + op3;
-    cpsr |= ((*op0 ^ res) & BIT(31)) >> 4;
+    int32_t op3 = *registers[(opcode >> 12) & 0xF];
+    int64_t res = int64_t(op1 * op2) + op3;
+    cpsr |= (res != int32_t(*op0 = res)) << 27; // Q
     return 1;
 }
 
@@ -893,10 +882,9 @@ int Interpreter::smlatt(uint32_t opcode) { // SMLATT Rd,Rm,Rs,Rn
     uint32_t *op0 = registers[(opcode >> 16) & 0xF];
     int16_t op1 = *registers[opcode & 0xF] >> 16;
     int16_t op2 = *registers[(opcode >> 8) & 0xF] >> 16;
-    uint32_t op3 = *registers[(opcode >> 12) & 0xF];
-    uint32_t res = op1 * op2;
-    *op0 = res + op3;
-    cpsr |= ((*op0 ^ res) & BIT(31)) >> 4;
+    int32_t op3 = *registers[(opcode >> 12) & 0xF];
+    int64_t res = int64_t(op1 * op2) + op3;
+    cpsr |= (res != int32_t(*op0 = res)) << 27; // Q
     return 1;
 }
 
@@ -906,10 +894,9 @@ int Interpreter::smlawb(uint32_t opcode) { // SMLAWB Rd,Rm,Rs,Rn
     uint32_t *op0 = registers[(opcode >> 16) & 0xF];
     int32_t op1 = *registers[opcode & 0xF];
     int16_t op2 = *registers[(opcode >> 8) & 0xF];
-    uint32_t op3 = *registers[(opcode >> 12) & 0xF];
-    uint32_t res = ((int64_t)op1 * op2) >> 16;
-    *op0 = res + op3;
-    cpsr |= ((*op0 ^ res) & BIT(31)) >> 4;
+    int32_t op3 = *registers[(opcode >> 12) & 0xF];
+    int64_t res = ((int64_t(op1) * op2) >> 16) + op3;
+    cpsr |= (res != int32_t(*op0 = res)) << 27; // Q
     return 1;
 }
 
@@ -919,10 +906,9 @@ int Interpreter::smlawt(uint32_t opcode) { // SMLAWT Rd,Rm,Rs,Rn
     uint32_t *op0 = registers[(opcode >> 16) & 0xF];
     int32_t op1 = *registers[opcode & 0xF];
     int16_t op2 = *registers[(opcode >> 8) & 0xF] >> 16;
-    uint32_t op3 = *registers[(opcode >> 12) & 0xF];
-    uint32_t res = ((int64_t)op1 * op2) >> 16;
-    *op0 = res + op3;
-    cpsr |= ((*op0 ^ res) & BIT(31)) >> 4;
+    int32_t op3 = *registers[(opcode >> 12) & 0xF];
+    int64_t res = ((int64_t(op1) * op2) >> 16) + op3;
+    cpsr |= (res != int32_t(*op0 = res)) << 27; // Q
     return 1;
 }
 
@@ -933,10 +919,9 @@ int Interpreter::smlalbb(uint32_t opcode) { // SMLALBB RdLo,RdHi,Rm,Rs
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     int16_t op2 = *registers[opcode & 0xF];
     int16_t op3 = *registers[(opcode >> 8) & 0xF];
-    int64_t res = ((int64_t)*op1 << 32) | *op0;
+    int64_t res = (int64_t(*op1) << 32) | *op0;
     res += op2 * op3;
-    *op1 = res >> 32;
-    *op0 = res;
+    *op0 = res, *op1 = res >> 32;
     return 2;
 }
 
@@ -947,10 +932,9 @@ int Interpreter::smlalbt(uint32_t opcode) { // SMLALBT RdLo,RdHi,Rm,Rs
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     int16_t op2 = *registers[opcode & 0xF];
     int16_t op3 = *registers[(opcode >> 8) & 0xF] >> 16;
-    int64_t res = ((int64_t)*op1 << 32) | *op0;
+    int64_t res = (int64_t(*op1) << 32) | *op0;
     res += op2 * op3;
-    *op1 = res >> 32;
-    *op0 = res;
+    *op0 = res, *op1 = res >> 32;
     return 2;
 }
 
@@ -961,10 +945,9 @@ int Interpreter::smlaltb(uint32_t opcode) { // SMLALTB RdLo,RdHi,Rm,Rs
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     int16_t op2 = *registers[opcode & 0xF] >> 16;
     int16_t op3 = *registers[(opcode >> 8) & 0xF];
-    int64_t res = ((int64_t)*op1 << 32) | *op0;
+    int64_t res = (int64_t(*op1) << 32) | *op0;
     res += op2 * op3;
-    *op1 = res >> 32;
-    *op0 = res;
+    *op0 = res, *op1 = res >> 32;
     return 2;
 }
 
@@ -975,10 +958,9 @@ int Interpreter::smlaltt(uint32_t opcode) { // SMLALTT RdLo,RdHi,Rm,Rs
     uint32_t *op1 = registers[(opcode >> 16) & 0xF];
     int16_t op2 = *registers[opcode & 0xF] >> 16;
     int16_t op3 = *registers[(opcode >> 8) & 0xF] >> 16;
-    int64_t res = ((int64_t)*op1 << 32) | *op0;
+    int64_t res = (int64_t(*op1) << 32) | *op0;
     res += op2 * op3;
-    *op1 = res >> 32;
-    *op0 = res;
+    *op0 = res, *op1 = res >> 32;
     return 2;
 }
 
@@ -988,7 +970,7 @@ int Interpreter::qadd(uint32_t opcode) { // QADD Rd,Rm,Rn
     uint32_t *op0 = registers[(opcode >> 12) & 0xF];
     int32_t op1 = *registers[opcode & 0xF];
     int32_t op2 = *registers[(opcode >> 16) & 0xF];
-    *op0 = clampQ((int64_t)op1 + op2);
+    *op0 = clampQ(int64_t(op1) + op2);
     return 1;
 }
 
@@ -998,7 +980,7 @@ int Interpreter::qsub(uint32_t opcode) { // QSUB Rd,Rm,Rn
     uint32_t *op0 = registers[(opcode >> 12) & 0xF];
     int32_t op1 = *registers[opcode & 0xF];
     int32_t op2 = *registers[(opcode >> 16) & 0xF];
-    *op0 = clampQ((int64_t)op1 - op2);
+    *op0 = clampQ(int64_t(op1) - op2);
     return 1;
 }
 
@@ -1008,7 +990,7 @@ int Interpreter::qdadd(uint32_t opcode) { // QDADD Rd,Rm,Rn
     uint32_t *op0 = registers[(opcode >> 12) & 0xF];
     int32_t op1 = *registers[opcode & 0xF];
     int32_t op2 = *registers[(opcode >> 16) & 0xF];
-    *op0 = clampQ((int64_t)clampQ((int64_t)op2 * 2) + op1);
+    *op0 = clampQ(int64_t(op1) + clampQ(int64_t(op2) * 2));
     return 1;
 }
 
@@ -1018,7 +1000,7 @@ int Interpreter::qdsub(uint32_t opcode) { // QDSUB Rd,Rm,Rn
     uint32_t *op0 = registers[(opcode >> 12) & 0xF];
     int32_t op1 = *registers[opcode & 0xF];
     int32_t op2 = *registers[(opcode >> 16) & 0xF];
-    *op0 = clampQ((int64_t)clampQ((int64_t)op2 * 2) - op1);
+    *op0 = clampQ(int64_t(op1) - clampQ(int64_t(op2) * 2));
     return 1;
 }
 
