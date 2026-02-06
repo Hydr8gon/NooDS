@@ -24,7 +24,3 @@ bios9.bin
 firmware.bin
 gba_bios.bin
 sd.img
-src/.DS_Store
-.gitignore
-.DS_Store
-.gitignore
