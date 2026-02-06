@@ -33,12 +33,6 @@ project root directory and run `make -j$(nproc)` to start building.
 [PortAudio](https://www.portaudio.com). This can be done with the [Homebrew](https://brew.sh) package manager on macOS,
 or a built-in package manager on Linux. Run `make -j$(nproc)` in the project root directory to start building.
 
-**macOS Applications Folder Fix:** If the app won't launch after copying to Applications, run these commands:
-```
-xattr -rd com.apple.quarantine /Applications/NooDS.app
-codesign --force --deep --sign - /Applications/NooDS.app
-```
-
 **Android:** Install [Android Studio](https://developer.android.com/studio) or the command line tools. Run
 `./gradlew assembleDebug` in the project root directory to start building; dependencies will be installed as needed.
 
