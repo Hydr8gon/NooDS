@@ -37,6 +37,7 @@ public:
     bool running = false;
 
     NooFrame(NooApp *app, int id = 0, std::string path = "", NooFrame *partner = nullptr);
+    ~NooFrame();
     void Refresh();
 
     void startCore(bool full);

@@ -70,6 +70,14 @@ NooCanvas::NooCanvas(NooFrame *frame): CANVAS_CLASS(frame, wxID_ANY, CANVAS_PARA
 }
 
 NooCanvas::~NooCanvas() {
+#ifdef USE_GL_CANVAS
+    // Clean up OpenGL context to prevent crashes
+    if (context) {
+        SetCurrent(*context);
+        glFinish();
+        delete context;
+    }
+#endif
     // Free the framebuffer if it was allocated
     if (frame->mainFrame)
         delete[] framebuffer;

@@ -271,6 +271,19 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         loadRomPath(path);
 }
 
+NooFrame::~NooFrame() {
+    // Clean up joystick and timer if they exist
+    if (timer) {
+        timer->Stop();
+        delete timer;
+        timer = nullptr;
+    }
+    if (joystick) {
+        delete joystick;
+        joystick = nullptr;
+    }
+}
+
 void NooFrame::Refresh() {
     // Override the refresh function to also update the FPS counter
     wxFrame::Refresh();
@@ -800,10 +813,16 @@ void NooFrame::dropFiles(wxDropFilesEvent &event) {
 }
 
 void NooFrame::close(wxCloseEvent &event) {
-    // Properly shut down the emulator
+    // Properly shut down the emulator and cleanup
     (mainFrame ? this : partner)->stopCore(true);
     app->removeFrame(id);
     canvas->finish();
-    if (partner) delete partner;
+    
+    // Clean up partner frame if it exists
+    if (partner) {
+        delete partner;
+        partner = nullptr;
+    }
+    
     event.Skip(true);
 }
