@@ -26,7 +26,7 @@ you're just a user!
 
 ### Building
 **Windows:** Install [MSYS2](https://www.msys2.org) and run the command
-`pacman -Syu mingw-w64-x86_64-{gcc,pkg-config,wxWidgets,portaudio,jbigkit} make` to get dependencies. Navigate to the
+`pacman -Syu mingw-w64-x86_64-{gcc,pkg-config,wxwidgets-msw,portaudio,jbigkit} make` to get dependencies. Navigate to the
 project root directory and run `make -j$(nproc)` to start building.
 
 **macOS/Linux:** On the target system, install [wxWidgets](https://www.wxwidgets.org) and
