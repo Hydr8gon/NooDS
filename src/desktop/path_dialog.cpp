@@ -185,11 +185,11 @@ void PathDialog::openFolder(wxCommandEvent &event) {
 
 void PathDialog::confirm(wxCommandEvent &event) {
     // Update and save the path settings
-    Settings::bios9Path = bios9Path->GetValue().ToStdString();
-    Settings::bios7Path = bios7Path->GetValue().ToStdString();
-    Settings::firmwarePath = firmwarePath->GetValue().ToStdString();
-    Settings::gbaBiosPath = gbaBiosPath->GetValue().ToStdString();
-    Settings::sdImagePath = sdImagePath->GetValue().ToStdString();
+    Settings::bios9Path = bios9Path->GetLineText(0).ToStdString();
+    Settings::bios7Path = bios7Path->GetLineText(0).ToStdString();
+    Settings::firmwarePath = firmwarePath->GetLineText(0).ToStdString();
+    Settings::gbaBiosPath = gbaBiosPath->GetLineText(0).ToStdString();
+    Settings::sdImagePath = sdImagePath->GetLineText(0).ToStdString();
     Settings::savesFolder = boxes[0]->GetValue();
     Settings::statesFolder = boxes[1]->GetValue();
     Settings::cheatsFolder = boxes[2]->GetValue();

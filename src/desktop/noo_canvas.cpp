@@ -29,6 +29,13 @@
 #include <GL/glext.h>
 #endif
 
+// Use physical pixel layouts for OpenGL
+#ifdef USE_GL_CANVAS
+#define ToPhysCvs ToPhys
+#else
+#define ToPhysCvs
+#endif
+
 wxBEGIN_EVENT_TABLE(NooCanvas, CANVAS_CLASS)
 EVT_PAINT(NooCanvas::draw)
 EVT_SIZE(NooCanvas::resize)
@@ -193,7 +200,7 @@ void NooCanvas::draw(wxPaintEvent &event) {
 
 void NooCanvas::resize(wxSizeEvent &event) {
     // Update the screen layout
-    wxSize size = GetSize();
+    wxSize size = ToPhysCvs(GetSize());
     layout.update(size.x, size.y, gbaMode, splitScreens);
 
     // Full screen breaks the minimum frame size, but changing to a different value fixes it
@@ -236,8 +243,9 @@ void NooCanvas::pressScreen(wxMouseEvent &event) {
     if (!frame->running || !event.LeftIsDown()) return;
 
     // Determine the touch position relative to the emulated touch screen
-    int touchX = layout.getTouchX(event.GetX(), event.GetY());
-    int touchY = layout.getTouchY(event.GetX(), event.GetY());
+    wxSize loc = ToPhysCvs(wxSize(event.GetX(), event.GetY()));
+    int touchX = layout.getTouchX(loc.x, loc.y);
+    int touchY = layout.getTouchY(loc.x, loc.y);
 
     // Send the touch coordinates to the core
     frame->core->input.pressScreen();

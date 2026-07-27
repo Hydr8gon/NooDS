@@ -89,11 +89,15 @@ CheatDialog::CheatDialog(Core *core): wxDialog(nullptr, wxID_ANY, "Action Replay
 void CheatDialog::updateCheat() {
     // Get the current cheat and update its name
     ARCheat *cheat = &core->actionReplay.cheats[curCheat];
-    cheatList->SetString(curCheat, cheat->name = nameEditor->GetValue());
+    cheatList->SetString(curCheat, cheat->name = nameEditor->GetLineText(0));
     cheat->code.clear();
 
-    // Parse the cheat's code from the editor string
-    std::string code = codeEditor->GetValue().ToStdString();
+    // Get the cheat's editor string
+    std::string code;
+    for (int i = 0; i < codeEditor->GetNumberOfLines(); i++)
+        code += codeEditor->GetLineText(i);
+
+    // Parse the cheat's code from the string
     for (size_t i = 0, p; i < code.size(); i = p + 1) {
         p = code.find_first_of(" \n", i);
         if (p == std::string::npos) p = code.size();

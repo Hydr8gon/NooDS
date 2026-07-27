@@ -1,5 +1,7 @@
 NAME := noods
 BUILD := build
+META := meta
+GRADLE := gradle
 SRCS := src src/common src/desktop
 ARGS := -Ofast -flto -std=c++11 -DUSE_GL_CANVAS -DLOG_LEVEL=0
 LIBS := $(shell pkg-config --libs portaudio-2.0)
@@ -39,7 +41,7 @@ ifneq ($(OS),Windows_NT)
 ifeq ($(shell uname -s),Darwin)
 
 install: $(NAME)
-	./mac-bundle.sh
+	$(META)/mac-bundle.sh
 	cp -r $(APPNAME).app /Applications/
 
 uninstall:
@@ -54,7 +56,7 @@ ios:
 else
 
 flatpak:
-	flatpak-builder --repo=repo --force-clean build-flatpak $(PKGNAME).yml
+	flatpak-builder --repo=repo --force-clean build-flatpak $(META)/$(PKGNAME).yml
 	flatpak build-bundle repo $(NAME).flatpak $(PKGNAME)
 
 flatpak-clean:
@@ -65,7 +67,7 @@ flatpak-clean:
 
 install: $(NAME)
 	install -Dm755 $(NAME) "$(DESTDIR)/bin/$(NAME)"
-	install -Dm644 $(PKGNAME).desktop "$(DESTDIR)/share/applications/$(PKGNAME).desktop"
+	install -Dm644 $(META)/$(PKGNAME).desktop "$(DESTDIR)/share/applications/$(PKGNAME).desktop"
 	install -Dm644 icon/icon-linux.png "$(DESTDIR)/share/icons/hicolor/64x64/apps/$(PKGNAME).png"
 
 uninstall: 
@@ -90,12 +92,12 @@ $(BUILD):
 
 android-bundle:
 	git apply src/android/play-store.patch
-	./gradlew bundle
+	$(GRADLE)/gradlew bundle
 	git apply -R src/android/play-store.patch
-	jarsigner -keystore keystore.jks -signedjar noods.aab build-android/outputs/bundle/release/android-release.aab keystore
+	jarsigner -keystore $(META)/keystore.jks -signedjar noods.aab build-android/outputs/bundle/release/android-release.aab keystore
 
 android:
-	./gradlew assembleDebug
+	$(GRADLE)/gradlew assembleDebug
 
 switch:
 	$(MAKE) -f Makefile.switch
@@ -107,7 +109,7 @@ vita:
 	$(MAKE) -f Makefile.vita
 
 clean:
-	if [ -d "build-android" ]; then ./gradlew clean; fi
+	if [ -d "build-android" ]; then $(GRADLE)/gradlew clean; fi
 	if [ -d "build-switch" ]; then $(MAKE) -f Makefile.switch clean; fi
 	if [ -d "build-wiiu" ]; then $(MAKE) -f Makefile.wiiu clean; fi
 	if [ -d "build-vita" ]; then $(MAKE) -f Makefile.vita clean; fi

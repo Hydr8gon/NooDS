@@ -26,15 +26,15 @@ you're just a user!
 
 ### Building
 **Windows:** Install [MSYS2](https://www.msys2.org) and run the command
-`pacman -Syu mingw-w64-x86_64-{gcc,pkg-config,wxwidgets-msw,portaudio,jbigkit} make` to get dependencies. Navigate to the
-project root directory and run `make -j$(nproc)` to start building.
+`pacman -Syu mingw-w64-ucrt-x86_64-{gcc,pkg-config,wxwidgets3.3-msw,portaudio,jbigkit} make` to get dependencies.
+Navigate to the project root directory and run `make -j$(nproc)` to start building.
 
 **macOS/Linux:** On the target system, install [wxWidgets](https://www.wxwidgets.org) and
 [PortAudio](https://www.portaudio.com). This can be done with the [Homebrew](https://brew.sh) package manager on macOS,
 or a built-in package manager on Linux. Run `make -j$(nproc)` in the project root directory to start building.
 
 **Android:** Install [Android Studio](https://developer.android.com/studio) or the command line tools. Run
-`./gradlew assembleDebug` in the project root directory to start building; dependencies will be installed as needed.
+`make android` in the project root directory to start building; dependencies will be installed as needed.
 
 **iOS:** Install [Xcode](https://developer.apple.com/xcode) on a system running macOS and open NooDS.xcodeproj in it.
 You can also run `make ios` in the project root directory to build an unsigned .ipa file.
@@ -48,7 +48,7 @@ You can also run `make ios` in the project root directory to build an unsigned .
 **Vita:** Install [Vita SDK](https://vitasdk.org) and run `make vita -j$(nproc)` in the project root directory to
 start building.
 
-### Hardware References
+### References
 * [GBATEK](https://problemkaputt.de/gbatek.htm) - The main information source for all things DS and GBA
 * [GBATEK Addendum](https://melonds.kuribo64.net/board/thread.php?id=13) - A thread that aims to fill the gaps in GBATEK
 * [melonDS Blog](https://melonds.kuribo64.net) - Contains posts that detail various 3D quirks

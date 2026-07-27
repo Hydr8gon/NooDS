@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Originally written by @nadiaholmquist
 
 set -o errexit
 set -o pipefail
@@ -18,7 +19,7 @@ fi
 
 install -dm755 "${contents}"/{MacOS,Resources,Frameworks}
 install -sm755 noods "${contents}/MacOS/NooDS"
-install -m644 Info.plist "$contents/Info.plist"
+install -m644 meta/Info-macOS.plist "$contents/Info.plist"
 
 # macOS does not have the -f flag for readlink
 abspath() {
@@ -29,7 +30,7 @@ abspath() {
 # and fix their load paths
 fixup_libs() {
     local libs=($(otool -L "$1" | grep -vE "/System|/usr/lib|:$" | sed -E 's/'$'\t''(.*) \(.*$/\1/'))
-    
+
     for lib in "${libs[@]}"; do
         # Dereference symlinks to get the actual .dylib as binaries' load
         # commands can contain paths to symlinked libraries.

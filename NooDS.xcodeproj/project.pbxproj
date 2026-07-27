@@ -49,6 +49,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		141205463016D23500C78E19 /* Info-iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-iOS.plist"; sourceTree = "<group>"; };
 		14157CBB2FF1E24A00C1749D /* NooButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NooButton.swift; sourceTree = "<group>"; };
 		1417F7692FE9BC4500EAEF18 /* FileBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowser.swift; sourceTree = "<group>"; };
 		1437FC892FE8ABAB0037C604 /* nds_icon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = nds_icon.h; sourceTree = "<group>"; };
@@ -112,7 +113,6 @@
 		14655ED12FF1BFE200A23EAB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		147279422FF2E2BD0009017F /* SettingsMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsMenu.swift; sourceTree = "<group>"; };
 		147279442FF335B70009017F /* bridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = bridge.cpp; sourceTree = "<group>"; };
-		147C921A2FEA731D00752D39 /* NooDS-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "NooDS-Info.plist"; sourceTree = "<group>"; };
 		147C921B2FEA79BD00752D39 /* bridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bridge.h; sourceTree = "<group>"; };
 		147C921C2FEA79F600752D39 /* NooView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NooView.swift; sourceTree = "<group>"; };
 		147C921E2FEA7AC900752D39 /* NooApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NooApp.swift; sourceTree = "<group>"; };
@@ -131,6 +131,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1412054A3016D23500C78E19 /* meta */ = {
+			isa = PBXGroup;
+			children = (
+				141205463016D23500C78E19 /* Info-iOS.plist */,
+			);
+			path = meta;
+			sourceTree = "<group>";
+		};
 		1437FC8D2FE8ABAB0037C604 /* common */ = {
 			isa = PBXGroup;
 			children = (
@@ -231,8 +239,8 @@
 		14D3ABE12FE88A480056B367 = {
 			isa = PBXGroup;
 			children = (
-				147C921A2FEA731D00752D39 /* NooDS-Info.plist */,
 				14655EC82FF1BDFC00A23EAB /* icon */,
+				1412054A3016D23500C78E19 /* meta */,
 				1437FCE62FE8ABAB0037C604 /* src */,
 				14D3ABEB2FE88A480056B367 /* Products */,
 			);
@@ -514,7 +522,7 @@
 				ENABLE_PREVIEWS = YES;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "NooDS-Info.plist";
+				INFOPLIST_FILE = "meta/Info-iOS.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = NooDS;
 				INFOPLIST_KEY_GCSupportsControllerUserInteraction = YES;
 				INFOPLIST_KEY_GCSupportsGameMode = YES;
@@ -562,7 +570,7 @@
 				ENABLE_PREVIEWS = YES;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "NooDS-Info.plist";
+				INFOPLIST_FILE = "meta/Info-iOS.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = NooDS;
 				INFOPLIST_KEY_GCSupportsControllerUserInteraction = YES;
 				INFOPLIST_KEY_GCSupportsGameMode = YES;
