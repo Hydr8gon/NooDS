@@ -1,2 +1,2 @@
-include ':src:android'
+include ':src:ui:android'
 rootProject.name = 'NooDS'

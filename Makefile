@@ -2,7 +2,7 @@ NAME := noods
 BUILD := build
 META := meta
 GRADLE := gradle
-SRCS := src src/common src/desktop
+SRCS := src src/core src/core/arm src/core/gpu src/core/hle src/core/io src/core/memory src/ui src/ui/desktop
 ARGS := -Ofast -flto -std=c++11 -DUSE_GL_CANVAS -DLOG_LEVEL=0
 LIBS := $(shell pkg-config --libs portaudio-2.0)
 INCS := $(shell pkg-config --cflags portaudio-2.0)
@@ -91,9 +91,9 @@ $(BUILD):
 	for dir in $(SRCS); do mkdir -p $(BUILD)/$$dir; done
 
 android-bundle:
-	git apply src/android/play-store.patch
+	git apply src/ui/android/play-store.patch
 	$(GRADLE)/gradlew bundle
-	git apply -R src/android/play-store.patch
+	git apply -R src/ui/android/play-store.patch
 	jarsigner -keystore $(META)/keystore.jks -signedjar noods.aab build-android/outputs/bundle/release/android-release.aab keystore
 
 android:

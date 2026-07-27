@@ -11,8 +11,8 @@ include $(DEVKITPRO)/wut/share/wut_rules
 
 NAME := noods
 BUILD := build-wiiu
-SRCS := src src/common src/console
-DATA := src/console/images src/console/shaders
+SRCS := src src/core src/core/arm src/core/gpu src/core/hle src/core/io src/core/memory src/ui src/ui/console
+DATA := src/ui/console/images src/ui/console/shaders
 LIBS := -lwut -lSDL2
 INCS := $(PORTLIBS) $(WUT_ROOT)
 
@@ -42,7 +42,7 @@ $(BUILD):
 	$(MAKE) -C $(BUILD) -f $(CURDIR)/Makefile.wiiu
 
 build-shader:
-	cd src/console/shaders; ./latte-assembler compile shader_wiiu.gsh --vsh shader_wiiu.vsh --psh shader_wiiu.psh
+	cd src/ui/console/shaders; ./latte-assembler compile shader_wiiu.gsh --vsh shader_wiiu.vsh --psh shader_wiiu.psh
 
 clean:
 	rm -rf $(BUILD) $(NAME).wuhb $(NAME).rpx $(NAME).elf
@@ -56,7 +56,7 @@ $(OUTPUT).elf: $(OFILES)
 
 %.o: %.bmp
 	@echo $(notdir $<)
-	@cd ..; $(PREFIX)ld -r -b binary -o $(BUILD)/$@ src/console/images/$*.bmp
+	@cd ..; $(PREFIX)ld -r -b binary -o $(BUILD)/$@ src/ui/console/images/$*.bmp
 
 %.gsh.o: %.gsh
 	@echo $(notdir $<)

@@ -5,7 +5,7 @@
 /build-vita
 /build-wiiu
 /.gradle
-/src/android/.cxx
+/src/ui/android/.cxx
 /eboot.bin
 /noods
 /noods.aab
