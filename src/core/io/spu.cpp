@@ -89,14 +89,8 @@ void Spu::saveState(FILE *file) {
     fwrite(sndCapCnt, 1, sizeof(sndCapCnt), file);
     fwrite(sndCapDad, 4, sizeof(sndCapDad) / 4, file);
     fwrite(sndCapLen, 2, sizeof(sndCapLen) / 2, file);
-
-    // Parse the FIFOs and save their values
-    for (int i = 0; i < 2; i++) {
-        uint32_t count = gbaFifos[i].size();
-        fwrite(&count, sizeof(count), 1, file);
-        for (uint32_t j = 0; j < count; j++)
-            fwrite(&gbaFifos[i][j], sizeof(gbaFifos[i][j]), 1, file);
-    }
+    SaveStates::writeFifo(gbaFifos[0], file);
+    SaveStates::writeFifo(gbaFifos[1], file);
 }
 
 void Spu::loadState(FILE *file) {
@@ -140,18 +134,8 @@ void Spu::loadState(FILE *file) {
     fread(sndCapCnt, 1, sizeof(sndCapCnt), file);
     fread(sndCapDad, 4, sizeof(sndCapDad) / 4, file);
     fread(sndCapLen, 2, sizeof(sndCapLen) / 2, file);
-
-    // Reset the FIFOs and refill them with loaded values
-    for (int i = 0; i < 2; i++) {
-        gbaFifos[i].clear();
-        uint32_t count;
-        int8_t value;
-        fread(&count, sizeof(count), 1, file);
-        for (uint32_t j = 0; j < count; j++) {
-            fread(&value, sizeof(value), 1, file);
-            gbaFifos[i].push_back(value);
-        }
-    }
+    SaveStates::readFifo(gbaFifos[0], file);
+    SaveStates::readFifo(gbaFifos[1], file);
 }
 
 uint32_t *Spu::getSamples(int count) {

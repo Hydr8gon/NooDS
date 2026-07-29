@@ -119,12 +119,7 @@ void Gpu3D::saveState(FILE *file) {
     fwrite(posResult, 4, sizeof(posResult) / 4, file);
     fwrite(vecResult, 2, sizeof(vecResult) / 2, file);
     fwrite(&gxFifoCount, sizeof(gxFifoCount), 1, file);
-
-    // Parse the FIFO and save its entries
-    uint32_t count = fifo.size();
-    fwrite(&count, sizeof(count), 1, file);
-    for (uint32_t i = 0; i < count; i++)
-        fwrite(&fifo[i], sizeof(fifo[i]), 1, file);
+    SaveStates::writeFifo(fifo, file);
 }
 
 void Gpu3D::loadState(FILE *file) {
@@ -181,22 +176,13 @@ void Gpu3D::loadState(FILE *file) {
     fread(posResult, 4, sizeof(posResult) / 4, file);
     fread(vecResult, 2, sizeof(vecResult) / 2, file);
     fread(&gxFifoCount, sizeof(gxFifoCount), 1, file);
+    SaveStates::readFifo(fifo, file);
 
     // Reset vertex and polygon buffers
     verticesIn = vertices1;
     verticesOut = vertices2;
     polygonsIn = polygons1;
     polygonsOut = polygons2;
-
-    // Reset the FIFO and refill it with loaded entries
-    fifo.clear();
-    uint32_t count;
-    Entry entry(0, 0);
-    fread(&count, sizeof(count), 1, file);
-    for (uint32_t j = 0; j < count; j++) {
-        fread(&entry, sizeof(entry), 1, file);
-        fifo.push_back(entry);
-    }
 }
 
 uint32_t Gpu3D::rgb5ToRgb6(uint16_t color) {

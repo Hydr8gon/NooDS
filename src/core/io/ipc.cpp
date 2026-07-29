@@ -24,14 +24,8 @@ void Ipc::saveState(FILE *file) {
     fwrite(ipcSync, 2, sizeof(ipcSync) / 2, file);
     fwrite(ipcFifoCnt, 2, sizeof(ipcFifoCnt) / 2, file);
     fwrite(ipcFifoRecv, 4, sizeof(ipcFifoRecv) / 4, file);
-
-    // Parse the FIFOs and save their values
-    for (int i = 0; i < 2; i++) {
-        uint32_t count = fifos[i].size();
-        fwrite(&count, sizeof(count), 1, file);
-        for (uint32_t j = 0; j < count; j++)
-            fwrite(&fifos[i][j], sizeof(fifos[i][j]), 1, file);
-    }
+    SaveStates::writeFifo(fifos[0], file);
+    SaveStates::writeFifo(fifos[1], file);
 }
 
 void Ipc::loadState(FILE *file) {
@@ -39,17 +33,8 @@ void Ipc::loadState(FILE *file) {
     fread(ipcSync, 2, sizeof(ipcSync) / 2, file);
     fread(ipcFifoCnt, 2, sizeof(ipcFifoCnt) / 2, file);
     fread(ipcFifoRecv, 4, sizeof(ipcFifoRecv) / 4, file);
-
-    // Reset the FIFOs and refill them with loaded values
-    for (int i = 0; i < 2; i++) {
-        fifos[i].clear();
-        uint32_t count, value;
-        fread(&count, sizeof(count), 1, file);
-        for (uint32_t j = 0; j < count; j++) {
-            fread(&value, sizeof(value), 1, file);
-            fifos[i].push_back(value);
-        }
-    }
+    SaveStates::readFifo(fifos[0], file);
+    SaveStates::readFifo(fifos[1], file);
 }
 
 void Ipc::writeIpcSync(bool arm7, uint16_t mask, uint16_t value) {

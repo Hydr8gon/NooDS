@@ -25,6 +25,7 @@ add_library(noods-core SHARED
             ../../core/hle/dldi.cpp
             ../../core/hle/hle_arm7.cpp
             ../../core/hle/hle_bios.cpp
+            ../../core/io/aes.cpp
             ../../core/io/div_sqrt.cpp
             ../../core/io/input.cpp
             ../../core/io/ipc.cpp

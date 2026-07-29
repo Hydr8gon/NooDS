@@ -21,29 +21,29 @@
 #include "../core.h"
 
 // Defines an 8-bit register in an I/O switch statement
-#define DEF_IO_8(addr, func) \
-    case addr: \
-        base -= addr; \
+#define DEF_IO08(addr, func) \
+    case addr + 0: \
+        base &= 0x0; \
         size = 1; \
         func; \
-        break;
+        goto next;
 
 // Defines a 16-bit register in an I/O switch statement
 #define DEF_IO16(addr, func) \
-    case addr: case addr + 1: \
-        base -= addr; \
+    case addr + 0: case addr + 1: \
+        base &= 0x1; \
         size = 2; \
         func; \
-        break;
+        goto next;
 
 // Defines a 32-bit register in an I/O switch statement
 #define DEF_IO32(addr, func) \
     case addr + 0: case addr + 1: \
     case addr + 2: case addr + 3: \
-        base -= addr; \
+        base &= 0x3; \
         size = 4; \
         func; \
-        break;
+        goto next;
 
 // Defines shared parameters for I/O register writes
 #define IOWR_PARAMS8 data << (base * 8)
@@ -71,7 +71,7 @@ template <typename T> void VramMapping::write(uint32_t address, T value) {
 }
 
 void Memory::saveState(FILE *file) {
-    // Write state data to the file
+    // Write DS state data to the file
     fwrite(ram, 1, core->dsiMode ? 0x1000000 : 0x400000, file);
     fwrite(wram, 1, sizeof(wram), file);
     fwrite(instrTcm, 1, sizeof(instrTcm), file);
@@ -94,10 +94,23 @@ void Memory::saveState(FILE *file) {
     fwrite(vramCnt, 1, sizeof(vramCnt), file);
     fwrite(&wramCnt, sizeof(wramCnt), 1, file);
     fwrite(&haltCnt, sizeof(haltCnt), 1, file);
+
+    // Write DSi state data to the file
+    if (core->dsiMode) {
+        fwrite(nwramA, 1, sizeof(nwramA), file);
+        fwrite(nwramB, 1, sizeof(nwramB), file);
+        fwrite(nwramC, 1, sizeof(nwramC), file);
+        fwrite(mbk1, 1, sizeof(mbk1), file);
+        fwrite(mbk23, 1, sizeof(mbk23), file);
+        fwrite(mbk45, 1, sizeof(mbk45), file);
+        fwrite(mbk6, 4, sizeof(mbk6) / 4, file);
+        fwrite(mbk7, 4, sizeof(mbk7) / 4, file);
+        fwrite(mbk8, 4, sizeof(mbk8) / 4, file);
+    }
 }
 
 void Memory::loadState(FILE *file) {
-    // Read state data from the file
+    // Read DS state data from the file
     fread(ram, 1, core->dsiMode ? 0x1000000 : 0x400000, file);
     fread(wram, 1, sizeof(wram), file);
     fread(instrTcm, 1, sizeof(instrTcm), file);
@@ -120,6 +133,19 @@ void Memory::loadState(FILE *file) {
     fread(vramCnt, 1, sizeof(vramCnt), file);
     fread(&wramCnt, sizeof(wramCnt), 1, file);
     fread(&haltCnt, sizeof(haltCnt), 1, file);
+
+    // Read DSi state data from the file
+    if (core->dsiMode) {
+        fread(nwramA, 1, sizeof(nwramA), file);
+        fread(nwramB, 1, sizeof(nwramB), file);
+        fread(nwramC, 1, sizeof(nwramC), file);
+        fread(mbk1, 1, sizeof(mbk1), file);
+        fread(mbk23, 1, sizeof(mbk23), file);
+        fread(mbk45, 1, sizeof(mbk45), file);
+        fread(mbk6, 4, sizeof(mbk6) / 4, file);
+        fread(mbk7, 4, sizeof(mbk7) / 4, file);
+        fread(mbk8, 4, sizeof(mbk8) / 4, file);
+    }
 
     // Update mapped memory
     updateMap9(0x00000000, 0xFFFFFFFF);
@@ -193,10 +219,40 @@ void Memory::updateMap9(uint32_t start, uint32_t end, bool tcm) {
             break;
 
         case 0x3000000: // Shared WRAM
-            switch (wramCnt) {
-                case 0: read = write = &wram[(address & 0x7FFF)]; break;
-                case 1: read = write = &wram[(address & 0x3FFF) + 0x4000]; break;
-                case 2: read = write = &wram[(address & 0x3FFF)]; break;
+            if (core->dsiMode) {
+                uint32_t base = (address & 0xFFFFFF);
+                const uint8_t masks[] = { 0x0, 0x0, 0x1, 0x3, 0x7 };
+                if (base >= ((mbk6[0] << 12) & 0xFF0000) && base < ((mbk6[0] >> 4) & 0x1FF0000)) { // A
+                    uint8_t slot = (base >> 16) & masks[(mbk6[0] >> 12) & 0x3];
+                    for (int i = 0; i < 4; i++) {
+                        if ((mbk1[i] & 0x81) != 0x80 || ((mbk1[i] >> 2) & 0x3) != slot) continue;
+                        read = write = &nwramA[(i << 16) | (base & 0xFFFF)];
+                        break;
+                    }
+                }
+                else if (base >= ((mbk7[0] << 12) & 0xFF8000) && base < ((mbk7[0] >> 4) & 0x1FF8000)) { // B
+                    uint8_t slot = (base >> 15) & (masks + 1)[(mbk7[0] >> 12) & 0x3];
+                    for (int i = 0; i < 8; i++) {
+                        if ((mbk23[i] & 0x83) != 0x80 || ((mbk23[i] >> 2) & 0x7) != slot) continue;
+                        read = write = &nwramB[(i << 15) | (base & 0x7FFF)];
+                        break;
+                    }
+                }
+                else if (base >= ((mbk8[0] << 12) & 0xFF8000) && base < ((mbk8[0] >> 4) & 0x1FF8000)) { // C
+                    uint8_t slot = (base >> 15) & (masks + 1)[(mbk8[0] >> 12) & 0x3];
+                    for (int i = 0; i < 8; i++) {
+                        if ((mbk45[i] & 0x83) != 0x80 || ((mbk45[i] >> 2) & 0x7) != slot) continue;
+                        read = write = &nwramC[(i << 15) | (base & 0x7FFF)];
+                        break;
+                    }
+                }
+            }
+            if (!read) {
+                switch (wramCnt) {
+                    case 0: read = write = &wram[(address & 0x7FFF)]; break;
+                    case 1: read = write = &wram[(address & 0x3FFF) + 0x4000]; break;
+                    case 2: read = write = &wram[(address & 0x3FFF)]; break;
+                }
             }
             break;
 
@@ -296,10 +352,40 @@ void Memory::updateMap7(uint32_t start, uint32_t end) {
 
             case 0x3000000: // WRAM
                 if (!(address & 0x800000)) { // Shared WRAM
-                    switch (wramCnt) {
-                        case 1: read = write = &wram[(address & 0x3FFF)]; break;
-                        case 2: read = write = &wram[(address & 0x3FFF) + 0x4000]; break;
-                        case 3: read = write = &wram[(address & 0x7FFF)]; break;
+                    if (core->dsiMode) {
+                        uint32_t base = (address & 0xFFFFFF);
+                        const uint8_t masks[] = { 0x0, 0x0, 0x1, 0x3, 0x7 };
+                        if (base >= ((mbk6[1] << 12) & 0xFF0000) && base < ((mbk6[1] >> 4) & 0x1FF0000)) { // A
+                            uint8_t slot = (base >> 16) & masks[(mbk6[1] >> 12) & 0x3];
+                            for (int i = 0; i < 4; i++) {
+                                if ((mbk1[i] & 0x81) != 0x81 || ((mbk1[i] >> 2) & 0x3) != slot) continue;
+                                read = write = &nwramA[(i << 16) | (base & 0xFFFF)];
+                                break;
+                            }
+                        }
+                        else if (base >= ((mbk7[1] << 12) & 0xFF8000) && base < ((mbk7[1] >> 4) & 0x1FF8000)) { // B
+                            uint8_t slot = (base >> 15) & (masks + 1)[(mbk7[1] >> 12) & 0x3];
+                            for (int i = 0; i < 8; i++) {
+                                if ((mbk23[i] & 0x83) != 0x81 || ((mbk23[i] >> 2) & 0x7) != slot) continue;
+                                read = write = &nwramB[(i << 15) | (base & 0x7FFF)];
+                                break;
+                            }
+                        }
+                        else if (base >= ((mbk8[1] << 12) & 0xFF8000) && base < ((mbk8[1] >> 4) & 0x1FF8000)) { // C
+                            uint8_t slot = (base >> 15) & (masks + 1)[(mbk8[1] >> 12) & 0x3];
+                            for (int i = 0; i < 8; i++) {
+                                if ((mbk45[i] & 0x83) != 0x81 || ((mbk45[i] >> 2) & 0x7) != slot) continue;
+                                read = write = &nwramC[(i << 15) | (base & 0x7FFF)];
+                                break;
+                            }
+                        }
+                    }
+                    if (!read) {
+                        switch (wramCnt) {
+                            case 1: read = write = &wram[(address & 0x3FFF)]; break;
+                            case 2: read = write = &wram[(address & 0x3FFF) + 0x4000]; break;
+                            case 3: read = write = &wram[(address & 0x7FFF)]; break;
+                        }
                     }
                 }
                 if (!read)
@@ -822,9 +908,10 @@ template <typename T> T Memory::ioRead9(uint32_t address) {
     // Read a value from one or more ARM9 I/O registers
     T value = 0;
     for (uint32_t i = 0; i < sizeof(T);) {
-        // Load data from a register
-        uint32_t base, size, data;
-        switch (base = address + i) {
+        uint32_t base = address + i, size, data;
+
+        // Check registers available in DS mode
+        switch (base) {
             DEF_IO32(0x4000000, data = core->gpu2D[0].readDispCnt()) // DISPCNT (engine A)
             DEF_IO16(0x4000004, data = core->gpu.readDispStat(0)) // DISPCNT (engine A)
             DEF_IO16(0x4000006, data = core->gpu.readVCount()) // VCOUNT
@@ -867,21 +954,21 @@ template <typename T> T Memory::ioRead9(uint32_t address) {
             DEF_IO16(0x4000180, data = core->ipc.readIpcSync(0)) // IPCSYNC (ARM9)
             DEF_IO16(0x4000184, data = core->ipc.readIpcFifoCnt(0)) // IPCFIFOCNT (ARM9)
             DEF_IO16(0x40001A0, data = core->cartridgeNds.readAuxSpiCnt(0)) // AUXSPICNT (ARM9)
-            DEF_IO_8(0x40001A2, data = core->cartridgeNds.readAuxSpiData(0)) // AUXSPIDATA (ARM9)
+            DEF_IO08(0x40001A2, data = core->cartridgeNds.readAuxSpiData(0)) // AUXSPIDATA (ARM9)
             DEF_IO32(0x40001A4, data = core->cartridgeNds.readRomCtrl(0)) // ROMCTRL (ARM9)
-            DEF_IO_8(0x4000208, data = core->interpreter[0].readIme()) // IME (ARM9)
+            DEF_IO08(0x4000208, data = core->interpreter[0].readIme()) // IME (ARM9)
             DEF_IO32(0x4000210, data = core->interpreter[0].readIe()) // IE (ARM9)
             DEF_IO32(0x4000214, data = core->interpreter[0].readIrf()) // IF (ARM9)
-            DEF_IO_8(0x4000240, data = readVramCnt(0)) // VRAMCNT_A
-            DEF_IO_8(0x4000241, data = readVramCnt(1)) // VRAMCNT_B
-            DEF_IO_8(0x4000242, data = readVramCnt(2)) // VRAMCNT_C
-            DEF_IO_8(0x4000243, data = readVramCnt(3)) // VRAMCNT_D
-            DEF_IO_8(0x4000244, data = readVramCnt(4)) // VRAMCNT_E
-            DEF_IO_8(0x4000245, data = readVramCnt(5)) // VRAMCNT_F
-            DEF_IO_8(0x4000246, data = readVramCnt(6)) // VRAMCNT_G
-            DEF_IO_8(0x4000247, data = readWramCnt()) // WRAMCNT
-            DEF_IO_8(0x4000248, data = readVramCnt(7)) // VRAMCNT_H
-            DEF_IO_8(0x4000249, data = readVramCnt(8)) // VRAMCNT_I
+            DEF_IO08(0x4000240, data = readVramCnt(0)) // VRAMCNT_A
+            DEF_IO08(0x4000241, data = readVramCnt(1)) // VRAMCNT_B
+            DEF_IO08(0x4000242, data = readVramCnt(2)) // VRAMCNT_C
+            DEF_IO08(0x4000243, data = readVramCnt(3)) // VRAMCNT_D
+            DEF_IO08(0x4000244, data = readVramCnt(4)) // VRAMCNT_E
+            DEF_IO08(0x4000245, data = readVramCnt(5)) // VRAMCNT_F
+            DEF_IO08(0x4000246, data = readVramCnt(6)) // VRAMCNT_G
+            DEF_IO08(0x4000247, data = readWramCnt()) // WRAMCNT
+            DEF_IO08(0x4000248, data = readVramCnt(7)) // VRAMCNT_H
+            DEF_IO08(0x4000249, data = readVramCnt(8)) // VRAMCNT_I
             DEF_IO16(0x4000280, data = core->divSqrt.readDivCnt()) // DIVCNT
             DEF_IO32(0x4000290, data = core->divSqrt.readDivNumerL()) // DIVNUMER_L
             DEF_IO32(0x4000294, data = core->divSqrt.readDivNumerH()) // DIVNUMER_H
@@ -895,7 +982,7 @@ template <typename T> T Memory::ioRead9(uint32_t address) {
             DEF_IO32(0x40002B4, data = core->divSqrt.readSqrtResult()) // SQRTRESULT
             DEF_IO32(0x40002B8, data = core->divSqrt.readSqrtParamL()) // SQRTPARAM_L
             DEF_IO32(0x40002BC, data = core->divSqrt.readSqrtParamH()) // SQRTPARAM_H
-            DEF_IO_8(0x4000300, data = core->interpreter[0].readPostFlg()) // POSTFLG (ARM9)
+            DEF_IO08(0x4000300, data = core->interpreter[0].readPostFlg()) // POSTFLG (ARM9)
             DEF_IO16(0x4000304, data = core->gpu.readPowCnt1()) // POWCNT1
             DEF_IO32(0x4000600, data = core->gpu3D.readGxStat()) // GXSTAT
             DEF_IO32(0x4000604, data = core->gpu3D.readRamCount()) // RAM_COUNT
@@ -943,20 +1030,49 @@ template <typename T> T Memory::ioRead9(uint32_t address) {
             DEF_IO16(0x400106C, data = core->gpu2D[1].readMasterBright()) // MASTER_BRIGHT (engine B)
             DEF_IO32(0x4100000, data = core->ipc.readIpcFifoRecv(0)) // IPCFIFORECV (ARM9)
             DEF_IO32(0x4100010, data = core->cartridgeNds.readRomDataIn(0)) // ROMDATAIN (ARM9)
-            DEF_IO32(0x4004008, data = core->dsiMode * 0x8000) // SCFG_EXT9 (stub)
-
-        default:
-            // Handle unknown reads by returning nothing
-            if (i == 0) {
-                LOG_WARN("Unknown ARM9 I/O register read: 0x%X\n", address);
-                return 0;
-            }
-
-            // Ignore unknown reads after the first byte; this allows larger reads from smaller registers
-            i++;
-            continue;
         }
 
+        // Check registers exclusive to DSi mode
+        if (core->dsiMode) {
+            switch (base) {
+                DEF_IO32(0x4004008, data = 0x8000) // SCFG_EXT9 (stub)
+                DEF_IO08(0x4004040, data = readMbk1(0)) // MBK1.0
+                DEF_IO08(0x4004041, data = readMbk1(1)) // MBK1.1
+                DEF_IO08(0x4004042, data = readMbk1(2)) // MBK1.2
+                DEF_IO08(0x4004043, data = readMbk1(3)) // MBK1.3
+                DEF_IO08(0x4004044, data = readMbk23(0)) // MBK2.0
+                DEF_IO08(0x4004045, data = readMbk23(1)) // MBK2.1
+                DEF_IO08(0x4004046, data = readMbk23(2)) // MBK2.2
+                DEF_IO08(0x4004047, data = readMbk23(3)) // MBK2.3
+                DEF_IO08(0x4004048, data = readMbk23(4)) // MBK3.0
+                DEF_IO08(0x4004049, data = readMbk23(5)) // MBK3.1
+                DEF_IO08(0x400404A, data = readMbk23(6)) // MBK3.2
+                DEF_IO08(0x400404B, data = readMbk23(7)) // MBK3.3
+                DEF_IO08(0x400404C, data = readMbk45(0)) // MBK4.0
+                DEF_IO08(0x400404D, data = readMbk45(1)) // MBK4.1
+                DEF_IO08(0x400404E, data = readMbk45(2)) // MBK4.2
+                DEF_IO08(0x400404F, data = readMbk45(3)) // MBK4.3
+                DEF_IO08(0x4004050, data = readMbk45(4)) // MBK5.0
+                DEF_IO08(0x4004051, data = readMbk45(5)) // MBK5.1
+                DEF_IO08(0x4004052, data = readMbk45(6)) // MBK5.2
+                DEF_IO08(0x4004053, data = readMbk45(7)) // MBK5.3
+                DEF_IO32(0x4004054, data = readMbk6(0)) // MBK6
+                DEF_IO32(0x4004058, data = readMbk7(0)) // MBK7
+                DEF_IO32(0x400405C, data = readMbk8(0)) // MBK8
+            }
+        }
+
+        // Handle unknown reads by returning nothing
+        if (i == 0) {
+            LOG_WARN("Unknown ARM9 I/O register read: 0x%X\n", address);
+            return 0;
+        }
+
+        // Ignore unknown reads after the first byte; this allows larger reads from smaller registers
+        i++;
+        continue;
+
+    next:
         // Add data to the return value and adjust byte offset
         value |= (data >> (base * 8)) << (i * 8);
         i += size - base;
@@ -972,9 +1088,10 @@ template <typename T> T Memory::ioRead7(uint32_t address) {
     // Read a value from one or more ARM7 I/O registers
     T value = 0;
     for (uint32_t i = 0; i < sizeof(T);) {
-        // Load data from a register
-        uint32_t base, size, data;
-        switch (base = address + i) {
+        uint32_t base = address + i, size, data;
+
+        // Check registers available in DS mode
+        switch (base) {
             DEF_IO16(0x4000004, data = core->gpu.readDispStat(1)) // DISPSTAT (ARM7)
             DEF_IO16(0x4000006, data = core->gpu.readVCount()) // VCOUNT
             DEF_IO32(0x40000B0, data = core->dma[1].readDmaSad(0)) // DMA0SAD (ARM7)
@@ -999,21 +1116,21 @@ template <typename T> T Memory::ioRead7(uint32_t address) {
             DEF_IO16(0x400010E, data = core->timers[1].readTmCntH(3)) // TM3CNT_H (ARM7)
             DEF_IO16(0x4000130, data = core->input.readKeyInput()) // KEYINPUT
             DEF_IO16(0x4000136, data = core->input.readExtKeyIn()) // EXTKEYIN
-            DEF_IO_8(0x4000138, data = core->rtc.readRtc()) // RTC
+            DEF_IO08(0x4000138, data = core->rtc.readRtc()) // RTC
             DEF_IO16(0x4000180, data = core->ipc.readIpcSync(1)) // IPCSYNC (ARM7)
             DEF_IO16(0x4000184, data = core->ipc.readIpcFifoCnt(1)) // IPCFIFOCNT (ARM7)
             DEF_IO16(0x40001A0, data = core->cartridgeNds.readAuxSpiCnt(1)) // AUXSPICNT (ARM7)
-            DEF_IO_8(0x40001A2, data = core->cartridgeNds.readAuxSpiData(1)) // AUXSPIDATA (ARM7)
+            DEF_IO08(0x40001A2, data = core->cartridgeNds.readAuxSpiData(1)) // AUXSPIDATA (ARM7)
             DEF_IO32(0x40001A4, data = core->cartridgeNds.readRomCtrl(1)) // ROMCTRL (ARM7)
             DEF_IO16(0x40001C0, data = core->spi.readSpiCnt()) // SPICNT
-            DEF_IO_8(0x40001C2, data = core->spi.readSpiData()) // SPIDATA
-            DEF_IO_8(0x4000208, data = core->interpreter[1].readIme()) // IME (ARM7)
+            DEF_IO08(0x40001C2, data = core->spi.readSpiData()) // SPIDATA
+            DEF_IO08(0x4000208, data = core->interpreter[1].readIme()) // IME (ARM7)
             DEF_IO32(0x4000210, data = core->interpreter[1].readIe()) // IE (ARM7)
             DEF_IO32(0x4000214, data = core->interpreter[1].readIrf()) // IF (ARM7)
-            DEF_IO_8(0x4000240, data = readVramStat()) // VRAMSTAT
-            DEF_IO_8(0x4000241, data = readWramCnt()) // WRAMSTAT
-            DEF_IO_8(0x4000300, data = core->interpreter[1].readPostFlg()) // POSTFLG (ARM7)
-            DEF_IO_8(0x4000301, data = readHaltCnt()) // HALTCNT
+            DEF_IO08(0x4000240, data = readVramStat()) // VRAMSTAT
+            DEF_IO08(0x4000241, data = readWramCnt()) // WRAMSTAT
+            DEF_IO08(0x4000300, data = core->interpreter[1].readPostFlg()) // POSTFLG (ARM7)
+            DEF_IO08(0x4000301, data = readHaltCnt()) // HALTCNT
             DEF_IO32(0x4000400, data = core->spu.readSoundCnt(0)) // SOUND0CNT
             DEF_IO32(0x4000410, data = core->spu.readSoundCnt(1)) // SOUND1CNT
             DEF_IO32(0x4000420, data = core->spu.readSoundCnt(2)) // SOUND2CNT
@@ -1032,8 +1149,8 @@ template <typename T> T Memory::ioRead7(uint32_t address) {
             DEF_IO32(0x40004F0, data = core->spu.readSoundCnt(15)) // SOUND15CNT
             DEF_IO16(0x4000500, data = core->spu.readMainSoundCnt()) // SOUNDCNT
             DEF_IO16(0x4000504, data = core->spu.readSoundBias()) // SOUNDBIAS
-            DEF_IO_8(0x4000508, data = core->spu.readSndCapCnt(0)) // SNDCAP0CNT
-            DEF_IO_8(0x4000509, data = core->spu.readSndCapCnt(1)) // SNDCAP1CNT
+            DEF_IO08(0x4000508, data = core->spu.readSndCapCnt(0)) // SNDCAP0CNT
+            DEF_IO08(0x4000509, data = core->spu.readSndCapCnt(1)) // SNDCAP1CNT
             DEF_IO32(0x4000510, data = core->spu.readSndCapDad(0)) // SNDCAP0DAD
             DEF_IO32(0x4000518, data = core->spu.readSndCapDad(1)) // SNDCAP1DAD
             DEF_IO32(0x4100000, data = core->ipc.readIpcFifoRecv(1)) // IPCFIFORECV (ARM7)
@@ -1108,20 +1225,52 @@ template <typename T> T Memory::ioRead7(uint32_t address) {
             DEF_IO16(0x4800154, data = core->wifi.readWConfig(14)) // W_CONFIG_154
             DEF_IO16(0x480015C, data = core->wifi.readWBbRead()) // W_BB_READ
             DEF_IO16(0x4800210, data = core->wifi.readWTxSeqno()) // W_TX_SEQNO
-            DEF_IO32(0x4004008, data = core->dsiMode * 0x8000) // SCFG_EXT7 (stub)
-
-        default:
-            // Handle unknown reads by returning nothing
-            if (i == 0) {
-                LOG_WARN("Unknown ARM7 I/O register read: 0x%X\n", address);
-                return 0;
-            }
-
-            // Ignore unknown reads after the first byte; this allows larger reads from smaller registers
-            i++;
-            continue;
         }
 
+        // Check registers exclusive to DSi mode
+        if (core->dsiMode) {
+            switch (base) {
+                DEF_IO16(0x4000204, data = 0x4000) // EXMEMSTAT (stub)
+                DEF_IO32(0x4004008, data = 0x8000) // SCFG_EXT7 (stub)
+                DEF_IO08(0x4004040, data = readMbk1(0)) // MBK1.0
+                DEF_IO08(0x4004041, data = readMbk1(1)) // MBK1.1
+                DEF_IO08(0x4004042, data = readMbk1(2)) // MBK1.2
+                DEF_IO08(0x4004043, data = readMbk1(3)) // MBK1.3
+                DEF_IO08(0x4004044, data = readMbk23(0)) // MBK2.0
+                DEF_IO08(0x4004045, data = readMbk23(1)) // MBK2.1
+                DEF_IO08(0x4004046, data = readMbk23(2)) // MBK2.2
+                DEF_IO08(0x4004047, data = readMbk23(3)) // MBK2.3
+                DEF_IO08(0x4004048, data = readMbk23(4)) // MBK3.0
+                DEF_IO08(0x4004049, data = readMbk23(5)) // MBK3.1
+                DEF_IO08(0x400404A, data = readMbk23(6)) // MBK3.2
+                DEF_IO08(0x400404B, data = readMbk23(7)) // MBK3.3
+                DEF_IO08(0x400404C, data = readMbk45(0)) // MBK4.0
+                DEF_IO08(0x400404D, data = readMbk45(1)) // MBK4.1
+                DEF_IO08(0x400404E, data = readMbk45(2)) // MBK4.2
+                DEF_IO08(0x400404F, data = readMbk45(3)) // MBK4.3
+                DEF_IO08(0x4004050, data = readMbk45(4)) // MBK5.0
+                DEF_IO08(0x4004051, data = readMbk45(5)) // MBK5.1
+                DEF_IO08(0x4004052, data = readMbk45(6)) // MBK5.2
+                DEF_IO08(0x4004053, data = readMbk45(7)) // MBK5.3
+                DEF_IO32(0x4004054, data = readMbk6(1)) // MBK6
+                DEF_IO32(0x4004058, data = readMbk7(1)) // MBK7
+                DEF_IO32(0x400405C, data = readMbk8(1)) // MBK8
+                DEF_IO32(0x4004400, data = core->aes.readCnt()) // AES_CNT
+                DEF_IO32(0x400440C, data = core->aes.readRdfifo()) // AES_RDFIFO
+            }
+        }
+
+        // Handle unknown reads by returning nothing
+        if (i == 0) {
+            LOG_WARN("Unknown ARM7 I/O register read: 0x%X\n", address);
+            return 0;
+        }
+
+        // Ignore unknown reads after the first byte; this allows larger reads from smaller registers
+        i++;
+        continue;
+
+    next:
         // Add data to the return value and adjust byte offset
         value |= (data >> (base * 8)) << (i * 8);
         i += size - base;
@@ -1133,9 +1282,10 @@ template <typename T> T Memory::ioReadGba(uint32_t address) {
     // Read a value from one or more GBA I/O registers
     T value = 0;
     for (uint32_t i = 0; i < sizeof(T);) {
-        // Load data from a register
-        uint32_t base, size, data;
-        switch (base = address + i) {
+        uint32_t base = address + i, size, data;
+
+        // Check registers available in GBA mode
+        switch (base) {
             DEF_IO16(0x4000000, data = core->gpu2D[0].readDispCnt()) // DISPCNT
             DEF_IO16(0x4000004, data = core->gpu.readDispStat(1)) // DISPSTAT
             DEF_IO16(0x4000006, data = core->gpu.readVCount()) // VCOUNT
@@ -1161,22 +1311,22 @@ template <typename T> T Memory::ioReadGba(uint32_t address) {
             DEF_IO16(0x4000082, data = core->spu.readGbaMainSoundCntH()) // SOUNDCNT_H
             DEF_IO16(0x4000084, data = core->spu.readGbaMainSoundCntX()) // SOUNDCNT_X
             DEF_IO16(0x4000088, data = core->spu.readGbaSoundBias()) // SOUNDBIAS
-            DEF_IO_8(0x4000090, data = core->spu.readGbaWaveRam(0)) // WAVE_RAM
-            DEF_IO_8(0x4000091, data = core->spu.readGbaWaveRam(1)) // WAVE_RAM
-            DEF_IO_8(0x4000092, data = core->spu.readGbaWaveRam(2)) // WAVE_RAM
-            DEF_IO_8(0x4000093, data = core->spu.readGbaWaveRam(3)) // WAVE_RAM
-            DEF_IO_8(0x4000094, data = core->spu.readGbaWaveRam(4)) // WAVE_RAM
-            DEF_IO_8(0x4000095, data = core->spu.readGbaWaveRam(5)) // WAVE_RAM
-            DEF_IO_8(0x4000096, data = core->spu.readGbaWaveRam(6)) // WAVE_RAM
-            DEF_IO_8(0x4000097, data = core->spu.readGbaWaveRam(7)) // WAVE_RAM
-            DEF_IO_8(0x4000098, data = core->spu.readGbaWaveRam(8)) // WAVE_RAM
-            DEF_IO_8(0x4000099, data = core->spu.readGbaWaveRam(9)) // WAVE_RAM
-            DEF_IO_8(0x400009A, data = core->spu.readGbaWaveRam(10)) // WAVE_RAM
-            DEF_IO_8(0x400009B, data = core->spu.readGbaWaveRam(11)) // WAVE_RAM
-            DEF_IO_8(0x400009C, data = core->spu.readGbaWaveRam(12)) // WAVE_RAM
-            DEF_IO_8(0x400009D, data = core->spu.readGbaWaveRam(13)) // WAVE_RAM
-            DEF_IO_8(0x400009E, data = core->spu.readGbaWaveRam(14)) // WAVE_RAM
-            DEF_IO_8(0x400009F, data = core->spu.readGbaWaveRam(15)) // WAVE_RAM
+            DEF_IO08(0x4000090, data = core->spu.readGbaWaveRam(0)) // WAVE_RAM
+            DEF_IO08(0x4000091, data = core->spu.readGbaWaveRam(1)) // WAVE_RAM
+            DEF_IO08(0x4000092, data = core->spu.readGbaWaveRam(2)) // WAVE_RAM
+            DEF_IO08(0x4000093, data = core->spu.readGbaWaveRam(3)) // WAVE_RAM
+            DEF_IO08(0x4000094, data = core->spu.readGbaWaveRam(4)) // WAVE_RAM
+            DEF_IO08(0x4000095, data = core->spu.readGbaWaveRam(5)) // WAVE_RAM
+            DEF_IO08(0x4000096, data = core->spu.readGbaWaveRam(6)) // WAVE_RAM
+            DEF_IO08(0x4000097, data = core->spu.readGbaWaveRam(7)) // WAVE_RAM
+            DEF_IO08(0x4000098, data = core->spu.readGbaWaveRam(8)) // WAVE_RAM
+            DEF_IO08(0x4000099, data = core->spu.readGbaWaveRam(9)) // WAVE_RAM
+            DEF_IO08(0x400009A, data = core->spu.readGbaWaveRam(10)) // WAVE_RAM
+            DEF_IO08(0x400009B, data = core->spu.readGbaWaveRam(11)) // WAVE_RAM
+            DEF_IO08(0x400009C, data = core->spu.readGbaWaveRam(12)) // WAVE_RAM
+            DEF_IO08(0x400009D, data = core->spu.readGbaWaveRam(13)) // WAVE_RAM
+            DEF_IO08(0x400009E, data = core->spu.readGbaWaveRam(14)) // WAVE_RAM
+            DEF_IO08(0x400009F, data = core->spu.readGbaWaveRam(15)) // WAVE_RAM
             DEF_IO32(0x40000B8, data = core->dma[1].readDmaCnt(0)) // DMA0CNT
             DEF_IO32(0x40000C4, data = core->dma[1].readDmaCnt(1)) // DMA1CNT
             DEF_IO32(0x40000D0, data = core->dma[1].readDmaCnt(2)) // DMA2CNT
@@ -1192,24 +1342,24 @@ template <typename T> T Memory::ioReadGba(uint32_t address) {
             DEF_IO16(0x4000130, data = core->input.readKeyInput()) // KEYINPUT
             DEF_IO16(0x4000200, data = core->interpreter[1].readIe()) // IE
             DEF_IO16(0x4000202, data = core->interpreter[1].readIrf()) // IF
-            DEF_IO_8(0x4000208, data = core->interpreter[1].readIme()) // IME
-            DEF_IO_8(0x4000300, data = core->interpreter[1].readPostFlg()) // POSTFLG
+            DEF_IO08(0x4000208, data = core->interpreter[1].readIme()) // IME
+            DEF_IO08(0x4000300, data = core->interpreter[1].readPostFlg()) // POSTFLG
             DEF_IO16(0x80000C4, data = core->rtc.readGpData()) // GP_DATA
             DEF_IO16(0x80000C6, data = core->rtc.readGpDirection()) // GP_DIRECTION
             DEF_IO16(0x80000C8, data = core->rtc.readGpControl()) // GP_CONTROL
-
-        default:
-            // Handle unknown reads by returning nothing
-            if (i == 0) {
-                LOG_WARN("Unknown GBA I/O register read: 0x%X\n", address);
-                return 0;
-            }
-
-            // Ignore unknown reads after the first byte; this allows larger reads from smaller registers
-            i++;
-            continue;
         }
 
+        // Handle unknown reads by returning nothing
+        if (i == 0) {
+            LOG_WARN("Unknown GBA I/O register read: 0x%X\n", address);
+            return 0;
+        }
+
+        // Ignore unknown reads after the first byte; this allows larger reads from smaller registers
+        i++;
+        continue;
+
+    next:
         // Add data to the return value and adjust byte offset
         value |= (data >> (base * 8)) << (i * 8);
         i += size - base;
@@ -1220,10 +1370,12 @@ template <typename T> T Memory::ioReadGba(uint32_t address) {
 template <typename T> void Memory::ioWrite9(uint32_t address, T value) {
     // Write a value to one or more ARM9 I/O registers
     for (uint32_t i = 0; i < sizeof(T);) {
-        // Store data to a register
-        uint32_t base, size, data = value >> (i * 8);
-        uint32_t mask = (1ULL << ((sizeof(T) - i) * 8)) - 1;
-        switch (base = address + i) {
+        uint32_t base = address + i, size;
+        uint32_t mask = (1ULL << ((sizeof(T) - i) << 3)) - 1;
+        uint32_t data = value >> (i << 3);
+
+        // Check registers available in DS mode
+        switch (base) {
             DEF_IO32(0x4000000, core->gpu2D[0].writeDispCnt(IOWR_PARAMS)) // DISPCNT (engine A)
             DEF_IO16(0x4000004, core->gpu.writeDispStat(0, IOWR_PARAMS)) // DISPSTAT (ARM9)
             DEF_IO16(0x4000008, core->gpu2D[0].writeBgCnt(0, IOWR_PARAMS)) // BG0CNT (engine A)
@@ -1259,7 +1411,7 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value) {
             DEF_IO16(0x400004C, core->gpu2D[0].writeMosaic(IOWR_PARAMS)) // MOSAIC (engine A)
             DEF_IO16(0x4000050, core->gpu2D[0].writeBldCnt(IOWR_PARAMS)) // BLDCNT (engine A)
             DEF_IO16(0x4000052, core->gpu2D[0].writeBldAlpha(IOWR_PARAMS)) // BLDALPHA (engine A)
-            DEF_IO_8(0x4000054, core->gpu2D[0].writeBldY(IOWR_PARAMS8)) // BLDY (engine A)
+            DEF_IO08(0x4000054, core->gpu2D[0].writeBldY(IOWR_PARAMS8)) // BLDY (engine A)
             DEF_IO16(0x4000060, core->gpu3DRenderer.writeDisp3DCnt(IOWR_PARAMS)) // DISP3DCNT
             DEF_IO32(0x4000064, core->gpu.writeDispCapCnt(IOWR_PARAMS)) // DISPCAPCNT
             DEF_IO16(0x400006C, core->gpu2D[0].writeMasterBright(IOWR_PARAMS)) // MASTER_BRIGHT (engine A)
@@ -1291,23 +1443,23 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value) {
             DEF_IO16(0x4000184, core->ipc.writeIpcFifoCnt(0, IOWR_PARAMS)) // IPCFIFOCNT (ARM9)
             DEF_IO32(0x4000188, core->ipc.writeIpcFifoSend(0, IOWR_PARAMS)) // IPCFIFOSEND (ARM9)
             DEF_IO16(0x40001A0, core->cartridgeNds.writeAuxSpiCnt(0, IOWR_PARAMS)) // AUXSPICNT (ARM9)
-            DEF_IO_8(0x40001A2, core->cartridgeNds.writeAuxSpiData(0, IOWR_PARAMS8)) // AUXSPIDATA (ARM9)
+            DEF_IO08(0x40001A2, core->cartridgeNds.writeAuxSpiData(0, IOWR_PARAMS8)) // AUXSPIDATA (ARM9)
             DEF_IO32(0x40001A4, core->cartridgeNds.writeRomCtrl(0, IOWR_PARAMS)) // ROMCTRL (ARM9)
             DEF_IO32(0x40001A8, core->cartridgeNds.writeRomCmdOutL(0, IOWR_PARAMS)) // ROMCMDOUT_L (ARM9)
             DEF_IO32(0x40001AC, core->cartridgeNds.writeRomCmdOutH(0, IOWR_PARAMS)) // ROMCMDOUT_H (ARM9)
-            DEF_IO_8(0x4000208, core->interpreter[0].writeIme(IOWR_PARAMS8)) // IME (ARM9)
+            DEF_IO08(0x4000208, core->interpreter[0].writeIme(IOWR_PARAMS8)) // IME (ARM9)
             DEF_IO32(0x4000210, core->interpreter[0].writeIe(IOWR_PARAMS)) // IE (ARM9)
             DEF_IO32(0x4000214, core->interpreter[0].writeIrf(IOWR_PARAMS)) // IF (ARM9)
-            DEF_IO_8(0x4000240, writeVramCnt(0, IOWR_PARAMS8)) // VRAMCNT_A
-            DEF_IO_8(0x4000241, writeVramCnt(1, IOWR_PARAMS8)) // VRAMCNT_B
-            DEF_IO_8(0x4000242, writeVramCnt(2, IOWR_PARAMS8)) // VRAMCNT_C
-            DEF_IO_8(0x4000243, writeVramCnt(3, IOWR_PARAMS8)) // VRAMCNT_D
-            DEF_IO_8(0x4000244, writeVramCnt(4, IOWR_PARAMS8)) // VRAMCNT_E
-            DEF_IO_8(0x4000245, writeVramCnt(5, IOWR_PARAMS8)) // VRAMCNT_F
-            DEF_IO_8(0x4000246, writeVramCnt(6, IOWR_PARAMS8)) // VRAMCNT_G
-            DEF_IO_8(0x4000247, writeWramCnt(IOWR_PARAMS8)) // WRAMCNT
-            DEF_IO_8(0x4000248, writeVramCnt(7, IOWR_PARAMS8)) // VRAMCNT_H
-            DEF_IO_8(0x4000249, writeVramCnt(8, IOWR_PARAMS8)) // VRAMCNT_I
+            DEF_IO08(0x4000240, writeVramCnt(0, IOWR_PARAMS8)) // VRAMCNT_A
+            DEF_IO08(0x4000241, writeVramCnt(1, IOWR_PARAMS8)) // VRAMCNT_B
+            DEF_IO08(0x4000242, writeVramCnt(2, IOWR_PARAMS8)) // VRAMCNT_C
+            DEF_IO08(0x4000243, writeVramCnt(3, IOWR_PARAMS8)) // VRAMCNT_D
+            DEF_IO08(0x4000244, writeVramCnt(4, IOWR_PARAMS8)) // VRAMCNT_E
+            DEF_IO08(0x4000245, writeVramCnt(5, IOWR_PARAMS8)) // VRAMCNT_F
+            DEF_IO08(0x4000246, writeVramCnt(6, IOWR_PARAMS8)) // VRAMCNT_G
+            DEF_IO08(0x4000247, writeWramCnt(IOWR_PARAMS8)) // WRAMCNT
+            DEF_IO08(0x4000248, writeVramCnt(7, IOWR_PARAMS8)) // VRAMCNT_H
+            DEF_IO08(0x4000249, writeVramCnt(8, IOWR_PARAMS8)) // VRAMCNT_I
             DEF_IO16(0x4000280, core->divSqrt.writeDivCnt(IOWR_PARAMS)) // DIVCNT
             DEF_IO32(0x4000290, core->divSqrt.writeDivNumerL(IOWR_PARAMS)) // DIVNUMER_L
             DEF_IO32(0x4000294, core->divSqrt.writeDivNumerH(IOWR_PARAMS)) // DIVNUMER_H
@@ -1316,7 +1468,7 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value) {
             DEF_IO16(0x40002B0, core->divSqrt.writeSqrtCnt(IOWR_PARAMS)) // SQRTCNT
             DEF_IO32(0x40002B8, core->divSqrt.writeSqrtParamL(IOWR_PARAMS)) // SQRTPARAM_L
             DEF_IO32(0x40002BC, core->divSqrt.writeSqrtParamH(IOWR_PARAMS)) // SQRTPARAM_H
-            DEF_IO_8(0x4000300, core->interpreter[0].writePostFlg(IOWR_PARAMS8)) // POSTFLG (ARM9)
+            DEF_IO08(0x4000300, core->interpreter[0].writePostFlg(IOWR_PARAMS8)) // POSTFLG (ARM9)
             DEF_IO16(0x4000304, core->gpu.writePowCnt1(IOWR_PARAMS)) // POWCNT1
             DEF_IO16(0x4000330, core->gpu3DRenderer.writeEdgeColor(0, IOWR_PARAMS)) // EDGE_COLOR
             DEF_IO16(0x4000332, core->gpu3DRenderer.writeEdgeColor(1, IOWR_PARAMS)) // EDGE_COLOR
@@ -1330,38 +1482,38 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value) {
             DEF_IO16(0x4000354, core->gpu3DRenderer.writeClearDepth(IOWR_PARAMS)) // CLEAR_DEPTH
             DEF_IO32(0x4000358, core->gpu3DRenderer.writeFogColor(IOWR_PARAMS)) // FOG_COLOR
             DEF_IO16(0x400035C, core->gpu3DRenderer.writeFogOffset(IOWR_PARAMS)) // FOG_OFFSET
-            DEF_IO_8(0x4000360, core->gpu3DRenderer.writeFogTable(0, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000361, core->gpu3DRenderer.writeFogTable(1, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000362, core->gpu3DRenderer.writeFogTable(2, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000363, core->gpu3DRenderer.writeFogTable(3, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000364, core->gpu3DRenderer.writeFogTable(4, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000365, core->gpu3DRenderer.writeFogTable(5, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000366, core->gpu3DRenderer.writeFogTable(6, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000367, core->gpu3DRenderer.writeFogTable(7, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000368, core->gpu3DRenderer.writeFogTable(8, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000369, core->gpu3DRenderer.writeFogTable(9, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400036A, core->gpu3DRenderer.writeFogTable(10, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400036B, core->gpu3DRenderer.writeFogTable(11, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400036C, core->gpu3DRenderer.writeFogTable(12, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400036D, core->gpu3DRenderer.writeFogTable(13, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400036E, core->gpu3DRenderer.writeFogTable(14, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400036F, core->gpu3DRenderer.writeFogTable(15, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000370, core->gpu3DRenderer.writeFogTable(16, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000371, core->gpu3DRenderer.writeFogTable(17, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000372, core->gpu3DRenderer.writeFogTable(18, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000373, core->gpu3DRenderer.writeFogTable(19, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000374, core->gpu3DRenderer.writeFogTable(20, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000375, core->gpu3DRenderer.writeFogTable(21, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000376, core->gpu3DRenderer.writeFogTable(22, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000377, core->gpu3DRenderer.writeFogTable(23, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000378, core->gpu3DRenderer.writeFogTable(24, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x4000379, core->gpu3DRenderer.writeFogTable(25, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400037A, core->gpu3DRenderer.writeFogTable(26, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400037B, core->gpu3DRenderer.writeFogTable(27, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400037C, core->gpu3DRenderer.writeFogTable(28, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400037D, core->gpu3DRenderer.writeFogTable(29, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400037E, core->gpu3DRenderer.writeFogTable(30, IOWR_PARAMS8)) // FOG_TABLE
-            DEF_IO_8(0x400037F, core->gpu3DRenderer.writeFogTable(31, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000360, core->gpu3DRenderer.writeFogTable(0, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000361, core->gpu3DRenderer.writeFogTable(1, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000362, core->gpu3DRenderer.writeFogTable(2, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000363, core->gpu3DRenderer.writeFogTable(3, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000364, core->gpu3DRenderer.writeFogTable(4, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000365, core->gpu3DRenderer.writeFogTable(5, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000366, core->gpu3DRenderer.writeFogTable(6, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000367, core->gpu3DRenderer.writeFogTable(7, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000368, core->gpu3DRenderer.writeFogTable(8, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000369, core->gpu3DRenderer.writeFogTable(9, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400036A, core->gpu3DRenderer.writeFogTable(10, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400036B, core->gpu3DRenderer.writeFogTable(11, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400036C, core->gpu3DRenderer.writeFogTable(12, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400036D, core->gpu3DRenderer.writeFogTable(13, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400036E, core->gpu3DRenderer.writeFogTable(14, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400036F, core->gpu3DRenderer.writeFogTable(15, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000370, core->gpu3DRenderer.writeFogTable(16, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000371, core->gpu3DRenderer.writeFogTable(17, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000372, core->gpu3DRenderer.writeFogTable(18, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000373, core->gpu3DRenderer.writeFogTable(19, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000374, core->gpu3DRenderer.writeFogTable(20, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000375, core->gpu3DRenderer.writeFogTable(21, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000376, core->gpu3DRenderer.writeFogTable(22, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000377, core->gpu3DRenderer.writeFogTable(23, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000378, core->gpu3DRenderer.writeFogTable(24, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x4000379, core->gpu3DRenderer.writeFogTable(25, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400037A, core->gpu3DRenderer.writeFogTable(26, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400037B, core->gpu3DRenderer.writeFogTable(27, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400037C, core->gpu3DRenderer.writeFogTable(28, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400037D, core->gpu3DRenderer.writeFogTable(29, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400037E, core->gpu3DRenderer.writeFogTable(30, IOWR_PARAMS8)) // FOG_TABLE
+            DEF_IO08(0x400037F, core->gpu3DRenderer.writeFogTable(31, IOWR_PARAMS8)) // FOG_TABLE
             DEF_IO16(0x4000380, core->gpu3DRenderer.writeToonTable(0, IOWR_PARAMS)) // TOON_TABLE
             DEF_IO16(0x4000382, core->gpu3DRenderer.writeToonTable(1, IOWR_PARAMS)) // TOON_TABLE
             DEF_IO16(0x4000384, core->gpu3DRenderer.writeToonTable(2, IOWR_PARAMS)) // TOON_TABLE
@@ -1482,21 +1634,50 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value) {
             DEF_IO16(0x400104C, core->gpu2D[1].writeMosaic(IOWR_PARAMS)) // MOSAIC (engine B)
             DEF_IO16(0x4001050, core->gpu2D[1].writeBldCnt(IOWR_PARAMS)) // BLDCNT (engine B)
             DEF_IO16(0x4001052, core->gpu2D[1].writeBldAlpha(IOWR_PARAMS)) // BLDALPHA (engine B)
-            DEF_IO_8(0x4001054, core->gpu2D[1].writeBldY(IOWR_PARAMS8)) // BLDY (engine B)
+            DEF_IO08(0x4001054, core->gpu2D[1].writeBldY(IOWR_PARAMS8)) // BLDY (engine B)
             DEF_IO16(0x400106C, core->gpu2D[1].writeMasterBright(IOWR_PARAMS)) // MASTER_BRIGHT (engine B)
-
-        default:
-            // Handle unknown writes by doing nothing
-            if (i == 0) {
-                LOG_WARN("Unknown ARM9 I/O register write: 0x%X\n", address);
-                return;
-            }
-
-            // Ignore unknown writes after the first byte; this allows larger writes to smaller registers
-            i++;
-            continue;
         }
 
+        // Check registers exclusive to DSi mode
+        if (core->dsiMode) {
+            switch (base) {
+                DEF_IO08(0x4004040, writeMbk1(0, IOWR_PARAMS8)) // MBK1.0
+                DEF_IO08(0x4004041, writeMbk1(1, IOWR_PARAMS8)) // MBK1.1
+                DEF_IO08(0x4004042, writeMbk1(2, IOWR_PARAMS8)) // MBK1.2
+                DEF_IO08(0x4004043, writeMbk1(3, IOWR_PARAMS8)) // MBK1.3
+                DEF_IO08(0x4004044, writeMbk23(0, IOWR_PARAMS8)) // MBK2.0
+                DEF_IO08(0x4004045, writeMbk23(1, IOWR_PARAMS8)) // MBK2.1
+                DEF_IO08(0x4004046, writeMbk23(2, IOWR_PARAMS8)) // MBK2.2
+                DEF_IO08(0x4004047, writeMbk23(3, IOWR_PARAMS8)) // MBK2.3
+                DEF_IO08(0x4004048, writeMbk23(4, IOWR_PARAMS8)) // MBK3.0
+                DEF_IO08(0x4004049, writeMbk23(5, IOWR_PARAMS8)) // MBK3.1
+                DEF_IO08(0x400404A, writeMbk23(6, IOWR_PARAMS8)) // MBK3.2
+                DEF_IO08(0x400404B, writeMbk23(7, IOWR_PARAMS8)) // MBK3.3
+                DEF_IO08(0x400404C, writeMbk45(0, IOWR_PARAMS8)) // MBK4.0
+                DEF_IO08(0x400404D, writeMbk45(1, IOWR_PARAMS8)) // MBK4.1
+                DEF_IO08(0x400404E, writeMbk45(2, IOWR_PARAMS8)) // MBK4.2
+                DEF_IO08(0x400404F, writeMbk45(3, IOWR_PARAMS8)) // MBK4.3
+                DEF_IO08(0x4004050, writeMbk45(4, IOWR_PARAMS8)) // MBK5.0
+                DEF_IO08(0x4004051, writeMbk45(5, IOWR_PARAMS8)) // MBK5.1
+                DEF_IO08(0x4004052, writeMbk45(6, IOWR_PARAMS8)) // MBK5.2
+                DEF_IO08(0x4004053, writeMbk45(7, IOWR_PARAMS8)) // MBK5.3
+                DEF_IO32(0x4004054, writeMbk6(0, IOWR_PARAMS)) // MBK6
+                DEF_IO32(0x4004058, writeMbk7(0, IOWR_PARAMS)) // MBK7
+                DEF_IO32(0x400405C, writeMbk8(0, IOWR_PARAMS)) // MBK8
+            }
+        }
+
+        // Handle unknown writes by doing nothing
+        if (i == 0) {
+            LOG_WARN("Unknown ARM9 I/O register write: 0x%X\n", address);
+            return;
+        }
+
+        // Ignore unknown writes after the first byte; this allows larger writes to smaller registers
+        i++;
+        continue;
+
+    next:
         // Adjust the byte offset
         i += size - base;
     }
@@ -1509,10 +1690,12 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value) {
 
     // Write a value to one or more ARM7 I/O registers
     for (uint32_t i = 0; i < sizeof(T);) {
-        // Store data to a register
-        uint32_t base, size, data = value >> (i * 8);
-        uint32_t mask = (1ULL << ((sizeof(T) - i) * 8)) - 1;
-        switch (base = address + i) {
+        uint32_t base = address + i, size;
+        uint32_t mask = (1ULL << ((sizeof(T) - i) << 3)) - 1;
+        uint32_t data = value >> (i << 3);
+
+        // Check registers available in DS mode
+        switch (base) {
             DEF_IO16(0x4000004, core->gpu.writeDispStat(1, IOWR_PARAMS)) // DISPSTAT (ARM7)
             DEF_IO32(0x40000B0, core->dma[1].writeDmaSad(0, IOWR_PARAMS)) // DMA0SAD (ARM7)
             DEF_IO32(0x40000B4, core->dma[1].writeDmaDad(0, IOWR_PARAMS)) // DMA0DAD (ARM7)
@@ -1534,22 +1717,22 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value) {
             DEF_IO16(0x400010A, core->timers[1].writeTmCntH(2, IOWR_PARAMS)) // TM2CNT_H (ARM7)
             DEF_IO16(0x400010C, core->timers[1].writeTmCntL(3, IOWR_PARAMS)) // TM3CNT_L (ARM7)
             DEF_IO16(0x400010E, core->timers[1].writeTmCntH(3, IOWR_PARAMS)) // TM3CNT_H (ARM7)
-            DEF_IO_8(0x4000138, core->rtc.writeRtc(IOWR_PARAMS8)) // RTC
+            DEF_IO08(0x4000138, core->rtc.writeRtc(IOWR_PARAMS8)) // RTC
             DEF_IO16(0x4000180, core->ipc.writeIpcSync(1, IOWR_PARAMS)) // IPCSYNC (ARM7)
             DEF_IO16(0x4000184, core->ipc.writeIpcFifoCnt(1, IOWR_PARAMS)) // IPCFIFOCNT (ARM7)
             DEF_IO32(0x4000188, core->ipc.writeIpcFifoSend(1, IOWR_PARAMS)) // IPCFIFOSEND (ARM7)
             DEF_IO16(0x40001A0, core->cartridgeNds.writeAuxSpiCnt(1, IOWR_PARAMS)) // AUXSPICNT (ARM7)
-            DEF_IO_8(0x40001A2, core->cartridgeNds.writeAuxSpiData(1, IOWR_PARAMS8)) // AUXSPIDATA (ARM7)
+            DEF_IO08(0x40001A2, core->cartridgeNds.writeAuxSpiData(1, IOWR_PARAMS8)) // AUXSPIDATA (ARM7)
             DEF_IO32(0x40001A4, core->cartridgeNds.writeRomCtrl(1, IOWR_PARAMS)) // ROMCTRL (ARM7)
             DEF_IO32(0x40001A8, core->cartridgeNds.writeRomCmdOutL(1, IOWR_PARAMS)) // ROMCMDOUT_L (ARM7)
             DEF_IO32(0x40001AC, core->cartridgeNds.writeRomCmdOutH(1, IOWR_PARAMS)) // ROMCMDOUT_H (ARM7)
             DEF_IO16(0x40001C0, core->spi.writeSpiCnt(IOWR_PARAMS)) // SPICNT
-            DEF_IO_8(0x40001C2, core->spi.writeSpiData(IOWR_PARAMS8)) // SPIDATA
-            DEF_IO_8(0x4000208, core->interpreter[1].writeIme(IOWR_PARAMS8)) // IME (ARM7)
+            DEF_IO08(0x40001C2, core->spi.writeSpiData(IOWR_PARAMS8)) // SPIDATA
+            DEF_IO08(0x4000208, core->interpreter[1].writeIme(IOWR_PARAMS8)) // IME (ARM7)
             DEF_IO32(0x4000210, core->interpreter[1].writeIe(IOWR_PARAMS)) // IE (ARM7)
             DEF_IO32(0x4000214, core->interpreter[1].writeIrf(IOWR_PARAMS)) // IF (ARM7)
-            DEF_IO_8(0x4000300, core->interpreter[1].writePostFlg(IOWR_PARAMS8)) // POSTFLG (ARM7)
-            DEF_IO_8(0x4000301, writeHaltCnt(IOWR_PARAMS8)) // HALTCNT
+            DEF_IO08(0x4000300, core->interpreter[1].writePostFlg(IOWR_PARAMS8)) // POSTFLG (ARM7)
+            DEF_IO08(0x4000301, writeHaltCnt(IOWR_PARAMS8)) // HALTCNT
             DEF_IO32(0x4000400, core->spu.writeSoundCnt(0, IOWR_PARAMS)) // SOUND0CNT
             DEF_IO32(0x4000404, core->spu.writeSoundSad(0, IOWR_PARAMS)) // SOUND0SAD
             DEF_IO16(0x4000408, core->spu.writeSoundTmr(0, IOWR_PARAMS)) // SOUND0TMR
@@ -1632,8 +1815,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value) {
             DEF_IO32(0x40004FC, core->spu.writeSoundLen(15, IOWR_PARAMS)) // SOUND15LEN
             DEF_IO16(0x4000500, core->spu.writeMainSoundCnt(IOWR_PARAMS)) // SOUNDCNT
             DEF_IO16(0x4000504, core->spu.writeSoundBias(IOWR_PARAMS)) // SOUNDBIAS
-            DEF_IO_8(0x4000508, core->spu.writeSndCapCnt(0, IOWR_PARAMS8)) // SNDCAP0CNT
-            DEF_IO_8(0x4000509, core->spu.writeSndCapCnt(1, IOWR_PARAMS8)) // SNDCAP1CNT
+            DEF_IO08(0x4000508, core->spu.writeSndCapCnt(0, IOWR_PARAMS8)) // SNDCAP0CNT
+            DEF_IO08(0x4000509, core->spu.writeSndCapCnt(1, IOWR_PARAMS8)) // SNDCAP1CNT
             DEF_IO32(0x4000510, core->spu.writeSndCapDad(0, IOWR_PARAMS)) // SNDCAP0DAD
             DEF_IO16(0x4000514, core->spu.writeSndCapLen(0, IOWR_PARAMS)) // SNDCAP0LEN
             DEF_IO32(0x4000518, core->spu.writeSndCapDad(1, IOWR_PARAMS)) // SNDCAP1DAD
@@ -1707,19 +1890,87 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value) {
             DEF_IO16(0x4800158, core->wifi.writeWBbCnt(IOWR_PARAMS)) // W_BB_CNT
             DEF_IO16(0x480015A, core->wifi.writeWBbWrite(IOWR_PARAMS)) // W_BB_WRITE
             DEF_IO16(0x480021C, core->wifi.writeWIrfSet(IOWR_PARAMS)) // W_IF_SET
-
-        default:
-            // Handle unknown writes by doing nothing
-            if (i == 0) {
-                LOG_WARN("Unknown ARM7 I/O register write: 0x%X\n", address);
-                return;
-            }
-
-            // Ignore unknown writes after the first byte; this allows larger writes to smaller registers
-            i++;
-            continue;
         }
 
+        // Check registers exclusive to DSi mode
+        if (core->dsiMode) {
+            switch (base) {
+                DEF_IO32(0x4004054, writeMbk6(1, IOWR_PARAMS)) // MBK6
+                DEF_IO32(0x4004058, writeMbk7(1, IOWR_PARAMS)) // MBK7
+                DEF_IO32(0x400405C, writeMbk8(1, IOWR_PARAMS)) // MBK8
+                DEF_IO32(0x4004400, core->aes.writeCnt(IOWR_PARAMS)) // AES_CNT
+                DEF_IO32(0x4004404, core->aes.writeBlkcnt(IOWR_PARAMS)) // AES_BLKCNT
+                DEF_IO32(0x4004408, core->aes.writeWrfifo(IOWR_PARAMS)) // AES_WRFIFO
+                DEF_IO32(0x4004420, core->aes.writeIv(0, IOWR_PARAMS)) // AES_IV0
+                DEF_IO32(0x4004424, core->aes.writeIv(1, IOWR_PARAMS)) // AES_IV1
+                DEF_IO32(0x4004428, core->aes.writeIv(2, IOWR_PARAMS)) // AES_IV2
+                DEF_IO32(0x400442C, core->aes.writeIv(3, IOWR_PARAMS)) // AES_IV3
+                DEF_IO32(0x4004430, core->aes.writeMac(0, IOWR_PARAMS)) // AES_MAC0
+                DEF_IO32(0x4004434, core->aes.writeMac(1, IOWR_PARAMS)) // AES_MAC1
+                DEF_IO32(0x4004438, core->aes.writeMac(2, IOWR_PARAMS)) // AES_MAC2
+                DEF_IO32(0x400443C, core->aes.writeMac(3, IOWR_PARAMS)) // AES_MAC3
+                DEF_IO32(0x4004440, core->aes.writeKey(0, 0, IOWR_PARAMS)) // AES_KEY0.0
+                DEF_IO32(0x4004444, core->aes.writeKey(0, 1, IOWR_PARAMS)) // AES_KEY0.1
+                DEF_IO32(0x4004448, core->aes.writeKey(0, 2, IOWR_PARAMS)) // AES_KEY0.2
+                DEF_IO32(0x400444C, core->aes.writeKey(0, 3, IOWR_PARAMS)) // AES_KEY0.3
+                DEF_IO32(0x4004450, core->aes.writeKeyx(0, 0, IOWR_PARAMS)) // AES_KEYX0.0
+                DEF_IO32(0x4004454, core->aes.writeKeyx(0, 1, IOWR_PARAMS)) // AES_KEYX0.1
+                DEF_IO32(0x4004458, core->aes.writeKeyx(0, 2, IOWR_PARAMS)) // AES_KEYX0.2
+                DEF_IO32(0x400445C, core->aes.writeKeyx(0, 3, IOWR_PARAMS)) // AES_KEYX0.3
+                DEF_IO32(0x4004460, core->aes.writeKeyy(0, 0, IOWR_PARAMS)) // AES_KEYY0.0
+                DEF_IO32(0x4004464, core->aes.writeKeyy(0, 1, IOWR_PARAMS)) // AES_KEYY0.1
+                DEF_IO32(0x4004468, core->aes.writeKeyy(0, 2, IOWR_PARAMS)) // AES_KEYY0.2
+                DEF_IO32(0x400446C, core->aes.writeKeyy(0, 3, IOWR_PARAMS)) // AES_KEYY0.3
+                DEF_IO32(0x4004470, core->aes.writeKey(1, 0, IOWR_PARAMS)) // AES_KEY1.0
+                DEF_IO32(0x4004474, core->aes.writeKey(1, 1, IOWR_PARAMS)) // AES_KEY1.1
+                DEF_IO32(0x4004478, core->aes.writeKey(1, 2, IOWR_PARAMS)) // AES_KEY1.2
+                DEF_IO32(0x400447C, core->aes.writeKey(1, 3, IOWR_PARAMS)) // AES_KEY1.3
+                DEF_IO32(0x4004480, core->aes.writeKeyx(1, 0, IOWR_PARAMS)) // AES_KEYX1.0
+                DEF_IO32(0x4004484, core->aes.writeKeyx(1, 1, IOWR_PARAMS)) // AES_KEYX1.1
+                DEF_IO32(0x4004488, core->aes.writeKeyx(1, 2, IOWR_PARAMS)) // AES_KEYX1.2
+                DEF_IO32(0x400448C, core->aes.writeKeyx(1, 3, IOWR_PARAMS)) // AES_KEYX1.3
+                DEF_IO32(0x4004490, core->aes.writeKeyy(1, 0, IOWR_PARAMS)) // AES_KEYY1.0
+                DEF_IO32(0x4004494, core->aes.writeKeyy(1, 1, IOWR_PARAMS)) // AES_KEYY1.1
+                DEF_IO32(0x4004498, core->aes.writeKeyy(1, 2, IOWR_PARAMS)) // AES_KEYY1.2
+                DEF_IO32(0x400449C, core->aes.writeKeyy(1, 3, IOWR_PARAMS)) // AES_KEYY1.3
+                DEF_IO32(0x40044A0, core->aes.writeKey(2, 0, IOWR_PARAMS)) // AES_KEY2.0
+                DEF_IO32(0x40044A4, core->aes.writeKey(2, 1, IOWR_PARAMS)) // AES_KEY2.1
+                DEF_IO32(0x40044A8, core->aes.writeKey(2, 2, IOWR_PARAMS)) // AES_KEY2.2
+                DEF_IO32(0x40044AC, core->aes.writeKey(2, 3, IOWR_PARAMS)) // AES_KEY2.3
+                DEF_IO32(0x40044B0, core->aes.writeKeyx(2, 0, IOWR_PARAMS)) // AES_KEYX2.0
+                DEF_IO32(0x40044B4, core->aes.writeKeyx(2, 1, IOWR_PARAMS)) // AES_KEYX2.1
+                DEF_IO32(0x40044B8, core->aes.writeKeyx(2, 2, IOWR_PARAMS)) // AES_KEYX2.2
+                DEF_IO32(0x40044BC, core->aes.writeKeyx(2, 3, IOWR_PARAMS)) // AES_KEYX2.3
+                DEF_IO32(0x40044C0, core->aes.writeKeyy(2, 0, IOWR_PARAMS)) // AES_KEYY2.0
+                DEF_IO32(0x40044C4, core->aes.writeKeyy(2, 1, IOWR_PARAMS)) // AES_KEYY2.1
+                DEF_IO32(0x40044C8, core->aes.writeKeyy(2, 2, IOWR_PARAMS)) // AES_KEYY2.2
+                DEF_IO32(0x40044CC, core->aes.writeKeyy(2, 3, IOWR_PARAMS)) // AES_KEYY2.3
+                DEF_IO32(0x40044D0, core->aes.writeKey(3, 0, IOWR_PARAMS)) // AES_KEY3.0
+                DEF_IO32(0x40044D4, core->aes.writeKey(3, 1, IOWR_PARAMS)) // AES_KEY3.1
+                DEF_IO32(0x40044D8, core->aes.writeKey(3, 2, IOWR_PARAMS)) // AES_KEY3.2
+                DEF_IO32(0x40044DC, core->aes.writeKey(3, 3, IOWR_PARAMS)) // AES_KEY3.3
+                DEF_IO32(0x40044E0, core->aes.writeKeyx(3, 0, IOWR_PARAMS)) // AES_KEYX3.0
+                DEF_IO32(0x40044E4, core->aes.writeKeyx(3, 1, IOWR_PARAMS)) // AES_KEYX3.1
+                DEF_IO32(0x40044E8, core->aes.writeKeyx(3, 2, IOWR_PARAMS)) // AES_KEYX3.2
+                DEF_IO32(0x40044EC, core->aes.writeKeyx(3, 3, IOWR_PARAMS)) // AES_KEYX3.3
+                DEF_IO32(0x40044F0, core->aes.writeKeyy(3, 0, IOWR_PARAMS)) // AES_KEYY3.0
+                DEF_IO32(0x40044F4, core->aes.writeKeyy(3, 1, IOWR_PARAMS)) // AES_KEYY3.1
+                DEF_IO32(0x40044F8, core->aes.writeKeyy(3, 2, IOWR_PARAMS)) // AES_KEYY3.2
+                DEF_IO32(0x40044FC, core->aes.writeKeyy(3, 3, IOWR_PARAMS)) // AES_KEYY3.3
+            }
+        }
+
+        // Handle unknown writes by doing nothing
+        if (i == 0) {
+            LOG_WARN("Unknown ARM7 I/O register write: 0x%X\n", address);
+            return;
+        }
+
+        // Ignore unknown writes after the first byte; this allows larger writes to smaller registers
+        i++;
+        continue;
+
+    next:
         // Adjust the byte offset
         i += size - base;
     }
@@ -1728,10 +1979,12 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value) {
 template <typename T> void Memory::ioWriteGba(uint32_t address, T value) {
     // Write a value to one or more GBA I/O registers
     for (uint32_t i = 0; i < sizeof(T);) {
-        // Store data to a register
-        uint32_t base, size, data = value >> (i * 8);
-        uint32_t mask = (1ULL << ((sizeof(T) - i) * 8)) - 1;
-        switch (base = address + i) {
+        uint32_t base = address + i, size;
+        uint32_t mask = (1ULL << ((sizeof(T) - i) << 3)) - 1;
+        uint32_t data = value >> (i << 3);
+
+        // Check registers available in GBA mode
+        switch (base) {
             DEF_IO16(0x4000000, core->gpu2D[0].writeDispCnt(IOWR_PARAMS)) // DISPCNT
             DEF_IO16(0x4000004, core->gpu.writeDispStat(1, IOWR_PARAMS)) // DISPSTAT
             DEF_IO16(0x4000008, core->gpu2D[0].writeBgCnt(0, IOWR_PARAMS)) // BG0CNT
@@ -1767,7 +2020,7 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value) {
             DEF_IO16(0x400004C, core->gpu2D[0].writeMosaic(IOWR_PARAMS)) // MOSAIC
             DEF_IO16(0x4000050, core->gpu2D[0].writeBldCnt(IOWR_PARAMS)) // BLDCNT
             DEF_IO16(0x4000052, core->gpu2D[0].writeBldAlpha(IOWR_PARAMS)) // BLDALPHA
-            DEF_IO_8(0x4000054, core->gpu2D[0].writeBldY(IOWR_PARAMS8)) // BLDY
+            DEF_IO08(0x4000054, core->gpu2D[0].writeBldY(IOWR_PARAMS8)) // BLDY
             DEF_IO16(0x4000060, core->spu.writeGbaSoundCntL(0, IOWR_PARAMS8)) // SOUND0CNT_L
             DEF_IO16(0x4000062, core->spu.writeGbaSoundCntH(0, IOWR_PARAMS)) // SOUND0CNT_H
             DEF_IO16(0x4000064, core->spu.writeGbaSoundCntX(0, IOWR_PARAMS)) // SOUND0CNT_X
@@ -1782,22 +2035,22 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value) {
             DEF_IO16(0x4000082, core->spu.writeGbaMainSoundCntH(IOWR_PARAMS)) // SOUNDCNT_H
             DEF_IO16(0x4000084, core->spu.writeGbaMainSoundCntX(IOWR_PARAMS8)) // SOUNDCNT_X
             DEF_IO16(0x4000088, core->spu.writeGbaSoundBias(IOWR_PARAMS)) // SOUNDBIAS
-            DEF_IO_8(0x4000090, core->spu.writeGbaWaveRam(0, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x4000091, core->spu.writeGbaWaveRam(1, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x4000092, core->spu.writeGbaWaveRam(2, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x4000093, core->spu.writeGbaWaveRam(3, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x4000094, core->spu.writeGbaWaveRam(4, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x4000095, core->spu.writeGbaWaveRam(5, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x4000096, core->spu.writeGbaWaveRam(6, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x4000097, core->spu.writeGbaWaveRam(7, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x4000098, core->spu.writeGbaWaveRam(8, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x4000099, core->spu.writeGbaWaveRam(9, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x400009A, core->spu.writeGbaWaveRam(10, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x400009B, core->spu.writeGbaWaveRam(11, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x400009C, core->spu.writeGbaWaveRam(12, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x400009D, core->spu.writeGbaWaveRam(13, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x400009E, core->spu.writeGbaWaveRam(14, IOWR_PARAMS8)) // WAVE_RAM
-            DEF_IO_8(0x400009F, core->spu.writeGbaWaveRam(15, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x4000090, core->spu.writeGbaWaveRam(0, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x4000091, core->spu.writeGbaWaveRam(1, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x4000092, core->spu.writeGbaWaveRam(2, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x4000093, core->spu.writeGbaWaveRam(3, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x4000094, core->spu.writeGbaWaveRam(4, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x4000095, core->spu.writeGbaWaveRam(5, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x4000096, core->spu.writeGbaWaveRam(6, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x4000097, core->spu.writeGbaWaveRam(7, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x4000098, core->spu.writeGbaWaveRam(8, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x4000099, core->spu.writeGbaWaveRam(9, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x400009A, core->spu.writeGbaWaveRam(10, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x400009B, core->spu.writeGbaWaveRam(11, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x400009C, core->spu.writeGbaWaveRam(12, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x400009D, core->spu.writeGbaWaveRam(13, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x400009E, core->spu.writeGbaWaveRam(14, IOWR_PARAMS8)) // WAVE_RAM
+            DEF_IO08(0x400009F, core->spu.writeGbaWaveRam(15, IOWR_PARAMS8)) // WAVE_RAM
             DEF_IO32(0x40000A0, core->spu.writeGbaFifoA(IOWR_PARAMS)) // FIFO_A
             DEF_IO32(0x40000A4, core->spu.writeGbaFifoB(IOWR_PARAMS)) // FIFO_B
             DEF_IO32(0x40000B0, core->dma[1].writeDmaSad(0, IOWR_PARAMS)) // DMA0SAD
@@ -1822,25 +2075,25 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value) {
             DEF_IO16(0x400010E, core->timers[1].writeTmCntH(3, IOWR_PARAMS)) // TM3CNT_H
             DEF_IO16(0x4000200, core->interpreter[1].writeIe(IOWR_PARAMS)) // IE
             DEF_IO16(0x4000202, core->interpreter[1].writeIrf(IOWR_PARAMS)) // IF
-            DEF_IO_8(0x4000208, core->interpreter[1].writeIme(IOWR_PARAMS8)) // IME
-            DEF_IO_8(0x4000300, core->interpreter[1].writePostFlg(IOWR_PARAMS8)) // POSTFLG
-            DEF_IO_8(0x4000301, writeGbaHaltCnt(IOWR_PARAMS8)) // HALTCNT
+            DEF_IO08(0x4000208, core->interpreter[1].writeIme(IOWR_PARAMS8)) // IME
+            DEF_IO08(0x4000300, core->interpreter[1].writePostFlg(IOWR_PARAMS8)) // POSTFLG
+            DEF_IO08(0x4000301, writeGbaHaltCnt(IOWR_PARAMS8)) // HALTCNT
             DEF_IO16(0x80000C4, core->rtc.writeGpData(IOWR_PARAMS)) // GP_DATA
             DEF_IO16(0x80000C6, core->rtc.writeGpDirection(IOWR_PARAMS)) // GP_DIRECTION
             DEF_IO16(0x80000C8, core->rtc.writeGpControl(IOWR_PARAMS)) // GP_CONTROL
-
-        default:
-            // Handle unknown writes by doing nothing
-            if (i == 0) {
-                LOG_WARN("Unknown GBA I/O register write: 0x%X\n", address);
-                return;
-            }
-
-            // Ignore unknown writes after the first byte; this allows larger writes to smaller registers
-            i++;
-            continue;
         }
 
+        // Handle unknown writes by doing nothing
+        if (i == 0) {
+            LOG_WARN("Unknown GBA I/O register write: 0x%X\n", address);
+            return;
+        }
+
+        // Ignore unknown writes after the first byte; this allows larger writes to smaller registers
+        i++;
+        continue;
+
+    next:
         // Adjust the byte offset
         i += size - base;
     }
@@ -1863,7 +2116,7 @@ void Memory::writeWramCnt(uint8_t value) {
     // Write to the WRAMCNT register and update WRAM mappings
     wramCnt = value & 0x3;
     updateMap9(0x3000000, 0x4000000);
-    updateMap7(0x3000000, 0x4000000);
+    updateMap7(0x3000000, 0x3800000);
 }
 
 void Memory::writeHaltCnt(uint8_t value) {
@@ -1891,4 +2144,46 @@ void Memory::writeGbaHaltCnt(uint8_t value) {
     core->interpreter[1].halt(0);
     if (value & BIT(7)) // Stop
         LOG_CRIT("Unhandled request for stop mode\n");
+}
+
+void Memory::writeMbk1(int i, uint8_t value) {
+    // Write to one of the NWRAM-A slot registers and update mappings
+    mbk1[i] = (value & 0x8D);
+    updateMap9(0x3000000, 0x4000000);
+    updateMap7(0x3000000, 0x3800000);
+}
+
+void Memory::writeMbk23(int i, uint8_t value) {
+    // Write to one of the NWRAM-B slot registers and update mappings
+    mbk23[i] = (value & 0x9F);
+    updateMap9(0x3000000, 0x4000000);
+    updateMap7(0x3000000, 0x3800000);
+}
+
+void Memory::writeMbk45(int i, uint8_t value) {
+    // Write to one of the NWRAM-C slot registers and update mappings
+    mbk45[i] = (value & 0x9F);
+    updateMap9(0x3000000, 0x4000000);
+    updateMap7(0x3000000, 0x3800000);
+}
+
+void Memory::writeMbk6(bool arm7, uint32_t mask, uint32_t value) {
+    // Write to a CPU's NWRAM-A address register and update mappings
+    mask &= 0x1FF03FF0;
+    mbk6[arm7] = (mbk6[arm7] & ~mask) | (value & mask);
+    arm7 ? updateMap7(0x3000000, 0x3800000) : updateMap9(0x3000000, 0x4000000);
+}
+
+void Memory::writeMbk7(bool arm7, uint32_t mask, uint32_t value) {
+    // Write to a CPU's NWRAM-B address register and update mappings
+    mask &= 0x1FF83FF8;
+    mbk7[arm7] = (mbk7[arm7] & ~mask) | (value & mask);
+    arm7 ? updateMap7(0x3000000, 0x3800000) : updateMap9(0x3000000, 0x4000000);
+}
+
+void Memory::writeMbk8(bool arm7, uint32_t mask, uint32_t value) {
+    // Write to a CPU's NWRAM-C address register and update mappings
+    mask &= 0x1FF83FF8;
+    mbk8[arm7] = (mbk8[arm7] & ~mask) | (value & mask);
+    arm7 ? updateMap7(0x3000000, 0x3800000) : updateMap9(0x3000000, 0x4000000);
 }

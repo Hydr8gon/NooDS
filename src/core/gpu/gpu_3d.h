@@ -37,6 +37,7 @@ struct Entry {
     uint8_t command;
     uint32_t param;
 
+    Entry() {}
     Entry(uint8_t command, uint32_t param): command(command), param(param) {}
 };
 

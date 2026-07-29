@@ -39,6 +39,7 @@
 #include "hle/dldi.h"
 #include "hle/hle_arm7.h"
 #include "hle/hle_bios.h"
+#include "io/aes.h"
 #include "io/div_sqrt.h"
 #include "io/input.h"
 #include "io/ipc.h"
@@ -91,6 +92,7 @@ enum SchedTask {
     WIFI_COUNT_MS,
     WIFI_TRANS_REPLY,
     WIFI_TRANS_ACK,
+    AES_UPDATE,
     MAX_TASKS
 };
 
@@ -111,6 +113,7 @@ public:
     bool gbaMode = false;
 
     ActionReplay actionReplay;
+    Aes aes;
     CartridgeGba cartridgeGba;
     CartridgeNds cartridgeNds;
     Cp15 cp15;

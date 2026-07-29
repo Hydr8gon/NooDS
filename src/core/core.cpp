@@ -25,17 +25,21 @@
 
 Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gbaRomFd,
     int ndsSaveFd, int gbaSaveFd, int ndsStateFd, int gbaStateFd, int ndsCheatFd):
-        id(id), actionReplay(this), cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this),
+        id(id), actionReplay(this), aes(this), cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this),
         dldi(this), dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) },
         gpu3D(this), gpu3DRenderer(this), hleArm7(this), hleBios { HleBios(this, 0, HleBios::swiTable9),
         HleBios(this, 1, HleBios::swiTable7), HleBios(this, 1, HleBios::swiTableGba) }, input(this),
         interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this), rtc(this),
         saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this) {
+    // Set DSi mode now and ignore changes to it later
+    dsiMode = Settings::dsiMode;
+    updateRun();
+
     // Try to load BIOS and firmware; require DS files when not direct booting
     bool required = !Settings::directBoot || (ndsRom == "" && gbaRom == "" && ndsRomFd == -1 && gbaRomFd == -1);
-    if (!memory.loadBios9() && required) throw ERROR_NDS_BIOS;
-    if (!memory.loadBios7() && required) throw ERROR_NDS_BIOS;
-    if (!spi.loadFirmware() && required) throw ERROR_NDS_FIRM;
+    if (!memory.loadBios9() && required && !dsiMode) throw ERROR_NDS_BIOS;
+    if (!memory.loadBios7() && required && !dsiMode) throw ERROR_NDS_BIOS;
+    if (!spi.loadFirmware() && required && !dsiMode) throw ERROR_NDS_FIRM;
     realGbaBios = memory.loadGbaBios();
 
     // Define the tasks that can be scheduled
@@ -71,6 +75,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     tasks[WIFI_COUNT_MS] = std::bind(&Wifi::countMs, &wifi);
     tasks[WIFI_TRANS_REPLY] = std::bind(&Wifi::transmitPacket, &wifi, CMD_REPLY);
     tasks[WIFI_TRANS_ACK] = std::bind(&Wifi::transmitPacket, &wifi, CMD_ACK);
+    tasks[AES_UPDATE] = std::bind(&Aes::update, &aes);
 
     // Schedule initial tasks for NDS mode
     schedule(RESET_CYCLES, 0x7FFFFFFF);
@@ -78,15 +83,107 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     schedule(NDS_SCANLINE355, 355 * 6);
     schedule(NDS_SPU_SAMPLE, 512 * 2);
 
-    // Update DSi mode now and ignore changes to it later
-    dsiMode = Settings::dsiMode;
-    updateRun();
-
     // Initialize the memory and CPUs
     memory.updateMap9(0x00000000, 0xFFFFFFFF);
     memory.updateMap7(0x00000000, 0xFFFFFFFF);
     interpreter[0].init();
     interpreter[1].init();
+
+    // HLE boot stage 1 in DSi mode since it's not easily dumpable
+    if (required && dsiMode) {
+        // Read the stage 2 header
+        uint8_t header[0x200];
+        FILE *nand = fopen(Settings::dsiNandPath.c_str(), "rb");
+        if (!nand) throw ERROR_DSI_NAND;
+        fseek(nand, 0x200, SEEK_SET);
+        fread(header, sizeof(uint8_t), 0x200, nand);
+
+        // Apply the header's WRAM mappings
+        memory.writeWramCnt(header[0x1AF]);
+        for (int i = 0; i < 4; i++) {
+            memory.writeMbk1(i, header[0x180 + i]);
+            memory.writeMbk23(i + 0, header[0x184 + i]);
+            memory.writeMbk23(i + 4, header[0x188 + i]);
+            memory.writeMbk45(i + 0, header[0x18C + i]);
+            memory.writeMbk45(i + 4, header[0x190 + i]);
+            if (i >= 2) continue;
+            memory.writeMbk6(i, -1, U8TO32(header, 0x194 + i * 0xC));
+            memory.writeMbk7(i, -1, U8TO32(header, 0x198 + i * 0xC));
+            memory.writeMbk8(i, -1, U8TO32(header, 0x19C + i * 0xC));
+        }
+
+        // Normally, a Y-key is extracted from an RSA block and used to generate the final key
+        // Just hardcode the result here instead, to avoid needing the RSA key
+        aes.writeKey(0, 0, -1, 0x8080EE98);
+        aes.writeKey(0, 1, -1, 0xF6B46C00);
+        aes.writeKey(0, 2, -1, 0x626EC23A);
+        aes.writeKey(0, 3, -1, 0xAD34ECF9);
+
+        // Extract ARM9 code details and load the code itself
+        uint32_t offset9 = U8TO32(header, 0x20);
+        uint32_t size9 = U8TO32(header, 0x24);
+        uint32_t entry9 = interpreter[0].entryAddr = U8TO32(header, 0x28);
+        uint32_t align9 = U8TO32(header, 0x2C);
+        uint8_t *code9 = new uint8_t[size9];
+        fseek(nand, offset9, SEEK_SET);
+        fread(code9, sizeof(uint8_t), size9, nand);
+
+        // Configure AES for CTR decryption with IV based on aligned ARM9 code size
+        aes.writeBlkcnt(-1, size9 << 12);
+        aes.writeIv(0, -1, align9);
+        aes.writeIv(1, -1, -align9);
+        aes.writeIv(2, -1, ~align9);
+        aes.writeIv(3, -1, 0);
+        aes.writeCnt(-1, 0xA000C000);
+
+        // Send ARM9 code through the AES engine and write it to memory
+        for (int i = 0; i < size9 / 64; i++) {
+            for (int j = 0; j < 64; j += 4)
+                aes.writeWrfifo(-1, U8TO32(code9, i * 64 + j));
+            aes.update();
+            for (int j = 0; j < 64; j += 4)
+                memory.write<uint32_t>(0, entry9 + i * 64 + j, aes.readRdfifo());
+            aes.update();
+        }
+
+        // Reset the AES FIFO
+        aes.writeCnt(-1, 0xC00);
+
+        // Extract ARM7 code details and load the code itself
+        uint32_t offset7 = U8TO32(header, 0x30);
+        uint32_t size7 = U8TO32(header, 0x34);
+        uint32_t entry7 = interpreter[1].entryAddr = U8TO32(header, 0x38);
+        uint32_t align7 = U8TO32(header, 0x3C);
+        uint8_t *code7 = new uint8_t[size7];
+        fseek(nand, offset7, SEEK_SET);
+        fread(code7, sizeof(uint8_t), size7, nand);
+
+        // Configure AES for CTR decryption with IV based on aligned ARM7 code size
+        aes.writeBlkcnt(-1, size7 << 12);
+        aes.writeIv(0, -1, align7);
+        aes.writeIv(1, -1, -align7);
+        aes.writeIv(2, -1, ~align7);
+        aes.writeIv(3, -1, 0);
+        aes.writeCnt(-1, 0xA000C000);
+
+        // Send ARM7 code through the AES engine and write it to memory
+        for (int i = 0; i < size7 / 64; i++) {
+            for (int j = 0; j < 64; j += 4)
+                aes.writeWrfifo(-1, U8TO32(code7, i * 64 + j));
+            aes.update();
+            for (int j = 0; j < 64; j += 4)
+                memory.write<uint32_t>(1, entry7 + i * 64 + j, aes.readRdfifo());
+            aes.update();
+        }
+
+        // Clean up what was used
+        delete[] code9;
+        delete[] code7;
+        fclose(nand);
+
+        interpreter[0].directBoot();
+        interpreter[1].directBoot();
+    }
 
     if (gbaRom != "" || gbaRomFd != -1) {
         // Load a GBA ROM

@@ -94,3 +94,8 @@
 #else
 #define U32TO8(data, index, value) (*(uint32_t*)&(data)[index] = (value))
 #endif
+
+// Macros that perform bit rotations
+#define ROL8(v, s) ((v << s) | (v >> (8 - s)))
+#define ROL32(v, s) ((v << s) | (v >> (32 - s)))
+#define ROR32(v, s) ((v >> s) | (v << (32 - s)))

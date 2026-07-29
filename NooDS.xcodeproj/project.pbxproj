@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		14655ECA2FF1BDFC00A23EAB /* icon-ios.icon in Resources */ = {isa = PBXBuildFile; fileRef = 14655EC12FF1BDFC00A23EAB /* icon-ios.icon */; };
+		14C1E870301AC095001EF973 /* aes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14C1E86F301AC095001EF973 /* aes.cpp */; };
 		14DC7DC630170353006024E1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 14DC7CF330170353006024E1 /* Assets.xcassets */; };
 		14DC7ECF30170353006024E1 /* cartridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14DC79EB30170353006024E1 /* cartridge.cpp */; };
 		14DC7ED330170353006024E1 /* interpreter_branch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 14DC79C330170353006024E1 /* interpreter_branch.cpp */; };
@@ -51,6 +52,8 @@
 /* Begin PBXFileReference section */
 		141205463016D23500C78E19 /* Info-iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-iOS.plist"; sourceTree = "<group>"; };
 		14655EC12FF1BDFC00A23EAB /* icon-ios.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "icon-ios.icon"; sourceTree = "<group>"; };
+		14C1E86F301AC095001EF973 /* aes.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = aes.cpp; sourceTree = "<group>"; };
+		14C1E871301AC09F001EF973 /* aes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aes.h; sourceTree = "<group>"; };
 		14D3ABEA2FE88A480056B367 /* NooDS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NooDS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		14DC79BE30170353006024E1 /* cp15.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = cp15.h; sourceTree = "<group>"; };
 		14DC79BF30170353006024E1 /* cp15.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = cp15.cpp; sourceTree = "<group>"; };
@@ -224,6 +227,8 @@
 		14DC79E930170353006024E1 /* io */ = {
 			isa = PBXGroup;
 			children = (
+				14C1E871301AC09F001EF973 /* aes.h */,
+				14C1E86F301AC095001EF973 /* aes.cpp */,
 				14DC79DB30170353006024E1 /* div_sqrt.h */,
 				14DC79DC30170353006024E1 /* div_sqrt.cpp */,
 				14DC79DD30170353006024E1 /* input.h */,
@@ -405,6 +410,7 @@
 				14DC7F0C30170353006024E1 /* gpu_3d.cpp in Sources */,
 				14DC7F0D30170353006024E1 /* spi.cpp in Sources */,
 				14DC7F0E30170353006024E1 /* gpu.cpp in Sources */,
+				14C1E870301AC095001EF973 /* aes.cpp in Sources */,
 				14DC7F1130170353006024E1 /* NooView.swift in Sources */,
 				14DC7F1630170353006024E1 /* hle_bios.cpp in Sources */,
 				14DC7F1730170353006024E1 /* SettingsMenu.swift in Sources */,

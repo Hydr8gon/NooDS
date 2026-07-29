@@ -20,7 +20,7 @@
 #include "core.h"
 
 const char *SaveStates::stateTag = "NOOD";
-const uint32_t SaveStates::stateVersion = 7;
+const uint32_t SaveStates::stateVersion = 8;
 
 void SaveStates::setPath(std::string path, bool gba) {
     // Set the NDS or GBA state path
@@ -81,6 +81,7 @@ bool SaveStates::saveState() {
 
     // Save the state of every component
     core->saveState(file);
+    core->aes.saveState(file);
     core->cartridgeGba.saveState(file);
     core->cartridgeNds.saveState(file);
     core->cp15.saveState(file);
@@ -118,6 +119,7 @@ bool SaveStates::loadState() {
 
     // Load the state of every component
     core->loadState(file);
+    core->aes.loadState(file);
     core->cartridgeGba.loadState(file);
     core->cartridgeNds.loadState(file);
     core->cp15.loadState(file);

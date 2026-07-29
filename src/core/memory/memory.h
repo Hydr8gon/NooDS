@@ -66,6 +66,32 @@ public:
     template <typename T> T read(bool arm7, uint32_t address, bool tcm = true);
     template <typename T> void write(bool arm7, uint32_t address, T value, bool tcm = true);
 
+    uint32_t readDmaFill(int channel) { return dmaFill[channel]; }
+    uint8_t readVramCnt(int block) { return vramCnt[block]; }
+    uint8_t readVramStat() { return vramStat; }
+    uint8_t readWramCnt() { return wramCnt; }
+    uint8_t readHaltCnt() { return haltCnt; }
+
+    uint8_t readMbk1(int i) { return mbk1[i]; }
+    uint8_t readMbk23(int i) { return mbk23[i]; }
+    uint8_t readMbk45(int i) { return mbk45[i]; }
+    uint32_t readMbk6(bool arm7) { return mbk6[arm7]; }
+    uint32_t readMbk7(bool arm7) { return mbk7[arm7]; }
+    uint32_t readMbk8(bool arm7) { return mbk8[arm7]; }
+
+    void writeDmaFill(int channel, uint32_t mask, uint32_t value);
+    void writeVramCnt(int index, uint8_t value);
+    void writeWramCnt(uint8_t value);
+    void writeHaltCnt(uint8_t value);
+    void writeGbaHaltCnt(uint8_t value);
+
+    void writeMbk1(int i, uint8_t value);
+    void writeMbk23(int i, uint8_t value);
+    void writeMbk45(int i, uint8_t value);
+    void writeMbk6(bool arm7, uint32_t mask, uint32_t value);
+    void writeMbk7(bool arm7, uint32_t mask, uint32_t value);
+    void writeMbk8(bool arm7, uint32_t mask, uint32_t value);
+
 private:
     Core *core;
     uint32_t gbaBiosAddr = 0;
@@ -91,6 +117,10 @@ private:
     uint8_t vramH[0x8000] = {}; // 32KB VRAM block H
     uint8_t vramI[0x4000] = {}; // 16KB VRAM block I
 
+    uint8_t nwramA[0x40000] = {}; // 256KB NWRAM block A
+    uint8_t nwramB[0x40000] = {}; // 256KB NWRAM block B
+    uint8_t nwramC[0x40000] = {}; // 256KB NWRAM block C
+
     VramMapping engABg[32];
     VramMapping engBBg[8];
     VramMapping engAObj[16];
@@ -104,6 +134,13 @@ private:
     uint8_t wramCnt = 0;
     uint8_t haltCnt = 0;
 
+    uint8_t mbk1[4] = {};
+    uint8_t mbk23[8] = {};
+    uint8_t mbk45[8] = {};
+    uint32_t mbk6[2] = {};
+    uint32_t mbk7[2] = {};
+    uint32_t mbk8[2] = {};
+
     template <typename T> T readFallback(bool arm7, uint32_t address);
     template <typename T> void writeFallback(bool arm7, uint32_t address, T value);
 
@@ -113,18 +150,6 @@ private:
     template <typename T> void ioWrite9(uint32_t address, T value);
     template <typename T> void ioWrite7(uint32_t address, T value);
     template <typename T> void ioWriteGba(uint32_t address, T value);
-
-    uint32_t readDmaFill(int channel) { return dmaFill[channel]; }
-    uint8_t readVramCnt(int block) { return vramCnt[block]; }
-    uint8_t readVramStat() { return vramStat; }
-    uint8_t readWramCnt() { return wramCnt; }
-    uint8_t readHaltCnt() { return haltCnt; }
-
-    void writeDmaFill(int channel, uint32_t mask, uint32_t value);
-    void writeVramCnt(int index, uint8_t value);
-    void writeWramCnt(uint8_t value);
-    void writeHaltCnt(uint8_t value);
-    void writeGbaHaltCnt(uint8_t value);
 };
 
 template uint8_t Memory::read(bool arm7, uint32_t address, bool tcm);
