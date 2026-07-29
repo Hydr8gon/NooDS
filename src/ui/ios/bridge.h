@@ -31,7 +31,7 @@ namespace CoreBridge {
     extern std::string keyBinds[15];
 
     bool loadSettings(const char *path);
-    int loadRom(const char *ndsPath, const char *gbaPath);
+    uint32_t loadRom(const char *ndsPath, const char *gbaPath);
     void resizeSave(int size);
 
     StateResult checkState();

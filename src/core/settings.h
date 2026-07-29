@@ -47,13 +47,16 @@ public:
     static int statesFolder;
     static int cheatsFolder;
     static int screenFilter;
-    static int arm7Hle;
     static int dsiMode;
+    static int arm7Hle;
 
-    static std::string bios9Path;
-    static std::string bios7Path;
-    static std::string firmwarePath;
     static std::string gbaBiosPath;
+    static std::string ndsBios9Path;
+    static std::string ndsBios7Path;
+    static std::string firmwarePath;
+    static std::string dsiBios9Path;
+    static std::string dsiBios7Path;
+    static std::string dsiNandPath;
     static std::string sdImagePath;
     static std::string basePath;
 

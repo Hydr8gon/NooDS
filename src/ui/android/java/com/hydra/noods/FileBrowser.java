@@ -357,19 +357,27 @@ public class FileBrowser extends AppCompatActivity {
 
             // Inform the user of the error if loading wasn't successful
             switch (result) {
-            case 1: // Missing BIOS files
-                builder.setTitle("Error Loading BIOS");
-                builder.setMessage("Make sure the path settings point to valid BIOS files and try again. " +
+            case 1: // Missing NDS BIOS files
+                builder.setTitle("Error Loading NDS BIOS");
+                builder.setMessage("Make sure the path settings point to valid NDS BIOS files, or boot ROMs directly. " +
                     "You can modify path settings in " + getExternalFilesDir(null).getPath() + "/noods.ini.");
                 break;
-
             case 2: // Non-bootable firmware file
                 builder.setTitle("Error Loading Firmware");
-                builder.setMessage("Make sure the path settings point to a bootable firmware file or try another boot method. " +
+                builder.setMessage("Make sure the path settings point to a bootable firmware file, or boot ROMs directly. " +
                     "You can modify path settings in " + getExternalFilesDir(null).getPath() + "/noods.ini.");
                 break;
-
-            case 3: // Unreadable ROM file
+            case 3: // Missing DSi BIOS files
+                builder.setTitle("Error Loading DSi BIOS");
+                builder.setMessage("Make sure the path settings point to valid DSi BIOS files, or turn off DSi mode. " +
+                    "You can modify path settings in " + getExternalFilesDir(null).getPath() + "/noods.ini.");
+                break;
+            case 4: // Missing DSi NAND file
+                builder.setTitle("Error Loading DSi NAND");
+                builder.setMessage("Make sure the path settings point to a valid DSi NAND file, or turn off DSi mode. " +
+                    "You can modify path settings in " + getExternalFilesDir(null).getPath() + "/noods.ini.");
+                break;
+            case 5: // Unreadable ROM file
                 builder.setTitle("Error Loading ROM");
                 builder.setMessage("Make sure the ROM file is accessible and try again.");
                 break;

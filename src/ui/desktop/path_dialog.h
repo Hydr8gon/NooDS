@@ -26,17 +26,23 @@ public:
     PathDialog();
 
 private:
-    wxTextCtrl *bios9Path;
-    wxTextCtrl *bios7Path;
-    wxTextCtrl *firmwarePath;
     wxTextCtrl *gbaBiosPath;
+    wxTextCtrl *ndsBios9Path;
+    wxTextCtrl *ndsBios7Path;
+    wxTextCtrl *firmwarePath;
+    wxTextCtrl *dsiBios9Path;
+    wxTextCtrl *dsiBios7Path;
+    wxTextCtrl *dsiNandPath;
     wxTextCtrl *sdImagePath;
     wxCheckBox *boxes[3];
 
-    void bios9Browse(wxCommandEvent &event);
-    void bios7Browse(wxCommandEvent &event);
-    void firmwareBrowse(wxCommandEvent &event);
     void gbaBiosBrowse(wxCommandEvent &event);
+    void ndsBios9Browse(wxCommandEvent &event);
+    void ndsBios7Browse(wxCommandEvent &event);
+    void firmwareBrowse(wxCommandEvent &event);
+    void dsiBios9Browse(wxCommandEvent &event);
+    void dsiBios7Browse(wxCommandEvent &event);
+    void dsiNandBrowse(wxCommandEvent &event);
     void sdImageBrowse(wxCommandEvent &event);
     void openFolder(wxCommandEvent &event);
     void confirm(wxCommandEvent &event);

@@ -51,8 +51,10 @@
 #include "memory/memory.h"
 
 enum CoreError {
-    ERROR_BIOS = 1,
-    ERROR_FIRM,
+    ERROR_NDS_BIOS = 1,
+    ERROR_NDS_FIRM,
+    ERROR_DSI_BIOS,
+    ERROR_DSI_NAND,
     ERROR_ROM
 };
 

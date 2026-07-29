@@ -67,7 +67,7 @@ struct FileBrowser: View {
     @State private var dualRoms = false
     @State private var askGba = false
     @State private var showError = false
-    @State private var errorType = 0 as CInt
+    @State private var errorType = 0 as UInt32
     @State private var showInfo: Bool
 
     init(running: Binding<Bool>, ndsPath: Binding<String>, gbaPath: Binding<String>, firstBoot: Bool) {
@@ -202,15 +202,20 @@ struct FileBrowser: View {
         })
         .overlay(EmptyView().alert(isPresented: $showError) {
             // Show an alert explaining the type of error encountered
-            switch (errorType) {
-            case 1:
-                Alert(title: Text("Error Loading BIOS"), message: Text("Make sure the path settings point" +
-                    " to valid BIOS files and try again. You can modify path settings in noods/noods.ini."))
-            case 2:
-                Alert(title: Text("Error Loading Firmware"), message:
-                    Text("Make sure the path settings point to a bootable firmware file or try" +
-                    " another boot method. You can modify path settings in noods/noods.ini."))
-            default:
+            switch (CoreError(errorType)) {
+            case ERROR_NDS_BIOS: // Missing NDS BIOS files
+                Alert(title: Text("Error Loading NDS BIOS"), message: Text("Make sure the path settings point to " +
+                    "valid NDS BIOS files, or boot ROMs directly. You can modify path settings in the noods.ini file."))
+            case ERROR_NDS_FIRM: // Non-bootable firmware file
+                Alert(title: Text("Error Loading Firmware"), message: Text("Make sure the path settings point to a " +
+                    "bootable firmware file, or boot ROMs directly. You can modify path settings in the noods.ini file."))
+            case ERROR_DSI_BIOS: // Missing DSi BIOS files
+                Alert(title: Text("Error Loading DSi BIOS"), message: Text("Make sure the path settings point to " +
+                    "valid DSi BIOS files, or turn off DSi mode. You can modify path settings in the noods.ini file."))
+            case ERROR_DSI_NAND: // Missing DSi NAND file
+                Alert(title: Text("Error Loading DSi NAND"), message: Text("Make sure the path settings point to a " +
+                    "valid DSi NAND file, or turn off DSi mode. You can modify path settings in the noods.ini file."))
+            default: // Unreadable ROM file
                 Alert(title: Text("Error Loading ROM"), message:
                     Text("Make sure the ROM file is accessible and try again."))
             }

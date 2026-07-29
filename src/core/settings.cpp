@@ -34,13 +34,16 @@ int Settings::savesFolder = 0;
 int Settings::statesFolder = 1;
 int Settings::cheatsFolder = 1;
 int Settings::screenFilter = 2;
-int Settings::arm7Hle = 0;
 int Settings::dsiMode = 0;
+int Settings::arm7Hle = 0;
 
-std::string Settings::bios9Path = "bios9.bin";
-std::string Settings::bios7Path = "bios7.bin";
-std::string Settings::firmwarePath = "firmware.bin";
 std::string Settings::gbaBiosPath = "gba_bios.bin";
+std::string Settings::ndsBios9Path = "bios9.bin";
+std::string Settings::ndsBios7Path = "bios7.bin";
+std::string Settings::firmwarePath = "firmware.bin";
+std::string Settings::dsiBios9Path = "bios9i.bin";
+std::string Settings::dsiBios7Path = "bios7i.bin";
+std::string Settings::dsiNandPath = "nand.bin";
 std::string Settings::sdImagePath = "sd.img";
 std::string Settings::basePath = ".";
 
@@ -59,12 +62,15 @@ std::vector<Setting> Settings::settings = {
     Setting("statesFolder", &statesFolder, false),
     Setting("cheatsFolder", &cheatsFolder, false),
     Setting("screenFilter", &screenFilter, false),
-    Setting("arm7Hle", &arm7Hle, false),
     Setting("dsiMode", &dsiMode, false),
-    Setting("bios9Path", &bios9Path, true),
-    Setting("bios7Path", &bios7Path, true),
-    Setting("firmwarePath", &firmwarePath, true),
+    Setting("arm7Hle", &arm7Hle, false),
     Setting("gbaBiosPath", &gbaBiosPath, true),
+    Setting("ndsBios9Path", &ndsBios9Path, true),
+    Setting("ndsBios7Path", &ndsBios7Path, true),
+    Setting("firmwarePath", &firmwarePath, true),
+    Setting("dsiBios9Path", &dsiBios9Path, true),
+    Setting("dsiBios7Path", &dsiBios7Path, true),
+    Setting("dsiNandPath", &dsiNandPath, true),
     Setting("sdImagePath", &sdImagePath, true)
 };
 
@@ -83,12 +89,15 @@ bool Settings::load(std::string path) {
     // Open the settings file or set defaults if it doesn't exist
     FILE *file = fopen((basePath + "/noods.ini").c_str(), "r");
     if (!file) {
-        Settings::bios9Path = basePath + "/bios9.bin";
-        Settings::bios7Path = basePath + "/bios7.bin";
-        Settings::firmwarePath = basePath + "/firmware.bin";
-        Settings::gbaBiosPath = basePath + "/gba_bios.bin";
-        Settings::sdImagePath = basePath + "/sd.img";
-        Settings::save();
+        gbaBiosPath = basePath + "/gba_bios.bin";
+        ndsBios9Path = basePath + "/bios9.bin";
+        ndsBios7Path = basePath + "/bios7.bin";
+        firmwarePath = basePath + "/firmware.bin";
+        dsiBios9Path = basePath + "/bios9i.bin";
+        dsiBios7Path = basePath + "/bios7i.bin";
+        dsiNandPath = basePath + "/nand.bin";
+        sdImagePath = basePath + "/sd.img";
+        save();
         return false;
     }
 

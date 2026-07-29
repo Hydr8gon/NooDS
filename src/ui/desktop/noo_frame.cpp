@@ -61,8 +61,8 @@ enum FrameEvent {
     EMULATE_AUDIO,
     AUDIO_16_BIT,
     MIC_ENABLE,
-    ARM7_HLE,
     DSI_MODE,
+    ARM7_HLE,
     PATH_SETTINGS,
     SCREEN_LAYOUT,
     INPUT_BINDINGS,
@@ -102,8 +102,8 @@ EVT_MENU(SCREEN_GHOST, NooFrame::screenGhost)
 EVT_MENU(EMULATE_AUDIO, NooFrame::emulateAudio)
 EVT_MENU(AUDIO_16_BIT, NooFrame::audio16Bit)
 EVT_MENU(MIC_ENABLE, NooFrame::micEnable)
-EVT_MENU(ARM7_HLE, NooFrame::arm7Hle)
 EVT_MENU(DSI_MODE, NooFrame::dsiMode)
+EVT_MENU(ARM7_HLE, NooFrame::arm7Hle)
 EVT_MENU(PATH_SETTINGS, NooFrame::pathSettings)
 EVT_MENU(SCREEN_LAYOUT, NooFrame::layoutSettings)
 EVT_MENU(INPUT_BINDINGS, NooFrame::inputSettings)
@@ -190,8 +190,8 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
 
         // Set up the experimental settings submenu
         wxMenu *experiMenu = new wxMenu();
-        experiMenu->AppendCheckItem(ARM7_HLE, "&High-Level ARM7");
-        experiMenu->AppendCheckItem(DSI_MODE, "&DSi Homebrew Mode");
+        experiMenu->AppendCheckItem(DSI_MODE, "&DSi Mode");
+        experiMenu->AppendCheckItem(ARM7_HLE, "&ARM7 HLE");
 
         // Set up the settings menu
         wxMenu *settingsMenu = new wxMenu();
@@ -214,8 +214,8 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
         settingsMenu->Check(EMULATE_AUDIO, Settings::emulateAudio);
         settingsMenu->Check(AUDIO_16_BIT, Settings::audio16Bit);
         settingsMenu->Check(MIC_ENABLE, NooApp::micEnable);
-        settingsMenu->Check(ARM7_HLE, Settings::arm7Hle);
         settingsMenu->Check(DSI_MODE, Settings::dsiMode);
+        settingsMenu->Check(ARM7_HLE, Settings::arm7Hle);
 
         // Set the initial radio setting selections
         frameskip->Check(FRAMESKIP_0 + std::min<uint8_t>(Settings::frameskip, 5), true);
@@ -330,16 +330,22 @@ void NooFrame::startCore(bool full) {
         catch (CoreError e) {
             // Inform the user of the error if loading wasn't successful
             switch (e) {
-            case ERROR_BIOS: // Missing BIOS files
-                wxMessageDialog(this, "Make sure the path settings point to valid BIOS files and try again.",
-                    "Error Loading BIOS", wxICON_NONE).ShowModal();
+            case ERROR_NDS_BIOS: // Missing NDS BIOS files
+                wxMessageDialog(this, "Make sure the path settings point to valid NDS BIOS files, or boot ROMs directly.",
+                    "Error Loading NDS BIOS", wxICON_NONE).ShowModal();
                 return;
-
-            case ERROR_FIRM: // Non-bootable firmware file
-                wxMessageDialog(this, "Make sure the path settings point to a bootable firmware file or try another boot method.",
+            case ERROR_NDS_FIRM: // Non-bootable firmware file
+                wxMessageDialog(this, "Make sure the path settings point to a bootable firmware file, or boot ROMs directly.",
                     "Error Loading Firmware", wxICON_NONE).ShowModal();
                 return;
-
+            case ERROR_DSI_BIOS: // Missing DSi BIOS files
+                wxMessageDialog(this, "Make sure the path settings point to valid DSi BIOS files, or turn off DSi mode.",
+                    "Error Loading DSi BIOS", wxICON_NONE).ShowModal();
+                return;
+            case ERROR_DSI_NAND: // Missing DSi NAND file
+                wxMessageDialog(this, "Make sure the path settings point to a valid DSi NAND file, or turn off DSi mode.",
+                    "Error Loading DSi NAND", wxICON_NONE).ShowModal();
+                return;
             case ERROR_ROM: // Unreadable ROM file
                 wxMessageDialog(this, "Make sure the ROM file is accessible and try again.",
                     "Error Loading ROM", wxICON_NONE).ShowModal();
@@ -735,15 +741,15 @@ void NooFrame::micEnable(wxCommandEvent &event) {
     Settings::save();
 }
 
-void NooFrame::arm7Hle(wxCommandEvent &event) {
-    // Toggle the high-level ARM7 setting
-    Settings::arm7Hle = !Settings::arm7Hle;
+void NooFrame::dsiMode(wxCommandEvent &event) {
+    // Toggle the DSi mode setting
+    Settings::dsiMode = !Settings::dsiMode;
     Settings::save();
 }
 
-void NooFrame::dsiMode(wxCommandEvent &event) {
-    // Toggle the DSi homebrew mode setting
-    Settings::dsiMode = !Settings::dsiMode;
+void NooFrame::arm7Hle(wxCommandEvent &event) {
+    // Toggle the ARM7 HLE setting
+    Settings::arm7Hle = !Settings::arm7Hle;
     Settings::save();
 }
 

@@ -33,9 +33,9 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
         saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this) {
     // Try to load BIOS and firmware; require DS files when not direct booting
     bool required = !Settings::directBoot || (ndsRom == "" && gbaRom == "" && ndsRomFd == -1 && gbaRomFd == -1);
-    if (!memory.loadBios9() && required) throw ERROR_BIOS;
-    if (!memory.loadBios7() && required) throw ERROR_BIOS;
-    if (!spi.loadFirmware() && required) throw ERROR_FIRM;
+    if (!memory.loadBios9() && required) throw ERROR_NDS_BIOS;
+    if (!memory.loadBios7() && required) throw ERROR_NDS_BIOS;
+    if (!spi.loadFirmware() && required) throw ERROR_NDS_FIRM;
     realGbaBios = memory.loadGbaBios();
 
     // Define the tasks that can be scheduled

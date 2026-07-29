@@ -778,8 +778,8 @@ void ConsoleUI::settingsMenu() {
             MenuItem("Audio Emulation", toggle[Settings::emulateAudio]),
             MenuItem("16-bit Audio Output", toggle[Settings::audio16Bit]),
             MenuItem("Experimental Settings", true),
-            MenuItem("High-Level ARM7", toggle[Settings::arm7Hle]),
-            MenuItem("DSi Homebrew Mode", toggle[Settings::dsiMode]),
+            MenuItem("DSi Mode", toggle[Settings::dsiMode]),
+            MenuItem("ARM7 HLE", toggle[Settings::arm7Hle]),
             MenuItem("Path Settings", true),
             MenuItem("Separate Saves Folder", toggle[Settings::savesFolder]),
             MenuItem("Separate States Folder", toggle[Settings::statesFolder]),
@@ -814,8 +814,8 @@ void ConsoleUI::settingsMenu() {
                 case 11: Settings::screenGhost = (Settings::screenGhost + 1) % 2; break;
                 case 13: Settings::emulateAudio = (Settings::emulateAudio + 1) % 2; break;
                 case 14: Settings::audio16Bit = (Settings::audio16Bit + 1) % 2; break;
-                case 16: Settings::arm7Hle = (Settings::arm7Hle + 1) % 2; break;
-                case 17: Settings::dsiMode = (Settings::dsiMode + 1) % 2; break;
+                case 16: Settings::dsiMode = (Settings::dsiMode + 1) % 2; break;
+                case 17: Settings::arm7Hle = (Settings::arm7Hle + 1) % 2; break;
                 case 19: Settings::savesFolder = (Settings::savesFolder + 1) % 2; break;
                 case 20: Settings::statesFolder = (Settings::statesFolder + 1) % 2; break;
                 case 21: Settings::cheatsFolder = (Settings::cheatsFolder + 1) % 2; break;
@@ -1110,18 +1110,26 @@ bool ConsoleUI::createCore() {
         // Inform the user of an error if loading wasn't successful
         std::string text;
         switch (e) {
-        case ERROR_BIOS: // Missing BIOS files
-            text = "Make sure the path settings point to valid BIOS files and try again.\n"
-                "You can modify the path settings in the noods.ini file.";
-            message("Error Loading BIOS", text);
+        case ERROR_NDS_BIOS: // Missing NDS BIOS files
+            text = "Make sure the path settings point to valid NDS BIOS files, or boot ROMs directly.\n"
+                "You can modify path settings in the noods.ini file.";
+            message("Error Loading NDS BIOS", text);
             break;
-
-        case ERROR_FIRM: // Non-bootable firmware file
-            text = "Make sure the path settings point to a bootable firmware file or try another boot method.\n"
-                "You can modify the path settings in the noods.ini file.";
+        case ERROR_NDS_FIRM: // Non-bootable firmware file
+            text = "Make sure the path settings point to a bootable firmware file, or boot ROMs directly.\n"
+                "You can modify path settings in the noods.ini file.";
             message("Error Loading Firmware", text);
             break;
-
+        case ERROR_DSI_BIOS: // Missing DSi BIOS files
+            text = "Make sure the path settings point to valid DSi BIOS files, or turn off DSi mode.\n"
+                "You can modify path settings in the noods.ini file.";
+            message("Error Loading DSi BIOS", text);
+            break;
+        case ERROR_DSI_NAND: // Missing DSi NAND file
+            text = "Make sure the path settings point to a valid DSi NAND file, or turn off DSi mode.\n"
+                "You can modify path settings in the noods.ini file.";
+            message("Error Loading DSi NAND", text);
+            break;
         case ERROR_ROM: // Unreadable ROM file
             text = "Make sure the ROM file is accessible and try again.";
             message("Error Loading ROM", text);

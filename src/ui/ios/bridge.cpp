@@ -39,6 +39,14 @@ static void runCore() {
         core->runCore();
 }
 
+static void prefixPath(std::string &setting, std::string &prefix, const char *reset) {
+    // Update a path setting's prefix, or reset the value if invalid
+    if (setting.size() > prefix.size())
+        strncpy(&setting[0], &prefix[0], prefix.size() - 1);
+    else
+        setting = prefix + reset;
+}
+
 bool CoreBridge::loadSettings(const char *path) {
     // Define and add the platform settings
     std::vector<Setting> platformSettings = {
@@ -68,15 +76,18 @@ bool CoreBridge::loadSettings(const char *path) {
     // Load settings and update path prefixes in case the app UUID changed
     std::string path2 = path;
     if (!Settings::load(path2)) return false;
-    strncpy(&Settings::bios9Path[0], path, path2.size() - 1);
-    strncpy(&Settings::bios7Path[0], path, path2.size() - 1);
-    strncpy(&Settings::firmwarePath[0], path, path2.size() - 1);
-    strncpy(&Settings::gbaBiosPath[0], path, path2.size() - 1);
-    strncpy(&Settings::sdImagePath[0], path, path2.size() - 1);
+    prefixPath(Settings::gbaBiosPath, path2, "/gba_bios.bin");
+    prefixPath(Settings::ndsBios9Path, path2, "/bios9.bin");
+    prefixPath(Settings::ndsBios7Path, path2, "/bios7.bin");
+    prefixPath(Settings::firmwarePath, path2, "/firmware.bin");
+    prefixPath(Settings::dsiBios9Path, path2, "/bios9i.bin");
+    prefixPath(Settings::dsiBios7Path, path2, "/bios7i.bin");
+    prefixPath(Settings::dsiNandPath, path2, "/nand.bin");
+    prefixPath(Settings::sdImagePath, path2, "/sd.img");
     return true;
 }
 
-int CoreBridge::loadRom(const char *ndsPath, const char *gbaPath) {
+uint32_t CoreBridge::loadRom(const char *ndsPath, const char *gbaPath) {
     // Clean up the old core
     mutex.lock();
     delete core;

@@ -129,7 +129,7 @@ void Memory::loadState(FILE *file) {
 
 bool Memory::loadBios9() {
     // Load the ARM9 BIOS if the file is found
-    if (FILE *file = fopen(Settings::bios9Path.c_str(), "rb")) {
+    if (FILE *file = fopen(Settings::ndsBios9Path.c_str(), "rb")) {
         fread(bios9, sizeof(uint8_t), 0x1000, file);
         fclose(file);
         return true;
@@ -143,7 +143,7 @@ bool Memory::loadBios9() {
 
 bool Memory::loadBios7() {
     // Load the ARM7 BIOS if the file is found
-    if (FILE *file = fopen(Settings::bios7Path.c_str(), "rb")) {
+    if (FILE *file = fopen(Settings::ndsBios7Path.c_str(), "rb")) {
         fread(bios7, sizeof(uint8_t), 0x4000, file);
         fclose(file);
         return true;

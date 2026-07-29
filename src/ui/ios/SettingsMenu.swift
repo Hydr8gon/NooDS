@@ -141,8 +141,8 @@ struct SettingsMenu: View {
 
             // List the experimental settings category
             SettingsHeader(title: "Experimental Settings")
-            SettingsToggle(title: "High-Level ARM7", value: &Settings.arm7Hle)
-            SettingsToggle(title: "DSi Homebrew Mode", value: &Settings.dsiMode)
+            SettingsToggle(title: "DSi Mode", value: &Settings.dsiMode)
+            SettingsToggle(title: "ARM7 HLE", value: &Settings.arm7Hle)
 
             // List the path settings category
             SettingsHeader(title: "Path Settings")

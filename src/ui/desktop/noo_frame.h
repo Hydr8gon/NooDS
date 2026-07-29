@@ -89,8 +89,8 @@ private:
     void emulateAudio(wxCommandEvent &event);
     void audio16Bit(wxCommandEvent &event);
     void micEnable(wxCommandEvent &event);
-    void arm7Hle(wxCommandEvent &event);
     void dsiMode(wxCommandEvent &event);
+    void arm7Hle(wxCommandEvent &event);
     void pathSettings(wxCommandEvent &event);
     void layoutSettings(wxCommandEvent &event);
     void inputSettings(wxCommandEvent &event);
