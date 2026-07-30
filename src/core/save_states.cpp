@@ -20,7 +20,7 @@
 #include "core.h"
 
 const char *SaveStates::stateTag = "NOOD";
-const uint32_t SaveStates::stateVersion = 8;
+const uint32_t SaveStates::stateVersion = 9;
 
 void SaveStates::setPath(std::string path, bool gba) {
     // Set the NDS or GBA state path
@@ -101,7 +101,10 @@ bool SaveStates::saveState() {
     core->interpreter[1].saveState(file);
     core->ipc.saveState(file);
     core->memory.saveState(file);
+    core->ndma[0].saveState(file);
+    core->ndma[1].saveState(file);
     core->rtc.saveState(file);
+    core->sdMmc.saveState(file);
     core->spi.saveState(file);
     core->spu.saveState(file);
     core->timers[0].saveState(file);
@@ -139,7 +142,10 @@ bool SaveStates::loadState() {
     core->interpreter[1].loadState(file);
     core->ipc.loadState(file);
     core->memory.loadState(file);
+    core->ndma[0].loadState(file);
+    core->ndma[1].loadState(file);
     core->rtc.loadState(file);
+    core->sdMmc.loadState(file);
     core->spi.loadState(file);
     core->spu.loadState(file);
     core->timers[0].loadState(file);

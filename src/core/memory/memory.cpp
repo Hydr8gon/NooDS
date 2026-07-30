@@ -155,8 +155,9 @@ void Memory::loadState(FILE *file) {
 
 bool Memory::loadBios9() {
     // Load the ARM9 BIOS if the file is found
-    if (FILE *file = fopen(Settings::ndsBios9Path.c_str(), "rb")) {
-        fread(bios9, sizeof(uint8_t), 0x1000, file);
+    std::string &path = core->dsiMode ? Settings::dsiBios9Path : Settings::ndsBios9Path;
+    if (FILE *file = fopen(path.c_str(), "rb")) {
+        fread(bios9, sizeof(uint8_t), 0x10000, file);
         fclose(file);
         return true;
     }
@@ -169,8 +170,9 @@ bool Memory::loadBios9() {
 
 bool Memory::loadBios7() {
     // Load the ARM7 BIOS if the file is found
-    if (FILE *file = fopen(Settings::ndsBios7Path.c_str(), "rb")) {
-        fread(bios7, sizeof(uint8_t), 0x4000, file);
+    std::string &path = core->dsiMode ? Settings::dsiBios7Path : Settings::ndsBios7Path;
+    if (FILE *file = fopen(path.c_str(), "rb")) {
+        fread(bios7, sizeof(uint8_t), 0x10000, file);
         fclose(file);
         return true;
     }
@@ -275,7 +277,7 @@ void Memory::updateMap9(uint32_t start, uint32_t end, bool tcm) {
             break;
 
         case 0xFF000000: // ARM9 BIOS
-            if ((address & 0xFFFF8000) == 0xFFFF0000)
+            if ((address & (core->dsiMode ? 0xFFFF0000 : 0xFFFF8000)) == 0xFFFF0000)
                 read = &bios9[address & 0xFFFF];
             break;
         }
@@ -338,7 +340,7 @@ void Memory::updateMap7(uint32_t start, uint32_t end) {
             // Map a 4KB block to the corresponding ARM7 memory, excluding special cases
             switch (address & 0xFF000000) {
             case 0x0000000: // ARM7 BIOS
-                if (address < 0x4000)
+                if (address < (core->dsiMode ? 0x10000 : 0x4000))
                     read = &bios7[address];
                 break;
 
@@ -957,8 +959,8 @@ template <typename T> T Memory::ioRead9(uint32_t address) {
             DEF_IO08(0x40001A2, data = core->cartridgeNds.readAuxSpiData(0)) // AUXSPIDATA (ARM9)
             DEF_IO32(0x40001A4, data = core->cartridgeNds.readRomCtrl(0)) // ROMCTRL (ARM9)
             DEF_IO08(0x4000208, data = core->interpreter[0].readIme()) // IME (ARM9)
-            DEF_IO32(0x4000210, data = core->interpreter[0].readIe()) // IE (ARM9)
-            DEF_IO32(0x4000214, data = core->interpreter[0].readIrf()) // IF (ARM9)
+            DEF_IO32(0x4000210, data = core->interpreter[0].readIe(0)) // IE (ARM9)
+            DEF_IO32(0x4000214, data = core->interpreter[0].readIrf(0)) // IF (ARM9)
             DEF_IO08(0x4000240, data = readVramCnt(0)) // VRAMCNT_A
             DEF_IO08(0x4000241, data = readVramCnt(1)) // VRAMCNT_B
             DEF_IO08(0x4000242, data = readVramCnt(2)) // VRAMCNT_C
@@ -1059,6 +1061,30 @@ template <typename T> T Memory::ioRead9(uint32_t address) {
                 DEF_IO32(0x4004054, data = readMbk6(0)) // MBK6
                 DEF_IO32(0x4004058, data = readMbk7(0)) // MBK7
                 DEF_IO32(0x400405C, data = readMbk8(0)) // MBK8
+                DEF_IO32(0x4004104, data = core->ndma[0].readSad(0)) // NDMA0SAD (ARM9)
+                DEF_IO32(0x4004108, data = core->ndma[0].readDad(0)) // NDMA0DAD (ARM9)
+                DEF_IO32(0x400410C, data = core->ndma[0].readTcnt(0)) // NDMA0TCNT (ARM9)
+                DEF_IO32(0x4004110, data = core->ndma[0].readWcnt(0)) // NDMA0WCNT (ARM9)
+                DEF_IO32(0x4004118, data = core->ndma[0].readFdata(0)) // NDMA0FDATA (ARM9)
+                DEF_IO32(0x400411C, data = core->ndma[0].readCnt(0)) // NDMA0CNT (ARM9)
+                DEF_IO32(0x4004120, data = core->ndma[0].readSad(1)) // NDMA1SAD (ARM9)
+                DEF_IO32(0x4004124, data = core->ndma[0].readDad(1)) // NDMA1DAD (ARM9)
+                DEF_IO32(0x4004128, data = core->ndma[0].readTcnt(1)) // NDMA1TCNT (ARM9)
+                DEF_IO32(0x400412C, data = core->ndma[0].readWcnt(1)) // NDMA1WCNT (ARM9)
+                DEF_IO32(0x4004134, data = core->ndma[0].readFdata(1)) // NDMA1FDATA (ARM9)
+                DEF_IO32(0x4004138, data = core->ndma[0].readCnt(1)) // NDMA1CNT (ARM9)
+                DEF_IO32(0x400413C, data = core->ndma[0].readSad(2)) // NDMA2SAD (ARM9)
+                DEF_IO32(0x4004140, data = core->ndma[0].readDad(2)) // NDMA2DAD (ARM9)
+                DEF_IO32(0x4004144, data = core->ndma[0].readTcnt(2)) // NDMA2TCNT (ARM9)
+                DEF_IO32(0x4004148, data = core->ndma[0].readWcnt(2)) // NDMA2WCNT (ARM9)
+                DEF_IO32(0x4004150, data = core->ndma[0].readFdata(2)) // NDMA2FDATA (ARM9)
+                DEF_IO32(0x4004154, data = core->ndma[0].readCnt(2)) // NDMA2CNT (ARM9)
+                DEF_IO32(0x4004158, data = core->ndma[0].readSad(3)) // NDMA3SAD (ARM9)
+                DEF_IO32(0x400415C, data = core->ndma[0].readDad(3)) // NDMA3DAD (ARM9)
+                DEF_IO32(0x4004160, data = core->ndma[0].readTcnt(3)) // NDMA3TCNT (ARM9)
+                DEF_IO32(0x4004164, data = core->ndma[0].readWcnt(3)) // NDMA3WCNT (ARM9)
+                DEF_IO32(0x400416C, data = core->ndma[0].readFdata(3)) // NDMA3FDATA (ARM9)
+                DEF_IO32(0x4004170, data = core->ndma[0].readCnt(3)) // NDMA3CNT (ARM9)
             }
         }
 
@@ -1125,8 +1151,8 @@ template <typename T> T Memory::ioRead7(uint32_t address) {
             DEF_IO16(0x40001C0, data = core->spi.readSpiCnt()) // SPICNT
             DEF_IO08(0x40001C2, data = core->spi.readSpiData()) // SPIDATA
             DEF_IO08(0x4000208, data = core->interpreter[1].readIme()) // IME (ARM7)
-            DEF_IO32(0x4000210, data = core->interpreter[1].readIe()) // IE (ARM7)
-            DEF_IO32(0x4000214, data = core->interpreter[1].readIrf()) // IF (ARM7)
+            DEF_IO32(0x4000210, data = core->interpreter[1].readIe(0)) // IE (ARM7)
+            DEF_IO32(0x4000214, data = core->interpreter[1].readIrf(0)) // IF (ARM7)
             DEF_IO08(0x4000240, data = readVramStat()) // VRAMSTAT
             DEF_IO08(0x4000241, data = readWramCnt()) // WRAMSTAT
             DEF_IO08(0x4000300, data = core->interpreter[1].readPostFlg()) // POSTFLG (ARM7)
@@ -1230,6 +1256,8 @@ template <typename T> T Memory::ioRead7(uint32_t address) {
         // Check registers exclusive to DSi mode
         if (core->dsiMode) {
             switch (base) {
+                DEF_IO32(0x4000218, data = core->interpreter[1].readIe(1)) // IE2
+                DEF_IO32(0x400021C, data = core->interpreter[1].readIrf(1)) // IF2
                 DEF_IO16(0x4000204, data = 0x4000) // EXMEMSTAT (stub)
                 DEF_IO32(0x4004008, data = 0x8000) // SCFG_EXT7 (stub)
                 DEF_IO08(0x4004040, data = readMbk1(0)) // MBK1.0
@@ -1255,8 +1283,51 @@ template <typename T> T Memory::ioRead7(uint32_t address) {
                 DEF_IO32(0x4004054, data = readMbk6(1)) // MBK6
                 DEF_IO32(0x4004058, data = readMbk7(1)) // MBK7
                 DEF_IO32(0x400405C, data = readMbk8(1)) // MBK8
+                DEF_IO32(0x4004104, data = core->ndma[1].readSad(0)) // NDMA0SAD (ARM7)
+                DEF_IO32(0x4004108, data = core->ndma[1].readDad(0)) // NDMA0DAD (ARM7)
+                DEF_IO32(0x400410C, data = core->ndma[1].readTcnt(0)) // NDMA0TCNT (ARM7)
+                DEF_IO32(0x4004110, data = core->ndma[1].readWcnt(0)) // NDMA0WCNT (ARM7)
+                DEF_IO32(0x4004118, data = core->ndma[1].readFdata(0)) // NDMA0FDATA (ARM7)
+                DEF_IO32(0x400411C, data = core->ndma[1].readCnt(0)) // NDMA0CNT (ARM7)
+                DEF_IO32(0x4004120, data = core->ndma[1].readSad(1)) // NDMA1SAD (ARM7)
+                DEF_IO32(0x4004124, data = core->ndma[1].readDad(1)) // NDMA1DAD (ARM7)
+                DEF_IO32(0x4004128, data = core->ndma[1].readTcnt(1)) // NDMA1TCNT (ARM7)
+                DEF_IO32(0x400412C, data = core->ndma[1].readWcnt(1)) // NDMA1WCNT (ARM7)
+                DEF_IO32(0x4004134, data = core->ndma[1].readFdata(1)) // NDMA1FDATA (ARM7)
+                DEF_IO32(0x4004138, data = core->ndma[1].readCnt(1)) // NDMA1CNT (ARM7)
+                DEF_IO32(0x400413C, data = core->ndma[1].readSad(2)) // NDMA2SAD (ARM7)
+                DEF_IO32(0x4004140, data = core->ndma[1].readDad(2)) // NDMA2DAD (ARM7)
+                DEF_IO32(0x4004144, data = core->ndma[1].readTcnt(2)) // NDMA2TCNT (ARM7)
+                DEF_IO32(0x4004148, data = core->ndma[1].readWcnt(2)) // NDMA2WCNT (ARM7)
+                DEF_IO32(0x4004150, data = core->ndma[1].readFdata(2)) // NDMA2FDATA (ARM7)
+                DEF_IO32(0x4004154, data = core->ndma[1].readCnt(2)) // NDMA2CNT (ARM7)
+                DEF_IO32(0x4004158, data = core->ndma[1].readSad(3)) // NDMA3SAD (ARM7)
+                DEF_IO32(0x400415C, data = core->ndma[1].readDad(3)) // NDMA3DAD (ARM7)
+                DEF_IO32(0x4004160, data = core->ndma[1].readTcnt(3)) // NDMA3TCNT (ARM7)
+                DEF_IO32(0x4004164, data = core->ndma[1].readWcnt(3)) // NDMA3WCNT (ARM7)
+                DEF_IO32(0x400416C, data = core->ndma[1].readFdata(3)) // NDMA3FDATA (ARM7)
+                DEF_IO32(0x4004170, data = core->ndma[1].readCnt(3)) // NDMA3CNT (ARM7)
                 DEF_IO32(0x4004400, data = core->aes.readCnt()) // AES_CNT
                 DEF_IO32(0x400440C, data = core->aes.readRdfifo()) // AES_RDFIFO
+                DEF_IO16(0x4004800, data = core->sdMmc.readCmd()) // SD_CMD
+                DEF_IO16(0x4004802, data = core->sdMmc.readPortSelect()) // SD_PORT_SELECT
+                DEF_IO32(0x4004804, data = core->sdMmc.readCmdParam()) // SD_CMD_PARAM
+                DEF_IO16(0x400480A, data = core->sdMmc.readData16Blkcnt()) // SD_DATA16_BLKCNT
+                DEF_IO32(0x400480C, data = core->sdMmc.readResponse(0)) // SD_RESPONSE0
+                DEF_IO32(0x4004810, data = core->sdMmc.readResponse(1)) // SD_RESPONSE1
+                DEF_IO32(0x4004814, data = core->sdMmc.readResponse(2)) // SD_RESPONSE2
+                DEF_IO32(0x4004818, data = core->sdMmc.readResponse(3)) // SD_RESPONSE3
+                DEF_IO32(0x400481C, data = core->sdMmc.readIrqStatus()) // SD_IRQ_STATUS
+                DEF_IO32(0x4004820, data = core->sdMmc.readIrqMask()) // SD_IRQ_MASK
+                DEF_IO16(0x4004826, data = core->sdMmc.readData16Blklen()) // SD_DATA16_BLKLEN
+                DEF_IO32(0x400482C, data = core->sdMmc.readErrDetail()) // SD_ERR_DETAIL
+                DEF_IO16(0x4004830, data = core->sdMmc.readData16Fifo()) // SD_DATA16_FIFO
+                DEF_IO16(0x40048D8, data = core->sdMmc.readDataCtl()) // SD_DATA_CTL
+                DEF_IO16(0x4004900, data = core->sdMmc.readData32Irq()) // SD_DATA32_IRQ
+                DEF_IO16(0x4004904, data = core->sdMmc.readData32Blklen()) // SD_DATA32_BLKLEN
+                DEF_IO32(0x400490C, data = core->sdMmc.readData32Fifo()) // SD_DATA32_FIFO
+                DEF_IO32(0x4004D00, data = core->sdMmc.readConsoleId(0)) // CONSOLE_ID0
+                DEF_IO32(0x4004D04, data = core->sdMmc.readConsoleId(1)) // CONSOLE_ID1
             }
         }
 
@@ -1340,8 +1411,8 @@ template <typename T> T Memory::ioReadGba(uint32_t address) {
             DEF_IO16(0x400010C, data = core->timers[1].readTmCntL(3)) // TM3CNT_L
             DEF_IO16(0x400010E, data = core->timers[1].readTmCntH(3)) // TM3CNT_H
             DEF_IO16(0x4000130, data = core->input.readKeyInput()) // KEYINPUT
-            DEF_IO16(0x4000200, data = core->interpreter[1].readIe()) // IE
-            DEF_IO16(0x4000202, data = core->interpreter[1].readIrf()) // IF
+            DEF_IO16(0x4000200, data = core->interpreter[1].readIe(0)) // IE
+            DEF_IO16(0x4000202, data = core->interpreter[1].readIrf(0)) // IF
             DEF_IO08(0x4000208, data = core->interpreter[1].readIme()) // IME
             DEF_IO08(0x4000300, data = core->interpreter[1].readPostFlg()) // POSTFLG
             DEF_IO16(0x80000C4, data = core->rtc.readGpData()) // GP_DATA
@@ -1448,8 +1519,8 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value) {
             DEF_IO32(0x40001A8, core->cartridgeNds.writeRomCmdOutL(0, IOWR_PARAMS)) // ROMCMDOUT_L (ARM9)
             DEF_IO32(0x40001AC, core->cartridgeNds.writeRomCmdOutH(0, IOWR_PARAMS)) // ROMCMDOUT_H (ARM9)
             DEF_IO08(0x4000208, core->interpreter[0].writeIme(IOWR_PARAMS8)) // IME (ARM9)
-            DEF_IO32(0x4000210, core->interpreter[0].writeIe(IOWR_PARAMS)) // IE (ARM9)
-            DEF_IO32(0x4000214, core->interpreter[0].writeIrf(IOWR_PARAMS)) // IF (ARM9)
+            DEF_IO32(0x4000210, core->interpreter[0].writeIe(0, IOWR_PARAMS)) // IE (ARM9)
+            DEF_IO32(0x4000214, core->interpreter[0].writeIrf(0, IOWR_PARAMS)) // IF (ARM9)
             DEF_IO08(0x4000240, writeVramCnt(0, IOWR_PARAMS8)) // VRAMCNT_A
             DEF_IO08(0x4000241, writeVramCnt(1, IOWR_PARAMS8)) // VRAMCNT_B
             DEF_IO08(0x4000242, writeVramCnt(2, IOWR_PARAMS8)) // VRAMCNT_C
@@ -1664,6 +1735,30 @@ template <typename T> void Memory::ioWrite9(uint32_t address, T value) {
                 DEF_IO32(0x4004054, writeMbk6(0, IOWR_PARAMS)) // MBK6
                 DEF_IO32(0x4004058, writeMbk7(0, IOWR_PARAMS)) // MBK7
                 DEF_IO32(0x400405C, writeMbk8(0, IOWR_PARAMS)) // MBK8
+                DEF_IO32(0x4004104, core->ndma[0].writeSad(0, IOWR_PARAMS)) // NDMA0SAD (ARM9)
+                DEF_IO32(0x4004108, core->ndma[0].writeDad(0, IOWR_PARAMS)) // NDMA0DAD (ARM9)
+                DEF_IO32(0x400410C, core->ndma[0].writeTcnt(0, IOWR_PARAMS)) // NDMA0TCNT (ARM9)
+                DEF_IO32(0x4004110, core->ndma[0].writeWcnt(0, IOWR_PARAMS)) // NDMA0WCNT (ARM9)
+                DEF_IO32(0x4004118, core->ndma[0].writeFdata(0, IOWR_PARAMS)) // NDMA0FDATA (ARM9)
+                DEF_IO32(0x400411C, core->ndma[0].writeCnt(0, IOWR_PARAMS)) // NDMA0CNT (ARM9)
+                DEF_IO32(0x4004120, core->ndma[0].writeSad(1, IOWR_PARAMS)) // NDMA1SAD (ARM9)
+                DEF_IO32(0x4004124, core->ndma[0].writeDad(1, IOWR_PARAMS)) // NDMA1DAD (ARM9)
+                DEF_IO32(0x4004128, core->ndma[0].writeTcnt(1, IOWR_PARAMS)) // NDMA1TCNT (ARM9)
+                DEF_IO32(0x400412C, core->ndma[0].writeWcnt(1, IOWR_PARAMS)) // NDMA1WCNT (ARM9)
+                DEF_IO32(0x4004134, core->ndma[0].writeFdata(1, IOWR_PARAMS)) // NDMA1FDATA (ARM9)
+                DEF_IO32(0x4004138, core->ndma[0].writeCnt(1, IOWR_PARAMS)) // NDMA1CNT (ARM9)
+                DEF_IO32(0x400413C, core->ndma[0].writeSad(2, IOWR_PARAMS)) // NDMA2SAD (ARM9)
+                DEF_IO32(0x4004140, core->ndma[0].writeDad(2, IOWR_PARAMS)) // NDMA2DAD (ARM9)
+                DEF_IO32(0x4004144, core->ndma[0].writeTcnt(2, IOWR_PARAMS)) // NDMA2TCNT (ARM9)
+                DEF_IO32(0x4004148, core->ndma[0].writeWcnt(2, IOWR_PARAMS)) // NDMA2WCNT (ARM9)
+                DEF_IO32(0x4004150, core->ndma[0].writeFdata(2, IOWR_PARAMS)) // NDMA2FDATA (ARM9)
+                DEF_IO32(0x4004154, core->ndma[0].writeCnt(2, IOWR_PARAMS)) // NDMA2CNT (ARM9)
+                DEF_IO32(0x4004158, core->ndma[0].writeSad(3, IOWR_PARAMS)) // NDMA3SAD (ARM9)
+                DEF_IO32(0x400415C, core->ndma[0].writeDad(3, IOWR_PARAMS)) // NDMA3DAD (ARM9)
+                DEF_IO32(0x4004160, core->ndma[0].writeTcnt(3, IOWR_PARAMS)) // NDMA3TCNT (ARM9)
+                DEF_IO32(0x4004164, core->ndma[0].writeWcnt(3, IOWR_PARAMS)) // NDMA3WCNT (ARM9)
+                DEF_IO32(0x400416C, core->ndma[0].writeFdata(3, IOWR_PARAMS)) // NDMA3FDATA (ARM9)
+                DEF_IO32(0x4004170, core->ndma[0].writeCnt(3, IOWR_PARAMS)) // NDMA3CNT (ARM9)
             }
         }
 
@@ -1729,8 +1824,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value) {
             DEF_IO16(0x40001C0, core->spi.writeSpiCnt(IOWR_PARAMS)) // SPICNT
             DEF_IO08(0x40001C2, core->spi.writeSpiData(IOWR_PARAMS8)) // SPIDATA
             DEF_IO08(0x4000208, core->interpreter[1].writeIme(IOWR_PARAMS8)) // IME (ARM7)
-            DEF_IO32(0x4000210, core->interpreter[1].writeIe(IOWR_PARAMS)) // IE (ARM7)
-            DEF_IO32(0x4000214, core->interpreter[1].writeIrf(IOWR_PARAMS)) // IF (ARM7)
+            DEF_IO32(0x4000210, core->interpreter[1].writeIe(0, IOWR_PARAMS)) // IE (ARM7)
+            DEF_IO32(0x4000214, core->interpreter[1].writeIrf(0, IOWR_PARAMS)) // IF (ARM7)
             DEF_IO08(0x4000300, core->interpreter[1].writePostFlg(IOWR_PARAMS8)) // POSTFLG (ARM7)
             DEF_IO08(0x4000301, writeHaltCnt(IOWR_PARAMS8)) // HALTCNT
             DEF_IO32(0x4000400, core->spu.writeSoundCnt(0, IOWR_PARAMS)) // SOUND0CNT
@@ -1895,9 +1990,35 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value) {
         // Check registers exclusive to DSi mode
         if (core->dsiMode) {
             switch (base) {
+                DEF_IO32(0x4000218, core->interpreter[1].writeIe(1, IOWR_PARAMS)) // IE2
+                DEF_IO32(0x400021C, core->interpreter[1].writeIrf(1, IOWR_PARAMS)) // IF2
                 DEF_IO32(0x4004054, writeMbk6(1, IOWR_PARAMS)) // MBK6
                 DEF_IO32(0x4004058, writeMbk7(1, IOWR_PARAMS)) // MBK7
                 DEF_IO32(0x400405C, writeMbk8(1, IOWR_PARAMS)) // MBK8
+                DEF_IO32(0x4004104, core->ndma[1].writeSad(0, IOWR_PARAMS)) // NDMA0SAD (ARM7)
+                DEF_IO32(0x4004108, core->ndma[1].writeDad(0, IOWR_PARAMS)) // NDMA0DAD (ARM7)
+                DEF_IO32(0x400410C, core->ndma[1].writeTcnt(0, IOWR_PARAMS)) // NDMA0TCNT (ARM7)
+                DEF_IO32(0x4004110, core->ndma[1].writeWcnt(0, IOWR_PARAMS)) // NDMA0WCNT (ARM7)
+                DEF_IO32(0x4004118, core->ndma[1].writeFdata(0, IOWR_PARAMS)) // NDMA0FDATA (ARM7)
+                DEF_IO32(0x400411C, core->ndma[1].writeCnt(0, IOWR_PARAMS)) // NDMA0CNT (ARM7)
+                DEF_IO32(0x4004120, core->ndma[1].writeSad(1, IOWR_PARAMS)) // NDMA1SAD (ARM7)
+                DEF_IO32(0x4004124, core->ndma[1].writeDad(1, IOWR_PARAMS)) // NDMA1DAD (ARM7)
+                DEF_IO32(0x4004128, core->ndma[1].writeTcnt(1, IOWR_PARAMS)) // NDMA1TCNT (ARM7)
+                DEF_IO32(0x400412C, core->ndma[1].writeWcnt(1, IOWR_PARAMS)) // NDMA1WCNT (ARM7)
+                DEF_IO32(0x4004134, core->ndma[1].writeFdata(1, IOWR_PARAMS)) // NDMA1FDATA (ARM7)
+                DEF_IO32(0x4004138, core->ndma[1].writeCnt(1, IOWR_PARAMS)) // NDMA1CNT (ARM7)
+                DEF_IO32(0x400413C, core->ndma[1].writeSad(2, IOWR_PARAMS)) // NDMA2SAD (ARM7)
+                DEF_IO32(0x4004140, core->ndma[1].writeDad(2, IOWR_PARAMS)) // NDMA2DAD (ARM7)
+                DEF_IO32(0x4004144, core->ndma[1].writeTcnt(2, IOWR_PARAMS)) // NDMA2TCNT (ARM7)
+                DEF_IO32(0x4004148, core->ndma[1].writeWcnt(2, IOWR_PARAMS)) // NDMA2WCNT (ARM7)
+                DEF_IO32(0x4004150, core->ndma[1].writeFdata(2, IOWR_PARAMS)) // NDMA2FDATA (ARM7)
+                DEF_IO32(0x4004154, core->ndma[1].writeCnt(2, IOWR_PARAMS)) // NDMA2CNT (ARM7)
+                DEF_IO32(0x4004158, core->ndma[1].writeSad(3, IOWR_PARAMS)) // NDMA3SAD (ARM7)
+                DEF_IO32(0x400415C, core->ndma[1].writeDad(3, IOWR_PARAMS)) // NDMA3DAD (ARM7)
+                DEF_IO32(0x4004160, core->ndma[1].writeTcnt(3, IOWR_PARAMS)) // NDMA3TCNT (ARM7)
+                DEF_IO32(0x4004164, core->ndma[1].writeWcnt(3, IOWR_PARAMS)) // NDMA3WCNT (ARM7)
+                DEF_IO32(0x400416C, core->ndma[1].writeFdata(3, IOWR_PARAMS)) // NDMA3FDATA (ARM7)
+                DEF_IO32(0x4004170, core->ndma[1].writeCnt(3, IOWR_PARAMS)) // NDMA3CNT (ARM7)
                 DEF_IO32(0x4004400, core->aes.writeCnt(IOWR_PARAMS)) // AES_CNT
                 DEF_IO32(0x4004404, core->aes.writeBlkcnt(IOWR_PARAMS)) // AES_BLKCNT
                 DEF_IO32(0x4004408, core->aes.writeWrfifo(IOWR_PARAMS)) // AES_WRFIFO
@@ -1957,6 +2078,18 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value) {
                 DEF_IO32(0x40044F4, core->aes.writeKeyy(3, 1, IOWR_PARAMS)) // AES_KEYY3.1
                 DEF_IO32(0x40044F8, core->aes.writeKeyy(3, 2, IOWR_PARAMS)) // AES_KEYY3.2
                 DEF_IO32(0x40044FC, core->aes.writeKeyy(3, 3, IOWR_PARAMS)) // AES_KEYY3.3
+                DEF_IO16(0x4004800, core->sdMmc.writeCmd(IOWR_PARAMS)) // SD_CMD
+                DEF_IO16(0x4004802, core->sdMmc.writePortSelect(IOWR_PARAMS)) // SD_PORT_SELECT
+                DEF_IO32(0x4004804, core->sdMmc.writeCmdParam(IOWR_PARAMS)) // SD_CMD_PARAM
+                DEF_IO16(0x400480A, core->sdMmc.writeData16Blkcnt(IOWR_PARAMS)) // SD_DATA16_BLKCNT
+                DEF_IO32(0x400481C, core->sdMmc.writeIrqStatus(IOWR_PARAMS)) // SD_IRQ_STATUS
+                DEF_IO32(0x4004820, core->sdMmc.writeIrqMask(IOWR_PARAMS)) // SD_IRQ_MASK
+                DEF_IO16(0x4004826, core->sdMmc.writeData16Blklen(IOWR_PARAMS)) // SD_DATA16_BLKLEN
+                DEF_IO16(0x4004830, core->sdMmc.writeData16Fifo(IOWR_PARAMS)) // SD_DATA16_FIFO
+                DEF_IO16(0x40048D8, core->sdMmc.writeDataCtl(IOWR_PARAMS)) // SD_DATA_CTL
+                DEF_IO16(0x4004900, core->sdMmc.writeData32Irq(IOWR_PARAMS)) // SD_DATA32_IRQ
+                DEF_IO16(0x4004904, core->sdMmc.writeData32Blklen(IOWR_PARAMS)) // SD_DATA32_BLKLEN
+                DEF_IO32(0x400490C, core->sdMmc.writeData32Fifo(IOWR_PARAMS)) // SD_DATA32_FIFO
             }
         }
 
@@ -2073,8 +2206,8 @@ template <typename T> void Memory::ioWriteGba(uint32_t address, T value) {
             DEF_IO16(0x400010A, core->timers[1].writeTmCntH(2, IOWR_PARAMS)) // TM2CNT_H
             DEF_IO16(0x400010C, core->timers[1].writeTmCntL(3, IOWR_PARAMS)) // TM3CNT_L
             DEF_IO16(0x400010E, core->timers[1].writeTmCntH(3, IOWR_PARAMS)) // TM3CNT_H
-            DEF_IO16(0x4000200, core->interpreter[1].writeIe(IOWR_PARAMS)) // IE
-            DEF_IO16(0x4000202, core->interpreter[1].writeIrf(IOWR_PARAMS)) // IF
+            DEF_IO16(0x4000200, core->interpreter[1].writeIe(0, IOWR_PARAMS)) // IE
+            DEF_IO16(0x4000202, core->interpreter[1].writeIrf(0, IOWR_PARAMS)) // IF
             DEF_IO08(0x4000208, core->interpreter[1].writeIme(IOWR_PARAMS8)) // IME
             DEF_IO08(0x4000300, core->interpreter[1].writePostFlg(IOWR_PARAMS8)) // POSTFLG
             DEF_IO08(0x4000301, writeGbaHaltCnt(IOWR_PARAMS8)) // HALTCNT

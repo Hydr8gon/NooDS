@@ -85,7 +85,7 @@ void Cartridge::loadRomSection(size_t offset, size_t size) {
     rom = new uint8_t[size];
     fseek(romFile, offset, SEEK_SET);
     fread(rom, sizeof(uint8_t), size, romFile);
-    core->dldi.patchRom(rom, offset, size);
+    if (!core->dsiMode) core->dldi.patchRom(rom, offset, size);
 }
 
 void Cartridge::writeSave() {

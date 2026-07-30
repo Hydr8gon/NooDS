@@ -67,8 +67,9 @@
 #define FORCE_INLINE inline __attribute__((always_inline))
 #endif
 
-// Simple bit macro
-#define BIT(i) (1 << (i))
+// Simple bit macros
+#define BIT(i) (1U << (i))
+#define BITL(i) (1ULL << (i))
 
 // Macro to swap two values
 #define SWAP(a, b) { \

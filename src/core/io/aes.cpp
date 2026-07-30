@@ -260,7 +260,8 @@ void Aes::update() {
         // Disable the FIFO once all blocks are processed and trigger an interrupt if enabled
         if (--curBlock > 0) continue;
         aesCnt &= ~BIT(31);
-        if (aesCnt & BIT(30)); // TODO: interrupt
+        if (aesCnt & BIT(30))
+            core->interpreter[1].sendInterrupt(44);
         LOG_INFO("AES FIFO finished processing\n");
 
         // Calculate a CCM MAC for applicable modes
@@ -298,6 +299,18 @@ void Aes::update() {
     // Update the AES FIFO sizes
     aesCnt = (aesCnt & ~0x3FF) | (std::min<uint8_t>(16, readFifo.size()) << 5) | writeFifo.size();
     scheduled = false;
+
+    // Set or clear AES in DRQs
+    if (writeFifo.size() <= ((aesCnt >> 10) & 0xC))
+        core->ndma[1].setDrq(0xA);
+    else
+        core->ndma[1].clearDrq(0xA);
+
+    // Set or clear AES out DRQs
+    if (readFifo.size() >= ((aesCnt >> 12) & 0xC) + 4)
+        core->ndma[1].setDrq(0xB);
+    else
+        core->ndma[1].clearDrq(0xB);
 }
 
 uint32_t Aes::readRdfifo() {

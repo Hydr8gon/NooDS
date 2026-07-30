@@ -96,8 +96,8 @@ private:
     Core *core;
     uint32_t gbaBiosAddr = 0;
 
-    uint8_t bios9[0x8000] = {}; // 32KB ARM9 BIOS
-    uint8_t bios7[0x4000] = {}; // 16KB ARM7 BIOS
+    uint8_t bios9[0x10000] = {}; // 64KB ARM9 BIOS
+    uint8_t bios7[0x10000] = {}; // 64KB ARM7 BIOS
     uint8_t gbaBios[0x4000] = {}; // 16KB GBA BIOS
 
     uint8_t ram[0x1000000] = {}; // 16MB main RAM

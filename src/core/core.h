@@ -50,6 +50,8 @@
 #include "memory/cartridge.h"
 #include "memory/dma.h"
 #include "memory/memory.h"
+#include "memory/ndma.h"
+#include "memory/sd_mmc.h"
 
 enum CoreError {
     ERROR_NDS_BIOS = 1,
@@ -93,6 +95,10 @@ enum SchedTask {
     WIFI_TRANS_REPLY,
     WIFI_TRANS_ACK,
     AES_UPDATE,
+    NDMA9_UPDATE,
+    NDMA7_UPDATE,
+    SDMMC_READ_BLOCK,
+    SDMMC_WRITE_BLOCK,
     MAX_TASKS
 };
 
@@ -130,8 +136,10 @@ public:
     Interpreter interpreter[2];
     Ipc ipc;
     Memory memory;
+    Ndma ndma[2];
     Rtc rtc;
     SaveStates saveStates;
+    SdMmc sdMmc;
     Spi spi;
     Spu spu;
     Timers timers[2];

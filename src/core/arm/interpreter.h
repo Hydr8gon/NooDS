@@ -57,13 +57,13 @@ public:
     int handleHleIrq();
 
     uint8_t readIme() { return ime; }
-    uint32_t readIe() { return ie; }
-    uint32_t readIrf() { return irf; }
+    uint32_t readIe(int i) { return ie >> (i * 32); }
+    uint32_t readIrf(int i) { return irf >> (i * 32); }
     uint8_t readPostFlg() { return postFlg; }
 
     void writeIme(uint8_t value);
-    void writeIe(uint32_t mask, uint32_t value);
-    void writeIrf(uint32_t mask, uint32_t value);
+    void writeIe(int i, uint32_t mask, uint32_t value);
+    void writeIrf(int i, uint32_t mask, uint32_t value);
     void writePostFlg(uint8_t value);
 
 private:
@@ -88,7 +88,7 @@ private:
     bool dsiCycle = false;
 
     uint8_t ime = 0;
-    uint32_t ie = 0, irf = 0;
+    uint64_t ie = 0, irf = 0;
     uint8_t postFlg = 0;
 
     static int (Interpreter::*armInstrs[0x1000])(uint32_t);

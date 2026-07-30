@@ -27,18 +27,18 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     int ndsSaveFd, int gbaSaveFd, int ndsStateFd, int gbaStateFd, int ndsCheatFd):
         id(id), actionReplay(this), aes(this), cartridgeGba(this), cartridgeNds(this), cp15(this), divSqrt(this),
         dldi(this), dma { Dma(this, 0), Dma(this, 1) }, gpu(this), gpu2D { Gpu2D(this, 0), Gpu2D(this, 1) },
-        gpu3D(this), gpu3DRenderer(this), hleArm7(this), hleBios { HleBios(this, 0, HleBios::swiTable9),
-        HleBios(this, 1, HleBios::swiTable7), HleBios(this, 1, HleBios::swiTableGba) }, input(this),
-        interpreter { Interpreter(this, 0), Interpreter(this, 1) }, ipc(this), memory(this), rtc(this),
-        saveStates(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this) {
+        gpu3D(this), gpu3DRenderer(this), hleArm7(this), hleBios { HleBios(this, 0, HleBios::swiTable9), HleBios(this,
+        1, HleBios::swiTable7), HleBios(this, 1, HleBios::swiTableGba) }, input(this), interpreter { Interpreter(this,
+        0), Interpreter(this, 1) }, ipc(this), memory(this), ndma { Ndma(this, 0), Ndma(this, 1) }, rtc(this),
+        saveStates(this), sdMmc(this), spi(this), spu(this), timers { Timers(this, 0), Timers(this, 1) }, wifi(this) {
     // Set DSi mode now and ignore changes to it later
     dsiMode = Settings::dsiMode;
     updateRun();
 
     // Try to load BIOS and firmware; require DS files when not direct booting
     bool required = !Settings::directBoot || (ndsRom == "" && gbaRom == "" && ndsRomFd == -1 && gbaRomFd == -1);
-    if (!memory.loadBios9() && required && !dsiMode) throw ERROR_NDS_BIOS;
-    if (!memory.loadBios7() && required && !dsiMode) throw ERROR_NDS_BIOS;
+    if (!memory.loadBios9() && (required || dsiMode)) throw dsiMode ? ERROR_DSI_BIOS : ERROR_NDS_BIOS;
+    if (!memory.loadBios7() && (required || dsiMode)) throw dsiMode ? ERROR_DSI_BIOS : ERROR_NDS_BIOS;
     if (!spi.loadFirmware() && required && !dsiMode) throw ERROR_NDS_FIRM;
     realGbaBios = memory.loadGbaBios();
 
@@ -76,6 +76,10 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     tasks[WIFI_TRANS_REPLY] = std::bind(&Wifi::transmitPacket, &wifi, CMD_REPLY);
     tasks[WIFI_TRANS_ACK] = std::bind(&Wifi::transmitPacket, &wifi, CMD_ACK);
     tasks[AES_UPDATE] = std::bind(&Aes::update, &aes);
+    tasks[NDMA9_UPDATE] = std::bind(&Ndma::update, &ndma[0]);
+    tasks[NDMA7_UPDATE] = std::bind(&Ndma::update, &ndma[1]);
+    tasks[SDMMC_READ_BLOCK] = std::bind(&SdMmc::readBlock, &sdMmc);
+    tasks[SDMMC_WRITE_BLOCK] = std::bind(&SdMmc::writeBlock, &sdMmc);
 
     // Schedule initial tasks for NDS mode
     schedule(RESET_CYCLES, 0x7FFFFFFF);
@@ -90,7 +94,7 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
     interpreter[1].init();
 
     // HLE boot stage 1 in DSi mode since it's not easily dumpable
-    if (required && dsiMode) {
+    if (dsiMode) {
         // Read the stage 2 header
         uint8_t header[0x200];
         FILE *nand = fopen(Settings::dsiNandPath.c_str(), "rb");
@@ -180,6 +184,59 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
         delete[] code9;
         delete[] code7;
         fclose(nand);
+
+        // Map Instruction TCM to its entire available space
+        cp15.write(1, 0, 0, 0x0005707D); // Control
+        cp15.write(9, 1, 1, 0x00000020); // ITCM size
+
+        // Copy some keys from BIOS9 to ITCM
+        for (int i = 0; i < 0x400; i += 4)
+            memory.write<uint32_t>(0, 0x1FFC400 + i, memory.read<uint32_t>(0, 0xFFFF87F4 + i));
+        for (int i = 0; i < 0x80; i += 4)
+            memory.write<uint32_t>(0, 0x1FFC800 + i, memory.read<uint32_t>(0, 0xFFFF9920 + i));
+        for (int i = 0; i < 0x1048; i += 4)
+            memory.write<uint32_t>(0, 0x1FFC894 + i, memory.read<uint32_t>(0, 0xFFFF99A0 + i));
+        for (int i = 0; i < 0x1048; i += 4)
+            memory.write<uint32_t>(0, 0x1FFD8DC + i, memory.read<uint32_t>(0, 0xFFFFA9E8 + i));
+
+        // Copy some keys from BIOS7 to WRAM
+        for (int i = 0; i < 0x200; i += 4)
+            memory.write<uint32_t>(1, 0x3FFC400 + i, memory.read<uint32_t>(1, 0x8188 + i));
+        for (int i = 0; i < 0x40; i += 4)
+            memory.write<uint32_t>(1, 0x3FFC600 + i, memory.read<uint32_t>(1, 0xB5D8 + i));
+        for (int i = 0; i < 0x1048; i += 4)
+            memory.write<uint32_t>(1, 0x3FFC654 + i, memory.read<uint32_t>(1, 0xC6D0 + i));
+        for (int i = 0; i < 0x1048; i += 4)
+            memory.write<uint32_t>(1, 0x3FFD69C + i, memory.read<uint32_t>(1, 0xD718 + i));
+
+        // Initialize SD/MMC and fill in the info struct
+        uint32_t *mmcCid = sdMmc.init();
+        for (int i = 0; i < 0x10; i += 4)
+            memory.write<uint32_t>(1, 0x3FFE6E4 + i, mmcCid[i / 4]);
+
+        // Initialize string-based AES slot 0 key X values
+        aes.writeKeyx(0, 0, -1, 0x746E694E); // "Nint"
+        aes.writeKeyx(0, 1, -1, 0x6F646E65); // "endo"
+
+        // Initialize console-based AES slot 1 key X values
+        aes.writeKeyx(1, 0, -1, 0x4E00004A);
+        aes.writeKeyx(1, 1, -1, 0x4A00004E);
+        aes.writeKeyx(1, 2, -1, sdMmc.readConsoleId(1) ^ 0xC80C4B72);
+        aes.writeKeyx(1, 3, -1, sdMmc.readConsoleId(0));
+
+        // Initialize string-based AES slot 2 key X values
+        aes.writeKeyx(2, 0, -1, 0x746E694E); // "Nint"
+        aes.writeKeyx(2, 1, -1, 0x6F646E65); // "endo"
+        aes.writeKeyx(2, 2, -1, 0x00534420); // " DS"
+
+        // Initialize console-based AES slot 3 key X/Y values
+        aes.writeKeyx(3, 0, -1, sdMmc.readConsoleId(0));
+        aes.writeKeyx(3, 1, -1, sdMmc.readConsoleId(0) ^ 0x24EE6906);
+        aes.writeKeyx(3, 2, -1, sdMmc.readConsoleId(1) ^ 0xE65B601D);
+        aes.writeKeyx(3, 3, -1, sdMmc.readConsoleId(1));
+        aes.writeKeyy(3, 0, -1, 0x0AB9DC76);
+        aes.writeKeyy(3, 1, -1, 0xBD4DC4D3);
+        aes.writeKeyy(3, 2, -1, 0x202DDD1D);
 
         interpreter[0].directBoot();
         interpreter[1].directBoot();

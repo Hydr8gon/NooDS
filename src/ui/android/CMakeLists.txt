@@ -35,6 +35,8 @@ add_library(noods-core SHARED
             ../../core/io/wifi.cpp
             ../../core/memory/cartridge.cpp
             ../../core/memory/dma.cpp
-            ../../core/memory/memory.cpp)
+            ../../core/memory/memory.cpp
+            ../../core/memory/ndma.cpp
+            ../../core/memory/sd_mmc.cpp)
 
 target_link_libraries(noods-core jnigraphics OpenSLES)

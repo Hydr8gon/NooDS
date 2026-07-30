@@ -253,7 +253,7 @@ void Interpreter::unhalt(int bit) {
 
 void Interpreter::sendInterrupt(int bit) {
     // Set the interrupt's request bit
-    irf |= BIT(bit);
+    irf |= BITL(bit);
 
     // Trigger an interrupt if the conditions are met, or unhalt the CPU even if interrupts are disabled
     // The ARM9 additionally needs IME to be set for it to unhalt, but the ARM7 doesn't care
@@ -465,26 +465,23 @@ void Interpreter::writeIme(uint8_t value) {
         core->schedule(SchedTask(ARM9_INTERRUPT + arm7), (arm7 && !core->gbaMode) + 1);
 }
 
-void Interpreter::writeIe(uint32_t mask, uint32_t value) {
-    // Write to the IE register
-    mask &= (arm7 ? (core->gbaMode ? 0x3FFF : 0x01FF3FFF) : 0x003F3F7F);
-    ie = (ie & ~mask) | (value & mask);
+void Interpreter::writeIe(int i, uint32_t mask, uint32_t value) {
+    // Write to one of the IE registers
+    uint64_t mask2 = (uint64_t(mask) << (i * 32)) & (arm7 ? (core->gbaMode ? 0x3FFF : 0x7FF7FFFFFFFF) : 0xFFFFFF7F);
+    ie = (ie & ~mask2) | ((uint64_t(value) << (i * 32)) & mask2);
 
     // Trigger an interrupt if the conditions are met
     if (ime && (ie & irf) && !(cpsr & BIT(7)))
         core->schedule(SchedTask(ARM9_INTERRUPT + arm7), (arm7 && !core->gbaMode) + 1);
 }
 
-void Interpreter::writeIrf(uint32_t mask, uint32_t value) {
-    // Write to the IF register
-    // Setting a bit actually clears it to acknowledge an interrupt
-    irf &= ~(value & mask);
+void Interpreter::writeIrf(int i, uint32_t mask, uint32_t value) {
+    // Clear bits in one of the IF registers
+    irf &= ~(uint64_t(value & mask) << (i * 32));
 }
 
 void Interpreter::writePostFlg(uint8_t value) {
-    // Write to the POSTFLG register
-    // The first bit can be set, but never cleared
-    // For some reason, the second bit is writable on the ARM9
+    // Write to the unclearable POSTFLG bit (with an extra writable bit on ARM9)
     postFlg |= value & 0x01;
     if (!arm7) postFlg = (postFlg & ~0x02) | (value & 0x02);
 }
