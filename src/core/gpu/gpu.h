@@ -34,6 +34,7 @@ public:
     Gpu(Core *core);
     ~Gpu();
 
+    void init();
     void saveState(FILE *file);
     void loadState(FILE *file);
 

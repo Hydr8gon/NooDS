@@ -41,6 +41,7 @@
 #include "hle/hle_bios.h"
 #include "io/aes.h"
 #include "io/div_sqrt.h"
+#include "io/i2c.h"
 #include "io/input.h"
 #include "io/ipc.h"
 #include "io/rtc.h"
@@ -132,6 +133,7 @@ public:
     Gpu3DRenderer gpu3DRenderer;
     HleArm7 hleArm7;
     HleBios hleBios[3];
+    I2c i2c;
     Input input;
     Interpreter interpreter[2];
     Ipc ipc;

@@ -1037,7 +1037,8 @@ template <typename T> T Memory::ioRead9(uint32_t address) {
         // Check registers exclusive to DSi mode
         if (core->dsiMode) {
             switch (base) {
-                DEF_IO32(0x4004008, data = 0x8000) // SCFG_EXT9 (stub)
+                DEF_IO32(0x4004000, data = 0x1) // SCFG_A9ROM (stub)
+                DEF_IO32(0x4004008, data = 0x80008000) // SCFG_EXT9 (stub)
                 DEF_IO08(0x4004040, data = readMbk1(0)) // MBK1.0
                 DEF_IO08(0x4004041, data = readMbk1(1)) // MBK1.1
                 DEF_IO08(0x4004042, data = readMbk1(2)) // MBK1.2
@@ -1250,6 +1251,7 @@ template <typename T> T Memory::ioRead7(uint32_t address) {
             DEF_IO16(0x4800150, data = core->wifi.readWConfig(13)) // W_CONFIG_150
             DEF_IO16(0x4800154, data = core->wifi.readWConfig(14)) // W_CONFIG_154
             DEF_IO16(0x480015C, data = core->wifi.readWBbRead()) // W_BB_READ
+            DEF_IO16(0x4000204, data = 0x6000) // EXMEMSTAT (stub)
             DEF_IO16(0x4800210, data = core->wifi.readWTxSeqno()) // W_TX_SEQNO
         }
 
@@ -1258,8 +1260,8 @@ template <typename T> T Memory::ioRead7(uint32_t address) {
             switch (base) {
                 DEF_IO32(0x4000218, data = core->interpreter[1].readIe(1)) // IE2
                 DEF_IO32(0x400021C, data = core->interpreter[1].readIrf(1)) // IF2
-                DEF_IO16(0x4000204, data = 0x4000) // EXMEMSTAT (stub)
-                DEF_IO32(0x4004008, data = 0x8000) // SCFG_EXT7 (stub)
+                DEF_IO32(0x4004000, data = 0x1) // SCFG_ROM (stub)
+                DEF_IO32(0x4004008, data = 0x80008000) // SCFG_EXT7 (stub)
                 DEF_IO08(0x4004040, data = readMbk1(0)) // MBK1.0
                 DEF_IO08(0x4004041, data = readMbk1(1)) // MBK1.1
                 DEF_IO08(0x4004042, data = readMbk1(2)) // MBK1.2
@@ -1309,6 +1311,8 @@ template <typename T> T Memory::ioRead7(uint32_t address) {
                 DEF_IO32(0x4004170, data = core->ndma[1].readCnt(3)) // NDMA3CNT (ARM7)
                 DEF_IO32(0x4004400, data = core->aes.readCnt()) // AES_CNT
                 DEF_IO32(0x400440C, data = core->aes.readRdfifo()) // AES_RDFIFO
+                DEF_IO08(0x4004500, data = core->i2c.readData()) // I2C_DATA
+                DEF_IO08(0x4004501, data = core->i2c.readCnt()) // I2C_CNT
                 DEF_IO16(0x4004800, data = core->sdMmc.readCmd()) // SD_CMD
                 DEF_IO16(0x4004802, data = core->sdMmc.readPortSelect()) // SD_PORT_SELECT
                 DEF_IO32(0x4004804, data = core->sdMmc.readCmdParam()) // SD_CMD_PARAM
@@ -2078,6 +2082,8 @@ template <typename T> void Memory::ioWrite7(uint32_t address, T value) {
                 DEF_IO32(0x40044F4, core->aes.writeKeyy(3, 1, IOWR_PARAMS)) // AES_KEYY3.1
                 DEF_IO32(0x40044F8, core->aes.writeKeyy(3, 2, IOWR_PARAMS)) // AES_KEYY3.2
                 DEF_IO32(0x40044FC, core->aes.writeKeyy(3, 3, IOWR_PARAMS)) // AES_KEYY3.3
+                DEF_IO08(0x4004500, core->i2c.writeData(IOWR_PARAMS8)) // I2C_DATA
+                DEF_IO08(0x4004501, core->i2c.writeCnt(IOWR_PARAMS8)) // I2C_CNT
                 DEF_IO16(0x4004800, core->sdMmc.writeCmd(IOWR_PARAMS)) // SD_CMD
                 DEF_IO16(0x4004802, core->sdMmc.writePortSelect(IOWR_PARAMS)) // SD_PORT_SELECT
                 DEF_IO32(0x4004804, core->sdMmc.writeCmdParam(IOWR_PARAMS)) // SD_CMD_PARAM

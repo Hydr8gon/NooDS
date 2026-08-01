@@ -20,7 +20,7 @@
 #include "core.h"
 
 const char *SaveStates::stateTag = "NOOD";
-const uint32_t SaveStates::stateVersion = 9;
+const uint32_t SaveStates::stateVersion = 10;
 
 void SaveStates::setPath(std::string path, bool gba) {
     // Set the NDS or GBA state path
@@ -97,6 +97,7 @@ bool SaveStates::saveState() {
     core->hleBios[0].saveState(file);
     core->hleBios[1].saveState(file);
     core->hleBios[2].saveState(file);
+    core->i2c.saveState(file);
     core->interpreter[0].saveState(file);
     core->interpreter[1].saveState(file);
     core->ipc.saveState(file);
@@ -138,6 +139,7 @@ bool SaveStates::loadState() {
     core->hleBios[0].loadState(file);
     core->hleBios[1].loadState(file);
     core->hleBios[2].loadState(file);
+    core->i2c.loadState(file);
     core->interpreter[0].loadState(file);
     core->interpreter[1].loadState(file);
     core->ipc.loadState(file);

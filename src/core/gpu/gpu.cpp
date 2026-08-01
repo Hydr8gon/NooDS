@@ -44,6 +44,13 @@ Gpu::~Gpu() {
     }
 }
 
+void Gpu::init() {
+    // Set the new LCD initialization ready flags on DSi
+    if (!core->dsiMode) return;
+    dispStat[0] |= BIT(6);
+    dispStat[1] |= BIT(6);
+}
+
 void Gpu::saveState(FILE *file) {
     // Write state data to the file
     fwrite(dispStat, 2, sizeof(dispStat) / 2, file);
