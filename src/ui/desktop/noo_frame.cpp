@@ -335,12 +335,16 @@ void NooFrame::startCore(bool full) {
                     "Error Loading NDS BIOS", wxICON_NONE).ShowModal();
                 return;
             case ERROR_NDS_FIRM: // Non-bootable firmware file
-                wxMessageDialog(this, "Make sure the path settings point to a bootable firmware file, or boot ROMs directly.",
-                    "Error Loading Firmware", wxICON_NONE).ShowModal();
+                wxMessageDialog(this, "Make sure the path settings point to a firmware file dumped from a pre-DSi"
+                    " console, or boot ROMs directly.", "Error Loading NDS Firmware", wxICON_NONE).ShowModal();
                 return;
             case ERROR_DSI_BIOS: // Missing DSi BIOS files
                 wxMessageDialog(this, "Make sure the path settings point to valid DSi BIOS files, or turn off DSi mode.",
                     "Error Loading DSi BIOS", wxICON_NONE).ShowModal();
+                    return;
+            case ERROR_DSI_FIRM: // Invalid DSi firmware file
+                wxMessageDialog(this, "Make sure the path settings point to a firmware file dumped from a DSi"
+                    " console, or turn off DSi mode.", "Error Loading DSi Firmware", wxICON_NONE).ShowModal();
                 return;
             case ERROR_DSI_NAND: // Missing DSi NAND file
                 wxMessageDialog(this, "Make sure the path settings point to a valid DSi NAND file, or turn off DSi mode.",

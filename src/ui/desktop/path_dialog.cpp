@@ -24,9 +24,10 @@ enum PathEvent {
     GBA_BIOS_BROWSE = 1,
     NDS_BIOS9_BROWSE,
     NDS_BIOS7_BROWSE,
-    FIRMWARE_BROWSE,
+    NDS_FIRM_BROWSE,
     DSI_BIOS9_BROWSE,
     DSI_BIOS7_BROWSE,
+    DSI_FIRM_BROWSE,
     DSI_NAND_BROWSE,
     SD_IMAGE_BROWSE,
     SAVES_FOLDER,
@@ -39,9 +40,10 @@ wxBEGIN_EVENT_TABLE(PathDialog, wxDialog)
 EVT_BUTTON(GBA_BIOS_BROWSE, PathDialog::gbaBiosBrowse)
 EVT_BUTTON(NDS_BIOS9_BROWSE, PathDialog::ndsBios9Browse)
 EVT_BUTTON(NDS_BIOS7_BROWSE, PathDialog::ndsBios7Browse)
-EVT_BUTTON(FIRMWARE_BROWSE, PathDialog::firmwareBrowse)
+EVT_BUTTON(NDS_FIRM_BROWSE, PathDialog::ndsFirmBrowse)
 EVT_BUTTON(DSI_BIOS9_BROWSE, PathDialog::dsiBios9Browse)
 EVT_BUTTON(DSI_BIOS7_BROWSE, PathDialog::dsiBios7Browse)
+EVT_BUTTON(DSI_FIRM_BROWSE, PathDialog::dsiFirmBrowse)
 EVT_BUTTON(DSI_NAND_BROWSE, PathDialog::dsiNandBrowse)
 EVT_BUTTON(SD_IMAGE_BROWSE, PathDialog::sdImageBrowse)
 EVT_BUTTON(OPEN_FOLDER, PathDialog::openFolder)
@@ -75,12 +77,12 @@ PathDialog::PathDialog(): wxDialog(nullptr, wxID_ANY, "Path Settings") {
     nds7Sizer->Add(ndsBios7Path);
     nds7Sizer->Add(new wxButton(this, NDS_BIOS7_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
-    // Set up the firmware path setting
-    wxBoxSizer *firmSizer = new wxBoxSizer(wxHORIZONTAL);
-    firmSizer->Add(new wxStaticText(this, wxID_ANY, "Firmware:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
-    firmwarePath = new wxTextCtrl(this, wxID_ANY, Settings::firmwarePath, wxDefaultPosition, wxSize(size * 10, size));
-    firmSizer->Add(firmwarePath);
-    firmSizer->Add(new wxButton(this, FIRMWARE_BROWSE, "Browse"), 0, wxLEFT, size / 8);
+    // Set up the NDS firmware path setting
+    wxBoxSizer *ndsFirmSizer = new wxBoxSizer(wxHORIZONTAL);
+    ndsFirmSizer->Add(new wxStaticText(this, wxID_ANY, "NDS Firmware:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
+    ndsFirmPath = new wxTextCtrl(this, wxID_ANY, Settings::ndsFirmPath, wxDefaultPosition, wxSize(size * 10, size));
+    ndsFirmSizer->Add(ndsFirmPath);
+    ndsFirmSizer->Add(new wxButton(this, NDS_FIRM_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the DSi BIOS9 path setting
     wxBoxSizer *dsi9Sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -95,6 +97,13 @@ PathDialog::PathDialog(): wxDialog(nullptr, wxID_ANY, "Path Settings") {
     dsiBios7Path = new wxTextCtrl(this, wxID_ANY, Settings::dsiBios7Path, wxDefaultPosition, wxSize(size * 10, size));
     dsi7Sizer->Add(dsiBios7Path);
     dsi7Sizer->Add(new wxButton(this, DSI_BIOS7_BROWSE, "Browse"), 0, wxLEFT, size / 8);
+
+    // Set up the DSi firmware path setting
+    wxBoxSizer *dsiFirmSizer = new wxBoxSizer(wxHORIZONTAL);
+    dsiFirmSizer->Add(new wxStaticText(this, wxID_ANY, "DSi Firmware:"), 1, wxALIGN_CENTRE | wxRIGHT, size / 8);
+    dsiFirmPath = new wxTextCtrl(this, wxID_ANY, Settings::dsiFirmPath, wxDefaultPosition, wxSize(size * 10, size));
+    dsiFirmSizer->Add(dsiFirmPath);
+    dsiFirmSizer->Add(new wxButton(this, DSI_FIRM_BROWSE, "Browse"), 0, wxLEFT, size / 8);
 
     // Set up the DSi NAND path setting
     wxBoxSizer *nandSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -143,13 +152,14 @@ PathDialog::PathDialog(): wxDialog(nullptr, wxID_ANY, "Path Settings") {
     contents->Add(ndsText, 0, wxEXPAND | wxALL, size / 8);
     contents->Add(nds9Sizer, 0, wxEXPAND | wxALL, size / 8);
     contents->Add(nds7Sizer, 0, wxEXPAND | wxALL, size / 8);
-    contents->Add(firmSizer, 0, wxEXPAND | wxALL, size / 8);
+    contents->Add(ndsFirmSizer, 0, wxEXPAND | wxALL, size / 8);
     wxStaticText *dsiText = new wxStaticText(this, wxID_ANY, "");
     dsiText->SetLabelMarkup("<b>DSi Files</b>\n"
         "Required for the experimental DSi mode.");
     contents->Add(dsiText, 0, wxEXPAND | wxALL, size / 8);
     contents->Add(dsi9Sizer, 0, wxEXPAND | wxALL, size / 8);
     contents->Add(dsi7Sizer, 0, wxEXPAND | wxALL, size / 8);
+    contents->Add(dsiFirmSizer, 0, wxEXPAND | wxALL, size / 8);
     contents->Add(nandSizer, 0, wxEXPAND | wxALL, size / 8);
     wxStaticText *stgText = new wxStaticText(this, wxID_ANY, "");
     stgText->SetLabelMarkup("<b>Storage Files</b>\n"
@@ -203,15 +213,15 @@ void PathDialog::ndsBios7Browse(wxCommandEvent &event) {
     *ndsBios7Path << bios7Select.GetPath();
 }
 
-void PathDialog::firmwareBrowse(wxCommandEvent &event) {
+void PathDialog::ndsFirmBrowse(wxCommandEvent &event) {
     // Show the file browser
-    wxFileDialog firmwareSelect(this, "Select Firmware File", "", "",
+    wxFileDialog firmSelect(this, "Select NDS Firmware File", "", "",
         "Binary files (*.bin)|*.bin", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
-    if (firmwareSelect.ShowModal() == wxID_CANCEL) return;
+    if (firmSelect.ShowModal() == wxID_CANCEL) return;
 
     // Update the path
-    firmwarePath->Clear();
-    *firmwarePath << firmwareSelect.GetPath();
+    ndsFirmPath->Clear();
+    *ndsFirmPath << firmSelect.GetPath();
 }
 
 void PathDialog::dsiBios9Browse(wxCommandEvent &event) {
@@ -234,6 +244,17 @@ void PathDialog::dsiBios7Browse(wxCommandEvent &event) {
     // Update the path
     dsiBios7Path->Clear();
     *dsiBios7Path << bios7Select.GetPath();
+}
+
+void PathDialog::dsiFirmBrowse(wxCommandEvent &event) {
+    // Show the file browser
+    wxFileDialog firmSelect(this, "Select DSi Firmware File", "", "",
+        "Binary files (*.bin)|*.bin", wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    if (firmSelect.ShowModal() == wxID_CANCEL) return;
+
+    // Update the path
+    dsiFirmPath->Clear();
+    *dsiFirmPath << firmSelect.GetPath();
 }
 
 void PathDialog::dsiNandBrowse(wxCommandEvent &event) {
@@ -268,9 +289,10 @@ void PathDialog::confirm(wxCommandEvent &event) {
     Settings::gbaBiosPath = gbaBiosPath->GetLineText(0).ToStdString();
     Settings::ndsBios9Path = ndsBios9Path->GetLineText(0).ToStdString();
     Settings::ndsBios7Path = ndsBios7Path->GetLineText(0).ToStdString();
-    Settings::firmwarePath = firmwarePath->GetLineText(0).ToStdString();
+    Settings::ndsFirmPath = ndsFirmPath->GetLineText(0).ToStdString();
     Settings::dsiBios9Path = dsiBios9Path->GetLineText(0).ToStdString();
     Settings::dsiBios7Path = dsiBios7Path->GetLineText(0).ToStdString();
+    Settings::dsiFirmPath = dsiFirmPath->GetLineText(0).ToStdString();
     Settings::dsiNandPath = dsiNandPath->GetLineText(0).ToStdString();
     Settings::sdImagePath = sdImagePath->GetLineText(0).ToStdString();
     Settings::savesFolder = boxes[0]->GetValue();

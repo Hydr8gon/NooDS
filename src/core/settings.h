@@ -53,9 +53,10 @@ public:
     static std::string gbaBiosPath;
     static std::string ndsBios9Path;
     static std::string ndsBios7Path;
-    static std::string firmwarePath;
+    static std::string ndsFirmPath;
     static std::string dsiBios9Path;
     static std::string dsiBios7Path;
+    static std::string dsiFirmPath;
     static std::string dsiNandPath;
     static std::string sdImagePath;
     static std::string basePath;

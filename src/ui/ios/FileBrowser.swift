@@ -207,11 +207,16 @@ struct FileBrowser: View {
                 Alert(title: Text("Error Loading NDS BIOS"), message: Text("Make sure the path settings point to " +
                     "valid NDS BIOS files, or boot ROMs directly. You can modify path settings in the noods.ini file."))
             case ERROR_NDS_FIRM: // Non-bootable firmware file
-                Alert(title: Text("Error Loading Firmware"), message: Text("Make sure the path settings point to a " +
-                    "bootable firmware file, or boot ROMs directly. You can modify path settings in the noods.ini file."))
+                Alert(title: Text("Error Loading NDS Firmware"), message: Text("Make sure the " +
+                    "path settings point to a firmware file dumped from a pre-DSi console, or " +
+                    "boot ROMs directly. You can modify path settings in the noods.ini file."))
             case ERROR_DSI_BIOS: // Missing DSi BIOS files
                 Alert(title: Text("Error Loading DSi BIOS"), message: Text("Make sure the path settings point to " +
                     "valid DSi BIOS files, or turn off DSi mode. You can modify path settings in the noods.ini file."))
+            case ERROR_DSI_FIRM: // Invalid DSi firmware file
+                Alert(title: Text("Error Loading DSi Firmware"), message: Text("Make sure the " +
+                    "path settings point to a firmware file dumped from a DSi console, or " +
+                    "turn off DSi mode. You can modify path settings in the noods.ini file."))
             case ERROR_DSI_NAND: // Missing DSi NAND file
                 Alert(title: Text("Error Loading DSi NAND"), message: Text("Make sure the path settings point to a " +
                     "valid DSi NAND file, or turn off DSi mode. You can modify path settings in the noods.ini file."))

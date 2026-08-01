@@ -58,6 +58,7 @@ enum CoreError {
     ERROR_NDS_BIOS = 1,
     ERROR_NDS_FIRM,
     ERROR_DSI_BIOS,
+    ERROR_DSI_FIRM,
     ERROR_DSI_NAND,
     ERROR_ROM
 };

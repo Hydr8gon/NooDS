@@ -40,9 +40,10 @@ int Settings::arm7Hle = 0;
 std::string Settings::gbaBiosPath = "gba_bios.bin";
 std::string Settings::ndsBios9Path = "bios9.bin";
 std::string Settings::ndsBios7Path = "bios7.bin";
-std::string Settings::firmwarePath = "firmware.bin";
+std::string Settings::ndsFirmPath = "firmware.bin";
 std::string Settings::dsiBios9Path = "bios9i.bin";
 std::string Settings::dsiBios7Path = "bios7i.bin";
+std::string Settings::dsiFirmPath = "firmwarei.bin";
 std::string Settings::dsiNandPath = "nand.bin";
 std::string Settings::sdImagePath = "sd.img";
 std::string Settings::basePath = ".";
@@ -67,9 +68,10 @@ std::vector<Setting> Settings::settings = {
     Setting("gbaBiosPath", &gbaBiosPath, true),
     Setting("ndsBios9Path", &ndsBios9Path, true),
     Setting("ndsBios7Path", &ndsBios7Path, true),
-    Setting("firmwarePath", &firmwarePath, true),
+    Setting("ndsFirmPath", &ndsFirmPath, true),
     Setting("dsiBios9Path", &dsiBios9Path, true),
     Setting("dsiBios7Path", &dsiBios7Path, true),
+    Setting("dsiFirmPath", &dsiFirmPath, true),
     Setting("dsiNandPath", &dsiNandPath, true),
     Setting("sdImagePath", &sdImagePath, true)
 };
@@ -92,9 +94,10 @@ bool Settings::load(std::string path) {
         gbaBiosPath = basePath + "/gba_bios.bin";
         ndsBios9Path = basePath + "/bios9.bin";
         ndsBios7Path = basePath + "/bios7.bin";
-        firmwarePath = basePath + "/firmware.bin";
+        ndsFirmPath = basePath + "/firmware.bin";
         dsiBios9Path = basePath + "/bios9i.bin";
         dsiBios7Path = basePath + "/bios7i.bin";
+        dsiFirmPath = basePath + "/firmwarei.bin";
         dsiNandPath = basePath + "/nand.bin";
         sdImagePath = basePath + "/sd.img";
         save();

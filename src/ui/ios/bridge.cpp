@@ -79,9 +79,10 @@ bool CoreBridge::loadSettings(const char *path) {
     prefixPath(Settings::gbaBiosPath, path2, "/gba_bios.bin");
     prefixPath(Settings::ndsBios9Path, path2, "/bios9.bin");
     prefixPath(Settings::ndsBios7Path, path2, "/bios7.bin");
-    prefixPath(Settings::firmwarePath, path2, "/firmware.bin");
+    prefixPath(Settings::ndsFirmPath, path2, "/firmware.bin");
     prefixPath(Settings::dsiBios9Path, path2, "/bios9i.bin");
     prefixPath(Settings::dsiBios7Path, path2, "/bios7i.bin");
+    prefixPath(Settings::dsiFirmPath, path2, "/firmwarei.bin");
     prefixPath(Settings::dsiNandPath, path2, "/nand.bin");
     prefixPath(Settings::sdImagePath, path2, "/sd.img");
     return true;

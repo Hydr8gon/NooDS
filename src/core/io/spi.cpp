@@ -65,7 +65,8 @@ bool Spi::loadFirmware() {
         delete[] firmware;
 
     // Load the firmware from a file if it exists
-    if (FILE *file = fopen(Settings::firmwarePath.c_str(), "rb")) {
+    std::string &path = core->dsiMode ? Settings::dsiFirmPath : Settings::ndsFirmPath;
+    if (FILE *file = fopen(path.c_str(), "rb")) {
         fseek(file, 0, SEEK_END);
         firmSize = ftell(file);
         fseek(file, 0, SEEK_SET);
@@ -84,7 +85,8 @@ bool Spi::loadFirmware() {
             firmware[0x2B] = crc >> 8;
         }
 
-        return (firmSize > 0x20000); // Bootable
+        // Check if the firmware is from the correct system based on its size
+        return core->dsiMode ? (firmSize <= 0x20000) : (firmSize > 0x20000);
     }
 
     // Create a basic, non-bootable firmware if one isn't provided

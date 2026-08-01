@@ -1116,14 +1116,19 @@ bool ConsoleUI::createCore() {
             message("Error Loading NDS BIOS", text);
             break;
         case ERROR_NDS_FIRM: // Non-bootable firmware file
-            text = "Make sure the path settings point to a bootable firmware file, or boot ROMs directly.\n"
-                "You can modify path settings in the noods.ini file.";
-            message("Error Loading Firmware", text);
+            text = "Make sure the path settings point to a firmware file dumped from a pre-DSi console,"
+                " or boot ROMs directly.\nYou can modify path settings in the noods.ini file.";
+            message("Error Loading NDS Firmware", text);
             break;
         case ERROR_DSI_BIOS: // Missing DSi BIOS files
             text = "Make sure the path settings point to valid DSi BIOS files, or turn off DSi mode.\n"
                 "You can modify path settings in the noods.ini file.";
             message("Error Loading DSi BIOS", text);
+                break;
+        case ERROR_DSI_FIRM: // Invalid DSi firmware file
+            text = "Make sure the path settings point to a firmware file dumped from a DSi console,"
+                " or turn off DSi mode.\nYou can modify path settings in the noods.ini file.";
+            message("Error Loading DSi Firmware", text);
             break;
         case ERROR_DSI_NAND: // Missing DSi NAND file
             text = "Make sure the path settings point to a valid DSi NAND file, or turn off DSi mode.\n"
