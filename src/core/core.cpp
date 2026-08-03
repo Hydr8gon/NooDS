@@ -276,15 +276,15 @@ Core::Core(std::string ndsRom, std::string gbaRom, int id, int ndsRomFd, int gba
             memory.write<uint16_t>(1, 0x4000504, 0x0200); // SOUNDBIAS
 
             // Set some memory values as the BIOS/firmware would
-            memory.write<uint32_t>(0, 0x27FF800, 0x00001FC2); // Chip ID 1
-            memory.write<uint32_t>(0, 0x27FF804, 0x00001FC2); // Chip ID 2
-            memory.write<uint16_t>(0, 0x27FF850, 0x5835); // ARM7 BIOS CRC
-            memory.write<uint16_t>(0, 0x27FF880, 0x0007); // Message from ARM9 to ARM7
-            memory.write<uint16_t>(0, 0x27FF884, 0x0006); // ARM7 boot task
-            memory.write<uint32_t>(0, 0x27FFC00, 0x00001FC2); // Copy of chip ID 1
-            memory.write<uint32_t>(0, 0x27FFC04, 0x00001FC2); // Copy of chip ID 2
-            memory.write<uint16_t>(0, 0x27FFC10, 0x5835); // Copy of ARM7 BIOS CRC
-            memory.write<uint16_t>(0, 0x27FFC40, 0x0001); // Boot indicator
+            memory.write<uint32_t>(0, 0x2FFF800, 0x00001FC2); // Chip ID 1
+            memory.write<uint32_t>(0, 0x2FFF804, 0x00001FC2); // Chip ID 2
+            memory.write<uint16_t>(0, 0x2FFF850, 0x5835); // ARM7 BIOS CRC
+            memory.write<uint16_t>(0, 0x2FFF880, 0x0007); // Message from ARM9 to ARM7
+            memory.write<uint16_t>(0, 0x2FFF884, 0x0006); // ARM7 boot task
+            memory.write<uint32_t>(0, 0x2FFFC00, 0x00001FC2); // Copy of chip ID 1
+            memory.write<uint32_t>(0, 0x2FFFC04, 0x00001FC2); // Copy of chip ID 2
+            memory.write<uint16_t>(0, 0x2FFFC10, 0x5835); // Copy of ARM7 BIOS CRC
+            memory.write<uint16_t>(0, 0x2FFFC40, 0x0001); // Boot indicator
 
             cartridgeNds.directBoot();
             interpreter[0].directBoot();

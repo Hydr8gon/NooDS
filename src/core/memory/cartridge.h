@@ -113,6 +113,8 @@ private:
     uint64_t romCmdOut[2] = {};
 
     virtual bool loadRom();
+    void loadNdsCode(bool arm7);
+    void loadDsiCode(bool arm7);
 
     uint64_t encrypt64(uint64_t value);
     uint64_t decrypt64(uint64_t value);

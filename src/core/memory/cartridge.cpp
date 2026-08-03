@@ -266,91 +266,100 @@ bool CartridgeNds::loadRom() {
     return true;
 }
 
+void CartridgeNds::loadNdsCode(bool arm7) {
+    // Extract information about initial NDS code from the header
+    uint32_t offset = U8TO32(rom, arm7 ? 0x30 : 0x20);
+    core->interpreter[arm7].entryAddr = U8TO32(rom, arm7 ? 0x34 : 0x24);
+    uint32_t address = U8TO32(rom, arm7 ? 0x38 : 0x28);
+    uint32_t size = U8TO32(rom, arm7 ? 0x3C : 0x2C);
+    LOG_INFO("ARM%d code ROM offset: 0x%X\n", arm7 ? 7 : 9, offset);
+    LOG_INFO("ARM%d code entry address: 0x%X\n", arm7 ? 7 : 9, core->interpreter[arm7].entryAddr);
+    LOG_INFO("ARM%d RAM address: 0x%X\n", arm7 ? 7 : 9, address);
+    LOG_INFO("ARM%d code size: 0x%X\n", arm7 ? 7 : 9, size);
+
+    // Load the data from file if needed
+    if (romFile) {
+        loadRomSection(offset, size);
+        offset = 0;
+    }
+
+    // Copy the initial NDS code into memory
+    for (uint32_t i = 0; i < size && offset + i < romSize; i += 4) {
+        if (romEncrypted && offset + i >= 0x4000 && offset + i < 0x4800) {
+            if (offset + i < 0x4008) {
+                // Overwrite the 'encryObj' string
+                core->memory.write<uint32_t>(arm7, address + i, 0xE7FFDEFF);
+            }
+            else {
+                // Decrypt the first 2KB of the secure area
+                initKeycode(3);
+                uint64_t data = decrypt64(U8TO64(rom, (offset + i) & ~0x7));
+                core->memory.write<uint32_t>(arm7, address + i, data >> (((offset + i) & 0x4) ? 32 : 0));
+            }
+        }
+        else {
+            core->memory.write<uint32_t>(arm7, address + i, U8TO32(rom, offset + i));
+        }
+    }
+}
+
+void CartridgeNds::loadDsiCode(bool arm7) {
+    // Extract information about initial DSi code from the header
+    uint32_t offset = U8TO32(rom, arm7 ? 0x1D0 : 0x1C0);
+    uint32_t address = U8TO32(rom, arm7 ? 0x1D8 : 0x1C8);
+    uint32_t size = U8TO32(rom, arm7 ? 0x1DC : 0x1CC);
+    LOG_INFO("ARM%di code ROM offset: 0x%X\n", arm7 ? 7 : 9, offset);
+    LOG_INFO("ARM%di RAM address: 0x%X\n", arm7 ? 7 : 9, address);
+    LOG_INFO("ARM%di code size: 0x%X\n", arm7 ? 7 : 9, size);
+
+    // Load the data from file if needed
+    if (romFile) {
+        loadRomSection(offset, size);
+        offset = 0;
+    }
+
+    // Copy the initial DSi code into memory
+    for (uint32_t i = 0; i < size && offset + i < romSize; i += 4)
+        core->memory.write<uint32_t>(arm7, address + i, U8TO32(rom, offset + i));
+}
+
 void CartridgeNds::directBoot() {
-    // Load the ROM header from file if needed
-    if (romFile)
-        loadRomSection(0, 0x170);
+    // Load the ROM header and check for DSi mode
+    if (romFile) loadRomSection(0, 0x1000);
+    bool dsi = core->dsiMode && (rom[0x12] & BIT(1));
 
-    // Extract some information about the initial ARM9 code from the header
-    uint32_t offset9 = U8TO32(rom, 0x20);
-    core->interpreter[0].entryAddr = U8TO32(rom, 0x24);
-    uint32_t ramAddr9 = U8TO32(rom, 0x28);
-    uint32_t size9 = U8TO32(rom, 0x2C);
-    LOG_INFO("ARM9 code ROM offset: 0x%X\n", offset9);
-    LOG_INFO("ARM9 code entry address: 0x%X\n", core->interpreter[0].entryAddr);
-    LOG_INFO("ARM9 RAM address: 0x%X\n", ramAddr9);
-    LOG_INFO("ARM9 code size: 0x%X\n", size9);
+    // Handle the header based on DSi mode
+    if (dsi) {
+        // Apply the header's WRAM mappings
+        core->memory.writeWramCnt(rom[0x1AF]);
+        for (int i = 0; i < 4; i++) {
+            core->memory.writeMbk1(i, rom[0x180 + i]);
+            core->memory.writeMbk23(i + 0, rom[0x184 + i]);
+            core->memory.writeMbk23(i + 4, rom[0x188 + i]);
+            core->memory.writeMbk45(i + 0, rom[0x18C + i]);
+            core->memory.writeMbk45(i + 4, rom[0x190 + i]);
+            if (i >= 2) continue;
+            core->memory.writeMbk6(i, -1, U8TO32(rom, 0x194 + i * 0xC));
+            core->memory.writeMbk7(i, -1, U8TO32(rom, 0x198 + i * 0xC));
+            core->memory.writeMbk8(i, -1, U8TO32(rom, 0x19C + i * 0xC));
+        }
 
-    // Extract some information about the initial ARM7 code from the header
-    uint32_t offset7 = U8TO32(rom, 0x30);
-    core->interpreter[1].entryAddr = U8TO32(rom, 0x34);
-    uint32_t ramAddr7 = U8TO32(rom, 0x38);
-    uint32_t size7 = U8TO32(rom, 0x3C);
-    LOG_INFO("ARM7 code ROM offset: 0x%X\n", offset7);
-    LOG_INFO("ARM7 code entry address: 0x%X\n", core->interpreter[1].entryAddr);
-    LOG_INFO("ARM7 RAM address: 0x%X\n", ramAddr7);
-    LOG_INFO("ARM7 code size: 0x%X\n", size7);
-
-    // Load the ROM header into memory
-    for (uint32_t i = 0; i < 0x170; i += 4)
-        core->memory.write<uint32_t>(0, 0x27FFE00 + i, U8TO32(rom, i));
-
-    // Load the initial ARM9 code from file if needed
-    uint32_t offset;
-    if (romFile) {
-        loadRomSection(offset9, size9);
-        offset = 0;
+        // Copy the DSi ROM header into memory
+        for (uint32_t i = 0; i < 0x1000; i += 4)
+            core->memory.write<uint32_t>(0, 0x2FFE000 + i, U8TO32(rom, i));
     }
     else {
-        offset = offset9;
+        // Copy the NDS ROM header into memory
+        for (uint32_t i = 0; i < 0x170; i += 4)
+            core->memory.write<uint32_t>(0, 0x2FFFE00 + i, U8TO32(rom, i));
     }
 
-    // Load the initial ARM9 code into memory
-    for (uint32_t i = 0; i < size9; i += 4) {
-        if (romEncrypted && offset9 + i >= 0x4000 && offset9 + i < 0x4800) {
-            if (offset9 + i < 0x4008) {
-                // Overwrite the 'encryObj' string
-                core->memory.write<uint32_t>(0, ramAddr9 + i, 0xE7FFDEFF);
-            }
-            else {
-                // Decrypt the first 2KB of the secure area
-                initKeycode(3);
-                uint64_t data = decrypt64(U8TO64(rom, (offset + i) & ~7));
-                core->memory.write<uint32_t>(0, ramAddr9 + i, data >> (((offset + i) & 4) ? 32 : 0));
-            }
-        }
-        else {
-            core->memory.write<uint32_t>(0, ramAddr9 + i, U8TO32(rom, offset + i));
-        }
-    }
-
-    // Load the initial ARM7 code from file if needed
-    if (romFile) {
-        loadRomSection(offset7, size7);
-        offset = 0;
-    }
-    else {
-        offset = offset7;
-    }
-
-    // Load the initial ARM7 code into memory
-    for (uint32_t i = 0; i < size7; i += 4) {
-        if (romEncrypted && offset7 + i >= 0x4000 && offset7 + i < 0x4800) {
-            if (offset7 + i < 0x4008) {
-                // Overwrite the 'encryObj' string
-                core->memory.write<uint32_t>(1, ramAddr7 + i, 0xE7FFDEFF);
-            }
-            else {
-                // Decrypt the first 2KB of the secure area
-                initKeycode(3);
-                uint64_t data = decrypt64(U8TO64(rom, (offset + i) & ~7));
-                core->memory.write<uint32_t>(1, ramAddr7 + i, data >> (((offset + i) & 4) ? 32 : 0));
-            }
-        }
-        else {
-            core->memory.write<uint32_t>(1, ramAddr7 + i, U8TO32(rom, offset + i));
-        }
-    }
+    // Load initial NDS/DSi code segments
+    loadNdsCode(false);
+    loadNdsCode(true);
+    if (!dsi) return;
+    loadDsiCode(false);
+    loadDsiCode(true);
 }
 
 uint64_t CartridgeNds::encrypt64(uint64_t value) {
