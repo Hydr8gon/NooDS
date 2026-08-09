@@ -345,17 +345,12 @@ InputDialog::InputDialog(wxJoystick *joystick): wxDialog(nullptr, wxID_ANY, "Inp
     SetMinSize(GetSize());
     SetMaxSize(GetSize());
 
-    // Set up joystick input if a joystick is connected
-    if (joystick) {
-        // Save the initial axis values so inputs can be detected as offsets instead of raw values
-        // This avoids issues with axes that have non-zero values in their resting positions
-        for (int i = 0; i < joystick->GetNumberAxes(); i++)
-            axisBases.push_back(joystick->GetPosition(i));
-
-        // Start a timer to update joystick input, since wxJoystickEvents are unreliable
-        timer = new wxTimer(this, UPDATE_JOY);
-        timer->Start(10);
-    }
+    // Set up joystick input for this window if it was passed through
+    if (!joystick) return;
+    for (int i = 0; i < joystick->GetNumberAxes(); i++)
+        axisBases.push_back(joystick->GetPosition(i));
+    timer = new wxTimer(this, UPDATE_JOY);
+    timer->Start(10);
 }
 
 InputDialog::~InputDialog() {
@@ -541,23 +536,23 @@ void InputDialog::updateJoystick(wxTimerEvent &event) {
     // Map the current button to a joystick button if one is pressed
     if (!current) return;
     for (int i = 0; i < joystick->GetNumberButtons(); i++) {
-        if (joystick->GetButtonState(i)) {
-            keyBinds[keyIndex] = 1000 + i;
-            current->SetLabel(keyToString(keyBinds[keyIndex]));
-            current = nullptr;
-            return;
-        }
+        if (!joystick->GetButtonState(i)) continue;
+        keyBinds[keyIndex] = 1000 + i;
+        current->SetLabel(keyToString(keyBinds[keyIndex]));
+        current = nullptr;
+        return;
     }
 
-    // Map the current button to a joystick axis if one is held
+    // Map the current button to a joystick axis if one is offset far enough
+    int margin = abs(joystick->GetXMax() - joystick->GetXMin()) / 4;
     for (int i = 0; i < joystick->GetNumberAxes(); i++) {
-        if (joystick->GetPosition(i) - axisBases[i] > 16384) { // Positive axis
+        if (joystick->GetPosition(i) - axisBases[i] > margin) { // Positive
             keyBinds[keyIndex] = 2000 + i;
             current->SetLabel(keyToString(keyBinds[keyIndex]));
             current = nullptr;
             return;
         }
-        else if (joystick->GetPosition(i) - axisBases[i] < -16384) { // Negative axis
+        else if (joystick->GetPosition(i) - axisBases[i] < -margin) { // Negative
             keyBinds[keyIndex] = 3000 + i;
             current->SetLabel(keyToString(keyBinds[keyIndex]));
             current = nullptr;

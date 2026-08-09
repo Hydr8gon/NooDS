@@ -268,6 +268,7 @@ bool CartridgeNds::loadRom() {
 
 void CartridgeNds::loadNdsCode(bool arm7) {
     // Extract information about initial NDS code from the header
+    if (romFile) loadRomSection(0, 0x200);
     uint32_t offset = U8TO32(rom, arm7 ? 0x30 : 0x20);
     core->interpreter[arm7].entryAddr = U8TO32(rom, arm7 ? 0x34 : 0x24);
     uint32_t address = U8TO32(rom, arm7 ? 0x38 : 0x28);
@@ -277,16 +278,17 @@ void CartridgeNds::loadNdsCode(bool arm7) {
     LOG_INFO("ARM%d RAM address: 0x%X\n", arm7 ? 7 : 9, address);
     LOG_INFO("ARM%d code size: 0x%X\n", arm7 ? 7 : 9, size);
 
-    // Load the data from file if needed
+    // Load the code data from file if needed
+    uint32_t offset2 = offset;
     if (romFile) {
         loadRomSection(offset, size);
         offset = 0;
     }
 
     // Copy the initial NDS code into memory
-    for (uint32_t i = 0; i < size && offset + i < romSize; i += 4) {
-        if (romEncrypted && offset + i >= 0x4000 && offset + i < 0x4800) {
-            if (offset + i < 0x4008) {
+    for (uint32_t i = 0; i < size && offset2 + i < romSize; i += 4) {
+        if (romEncrypted && offset2 + i >= 0x4000 && offset2 + i < 0x4800) {
+            if (offset2 + i < 0x4008) {
                 // Overwrite the 'encryObj' string
                 core->memory.write<uint32_t>(arm7, address + i, 0xE7FFDEFF);
             }
@@ -305,6 +307,7 @@ void CartridgeNds::loadNdsCode(bool arm7) {
 
 void CartridgeNds::loadDsiCode(bool arm7) {
     // Extract information about initial DSi code from the header
+    if (romFile) loadRomSection(0, 0x200);
     uint32_t offset = U8TO32(rom, arm7 ? 0x1D0 : 0x1C0);
     uint32_t address = U8TO32(rom, arm7 ? 0x1D8 : 0x1C8);
     uint32_t size = U8TO32(rom, arm7 ? 0x1DC : 0x1CC);
@@ -312,14 +315,15 @@ void CartridgeNds::loadDsiCode(bool arm7) {
     LOG_INFO("ARM%di RAM address: 0x%X\n", arm7 ? 7 : 9, address);
     LOG_INFO("ARM%di code size: 0x%X\n", arm7 ? 7 : 9, size);
 
-    // Load the data from file if needed
+    // Load the code data from file if needed
+    uint32_t offset2 = offset;
     if (romFile) {
         loadRomSection(offset, size);
         offset = 0;
     }
 
     // Copy the initial DSi code into memory
-    for (uint32_t i = 0; i < size && offset + i < romSize; i += 4)
+    for (uint32_t i = 0; i < size && offset2 + i < romSize; i += 4)
         core->memory.write<uint32_t>(arm7, address + i, U8TO32(rom, offset + i));
 }
 

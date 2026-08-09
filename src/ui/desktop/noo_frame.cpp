@@ -250,12 +250,8 @@ NooFrame::NooFrame(NooApp *app, int id, std::string path, NooFrame *partner):
     // Prepare a joystick if one is connected
     joystick = new wxJoystick();
     if (joystick->IsOk()) {
-        // Save the initial axis values so inputs can be detected as offsets instead of raw values
-        // This avoids issues with axes that have non-zero values in their resting positions
-        for (int i = 0; i < joystick->GetNumberAxes(); i++)
-            axisBases.push_back(joystick->GetPosition(i));
-
-        // Start a timer to update joystick input, since wxJoystickEvents are unreliable
+        // Initialize data and start the joystick update timer
+        axisBases.reserve(joystick->GetNumberAxes());
         timer = new wxTimer(this, UPDATE_JOY);
         timer->Start(10);
     }
@@ -359,6 +355,11 @@ void NooFrame::startCore(bool full) {
     }
 
     if (core) {
+        // Update the resting axis values so relative offsets can be taken
+        if (joystick)
+            for (int i = 0; i < joystick->GetNumberAxes(); i++)
+                axisBases[i] = joystick->GetPosition(i);
+
         // Enable some file menu items if a ROM is loaded
         if (ndsPath != "" || gbaPath != "") {
             fileMenu->Enable(TRIM_ROM, true);
@@ -779,15 +780,18 @@ void NooFrame::inputSettings(wxCommandEvent &event) {
 
 void NooFrame::updateJoystick(wxTimerEvent &event) {
     // Check the status of mapped joystick inputs and trigger key presses and releases accordingly
+    int size = abs(joystick->GetXMax() - joystick->GetXMin()) / 2;
     for (int i = 0; i < MAX_KEYS; i++) {
         if (NooApp::keyBinds[i] >= 3000 && joystick->GetNumberAxes() > NooApp::keyBinds[i] - 3000) { // Axis -
-            if (joystick->GetPosition(NooApp::keyBinds[i] - 3000) - axisBases[NooApp::keyBinds[i] - 3000] < -16384)
+            int j = NooApp::keyBinds[i] - 3000;
+            if (joystick->GetPosition(j) - axisBases[j] < -size / 2)
                 pressKey(i);
             else
                 releaseKey(i);
         }
         else if (NooApp::keyBinds[i] >= 2000 && joystick->GetNumberAxes() > NooApp::keyBinds[i] - 2000) { // Axis +
-            if (joystick->GetPosition(NooApp::keyBinds[i] - 2000) - axisBases[NooApp::keyBinds[i] - 2000] > 16384)
+            int j = NooApp::keyBinds[i] - 2000;
+            if (joystick->GetPosition(j) - axisBases[j] > size / 2)
                 pressKey(i);
             else
                 releaseKey(i);
